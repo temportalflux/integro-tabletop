@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<title>Tabletop Tools</title>
+
+		<!-- Trunk operations: https://trunkrs.dev/assets -->
+		<!-- Set the basename from the public-url provided to the build command -->
+		<base data-trunk-public-url />
+		<!-- Execute the wasm generated from source -->
+		<link data-trunk rel="rust" />
+		<!-- Copy the 404 file, for gh-pages, which does not natively support SinglePageApplications -->
+		<link data-trunk rel="copy-file" href="404.html" />
+
+		<!-- https://daisyui.com/docs/ -->
+		<link href="https://cdn.jsdelivr.net/npm/daisyui@2.47.0/dist/full.css" rel="stylesheet" type="text/css" />
+		<script src="https://cdn.tailwindcss.com"></script>
+		<script>
+			tailwind.config = {
+				darkMode: 'class',
+			};
+		</script>
+		
+		<!-- Start Single Page Apps for GitHub Pages -->
+		<script type="text/javascript">
+			// Single Page Apps for GitHub Pages
+			// MIT License
+			// https://github.com/rafgraph/spa-github-pages
+			// This script checks to see if a redirect is present in the query string,
+			// converts it back into the correct url and adds it to the
+			// browser's history using window.history.replaceState(...),
+			// which won't cause the browser to attempt to load the new url.
+			// When the single page app is loaded further down in this file,
+			// the correct url will be waiting in the browser's history for
+			// the single page app to route accordingly.
+			(function(l) {
+				if (l.search[1] === '/' ) {
+					var decoded = l.search.slice(1).split('&').map(function(s) { 
+						return s.replace(/~and~/g, '&')
+					}).join('?');
+					window.history.replaceState(null, null,
+							l.pathname.slice(0, -1) + decoded + l.hash
+					);
+				}
+			}(window.location))
+		</script>
+		<!-- End Single Page Apps for GitHub Pages -->
+	</head>
+	<body class=""></body>
+</html>
