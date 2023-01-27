@@ -11,6 +11,8 @@
 		<link data-trunk rel="rust" />
 		<!-- Copy the 404 file, for gh-pages, which does not natively support SinglePageApplications -->
 		<link data-trunk rel="copy-file" href="404.html" />
+		<!-- Compile and link scss styles -->
+		<link data-trunk rel="scss" href="index.scss" />
 
 		<!-- https://daisyui.com/docs/ -->
 		<link href="https://cdn.jsdelivr.net/npm/daisyui@2.47.0/dist/full.css" rel="stylesheet" type="text/css" />
@@ -18,6 +20,11 @@
 		<script>
 			tailwind.config = {
 				darkMode: 'class',
+				daisyui: {
+					themes: [
+						"dark", "light",
+					]
+				}
 			};
 		</script>
 		

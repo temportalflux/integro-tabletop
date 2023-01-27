@@ -1,0 +1,67 @@
+@charset "utf-8";
+
+.attribute-label {
+	font-family: Roboto Condensed,Roboto,Helvetica,sans-serif;
+	font-size: 9px;
+	font-weight: 700;
+	text-transform: uppercase;
+}
+
+.ability-summary > #header {
+	position: relative;
+	padding-top: 8px;
+}
+[data-theme="light"] .ability-summary > #header > span {
+	color: #838383;
+}
+[data-theme="dark"] .ability-summary > #header > span {
+	color: #b0b7bd;
+}
+.ability-summary > #primary {
+	position: relative;
+	font-size: 26px;
+	font-weight: 500;
+}
+.ability-summary > #secondary {
+	position: absolute;
+	bottom: 4px; left: 0; right: 0;
+	font-size: 16px;
+	font-weight: 700;
+}
+[data-theme="dark"] .ability-summary > #secondary {
+	color: #b0b7bd;
+}
+
+.signed-number {
+	position: relative;
+	height: 40px;
+	width: 60px;
+	align-items: center;
+	justify-content: center;
+	display: inline-flex;
+	font-family: Roboto, Helvetica, sans-serif;
+	font-size: 100%;
+	margin: 0px;
+	vertical-align: baseline;
+	padding: 1px 6px;
+}
+.signed-number > span {
+	position: relative;
+	align-items: center;
+	vertical-align: top;
+}
+.signed-number > span.with-prefix {
+	display: inline-flex;
+}
+.signed-number > span > .prefix {
+	position: absolute;
+	right: 100%;
+	font-size: 20px;
+	margin-right: 1px;
+}
+.signed-number > span > .suffix {
+	position: absolute;
+	bottom: 2px;
+	font-size: 16px;
+	margin-left: 3px;
+}
