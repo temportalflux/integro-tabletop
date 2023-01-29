@@ -3,6 +3,7 @@
 	<head>
 		<meta charset="utf-8" />
 		<title>Tabletop Tools</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
 
 		<!-- Trunk operations: https://trunkrs.dev/assets -->
 		<!-- Set the basename from the public-url provided to the build command -->
@@ -11,22 +12,24 @@
 		<link data-trunk rel="rust" />
 		<!-- Copy the 404 file, for gh-pages, which does not natively support SinglePageApplications -->
 		<link data-trunk rel="copy-file" href="404.html" />
+
+		<!-- Bootstrap styling https://getbootstrap.com/docs/5.3 -->
+		<link
+			href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css"
+			rel="stylesheet"
+			integrity="sha384-GLhlTQ8iRABdZLl6O3oVMWSktQOp6b7In1Zl3/Jr59b6EGGoI1aFkw7cmDA6j6gD"
+			crossorigin="anonymous"
+		/>
+		<script
+			src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"
+			integrity="sha384-w76AqPfDkMBDXo30jS1Sgez6pr3x5MlQ1ZAGC+nuZB+EYdgRZgiwxhTBTkF7CXvN"
+			crossorigin="anonymous"
+		></script>
+
 		<!-- Compile and link scss styles -->
 		<link data-trunk rel="scss" href="index.scss" />
 
-		<!-- https://daisyui.com/docs/ -->
-		<link href="https://cdn.jsdelivr.net/npm/daisyui@2.47.0/dist/full.css" rel="stylesheet" type="text/css" />
-		<script src="https://cdn.tailwindcss.com"></script>
-		<script>
-			tailwind.config = {
-				darkMode: 'class',
-				daisyui: {
-					themes: [
-						"dark", "light",
-					]
-				}
-			};
-		</script>
+		<script src="https://kit.fontawesome.com/67597688e5.js" crossorigin="anonymous"></script>
 		
 		<!-- Start Single Page Apps for GitHub Pages -->
 		<script type="text/javascript">

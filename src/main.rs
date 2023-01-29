@@ -1,97 +1,6 @@
-use std::str::FromStr;
-
-use enumset::{EnumSet, EnumSetType};
-use gloo_storage::Storage;
-use serde::{Deserialize, Serialize};
-use wasm_bindgen::JsCast;
-use web_sys::HtmlSelectElement;
 use yew::prelude::*;
 
-#[derive(EnumSetType, Serialize, Deserialize)]
-enum Theme {
-	#[serde(rename = "dark")]
-	Dark,
-	#[serde(rename = "light")]
-	Light,
-}
-impl std::fmt::Debug for Theme {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		match self {
-			Self::Dark => write!(f, "dark"),
-			Self::Light => write!(f, "light"),
-		}
-	}
-}
-impl std::fmt::Display for Theme {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		match self {
-			Self::Dark => write!(f, "Dark"),
-			Self::Light => write!(f, "Light"),
-		}
-	}
-}
-impl FromStr for Theme {
-	type Err = ();
-
-	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		match s.to_lowercase().as_str() {
-			"dark" => Ok(Self::Dark),
-			"light" => Ok(Self::Light),
-			_ => Err(()),
-		}
-	}
-}
-
-#[function_component]
-fn ThemeToggle() -> Html {
-	let theme = use_state(|| gloo_storage::LocalStorage::get::<Theme>("theme").ok());
-
-	// Update the theme in storage and html when the theme value has changed
-	use_effect_with_deps(
-		move |theme| {
-			log::debug!("Setting theme to {:?}", theme);
-			match theme.as_ref() {
-				Some(theme) => {
-					let _ = gloo_utils::document()
-						.document_element()
-						.unwrap()
-						.set_attribute("data-theme", &format!("{theme:?}"));
-					let _ = gloo_storage::LocalStorage::set("theme", (*theme).clone());
-				}
-				None => {
-					gloo_storage::LocalStorage::delete("theme");
-					let _ = gloo_utils::document()
-						.document_element()
-						.unwrap()
-						.remove_attribute("data-theme");
-				}
-			}
-		},
-		(*theme).clone(),
-	);
-
-	// When select element changes, set the value in the state so this element reloads.
-	let onchange = {
-		let theme = theme.clone();
-		Callback::from(move |e: Event| {
-			if let Some(select) = e
-				.target()
-				.and_then(|t| t.dyn_into::<HtmlSelectElement>().ok())
-			{
-				theme.set(Theme::from_str(&select.value()).ok());
-			}
-		})
-	};
-
-	html! {
-		<select class="select w-full max-w-xs" {onchange}>
-			<option selected={*theme == None}>{"Default"}</option>
-			{EnumSet::<Theme>::all().into_iter().map(|value| html! {
-				<option value={format!("{value:?}")} selected={*theme == Some(value)}>{format!("{value}")}</option>
-			}).collect::<Vec<_>>()}
-		</select>
-	}
-}
+pub mod theme;
 
 #[derive(Clone, PartialEq, Properties)]
 struct SvgBackgroundProps {
@@ -102,7 +11,13 @@ struct SvgBackgroundProps {
 }
 
 #[function_component]
-fn SvgBackground(SvgBackgroundProps { width, height, children }: &SvgBackgroundProps) -> Html {
+fn SvgBackground(
+	SvgBackgroundProps {
+		width,
+		height,
+		children,
+	}: &SvgBackgroundProps,
+) -> Html {
 	html! {
 		<div id="svg-background" style="position: absolute; bottom: 0; left: 0; right: 0; top: 0; overflow: hidden;">
 			<svg xmlns="http://www.w3.org/2000/svg" viewBox={format!("0 0 {width} {height}")} preserveAspectRatio="xMidYMid meet">
@@ -154,7 +69,13 @@ struct SignedNumberProps {
 }
 
 #[function_component]
-fn SignedNumber(SignedNumberProps { value, show_sign, suffix }: &SignedNumberProps) -> Html {
+fn SignedNumber(
+	SignedNumberProps {
+		value,
+		show_sign,
+		suffix,
+	}: &SignedNumberProps,
+) -> Html {
 	let mut num_span_classes = classes!();
 	let prefix = match show_sign {
 		true => {
@@ -218,11 +139,37 @@ fn ProficiencyBonus(ProficiencyBonusProps { value }: &ProficiencyBonusProps) -> 
 
 #[function_component]
 fn App() -> Html {
+	return html! {<>
+		<header>
+			<nav class="navbar navbar-expand-lg sticky-top bg-body-tertiary">
+				<div class="container-fluid">
+					<a class="navbar-brand" href="/">{"Tabletop Tools"}</a>
+					<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navContent" aria-controls="navContent" aria-expanded="false" aria-label="Toggle navigation">
+						<span class="navbar-toggler-icon"></span>
+					</button>
+					<div class="collapse navbar-collapse" id="navContent">
+						<ul class="navbar-nav">
+							<li class="nav-item">{"My Characters"}</li>
+						</ul>
+						<ul class="navbar-nav flex-row flex-wrap ms-md-auto">
+							<theme::Dropdown />
+						</ul>
+					</div>
+				</div>
+			</nav>
+		</header>
+		<div class="container">
+
+		</div>
+	</>};
+	/*
 	html! {<>
 		<h1 class="text-3xl font-bold underline">
 			{"Hello World!"}
 		</h1>
-		<ThemeToggle />
+
+		<button {onclick}>{"Query"}</button>
+
 		<AbilitySummary name="Strength" score={8} />
 		<AbilitySummary name="Dexterity" score={11} />
 		<AbilitySummary name="Constitution" score={17} />
@@ -232,6 +179,7 @@ fn App() -> Html {
 		<ProficiencyBonus value={2} />
 
 	</>}
+	*/
 }
 
 fn main() {
