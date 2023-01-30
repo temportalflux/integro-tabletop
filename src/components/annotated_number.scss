@@ -1,0 +1,38 @@
+
+.annotated-number {
+	position: relative;
+	height: 40px;
+	width: 60px;
+	align-items: center;
+	justify-content: center;
+	display: inline-flex;
+	font-size: 100%;
+	margin: 0px;
+	margin-bottom: 5px;
+	vertical-align: baseline;
+	padding: 1px 6px;
+}
+
+.annotated-number > span {
+	position: relative;
+	align-items: center;
+	vertical-align: top;
+}
+
+.annotated-number > span.with-prefix {
+	display: inline-flex;
+}
+
+.annotated-number > span > .prefix {
+	position: absolute;
+	right: 100%;
+	font-size: 20px;
+	margin-right: 1px;
+}
+
+.annotated-number > span > .suffix {
+	position: absolute;
+	bottom: 2px;
+	font-size: 16px;
+	margin-left: 3px;
+}
