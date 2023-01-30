@@ -8,21 +8,26 @@ pub struct SavingThrowProps {
 }
 
 #[function_component]
-pub fn SavingThrow(SavingThrowProps { title, value, proficient }: &SavingThrowProps) -> Html {
+pub fn SavingThrow(
+	SavingThrowProps {
+		title,
+		value,
+		proficient,
+	}: &SavingThrowProps,
+) -> Html {
 	let sign = match *value >= 0 {
 		true => "+",
 		false => "-",
-	};
-	let proficency_marker = match proficient {
-		true => html! { <i class="fa-solid fa-circle" style="color: var(--theme-frame-color);" /> },
-		false => html! { <i class="fa-regular fa-circle" /> },
 	};
 	html! {
 		<div class="card" style="border-color: var(--theme-frame-color-muted);">
 			<div class="card-body text-center" style="padding: 5px 5px;">
 				<div style="display: inline; width: 100%;">
 					<span style="font-size: 0.8rem;">
-						{proficency_marker}
+						{match*proficient {
+							true => crate::data::ProficiencyLevel::Full,
+							false => crate::data::ProficiencyLevel::None,
+						}}
 						<span style="margin-left: 5px; margin-right: 8px;">{title.clone()}</span>
 					</span>
 					<span style="font-weight: 700; color: var(--theme-roll-modifier);">{sign}{value.abs()}</span>

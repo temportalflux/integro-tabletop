@@ -1,6 +1,7 @@
 use yew::prelude::*;
 
 pub mod components;
+pub mod data;
 pub mod theme;
 
 #[function_component]
@@ -50,10 +51,9 @@ fn App() -> Html {
 							<h6 class="card-title" style="font-size: 0.8rem; margin-bottom: 0;">{"Bonus"}</h6>
 						</div>
 					</div>
-					<div id="skills-container" class="card" style="border-color: var(--theme-frame-color);">
+					<div id="skills-container" class="card" style="width: 380px; border-color: var(--theme-frame-color);">
 						<div class="card-body">
-							<h5 class="card-title text-center">{"Skills"}</h5>
-							{"TODO"}
+							<ability::SkillTable />
 						</div>
 					</div>
 
@@ -97,7 +97,7 @@ fn App() -> Html {
 					{"TODO Actions/Inventory/etc"}
 				</div>
 			</div>
-			
+
 
 
 		</div>

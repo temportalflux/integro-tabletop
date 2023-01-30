@@ -1,5 +1,5 @@
-use yew::prelude::*;
 use crate::components::AnnotatedNumber;
+use yew::prelude::*;
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct ScoreProps {
