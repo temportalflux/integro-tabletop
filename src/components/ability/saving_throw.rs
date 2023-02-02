@@ -41,7 +41,7 @@ pub fn SavingThrow(
 pub fn SavingThrowContainer() -> Html {
 	html! {
 		<div id="saving-throw-container" class="card" style="width: 20em; border-color: var(--theme-frame-color);">
-			<div class="card-body text-center">
+			<div class="card-body text-center" style="padding: 5px;">
 				<h5 class="card-title">{"Saving Throws"}</h5>
 				<div class="container overflow-hidden text-center">
 					<div class="row gy-2" style="margin-top: 0;">

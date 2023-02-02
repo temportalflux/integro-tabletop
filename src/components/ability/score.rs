@@ -27,7 +27,7 @@ pub fn Score(ScoreProps { title, score }: &ScoreProps) -> Html {
 pub fn ScoreContainer() -> Html {
 	html! {
 		<div id="ability-container" class="card" style="width: 20em; border-color: var(--theme-frame-color);">
-			<div class="card-body text-center">
+			<div class="card-body text-center" style="padding: 5px;">
 				<h5 class="card-title">{"Ability Scores"}</h5>
 				<div class="container overflow-hidden text-center">
 					<div class="row gy-2" style="margin-top: 0;">

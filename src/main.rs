@@ -123,24 +123,24 @@ fn App() -> Html {
 				</div>
 				<div class="col">
 					<div class="d-flex justify-content-center">
-						<div class="card" style="min-width: 400px;">
+						<div class="card" style="min-width: 300px;">
 							<div class="card-body" style="padding: 5px 5px;">
 								<div class="row text-center m-0" style="--bs-gutter-x: 0;">
-									<div class="col-3">
+									<div class="col-3" style="width: 70px;">
 										<div style="font-size: 1rem; padding: 0 5px;">{"Current"}</div>
 										<div style="font-size: 40px; font-weight: 500;">{"000"}</div>
 									</div>
 									<div class="col-md-auto">
-										<div style="min-height: 1.8rem;"></div>
+										<div style="min-height: 1.7rem;"></div>
 										<div style="font-size: 35px; font-weight: 300;">{"/"}</div>
 									</div>
-									<div class="col-3">
+									<div class="col-3" style="width: 70px;">
 										<div style="font-size: 1rem; padding: 0 5px;">{"Max"}</div>
 										<div style="font-size: 40px; font-weight: 500;">{"000"}</div>
 									</div>
-									<div class="col-3">
-										<div style="font-size: 1rem; padding: 0 5px;">{"Temp"}</div>
-										<div style="font-size: 40px; font-weight: 300;">{"00"}</div>
+									<div class="col-3" style="width: 70px; margin: 0 5px;">
+										<div style="font-size: 1rem;">{"Temp"}</div>
+										<div style="font-size: 40px; font-weight: 300;">{"000"}</div>
 									</div>
 									<div class="col-md-auto" style="width: 80px;">
 										<button type="button" class="btn btn-success" style="width: 100%; --bs-btn-padding-y: 2px; --bs-btn-font-size: .75rem;">{"Heal"}</button>
@@ -148,7 +148,7 @@ fn App() -> Html {
 										<button type="button" class="btn btn-danger" style="width: 100%; --bs-btn-padding-y: 2px; --bs-btn-font-size: .75rem;">{"Damage"}</button>
 									</div>
 								</div>
-								<div class="row m-0 py-1">
+								<div class="row m-0 pt-2">
 									<div class="col">
 										<h6 class="text-center" style="font-size: 0.8rem; color: var(--bs-card-title-color);">{"Defences"}</h6>
 										<div>
