@@ -2,3 +2,7 @@
 
 @import "src/components/ability/score.scss";
 @import "src/components/annotated_number.scss";
+
+.table-compact > :not(caption) > * > * {
+	padding: 3px 3px;
+}

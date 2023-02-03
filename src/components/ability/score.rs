@@ -26,32 +26,16 @@ pub fn Score(ScoreProps { title, score }: &ScoreProps) -> Html {
 #[function_component]
 pub fn ScoreContainer() -> Html {
 	html! {
-		<div id="ability-container" class="card" style="width: 20em; border-color: var(--theme-frame-color);">
+		<div id="ability-container" class="card" style="border-color: transparent;">
 			<div class="card-body text-center" style="padding: 5px;">
-				<h5 class="card-title">{"Ability Scores"}</h5>
+				<h5 class="card-title" style="font-size: 0.8rem;">{"Ability Scores"}</h5>
 				<div class="container overflow-hidden text-center">
-					<div class="row gy-2" style="margin-top: 0;">
-						<div class="col gx-2">
-							<Score title={"Strength"} score={9} />
-						</div>
-						<div class="col gx-2">
-							<Score title={"Dexterity"} score={11} />
-						</div>
-						<div class="col gx-2">
-							<Score title={"Constitution"} score={17} />
-						</div>
-					</div>
-					<div class="row gy-2" style="margin-top: 0;">
-						<div class="col gx-2">
-							<Score title={"Intelligence"} score={18} />
-						</div>
-						<div class="col gx-2">
-							<Score title={"Wisdom"} score={14} />
-						</div>
-						<div class="col gx-2">
-							<Score title={"Charisma"} score={17} />
-						</div>
-					</div>
+					<Score title={"Strength"} score={9} />
+					<Score title={"Dexterity"} score={11} />
+					<Score title={"Constitution"} score={17} />
+					<Score title={"Intelligence"} score={18} />
+					<Score title={"Wisdom"} score={14} />
+					<Score title={"Charisma"} score={17} />
 				</div>
 			</div>
 		</div>

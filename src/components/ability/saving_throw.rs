@@ -40,32 +40,16 @@ pub fn SavingThrow(
 #[function_component]
 pub fn SavingThrowContainer() -> Html {
 	html! {
-		<div id="saving-throw-container" class="card" style="width: 20em; border-color: var(--theme-frame-color);">
+		<div id="saving-throw-container" class="card" style="border-color: transparent;">
 			<div class="card-body text-center" style="padding: 5px;">
-				<h5 class="card-title">{"Saving Throws"}</h5>
-				<div class="container overflow-hidden text-center">
-					<div class="row gy-2" style="margin-top: 0;">
-						<div class="col gx-2">
-							<SavingThrow title={"STR"} value={-1} proficient={false} />
-						</div>
-						<div class="col gx-2">
-							<SavingThrow title={"DEX"} value={0} proficient={false} />
-						</div>
-						<div class="col gx-2">
-							<SavingThrow title={"CON"} value={3} proficient={false} />
-						</div>
-					</div>
-					<div class="row gy-2" style="margin-top: 0;">
-						<div class="col gx-2">
-							<SavingThrow title={"INT"} value={6} proficient={true} />
-						</div>
-						<div class="col gx-2">
-							<SavingThrow title={"WIS"} value={4} proficient={true} />
-						</div>
-						<div class="col gx-2">
-							<SavingThrow title={"CHA"} value={3} proficient={false} />
-						</div>
-					</div>
+				<h5 class="card-title" style="font-size: 0.8rem;">{"Saving Throws"}</h5>
+				<div class="container overflow-hidden text-center" style="--bs-gutter-x: 0;">
+					<SavingThrow title={"STR"} value={-1} proficient={false} />
+					<SavingThrow title={"DEX"} value={0} proficient={false} />
+					<SavingThrow title={"CON"} value={3} proficient={false} />
+					<SavingThrow title={"INT"} value={6} proficient={true} />
+					<SavingThrow title={"WIS"} value={4} proficient={true} />
+					<SavingThrow title={"CHA"} value={3} proficient={false} />
 				</div>
 			</div>
 		</div>
