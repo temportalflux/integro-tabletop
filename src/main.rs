@@ -27,7 +27,7 @@ fn App() -> Html {
 			</nav>
 		</header>
 		<div class="container overflow-hidden" style="--theme-frame-color: #BA90CB; --theme-frame-color-muted: #BA90CB80; --theme-roll-modifier: #ffffff;">
-			<div class="row" style="margin-top: 0;">
+			<div class="row" style="--bs-gutter-x: 10px;">
 				<div class="col-md-auto">
 
 					<div class="row" style="margin-top: 0; --bs-gutter-x: 0;">
@@ -35,29 +35,67 @@ fn App() -> Html {
 							<ability::ScoreContainer />
 						</div>
 						<div class="col-auto">
-							<div class="card" style="max-width: 90px;">
-								<div class="card-body text-center" style="padding: 5px 5px;">
-									<h6 class="card-title" style="font-size: 0.8rem;">{"Proficiency"}</h6>
-									<div style="font-size: 26px; font-weight: 500;">
-										<components::AnnotatedNumber value={3} show_sign={true} />
+							<ability::SavingThrowContainer />
+							<div class="d-grid justify-content-center">
+								<div class="card" style="max-width: 90px;">
+									<div class="card-body text-center" style="padding: 5px 5px;">
+										<h6 class="card-title" style="font-size: 0.8rem;">{"Proficiency"}</h6>
+										<div style="font-size: 26px; font-weight: 500;">
+											<components::AnnotatedNumber value={3} show_sign={true} />
+										</div>
+										<h6 class="card-title" style="font-size: 0.8rem; margin-bottom: 0;">{"Bonus"}</h6>
 									</div>
-									<h6 class="card-title" style="font-size: 0.8rem; margin-bottom: 0;">{"Bonus"}</h6>
+								</div>
+								<div class="card" style="width: 90px;">
+									<div class="card-body text-center" style="padding: 5px 5px;">
+										<h6 class="card-title" style="font-size: 0.8rem;">{"Initiative"}</h6>
+										<div style="font-size: 26px; font-weight: 500;">
+											<components::AnnotatedNumber value={1} show_sign={true} />
+										</div>
+										<h6 class="card-title" style="font-size: 0.8rem; margin-bottom: 0;">{"Bonus"}</h6>
+									</div>
+								</div>
+								<div class="card" style="width: 90px;">
+									<div class="card-body text-center" style="padding: 5px 5px;">
+										<h6 class="card-title" style="font-size: 0.8rem;">{"Armor"}</h6>
+										<div style="font-size: 26px; font-weight: 500;">
+											<components::AnnotatedNumber value={10} />
+										</div>
+										<h6 class="card-title" style="font-size: 0.8rem; margin-bottom: 0;">{"Class"}</h6>
+									</div>
 								</div>
 							</div>
-							<ability::SavingThrowContainer />
 						</div>
 					</div>
-					<div id="proficiencies-container" class="card" style="border-color: var(--theme-frame-color);">
-						<div class="card-body">
-							<h5 class="card-title text-center">{"Proficiencies"}</h5>
-							{"TODO"}
+					<div id="proficiencies-container" class="card" style="max-width: 250px; margin: 0 auto; border-color: var(--theme-frame-color);">
+						<div class="card-body" style="padding: 5px;">
+							<h5 class="card-title text-center" style="font-size: 0.8rem;">{"Proficiencies"}</h5>
+							<div style="border-style: solid; border-color: var(--bs-border-color); border-width: 0; border-bottom-width: var(--bs-border-width);">
+								<h6 style="font-size: 0.8rem; color: var(--bs-card-title-color);">{"Languages"}</h6>
+								<span>{"Common, Gnomish, Sylvan, Undercommon"}</span>
+							</div>
+							<div style="border-style: solid; border-color: var(--bs-border-color); border-width: 0; border-bottom-width: var(--bs-border-width);">
+								<h6 style="font-size: 0.8rem; color: var(--bs-card-title-color);">{"Armor"}</h6>
+								<span>{"None"}</span>
+							</div>
+							<div style="border-style: solid; border-color: var(--bs-border-color); border-width: 0; border-bottom-width: var(--bs-border-width);">
+								<h6 style="font-size: 0.8rem; color: var(--bs-card-title-color);">{"Weapons"}</h6>
+								<span>{"Crossbow, Light, Dagger, Dart, Quarterstaff, Sling"}</span>
+							</div>
+							<div style="border-style: solid; border-color: var(--bs-border-color); border-width: 0; border-bottom-width: var(--bs-border-width);">
+								<h6 style="font-size: 0.8rem; color: var(--bs-card-title-color);">{"Tools"}</h6>
+								<span>{"Cartographer's Tools"}</span>
+							</div>
 						</div>
 					</div>
+
+				</div>
+				<div class="col-md-auto">
 					
 					<div class="card" style="min-width: 150px;">
 						<div class="card-body" style="padding: 5px 5px;">
-							<h6 class="card-title text-center" style="font-size: 0.8rem;">{"Walking Speed"}</h6>
-							<div class="text-center" style="width: 100%;">
+							<h6 class="card-title text-center" style="display: none; font-size: 0.8rem;">{"Walking Speed"}</h6>
+							<div class="text-center" style="display: none; width: 100%;">
 								<span style="position: relative; font-size: 26px; font-weight: 500;">
 									<span>{30}</span>
 									<span style="position: absolute; bottom: 2px; font-size: 16px; margin-left: 3px;">{"ft"}</span>
@@ -66,6 +104,10 @@ fn App() -> Html {
 							<div class="row">
 								<div class="col">
 									<h6 class="text-center" style="font-size: 0.8rem; color: var(--bs-card-title-color);">{"Speeds"}</h6>
+									<span class="d-flex">
+										<span class="flex-grow-1">{"Walking"}</span>
+										<span class="ps-2">{"30ft"}</span>
+									</span>
 									<span class="d-flex">
 										<span class="flex-grow-1">{"Flying"}</span>
 										<span class="ps-2">{"30ft"}</span>
@@ -90,35 +132,46 @@ fn App() -> Html {
 						</div>
 					</div>
 
-				</div>
-				<div class="col-md-auto">
-
-					<div class="card" style="min-width: 300px;">
+					<div id="skills-container" class="card" style="min-width: 300px; border-color: var(--theme-frame-color);">
 						<div class="card-body" style="padding: 5px 5px;">
-							<div class="row text-center m-0" style="--bs-gutter-x: 0;">
-								<div class="col" style="min-width: 70px;">
-									<div style="font-size: 1rem; padding: 0 5px;">{"Current"}</div>
-									<div style="font-size: 40px; font-weight: 500;">{"000"}</div>
+							<ability::SkillTable />
+						</div>
+					</div>
+
+				</div>
+				<div class="col">
+
+					<div class="card" style="min-width: 270px; max-width: 270px;">
+						<div class="card-body" style="padding: 5px 5px;">
+							<div class="d-flex">
+								<div class="flex-grow-1">
+									<h5 class="text-center" style="font-size: 0.8rem; color: var(--bs-card-title-color); margin: 0 0 7px 0;">{"Hit Points"}</h5>
+									<div class="row text-center m-0" style="--bs-gutter-x: 0;">
+										<div class="col" style="min-width: 50px;">
+											<div style="font-size: 0.75rem; padding: 0 5px;">{"Current"}</div>
+											<div style="font-size: 26px; font-weight: 500;">{"000"}</div>
+										</div>
+										<div class="col-auto">
+											<div style="min-height: 1.2rem;"></div>
+											<div style="font-size: 23px; font-weight: 300;">{"/"}</div>
+										</div>
+										<div class="col" style="min-width: 50px;">
+											<div style="font-size: 0.75rem; padding: 0 5px;">{"Max"}</div>
+											<div style="font-size: 26px; font-weight: 500;">{"000"}</div>
+										</div>
+										<div class="col" style="min-width: 50px; margin: 0 5px;">
+											<div style="font-size: 0.75rem;">{"Temp"}</div>
+											<div style="font-size: 26px; font-weight: 300;">{"000"}</div>
+										</div>
+									</div>
 								</div>
-								<div class="col-auto">
-									<div style="min-height: 1.7rem;"></div>
-									<div style="font-size: 35px; font-weight: 300;">{"/"}</div>
-								</div>
-								<div class="col" style="min-width: 70px;">
-									<div style="font-size: 1rem; padding: 0 5px;">{"Max"}</div>
-									<div style="font-size: 40px; font-weight: 500;">{"000"}</div>
-								</div>
-								<div class="col" style="min-width: 70px; margin: 0 5px;">
-									<div style="font-size: 1rem;">{"Temp"}</div>
-									<div style="font-size: 40px; font-weight: 300;">{"000"}</div>
-								</div>
-								<div class="col-md-auto" style="width: 80px;">
-									<button type="button" class="btn btn-success" style="width: 100%; --bs-btn-padding-y: 2px; --bs-btn-font-size: .75rem;">{"Heal"}</button>
-									<input type="text" class="form-control text-center" id="hp-amount" style="padding: 0; margin: 3px 0 2px 0;" />
-									<button type="button" class="btn btn-danger" style="width: 100%; --bs-btn-padding-y: 2px; --bs-btn-font-size: .75rem;">{"Damage"}</button>
+								<div style="width: 80px;">
+									<button type="button" class="btn btn-success" style="vertical-align: top; width: 100%; --bs-btn-padding-y: 0px; --bs-btn-font-size: .75rem;">{"Heal"}</button>
+									<input type="text" class="form-control text-center" id="hp-amount" style="padding: 0; margin: 0 0 4px 0;" />
+									<button type="button" class="btn btn-danger" style="vertical-align: top; width: 100%; --bs-btn-padding-y: 0px; --bs-btn-font-size: .75rem;">{"Damage"}</button>
 								</div>
 							</div>
-							<div class="row m-0 pt-2">
+							<div class="row m-0 pt-2" style="--bs-gutter-x: 0;">
 								<div class="col">
 									<h6 class="text-center" style="font-size: 0.8rem; color: var(--bs-card-title-color);">{"Defences"}</h6>
 									<div>
@@ -136,39 +189,6 @@ fn App() -> Html {
 						</div>
 					</div>
 
-					<div id="skills-container" class="card" style="border-color: var(--theme-frame-color);">
-						<div class="card-body" style="padding: 5px 5px;">
-							<ability::SkillTable />
-						</div>
-					</div>
-
-				</div>
-				<div class="col">
-
-					<div class="d-flex" style="max-width: 300px;">
-						<div class="">
-							<div class="card" style="width: 90px;">
-								<div class="card-body text-center" style="padding: 5px 5px;">
-									<h6 class="card-title" style="font-size: 0.8rem;">{"Initiative"}</h6>
-									<div style="font-size: 26px; font-weight: 500;">
-										<components::AnnotatedNumber value={1} show_sign={true} />
-									</div>
-									<h6 class="card-title" style="font-size: 0.8rem; margin-bottom: 0;">{"Bonus"}</h6>
-								</div>
-							</div>
-						</div>
-						<div class="">
-							<div class="card" style="width: 90px;">
-								<div class="card-body text-center" style="padding: 5px 5px;">
-									<h6 class="card-title" style="font-size: 0.8rem;">{"Armor"}</h6>
-									<div style="font-size: 26px; font-weight: 500;">
-										<components::AnnotatedNumber value={10} />
-									</div>
-									<h6 class="card-title" style="font-size: 0.8rem; margin-bottom: 0;">{"Class"}</h6>
-								</div>
-							</div>
-						</div>
-					</div>
 					{"TODO Actions/Inventory/etc"}
 				</div>
 			</div>
