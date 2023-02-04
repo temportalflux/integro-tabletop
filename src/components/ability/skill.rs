@@ -63,17 +63,21 @@ pub fn SkillTable() -> Html {
 			Presentation::Alphabetical => vec![(None, all.into_iter().collect::<Vec<_>>())],
 			// Group skills by their core ability.
 			Presentation::ByAbility => {
-				let skills: MultiMap<Option<Ability>, Skill> = all.map(|skill| (Some(skill.ability()), skill)).collect();
+				let skills: MultiMap<Option<Ability>, Skill> =
+					all.map(|skill| (Some(skill.ability()), skill)).collect();
 				let mut skills = skills.into_iter().collect::<Vec<_>>();
 				skills.sort_by(|(ability_a, _), (ability_b, _)| ability_a.cmp(&ability_b));
 				skills
-			},
+			}
 		};
 		// Always alphabetize the subsections by skill display name
-		skills.into_iter().map(|(ability, mut skills)| {
-			skills.sort_by(|a, b| a.display_name().cmp(&b.display_name()));
-			(ability, skills)
-		}).collect()
+		skills
+			.into_iter()
+			.map(|(ability, mut skills)| {
+				skills.sort_by(|a, b| a.display_name().cmp(&b.display_name()));
+				(ability, skills)
+			})
+			.collect()
 	};
 	let mut segments = Vec::new();
 	for (ability, skills) in skills.into_iter() {
@@ -82,35 +86,41 @@ pub fn SkillTable() -> Html {
 				<div class="text-center" style="width: 100%;">{ability.long_name()}</div>
 			});
 		}
-		let rows = skills.into_iter().map(|skill| {
-			// From character: the ability modifier for `skill.ability()`
-			let ability_modifier = 1;
-			// From character: the proficiency level for this skill
-			let proficiency = match skill.ability() {
-				Ability::Intelligence => ProficiencyLevel::Full,
-				Ability::Dexterity => ProficiencyLevel::Double,
-				Ability::Strength => ProficiencyLevel::Half,
-				_ => ProficiencyLevel::None,
-			};
-			// From character: the proficiency bonus
-			let prof_bonus = 2;
-			let modifier = ability_modifier + (proficiency * prof_bonus);
-			let passive = 10 + modifier;
-			let mut table_data = vec![
-				html! { <td class="text-center">{proficiency}</td> },
-				html! { <td>{skill.display_name()}</td> },
-				html! { <td class="text-center">{if modifier >= 0 { "+" } else { "-" }}{modifier.abs()}</td> },
-				html! { <td class="text-center">{passive}</td> },
-			];
-			if let Some(idx) = &insert_ability_col_at {
-				table_data.insert(*idx, html! {
-					<td class="text-center" style="font-size: 12px; vertical-align: middle;">
-						{skill.ability().abbreviated_name().to_uppercase()}
-					</td>
-				});
-			}
-			html! {<tr>{table_data}</tr>}
-		}).collect::<Vec<_>>();
+		let rows = skills
+			.into_iter()
+			.map(|skill| {
+				// From character: the ability modifier for `skill.ability()`
+				let ability_modifier = 1;
+				// From character: the proficiency level for this skill
+				let proficiency = match skill.ability() {
+					Ability::Intelligence => ProficiencyLevel::Full,
+					Ability::Dexterity => ProficiencyLevel::Double,
+					Ability::Strength => ProficiencyLevel::Half,
+					_ => ProficiencyLevel::None,
+				};
+				// From character: the proficiency bonus
+				let prof_bonus = 2;
+				let modifier = ability_modifier + (proficiency * prof_bonus);
+				let passive = 10 + modifier;
+				let mut table_data = vec![
+					html! { <td class="text-center">{proficiency}</td> },
+					html! { <td>{skill.display_name()}</td> },
+					html! { <td class="text-center">{if modifier >= 0 { "+" } else { "-" }}{modifier.abs()}</td> },
+					html! { <td class="text-center">{passive}</td> },
+				];
+				if let Some(idx) = &insert_ability_col_at {
+					table_data.insert(
+						*idx,
+						html! {
+							<td class="text-center" style="font-size: 12px; vertical-align: middle;">
+								{skill.ability().abbreviated_name().to_uppercase()}
+							</td>
+						},
+					);
+				}
+				html! {<tr>{table_data}</tr>}
+			})
+			.collect::<Vec<_>>();
 		segments.push(html! {
 			<table class="table table-compact m-0">
 				<thead>
@@ -120,7 +130,6 @@ pub fn SkillTable() -> Html {
 			</table>
 		});
 	}
-	
 
 	let onclick = {
 		let state = presentation.clone();

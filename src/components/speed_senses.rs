@@ -27,9 +27,13 @@ pub fn SpeedAndSenses() -> Html {
 	//let mut senses = vec![("Darkvision", 60)];
 	let mut senses = vec![("Darkvision", 60), ("Truesight", 10)];
 
-	let divider = (speeds.len() > 0 && senses.len() > 0).then(|| html! {
-		<div class="col-auto p-0"><div class="vr" style="min-height: 100%;" /></div>
-	}).unwrap_or_else(|| html! {});
+	let divider = (speeds.len() > 0 && senses.len() > 0)
+		.then(|| {
+			html! {
+				<div class="col-auto p-0"><div class="vr" style="min-height: 100%;" /></div>
+			}
+		})
+		.unwrap_or_else(|| html! {});
 	let speed = match speeds.len() {
 		0 => html! {},
 		1 => {
@@ -37,7 +41,7 @@ pub fn SpeedAndSenses() -> Html {
 			html! {<div class="col">
 				<SingleValue title={format!("{title} Speed")} {amount} />
 			</div>}
-		},
+		}
 		_ => html! {<div class="col">
 			<h6 class="text-center" style="font-size: 0.8rem; color: var(--bs-card-title-color);">{"Speeds"}</h6>
 			{speeds.into_iter().map(|(title, amount)| html! {
@@ -55,7 +59,7 @@ pub fn SpeedAndSenses() -> Html {
 			html! {<div class="col">
 				<SingleValue {title} {amount} />
 			</div>}
-		},
+		}
 		_ => html! {<div class="col">
 			<h6 class="text-center" style="font-size: 0.8rem; color: var(--bs-card-title-color);">{"Senses"}</h6>
 			{senses.into_iter().map(|(title, amount)| html! {
@@ -66,7 +70,7 @@ pub fn SpeedAndSenses() -> Html {
 			}).collect::<Vec<_>>()}
 		</div>},
 	};
-	
+
 	html! {
 		<div class="card m-2" style="min-width: 150px;">
 			<div class="card-body" style="padding: 5px 5px;">

@@ -2,6 +2,8 @@
 
 @import "src/components/ability/score.scss";
 @import "src/components/annotated_number.scss";
+@import "src/components/nav_onesheet_tabs.scss";
+@import "src/components/tag.scss";
 
 .table-compact > :not(caption) > * > * {
 	padding: 3px 3px;

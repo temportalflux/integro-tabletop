@@ -53,7 +53,13 @@ pub struct AnnotatedNumberCardProps {
 }
 
 #[function_component]
-pub fn AnnotatedNumberCard(AnnotatedNumberCardProps { header, footer, children }: &AnnotatedNumberCardProps) -> Html {
+pub fn AnnotatedNumberCard(
+	AnnotatedNumberCardProps {
+		header,
+		footer,
+		children,
+	}: &AnnotatedNumberCardProps,
+) -> Html {
 	html! {
 		<div class="card m-2">
 			<div class="card-body text-center" style="padding: 5px 5px;">

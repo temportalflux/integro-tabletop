@@ -36,7 +36,7 @@ fn App() -> Html {
 
 				</div>
 				<div class="col-md-auto">
-				
+
 					<div class="row m-0 justify-content-center">
 						<div class="col p-0">
 							<AnnotatedNumberCard header={"Proficiency"} footer={"Bonus"}>
@@ -75,7 +75,23 @@ fn App() -> Html {
 
 					<div class="card m-2" style="height: 550px;">
 						<div class="card-body" style="padding: 5px;">
-							{"TODO Actions/Inventory/etc"}
+							<Nav root_classes={"onesheet-tabs"} disp={NavDisplay::Tabs} default_tab_id={"actions"}>
+								<TabContent id="actions" title={html! {{"Actions"}}}>
+									<panel::Actions />
+								</TabContent>
+								<TabContent id="spells" title={html! {{"Spells"}}}>
+									{"Spells"}
+								</TabContent>
+								<TabContent id="inventory" title={html! {{"Inventory"}}}>
+									{"Inventory"}
+								</TabContent>
+								<TabContent id="features" title={html! {{"Features & Traits"}}}>
+									{"Features & Traits"}
+								</TabContent>
+								<TabContent id="description" title={html! {{"Description"}}}>
+									{"Description"}
+								</TabContent>
+							</Nav>
 						</div>
 					</div>
 				</div>

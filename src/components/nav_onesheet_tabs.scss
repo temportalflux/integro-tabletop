@@ -1,0 +1,15 @@
+
+.onesheet-tabs > .nav {
+	margin-bottom: 5px;
+}
+
+.onesheet-tabs > .nav > .nav-item > .nav-link {
+	padding: 1px 6px;
+	border-style: none;
+	color: var(--bs-card-title-color);
+}
+
+.onesheet-tabs > .nav > .nav-item > .nav-link.active {
+	border-bottom: var(--bs-nav-tabs-border-width) solid var(--theme-frame-color);
+	color: var(--bs-nav-tabs-link-active-color);
+}
