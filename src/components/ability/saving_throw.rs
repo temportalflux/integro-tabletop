@@ -43,47 +43,51 @@ pub fn SavingThrowContainer() -> Html {
 		<div id="saving-throw-container" class="card" style="">
 			<div class="card-body text-center" style="padding: 5px;">
 				<h5 class="card-title" style="font-size: 0.8rem;">{"Saving Throws"}</h5>
-				<table class="table table-compact">
-					<thead>
-						<tr class="text-center" style="font-size: 0.7rem;">
-							<th scope="col">{"Prof"}</th>
-							<th scope="col">{"Ability"}</th>
-							<th scope="col">{"Bonus"}</th>
-						</tr>
-					</thead>
-					<tbody>
-						<tr>
-							<td class="text-center">{crate::data::ProficiencyLevel::None}</td>
-							<td>{"STR"}</td>
-							<td class="text-center"><span style="font-weight: 700; color: var(--theme-roll-modifier);">{"-1"}</span></td>
-						</tr>
-						<tr>
-							<td class="text-center">{crate::data::ProficiencyLevel::None}</td>
-							<td>{"DEX"}</td>
-							<td class="text-center"><span style="font-weight: 700; color: var(--theme-roll-modifier);">{"+0"}</span></td>
-						</tr>
-						<tr>
-							<td class="text-center">{crate::data::ProficiencyLevel::None}</td>
-							<td>{"CON"}</td>
-							<td class="text-center"><span style="font-weight: 700; color: var(--theme-roll-modifier);">{"+3"}</span></td>
-						</tr>
-						<tr>
-							<td class="text-center">{crate::data::ProficiencyLevel::Full}</td>
-							<td>{"INT"}</td>
-							<td class="text-center"><span style="font-weight: 700; color: var(--theme-roll-modifier);">{"+6"}</span></td>
-						</tr>
-						<tr>
-							<td class="text-center">{crate::data::ProficiencyLevel::Full}</td>
-							<td>{"WIS"}</td>
-							<td class="text-center"><span style="font-weight: 700; color: var(--theme-roll-modifier);">{"+4"}</span></td>
-						</tr>
-						<tr>
-							<td class="text-center">{crate::data::ProficiencyLevel::None}</td>
-							<td>{"CHA"}</td>
-							<td class="text-center"><span style="font-weight: 700; color: var(--theme-roll-modifier);">{"+3"}</span></td>
-						</tr>
-					</tbody>
-				</table>
+				<div class="row" style="--bs-gutter-x: 0; margin: 0 0 10px 0;">
+					<div class="col">
+						<table class="table table-compact" style="margin-bottom: 0;">
+							<tbody>
+								<tr>
+									<td class="text-center">{crate::data::ProficiencyLevel::None}</td>
+									<td>{"STR"}</td>
+									<td class="text-center"><span style="font-weight: 700; color: var(--theme-roll-modifier);">{"-1"}</span></td>
+								</tr>
+								<tr>
+									<td class="text-center">{crate::data::ProficiencyLevel::None}</td>
+									<td>{"DEX"}</td>
+									<td class="text-center"><span style="font-weight: 700; color: var(--theme-roll-modifier);">{"+0"}</span></td>
+								</tr>
+								<tr>
+									<td class="text-center">{crate::data::ProficiencyLevel::None}</td>
+									<td>{"CON"}</td>
+									<td class="text-center"><span style="font-weight: 700; color: var(--theme-roll-modifier);">{"+3"}</span></td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+					<div class="col-auto p-0" style="margin: 0 5px;"><div class="vr" style="min-height: 100%;" /></div>
+					<div class="col">
+						<table class="table table-compact" style="margin-bottom: 0;">
+							<tbody>
+								<tr>
+									<td class="text-center">{crate::data::ProficiencyLevel::Full}</td>
+									<td>{"INT"}</td>
+									<td class="text-center"><span style="font-weight: 700; color: var(--theme-roll-modifier);">{"+6"}</span></td>
+								</tr>
+								<tr>
+									<td class="text-center">{crate::data::ProficiencyLevel::Full}</td>
+									<td>{"WIS"}</td>
+									<td class="text-center"><span style="font-weight: 700; color: var(--theme-roll-modifier);">{"+4"}</span></td>
+								</tr>
+								<tr>
+									<td class="text-center">{crate::data::ProficiencyLevel::None}</td>
+									<td>{"CHA"}</td>
+									<td class="text-center"><span style="font-weight: 700; color: var(--theme-roll-modifier);">{"+3"}</span></td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</div>
 				<div class="container overflow-hidden text-center" style="display: none; --bs-gutter-x: 0;">
 					<SavingThrow title={"STR"} value={-1} proficient={false} />
 					<SavingThrow title={"DEX"} value={0} proficient={false} />

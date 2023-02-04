@@ -30,44 +30,10 @@ fn App() -> Html {
 			<div class="row" style="--bs-gutter-x: 10px;">
 				<div class="col-md-auto">
 
-					<div class="row" style="margin-top: 0; --bs-gutter-x: 0;">
-						<div class="col-auto">
-							<ability::ScoreContainer />
-						</div>
-						<div class="col-auto">
-							<ability::SavingThrowContainer />
-							<div class="d-grid justify-content-center">
-								<div class="card" style="max-width: 90px;">
-									<div class="card-body text-center" style="padding: 5px 5px;">
-										<h6 class="card-title" style="font-size: 0.8rem;">{"Proficiency"}</h6>
-										<div style="font-size: 26px; font-weight: 500;">
-											<components::AnnotatedNumber value={3} show_sign={true} />
-										</div>
-										<h6 class="card-title" style="font-size: 0.8rem; margin-bottom: 0;">{"Bonus"}</h6>
-									</div>
-								</div>
-								<div class="card" style="width: 90px;">
-									<div class="card-body text-center" style="padding: 5px 5px;">
-										<h6 class="card-title" style="font-size: 0.8rem;">{"Initiative"}</h6>
-										<div style="font-size: 26px; font-weight: 500;">
-											<components::AnnotatedNumber value={1} show_sign={true} />
-										</div>
-										<h6 class="card-title" style="font-size: 0.8rem; margin-bottom: 0;">{"Bonus"}</h6>
-									</div>
-								</div>
-								<div class="card" style="width: 90px;">
-									<div class="card-body text-center" style="padding: 5px 5px;">
-										<h6 class="card-title" style="font-size: 0.8rem;">{"Armor"}</h6>
-										<div style="font-size: 26px; font-weight: 500;">
-											<components::AnnotatedNumber value={10} />
-										</div>
-										<h6 class="card-title" style="font-size: 0.8rem; margin-bottom: 0;">{"Class"}</h6>
-									</div>
-								</div>
-							</div>
-						</div>
-					</div>
-					<div id="proficiencies-container" class="card" style="max-width: 250px; margin: 0 auto; border-color: var(--theme-frame-color);">
+					<ability::ScoreContainer />
+					<ability::SavingThrowContainer />
+
+					<div id="proficiencies-container" class="card" style="max-width: 200px; margin: 0 auto; border-color: var(--theme-frame-color);">
 						<div class="card-body" style="padding: 5px;">
 							<h5 class="card-title text-center" style="font-size: 0.8rem;">{"Proficiencies"}</h5>
 							<div style="border-style: solid; border-color: var(--bs-border-color); border-width: 0; border-bottom-width: var(--bs-border-width);">
@@ -92,8 +58,44 @@ fn App() -> Html {
 				</div>
 				<div class="col-md-auto">
 
+					<div class="row m-0 justify-content-center">
+						<div class="col p-0">
+							<div class="card m-2">
+								<div class="card-body text-center" style="padding: 5px 5px;">
+									<h6 class="card-title" style="font-size: 0.8rem;">{"Proficiency"}</h6>
+									<div style="font-size: 26px; font-weight: 500; margin: -8px 0;">
+										<components::AnnotatedNumber value={3} show_sign={true} />
+									</div>
+									<h6 class="card-title" style="font-size: 0.8rem; margin-bottom: 0;">{"Bonus"}</h6>
+								</div>
+							</div>
+						</div>
+						<div class="col p-0">
+							<div class="card m-2">
+								<div class="card-body text-center" style="padding: 5px 5px;">
+									<h6 class="card-title" style="font-size: 0.8rem;">{"Initiative"}</h6>
+									<div style="font-size: 26px; font-weight: 500; margin: -8px 0;">
+										<components::AnnotatedNumber value={1} show_sign={true} />
+									</div>
+									<h6 class="card-title" style="font-size: 0.8rem; margin-bottom: 0;">{"Bonus"}</h6>
+								</div>
+							</div>
+						</div>
+						<div class="col p-0">
+							<div class="card m-2">
+								<div class="card-body text-center" style="padding: 5px 5px;">
+									<h6 class="card-title" style="font-size: 0.8rem;">{"Armor"}</h6>
+									<div style="font-size: 26px; font-weight: 500; margin: -8px 0;">
+										<components::AnnotatedNumber value={10} />
+									</div>
+									<h6 class="card-title" style="font-size: 0.8rem; margin-bottom: 0;">{"Class"}</h6>
+								</div>
+							</div>
+						</div>
+					</div>
+
 					<div id="skills-container" class="card" style="min-width: 300px; border-color: var(--theme-frame-color);">
-						<div class="card-body" style="padding: 5px 5px;">
+						<div class="card-body" style="padding: 5px;">
 							<ability::SkillTable />
 						</div>
 					</div>
@@ -102,6 +104,7 @@ fn App() -> Html {
 				<div class="col">
 					<div class="row m-0" style="--bs-gutter-x: 0;">
 						<div class="col">
+							{"TODO: Inspiration"}
 							<SpeedAndSenses />
 						</div>
 						<div class="col-auto">
@@ -109,7 +112,11 @@ fn App() -> Html {
 						</div>
 					</div>
 
-					{"TODO Actions/Inventory/etc"}
+					<div class="card m-2" style="height: 550px;">
+						<div class="card-body" style="padding: 5px;">
+							{"TODO Actions/Inventory/etc"}
+						</div>
+					</div>
 				</div>
 			</div>
 		</div>

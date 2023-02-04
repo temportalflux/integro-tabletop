@@ -68,7 +68,7 @@ pub fn SpeedAndSenses() -> Html {
 	};
 	
 	html! {
-		<div class="card" style="min-width: 150px;">
+		<div class="card m-2" style="min-width: 150px;">
 			<div class="card-body" style="padding: 5px 5px;">
 				<div class="row">
 					{speed}

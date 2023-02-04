@@ -103,12 +103,16 @@ pub fn SkillTable() -> Html {
 				html! { <td class="text-center">{passive}</td> },
 			];
 			if let Some(idx) = &insert_ability_col_at {
-				table_data.insert(*idx, html! {<td class="text-center">{skill.ability().abbreviated_name().to_uppercase()}</td>});
+				table_data.insert(*idx, html! {
+					<td class="text-center" style="font-size: 12px; vertical-align: middle;">
+						{skill.ability().abbreviated_name().to_uppercase()}
+					</td>
+				});
 			}
 			html! {<tr>{table_data}</tr>}
 		}).collect::<Vec<_>>();
 		segments.push(html! {
-			<table class="table table-compact">
+			<table class="table table-compact m-0">
 				<thead>
 					<tr class="text-center" style="font-size: 0.7rem;">{headers.clone()}</tr>
 				</thead>

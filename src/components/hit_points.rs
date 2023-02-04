@@ -3,7 +3,7 @@ use yew::prelude::*;
 #[function_component]
 pub fn HitPoints() -> Html {
 	html! {
-		<div class="card" style="min-width: 270px; max-width: 270px;">
+		<div class="card m-2" style="min-width: 270px; max-width: 270px;">
 			<div class="card-body" style="padding: 5px 5px;">
 				<div class="d-flex">
 					<div class="flex-grow-1">
