@@ -32,65 +32,26 @@ fn App() -> Html {
 
 					<ability::ScoreContainer />
 					<ability::SavingThrowContainer />
-
-					<div id="proficiencies-container" class="card" style="max-width: 200px; margin: 0 auto; border-color: var(--theme-frame-color);">
-						<div class="card-body" style="padding: 5px;">
-							<h5 class="card-title text-center" style="font-size: 0.8rem;">{"Proficiencies"}</h5>
-							<div style="border-style: solid; border-color: var(--bs-border-color); border-width: 0; border-bottom-width: var(--bs-border-width);">
-								<h6 style="font-size: 0.8rem; color: var(--bs-card-title-color);">{"Languages"}</h6>
-								<span>{"Common, Gnomish, Sylvan, Undercommon"}</span>
-							</div>
-							<div style="border-style: solid; border-color: var(--bs-border-color); border-width: 0; border-bottom-width: var(--bs-border-width);">
-								<h6 style="font-size: 0.8rem; color: var(--bs-card-title-color);">{"Armor"}</h6>
-								<span>{"None"}</span>
-							</div>
-							<div style="border-style: solid; border-color: var(--bs-border-color); border-width: 0; border-bottom-width: var(--bs-border-width);">
-								<h6 style="font-size: 0.8rem; color: var(--bs-card-title-color);">{"Weapons"}</h6>
-								<span>{"Crossbow, Light, Dagger, Dart, Quarterstaff, Sling"}</span>
-							</div>
-							<div style="border-style: solid; border-color: var(--bs-border-color); border-width: 0; border-bottom-width: var(--bs-border-width);">
-								<h6 style="font-size: 0.8rem; color: var(--bs-card-title-color);">{"Tools"}</h6>
-								<span>{"Cartographer's Tools"}</span>
-							</div>
-						</div>
-					</div>
+					<Proficiencies />
 
 				</div>
 				<div class="col-md-auto">
-
+				
 					<div class="row m-0 justify-content-center">
 						<div class="col p-0">
-							<div class="card m-2">
-								<div class="card-body text-center" style="padding: 5px 5px;">
-									<h6 class="card-title" style="font-size: 0.8rem;">{"Proficiency"}</h6>
-									<div style="font-size: 26px; font-weight: 500; margin: -8px 0;">
-										<components::AnnotatedNumber value={3} show_sign={true} />
-									</div>
-									<h6 class="card-title" style="font-size: 0.8rem; margin-bottom: 0;">{"Bonus"}</h6>
-								</div>
-							</div>
+							<AnnotatedNumberCard header={"Proficiency"} footer={"Bonus"}>
+								<AnnotatedNumber value={3} show_sign={true} />
+							</AnnotatedNumberCard>
 						</div>
 						<div class="col p-0">
-							<div class="card m-2">
-								<div class="card-body text-center" style="padding: 5px 5px;">
-									<h6 class="card-title" style="font-size: 0.8rem;">{"Initiative"}</h6>
-									<div style="font-size: 26px; font-weight: 500; margin: -8px 0;">
-										<components::AnnotatedNumber value={1} show_sign={true} />
-									</div>
-									<h6 class="card-title" style="font-size: 0.8rem; margin-bottom: 0;">{"Bonus"}</h6>
-								</div>
-							</div>
+							<AnnotatedNumberCard header={"Initiative"} footer={"Bonus"}>
+								<AnnotatedNumber value={1} show_sign={true} />
+							</AnnotatedNumberCard>
 						</div>
 						<div class="col p-0">
-							<div class="card m-2">
-								<div class="card-body text-center" style="padding: 5px 5px;">
-									<h6 class="card-title" style="font-size: 0.8rem;">{"Armor"}</h6>
-									<div style="font-size: 26px; font-weight: 500; margin: -8px 0;">
-										<components::AnnotatedNumber value={10} />
-									</div>
-									<h6 class="card-title" style="font-size: 0.8rem; margin-bottom: 0;">{"Class"}</h6>
-								</div>
-							</div>
+							<AnnotatedNumberCard header={"Armor"} footer={"Class"}>
+								<AnnotatedNumber value={10} />
+							</AnnotatedNumberCard>
 						</div>
 					</div>
 
