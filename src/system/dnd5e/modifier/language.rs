@@ -1,6 +1,6 @@
+use crate::system::dnd5e::character::StatsBuilder;
+
 use super::Selector;
-use crate::system::dnd5e::{character::CompiledStats, Character};
-use std::path::PathBuf;
 
 #[derive(Clone)]
 pub struct AddLanguage(pub Selector<String>);
@@ -10,10 +10,10 @@ impl super::Modifier for AddLanguage {
 		self.0.id()
 	}
 
-	fn apply(&self, char: &Character, stats: &mut CompiledStats, scope: PathBuf) {
+	fn apply<'c>(&self, stats: &mut StatsBuilder<'c>) {
 		let language = match &self.0 {
 			Selector::Specific(language) => Some(language.clone()),
-			_ => char.get_selection(stats, &scope).map(str::to_owned),
+			_ => stats.get_selection().map(str::to_owned),
 		};
 		if let Some(lang) = language {
 			stats.languages.push(lang);

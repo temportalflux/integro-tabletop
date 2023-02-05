@@ -4,8 +4,7 @@ pub use ability::*;
 mod action;
 pub use action::*;
 
-mod character;
-pub use character::Character;
+pub mod character;
 
 mod feature;
 pub use feature::*;

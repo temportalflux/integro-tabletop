@@ -1,6 +1,6 @@
 use super::Selector;
-use crate::system::dnd5e::{character::CompiledStats, Character, ProficiencyLevel, Skill};
-use std::{path::PathBuf, str::FromStr};
+use crate::system::dnd5e::{character::StatsBuilder, ProficiencyLevel, Skill};
+use std::str::FromStr;
 
 #[derive(Clone)]
 pub struct AddSkill {
@@ -13,10 +13,10 @@ impl super::Modifier for AddSkill {
 		self.skill.id()
 	}
 
-	fn apply(&self, char: &Character, stats: &mut CompiledStats, scope: PathBuf) {
+	fn apply<'c>(&self, stats: &mut StatsBuilder<'c>) {
 		let skill = match &self.skill {
 			Selector::Specific(skill) => Some(*skill),
-			_ => match char.get_selection(stats, &scope) {
+			_ => match stats.get_selection() {
 				Some(value) => Skill::from_str(&value).ok(),
 				None => None,
 			},

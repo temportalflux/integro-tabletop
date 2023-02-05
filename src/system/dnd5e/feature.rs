@@ -1,9 +1,8 @@
 use super::{
-	character::CompiledStats,
+	character::StatsBuilder,
 	modifier::{self, Modifier},
-	Action, Character,
+	Action,
 };
-use std::path::PathBuf;
 
 #[derive(Default, Clone)]
 pub struct Feature {
@@ -11,13 +10,6 @@ pub struct Feature {
 	pub description: String,
 	pub action: Option<Action>,
 	pub modifiers: Vec<Box<dyn Modifier + 'static>>,
-}
-
-impl Feature {
-	pub fn id(&self) -> String {
-		use convert_case::Casing;
-		self.name.to_case(convert_case::Case::Pascal)
-	}
 }
 
 impl PartialEq for Feature {
@@ -29,16 +21,14 @@ impl PartialEq for Feature {
 }
 
 impl modifier::Container for Feature {
-	fn apply_modifiers(&self, char: &Character, stats: &mut CompiledStats, scope: PathBuf) {
+	fn id(&self) -> String {
+		use convert_case::Casing;
+		self.name.to_case(convert_case::Case::Pascal)
+	}
+
+	fn apply_modifiers<'c>(&self, stats: &mut StatsBuilder<'c>) {
 		for modifier in &self.modifiers {
-			modifier.apply(
-				char,
-				stats,
-				match modifier.scope_id() {
-					Some(id) => scope.join(id),
-					None => scope.clone(),
-				},
-			);
+			stats.apply(modifier);
 		}
 	}
 }

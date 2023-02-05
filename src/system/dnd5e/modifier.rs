@@ -1,5 +1,4 @@
-use super::character::{Character, CompiledStats};
-use std::path::PathBuf;
+use super::character::StatsBuilder;
 
 mod ability_score;
 pub use ability_score::*;
@@ -17,7 +16,7 @@ pub trait Modifier: BoxedClone {
 	fn scope_id(&self) -> Option<&str> {
 		None
 	}
-	fn apply(&self, _: &Character, _: &mut CompiledStats, _: PathBuf) {}
+	fn apply<'c>(&self, _: &mut StatsBuilder<'c>) {}
 }
 pub trait BoxedClone {
 	fn clone_box<'a>(&self) -> Box<dyn Modifier>;
@@ -37,7 +36,8 @@ impl Clone for Box<dyn Modifier> {
 }
 
 pub trait Container {
-	fn apply_modifiers(&self, character: &Character, stats: &mut CompiledStats, scope: PathBuf);
+	fn id(&self) -> String;
+	fn apply_modifiers<'c>(&self, stats: &mut StatsBuilder<'c>);
 }
 
 #[derive(Clone)]

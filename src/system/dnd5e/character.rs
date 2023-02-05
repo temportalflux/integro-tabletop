@@ -1,18 +1,19 @@
 use super::{
 	modifier::{
 		AddAbilityScore, AddLanguage, AddLifeExpectancy, AddMaxHeight, AddSkill, Container,
-		Selector,
+		Modifier, Selector,
 	},
 	roll::{Die, Roll, RollSet},
 	Ability, Action, Feature, ProficiencyLevel, Skill,
 };
 use enum_map::EnumMap;
 use enumset::EnumSet;
-use std::{
-	collections::HashMap,
-	path::{Path, PathBuf},
-};
+use std::{collections::HashMap, path::PathBuf};
 
+mod background;
+pub use background::*;
+mod class;
+pub use class::*;
 mod description;
 pub use description::*;
 mod lineage;
@@ -32,10 +33,67 @@ pub struct Character {
 	selected_values: HashMap<PathBuf, String>,
 }
 
-#[derive(Clone)]
-pub struct Background;
-#[derive(Clone)]
-pub struct Class;
+pub struct StatsBuilder<'c> {
+	character: &'c Character,
+	stats: CompiledStats,
+	scope: PathBuf,
+}
+impl<'c> StatsBuilder<'c> {
+	pub fn new(character: &'c Character) -> Self {
+		let mut stats = CompiledStats::default();
+		stats.ability_scores = character.ability_scores;
+		Self {
+			character,
+			stats,
+			scope: PathBuf::new(),
+		}
+	}
+
+	pub fn apply_from(&mut self, modifiers: &impl Container) {
+		self.scope.push(&modifiers.id());
+		modifiers.apply_modifiers(self);
+		self.scope.pop();
+	}
+
+	pub fn apply(&mut self, modifier: &Box<dyn Modifier>) {
+		let id = modifier.scope_id();
+		if let Some(id) = id.as_ref() {
+			self.scope.push(*id);
+		}
+		modifier.apply(self);
+		if id.is_some() {
+			self.scope.pop();
+		}
+	}
+
+	pub fn get_selection(&mut self) -> Option<&str> {
+		let selection = self
+			.character
+			.selected_values
+			.get(&self.scope)
+			.map(String::as_str);
+		if selection.is_none() {
+			self.stats.missing_selections.push(self.scope.clone());
+		}
+		selection
+	}
+
+	pub fn build(self) -> CompiledStats {
+		self.stats
+	}
+}
+impl<'c> std::ops::Deref for StatsBuilder<'c> {
+	type Target = CompiledStats;
+
+	fn deref(&self) -> &Self::Target {
+		&self.stats
+	}
+}
+impl<'c> std::ops::DerefMut for StatsBuilder<'c> {
+	fn deref_mut(&mut self) -> &mut Self::Target {
+		&mut self.stats
+	}
+}
 
 #[derive(Clone, Default, PartialEq, Debug)]
 pub struct CompiledStats {
@@ -56,28 +114,24 @@ impl Character {
 	}
 
 	pub fn compile_stats(&self) -> CompiledStats {
-		let mut stats = CompiledStats::default();
-		stats.ability_scores = self.ability_scores;
+		let mut stats = StatsBuilder::new(self);
 
-		let scope = PathBuf::new();
 		for lineage in &self.lineages {
 			if let Some(lineage) = lineage {
-				lineage.apply_modifiers(self, &mut stats, scope.join(&lineage.id()));
+				stats.apply_from(lineage);
 			}
 		}
 		if let Some(upbringing) = &self.upbringing {
-			upbringing.apply_modifiers(self, &mut stats, scope.join(&upbringing.id()));
+			stats.apply_from(upbringing);
+		}
+		if let Some(background) = &self.background {
+			stats.apply_from(background);
+		}
+		for class in &self.classes {
+			stats.apply_from(class);
 		}
 
-		stats
-	}
-
-	pub fn get_selection(&self, stats: &mut CompiledStats, scope: &Path) -> Option<&str> {
-		let selection = self.selected_values.get(scope).map(String::as_str);
-		if selection.is_none() {
-			stats.missing_selections.push(scope.to_owned());
-		}
-		selection
+		stats.build()
 	}
 }
 
