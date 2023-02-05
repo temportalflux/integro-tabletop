@@ -121,7 +121,7 @@ pub fn Nav(
 	for mut child in children.iter() {
 		let mut props = Rc::make_mut(&mut child.props);
 		props.active = *selected_tab == props.id;
-		
+
 		let mut classes = classes!("nav-link");
 		if props.active {
 			classes.push("active");
@@ -164,7 +164,14 @@ pub struct TabContentProps {
 }
 
 #[function_component]
-pub fn TabContent(TabContentProps { id, title: _, children, active }: &TabContentProps) -> Html {
+pub fn TabContent(
+	TabContentProps {
+		id,
+		title: _,
+		children,
+		active,
+	}: &TabContentProps,
+) -> Html {
 	let mut classes = classes!("tab-pane");
 	if *active {
 		classes.push("active");
