@@ -12,5 +12,5 @@ impl modifier::Container for Class {
 		self.name.to_case(convert_case::Case::Pascal)
 	}
 
-	fn apply_modifiers<'c>(&self, stats: &mut StatsBuilder<'c>) {}
+	fn apply_modifiers<'c>(&self, _stats: &mut StatsBuilder<'c>) {}
 }
