@@ -16,7 +16,7 @@ impl super::Modifier for AddLanguage {
 			_ => stats.get_selection().map(str::to_owned),
 		};
 		if let Some(lang) = language {
-			stats.languages.push(lang);
+			stats.add_language(lang);
 		}
 	}
 }

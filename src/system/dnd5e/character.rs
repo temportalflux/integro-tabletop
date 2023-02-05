@@ -8,7 +8,10 @@ use super::{
 };
 use enum_map::EnumMap;
 use enumset::EnumSet;
-use std::{collections::HashMap, path::PathBuf};
+use std::{
+	collections::{BTreeMap, BTreeSet, HashMap},
+	path::PathBuf,
+};
 
 mod background;
 pub use background::*;
@@ -81,6 +84,23 @@ impl<'c> StatsBuilder<'c> {
 	pub fn build(self) -> CompiledStats {
 		self.stats
 	}
+
+	pub fn add_skill(&mut self, skill: Skill, proficiency: ProficiencyLevel) {
+		self.stats.skills[skill].push(proficiency, self.scope.clone());
+	}
+
+	pub fn add_language(&mut self, language: String) {
+		match self.stats.languages.get_mut(&language) {
+			Some(sources) => {
+				sources.insert(self.scope.clone());
+			}
+			None => {
+				self.stats
+					.languages
+					.insert(language.clone(), BTreeSet::from([self.scope.clone()]));
+			}
+		}
+	}
 }
 impl<'c> std::ops::Deref for StatsBuilder<'c> {
 	type Target = CompiledStats;
@@ -95,14 +115,65 @@ impl<'c> std::ops::DerefMut for StatsBuilder<'c> {
 	}
 }
 
-#[derive(Clone, Default, PartialEq, Debug)]
+#[derive(Clone, Default, PartialEq)]
 pub struct CompiledStats {
 	pub missing_selections: Vec<PathBuf>,
 	pub ability_scores: EnumMap<Ability, i32>,
-	pub skills: EnumMap<Skill, ProficiencyLevel>,
-	pub languages: Vec<String>,
+	pub skills: EnumMap<Skill, AttributedValue<ProficiencyLevel>>,
+	pub languages: BTreeMap<String, BTreeSet<PathBuf>>,
 	pub life_expectancy: i32,
 	pub max_height: (i32, RollSet),
+}
+impl std::fmt::Debug for CompiledStats {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "CompiledStats {{\
+			\n\tmissing_selections: {:?}\
+			\n\tability_scores: {:?}\
+			\n\tskills: {}\
+			\n\tlanguages: {}\
+			\n\tlife_expectancy: {:?}\
+			\n\tmax_height: {:?}\
+			\n}}",
+			self.missing_selections,
+			self.ability_scores,
+			self.skills.iter().fold(String::new(), |str, (skill, attributed)| {
+				let sources = attributed.sources.iter().fold(String::new(), |str, (src_path, value)| {
+					format!("{str}\n\t\t\t{src_path:?}: {value:?}")
+				});
+				format!("{str}\n\t\t{skill:?}: {:?}{sources}", attributed.value)
+			}),
+			self.languages.iter().fold(String::new(), |str, (lang, sources)| {
+				format!("{str}\n\t\t{lang:?} => {sources:?}")
+			}),
+			self.life_expectancy,
+			self.max_height,
+		)
+	}
+}
+
+#[derive(Clone, Default, PartialEq, Debug)]
+pub struct AttributedValue<T> {
+	value: T,
+	sources: Vec<(PathBuf, T)>,
+}
+impl<T> AttributedValue<T>
+where
+	T: Clone,
+{
+	pub fn set(&mut self, value: T, source: PathBuf) {
+		self.value = value.clone();
+		self.sources.push((source, value));
+	}
+
+	pub fn push(&mut self, value: T, source: PathBuf)
+	where
+		T: PartialOrd,
+	{
+		if self.value < value {
+			self.value = value.clone();
+		}
+		self.sources.push((source, value));
+	}
 }
 
 impl Character {
@@ -303,7 +374,6 @@ mod test {
 						],
 						..Default::default()
 					},
-					
 					Feature {
 						name: "Adept Linguist".into(),
 						description: "You can communicate with humanoids who don't speak any language you know. \
@@ -317,20 +387,28 @@ mod test {
 			classes: Vec::new(),
 			selected_values: HashMap::from([
 				(
-					PathBuf::from("culture\\Incognito\\AbilityScoreIncrease"),
+					PathBuf::from("Incognito\\AbilityScoreIncrease"),
 					"con".into(),
 				),
 				(
-					PathBuf::from("culture\\Incognito\\GoodWithPeople"),
-					"Insight".into(),
+					PathBuf::from("Incognito\\GoodWithPeople"),
+					"Deception".into(),
 				),
 				(
-					PathBuf::from("culture\\Incognito\\Languages\\langA"),
+					PathBuf::from("Incognito\\Languages\\langA"),
 					"Draconic".into(),
 				),
 				(
-					PathBuf::from("culture\\Incognito\\Languages\\langB"),
+					PathBuf::from("Incognito\\Languages\\langB"),
 					"Undercommon".into(),
+				),
+				(
+					PathBuf::from("Anthropologist\\Languages\\langA"),
+					"Sylvan".into()
+				),
+				(
+					PathBuf::from("Anthropologist\\Languages\\langB"),
+					"Elvish".into()
 				),
 			]),
 		}
@@ -347,26 +425,53 @@ mod test {
 					Ability::Charisma => 12,
 				},
 				skills: enum_map! {
-					Skill::Acrobatics => ProficiencyLevel::None,
-					Skill::AnimalHandling => ProficiencyLevel::None,
-					Skill::Arcana => ProficiencyLevel::None,
-					Skill::Athletics => ProficiencyLevel::None,
-					Skill::Deception => ProficiencyLevel::None,
-					Skill::History => ProficiencyLevel::None,
-					Skill::Insight => ProficiencyLevel::Full,
-					Skill::Intimidation => ProficiencyLevel::None,
-					Skill::Investigation => ProficiencyLevel::None,
-					Skill::Medicine => ProficiencyLevel::None,
-					Skill::Nature => ProficiencyLevel::None,
-					Skill::Perception => ProficiencyLevel::None,
-					Skill::Performance => ProficiencyLevel::None,
-					Skill::Persuasion => ProficiencyLevel::None,
-					Skill::Religion => ProficiencyLevel::None,
-					Skill::SleightOfHand => ProficiencyLevel::None,
-					Skill::Stealth => ProficiencyLevel::None,
-					Skill::Survival => ProficiencyLevel::None,
+					Skill::Acrobatics => AttributedValue { value: ProficiencyLevel::None, sources: vec![] },
+					Skill::AnimalHandling => AttributedValue { value: ProficiencyLevel::None, sources: vec![] },
+					Skill::Arcana => AttributedValue { value: ProficiencyLevel::None, sources: vec![] },
+					Skill::Athletics => AttributedValue { value: ProficiencyLevel::None, sources: vec![] },
+					Skill::Deception => AttributedValue { value: ProficiencyLevel::Full, sources: vec![
+						(PathBuf::from("Incognito\\GoodWithPeople"), ProficiencyLevel::Full),
+					] },
+					Skill::History => AttributedValue { value: ProficiencyLevel::None, sources: vec![] },
+					Skill::Insight => AttributedValue { value: ProficiencyLevel::Full, sources: vec![
+						(PathBuf::from("Anthropologist\\SkillProficiencies"), ProficiencyLevel::Full),
+					] },
+					Skill::Intimidation => AttributedValue { value: ProficiencyLevel::None, sources: vec![] },
+					Skill::Investigation => AttributedValue { value: ProficiencyLevel::None, sources: vec![] },
+					Skill::Medicine => AttributedValue { value: ProficiencyLevel::None, sources: vec![] },
+					Skill::Nature => AttributedValue { value: ProficiencyLevel::None, sources: vec![] },
+					Skill::Perception => AttributedValue { value: ProficiencyLevel::None, sources: vec![] },
+					Skill::Performance => AttributedValue { value: ProficiencyLevel::None, sources: vec![] },
+					Skill::Persuasion => AttributedValue { value: ProficiencyLevel::None, sources: vec![] },
+					Skill::Religion => AttributedValue { value: ProficiencyLevel::Full, sources: vec![
+						(PathBuf::from("Anthropologist\\SkillProficiencies"), ProficiencyLevel::Full),
+					] },
+					Skill::SleightOfHand => AttributedValue { value: ProficiencyLevel::None, sources: vec![] },
+					Skill::Stealth => AttributedValue { value: ProficiencyLevel::None, sources: vec![] },
+					Skill::Survival => AttributedValue { value: ProficiencyLevel::None, sources: vec![] },
 				},
-				languages: vec!["Common".into(), "Draconic".into(), "Undercommon".into()],
+				languages: BTreeMap::from([
+					(
+						"Common".into(),
+						BTreeSet::from([PathBuf::from("Incognito\\Languages")])
+					),
+					(
+						"Draconic".into(),
+						BTreeSet::from([PathBuf::from("Incognito\\Languages\\langA")])
+					),
+					(
+						"Undercommon".into(),
+						BTreeSet::from([PathBuf::from("Incognito\\Languages\\langB")])
+					),
+					(
+						"Sylvan".into(),
+						BTreeSet::from([PathBuf::from("Anthropologist\\Languages\\langA")])
+					),
+					(
+						"Elvish".into(),
+						BTreeSet::from([PathBuf::from("Anthropologist\\Languages\\langB")])
+					),
+				]),
 				life_expectancy: 100,
 				max_height: (
 					60,

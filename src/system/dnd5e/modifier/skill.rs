@@ -22,7 +22,7 @@ impl super::Modifier for AddSkill {
 			},
 		};
 		if let Some(skill) = skill {
-			stats.skills[skill] = stats.skills[skill].max(self.proficiency);
+			stats.add_skill(skill, self.proficiency);
 		}
 	}
 }
