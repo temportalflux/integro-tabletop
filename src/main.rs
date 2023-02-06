@@ -8,6 +8,13 @@ pub mod theme;
 #[function_component]
 fn App() -> Html {
 	use components::*;
+	use system::dnd5e::Ability;
+
+	let character = {
+		let character = system::dnd5e::character::changeling_character();
+		system::dnd5e::character::CompiledCharacter::new(character)
+	};
+
 	return html! {<>
 		<header>
 			<nav class="navbar navbar-expand-lg sticky-top bg-body-tertiary">
@@ -31,7 +38,19 @@ fn App() -> Html {
 			<div class="row" style="--bs-gutter-x: 10px;">
 				<div class="col-md-auto">
 
-					<ability::ScoreContainer />
+					<div class="row m-0" style="--bs-gutter-x: 0;">
+						<div class="col">
+							<ability::Score ability={Ability::Strength} score={character.ability_score(Ability::Strength)} />
+							<ability::Score ability={Ability::Dexterity} score={character.ability_score(Ability::Dexterity)} />
+							<ability::Score ability={Ability::Constitution} score={character.ability_score(Ability::Constitution)} />
+						</div>
+						<div class="col">
+							<ability::Score ability={Ability::Intelligence} score={character.ability_score(Ability::Intelligence)} />
+							<ability::Score ability={Ability::Wisdom} score={character.ability_score(Ability::Wisdom)} />
+							<ability::Score ability={Ability::Charisma} score={character.ability_score(Ability::Charisma)} />
+						</div>
+					</div>
+
 					<ability::SavingThrowContainer />
 					<Proficiencies />
 

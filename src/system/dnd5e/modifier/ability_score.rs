@@ -22,7 +22,7 @@ impl super::Modifier for AddAbilityScore {
 			},
 		};
 		if let Some(ability) = ability {
-			stats.ability_scores[ability] += self.value;
+			stats.add_to_ability_score(ability, self.value);
 		}
 	}
 }
