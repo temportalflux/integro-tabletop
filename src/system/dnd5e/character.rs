@@ -35,6 +35,11 @@ pub struct Character {
 	classes: Vec<Class>,
 	selected_values: HashMap<PathBuf, String>,
 }
+impl Character {
+	pub fn level(&self) -> i32 {
+		self.classes.iter().map(|class| class.level_count()).sum()
+	}
+}
 
 pub struct StatsBuilder<'c> {
 	character: &'c Character,
