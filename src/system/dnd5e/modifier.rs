@@ -1,4 +1,5 @@
 use super::character::StatsBuilder;
+use dyn_clone::{clone_trait_object, DynClone};
 
 mod ability_score;
 pub use ability_score::*;
@@ -12,28 +13,13 @@ pub use skill::*;
 mod language;
 pub use language::*;
 
-pub trait Modifier: BoxedClone {
+pub trait Modifier: DynClone {
 	fn scope_id(&self) -> Option<&str> {
 		None
 	}
 	fn apply<'c>(&self, _: &mut StatsBuilder<'c>) {}
 }
-pub trait BoxedClone {
-	fn clone_box<'a>(&self) -> Box<dyn Modifier>;
-}
-impl<T> BoxedClone for T
-where
-	T: Modifier + Clone + 'static,
-{
-	fn clone_box<'a>(&self) -> Box<dyn Modifier> {
-		Box::new(self.clone())
-	}
-}
-impl Clone for Box<dyn Modifier> {
-	fn clone(&self) -> Box<dyn Modifier> {
-		self.clone_box()
-	}
-}
+clone_trait_object!(Modifier);
 
 pub trait Container {
 	fn id(&self) -> String;

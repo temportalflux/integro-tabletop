@@ -1,4 +1,5 @@
 use super::{
+	condition::Condition,
 	modifier::{
 		AddAbilityScore, AddLanguage, AddLifeExpectancy, AddMaxHeight, AddSkill, Container,
 		Modifier, Selector,
@@ -23,6 +24,7 @@ mod lineage;
 pub use lineage::*;
 mod upbringing;
 pub use upbringing::*;
+pub mod inventory;
 
 /// Character data saved to external storage.
 #[derive(Clone)]
@@ -35,6 +37,8 @@ pub struct Character {
 	background: Option<Background>,
 	classes: Vec<Class>,
 	selected_values: HashMap<PathBuf, String>,
+	inventory: inventory::Inventory,
+	conditions: Vec<Box<dyn Condition + 'static>>,
 }
 impl Character {
 	pub fn level(&self) -> i32 {
@@ -59,7 +63,13 @@ impl<'c> StatsBuilder<'c> {
 	pub fn scope(&self) -> PathBuf {
 		match std::path::MAIN_SEPARATOR {
 			'/' => self.scope.clone(),
-			_ => PathBuf::from(self.scope.iter().map(|s| s.to_str().unwrap()).collect::<Vec<_>>().join("/"))
+			_ => PathBuf::from(
+				self.scope
+					.iter()
+					.map(|s| s.to_str().unwrap())
+					.collect::<Vec<_>>()
+					.join("/"),
+			),
 		}
 	}
 
@@ -145,7 +155,9 @@ pub struct CompiledStats {
 }
 impl std::fmt::Debug for CompiledStats {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(f, "CompiledStats {{\
+		write!(
+			f,
+			"CompiledStats {{\
 			\n\tmissing_selections: {:?}\
 			\n\tability_scores: {}\
 			\n\tskills: {}\
@@ -154,21 +166,33 @@ impl std::fmt::Debug for CompiledStats {
 			\n\tmax_height: {:?}\
 			\n}}",
 			self.missing_selections,
-			self.ability_scores.iter().fold(String::new(), |str, (ability, attributed)| {
-				let sources = attributed.sources.iter().fold(String::new(), |str, (src_path, value)| {
-					format!("{str}\n\t\t\t{src_path:?}: {value:?}")
-				});
-				format!("{str}\n\t\t{ability:?}: {:?}{sources}", attributed.value)
-			}),
-			self.skills.iter().fold(String::new(), |str, (skill, attributed)| {
-				let sources = attributed.sources.iter().fold(String::new(), |str, (src_path, value)| {
-					format!("{str}\n\t\t\t{src_path:?}: {value:?}")
-				});
-				format!("{str}\n\t\t{skill:?}: {:?}{sources}", attributed.value)
-			}),
-			self.languages.iter().fold(String::new(), |str, (lang, sources)| {
-				format!("{str}\n\t\t{lang:?} => {sources:?}")
-			}),
+			self.ability_scores
+				.iter()
+				.fold(String::new(), |str, (ability, attributed)| {
+					let sources = attributed
+						.sources
+						.iter()
+						.fold(String::new(), |str, (src_path, value)| {
+							format!("{str}\n\t\t\t{src_path:?}: {value:?}")
+						});
+					format!("{str}\n\t\t{ability:?}: {:?}{sources}", attributed.value)
+				}),
+			self.skills
+				.iter()
+				.fold(String::new(), |str, (skill, attributed)| {
+					let sources = attributed
+						.sources
+						.iter()
+						.fold(String::new(), |str, (src_path, value)| {
+							format!("{str}\n\t\t\t{src_path:?}: {value:?}")
+						});
+					format!("{str}\n\t\t{skill:?}: {:?}{sources}", attributed.value)
+				}),
+			self.languages
+				.iter()
+				.fold(String::new(), |str, (lang, sources)| {
+					format!("{str}\n\t\t{lang:?} => {sources:?}")
+				}),
 			self.life_expectancy,
 			self.max_height,
 		)
@@ -243,9 +267,7 @@ pub struct CompiledCharacter {
 impl CompiledCharacter {
 	pub fn new(character: Character) -> Self {
 		let stats = character.compile_stats();
-		Self {
-			character, stats,
-		}
+		Self { character, stats }
 	}
 
 	/// Returns the score/value for a given ability. Any bonuses beyond the character's base scores
@@ -456,13 +478,15 @@ pub fn changeling_character() -> Character {
 			),
 			(
 				PathBuf::from("Anthropologist/Languages/langA"),
-				"Sylvan".into()
+				"Sylvan".into(),
 			),
 			(
 				PathBuf::from("Anthropologist/Languages/langB"),
-				"Elvish".into()
+				"Elvish".into(),
 			),
 		]),
+		inventory: inventory::Inventory::new(),
+		conditions: Vec::new(),
 	}
 	.with_culture(culture)
 }
@@ -483,7 +507,7 @@ mod test {
 					Ability::Dexterity => AttributedValue { value: 0, sources: vec![] },
 					Ability::Constitution => AttributedValue { value: 1, sources: vec![
 						(PathBuf::from("Incognito/AbilityScoreIncrease"), 1),
-					] }, 
+					] },
 					Ability::Intelligence => AttributedValue { value: 0, sources: vec![] },
 					Ability::Wisdom => AttributedValue { value: 0, sources: vec![] },
 					Ability::Charisma => AttributedValue { value: 2, sources: vec![

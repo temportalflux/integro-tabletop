@@ -1,4 +1,7 @@
-use crate::{components::AnnotatedNumber, system::dnd5e::{character::AttributedValue, Ability}};
+use crate::{
+	components::AnnotatedNumber,
+	system::dnd5e::{character::AttributedValue, Ability},
+};
 use yew::prelude::*;
 
 #[derive(Clone, PartialEq, Properties)]

@@ -10,6 +10,7 @@ pub struct Feature {
 	pub description: String,
 	pub action: Option<Action>,
 	pub modifiers: Vec<Box<dyn Modifier + 'static>>,
+	pub limited_uses: Option<LimitedUses>,
 }
 
 impl PartialEq for Feature {
@@ -31,4 +32,9 @@ impl modifier::Container for Feature {
 			stats.apply(modifier);
 		}
 	}
+}
+
+#[derive(Default, Clone)]
+pub struct LimitedUses {
+
 }
