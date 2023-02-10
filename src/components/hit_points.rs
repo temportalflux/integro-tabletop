@@ -1,7 +1,27 @@
+use crate::{system::dnd5e::character::CompiledCharacter, Compiled};
 use yew::prelude::*;
 
 #[function_component]
 pub fn HitPoints() -> Html {
+	let storage = use_context::<Compiled<CompiledCharacter>>().unwrap();
+
+	let onclick_heal = {
+		let storage = storage.clone();
+		Callback::from(move |_| {
+			storage.add_hit_points(1);
+			storage.update_root();
+		})
+	};
+	let onclick_dmg = {
+		let storage = storage.clone();
+		Callback::from(move |_| {
+			storage.sub_hit_points(1);
+			storage.update_root();
+		})
+	};
+	let hit_points = storage.hit_points();
+	log::debug!("{hit_points:?}");
+
 	html! {
 		<div class="card m-2" style="min-width: 270px; max-width: 270px;">
 			<div class="card-body" style="padding: 5px 5px;">
@@ -11,7 +31,7 @@ pub fn HitPoints() -> Html {
 						<div class="row text-center m-0" style="--bs-gutter-x: 0;">
 							<div class="col" style="min-width: 50px;">
 								<div style="font-size: 0.75rem; padding: 0 5px;">{"Current"}</div>
-								<div style="font-size: 26px; font-weight: 500;">{"000"}</div>
+								<div style="font-size: 26px; font-weight: 500;">{hit_points.0}</div>
 							</div>
 							<div class="col-auto">
 								<div style="min-height: 1.2rem;"></div>
@@ -19,18 +39,18 @@ pub fn HitPoints() -> Html {
 							</div>
 							<div class="col" style="min-width: 50px;">
 								<div style="font-size: 0.75rem; padding: 0 5px;">{"Max"}</div>
-								<div style="font-size: 26px; font-weight: 500;">{"000"}</div>
+								<div style="font-size: 26px; font-weight: 500;">{hit_points.1}</div>
 							</div>
 							<div class="col" style="min-width: 50px; margin: 0 5px;">
 								<div style="font-size: 0.75rem;">{"Temp"}</div>
-								<div style="font-size: 26px; font-weight: 300;">{"000"}</div>
+								<div style="font-size: 26px; font-weight: 300;">{hit_points.2}</div>
 							</div>
 						</div>
 					</div>
 					<div style="width: 80px;">
-						<button type="button" class="btn btn-success" style="vertical-align: top; width: 100%; --bs-btn-padding-y: 0px; --bs-btn-font-size: .75rem;">{"Heal"}</button>
+						<button type="button" class="btn btn-success" style="vertical-align: top; width: 100%; --bs-btn-padding-y: 0px; --bs-btn-font-size: .75rem;" onclick={onclick_heal}>{"Heal"}</button>
 						<input type="text" class="form-control text-center" id="hp-amount" style="padding: 0; margin: 0 0 4px 0;" />
-						<button type="button" class="btn btn-danger" style="vertical-align: top; width: 100%; --bs-btn-padding-y: 0px; --bs-btn-font-size: .75rem;">{"Damage"}</button>
+						<button type="button" class="btn btn-danger" style="vertical-align: top; width: 100%; --bs-btn-padding-y: 0px; --bs-btn-font-size: .75rem;" onclick={onclick_dmg}>{"Damage"}</button>
 					</div>
 				</div>
 				<div class="row m-0 pt-2" style="--bs-gutter-x: 0;">

@@ -35,6 +35,4 @@ impl modifier::Container for Feature {
 }
 
 #[derive(Default, Clone)]
-pub struct LimitedUses {
-
-}
+pub struct LimitedUses {}

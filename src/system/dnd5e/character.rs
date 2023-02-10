@@ -12,6 +12,8 @@ use enumset::EnumSet;
 use std::{
 	collections::{BTreeMap, BTreeSet, HashMap},
 	path::PathBuf,
+	rc::Rc,
+	sync::RwLock,
 };
 
 mod background;
@@ -39,6 +41,7 @@ pub struct Character {
 	selected_values: HashMap<PathBuf, String>,
 	inventory: inventory::Inventory,
 	conditions: Vec<Box<dyn Condition + 'static>>,
+	hit_points: (u32, u32),
 }
 impl Character {
 	pub fn level(&self) -> i32 {
@@ -152,6 +155,7 @@ pub struct CompiledStats {
 	languages: BTreeMap<String, BTreeSet<PathBuf>>,
 	pub life_expectancy: i32,
 	pub max_height: (i32, RollSet),
+	max_hit_points: u32,
 }
 impl std::fmt::Debug for CompiledStats {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -260,28 +264,71 @@ impl Character {
 
 /// Character data presented to display, compiled by stepping through
 /// all features and modifiers in the character data.
+#[derive(Clone)]
 pub struct CompiledCharacter {
-	character: Character,
-	stats: CompiledStats,
+	character: Rc<RwLock<Character>>,
+	stats: Rc<RwLock<CompiledStats>>,
 }
+
+impl PartialEq for CompiledCharacter {
+	fn eq(&self, other: &Self) -> bool {
+		Rc::ptr_eq(&self.character, &other.character) && Rc::ptr_eq(&self.stats, &other.stats)
+	}
+}
+
 impl CompiledCharacter {
 	pub fn new(character: Character) -> Self {
 		let stats = character.compile_stats();
-		Self { character, stats }
+		Self {
+			character: Rc::new(RwLock::new(character)),
+			stats: Rc::new(RwLock::new(stats)),
+		}
+	}
+
+	pub fn source<'a>(&'a self) -> std::sync::RwLockReadGuard<'a, Character> {
+		self.character.read().unwrap()
+	}
+
+	pub fn source_mut<'a>(&'a self) -> std::sync::RwLockWriteGuard<'a, Character> {
+		self.character.write().unwrap()
+	}
+
+	pub fn derived<'a>(&'a self) -> std::sync::RwLockReadGuard<'a, CompiledStats> {
+		self.stats.read().unwrap()
 	}
 
 	/// Returns the score/value for a given ability. Any bonuses beyond the character's base scores
 	/// are provided with a path to the feature which provided that bonus.
 	pub fn ability_score(&self, ability: Ability) -> AttributedValue<i32> {
-		let mut attributed = self.stats.ability_scores[ability].clone();
-		attributed.value += self.character.ability_scores[ability];
-		log::debug!("{attributed:?}");
+		let mut attributed = self.derived().ability_scores[ability].clone();
+		attributed.value += self.source().ability_scores[ability];
+		//log::debug!("{attributed:?}");
 		attributed
 	}
 
 	/// Returns attributed skill proficiencies for the character.
-	pub fn get_skills(&self) -> &EnumMap<Skill, AttributedValue<ProficiencyLevel>> {
-		&self.stats.skills
+	pub fn get_skills(&self) -> EnumMap<Skill, AttributedValue<ProficiencyLevel>> {
+		self.derived().skills.clone()
+	}
+
+	pub fn hit_points(&self) -> (u32, u32, u32) {
+		let source = self.source();
+		(
+			source.hit_points.0,
+			self.derived().max_hit_points,
+			source.hit_points.1,
+		)
+	}
+
+	pub fn add_hit_points(&self, amt: u32) {
+		let mut source = self.source_mut();
+		source.hit_points.0 = source.hit_points.0.saturating_add(amt);
+		log::debug!("{:?}", source.hit_points);
+	}
+
+	pub fn sub_hit_points(&self, amt: u32) {
+		let mut source = self.source_mut();
+		source.hit_points.0 = source.hit_points.0.saturating_sub(amt);
 	}
 }
 
@@ -487,6 +534,7 @@ pub fn changeling_character() -> Character {
 		]),
 		inventory: inventory::Inventory::new(),
 		conditions: Vec::new(),
+		hit_points: (0, 0),
 	}
 	.with_culture(culture)
 }
@@ -502,6 +550,7 @@ mod test {
 		assert_eq!(
 			character.compile_stats(),
 			CompiledStats {
+				max_hit_points: 0,
 				ability_scores: enum_map! {
 					Ability::Strength => AttributedValue { value: 0, sources: vec![] },
 					Ability::Dexterity => AttributedValue { value: 0, sources: vec![] },

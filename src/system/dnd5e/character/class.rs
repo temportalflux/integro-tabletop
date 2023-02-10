@@ -1,5 +1,10 @@
 use super::StatsBuilder;
-use crate::system::dnd5e::{modifier::{self, Modifier}, roll::Die, Action, Feature, condition::{Condition}, LimitedUses};
+use crate::system::dnd5e::{
+	condition::Condition,
+	modifier::{self, Modifier},
+	roll::Die,
+	Action, Feature, LimitedUses,
+};
 
 #[derive(Clone)]
 pub struct Class {
@@ -45,7 +50,7 @@ fn barbarian() {
 			restriction: Some(() /*TODO: Not wearing heavy armor*/),
 		}
 	};
-	
+
 	#[allow(dead_code)]
 	let make_rage_feature = |max_uses: Option<u32>, condition: CustomCondition| {
 		Feature {
@@ -180,7 +185,7 @@ fn monk() {
 	"At 1st level, your practice of martial arts gives you mastery of combat styles that use \
 	unarmed strikes and monk weapons, which are shortswords and any simple melee weapons \
 	that don’t have the two-handed or heavy property.
-	
+
 	You gain the following benefits while you are unarmed or wielding only monk weapons and \
 	you aren’t wearing armor or wielding a shield:
 	- You can use Dexterity instead of Strength for the attack and damage rolls of your unarmed strikes and monk weapons.
@@ -189,7 +194,7 @@ fn monk() {
 	- When you use the Attack action with an unarmed strike or a monk weapon on your turn, you can make \
 	one unarmed strike as a bonus action. For example, if you take the Attack action and attack with a quarterstaff, \
 	you can also make an unarmed strike as a bonus action, assuming you haven’t already taken a bonus action this turn.
-	
+
 	Certain monasteries use specialized forms of the monk weapons. For example, you might use a club that is \
 	two lengths of wood connected by a short chain (called a nunchaku) or a sickle with a shorter, \
 	straighter blade (called a kama). Whatever name you use for a monk weapon, you can use the game statistics \
@@ -208,7 +213,7 @@ fn monk() {
 
 	Modifiers:
 	- GiveAlternativeDamageAbility { ability: Ability::Dexterity, restriction: Some(All(vec![HasProficiencyWithWeapon, Not(IsArmorEquipped), Not(IsShieldEquipped)])) }
-	
+
 
 	*/
 
@@ -302,7 +307,6 @@ fn monk() {
 		}),
 	}
 	*/
-
 }
 
 #[derive(Clone)]

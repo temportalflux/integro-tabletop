@@ -1,3 +1,4 @@
+use system::dnd5e::character::CompiledCharacter;
 use yew::prelude::*;
 
 pub mod components;
@@ -5,14 +6,29 @@ pub mod data;
 pub mod system;
 pub mod theme;
 
+#[derive(Clone, PartialEq)]
+pub struct Compiled<T> {
+	wrapped: T,
+	update_root_channel: UseStateHandle<()>,
+}
+impl<T> std::ops::Deref for Compiled<T> {
+	type Target = T;
+
+	fn deref(&self) -> &Self::Target {
+		&self.wrapped
+	}
+}
+impl<T> Compiled<T> {
+	pub fn update_root(&self) {
+		self.update_root_channel.set(());
+	}
+}
+
 #[function_component]
 fn App() -> Html {
-	use components::*;
-	use system::dnd5e::Ability;
-
 	let character = {
 		let character = system::dnd5e::character::changeling_character();
-		system::dnd5e::character::CompiledCharacter::new(character)
+		CompiledCharacter::new(character)
 	};
 
 	return html! {<>
@@ -34,90 +50,117 @@ fn App() -> Html {
 				</div>
 			</nav>
 		</header>
-		<div class="container overflow-hidden" style="--theme-frame-color: #BA90CB; --theme-frame-color-muted: #BA90CB80; --theme-roll-modifier: #ffffff;">
-			<div class="row" style="--bs-gutter-x: 10px;">
-				<div class="col-md-auto">
+		<CharacterSheetPage compiled={character} />
+	</>};
+}
 
-					<div class="row m-0" style="--bs-gutter-x: 0;">
-						<div class="col">
-							<ability::Score ability={Ability::Strength} score={character.ability_score(Ability::Strength)} />
-							<ability::Score ability={Ability::Dexterity} score={character.ability_score(Ability::Dexterity)} />
-							<ability::Score ability={Ability::Constitution} score={character.ability_score(Ability::Constitution)} />
+#[derive(Clone, PartialEq, Properties)]
+struct CharacterSheetPageProps {
+	compiled: CompiledCharacter,
+}
+
+#[function_component]
+fn CharacterSheetPage(CharacterSheetPageProps { compiled }: &CharacterSheetPageProps) -> Html {
+	use components::*;
+	use system::dnd5e::character::CompiledCharacter;
+	use system::dnd5e::Ability;
+
+	let update_root = use_state(|| ());
+	let compiled = Compiled {
+		wrapped: compiled.clone(),
+		update_root_channel: update_root,
+	};
+
+	// TODO: an update in this component does not force an update in sub-components
+	log::debug!("update page");
+
+	html! {
+		<ContextProvider<Compiled<CompiledCharacter>> context={compiled.clone()}>
+			<div class="container overflow-hidden" style="--theme-frame-color: #BA90CB; --theme-frame-color-muted: #BA90CB80; --theme-roll-modifier: #ffffff;">
+				<div class="row" style="--bs-gutter-x: 10px;">
+					<div class="col-md-auto">
+
+						<div class="row m-0" style="--bs-gutter-x: 0;">
+							<div class="col">
+								<ability::Score ability={Ability::Strength} score={compiled.ability_score(Ability::Strength)} />
+								<ability::Score ability={Ability::Dexterity} score={compiled.ability_score(Ability::Dexterity)} />
+								<ability::Score ability={Ability::Constitution} score={compiled.ability_score(Ability::Constitution)} />
+							</div>
+							<div class="col">
+								<ability::Score ability={Ability::Intelligence} score={compiled.ability_score(Ability::Intelligence)} />
+								<ability::Score ability={Ability::Wisdom} score={compiled.ability_score(Ability::Wisdom)} />
+								<ability::Score ability={Ability::Charisma} score={compiled.ability_score(Ability::Charisma)} />
+							</div>
 						</div>
-						<div class="col">
-							<ability::Score ability={Ability::Intelligence} score={character.ability_score(Ability::Intelligence)} />
-							<ability::Score ability={Ability::Wisdom} score={character.ability_score(Ability::Wisdom)} />
-							<ability::Score ability={Ability::Charisma} score={character.ability_score(Ability::Charisma)} />
-						</div>
+
+						<ability::SavingThrowContainer />
+						<Proficiencies />
+
 					</div>
+					<div class="col-md-auto">
 
-					<ability::SavingThrowContainer />
-					<Proficiencies />
+						<div class="row m-0 justify-content-center">
+							<div class="col p-0">
+								<AnnotatedNumberCard header={"Proficiency"} footer={"Bonus"}>
+									<AnnotatedNumber value={3} show_sign={true} />
+								</AnnotatedNumberCard>
+							</div>
+							<div class="col p-0">
+								<AnnotatedNumberCard header={"Initiative"} footer={"Bonus"}>
+									<AnnotatedNumber value={1} show_sign={true} />
+								</AnnotatedNumberCard>
+							</div>
+							<div class="col p-0">
+								<AnnotatedNumberCard header={"Armor"} footer={"Class"}>
+									<AnnotatedNumber value={10} />
+								</AnnotatedNumberCard>
+							</div>
+						</div>
 
-				</div>
-				<div class="col-md-auto">
+						<div id="skills-container" class="card" style="min-width: 300px; border-color: var(--theme-frame-color);">
+							<div class="card-body" style="padding: 5px;">
+								<ability::SkillTable />
+							</div>
+						</div>
 
-					<div class="row m-0 justify-content-center">
-						<div class="col p-0">
-							<AnnotatedNumberCard header={"Proficiency"} footer={"Bonus"}>
-								<AnnotatedNumber value={3} show_sign={true} />
-							</AnnotatedNumberCard>
-						</div>
-						<div class="col p-0">
-							<AnnotatedNumberCard header={"Initiative"} footer={"Bonus"}>
-								<AnnotatedNumber value={1} show_sign={true} />
-							</AnnotatedNumberCard>
-						</div>
-						<div class="col p-0">
-							<AnnotatedNumberCard header={"Armor"} footer={"Class"}>
-								<AnnotatedNumber value={10} />
-							</AnnotatedNumberCard>
-						</div>
 					</div>
-
-					<div id="skills-container" class="card" style="min-width: 300px; border-color: var(--theme-frame-color);">
-						<div class="card-body" style="padding: 5px;">
-							<ability::SkillTable />
+					<div class="col">
+						<div class="row m-0" style="--bs-gutter-x: 0;">
+							<div class="col">
+								{"TODO: Inspiration"}
+								<SpeedAndSenses />
+							</div>
+							<div class="col-auto">
+								<HitPoints />
+							</div>
 						</div>
-					</div>
 
-				</div>
-				<div class="col">
-					<div class="row m-0" style="--bs-gutter-x: 0;">
-						<div class="col">
-							{"TODO: Inspiration"}
-							<SpeedAndSenses />
-						</div>
-						<div class="col-auto">
-							<HitPoints />
-						</div>
-					</div>
-
-					<div class="card m-2" style="height: 550px;">
-						<div class="card-body" style="padding: 5px;">
-							<Nav root_classes={"onesheet-tabs"} disp={NavDisplay::Tabs} default_tab_id={"actions"}>
-								<TabContent id="actions" title={html! {{"Actions"}}}>
-									<panel::Actions />
-								</TabContent>
-								<TabContent id="spells" title={html! {{"Spells"}}}>
-									{"Spells"}
-								</TabContent>
-								<TabContent id="inventory" title={html! {{"Inventory"}}}>
-									{"Inventory"}
-								</TabContent>
-								<TabContent id="features" title={html! {{"Features & Traits"}}}>
-									{"Features & Traits"}
-								</TabContent>
-								<TabContent id="description" title={html! {{"Description"}}}>
-									{"Description"}
-								</TabContent>
-							</Nav>
+						<div class="card m-2" style="height: 550px;">
+							<div class="card-body" style="padding: 5px;">
+								<Nav root_classes={"onesheet-tabs"} disp={NavDisplay::Tabs} default_tab_id={"actions"}>
+									<TabContent id="actions" title={html! {{"Actions"}}}>
+										<panel::Actions />
+									</TabContent>
+									<TabContent id="spells" title={html! {{"Spells"}}}>
+										{"Spells"}
+									</TabContent>
+									<TabContent id="inventory" title={html! {{"Inventory"}}}>
+										<panel::Inventory />
+									</TabContent>
+									<TabContent id="features" title={html! {{"Features & Traits"}}}>
+										{"Features & Traits"}
+									</TabContent>
+									<TabContent id="description" title={html! {{"Description"}}}>
+										{"Description"}
+									</TabContent>
+								</Nav>
+							</div>
 						</div>
 					</div>
 				</div>
 			</div>
-		</div>
-	</>};
+		</ContextProvider<Compiled<CompiledCharacter>>>
+	}
 }
 
 fn main() {
