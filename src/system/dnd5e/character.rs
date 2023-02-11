@@ -1,8 +1,8 @@
 use super::{
-	condition::Condition,
+	condition::BoxedCondition,
 	modifier::{
-		AddAbilityScore, AddLanguage, AddLifeExpectancy, AddMaxHeight, AddSkill, Container,
-		Modifier, Selector,
+		AddAbilityScore, AddLanguage, AddLifeExpectancy, AddMaxHeight, AddSkill, BoxedModifier,
+		Container, Selector,
 	},
 	roll::{Die, Roll, RollSet},
 	Ability, Action, Feature, ProficiencyLevel, Skill,
@@ -29,18 +29,18 @@ pub use upbringing::*;
 pub mod inventory;
 
 /// Character data saved to external storage.
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct Character {
-	#[allow(dead_code)]
-	description: Description,
-	ability_scores: EnumMap<Ability, i32>,
 	lineages: [Option<Lineage>; 2],
 	upbringing: Option<Upbringing>,
 	background: Option<Background>,
 	classes: Vec<Class>,
+	#[allow(dead_code)]
+	description: Description,
+	ability_scores: EnumMap<Ability, i32>,
 	selected_values: HashMap<PathBuf, String>,
 	inventory: inventory::Inventory,
-	conditions: Vec<Box<dyn Condition + 'static>>,
+	conditions: Vec<BoxedCondition>,
 	hit_points: (u32, u32),
 }
 impl Character {
@@ -82,7 +82,7 @@ impl<'c> StatsBuilder<'c> {
 		self.scope.pop();
 	}
 
-	pub fn apply(&mut self, modifier: &Box<dyn Modifier>) {
+	pub fn apply(&mut self, modifier: &BoxedModifier) {
 		let id = modifier.scope_id();
 		if let Some(id) = id.as_ref() {
 			self.scope.push(*id);
@@ -262,39 +262,64 @@ impl Character {
 	}
 }
 
+#[derive(Clone, PartialEq)]
+pub struct Data {
+	pub hit_points: (u32, u32, u32),
+}
+impl yew::Reducible for Data {
+	type Action = yew::Callback<Self, Self>;
+
+	fn reduce(self: Rc<Self>, action: Self::Action) -> Rc<Self> {
+		Rc::new(action.emit((*self).clone()))
+	}
+}
+#[derive(Clone, PartialEq)]
+pub struct DataContext(pub yew::UseReducerHandle<Data>);
+impl DataContext {
+	pub fn data(&self) -> &Data {
+		&*self.0
+	}
+
+	pub fn mutate<F>(&self, callback: F) where F: Fn(&mut Data) + 'static {
+		self.0.dispatch(yew::Callback::from(move |mut data| {
+			callback(&mut data);
+			data
+		}));
+	}
+}
+
 /// Character data presented to display, compiled by stepping through
 /// all features and modifiers in the character data.
 #[derive(Clone)]
 pub struct CompiledCharacter {
-	character: Rc<RwLock<Character>>,
-	stats: Rc<RwLock<CompiledStats>>,
+	editable: Rc<RwLock<Character>>,
+	derived: Rc<RwLock<CompiledStats>>,
 }
 
 impl PartialEq for CompiledCharacter {
 	fn eq(&self, other: &Self) -> bool {
-		Rc::ptr_eq(&self.character, &other.character) && Rc::ptr_eq(&self.stats, &other.stats)
+		*self.editable.read().unwrap() == *other.editable.read().unwrap()
+			&& *self.derived.read().unwrap() == *other.derived.read().unwrap()
 	}
 }
 
 impl CompiledCharacter {
 	pub fn new(character: Character) -> Self {
-		let stats = character.compile_stats();
-		Self {
-			character: Rc::new(RwLock::new(character)),
-			stats: Rc::new(RwLock::new(stats)),
-		}
+		let derived = Rc::new(RwLock::new(character.compile_stats()));
+		let editable = Rc::new(RwLock::new(character));
+		Self { editable, derived }
 	}
 
 	pub fn source<'a>(&'a self) -> std::sync::RwLockReadGuard<'a, Character> {
-		self.character.read().unwrap()
+		self.editable.read().unwrap()
 	}
 
 	pub fn source_mut<'a>(&'a self) -> std::sync::RwLockWriteGuard<'a, Character> {
-		self.character.write().unwrap()
+		self.editable.write().unwrap()
 	}
 
 	pub fn derived<'a>(&'a self) -> std::sync::RwLockReadGuard<'a, CompiledStats> {
-		self.stats.read().unwrap()
+		self.derived.read().unwrap()
 	}
 
 	/// Returns the score/value for a given ability. Any bonuses beyond the character's base scores
@@ -344,18 +369,19 @@ pub fn changeling_character() -> Character {
 		let life_expectancy = Feature {
 			name: "Age".into(),
 			description: "Your life expectancy increases by 50 years.".into(),
-			modifiers: vec![Box::new(AddLifeExpectancy(50))],
+			modifiers: vec![AddLifeExpectancy(50).into()],
 			..Default::default()
 		};
 		let size = Feature {
 			name: "Size".into(),
 			description: "Your height increases by 30 + 1d4 inches.".into(),
 			modifiers: vec![
-				Box::new(AddMaxHeight::Value(30)),
-				Box::new(AddMaxHeight::Roll(Roll {
+				AddMaxHeight::Value(30).into(),
+				AddMaxHeight::Roll(Roll {
 					amount: 1,
 					die: Die::D4,
-				})),
+				})
+				.into(),
 			],
 			..Default::default()
 		};
@@ -404,17 +430,17 @@ pub fn changeling_character() -> Character {
 						name: "Ability Score Increase".into(),
 						description: "Your Charisma score increases by 2. In addition, one ability score of your choice increases by 1.".into(),
 						modifiers: vec![
-							Box::new(AddAbilityScore {
+							AddAbilityScore {
 								ability: Selector::Specific(Ability::Charisma),
 								value: 2,
-							}),
-							Box::new(AddAbilityScore {
+							}.into(),
+							AddAbilityScore {
 								ability: Selector::AnyOf {
 									id: None,
 									options: EnumSet::only(Ability::Charisma).complement().into_iter().collect(),
 								},
 								value: 1,
-							}),
+							}.into(),
 						],
 						..Default::default()
 					},
@@ -422,7 +448,7 @@ pub fn changeling_character() -> Character {
 						name: "Good with People".into(),
 						description: "You gain proficiency with two of the following skills of your choice: Deception, Insight, Intimidation, and Persuasion.".into(),
 						modifiers: vec![
-							Box::new(AddSkill {
+							AddSkill {
 								skill: Selector::AnyOf {
 									id: None,
 									options: vec![
@@ -430,7 +456,7 @@ pub fn changeling_character() -> Character {
 									],
 								},
 								proficiency: ProficiencyLevel::Full,
-							}),
+							}.into(),
 						],
 						..Default::default()
 					},
@@ -438,9 +464,9 @@ pub fn changeling_character() -> Character {
 						name: "Languages".into(),
 						description: "You can speak, read, and write Common and two other languages of your choice.".into(),
 						modifiers: vec![
-							Box::new(AddLanguage(Selector::Specific("Common".into()))),
-							Box::new(AddLanguage(Selector::Any { id: Some("langA".into()) })),
-							Box::new(AddLanguage(Selector::Any { id: Some("langB".into()) })),
+							AddLanguage(Selector::Specific("Common".into())).into(),
+							AddLanguage(Selector::Any { id: Some("langA".into()) }).into(),
+							AddLanguage(Selector::Any { id: Some("langB".into()) }).into(),
 						],
 						..Default::default()
 					},
@@ -460,22 +486,22 @@ pub fn changeling_character() -> Character {
 			Feature {
 				name: "Skill Proficiencies".into(),
 				modifiers: vec![
-					Box::new(AddSkill {
+					AddSkill {
 						skill: Selector::Specific(Skill::Insight),
 						proficiency: ProficiencyLevel::Full,
-					}),
-					Box::new(AddSkill {
+					}.into(),
+					AddSkill {
 						skill: Selector::Specific(Skill::Religion),
 						proficiency: ProficiencyLevel::Full,
-					}),
+					}.into(),
 				],
 				..Default::default()
 			},
 			Feature {
 				name: "Languages".into(),
 				modifiers: vec![
-					Box::new(AddLanguage(Selector::Any { id: Some("langA".into()) })),
-					Box::new(AddLanguage(Selector::Any { id: Some("langB".into()) })),
+					AddLanguage(Selector::Any { id: Some("langA".into()) }).into(),
+					AddLanguage(Selector::Any { id: Some("langB".into()) }).into(),
 				],
 				..Default::default()
 			},

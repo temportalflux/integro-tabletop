@@ -26,6 +26,7 @@ impl<T> Compiled<T> {
 
 #[function_component]
 fn App() -> Html {
+
 	let character = {
 		let character = system::dnd5e::character::changeling_character();
 		CompiledCharacter::new(character)
@@ -50,46 +51,46 @@ fn App() -> Html {
 				</div>
 			</nav>
 		</header>
-		<CharacterSheetPage compiled={character} />
+		<CharacterSheetPage {character} />
 	</>};
 }
 
 #[derive(Clone, PartialEq, Properties)]
 struct CharacterSheetPageProps {
-	compiled: CompiledCharacter,
+	character: CompiledCharacter,
 }
 
 #[function_component]
-fn CharacterSheetPage(CharacterSheetPageProps { compiled }: &CharacterSheetPageProps) -> Html {
+fn CharacterSheetPage(
+	CharacterSheetPageProps { character }: &CharacterSheetPageProps,
+) -> Html {
 	use components::*;
-	use system::dnd5e::character::CompiledCharacter;
+	use system::dnd5e::character::{CompiledCharacter, Data, DataContext};
 	use system::dnd5e::Ability;
 
-	let update_root = use_state(|| ());
-	let compiled = Compiled {
-		wrapped: compiled.clone(),
-		update_root_channel: update_root,
-	};
+	let data = DataContext(use_reducer(|| Data {
+		hit_points: (5, 20, 1),
+	}));
 
 	// TODO: an update in this component does not force an update in sub-components
 	log::debug!("update page");
 
 	html! {
-		<ContextProvider<Compiled<CompiledCharacter>> context={compiled.clone()}>
+		<ContextProvider<DataContext> context={data}>
 			<div class="container overflow-hidden" style="--theme-frame-color: #BA90CB; --theme-frame-color-muted: #BA90CB80; --theme-roll-modifier: #ffffff;">
 				<div class="row" style="--bs-gutter-x: 10px;">
 					<div class="col-md-auto">
 
 						<div class="row m-0" style="--bs-gutter-x: 0;">
 							<div class="col">
-								<ability::Score ability={Ability::Strength} score={compiled.ability_score(Ability::Strength)} />
-								<ability::Score ability={Ability::Dexterity} score={compiled.ability_score(Ability::Dexterity)} />
-								<ability::Score ability={Ability::Constitution} score={compiled.ability_score(Ability::Constitution)} />
+								<ability::Score ability={Ability::Strength} score={character.ability_score(Ability::Strength)} />
+								<ability::Score ability={Ability::Dexterity} score={character.ability_score(Ability::Dexterity)} />
+								<ability::Score ability={Ability::Constitution} score={character.ability_score(Ability::Constitution)} />
 							</div>
 							<div class="col">
-								<ability::Score ability={Ability::Intelligence} score={compiled.ability_score(Ability::Intelligence)} />
-								<ability::Score ability={Ability::Wisdom} score={compiled.ability_score(Ability::Wisdom)} />
-								<ability::Score ability={Ability::Charisma} score={compiled.ability_score(Ability::Charisma)} />
+								<ability::Score ability={Ability::Intelligence} score={character.ability_score(Ability::Intelligence)} />
+								<ability::Score ability={Ability::Wisdom} score={character.ability_score(Ability::Wisdom)} />
+								<ability::Score ability={Ability::Charisma} score={character.ability_score(Ability::Charisma)} />
 							</div>
 						</div>
 
@@ -159,7 +160,7 @@ fn CharacterSheetPage(CharacterSheetPageProps { compiled }: &CharacterSheetPageP
 					</div>
 				</div>
 			</div>
-		</ContextProvider<Compiled<CompiledCharacter>>>
+		</ContextProvider<DataContext>>
 	}
 }
 

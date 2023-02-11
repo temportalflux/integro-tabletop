@@ -21,6 +21,29 @@ pub trait Modifier: DynClone {
 }
 clone_trait_object!(Modifier);
 
+#[derive(Clone)]
+pub struct BoxedModifier(std::rc::Rc<dyn Modifier + 'static>);
+impl PartialEq for BoxedModifier {
+	fn eq(&self, other: &Self) -> bool {
+		std::rc::Rc::ptr_eq(&self.0, &other.0)
+	}
+}
+impl std::ops::Deref for BoxedModifier {
+	type Target = std::rc::Rc<dyn Modifier + 'static>;
+
+	fn deref(&self) -> &Self::Target {
+		&self.0
+	}
+}
+impl<T> From<T> for BoxedModifier
+where
+	T: Modifier + 'static,
+{
+	fn from(value: T) -> Self {
+		Self(std::rc::Rc::new(value))
+	}
+}
+
 pub trait Container {
 	fn id(&self) -> String;
 	fn apply_modifiers<'c>(&self, stats: &mut StatsBuilder<'c>);

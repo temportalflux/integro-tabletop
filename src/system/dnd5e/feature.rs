@@ -1,24 +1,16 @@
 use super::{
 	character::StatsBuilder,
-	modifier::{self, Modifier},
+	modifier::{self, BoxedModifier},
 	Action,
 };
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, PartialEq)]
 pub struct Feature {
 	pub name: String,
 	pub description: String,
 	pub action: Option<Action>,
-	pub modifiers: Vec<Box<dyn Modifier + 'static>>,
+	pub modifiers: Vec<BoxedModifier>,
 	pub limited_uses: Option<LimitedUses>,
-}
-
-impl PartialEq for Feature {
-	fn eq(&self, other: &Self) -> bool {
-		self.name == other.name
-			&& self.description == other.description
-			&& self.action == other.action
-	}
 }
 
 impl modifier::Container for Feature {
@@ -34,5 +26,5 @@ impl modifier::Container for Feature {
 	}
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, PartialEq)]
 pub struct LimitedUses {}

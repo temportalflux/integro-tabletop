@@ -1,7 +1,7 @@
 use super::StatsBuilder;
 use crate::system::dnd5e::{modifier, Feature};
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct Background {
 	pub name: String,
 	pub description: String,

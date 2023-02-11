@@ -6,7 +6,7 @@ use crate::system::dnd5e::{
 	Action, Feature, LimitedUses,
 };
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct Class {
 	pub name: String,
 	pub hit_die: Die,

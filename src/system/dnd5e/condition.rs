@@ -7,6 +7,29 @@ pub trait Condition: DynClone {
 }
 clone_trait_object!(Condition);
 
+#[derive(Clone)]
+pub struct BoxedCondition(std::rc::Rc<dyn Condition + 'static>);
+impl PartialEq for BoxedCondition {
+	fn eq(&self, other: &Self) -> bool {
+		std::rc::Rc::ptr_eq(&self.0, &other.0)
+	}
+}
+impl std::ops::Deref for BoxedCondition {
+	type Target = std::rc::Rc<dyn Condition + 'static>;
+
+	fn deref(&self) -> &Self::Target {
+		&self.0
+	}
+}
+impl<T> From<T> for BoxedCondition
+where
+	T: Condition + 'static,
+{
+	fn from(value: T) -> Self {
+		Self(std::rc::Rc::new(value))
+	}
+}
+
 #[derive(Clone, PartialEq)]
 pub struct Blinded;
 impl Condition for Blinded {

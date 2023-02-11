@@ -1,26 +1,29 @@
-use crate::{system::dnd5e::character::CompiledCharacter, Compiled};
+use crate::system::dnd5e::character::{CompiledCharacter, DataContext, Data};
 use yew::prelude::*;
 
 #[function_component]
 pub fn HitPoints() -> Html {
-	let storage = use_context::<Compiled<CompiledCharacter>>().unwrap();
+	let data = use_context::<DataContext>().unwrap();
+	let hit_points = data.data().hit_points;
+
+	log::debug!("displaying hit points {:?}", hit_points);
 
 	let onclick_heal = {
-		let storage = storage.clone();
+		let data = data.clone();
 		Callback::from(move |_| {
-			storage.add_hit_points(1);
-			storage.update_root();
+			data.mutate(|data| {
+				data.hit_points.0 += 1;
+			});
 		})
 	};
 	let onclick_dmg = {
-		let storage = storage.clone();
+		let data = data.clone();
 		Callback::from(move |_| {
-			storage.sub_hit_points(1);
-			storage.update_root();
+			data.mutate(|data| {
+				data.hit_points.0 -= 1;
+			});
 		})
 	};
-	let hit_points = storage.hit_points();
-	log::debug!("{hit_points:?}");
 
 	html! {
 		<div class="card m-2" style="min-width: 270px; max-width: 270px;">
