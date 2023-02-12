@@ -1,5 +1,5 @@
 use super::Selector;
-use crate::system::dnd5e::{character::StatsBuilder, Ability};
+use crate::system::dnd5e::{character::DerivedBuilder, Ability};
 use std::str::FromStr;
 
 #[derive(Clone)]
@@ -13,7 +13,7 @@ impl super::Modifier for AddAbilityScore {
 		self.ability.id()
 	}
 
-	fn apply<'c>(&self, stats: &mut StatsBuilder<'c>) {
+	fn apply<'c>(&self, stats: &mut DerivedBuilder<'c>) {
 		let ability = match &self.ability {
 			Selector::Specific(ability) => Some(*ability),
 			_ => match stats.get_selection() {

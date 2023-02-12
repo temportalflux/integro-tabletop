@@ -1,4 +1,4 @@
-use crate::system::dnd5e::character::StatsBuilder;
+use crate::system::dnd5e::character::DerivedBuilder;
 
 use super::Selector;
 
@@ -10,7 +10,7 @@ impl super::Modifier for AddLanguage {
 		self.0.id()
 	}
 
-	fn apply<'c>(&self, stats: &mut StatsBuilder<'c>) {
+	fn apply<'c>(&self, stats: &mut DerivedBuilder<'c>) {
 		let language = match &self.0 {
 			Selector::Specific(language) => Some(language.clone()),
 			_ => stats.get_selection().map(str::to_owned),

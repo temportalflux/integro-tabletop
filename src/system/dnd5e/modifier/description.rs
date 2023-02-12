@@ -1,9 +1,9 @@
-use crate::system::dnd5e::{character::StatsBuilder, roll::Roll};
+use crate::system::dnd5e::{character::DerivedBuilder, roll::Roll};
 
 #[derive(Clone)]
 pub struct AddLifeExpectancy(pub i32);
 impl super::Modifier for AddLifeExpectancy {
-	fn apply<'c>(&self, stats: &mut StatsBuilder<'c>) {
+	fn apply<'c>(&self, stats: &mut DerivedBuilder<'c>) {
 		stats.life_expectancy += self.0;
 	}
 }
@@ -15,7 +15,7 @@ pub enum AddMaxHeight {
 }
 
 impl super::Modifier for AddMaxHeight {
-	fn apply<'c>(&self, stats: &mut StatsBuilder<'c>) {
+	fn apply<'c>(&self, stats: &mut DerivedBuilder<'c>) {
 		match self {
 			Self::Value(value) => {
 				stats.max_height.0 += *value;

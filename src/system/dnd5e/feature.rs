@@ -1,5 +1,5 @@
 use super::{
-	character::StatsBuilder,
+	character::DerivedBuilder,
 	modifier::{self, BoxedModifier},
 	Action,
 };
@@ -19,7 +19,7 @@ impl modifier::Container for Feature {
 		self.name.to_case(convert_case::Case::Pascal)
 	}
 
-	fn apply_modifiers<'c>(&self, stats: &mut StatsBuilder<'c>) {
+	fn apply_modifiers<'c>(&self, stats: &mut DerivedBuilder<'c>) {
 		for modifier in &self.modifiers {
 			stats.apply(modifier);
 		}

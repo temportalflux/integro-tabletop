@@ -1,4 +1,4 @@
-use super::StatsBuilder;
+use super::DerivedBuilder;
 use crate::system::dnd5e::{
 	condition::Condition,
 	modifier::{self, Modifier},
@@ -25,7 +25,7 @@ impl modifier::Container for Class {
 		self.name.to_case(convert_case::Case::Pascal)
 	}
 
-	fn apply_modifiers<'c>(&self, _stats: &mut StatsBuilder<'c>) {}
+	fn apply_modifiers<'c>(&self, _stats: &mut DerivedBuilder<'c>) {}
 }
 
 #[allow(dead_code)]
@@ -331,5 +331,5 @@ impl Modifier for BonusDamage {
 		None
 	}
 
-	fn apply<'c>(&self, stats: &mut StatsBuilder<'c>) {}
+	fn apply<'c>(&self, stats: &mut DerivedBuilder<'c>) {}
 }

@@ -1,4 +1,3 @@
-use system::dnd5e::character::CompiledCharacter;
 use yew::prelude::*;
 
 pub mod components;
@@ -26,11 +25,7 @@ impl<T> Compiled<T> {
 
 #[function_component]
 fn App() -> Html {
-
-	let character = {
-		let character = system::dnd5e::character::changeling_character();
-		CompiledCharacter::new(character)
-	};
+	let character = system::dnd5e::character::changeling_character();
 
 	return html! {<>
 		<header>
@@ -57,26 +52,26 @@ fn App() -> Html {
 
 #[derive(Clone, PartialEq, Properties)]
 struct CharacterSheetPageProps {
-	character: CompiledCharacter,
+	character: system::dnd5e::character::Character,
 }
 
 #[function_component]
-fn CharacterSheetPage(
-	CharacterSheetPageProps { character }: &CharacterSheetPageProps,
-) -> Html {
+fn CharacterSheetPage(CharacterSheetPageProps { character }: &CharacterSheetPageProps) -> Html {
 	use components::*;
-	use system::dnd5e::character::{CompiledCharacter, Data, DataContext};
+	use data::Context;
+	use system::dnd5e::character::State;
 	use system::dnd5e::Ability;
 
-	let data = DataContext(use_reducer(|| Data {
-		hit_points: (5, 20, 1),
-	}));
+	let character: Context<State> = use_reducer({
+		let character = character.clone();
+		move || State::from(character)
+	}).into();
 
 	// TODO: an update in this component does not force an update in sub-components
 	log::debug!("update page");
 
 	html! {
-		<ContextProvider<DataContext> context={data}>
+		<ContextProvider<Context<State>> context={character.clone()}>
 			<div class="container overflow-hidden" style="--theme-frame-color: #BA90CB; --theme-frame-color-muted: #BA90CB80; --theme-roll-modifier: #ffffff;">
 				<div class="row" style="--bs-gutter-x: 10px;">
 					<div class="col-md-auto">
@@ -160,7 +155,7 @@ fn CharacterSheetPage(
 					</div>
 				</div>
 			</div>
-		</ContextProvider<DataContext>>
+		</ContextProvider<Context<State>>>
 	}
 }
 

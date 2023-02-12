@@ -13,7 +13,6 @@ use std::{
 	collections::{BTreeMap, BTreeSet, HashMap},
 	path::PathBuf,
 	rc::Rc,
-	sync::RwLock,
 };
 
 mod background;
@@ -28,7 +27,8 @@ mod upbringing;
 pub use upbringing::*;
 pub mod inventory;
 
-/// Character data saved to external storage.
+/// Core character data which is (de)serializable and
+/// from which the derived data can be compiled.
 #[derive(Clone, PartialEq)]
 pub struct Character {
 	lineages: [Option<Lineage>; 2],
@@ -44,111 +44,45 @@ pub struct Character {
 	hit_points: (u32, u32),
 }
 impl Character {
+	pub fn with_culture(mut self, culture: Culture) -> Self {
+		let [a, b] = culture.lineages;
+		self.lineages = [Some(a), Some(b)];
+		self.upbringing = Some(culture.upbringing);
+		self
+	}
+
+	pub fn compile(&self) -> Derived {
+		let mut stats = DerivedBuilder::new(self);
+
+		for lineage in &self.lineages {
+			if let Some(lineage) = lineage {
+				stats.apply_from(lineage);
+			}
+		}
+		if let Some(upbringing) = &self.upbringing {
+			stats.apply_from(upbringing);
+		}
+		if let Some(background) = &self.background {
+			stats.apply_from(background);
+		}
+		for class in &self.classes {
+			stats.apply_from(class);
+		}
+
+		stats.build()
+	}
+
 	pub fn level(&self) -> i32 {
 		self.classes.iter().map(|class| class.level_count()).sum()
 	}
 }
 
-pub struct StatsBuilder<'c> {
-	character: &'c Character,
-	stats: CompiledStats,
-	scope: PathBuf,
-}
-impl<'c> StatsBuilder<'c> {
-	pub fn new(character: &'c Character) -> Self {
-		Self {
-			character,
-			stats: CompiledStats::default(),
-			scope: PathBuf::new(),
-		}
-	}
-
-	pub fn scope(&self) -> PathBuf {
-		match std::path::MAIN_SEPARATOR {
-			'/' => self.scope.clone(),
-			_ => PathBuf::from(
-				self.scope
-					.iter()
-					.map(|s| s.to_str().unwrap())
-					.collect::<Vec<_>>()
-					.join("/"),
-			),
-		}
-	}
-
-	pub fn apply_from(&mut self, modifiers: &impl Container) {
-		self.scope.push(&modifiers.id());
-		modifiers.apply_modifiers(self);
-		self.scope.pop();
-	}
-
-	pub fn apply(&mut self, modifier: &BoxedModifier) {
-		let id = modifier.scope_id();
-		if let Some(id) = id.as_ref() {
-			self.scope.push(*id);
-		}
-		modifier.apply(self);
-		if id.is_some() {
-			self.scope.pop();
-		}
-	}
-
-	pub fn get_selection(&mut self) -> Option<&str> {
-		let selection = self
-			.character
-			.selected_values
-			.get(&self.scope())
-			.map(String::as_str);
-		if selection.is_none() {
-			self.stats.missing_selections.push(self.scope());
-		}
-		selection
-	}
-
-	pub fn build(self) -> CompiledStats {
-		self.stats
-	}
-
-	pub fn add_to_ability_score(&mut self, ability: Ability, bonus: i32) {
-		let scope = self.scope();
-		self.stats.ability_scores[ability].push(bonus, scope);
-	}
-
-	pub fn add_skill(&mut self, skill: Skill, proficiency: ProficiencyLevel) {
-		let scope = self.scope();
-		self.stats.skills[skill].push(proficiency, scope);
-	}
-
-	pub fn add_language(&mut self, language: String) {
-		let scope = self.scope();
-		match self.stats.languages.get_mut(&language) {
-			Some(sources) => {
-				sources.insert(scope);
-			}
-			None => {
-				self.stats
-					.languages
-					.insert(language.clone(), BTreeSet::from([scope]));
-			}
-		}
-	}
-}
-impl<'c> std::ops::Deref for StatsBuilder<'c> {
-	type Target = CompiledStats;
-
-	fn deref(&self) -> &Self::Target {
-		&self.stats
-	}
-}
-impl<'c> std::ops::DerefMut for StatsBuilder<'c> {
-	fn deref_mut(&mut self) -> &mut Self::Target {
-		&mut self.stats
-	}
-}
-
-/// Character data compiled from the features and modifiers.
+/// Data derived from the `Character`, such as bonuses to abilities/skills,
+/// proficiencies, and actions. This data all lives within `Character` in
+/// its various features and subtraits, and is compiled into one flat
+/// structure for easy reference when displaying the character information.
 #[derive(Clone, Default, PartialEq)]
-pub struct CompiledStats {
+pub struct Derived {
 	missing_selections: Vec<PathBuf>,
 	ability_scores: EnumMap<Ability, AttributedValue<i32>>,
 	skills: EnumMap<Skill, AttributedValue<ProficiencyLevel>>,
@@ -157,11 +91,12 @@ pub struct CompiledStats {
 	pub max_height: (i32, RollSet),
 	max_hit_points: u32,
 }
-impl std::fmt::Debug for CompiledStats {
+
+impl std::fmt::Debug for Derived {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		write!(
 			f,
-			"CompiledStats {{\
+			"Derived {{\
 			\n\tmissing_selections: {:?}\
 			\n\tability_scores: {}\
 			\n\tskills: {}\
@@ -203,6 +138,157 @@ impl std::fmt::Debug for CompiledStats {
 	}
 }
 
+/// The builder which compiles `Derived` from `Character`.
+pub struct DerivedBuilder<'c> {
+	character: &'c Character,
+	derived: Derived,
+	scope: PathBuf,
+}
+impl<'c> DerivedBuilder<'c> {
+	pub fn new(character: &'c Character) -> Self {
+		Self {
+			character,
+			derived: Derived::default(),
+			scope: PathBuf::new(),
+		}
+	}
+
+	pub fn scope(&self) -> PathBuf {
+		match std::path::MAIN_SEPARATOR {
+			'/' => self.scope.clone(),
+			_ => PathBuf::from(
+				self.scope
+					.iter()
+					.map(|s| s.to_str().unwrap())
+					.collect::<Vec<_>>()
+					.join("/"),
+			),
+		}
+	}
+
+	pub fn apply_from(&mut self, modifiers: &impl Container) {
+		self.scope.push(&modifiers.id());
+		modifiers.apply_modifiers(self);
+		self.scope.pop();
+	}
+
+	pub fn apply(&mut self, modifier: &BoxedModifier) {
+		let id = modifier.scope_id();
+		if let Some(id) = id.as_ref() {
+			self.scope.push(*id);
+		}
+		modifier.apply(self);
+		if id.is_some() {
+			self.scope.pop();
+		}
+	}
+
+	pub fn get_selection(&mut self) -> Option<&str> {
+		let selection = self
+			.character
+			.selected_values
+			.get(&self.scope())
+			.map(String::as_str);
+		if selection.is_none() {
+			self.derived.missing_selections.push(self.scope());
+		}
+		selection
+	}
+
+	pub fn build(self) -> Derived {
+		self.derived
+	}
+
+	pub fn add_to_ability_score(&mut self, ability: Ability, bonus: i32) {
+		let scope = self.scope();
+		self.derived.ability_scores[ability].push(bonus, scope);
+	}
+
+	pub fn add_skill(&mut self, skill: Skill, proficiency: ProficiencyLevel) {
+		let scope = self.scope();
+		self.derived.skills[skill].push(proficiency, scope);
+	}
+
+	pub fn add_language(&mut self, language: String) {
+		let scope = self.scope();
+		match self.derived.languages.get_mut(&language) {
+			Some(sources) => {
+				sources.insert(scope);
+			}
+			None => {
+				self.derived
+					.languages
+					.insert(language.clone(), BTreeSet::from([scope]));
+			}
+		}
+	}
+}
+impl<'c> std::ops::Deref for DerivedBuilder<'c> {
+	type Target = Derived;
+
+	fn deref(&self) -> &Self::Target {
+		&self.derived
+	}
+}
+impl<'c> std::ops::DerefMut for DerivedBuilder<'c> {
+	fn deref_mut(&mut self) -> &mut Self::Target {
+		&mut self.derived
+	}
+}
+
+/// The pairing of `Character` and `Derived` to form a singlular reference
+/// structure for all character data.
+#[derive(Clone, PartialEq)]
+pub struct State {
+	character: Character,
+	derived: Derived,
+}
+impl From<Character> for State {
+	fn from(character: Character) -> Self {
+		let derived = character.compile();
+		Self { character, derived }
+	}
+}
+impl yew::Reducible for State {
+	type Action = yew::Callback<Self, Self>;
+
+	fn reduce(self: Rc<Self>, action: Self::Action) -> Rc<Self> {
+		Rc::new(action.emit((*self).clone()))
+	}
+}
+impl State {
+	/// Returns the score/value for a given ability. Any bonuses beyond the character's base scores
+	/// are provided with a path to the feature which provided that bonus.
+	pub fn ability_score(&self, ability: Ability) -> AttributedValue<i32> {
+		let mut attributed = self.derived.ability_scores[ability].clone();
+		attributed.value += self.character.ability_scores[ability];
+		//log::debug!("{attributed:?}");
+		attributed
+	}
+
+	/// Returns attributed skill proficiencies for the character.
+	pub fn get_skills(&self) -> &EnumMap<Skill, AttributedValue<ProficiencyLevel>> {
+		&self.derived.skills
+	}
+
+	pub fn hit_points(&self) -> (u32, u32, u32) {
+		(
+			self.character.hit_points.0,
+			self.derived.max_hit_points,
+			self.character.hit_points.1,
+		)
+	}
+
+	pub fn add_hit_points(&mut self, amt: u32) {
+		self.character.hit_points.0 = self.character.hit_points.0.saturating_add(amt);
+		log::debug!("{:?}", self.character.hit_points);
+	}
+
+	pub fn sub_hit_points(&mut self, amt: u32) {
+		self.character.hit_points.0 = self.character.hit_points.0.saturating_sub(amt);
+	}
+}
+
 #[derive(Clone, Default, PartialEq, Debug)]
 pub struct AttributedValue<T> {
 	value: T,
@@ -229,131 +315,6 @@ where
 
 	pub fn value(&self) -> &T {
 		&self.value
-	}
-}
-
-impl Character {
-	pub fn with_culture(mut self, culture: Culture) -> Self {
-		let [a, b] = culture.lineages;
-		self.lineages = [Some(a), Some(b)];
-		self.upbringing = Some(culture.upbringing);
-		self
-	}
-
-	pub fn compile_stats(&self) -> CompiledStats {
-		let mut stats = StatsBuilder::new(self);
-
-		for lineage in &self.lineages {
-			if let Some(lineage) = lineage {
-				stats.apply_from(lineage);
-			}
-		}
-		if let Some(upbringing) = &self.upbringing {
-			stats.apply_from(upbringing);
-		}
-		if let Some(background) = &self.background {
-			stats.apply_from(background);
-		}
-		for class in &self.classes {
-			stats.apply_from(class);
-		}
-
-		stats.build()
-	}
-}
-
-#[derive(Clone, PartialEq)]
-pub struct Data {
-	pub hit_points: (u32, u32, u32),
-}
-impl yew::Reducible for Data {
-	type Action = yew::Callback<Self, Self>;
-
-	fn reduce(self: Rc<Self>, action: Self::Action) -> Rc<Self> {
-		Rc::new(action.emit((*self).clone()))
-	}
-}
-#[derive(Clone, PartialEq)]
-pub struct DataContext(pub yew::UseReducerHandle<Data>);
-impl DataContext {
-	pub fn data(&self) -> &Data {
-		&*self.0
-	}
-
-	pub fn mutate<F>(&self, callback: F) where F: Fn(&mut Data) + 'static {
-		self.0.dispatch(yew::Callback::from(move |mut data| {
-			callback(&mut data);
-			data
-		}));
-	}
-}
-
-/// Character data presented to display, compiled by stepping through
-/// all features and modifiers in the character data.
-#[derive(Clone)]
-pub struct CompiledCharacter {
-	editable: Rc<RwLock<Character>>,
-	derived: Rc<RwLock<CompiledStats>>,
-}
-
-impl PartialEq for CompiledCharacter {
-	fn eq(&self, other: &Self) -> bool {
-		*self.editable.read().unwrap() == *other.editable.read().unwrap()
-			&& *self.derived.read().unwrap() == *other.derived.read().unwrap()
-	}
-}
-
-impl CompiledCharacter {
-	pub fn new(character: Character) -> Self {
-		let derived = Rc::new(RwLock::new(character.compile_stats()));
-		let editable = Rc::new(RwLock::new(character));
-		Self { editable, derived }
-	}
-
-	pub fn source<'a>(&'a self) -> std::sync::RwLockReadGuard<'a, Character> {
-		self.editable.read().unwrap()
-	}
-
-	pub fn source_mut<'a>(&'a self) -> std::sync::RwLockWriteGuard<'a, Character> {
-		self.editable.write().unwrap()
-	}
-
-	pub fn derived<'a>(&'a self) -> std::sync::RwLockReadGuard<'a, CompiledStats> {
-		self.derived.read().unwrap()
-	}
-
-	/// Returns the score/value for a given ability. Any bonuses beyond the character's base scores
-	/// are provided with a path to the feature which provided that bonus.
-	pub fn ability_score(&self, ability: Ability) -> AttributedValue<i32> {
-		let mut attributed = self.derived().ability_scores[ability].clone();
-		attributed.value += self.source().ability_scores[ability];
-		//log::debug!("{attributed:?}");
-		attributed
-	}
-
-	/// Returns attributed skill proficiencies for the character.
-	pub fn get_skills(&self) -> EnumMap<Skill, AttributedValue<ProficiencyLevel>> {
-		self.derived().skills.clone()
-	}
-
-	pub fn hit_points(&self) -> (u32, u32, u32) {
-		let source = self.source();
-		(
-			source.hit_points.0,
-			self.derived().max_hit_points,
-			source.hit_points.1,
-		)
-	}
-
-	pub fn add_hit_points(&self, amt: u32) {
-		let mut source = self.source_mut();
-		source.hit_points.0 = source.hit_points.0.saturating_add(amt);
-		log::debug!("{:?}", source.hit_points);
-	}
-
-	pub fn sub_hit_points(&self, amt: u32) {
-		let mut source = self.source_mut();
-		source.hit_points.0 = source.hit_points.0.saturating_sub(amt);
 	}
 }
 
@@ -574,8 +535,8 @@ mod test {
 	fn test_changeling() {
 		let character = changeling_character();
 		assert_eq!(
-			character.compile_stats(),
-			CompiledStats {
+			character.compile(),
+			Derived {
 				max_hit_points: 0,
 				ability_scores: enum_map! {
 					Ability::Strength => AttributedValue { value: 0, sources: vec![] },

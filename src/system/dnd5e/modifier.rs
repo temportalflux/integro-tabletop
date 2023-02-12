@@ -1,4 +1,4 @@
-use super::character::StatsBuilder;
+use super::character::DerivedBuilder;
 use dyn_clone::{clone_trait_object, DynClone};
 
 mod ability_score;
@@ -17,7 +17,7 @@ pub trait Modifier: DynClone {
 	fn scope_id(&self) -> Option<&str> {
 		None
 	}
-	fn apply<'c>(&self, _: &mut StatsBuilder<'c>) {}
+	fn apply<'c>(&self, _: &mut DerivedBuilder<'c>) {}
 }
 clone_trait_object!(Modifier);
 
@@ -46,7 +46,7 @@ where
 
 pub trait Container {
 	fn id(&self) -> String;
-	fn apply_modifiers<'c>(&self, stats: &mut StatsBuilder<'c>);
+	fn apply_modifiers<'c>(&self, stats: &mut DerivedBuilder<'c>);
 }
 
 #[derive(Clone)]
