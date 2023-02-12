@@ -75,14 +75,14 @@ fn CharacterSheetPage(CharacterSheetPageProps { character }: &CharacterSheetPage
 
 						<div class="row m-0" style="--bs-gutter-x: 0;">
 							<div class="col">
-								<ability::Score ability={Ability::Strength} score={character.ability_score(Ability::Strength)} />
-								<ability::Score ability={Ability::Dexterity} score={character.ability_score(Ability::Dexterity)} />
-								<ability::Score ability={Ability::Constitution} score={character.ability_score(Ability::Constitution)} />
+								<ability::Score ability={Ability::Strength} />
+								<ability::Score ability={Ability::Dexterity} />
+								<ability::Score ability={Ability::Constitution} />
 							</div>
 							<div class="col">
-								<ability::Score ability={Ability::Intelligence} score={character.ability_score(Ability::Intelligence)} />
-								<ability::Score ability={Ability::Wisdom} score={character.ability_score(Ability::Wisdom)} />
-								<ability::Score ability={Ability::Charisma} score={character.ability_score(Ability::Charisma)} />
+								<ability::Score ability={Ability::Intelligence} />
+								<ability::Score ability={Ability::Wisdom} />
+								<ability::Score ability={Ability::Charisma} />
 							</div>
 						</div>
 

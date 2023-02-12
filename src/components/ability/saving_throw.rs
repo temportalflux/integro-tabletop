@@ -1,5 +1,5 @@
+use crate::{data::ContextMut, system::dnd5e::character::State};
 use yew::prelude::*;
-use crate::{system::dnd5e::character::State, data::ContextMut};
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct SavingThrowProps {
@@ -40,7 +40,28 @@ pub fn SavingThrow(
 
 #[function_component]
 pub fn SavingThrowContainer() -> Html {
-	let _state = use_context::<ContextMut<State>>().unwrap();
+	use crate::system::dnd5e::Ability;
+	let state = use_context::<ContextMut<State>>().unwrap();
+	let saving_throw = |ability: Ability| {
+		let proficiency = *state.saving_throw(ability).value();
+		let modifier = state.ability_modifier(ability, proficiency);
+		let mod_sign = match modifier >= 0 {
+			true => "+",
+			false => "-",
+		};
+		html! {
+			<tr>
+				<td class="text-center">{proficiency}</td>
+				<td>{ability.abbreviated_name().to_uppercase()}</td>
+				<td class="text-center">
+					<span style="font-weight: 700; color: var(--theme-roll-modifier);">
+						{mod_sign}{modifier.abs()}
+					</span>
+				</td>
+			</tr>
+		}
+	};
+
 	html! {
 		<div id="saving-throw-container" class="card" style="">
 			<div class="card-body text-center" style="padding: 5px;">
@@ -49,21 +70,9 @@ pub fn SavingThrowContainer() -> Html {
 					<div class="col">
 						<table class="table table-compact" style="margin-bottom: 0;">
 							<tbody>
-								<tr>
-									<td class="text-center">{crate::data::ProficiencyLevel::None}</td>
-									<td>{"STR"}</td>
-									<td class="text-center"><span style="font-weight: 700; color: var(--theme-roll-modifier);">{"-1"}</span></td>
-								</tr>
-								<tr>
-									<td class="text-center">{crate::data::ProficiencyLevel::None}</td>
-									<td>{"DEX"}</td>
-									<td class="text-center"><span style="font-weight: 700; color: var(--theme-roll-modifier);">{"+0"}</span></td>
-								</tr>
-								<tr>
-									<td class="text-center">{crate::data::ProficiencyLevel::None}</td>
-									<td>{"CON"}</td>
-									<td class="text-center"><span style="font-weight: 700; color: var(--theme-roll-modifier);">{"+3"}</span></td>
-								</tr>
+								{saving_throw(Ability::Strength)}
+								{saving_throw(Ability::Dexterity)}
+								{saving_throw(Ability::Constitution)}
 							</tbody>
 						</table>
 					</div>
@@ -71,21 +80,9 @@ pub fn SavingThrowContainer() -> Html {
 					<div class="col">
 						<table class="table table-compact" style="margin-bottom: 0;">
 							<tbody>
-								<tr>
-									<td class="text-center">{crate::data::ProficiencyLevel::Full}</td>
-									<td>{"INT"}</td>
-									<td class="text-center"><span style="font-weight: 700; color: var(--theme-roll-modifier);">{"+6"}</span></td>
-								</tr>
-								<tr>
-									<td class="text-center">{crate::data::ProficiencyLevel::Full}</td>
-									<td>{"WIS"}</td>
-									<td class="text-center"><span style="font-weight: 700; color: var(--theme-roll-modifier);">{"+4"}</span></td>
-								</tr>
-								<tr>
-									<td class="text-center">{crate::data::ProficiencyLevel::None}</td>
-									<td>{"CHA"}</td>
-									<td class="text-center"><span style="font-weight: 700; color: var(--theme-roll-modifier);">{"+3"}</span></td>
-								</tr>
+								{saving_throw(Ability::Intelligence)}
+								{saving_throw(Ability::Wisdom)}
+								{saving_throw(Ability::Charisma)}
 							</tbody>
 						</table>
 					</div>

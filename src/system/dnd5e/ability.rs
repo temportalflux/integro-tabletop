@@ -51,3 +51,23 @@ impl FromStr for Ability {
 		}
 	}
 }
+
+#[derive(Clone, Copy, PartialEq, Default)]
+pub struct Score(pub i32);
+impl std::ops::Deref for Score {
+    type Target = i32;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+impl std::ops::DerefMut for Score {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+impl Score {
+	pub fn modifier(&self) -> i32 {
+		(((self.0 - 10) as f32) / 2f32).floor() as i32
+	}
+}

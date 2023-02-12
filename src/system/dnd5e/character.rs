@@ -1,4 +1,5 @@
 use super::{
+	Score,
 	condition::BoxedCondition,
 	modifier::{
 		AddAbilityScore, AddLanguage, AddLifeExpectancy, AddMaxHeight, AddSkill, BoxedModifier,
@@ -37,7 +38,7 @@ pub struct Character {
 	classes: Vec<Class>,
 	#[allow(dead_code)]
 	description: Description,
-	ability_scores: EnumMap<Ability, i32>,
+	ability_scores: EnumMap<Ability, Score>,
 	selected_values: HashMap<PathBuf, String>,
 	inventory: inventory::Inventory,
 	conditions: Vec<BoxedCondition>,
@@ -85,6 +86,13 @@ impl Character {
 pub struct Derived {
 	missing_selections: Vec<PathBuf>,
 	ability_scores: EnumMap<Ability, AttributedValue<i32>>,
+	saving_throws: EnumMap<
+		Ability,
+		(
+			/*is proficient*/ AttributedValue<ProficiencyLevel>,
+			/*adv modifiers*/ Vec<(String, PathBuf)>,
+		),
+	>,
 	skills: EnumMap<Skill, AttributedValue<ProficiencyLevel>>,
 	languages: BTreeMap<String, BTreeSet<PathBuf>>,
 	pub life_expectancy: i32,
@@ -259,11 +267,32 @@ impl yew::Reducible for State {
 impl State {
 	/// Returns the score/value for a given ability. Any bonuses beyond the character's base scores
 	/// are provided with a path to the feature which provided that bonus.
-	pub fn ability_score(&self, ability: Ability) -> AttributedValue<i32> {
-		let mut attributed = self.derived.ability_scores[ability].clone();
-		attributed.value += self.character.ability_scores[ability];
-		//log::debug!("{attributed:?}");
-		attributed
+	pub fn ability_score(&self, ability: Ability) -> (Score, &Vec<(PathBuf, i32)>) {
+		let mut score = self.character.ability_scores[ability];
+		let attributed = &self.derived.ability_scores[ability];
+		(*score) += attributed.value;
+		(score, &attributed.sources)
+	}
+
+	pub fn proficiency_bonus(&self) -> i32 {
+		// TODO: pull from table based on character level
+		2
+	}
+
+	pub fn ability_modifier(&self, ability: Ability, proficiency: ProficiencyLevel) -> i32 {
+		let modifier = self.ability_score(ability).0.modifier();
+		let prof_bonus_multiplier = match proficiency {
+			ProficiencyLevel::None => 0.0,
+			ProficiencyLevel::Half => 0.5,
+			ProficiencyLevel::Full => 1.0,
+			ProficiencyLevel::Double => 2.0, 
+		};
+		let bonus = ((self.proficiency_bonus() as f32) * prof_bonus_multiplier).floor() as i32;
+		modifier + bonus
+	}
+
+	pub fn saving_throw(&self, ability: Ability) -> &AttributedValue<ProficiencyLevel> {
+		&self.derived.saving_throws[ability].0
 	}
 
 	/// Returns attributed skill proficiencies for the character.
@@ -481,12 +510,12 @@ pub fn changeling_character() -> Character {
 			pronouns: "".into(),
 		},
 		ability_scores: enum_map! {
-			Ability::Strength => 10,
-			Ability::Dexterity => 10,
-			Ability::Constitution => 10,
-			Ability::Intelligence => 10,
-			Ability::Wisdom => 10,
-			Ability::Charisma => 10,
+			Ability::Strength => Score(10),
+			Ability::Dexterity => Score(10),
+			Ability::Constitution => Score(10),
+			Ability::Intelligence => Score(10),
+			Ability::Wisdom => Score(10),
+			Ability::Charisma => Score(10),
 		},
 		lineages: [None, None],
 		upbringing: None,
@@ -548,6 +577,14 @@ mod test {
 					Ability::Charisma => AttributedValue { value: 2, sources: vec![
 						(PathBuf::from("Incognito/AbilityScoreIncrease"), 2),
 					] },
+				},
+				saving_throws: enum_map! {
+					Ability::Strength => (AttributedValue { value: ProficiencyLevel::None, sources: vec![] }, Vec::new()),
+					Ability::Dexterity => (AttributedValue { value: ProficiencyLevel::None, sources: vec![] }, Vec::new()),
+					Ability::Constitution => (AttributedValue { value: ProficiencyLevel::None, sources: vec![] }, Vec::new()),
+					Ability::Intelligence => (AttributedValue { value: ProficiencyLevel::None, sources: vec![] }, Vec::new()),
+					Ability::Wisdom => (AttributedValue { value: ProficiencyLevel::None, sources: vec![] }, Vec::new()),
+					Ability::Charisma => (AttributedValue { value: ProficiencyLevel::None, sources: vec![] }, Vec::new()),
 				},
 				skills: enum_map! {
 					Skill::Acrobatics => AttributedValue { value: ProficiencyLevel::None, sources: vec![] },
