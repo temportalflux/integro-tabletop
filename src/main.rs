@@ -58,20 +58,17 @@ struct CharacterSheetPageProps {
 #[function_component]
 fn CharacterSheetPage(CharacterSheetPageProps { character }: &CharacterSheetPageProps) -> Html {
 	use components::*;
-	use data::Context;
+	use data::ContextMut;
 	use system::dnd5e::character::State;
 	use system::dnd5e::Ability;
 
-	let character: Context<State> = use_reducer({
+	let character = ContextMut::<State>::from(use_reducer({
 		let character = character.clone();
 		move || State::from(character)
-	}).into();
-
-	// TODO: an update in this component does not force an update in sub-components
-	log::debug!("update page");
+	}));
 
 	html! {
-		<ContextProvider<Context<State>> context={character.clone()}>
+		<ContextProvider<ContextMut<State>> context={character.clone()}>
 			<div class="container overflow-hidden" style="--theme-frame-color: #BA90CB; --theme-frame-color-muted: #BA90CB80; --theme-roll-modifier: #ffffff;">
 				<div class="row" style="--bs-gutter-x: 10px;">
 					<div class="col-md-auto">
@@ -155,7 +152,7 @@ fn CharacterSheetPage(CharacterSheetPageProps { character }: &CharacterSheetPage
 					</div>
 				</div>
 			</div>
-		</ContextProvider<Context<State>>>
+		</ContextProvider<ContextMut<State>>>
 	}
 }
 

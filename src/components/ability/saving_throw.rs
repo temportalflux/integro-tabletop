@@ -1,4 +1,5 @@
 use yew::prelude::*;
+use crate::{system::dnd5e::character::State, data::ContextMut};
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct SavingThrowProps {
@@ -39,6 +40,7 @@ pub fn SavingThrow(
 
 #[function_component]
 pub fn SavingThrowContainer() -> Html {
+	let _state = use_context::<ContextMut<State>>().unwrap();
 	html! {
 		<div id="saving-throw-container" class="card" style="">
 			<div class="card-body text-center" style="padding: 5px;">

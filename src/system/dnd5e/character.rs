@@ -281,7 +281,6 @@ impl State {
 
 	pub fn add_hit_points(&mut self, amt: u32) {
 		self.character.hit_points.0 = self.character.hit_points.0.saturating_add(amt);
-		log::debug!("{:?}", self.character.hit_points);
 	}
 
 	pub fn sub_hit_points(&mut self, amt: u32) {

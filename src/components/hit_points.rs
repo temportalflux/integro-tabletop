@@ -1,30 +1,18 @@
+use crate::{data::ContextMut, system::dnd5e::character::State};
 use yew::prelude::*;
-use crate::{system::dnd5e::character::State, data::Context};
 
 #[function_component]
 pub fn HitPoints() -> Html {
-	let data = use_context::<Context<State>>().unwrap();
+	let data = use_context::<ContextMut<State>>().unwrap();
+
+	let onclick_heal = data.new_mutator(|character| {
+		character.add_hit_points(1);
+	});
+	let onclick_dmg = data.new_mutator(|character| {
+		character.sub_hit_points(1);
+	});
+
 	let hit_points = data.hit_points();
-
-	log::debug!("displaying hit points {:?}", hit_points);
-
-	let onclick_heal = {
-		let data = data.clone();
-		Callback::from(move |_| {
-			data.mutate(|character| {
-				character.add_hit_points(1);
-			});
-		})
-	};
-	let onclick_dmg = {
-		let data = data.clone();
-		Callback::from(move |_| {
-			data.mutate(|character| {
-				character.sub_hit_points(1);
-			});
-		})
-	};
-
 	html! {
 		<div class="card m-2" style="min-width: 270px; max-width: 270px;">
 			<div class="card-body" style="padding: 5px 5px;">

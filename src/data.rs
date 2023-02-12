@@ -5,9 +5,9 @@ pub use crate::system::dnd5e::{Ability, ProficiencyLevel, Skill};
 /// A wrapper for a yew reducer state through
 /// which the underlying data can be mutated by components.
 #[derive(Clone, PartialEq)]
-pub struct Context<T: Reducible>(UseReducerHandle<T>);
+pub struct ContextMut<T: Reducible>(UseReducerHandle<T>);
 
-impl<T> From<UseReducerHandle<T>> for Context<T>
+impl<T> From<UseReducerHandle<T>> for ContextMut<T>
 where
 	T: Reducible,
 {
@@ -16,7 +16,7 @@ where
 	}
 }
 
-impl<T> Context<T>
+impl<T> ContextMut<T>
 where
 	T: Reducible,
 {
@@ -25,7 +25,7 @@ where
 	}
 }
 
-impl<T> Context<T>
+impl<T> ContextMut<T>
 where
 	T: Reducible<Action = Callback<T, T>>,
 {
@@ -38,9 +38,26 @@ where
 			data
 		}));
 	}
+
+	pub fn new_mutator<F, I>(&self, callback: F) -> Callback<I>
+	where
+		T: 'static,
+		F: Fn(&mut T) + 'static,
+		I: 'static,
+	{
+		let ctx = self.0.clone();
+		let mutator = std::rc::Rc::new(callback);
+		Callback::from(move |_: I| {
+			let mutator = mutator.clone();
+			ctx.dispatch(Callback::from(move |mut data| {
+				(*mutator)(&mut data);
+				data
+			}))
+		})
+	}
 }
 
-impl<T> std::ops::Deref for Context<T>
+impl<T> std::ops::Deref for ContextMut<T>
 where
 	T: Reducible,
 {
