@@ -1,7 +1,5 @@
 use yew::prelude::*;
 
-pub use crate::system::dnd5e::{Ability, ProficiencyLevel, Skill};
-
 /// A wrapper for a yew reducer state through
 /// which the underlying data can be mutated by components.
 #[derive(Clone, PartialEq)]

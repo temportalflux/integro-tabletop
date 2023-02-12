@@ -1,6 +1,8 @@
 use crate::{
+	bootstrap::components::Tooltip,
 	components::AnnotatedNumber,
-	system::dnd5e::{character::{AttributedValue, State}, Ability}, data::ContextMut,
+	data::ContextMut,
+	system::dnd5e::{character::State, Ability},
 };
 use yew::prelude::*;
 
@@ -12,7 +14,29 @@ pub struct ScoreProps {
 #[function_component]
 pub fn Score(ScoreProps { ability }: &ScoreProps) -> Html {
 	let state = use_context::<ContextMut<State>>().unwrap();
-	let (score, _attributed_to) = state.ability_score(*ability);
+	let (score, attributed_to) = state.ability_score(*ability);
+	let tooltip = (!attributed_to.is_empty()).then(|| {
+		format!(
+			"<div class=\"attributed-tooltip\">{}</div>",
+			attributed_to
+				.iter()
+				.fold(String::new(), |mut content, (path, value)| {
+					use convert_case::{Case, Casing};
+					let path_name = path
+						.components()
+						.map(|item| item.as_os_str().to_str().unwrap().to_case(Case::Title))
+						.collect::<Vec<_>>()
+						.join(" > ");
+					let sign = match *value >= 0 {
+						true => "+",
+						false => "-",
+					};
+					let value = value.abs();
+					content += format!("<span>{sign}{value} from {path_name}</span>").as_str();
+					content
+				})
+		)
+	});
 	html! {
 		<div class="card ability-card" style="margin: 10px 5px; border-color: var(--theme-frame-color-muted);">
 			<div class="card-body text-center">
@@ -20,7 +44,7 @@ pub fn Score(ScoreProps { ability }: &ScoreProps) -> Html {
 				<div class="primary-stat">
 					<AnnotatedNumber value={score.modifier()} show_sign={true} />
 				</div>
-				<div class="secondary-stat">{*score}</div>
+				<Tooltip classes={"secondary-stat"} content={tooltip} use_html={true}>{*score}</Tooltip>
 			</div>
 		</div>
 	}

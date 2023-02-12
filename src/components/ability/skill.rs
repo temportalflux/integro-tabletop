@@ -1,4 +1,4 @@
-use crate::data::{Ability, ProficiencyLevel, Skill};
+use crate::system::dnd5e::{Ability, ProficiencyLevel, Skill};
 use enumset::{EnumSet, EnumSetType};
 use multimap::MultiMap;
 use yew::prelude::*;

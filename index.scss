@@ -8,3 +8,10 @@
 .table-compact > :not(caption) > * > * {
 	padding: 3px 3px;
 }
+
+.tooltip-inner {
+	max-width: fit-content;
+}
+.attributed-tooltip > span {
+	font-size: 12px;
+}

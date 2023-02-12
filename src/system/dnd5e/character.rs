@@ -1,12 +1,11 @@
 use super::{
-	Score,
 	condition::BoxedCondition,
 	modifier::{
 		AddAbilityScore, AddLanguage, AddLifeExpectancy, AddMaxHeight, AddSkill, BoxedModifier,
 		Container, Selector,
 	},
 	roll::{Die, Roll, RollSet},
-	Ability, Action, Feature, ProficiencyLevel, Skill,
+	Ability, Action, Feature, ProficiencyLevel, Score, Skill,
 };
 use enum_map::EnumMap;
 use enumset::EnumSet;
@@ -285,7 +284,7 @@ impl State {
 			ProficiencyLevel::None => 0.0,
 			ProficiencyLevel::Half => 0.5,
 			ProficiencyLevel::Full => 1.0,
-			ProficiencyLevel::Double => 2.0, 
+			ProficiencyLevel::Double => 2.0,
 		};
 		let bonus = ((self.proficiency_bonus() as f32) * prof_bonus_multiplier).floor() as i32;
 		modifier + bonus

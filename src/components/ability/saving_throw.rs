@@ -26,8 +26,8 @@ pub fn SavingThrow(
 				<div style="display: inline; width: 100%;">
 					<span style="font-size: 0.8rem;">
 						{match*proficient {
-							true => crate::data::ProficiencyLevel::Full,
-							false => crate::data::ProficiencyLevel::None,
+							true => crate::system::dnd5e::ProficiencyLevel::Full,
+							false => crate::system::dnd5e::ProficiencyLevel::None,
 						}}
 						<span style="margin-left: 5px; margin-right: 8px;">{title.clone()}</span>
 					</span>

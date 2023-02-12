@@ -22,10 +22,10 @@
 			"problemMatcher": []
 		},
 		{
-			"label": "3. Run",
+			"label": "3. Build",
 			"command": "cargo",
 			"args": [
-				"run"
+				"fmt"
 			],
 			"group": "build",
 			"problemMatcher": []
@@ -45,15 +45,6 @@
 			"args": [
 				"test"
 			],
-			"problemMatcher": []
-		},
-		{
-			"label": "6. Release",
-			"command": "cargo",
-			"args": [
-				"build", "--release"
-			],
-			"group": "build",
 			"problemMatcher": []
 		}
 	]

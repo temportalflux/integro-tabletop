@@ -1,5 +1,6 @@
 use yew::prelude::*;
 
+pub mod bootstrap;
 pub mod components;
 pub mod data;
 pub mod system;
@@ -26,6 +27,8 @@ impl<T> Compiled<T> {
 #[function_component]
 fn App() -> Html {
 	let character = system::dnd5e::character::changeling_character();
+
+	yew_hooks::use_mount(bootstrap::initialize_tooltips);
 
 	return html! {<>
 		<header>
