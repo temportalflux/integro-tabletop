@@ -31,6 +31,7 @@ pub struct Character {
 	pub upbringing: Option<Upbringing>,
 	pub background: Option<Background>,
 	pub classes: Vec<Class>,
+	pub feats: Vec<Feature>,
 	pub description: Description,
 	pub ability_scores: EnumMap<Ability, Score>,
 	pub selected_values: HashMap<PathBuf, String>,
@@ -62,6 +63,9 @@ impl Character {
 		}
 		for class in &self.classes {
 			stats.apply_from(class);
+		}
+		for feat in &self.feats {
+			stats.apply_from(feat);
 		}
 
 		stats.build()
@@ -211,6 +215,18 @@ impl<'c> DerivedBuilder<'c> {
 		self.derived.skills[skill].push(proficiency, scope);
 	}
 
+	pub fn add_saving_throw(&mut self, ability: Ability) {
+		let scope = self.scope();
+		self.derived.saving_throws[ability]
+			.0
+			.push(ProficiencyLevel::Full, scope);
+	}
+
+	pub fn add_saving_throw_modifier(&mut self, ability: Ability, target: String) {
+		let scope = self.scope();
+		self.derived.saving_throws[ability].1.push((target, scope));
+	}
+
 	pub fn add_language(&mut self, language: String) {
 		let scope = self.scope();
 		match self.derived.languages.get_mut(&language) {
@@ -306,6 +322,14 @@ impl State {
 		&self.derived.saving_throws[ability].0
 	}
 
+	pub fn saving_throw_modifiers(&self) -> EnumMap<Ability, Option<&Vec<(String, PathBuf)>>> {
+		let mut values = EnumMap::default();
+		for (ability, (_, modifiers)) in &self.derived.saving_throws {
+			values[ability] = Some(modifiers);
+		}
+		values
+	}
+
 	/// Returns attributed skill proficiencies for the character.
 	pub fn get_skills(&self) -> &EnumMap<Skill, AttributedValue<ProficiencyLevel>> {
 		&self.derived.skills
@@ -355,6 +379,10 @@ where
 	pub fn value(&self) -> &T {
 		&self.value
 	}
+
+	pub fn sources(&self) -> &Vec<(PathBuf, T)> {
+		&self.sources
+	}
 }
 
 #[derive(Clone, PartialEq)]
@@ -388,6 +416,7 @@ pub fn changeling_character() -> Character {
 		upbringing: None,
 		background: Some(background),
 		classes: Vec::new(),
+		feats: Vec::new(),
 		selected_values: HashMap::from([
 			(
 				PathBuf::from("Incognito/AbilityScoreIncrease"),

@@ -31,10 +31,13 @@ pub fn Score(ScoreProps { ability }: &ScoreProps) -> Html {
 						),
 						false => None,
 					};
-					let sign = source_text.is_some().then(|| match *value >= 0 {
-						true => "+",
-						false => "-",
-					}).unwrap_or_default();
+					let sign = source_text
+						.is_some()
+						.then(|| match *value >= 0 {
+							true => "+",
+							false => "-",
+						})
+						.unwrap_or_default();
 					let path_name = source_text.unwrap_or("original score".into());
 					let value = value.abs();
 					content += format!("<span>{sign}{value} ({path_name})</span>").as_str();

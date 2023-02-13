@@ -30,6 +30,7 @@ fn create_character() -> system::dnd5e::character::Character {
 	use system::dnd5e::{
 		character::{inventory::Inventory, Character, Description},
 		hardcoded::*,
+		modifier::AddSavingThrow,
 		*,
 	};
 	Character {
@@ -49,6 +50,14 @@ fn create_character() -> system::dnd5e::character::Character {
 		upbringing: Some(incognito()),
 		background: Some(anthropologist()),
 		classes: Vec::new(),
+		feats: vec![Feature {
+			name: "Custom Feat".into(),
+			modifiers: vec![
+				AddSavingThrow::Proficiency(Ability::Charisma).into(),
+				AddSavingThrow::Advantage(Ability::Charisma, "Magic".into()).into(),
+			],
+			..Default::default()
+		}],
 		selected_values: HashMap::from([
 			(
 				PathBuf::from("Incognito/AbilityScoreIncrease"),

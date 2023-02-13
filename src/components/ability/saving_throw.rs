@@ -1,4 +1,4 @@
-use crate::{data::ContextMut, system::dnd5e::character::State};
+use crate::{data::ContextMut, system::dnd5e::character::State, bootstrap::components::Tooltip};
 use yew::prelude::*;
 
 #[derive(Clone, PartialEq, Properties)]
@@ -42,25 +42,52 @@ pub fn SavingThrow(
 pub fn SavingThrowContainer() -> Html {
 	use crate::system::dnd5e::Ability;
 	let state = use_context::<ContextMut<State>>().unwrap();
-	let saving_throw = |ability: Ability| {
-		let proficiency = *state.saving_throw(ability).value();
-		let modifier = state.ability_modifier(ability, proficiency);
-		let mod_sign = match modifier >= 0 {
-			true => "+",
-			false => "-",
-		};
-		html! {
-			<tr>
-				<td class="text-center">{proficiency}</td>
-				<td>{ability.abbreviated_name().to_uppercase()}</td>
-				<td class="text-center">
-					<span style="font-weight: 700; color: var(--theme-roll-modifier);">
-						{mod_sign}{modifier.abs()}
-					</span>
-				</td>
-			</tr>
+
+	let saving_throw = {
+		let state = state.clone();
+		move |ability: Ability| {
+			let proficiency = state.saving_throw(ability);
+			let modifier = state.ability_modifier(ability, *proficiency.value());
+			let mod_sign = match modifier >= 0 {
+				true => "+",
+				false => "-",
+			};
+			// TODO: Tooltip for proficiency sources
+			html! {
+				<tr>
+					<td class="text-center">{*proficiency.value()}</td>
+					<td>{ability.abbreviated_name().to_uppercase()}</td>
+					<td class="text-center">
+						<span style="font-weight: 700; color: var(--theme-roll-modifier);">
+							{mod_sign}{modifier.abs()}
+						</span>
+					</td>
+				</tr>
+			}
 		}
 	};
+	let modifiers_html = state
+		.saving_throw_modifiers()
+		.into_iter()
+		.filter_map(|(ability, modifiers)| modifiers.map(|modifiers| (ability, modifiers)))
+		.fold(Vec::new(), |mut html, (ability, modifiers)| {
+			use convert_case::{Case, Casing};
+			for (target, source_path) in modifiers.iter() {
+				let source = source_path.components()
+					.map(|item| item.as_os_str().to_str().unwrap().to_case(Case::Title))
+					.collect::<Vec<_>>()
+					.join(" > ");
+				html.push(html! {
+					<Tooltip content={source}>
+						<span class="d-inline-flex" aria-label="Advantage" style=" height: 14px; margin-right: 2px; margin-top: -2px; width: 14px; vertical-align: middle;">
+							<AdvantageIcon />
+						</span>
+						<span>{"on "}{ability.abbreviated_name().to_uppercase()}{" against "}{target.clone()}</span>
+					</Tooltip>
+				});
+			}
+			html
+		});
 
 	html! {
 		<div id="saving-throw-container" class="card" style="">
@@ -95,20 +122,22 @@ pub fn SavingThrowContainer() -> Html {
 					<SavingThrow title={"WIS"} value={4} proficient={true} />
 					<SavingThrow title={"CHA"} value={3} proficient={false} />
 				</div>
-				<div>
-					<div style="font-size: 11px;">
-						<span class="d-inline-flex" aria-label="Advantage" style=" height: 14px; margin-right: 2px; margin-top: -2px; width: 14px; vertical-align: middle;">
-							<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-								<g>
-									<path d="M13.3665 12.5235L12.009 8.78235L10.6516 12.5235H13.3665Z" fill="#00c680"></path>
-									<path fill-rule="evenodd" clip-rule="evenodd" d="M12.241 1.13253C12.0909 1.05 11.9091 1.05 11.759 1.13252L2.25904 6.35753C2.09927 6.4454 2 6.61329 2 6.79563V17.2044C2 17.3867 2.09927 17.5546 2.25904 17.6425L11.759 22.8675C11.9091 22.95 12.0909 22.95 12.241 22.8675L21.741 17.6425C21.9007 17.5546 22 17.3867 22 17.2044V6.79563C22 6.61329 21.9007 6.4454 21.741 6.35753L12.241 1.13253ZM18 17.5H15.1222L14.1991 14.9412H9.80091L8.87783 17.5H6L10.5611 5.5H13.4389L18 17.5Z" fill="#00c680"></path>
-								</g>
-							</svg>
-						</span>
-						<span>{"on INT against Magic"}</span>
-					</div>
+				<div style="font-size: 11px;">
+					{modifiers_html}
 				</div>
 			</div>
 		</div>
+	}
+}
+
+#[function_component]
+fn AdvantageIcon() -> Html {
+	html! {
+		<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+			<g>
+				<path d="M13.3665 12.5235L12.009 8.78235L10.6516 12.5235H13.3665Z" fill="#00c680"></path>
+				<path fill-rule="evenodd" clip-rule="evenodd" d="M12.241 1.13253C12.0909 1.05 11.9091 1.05 11.759 1.13252L2.25904 6.35753C2.09927 6.4454 2 6.61329 2 6.79563V17.2044C2 17.3867 2.09927 17.5546 2.25904 17.6425L11.759 22.8675C11.9091 22.95 12.0909 22.95 12.241 22.8675L21.741 17.6425C21.9007 17.5546 22 17.3867 22 17.2044V6.79563C22 6.61329 21.9007 6.4454 21.741 6.35753L12.241 1.13253ZM18 17.5H15.1222L14.1991 14.9412H9.80091L8.87783 17.5H6L10.5611 5.5H13.4389L18 17.5Z" fill="#00c680"></path>
+			</g>
+		</svg>
 	}
 }

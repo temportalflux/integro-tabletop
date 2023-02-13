@@ -7,6 +7,9 @@ pub use ability_score::*;
 mod description;
 pub use description::*;
 
+mod saving_throw;
+pub use saving_throw::*;
+
 mod skill;
 pub use skill::*;
 
