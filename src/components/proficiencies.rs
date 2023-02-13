@@ -1,4 +1,4 @@
-use crate::{data::ContextMut, system::dnd5e::character::State, bootstrap::components::Tooltip};
+use crate::{bootstrap::components::Tooltip, data::ContextMut, system::dnd5e::character::State};
 use yew::prelude::*;
 
 #[function_component]
@@ -13,11 +13,7 @@ pub fn Proficiencies() -> Html {
 			.enumerate()
 			.map(|(idx, (lang, srcs))| (lang, srcs, idx == lang_count - 1))
 			.fold(Vec::new(), |mut html, (lang, sources, is_last)| {
-				let tooltip = (!sources.is_empty()).then(|| {
-					sources.iter().filter_map(|path| crate::data::as_feature_path_text(&path)).map(|path| {
-						format!("<div>{}</div>", path)
-					}).collect::<Vec<_>>().join("\n")
-				});
+				let tooltip = crate::data::as_feature_paths_html(sources.iter());
 				html.push(html! {
 					<span>
 						<Tooltip tag="span" content={tooltip} use_html={true}>

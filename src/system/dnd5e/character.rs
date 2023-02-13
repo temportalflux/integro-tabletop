@@ -331,8 +331,8 @@ impl State {
 	}
 
 	/// Returns attributed skill proficiencies for the character.
-	pub fn get_skills(&self) -> &EnumMap<Skill, AttributedValue<ProficiencyLevel>> {
-		&self.derived.skills
+	pub fn get_skill(&self, skill: Skill) -> &AttributedValue<ProficiencyLevel> {
+		&self.derived.skills[skill]
 	}
 
 	pub fn languages(&self) -> &BTreeMap<String, BTreeSet<PathBuf>> {

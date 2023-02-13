@@ -1,4 +1,8 @@
-use crate::system::dnd5e::{Ability, ProficiencyLevel, Skill};
+use crate::{
+	bootstrap::components::Tooltip,
+	data::ContextMut,
+	system::dnd5e::{character::State, Ability, Skill},
+};
 use enumset::{EnumSet, EnumSetType};
 use multimap::MultiMap;
 use yew::prelude::*;
@@ -37,6 +41,7 @@ impl std::str::FromStr for Presentation {
 
 #[function_component]
 pub fn SkillTable() -> Html {
+	let state = use_context::<ContextMut<State>>().unwrap();
 	let presentation = use_state(|| Presentation::Alphabetical);
 
 	let insert_ability_col_at = match *presentation {
@@ -86,24 +91,28 @@ pub fn SkillTable() -> Html {
 				<div class="text-center" style="width: 100%;">{ability.long_name()}</div>
 			});
 		}
+		let state = state.clone();
 		let rows = skills
 			.into_iter()
-			.map(|skill| {
-				// From character: the ability modifier for `skill.ability()`
-				let ability_modifier = 1;
-				// From character: the proficiency level for this skill
-				let proficiency = match skill.ability() {
-					Ability::Intelligence => ProficiencyLevel::Full,
-					Ability::Dexterity => ProficiencyLevel::Double,
-					Ability::Strength => ProficiencyLevel::Half,
-					_ => ProficiencyLevel::None,
-				};
-				// From character: the proficiency bonus
-				let prof_bonus = 2;
-				let modifier = ability_modifier + (proficiency * prof_bonus);
+			.map(move |skill| {
+				let attributed = state.get_skill(skill);
+				let modifier = state.ability_modifier(skill.ability(), *attributed.value());
 				let passive = 10 + modifier;
+				let prof_tooltip = crate::data::as_feature_paths_html_custom(
+					attributed.sources().iter(),
+					|(path, prof)| (*prof, path.as_path()),
+					|prof, path_str| {
+						format!("<div>{} ({})</div>", prof.as_display_name(), path_str)
+					},
+				);
+
+				// TODO: Tooltips break when the presentation is changed b/c they havent been initialized
 				let mut table_data = vec![
-					html! { <td class="text-center">{proficiency}</td> },
+					html! {
+						<Tooltip tag={"td"} classes={"text-center"} content={prof_tooltip} use_html={true}>
+							{*attributed.value()}
+						</Tooltip>
+					},
 					html! { <td>{skill.display_name()}</td> },
 					html! { <td class="text-center">{if modifier >= 0 { "+" } else { "-" }}{modifier.abs()}</td> },
 					html! { <td class="text-center">{passive}</td> },
