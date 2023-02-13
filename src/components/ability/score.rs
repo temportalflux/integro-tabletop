@@ -22,17 +22,22 @@ pub fn Score(ScoreProps { ability }: &ScoreProps) -> Html {
 				.iter()
 				.fold(String::new(), |mut content, (path, value)| {
 					use convert_case::{Case, Casing};
-					let path_name = path
-						.components()
-						.map(|item| item.as_os_str().to_str().unwrap().to_case(Case::Title))
-						.collect::<Vec<_>>()
-						.join(" > ");
-					let sign = match *value >= 0 {
+					let source_text = match path.components().count() > 0 {
+						true => Some(
+							path.components()
+								.map(|item| item.as_os_str().to_str().unwrap().to_case(Case::Title))
+								.collect::<Vec<_>>()
+								.join(" > "),
+						),
+						false => None,
+					};
+					let sign = source_text.is_some().then(|| match *value >= 0 {
 						true => "+",
 						false => "-",
-					};
+					}).unwrap_or_default();
+					let path_name = source_text.unwrap_or("original score".into());
 					let value = value.abs();
-					content += format!("<span>{sign}{value} from {path_name}</span>").as_str();
+					content += format!("<span>{sign}{value} ({path_name})</span>").as_str();
 					content
 				})
 		)
