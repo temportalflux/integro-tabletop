@@ -274,8 +274,22 @@ impl State {
 	}
 
 	pub fn proficiency_bonus(&self) -> i32 {
-		// TODO: pull from table based on character level
-		2
+		match self.character.level().abs() {
+			1..=4 => 2,
+			5..=8 => 3,
+			9..=12 => 4,
+			13..=16 => 5,
+			17.. => 6,
+			_ => 0,
+		}
+	}
+
+	pub fn initiative_bonus(&self) -> i32 {
+		self.ability_score(Ability::Dexterity).0.modifier()
+	}
+
+	pub fn armor_class(&self) -> i32 {
+		10 + self.ability_score(Ability::Dexterity).0.modifier()
 	}
 
 	pub fn ability_modifier(&self, ability: Ability, proficiency: ProficiencyLevel) -> i32 {

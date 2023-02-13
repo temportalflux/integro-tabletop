@@ -98,17 +98,17 @@ fn CharacterSheetPage(CharacterSheetPageProps { character }: &CharacterSheetPage
 						<div class="row m-0 justify-content-center">
 							<div class="col p-0">
 								<AnnotatedNumberCard header={"Proficiency"} footer={"Bonus"}>
-									<AnnotatedNumber value={3} show_sign={true} />
+									<AnnotatedNumber value={character.proficiency_bonus()} show_sign={true} />
 								</AnnotatedNumberCard>
 							</div>
 							<div class="col p-0">
 								<AnnotatedNumberCard header={"Initiative"} footer={"Bonus"}>
-									<AnnotatedNumber value={1} show_sign={true} />
+									<AnnotatedNumber value={character.initiative_bonus()} show_sign={true} />
 								</AnnotatedNumberCard>
 							</div>
 							<div class="col p-0">
 								<AnnotatedNumberCard header={"Armor"} footer={"Class"}>
-									<AnnotatedNumber value={10} />
+									<AnnotatedNumber value={character.armor_class()} />
 								</AnnotatedNumberCard>
 							</div>
 						</div>
