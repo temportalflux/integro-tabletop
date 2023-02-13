@@ -24,9 +24,66 @@ impl<T> Compiled<T> {
 	}
 }
 
+fn create_character() -> system::dnd5e::character::Character {
+	use enum_map::enum_map;
+	use std::{collections::HashMap, path::PathBuf};
+	use system::dnd5e::{
+		character::{inventory::Inventory, Character, Description},
+		hardcoded::*,
+		*,
+	};
+	Character {
+		description: Description {
+			name: "Fauxpaul".into(),
+			pronouns: "".into(),
+		},
+		ability_scores: enum_map! {
+			Ability::Strength => Score(12),
+			Ability::Dexterity => Score(15),
+			Ability::Constitution => Score(13),
+			Ability::Intelligence => Score(17),
+			Ability::Wisdom => Score(9),
+			Ability::Charisma => Score(11),
+		},
+		lineages: [Some(changeling1()), Some(changeling2())],
+		upbringing: Some(incognito()),
+		background: Some(anthropologist()),
+		classes: Vec::new(),
+		selected_values: HashMap::from([
+			(
+				PathBuf::from("Incognito/AbilityScoreIncrease"),
+				"CON".into(),
+			),
+			(
+				PathBuf::from("Incognito/GoodWithPeople"),
+				"Deception".into(),
+			),
+			(
+				PathBuf::from("Incognito/Languages/langA"),
+				"Draconic".into(),
+			),
+			(
+				PathBuf::from("Incognito/Languages/langB"),
+				"Undercommon".into(),
+			),
+			(
+				PathBuf::from("Anthropologist/Languages/langA"),
+				"Sylvan".into(),
+			),
+			(
+				PathBuf::from("Anthropologist/Languages/langB"),
+				"Elvish".into(),
+			),
+		]),
+		inventory: Inventory::new(),
+		conditions: Vec::new(),
+		hit_points: (0, 0),
+	}
+}
+
 #[function_component]
 fn App() -> Html {
-	let character = system::dnd5e::character::changeling_character();
+	let character = create_character();
 
 	yew_hooks::use_mount(bootstrap::initialize_tooltips);
 
