@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use yew::prelude::*;
 
 /// A wrapper for a yew reducer state through
@@ -64,4 +66,17 @@ where
 	fn deref(&self) -> &Self::Target {
 		&*self.0
 	}
+}
+
+pub fn as_feature_path_text(path: &Path) -> Option<String> {
+	use convert_case::{Case, Casing};
+	if path.components().count() == 0 {
+		return None;
+	}
+	Some(
+		path.components()
+			.map(|item| item.as_os_str().to_str().unwrap().to_case(Case::Title))
+			.collect::<Vec<_>>()
+			.join(" > "),
+	)
 }

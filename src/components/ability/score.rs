@@ -21,16 +21,7 @@ pub fn Score(ScoreProps { ability }: &ScoreProps) -> Html {
 			attributed_to
 				.iter()
 				.fold(String::new(), |mut content, (path, value)| {
-					use convert_case::{Case, Casing};
-					let source_text = match path.components().count() > 0 {
-						true => Some(
-							path.components()
-								.map(|item| item.as_os_str().to_str().unwrap().to_case(Case::Title))
-								.collect::<Vec<_>>()
-								.join(" > "),
-						),
-						false => None,
-					};
+					let source_text = crate::data::as_feature_path_text(&path);
 					let sign = source_text
 						.is_some()
 						.then(|| match *value >= 0 {

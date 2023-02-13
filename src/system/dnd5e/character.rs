@@ -335,6 +335,10 @@ impl State {
 		&self.derived.skills
 	}
 
+	pub fn languages(&self) -> &BTreeMap<String, BTreeSet<PathBuf>> {
+		&self.derived.languages
+	}
+
 	pub fn hit_points(&self) -> (u32, u32, u32) {
 		(
 			self.character.hit_points.0,

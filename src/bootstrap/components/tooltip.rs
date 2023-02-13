@@ -31,6 +31,7 @@ pub struct Props {
 	#[prop_or_default]
 	pub use_html: bool,
 
+	#[prop_or_default]
 	pub content: Option<String>,
 
 	#[prop_or_default]

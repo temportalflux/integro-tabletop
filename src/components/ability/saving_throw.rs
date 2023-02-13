@@ -1,4 +1,4 @@
-use crate::{data::ContextMut, system::dnd5e::character::State, bootstrap::components::Tooltip};
+use crate::{bootstrap::components::Tooltip, data::ContextMut, system::dnd5e::character::State};
 use yew::prelude::*;
 
 #[derive(Clone, PartialEq, Properties)]
@@ -71,12 +71,8 @@ pub fn SavingThrowContainer() -> Html {
 		.into_iter()
 		.filter_map(|(ability, modifiers)| modifiers.map(|modifiers| (ability, modifiers)))
 		.fold(Vec::new(), |mut html, (ability, modifiers)| {
-			use convert_case::{Case, Casing};
 			for (target, source_path) in modifiers.iter() {
-				let source = source_path.components()
-					.map(|item| item.as_os_str().to_str().unwrap().to_case(Case::Title))
-					.collect::<Vec<_>>()
-					.join(" > ");
+				let source = crate::data::as_feature_path_text(&source_path);
 				html.push(html! {
 					<Tooltip content={source}>
 						<span class="d-inline-flex" aria-label="Advantage" style=" height: 14px; margin-right: 2px; margin-top: -2px; width: 14px; vertical-align: middle;">
