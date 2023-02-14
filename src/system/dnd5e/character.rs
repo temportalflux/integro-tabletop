@@ -1,6 +1,6 @@
 use super::{
 	condition::BoxedCondition,
-	modifier::{BoxedModifier, Container},
+	modifier::{BoxedModifier, Container, Defense},
 	proficiency,
 	roll::RollSet,
 	Ability, Feature, Score, Skill,
@@ -96,6 +96,7 @@ pub struct Derived {
 	proficiencies: EnumMap<proficiency::Kind, BTreeMap<String, BTreeSet<PathBuf>>>,
 	speeds: BTreeMap<String, AttributedValue<i32>>,
 	senses: BTreeMap<String, AttributedValue<i32>>,
+	defenses: EnumMap<Defense, BTreeMap<String, BTreeSet<PathBuf>>>,
 	pub life_expectancy: i32,
 	pub max_height: (i32, RollSet),
 	max_hit_points: u32,
@@ -112,6 +113,7 @@ impl std::fmt::Debug for Derived {
 			\n  proficiencies: {}\
 			\n  speeds: {}\
 			\n  senses: {}\
+			\n  defenses: {}\
 			\n  life_expectancy: {:?}\
 			\n  max_height: {:?}\
 			\n}}",
@@ -181,6 +183,18 @@ impl std::fmt::Debug for Derived {
 							.iter()
 							.fold(String::new(), |str, (src_path, value)| {
 								format!("{str}\n      {src_path:?}: {value:?}")
+							})
+					)
+				}),
+			self.defenses
+				.iter()
+				.fold(String::new(), |str, (kind, attributed_values)| {
+					format!(
+						"{str}\n    {kind:?} => {}",
+						attributed_values
+							.iter()
+							.fold(String::new(), |str, (value, sources)| {
+								format!("{str}\n      {value:?} => {sources:?}")
 							})
 					)
 				}),
@@ -281,7 +295,7 @@ impl<'c> DerivedBuilder<'c> {
 			}
 			None => {
 				self.derived.proficiencies[proficiency::Kind::Language]
-					.insert(language.clone(), BTreeSet::from([scope]));
+					.insert(language, BTreeSet::from([scope]));
 			}
 		}
 	}
@@ -295,7 +309,7 @@ impl<'c> DerivedBuilder<'c> {
 			None => {
 				let mut value = AttributedValue::default();
 				value.push(max_bound_in_feet, scope);
-				self.derived.speeds.insert(kind.clone(), value);
+				self.derived.speeds.insert(kind, value);
 			}
 		}
 	}
@@ -309,7 +323,19 @@ impl<'c> DerivedBuilder<'c> {
 			None => {
 				let mut value = AttributedValue::default();
 				value.push(max_bound_in_feet, scope);
-				self.derived.senses.insert(kind.clone(), value);
+				self.derived.senses.insert(kind, value);
+			}
+		}
+	}
+
+	pub fn add_defense(&mut self, kind: Defense, target: String) {
+		let scope = self.scope();
+		match self.derived.defenses[kind].get_mut(&target) {
+			Some(sources) => {
+				sources.insert(scope);
+			}
+			None => {
+				self.derived.defenses[kind].insert(target, BTreeSet::from([scope]));
 			}
 		}
 	}
@@ -437,6 +463,10 @@ impl State {
 
 	pub fn sub_hit_points(&mut self, amt: u32) {
 		self.character.hit_points.0 = self.character.hit_points.0.saturating_sub(amt);
+	}
+
+	pub fn defenses(&self) -> &EnumMap<Defense, BTreeMap<String, BTreeSet<PathBuf>>> {
+		&self.derived.defenses
 	}
 }
 
@@ -624,15 +654,19 @@ mod test {
 					proficiency::Kind::Weapon => BTreeMap::from([]),
 					proficiency::Kind::Tool => BTreeMap::from([]),
 				},
-				speeds: BTreeMap::from([
-					(
-						"Walking".into(),
-						AttributedValue { value: 30, sources: vec![
-							(PathBuf::from("ChangelingI/Speeds"), 30),
-						] }
-					)
-				]),
+				speeds: BTreeMap::from([(
+					"Walking".into(),
+					AttributedValue {
+						value: 30,
+						sources: vec![(PathBuf::from("ChangelingI/Speeds"), 30),]
+					}
+				)]),
 				senses: BTreeMap::from([]),
+				defenses: enum_map! {
+					Defense::Resistant => BTreeMap::from([]),
+					Defense::Immune =>BTreeMap::from([]),
+					Defense::Vulnerable =>BTreeMap::from([]),
+				},
 				life_expectancy: 100,
 				max_height: (
 					60,

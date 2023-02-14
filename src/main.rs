@@ -58,6 +58,9 @@ fn create_character() -> system::dnd5e::character::Character {
 				//modifier::AddMaxSpeed("Flying".into(), 10).into(),
 				modifier::AddMaxSense("Darkvision".into(), 30).into(),
 				//modifier::AddMaxSense("Tremorsense".into(), 60).into(),
+				modifier::AddDefense(modifier::Defense::Resistant, "Cold".into()).into(),
+				modifier::AddDefense(modifier::Defense::Immune, "Acid".into()).into(),
+				modifier::AddDefense(modifier::Defense::Vulnerable, "Fire".into()).into(),
 			],
 			..Default::default()
 		}],

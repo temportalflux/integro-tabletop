@@ -1,5 +1,5 @@
+use crate::{bootstrap::components::Tooltip, data::ContextMut, system::dnd5e::character::State};
 use yew::prelude::*;
-use crate::{data::ContextMut, system::dnd5e::character::State, bootstrap::components::Tooltip};
 
 #[derive(Clone, PartialEq, Properties)]
 struct SingleValueProps {
@@ -38,9 +38,7 @@ pub fn SpeedAndSenses() -> Html {
 			let tooltip = crate::data::as_feature_paths_html_custom(
 				attributed.sources().iter(),
 				|(path, value)| (*value, path.as_path()),
-				|value, path_str| {
-					format!("<div>{}ft. ({})</div>", value, path_str)
-				},
+				|value, path_str| format!("<div>{}ft. ({})</div>", value, path_str),
 			);
 			html! {<div class="col">
 				<Tooltip content={tooltip} use_html={true}>
@@ -77,9 +75,7 @@ pub fn SpeedAndSenses() -> Html {
 			let tooltip = crate::data::as_feature_paths_html_custom(
 				attributed.sources().iter(),
 				|(path, value)| (*value, path.as_path()),
-				|value, path_str| {
-					format!("<div>{}ft. ({})</div>", value, path_str)
-				},
+				|value, path_str| format!("<div>{}ft. ({})</div>", value, path_str),
 			);
 			html! {<div class="col">
 				<Tooltip content={tooltip} use_html={true}>

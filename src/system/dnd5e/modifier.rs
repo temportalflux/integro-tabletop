@@ -7,6 +7,9 @@ pub use ability_score::*;
 mod description;
 pub use description::*;
 
+mod defense;
+pub use defense::*;
+
 mod language;
 pub use language::*;
 
