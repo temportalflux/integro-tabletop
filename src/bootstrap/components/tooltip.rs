@@ -1,4 +1,5 @@
 use yew::prelude::*;
+use yew_hooks::use_mount;
 
 #[derive(Clone, PartialEq)]
 pub enum Placement {
@@ -49,7 +50,14 @@ pub fn Component(
 		children,
 	}: &Props,
 ) -> Html {
-	html! {<@{tag.clone()}
+	let node = use_node_ref();
+	use_effect_with_deps(|node| {
+		if let Some(node) = node.get() {
+			crate::bootstrap::Tooltip::new(node.into(), wasm_bindgen::JsValue::from("{}".to_owned()));
+		}
+	}, node.clone());
+
+	html! {<@{tag.clone()} ref={node}
 		class={classes.clone()}
 		data-bs-toggle={content.is_some().then(|| "tooltip").unwrap_or("")}
 		data-bs-placement={placement.as_str()}
