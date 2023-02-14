@@ -30,7 +30,7 @@ fn create_character() -> system::dnd5e::character::Character {
 	use system::dnd5e::{
 		character::{inventory::Inventory, Character, Description},
 		hardcoded::*,
-		modifier::AddSavingThrow,
+		modifier::{self, AddSavingThrow},
 		*,
 	};
 	Character {
@@ -55,6 +55,9 @@ fn create_character() -> system::dnd5e::character::Character {
 			modifiers: vec![
 				AddSavingThrow::Proficiency(Ability::Charisma).into(),
 				AddSavingThrow::Advantage(Ability::Charisma, "Magic".into()).into(),
+				//modifier::AddMaxSpeed("Flying".into(), 10).into(),
+				modifier::AddMaxSense("Darkvision".into(), 30).into(),
+				//modifier::AddMaxSense("Tremorsense".into(), 60).into(),
 			],
 			..Default::default()
 		}],

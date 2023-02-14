@@ -1,4 +1,8 @@
-use crate::{bootstrap::components::Tooltip, data::ContextMut, system::dnd5e::{character::State, proficiency}};
+use crate::{
+	bootstrap::components::Tooltip,
+	data::ContextMut,
+	system::dnd5e::{character::State, proficiency},
+};
 use yew::prelude::*;
 
 #[derive(Clone, PartialEq, Properties)]
@@ -8,7 +12,9 @@ pub struct ProficiencySectionProps {
 }
 
 #[function_component]
-pub fn ProficiencySection(ProficiencySectionProps { title, kind }: &ProficiencySectionProps) -> Html {
+pub fn ProficiencySection(
+	ProficiencySectionProps { title, kind }: &ProficiencySectionProps,
+) -> Html {
 	let state = use_context::<ContextMut<State>>().unwrap();
 
 	let items = {
@@ -34,7 +40,7 @@ pub fn ProficiencySection(ProficiencySectionProps { title, kind }: &ProficiencyS
 				html
 			})
 	};
-	
+
 	html! {
 		<div style="border-style: solid; border-color: var(--bs-border-color); border-width: 0; border-bottom-width: var(--bs-border-width);">
 			<h6 style="font-size: 0.8rem; color: var(--bs-card-title-color);">{title.clone()}</h6>

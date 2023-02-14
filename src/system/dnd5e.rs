@@ -20,7 +20,7 @@ mod skill;
 pub use skill::*;
 
 pub mod hardcoded {
-	use super::*;
+	use super::{modifier::AddMaxSpeed, *};
 
 	fn changeling_age() -> Feature {
 		use modifier::AddLifeExpectancy;
@@ -58,6 +58,13 @@ pub mod hardcoded {
 			features: vec![
 				changeling_age(),
 				changeling_size(),
+				Feature {
+					name: "Speeds".into(),
+					modifiers: vec![
+						AddMaxSpeed("Walking".into(), 30).into(),
+					],
+					..Default::default()
+				},
 				Feature {
 					name: "Shapechanger".to_owned(),
 					description: "As an action, you can change your appearance. You determine the specifics of the changes, \

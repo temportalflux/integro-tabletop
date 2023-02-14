@@ -7,14 +7,17 @@ pub use ability_score::*;
 mod description;
 pub use description::*;
 
+mod language;
+pub use language::*;
+
 mod saving_throw;
 pub use saving_throw::*;
 
 mod skill;
 pub use skill::*;
 
-mod language;
-pub use language::*;
+mod speed;
+pub use speed::*;
 
 pub trait Modifier: DynClone {
 	fn scope_id(&self) -> Option<&str> {

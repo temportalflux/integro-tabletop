@@ -1,4 +1,5 @@
 use yew::prelude::*;
+use crate::{data::ContextMut, system::dnd5e::character::State, bootstrap::components::Tooltip};
 
 #[derive(Clone, PartialEq, Properties)]
 struct SingleValueProps {
@@ -21,58 +22,95 @@ fn SingleValue(SingleValueProps { title, amount }: &SingleValueProps) -> Html {
 
 #[function_component]
 pub fn SpeedAndSenses() -> Html {
-	//let mut speeds = vec![("Walking", 25)];
-	let mut speeds = vec![("Walking", 30), ("Flying", 30), ("Burrow", 10)];
-	//let mut senses: Vec<(&'static str, i32)> = vec![];
-	//let mut senses = vec![("Darkvision", 60)];
-	let mut senses = vec![("Darkvision", 60), ("Truesight", 10)];
+	let state = use_context::<ContextMut<State>>().unwrap();
 
-	let divider = (speeds.len() > 0 && senses.len() > 0)
+	let divider = (state.speeds().len() > 0 && state.senses().len() > 0)
 		.then(|| {
 			html! {
 				<div class="col-auto p-0"><div class="vr" style="min-height: 100%;" /></div>
 			}
 		})
 		.unwrap_or_else(|| html! {});
-	let speed = match speeds.len() {
+	let speed = match state.speeds().len() {
 		0 => html! {},
 		1 => {
-			let (title, amount) = speeds.pop().unwrap();
+			let (title, attributed) = state.speeds().iter().next().unwrap();
+			let tooltip = crate::data::as_feature_paths_html_custom(
+				attributed.sources().iter(),
+				|(path, value)| (*value, path.as_path()),
+				|value, path_str| {
+					format!("<div>{}ft. ({})</div>", value, path_str)
+				},
+			);
 			html! {<div class="col">
-				<SingleValue title={format!("{title} Speed")} {amount} />
+				<Tooltip content={tooltip} use_html={true}>
+					<SingleValue title={format!("{title} Speed")} amount={attributed.value()} />
+				</Tooltip>
 			</div>}
 		}
+		// TODO: Walking speed should always be the first entry
 		_ => html! {<div class="col">
 			<h6 class="text-center" style="font-size: 0.8rem; color: var(--bs-card-title-color);">{"Speeds"}</h6>
-			{speeds.into_iter().map(|(title, amount)| html! {
-				<span class="d-flex" style="border-style: solid; border-color: var(--bs-border-color); border-width: 0; border-bottom-width: var(--bs-border-width);">
-					<span class="flex-grow-1">{title}</span>
-					<span class="ps-2">{amount}{"ft."}</span>
-				</span>
+			{state.speeds().into_iter().map(|(title, attributed)| {
+				let tooltip = crate::data::as_feature_paths_html_custom(
+					attributed.sources().iter(),
+					|(path, value)| (*value, path.as_path()),
+					|value, path_str| {
+						format!("<div>{}ft. ({})</div>", value, path_str)
+					},
+				);
+				html! {
+					<Tooltip content={tooltip} use_html={true}>
+						<span class="d-flex" style="border-style: solid; border-color: var(--bs-border-color); border-width: 0; border-bottom-width: var(--bs-border-width);">
+							<span class="flex-grow-1">{title}</span>
+							<span class="ps-2">{attributed.value()}{"ft."}</span>
+						</span>
+					</Tooltip>
+				}
 			}).collect::<Vec<_>>()}
 		</div>},
 	};
-	let senses_html = match senses.len() {
+	let senses_html = match state.senses().len() {
 		0 => html! {},
 		1 => {
-			let (title, amount) = senses.pop().unwrap();
+			let (title, attributed) = state.senses().iter().next().unwrap();
+			let tooltip = crate::data::as_feature_paths_html_custom(
+				attributed.sources().iter(),
+				|(path, value)| (*value, path.as_path()),
+				|value, path_str| {
+					format!("<div>{}ft. ({})</div>", value, path_str)
+				},
+			);
 			html! {<div class="col">
-				<SingleValue {title} {amount} />
+				<Tooltip content={tooltip} use_html={true}>
+					<SingleValue title={title.clone()} amount={attributed.value()} />
+				</Tooltip>
 			</div>}
 		}
 		_ => html! {<div class="col">
 			<h6 class="text-center" style="font-size: 0.8rem; color: var(--bs-card-title-color);">{"Senses"}</h6>
-			{senses.into_iter().map(|(title, amount)| html! {
-				<span class="d-flex" style="border-style: solid; border-color: var(--bs-border-color); border-width: 0; border-bottom-width: var(--bs-border-width);">
-					<span class="flex-grow-1">{title}</span>
-					<span class="ps-2">{amount}{"ft."}</span>
-				</span>
+			{state.senses().into_iter().map(|(title, attributed)| {
+				let tooltip = crate::data::as_feature_paths_html_custom(
+					attributed.sources().iter(),
+					|(path, value)| (*value, path.as_path()),
+					|value, path_str| {
+						format!("<div>{}ft. ({})</div>", value, path_str)
+					},
+				);
+				html! {
+					<Tooltip content={tooltip} use_html={true}>
+						<span class="d-flex" style="border-style: solid; border-color: var(--bs-border-color); border-width: 0; border-bottom-width: var(--bs-border-width);">
+							<span class="flex-grow-1">{title}</span>
+							<span class="ps-2">{attributed.value()}{"ft."}</span>
+						</span>
+					</Tooltip>
+				}
 			}).collect::<Vec<_>>()}
 		</div>},
 	};
 
 	html! {
-		<div class="card m-2" style="min-width: 150px;">
+		<div class="card m-2" style="max-width: 300px;">
 			<div class="card-body" style="padding: 5px 5px;">
 				<div class="row">
 					{speed}

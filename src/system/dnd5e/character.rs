@@ -94,6 +94,8 @@ pub struct Derived {
 	>,
 	skills: EnumMap<Skill, AttributedValue<proficiency::Level>>,
 	proficiencies: EnumMap<proficiency::Kind, BTreeMap<String, BTreeSet<PathBuf>>>,
+	speeds: BTreeMap<String, AttributedValue<i32>>,
+	senses: BTreeMap<String, AttributedValue<i32>>,
 	pub life_expectancy: i32,
 	pub max_height: (i32, RollSet),
 	max_hit_points: u32,
@@ -108,6 +110,8 @@ impl std::fmt::Debug for Derived {
 			\n  ability_scores: {}\
 			\n  skills: {}\
 			\n  proficiencies: {}\
+			\n  speeds: {}\
+			\n  senses: {}\
 			\n  life_expectancy: {:?}\
 			\n  max_height: {:?}\
 			\n}}",
@@ -115,31 +119,70 @@ impl std::fmt::Debug for Derived {
 			self.ability_scores
 				.iter()
 				.fold(String::new(), |str, (ability, attributed)| {
-					let sources = attributed
-						.sources
-						.iter()
-						.fold(String::new(), |str, (src_path, value)| {
-							format!("{str}\n      {src_path:?}: {value:?}")
-						});
-					format!("{str}\n    {ability:?}: {:?}{sources}", attributed.value)
+					format!(
+						"{str}\n    {ability:?}: {:?}{}",
+						attributed.value,
+						attributed
+							.sources
+							.iter()
+							.fold(String::new(), |str, (src_path, value)| {
+								format!("{str}\n      {src_path:?}: {value:?}")
+							})
+					)
 				}),
 			self.skills
 				.iter()
 				.fold(String::new(), |str, (skill, attributed)| {
-					let sources = attributed
-						.sources
-						.iter()
-						.fold(String::new(), |str, (src_path, value)| {
-							format!("{str}\n      {src_path:?}: {value:?}")
-						});
-					format!("{str}\n    {skill:?}: {:?}{sources}", attributed.value)
+					format!(
+						"{str}\n    {skill:?}: {:?}{}",
+						attributed.value,
+						attributed
+							.sources
+							.iter()
+							.fold(String::new(), |str, (src_path, value)| {
+								format!("{str}\n      {src_path:?}: {value:?}")
+							})
+					)
 				}),
 			self.proficiencies
 				.iter()
 				.fold(String::new(), |str, (kind, attributed_values)| {
-					format!("{str}\n    {kind:?} => {}", attributed_values.iter().fold(String::new(), |str, (value, sources)| {
-						format!("{str}\n      {value:?} => {sources:?}")
-					}))
+					format!(
+						"{str}\n    {kind:?} => {}",
+						attributed_values
+							.iter()
+							.fold(String::new(), |str, (value, sources)| {
+								format!("{str}\n      {value:?} => {sources:?}")
+							})
+					)
+				}),
+			self.speeds
+				.iter()
+				.fold(String::new(), |str, (kind, attributed)| {
+					format!(
+						"{str}\n    {kind:?}: {:?}{}",
+						attributed.value,
+						attributed
+							.sources
+							.iter()
+							.fold(String::new(), |str, (src_path, value)| {
+								format!("{str}\n      {src_path:?}: {value:?}")
+							})
+					)
+				}),
+			self.senses
+				.iter()
+				.fold(String::new(), |str, (kind, attributed)| {
+					format!(
+						"{str}\n    {kind:?}: {:?}{}",
+						attributed.value,
+						attributed
+							.sources
+							.iter()
+							.fold(String::new(), |str, (src_path, value)| {
+								format!("{str}\n      {src_path:?}: {value:?}")
+							})
+					)
 				}),
 			self.life_expectancy,
 			self.max_height,
@@ -237,9 +280,36 @@ impl<'c> DerivedBuilder<'c> {
 				sources.insert(scope);
 			}
 			None => {
-				self.derived
-					.proficiencies[proficiency::Kind::Language]
+				self.derived.proficiencies[proficiency::Kind::Language]
 					.insert(language.clone(), BTreeSet::from([scope]));
+			}
+		}
+	}
+
+	pub fn add_max_speed(&mut self, kind: String, max_bound_in_feet: i32) {
+		let scope = self.scope();
+		match self.derived.speeds.get_mut(&kind) {
+			Some(value) => {
+				value.push(max_bound_in_feet, scope);
+			}
+			None => {
+				let mut value = AttributedValue::default();
+				value.push(max_bound_in_feet, scope);
+				self.derived.speeds.insert(kind.clone(), value);
+			}
+		}
+	}
+
+	pub fn add_max_sense(&mut self, kind: String, max_bound_in_feet: i32) {
+		let scope = self.scope();
+		match self.derived.senses.get_mut(&kind) {
+			Some(value) => {
+				value.push(max_bound_in_feet, scope);
+			}
+			None => {
+				let mut value = AttributedValue::default();
+				value.push(max_bound_in_feet, scope);
+				self.derived.senses.insert(kind.clone(), value);
 			}
 		}
 	}
@@ -338,8 +408,19 @@ impl State {
 		&self.derived.skills[skill]
 	}
 
-	pub fn get_proficiencies(&self, kind: proficiency::Kind) -> &BTreeMap<String, BTreeSet<PathBuf>> {
+	pub fn get_proficiencies(
+		&self,
+		kind: proficiency::Kind,
+	) -> &BTreeMap<String, BTreeSet<PathBuf>> {
 		&self.derived.proficiencies[kind]
+	}
+
+	pub fn speeds(&self) -> &BTreeMap<String, AttributedValue<i32>> {
+		&self.derived.speeds
+	}
+
+	pub fn senses(&self) -> &BTreeMap<String, AttributedValue<i32>> {
+		&self.derived.senses
 	}
 
 	pub fn hit_points(&self) -> (u32, u32, u32) {
@@ -543,6 +624,15 @@ mod test {
 					proficiency::Kind::Weapon => BTreeMap::from([]),
 					proficiency::Kind::Tool => BTreeMap::from([]),
 				},
+				speeds: BTreeMap::from([
+					(
+						"Walking".into(),
+						AttributedValue { value: 30, sources: vec![
+							(PathBuf::from("ChangelingI/Speeds"), 30),
+						] }
+					)
+				]),
+				senses: BTreeMap::from([]),
 				life_expectancy: 100,
 				max_height: (
 					60,
