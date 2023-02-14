@@ -203,7 +203,7 @@ fn CharacterSheetPage(CharacterSheetPageProps { character }: &CharacterSheetPage
 
 						<div class="card m-2" style="height: 550px;">
 							<div class="card-body" style="padding: 5px;">
-								<Nav root_classes={"onesheet-tabs"} disp={NavDisplay::Tabs} default_tab_id={"actions"}>
+								<Nav root_classes={"onesheet-tabs"} disp={NavDisplay::Tabs} default_tab_id={"inventory"}>
 									<TabContent id="actions" title={html! {{"Actions"}}}>
 										<panel::Actions />
 									</TabContent>

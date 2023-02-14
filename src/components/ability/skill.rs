@@ -131,7 +131,7 @@ pub fn SkillTable() -> Html {
 			})
 			.collect::<Vec<_>>();
 		segments.push(html! {
-			<table class="table table-compact m-0">
+			<table class="table table-compact table-striped m-0">
 				<thead>
 					<tr class="text-center" style="font-size: 0.7rem;">{headers.clone()}</tr>
 				</thead>
