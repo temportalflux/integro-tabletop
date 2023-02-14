@@ -94,8 +94,6 @@ fn create_character() -> system::dnd5e::character::Character {
 fn App() -> Html {
 	let character = create_character();
 
-	//yew_hooks::use_mount(bootstrap::initialize_tooltips);
-
 	return html! {<>
 		<header>
 			<nav class="navbar navbar-expand-lg sticky-top bg-body-tertiary">

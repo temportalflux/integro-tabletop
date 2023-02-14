@@ -1,5 +1,4 @@
 use yew::prelude::*;
-use yew_hooks::use_mount;
 
 #[derive(Clone, PartialEq)]
 pub enum Placement {
