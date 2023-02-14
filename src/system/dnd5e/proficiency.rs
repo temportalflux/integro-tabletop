@@ -1,16 +1,20 @@
+use enum_map::Enum;
+
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
-pub enum ProficiencyLevel {
+pub enum Level {
 	None,
 	Half,
 	Full,
 	Double,
 }
-impl Default for ProficiencyLevel {
+
+impl Default for Level {
 	fn default() -> Self {
 		Self::None
 	}
 }
-impl ProficiencyLevel {
+
+impl Level {
 	pub fn as_display_name(&self) -> &'static str {
 		match self {
 			Self::None => "Not Proficient",
@@ -31,7 +35,7 @@ impl ProficiencyLevel {
 }
 
 // TODO: Move into components
-impl Into<yew::prelude::Html> for ProficiencyLevel {
+impl Into<yew::prelude::Html> for Level {
 	fn into(self) -> yew::prelude::Html {
 		use yew::prelude::*;
 		match self {
@@ -49,11 +53,20 @@ impl Into<yew::prelude::Html> for ProficiencyLevel {
 	}
 }
 
-impl std::ops::Mul<i32> for ProficiencyLevel {
+impl std::ops::Mul<i32> for Level {
 	type Output = i32;
 
 	fn mul(self, prof_bonus: i32) -> Self::Output {
 		let modified = (prof_bonus as f32) * self.bonus_multiplier();
 		modified.floor() as i32
 	}
+}
+
+/// Non-ability/skill proficiencies
+#[derive(Clone, Copy, Debug, PartialEq, Enum)]
+pub enum Kind {
+	Language,
+	Armor,
+	Weapon,
+	Tool,
 }

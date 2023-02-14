@@ -1,11 +1,11 @@
 use super::Selector;
-use crate::system::dnd5e::{character::DerivedBuilder, ProficiencyLevel, Skill};
+use crate::system::dnd5e::{character::DerivedBuilder, proficiency, Skill};
 use std::str::FromStr;
 
 #[derive(Clone)]
 pub struct AddSkill {
 	pub skill: Selector<Skill>,
-	pub proficiency: ProficiencyLevel,
+	pub proficiency: proficiency::Level,
 }
 
 impl super::Modifier for AddSkill {

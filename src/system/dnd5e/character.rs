@@ -1,8 +1,9 @@
 use super::{
 	condition::BoxedCondition,
 	modifier::{BoxedModifier, Container},
+	proficiency,
 	roll::RollSet,
-	Ability, Feature, ProficiencyLevel, Score, Skill,
+	Ability, Feature, Score, Skill,
 };
 use enum_map::EnumMap;
 use std::{
@@ -87,12 +88,12 @@ pub struct Derived {
 	saving_throws: EnumMap<
 		Ability,
 		(
-			/*is proficient*/ AttributedValue<ProficiencyLevel>,
+			/*is proficient*/ AttributedValue<proficiency::Level>,
 			/*adv modifiers*/ Vec<(String, PathBuf)>,
 		),
 	>,
-	skills: EnumMap<Skill, AttributedValue<ProficiencyLevel>>,
-	languages: BTreeMap<String, BTreeSet<PathBuf>>,
+	skills: EnumMap<Skill, AttributedValue<proficiency::Level>>,
+	proficiencies: EnumMap<proficiency::Kind, BTreeMap<String, BTreeSet<PathBuf>>>,
 	pub life_expectancy: i32,
 	pub max_height: (i32, RollSet),
 	max_hit_points: u32,
@@ -103,12 +104,12 @@ impl std::fmt::Debug for Derived {
 		write!(
 			f,
 			"Derived {{\
-			\n\tmissing_selections: {:?}\
-			\n\tability_scores: {}\
-			\n\tskills: {}\
-			\n\tlanguages: {}\
-			\n\tlife_expectancy: {:?}\
-			\n\tmax_height: {:?}\
+			\n  missing_selections: {:?}\
+			\n  ability_scores: {}\
+			\n  skills: {}\
+			\n  proficiencies: {}\
+			\n  life_expectancy: {:?}\
+			\n  max_height: {:?}\
 			\n}}",
 			self.missing_selections,
 			self.ability_scores
@@ -118,9 +119,9 @@ impl std::fmt::Debug for Derived {
 						.sources
 						.iter()
 						.fold(String::new(), |str, (src_path, value)| {
-							format!("{str}\n\t\t\t{src_path:?}: {value:?}")
+							format!("{str}\n      {src_path:?}: {value:?}")
 						});
-					format!("{str}\n\t\t{ability:?}: {:?}{sources}", attributed.value)
+					format!("{str}\n    {ability:?}: {:?}{sources}", attributed.value)
 				}),
 			self.skills
 				.iter()
@@ -129,14 +130,16 @@ impl std::fmt::Debug for Derived {
 						.sources
 						.iter()
 						.fold(String::new(), |str, (src_path, value)| {
-							format!("{str}\n\t\t\t{src_path:?}: {value:?}")
+							format!("{str}\n      {src_path:?}: {value:?}")
 						});
-					format!("{str}\n\t\t{skill:?}: {:?}{sources}", attributed.value)
+					format!("{str}\n    {skill:?}: {:?}{sources}", attributed.value)
 				}),
-			self.languages
+			self.proficiencies
 				.iter()
-				.fold(String::new(), |str, (lang, sources)| {
-					format!("{str}\n\t\t{lang:?} => {sources:?}")
+				.fold(String::new(), |str, (kind, attributed_values)| {
+					format!("{str}\n    {kind:?} => {}", attributed_values.iter().fold(String::new(), |str, (value, sources)| {
+						format!("{str}\n      {value:?} => {sources:?}")
+					}))
 				}),
 			self.life_expectancy,
 			self.max_height,
@@ -210,7 +213,7 @@ impl<'c> DerivedBuilder<'c> {
 		self.derived.ability_scores[ability].push(bonus, scope);
 	}
 
-	pub fn add_skill(&mut self, skill: Skill, proficiency: ProficiencyLevel) {
+	pub fn add_skill(&mut self, skill: Skill, proficiency: proficiency::Level) {
 		let scope = self.scope();
 		self.derived.skills[skill].push(proficiency, scope);
 	}
@@ -219,7 +222,7 @@ impl<'c> DerivedBuilder<'c> {
 		let scope = self.scope();
 		self.derived.saving_throws[ability]
 			.0
-			.push(ProficiencyLevel::Full, scope);
+			.push(proficiency::Level::Full, scope);
 	}
 
 	pub fn add_saving_throw_modifier(&mut self, ability: Ability, target: String) {
@@ -229,13 +232,13 @@ impl<'c> DerivedBuilder<'c> {
 
 	pub fn add_language(&mut self, language: String) {
 		let scope = self.scope();
-		match self.derived.languages.get_mut(&language) {
+		match self.derived.proficiencies[proficiency::Kind::Language].get_mut(&language) {
 			Some(sources) => {
 				sources.insert(scope);
 			}
 			None => {
 				self.derived
-					.languages
+					.proficiencies[proficiency::Kind::Language]
 					.insert(language.clone(), BTreeSet::from([scope]));
 			}
 		}
@@ -306,19 +309,19 @@ impl State {
 		10 + self.ability_score(Ability::Dexterity).0.modifier()
 	}
 
-	pub fn ability_modifier(&self, ability: Ability, proficiency: ProficiencyLevel) -> i32 {
+	pub fn ability_modifier(&self, ability: Ability, proficiency: proficiency::Level) -> i32 {
 		let modifier = self.ability_score(ability).0.modifier();
 		let prof_bonus_multiplier = match proficiency {
-			ProficiencyLevel::None => 0.0,
-			ProficiencyLevel::Half => 0.5,
-			ProficiencyLevel::Full => 1.0,
-			ProficiencyLevel::Double => 2.0,
+			proficiency::Level::None => 0.0,
+			proficiency::Level::Half => 0.5,
+			proficiency::Level::Full => 1.0,
+			proficiency::Level::Double => 2.0,
 		};
 		let bonus = ((self.proficiency_bonus() as f32) * prof_bonus_multiplier).floor() as i32;
 		modifier + bonus
 	}
 
-	pub fn saving_throw(&self, ability: Ability) -> &AttributedValue<ProficiencyLevel> {
+	pub fn saving_throw(&self, ability: Ability) -> &AttributedValue<proficiency::Level> {
 		&self.derived.saving_throws[ability].0
 	}
 
@@ -331,12 +334,12 @@ impl State {
 	}
 
 	/// Returns attributed skill proficiencies for the character.
-	pub fn get_skill(&self, skill: Skill) -> &AttributedValue<ProficiencyLevel> {
+	pub fn get_skill(&self, skill: Skill) -> &AttributedValue<proficiency::Level> {
 		&self.derived.skills[skill]
 	}
 
-	pub fn languages(&self) -> &BTreeMap<String, BTreeSet<PathBuf>> {
-		&self.derived.languages
+	pub fn get_proficiencies(&self, kind: proficiency::Kind) -> &BTreeMap<String, BTreeSet<PathBuf>> {
+		&self.derived.proficiencies[kind]
 	}
 
 	pub fn hit_points(&self) -> (u32, u32, u32) {
@@ -480,61 +483,66 @@ mod test {
 					] },
 				},
 				saving_throws: enum_map! {
-					Ability::Strength => (AttributedValue { value: ProficiencyLevel::None, sources: vec![] }, Vec::new()),
-					Ability::Dexterity => (AttributedValue { value: ProficiencyLevel::None, sources: vec![] }, Vec::new()),
-					Ability::Constitution => (AttributedValue { value: ProficiencyLevel::None, sources: vec![] }, Vec::new()),
-					Ability::Intelligence => (AttributedValue { value: ProficiencyLevel::None, sources: vec![] }, Vec::new()),
-					Ability::Wisdom => (AttributedValue { value: ProficiencyLevel::None, sources: vec![] }, Vec::new()),
-					Ability::Charisma => (AttributedValue { value: ProficiencyLevel::None, sources: vec![] }, Vec::new()),
+					Ability::Strength => (AttributedValue { value: proficiency::Level::None, sources: vec![] }, Vec::new()),
+					Ability::Dexterity => (AttributedValue { value: proficiency::Level::None, sources: vec![] }, Vec::new()),
+					Ability::Constitution => (AttributedValue { value: proficiency::Level::None, sources: vec![] }, Vec::new()),
+					Ability::Intelligence => (AttributedValue { value: proficiency::Level::None, sources: vec![] }, Vec::new()),
+					Ability::Wisdom => (AttributedValue { value: proficiency::Level::None, sources: vec![] }, Vec::new()),
+					Ability::Charisma => (AttributedValue { value: proficiency::Level::None, sources: vec![] }, Vec::new()),
 				},
 				skills: enum_map! {
-					Skill::Acrobatics => AttributedValue { value: ProficiencyLevel::None, sources: vec![] },
-					Skill::AnimalHandling => AttributedValue { value: ProficiencyLevel::None, sources: vec![] },
-					Skill::Arcana => AttributedValue { value: ProficiencyLevel::None, sources: vec![] },
-					Skill::Athletics => AttributedValue { value: ProficiencyLevel::None, sources: vec![] },
-					Skill::Deception => AttributedValue { value: ProficiencyLevel::Full, sources: vec![
-						(PathBuf::from("Incognito/GoodWithPeople"), ProficiencyLevel::Full),
+					Skill::Acrobatics => AttributedValue { value: proficiency::Level::None, sources: vec![] },
+					Skill::AnimalHandling => AttributedValue { value: proficiency::Level::None, sources: vec![] },
+					Skill::Arcana => AttributedValue { value: proficiency::Level::None, sources: vec![] },
+					Skill::Athletics => AttributedValue { value: proficiency::Level::None, sources: vec![] },
+					Skill::Deception => AttributedValue { value: proficiency::Level::Full, sources: vec![
+						(PathBuf::from("Incognito/GoodWithPeople"), proficiency::Level::Full),
 					] },
-					Skill::History => AttributedValue { value: ProficiencyLevel::None, sources: vec![] },
-					Skill::Insight => AttributedValue { value: ProficiencyLevel::Full, sources: vec![
-						(PathBuf::from("Anthropologist/SkillProficiencies"), ProficiencyLevel::Full),
+					Skill::History => AttributedValue { value: proficiency::Level::None, sources: vec![] },
+					Skill::Insight => AttributedValue { value: proficiency::Level::Full, sources: vec![
+						(PathBuf::from("Anthropologist/SkillProficiencies"), proficiency::Level::Full),
 					] },
-					Skill::Intimidation => AttributedValue { value: ProficiencyLevel::None, sources: vec![] },
-					Skill::Investigation => AttributedValue { value: ProficiencyLevel::None, sources: vec![] },
-					Skill::Medicine => AttributedValue { value: ProficiencyLevel::None, sources: vec![] },
-					Skill::Nature => AttributedValue { value: ProficiencyLevel::None, sources: vec![] },
-					Skill::Perception => AttributedValue { value: ProficiencyLevel::None, sources: vec![] },
-					Skill::Performance => AttributedValue { value: ProficiencyLevel::None, sources: vec![] },
-					Skill::Persuasion => AttributedValue { value: ProficiencyLevel::None, sources: vec![] },
-					Skill::Religion => AttributedValue { value: ProficiencyLevel::Full, sources: vec![
-						(PathBuf::from("Anthropologist/SkillProficiencies"), ProficiencyLevel::Full),
+					Skill::Intimidation => AttributedValue { value: proficiency::Level::None, sources: vec![] },
+					Skill::Investigation => AttributedValue { value: proficiency::Level::None, sources: vec![] },
+					Skill::Medicine => AttributedValue { value: proficiency::Level::None, sources: vec![] },
+					Skill::Nature => AttributedValue { value: proficiency::Level::None, sources: vec![] },
+					Skill::Perception => AttributedValue { value: proficiency::Level::None, sources: vec![] },
+					Skill::Performance => AttributedValue { value: proficiency::Level::None, sources: vec![] },
+					Skill::Persuasion => AttributedValue { value: proficiency::Level::None, sources: vec![] },
+					Skill::Religion => AttributedValue { value: proficiency::Level::Full, sources: vec![
+						(PathBuf::from("Anthropologist/SkillProficiencies"), proficiency::Level::Full),
 					] },
-					Skill::SleightOfHand => AttributedValue { value: ProficiencyLevel::None, sources: vec![] },
-					Skill::Stealth => AttributedValue { value: ProficiencyLevel::None, sources: vec![] },
-					Skill::Survival => AttributedValue { value: ProficiencyLevel::None, sources: vec![] },
+					Skill::SleightOfHand => AttributedValue { value: proficiency::Level::None, sources: vec![] },
+					Skill::Stealth => AttributedValue { value: proficiency::Level::None, sources: vec![] },
+					Skill::Survival => AttributedValue { value: proficiency::Level::None, sources: vec![] },
 				},
-				languages: BTreeMap::from([
-					(
-						"Common".into(),
-						BTreeSet::from([PathBuf::from("Incognito/Languages")])
-					),
-					(
-						"Draconic".into(),
-						BTreeSet::from([PathBuf::from("Incognito/Languages/langA")])
-					),
-					(
-						"Undercommon".into(),
-						BTreeSet::from([PathBuf::from("Incognito/Languages/langB")])
-					),
-					(
-						"Sylvan".into(),
-						BTreeSet::from([PathBuf::from("Anthropologist/Languages/langA")])
-					),
-					(
-						"Elvish".into(),
-						BTreeSet::from([PathBuf::from("Anthropologist/Languages/langB")])
-					),
-				]),
+				proficiencies: enum_map! {
+					proficiency::Kind::Language => BTreeMap::from([
+						(
+							"Common".into(),
+							BTreeSet::from([PathBuf::from("Incognito/Languages")])
+						),
+						(
+							"Draconic".into(),
+							BTreeSet::from([PathBuf::from("Incognito/Languages/langA")])
+						),
+						(
+							"Undercommon".into(),
+							BTreeSet::from([PathBuf::from("Incognito/Languages/langB")])
+						),
+						(
+							"Sylvan".into(),
+							BTreeSet::from([PathBuf::from("Anthropologist/Languages/langA")])
+						),
+						(
+							"Elvish".into(),
+							BTreeSet::from([PathBuf::from("Anthropologist/Languages/langB")])
+						),
+					]),
+					proficiency::Kind::Armor => BTreeMap::from([]),
+					proficiency::Kind::Weapon => BTreeMap::from([]),
+					proficiency::Kind::Tool => BTreeMap::from([]),
+				},
 				life_expectancy: 100,
 				max_height: (
 					60,

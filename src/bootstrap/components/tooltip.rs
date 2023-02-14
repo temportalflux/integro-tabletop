@@ -50,11 +50,17 @@ pub fn Component(
 	}: &Props,
 ) -> Html {
 	let node = use_node_ref();
-	use_effect_with_deps(|node| {
-		if let Some(node) = node.get() {
-			crate::bootstrap::Tooltip::new(node.into(), wasm_bindgen::JsValue::from("{}".to_owned()));
-		}
-	}, node.clone());
+	use_effect_with_deps(
+		|node| {
+			if let Some(node) = node.get() {
+				crate::bootstrap::Tooltip::new(
+					node.into(),
+					wasm_bindgen::JsValue::from("{}".to_owned()),
+				);
+			}
+		},
+		node.clone(),
+	);
 
 	html! {<@{tag.clone()} ref={node}
 		class={classes.clone()}

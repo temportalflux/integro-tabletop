@@ -12,8 +12,7 @@ pub use feature::*;
 
 pub mod modifier;
 
-mod proficiency;
-pub use proficiency::*;
+pub mod proficiency;
 
 pub mod roll;
 
@@ -128,7 +127,7 @@ pub mod hardcoded {
 									Skill::Deception, Skill::Insight, Skill::Intimidation, Skill::Persuasion,
 								],
 							},
-							proficiency: ProficiencyLevel::Full,
+							proficiency: proficiency::Level::Full,
 						}.into(),
 					],
 					..Default::default()
@@ -163,11 +162,11 @@ pub mod hardcoded {
 					modifiers: vec![
 						AddSkill {
 							skill: Selector::Specific(Skill::Insight),
-							proficiency: ProficiencyLevel::Full,
+							proficiency: proficiency::Level::Full,
 						}.into(),
 						AddSkill {
 							skill: Selector::Specific(Skill::Religion),
-							proficiency: ProficiencyLevel::Full,
+							proficiency: proficiency::Level::Full,
 						}.into(),
 					],
 					..Default::default()
