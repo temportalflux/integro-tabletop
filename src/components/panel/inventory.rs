@@ -1,4 +1,8 @@
-use crate::{data::ContextMut, system::dnd5e::character::State};
+use crate::{
+	data::ContextMut,
+	system::dnd5e::character::{inventory::Item, State},
+};
+use uuid::Uuid;
 use wasm_bindgen::JsCast;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
@@ -6,24 +10,6 @@ use yew::prelude::*;
 #[function_component]
 pub fn Inventory() -> Html {
 	let state = use_context::<ContextMut<State>>().unwrap();
-	let equipped = use_state(|| true);
-
-	// temp demo of mutating another piece of data when a state changes.
-	// this will be useful when equipping an item requires rebuilding of
-	// features, thereby affecting senses, skills, ability scores, etc.
-	use_effect_with_deps(
-		move |equipped| {
-			let is_equipped = **equipped;
-			state.mutate(move |state| {
-				if is_equipped {
-					state.add_hit_points(1);
-				} else {
-					state.sub_hit_points(1);
-				}
-			});
-		},
-		equipped.clone(),
-	);
 
 	html! {<>
 
@@ -38,30 +24,77 @@ pub fn Inventory() -> Html {
 				</tr>
 			</thead>
 			<tbody>
-				<tr class="align-middle" onclick={Callback::from(|_| log::debug!("TODO: open item interface modal"))}>
-					<td class="text-center">
-						<input
-							class={"form-check-input"} type={"checkbox"}
-							checked={*equipped}
-							onclick={Callback::from(|evt: web_sys::MouseEvent| evt.stop_propagation())}
-							onchange={Callback::from({
-								let equipped = equipped.clone();
-								move |evt: web_sys::Event| {
-									let Some(target) = evt.target() else { return; };
-									let Some(input) = target.dyn_ref::<HtmlInputElement>() else { return; };
-									log::debug!("equipped state changing");
-									equipped.set(input.checked());
-								}
-							})}
-						/>
-					</td>
-					<td>{"Dagger"}</td>
-					<td class="text-center">{1}{" lb."}</td>
-					<td class="text-center">{1}</td>
-					<td style="max-width: 250px;">{"Simple, Finesse, Light, Thrown, Simple, Finesse, Light, Thrown, Simple, Finesse, Light, Thrown"}</td>
-				</tr>
+				{state.inventory().items().into_iter().map(|(id, item)| html! {
+					<ItemRow id={id.clone()} item={item.clone()} />
+				}).collect::<Vec<_>>()}
 			</tbody>
 		</table>
 
 	</>}
+}
+
+#[derive(Clone, PartialEq, Properties)]
+pub struct ItemRowProps {
+	id: Uuid,
+	item: Item,
+}
+
+#[function_component]
+pub fn ItemRow(ItemRowProps { id, item }: &ItemRowProps) -> Html {
+	let on_click_row = Callback::from(|_| log::debug!("TODO: open item interface modal"));
+	html! {
+		<tr class="align-middle" onclick={on_click_row}>
+			<td class="text-center">
+				<ItemRowEquipBox id={id.clone()} can_be_equipped={item.can_be_equipped()} is_equipped={item.is_equipped()} />
+			</td>
+			<td>{item.name.clone()}</td>
+			<td class="text-center">{item.weight}{" lb."}</td>
+			<td class="text-center">{item.quantity()}</td>
+			<td style="width: 250px;">{item.notes.clone()}</td>
+		</tr>
+	}
+}
+
+#[derive(Clone, PartialEq, Properties)]
+struct EquipBoxProps {
+	id: Uuid,
+	can_be_equipped: bool,
+	is_equipped: bool,
+}
+#[function_component]
+fn ItemRowEquipBox(
+	EquipBoxProps {
+		id,
+		can_be_equipped,
+		is_equipped,
+	}: &EquipBoxProps,
+) -> Html {
+	let state = use_context::<ContextMut<State>>().unwrap();
+	if !*can_be_equipped {
+		return html! { {"--"} };
+	}
+
+	let on_change = Callback::from({
+		let id = id.clone();
+		let state = state.clone();
+		move |evt: web_sys::Event| {
+			let Some(target) = evt.target() else { return; };
+			let Some(input) = target.dyn_ref::<HtmlInputElement>() else { return; };
+			let should_be_equipped = input.checked();
+			state.mutate(move |state| {
+				let Some(item) = state.inventory_mut().get_mut(&id) else { return; };
+				item.set_equipped(should_be_equipped);
+				state.recompile();
+			});
+		}
+	});
+
+	html! {
+		<input
+			class={"form-check-input"} type={"checkbox"}
+			checked={*is_equipped}
+			onclick={Callback::from(|evt: web_sys::MouseEvent| evt.stop_propagation())}
+			onchange={on_change}
+		/>
+	}
 }

@@ -51,7 +51,7 @@ pub fn Component(
 ) -> Html {
 	let node = use_node_ref();
 	use_effect_with_deps(
-		|node| {
+		move |(node, _)| {
 			if let Some(node) = node.get() {
 				crate::bootstrap::Tooltip::new(
 					node.into(),
@@ -59,7 +59,7 @@ pub fn Component(
 				);
 			}
 		},
-		node.clone(),
+		(node.clone(), content.clone()),
 	);
 
 	html! {<@{tag.clone()} ref={node}

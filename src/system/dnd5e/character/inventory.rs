@@ -1,22 +1,78 @@
+use super::DerivedBuilder;
 use crate::system::dnd5e::{
-	modifier::BoxedModifier,
-	roll::{Die, Roll},
-	Feature,
+	modifier::{self, AddSkillModifier, BoxedModifier},
+	roll::{self, Die, Roll},
+	Ability, Skill,
 };
+use std::collections::HashMap;
+use uuid::Uuid;
 
 #[derive(Clone, PartialEq)]
 pub struct Inventory {
-	pub items: Vec<(CustomItem, u32)>,
+	items_by_id: HashMap<Uuid, Item>,
+	itemids_by_name: Vec<Uuid>,
 }
 
 impl Inventory {
 	pub fn new() -> Self {
-		Self { items: Vec::new() }
+		Self {
+			items_by_id: HashMap::new(),
+			itemids_by_name: Vec::new(),
+		}
+	}
+
+	fn find_name_for_id(&self, id: &Uuid) -> &String {
+		&self.items_by_id.get(id).unwrap().name
+	}
+
+	pub fn insert(&mut self, item: Item) {
+		let id = Uuid::new_v4();
+		let search = self
+			.itemids_by_name
+			.binary_search_by(|id| self.find_name_for_id(id).cmp(&item.name));
+		let idx = match search {
+			// an item with the same name already exists at this index
+			Ok(idx) => idx,
+			// no item with the name exists, this is the index to insert to maintain sort-order
+			Err(idx) => idx,
+		};
+		self.itemids_by_name.insert(idx, id.clone());
+		self.items_by_id.insert(id, item);
+	}
+
+	pub fn remove(&mut self, id: &Uuid) -> Option<Item> {
+		if let Ok(idx) = self.itemids_by_name.binary_search(id) {
+			self.itemids_by_name.remove(idx);
+		}
+		self.items_by_id.remove(id)
+	}
+
+	pub fn items(&self) -> Vec<(&Uuid, &Item)> {
+		self.itemids_by_name
+			.iter()
+			.map(|id| (id, self.items_by_id.get(&id).unwrap()))
+			.collect()
+	}
+
+	pub fn get_mut(&mut self, id: &Uuid) -> Option<&mut Item> {
+		self.items_by_id.get_mut(id)
 	}
 }
 
-#[derive(Clone, PartialEq)]
-pub struct CustomItem {
+impl modifier::Container for Inventory {
+	fn id(&self) -> Option<String> {
+		Some("Inventory".into())
+	}
+
+	fn apply_modifiers<'c>(&self, stats: &mut DerivedBuilder<'c>) {
+		for item in self.items_by_id.values() {
+			stats.apply_from(item);
+		}
+	}
+}
+
+#[derive(Clone, PartialEq, Default)]
+pub struct Item {
 	pub name: String,
 	pub description: Option<String>,
 	pub weight: u32,
@@ -25,44 +81,118 @@ pub struct CustomItem {
 	pub kind: ItemKind,
 }
 
+impl Item {
+	pub fn can_be_equipped(&self) -> bool {
+		match &self.kind {
+			ItemKind::Equipment(_) => true,
+			_ => false,
+		}
+	}
+
+	pub fn is_equipped(&self) -> bool {
+		match &self.kind {
+			ItemKind::Equipment(equipment) => equipment.is_equipped,
+			_ => false,
+		}
+	}
+
+	pub fn set_equipped(&mut self, equipped: bool) {
+		let ItemKind::Equipment(equipment) = &mut self.kind else { return; };
+		equipment.is_equipped = equipped;
+	}
+
+	pub fn quantity(&self) -> u32 {
+		match &self.kind {
+			ItemKind::Simple { count } => *count,
+			_ => 1,
+		}
+	}
+}
+
+impl modifier::Container for Item {
+	fn id(&self) -> Option<String> {
+		Some(self.name.clone())
+	}
+
+	fn apply_modifiers<'c>(&self, stats: &mut DerivedBuilder<'c>) {
+		if let ItemKind::Equipment(equipment) = &self.kind {
+			stats.apply_from(equipment);
+		}
+	}
+}
+
 #[derive(Clone, PartialEq)]
 pub enum ItemKind {
 	Simple { count: u32 },
 	Equipment(Equipment),
 }
+impl Default for ItemKind {
+	fn default() -> Self {
+		Self::Simple { count: 1 }
+	}
+}
 
 #[derive(Clone, PartialEq, Default)]
 pub struct Equipment {
-	is_equipped: bool,
-	modifiers: Vec<BoxedModifier>,
-	features: Vec<Feature>,
-	armor: Option<Armor>,
-	weapon: Option<Weapon>,
-	attunement: Option<Attunement>,
-}
-
-#[derive(Clone, PartialEq, Default)]
-pub struct Weapon {
-	/*
-	Weapon (https://www.dndbeyond.com/sources/basic-rules/equipment#Weapons):
-	- type (melee, ranged)
-	- type 2 (martial, simple, spell)
-	- archetype (for proficiency)
-	- reach / range
-	- damage (roll)
-	- damage type
-	- properties (finesse, light, thrown, etc)
-	*/
-}
-
-#[derive(Clone, PartialEq, Default)]
-pub struct Armor {}
-
-#[derive(Clone, PartialEq, Default)]
-pub struct Attunement {
+	pub is_equipped: bool,
+	/// Passive modifiers applied while this item is equipped.
 	pub modifiers: Vec<BoxedModifier>,
+	/// If this item is armor, this is the armor data.
+	pub armor: Option<Armor>,
+	/// If this item is a shield, this is the AC bonus it grants.
+	pub shield: Option<i32>,
+	/// If this item is a weapon, tthis is the weapon data.
+	pub weapon: Option<Weapon>,
+	/// If this weapon can be attuned, this is the attunement data.
+	pub attunement: Option<Attunement>,
+}
+impl modifier::Container for Equipment {
+	fn apply_modifiers<'c>(&self, stats: &mut DerivedBuilder<'c>) {
+		if !self.is_equipped {
+			return;
+		}
+
+		for modifier in &self.modifiers {
+			stats.apply(modifier);
+		}
+	}
 }
 
+#[derive(Clone, PartialEq)]
+pub struct Armor {
+	kind: ArmorType,
+	/// The minimum armor-class granted while this is equipped.
+	base_score: u32,
+	/// The ability modifier granted to AC.
+	ability_modifier: Option<Ability>,
+	/// The maximum ability modifier granted. If none, the modifier is unbounded.
+	max_ability_bonus: Option<i32>,
+	/// The minimum expected strength score to use this armor.
+	/// If provided, characters with a value less than this are hindered (reduced speed).
+	min_strength_score: Option<u32>,
+}
+
+#[derive(Clone, PartialEq)]
+pub enum ArmorType {
+	Light,
+	Medium,
+	Heavy,
+}
+
+#[derive(Clone, PartialEq)]
+pub struct Weapon {
+	pub kind: WeaponType,
+	pub damage: Roll,
+	pub damage_type: String,
+	pub properties: Vec<Property>,
+	pub range: Option<WeaponRange>,
+}
+#[derive(Clone, PartialEq, Default)]
+pub enum WeaponType {
+	#[default]
+	Simple,
+	Martial,
+}
 #[derive(Clone, PartialEq)]
 pub enum Property {
 	Light,   // used by two handed fighting feature
@@ -73,9 +203,22 @@ pub enum Property {
 	Thrown(u32, u32),
 	Versatile(Roll),
 }
+#[derive(Clone, PartialEq, Default)]
+pub struct WeaponRange {
+	short_range: u32,
+	long_range: u32,
+	requires_ammunition: bool,
+	requires_loading: bool,
+}
 
+#[derive(Clone, PartialEq, Default)]
+pub struct Attunement {
+	pub modifiers: Vec<BoxedModifier>,
+}
+
+#[allow(dead_code)]
 fn items_demo() {
-	let _armor_leather = CustomItem {
+	let _armor_leather = Item {
 		name: "Leather Armor".into(),
 		description: None,
 		weight: 10,
@@ -83,60 +226,62 @@ fn items_demo() {
 		notes: "".into(),
 		kind: ItemKind::Equipment(Equipment {
 			armor: Some(Armor {
-				/*
 				kind: ArmorType::Light,
-				ac_base: 11,
-				ac_modifier: Some(Ability::Dexterity),
-				ac_modifier_limit: None,
-				*/
+				base_score: 11,
+				ability_modifier: Some(Ability::Dexterity),
+				max_ability_bonus: None,
+				min_strength_score: None,
 			}),
 			..Default::default()
 		}),
 	};
-	let _armor_scale_mail = CustomItem {
+	let _armor_scale_mail = Item {
 		name: "Scale Mail".into(),
 		description: None,
 		weight: 45,
 		worth: 5000, // in copper
 		notes: "".into(),
 		kind: ItemKind::Equipment(Equipment {
-			modifiers: vec![
-				// disadvantage on stealth
-			],
+			modifiers: vec![AddSkillModifier {
+				skill: Skill::Stealth,
+				modifier: roll::Modifier::Disadvantage,
+				criteria: None,
+			}
+			.into()],
 			armor: Some(Armor {
-				/*
 				kind: ArmorType::Medium,
-				ac_base: 14,
-				ac_modifier: Some(Ability::Dexterity),
-				ac_modifier_limit: Some(2),
-				*/
+				base_score: 14,
+				ability_modifier: Some(Ability::Dexterity),
+				max_ability_bonus: Some(2),
+				min_strength_score: None,
 			}),
 			..Default::default()
 		}),
 	};
-	let _armor_splint = CustomItem {
+	let _armor_splint = Item {
 		name: "Splint".into(),
 		description: None,
 		weight: 60,
 		worth: 20000, // in copper
 		notes: "".into(),
 		kind: ItemKind::Equipment(Equipment {
-			modifiers: vec![
-				// disadvantage on stealth
-			],
+			modifiers: vec![AddSkillModifier {
+				skill: Skill::Stealth,
+				modifier: roll::Modifier::Disadvantage,
+				criteria: None,
+			}
+			.into()],
 			armor: Some(Armor {
-				/*
 				kind: ArmorType::Heavy,
-				ac_base: 17,
-				ac_modifier: None,
-				ac_modifier_limit: None,
-				minimum_strength: Some(15),
-				*/
+				base_score: 17,
+				ability_modifier: None,
+				max_ability_bonus: None,
+				min_strength_score: Some(15),
 			}),
 			..Default::default()
 		}),
 	};
-	let _club = CustomItem {
+	let _club = Item {
 		name: "Club".into(),
 		description: None,
 		weight: 2,
@@ -144,18 +289,19 @@ fn items_demo() {
 		notes: "".into(),
 		kind: ItemKind::Equipment(Equipment {
 			weapon: Some(Weapon {
-				/*
-				classification: Classification::Simple,
-				damage: Roll { amount: 1, die: Die::D4 },
+				kind: WeaponType::Simple,
+				damage: Roll {
+					amount: 1,
+					die: Die::D4,
+				},
 				damage_type: "bludgeoning".into(),
-				is_light: true,
 				properties: vec![Property::Light],
-				*/
+				range: None,
 			}),
 			..Default::default()
 		}),
 	};
-	let _dagger = CustomItem {
+	let _dagger = Item {
 		name: "Dagger".into(),
 		description: None,
 		weight: 1,
@@ -163,17 +309,19 @@ fn items_demo() {
 		notes: "".into(),
 		kind: ItemKind::Equipment(Equipment {
 			weapon: Some(Weapon {
-				/*
-				classification: Classification::Simple,
-				damage: Roll { amount: 1, die: Die::D4 },
+				kind: WeaponType::Simple,
+				damage: Roll {
+					amount: 1,
+					die: Die::D4,
+				},
 				damage_type: "piercing".into(),
 				properties: vec![Property::Light, Property::Finesse, Property::Thrown(20, 60)],
-				*/
+				range: None,
 			}),
 			..Default::default()
 		}),
 	};
-	let _greatclub = CustomItem {
+	let _greatclub = Item {
 		name: "Greatclub".into(),
 		description: None,
 		weight: 10,
@@ -181,17 +329,19 @@ fn items_demo() {
 		notes: "".into(),
 		kind: ItemKind::Equipment(Equipment {
 			weapon: Some(Weapon {
-				/*
-				classification: Classification::Simple,
-				damage: Roll { amount: 1, die: Die::D8 },
+				kind: WeaponType::Simple,
+				damage: Roll {
+					amount: 1,
+					die: Die::D8,
+				},
 				damage_type: "bludgeoning".into(),
 				properties: vec![Property::TwoHanded],
-				*/
+				range: None,
 			}),
 			..Default::default()
 		}),
 	};
-	let _quarterstaff = CustomItem {
+	let _quarterstaff = Item {
 		name: "Quarterstaff".into(),
 		description: None,
 		weight: 4,
@@ -199,17 +349,22 @@ fn items_demo() {
 		notes: "".into(),
 		kind: ItemKind::Equipment(Equipment {
 			weapon: Some(Weapon {
-				/*
-				classification: Classification::Simple,
-				damage: Roll { amount: 1, die: Die::D6 },
+				kind: WeaponType::Simple,
+				damage: Roll {
+					amount: 1,
+					die: Die::D6,
+				},
 				damage_type: "bludgeoning".into(),
-				properties: vec![Property::Versatile(Roll { amount: 1, die: Die::D8 })],
-				*/
+				properties: vec![Property::Versatile(Roll {
+					amount: 1,
+					die: Die::D8,
+				})],
+				range: None,
 			}),
 			..Default::default()
 		}),
 	};
-	let _crossbow_light = CustomItem {
+	let _crossbow_light = Item {
 		name: "Crossbow (Light)".into(),
 		description: None,
 		weight: 5,
@@ -217,22 +372,24 @@ fn items_demo() {
 		notes: "".into(),
 		kind: ItemKind::Equipment(Equipment {
 			weapon: Some(Weapon {
-				/*
-				classification: Classification::Simple,
-				damage: Roll { amount: 1, die: Die::D8 },
+				kind: WeaponType::Simple,
+				damage: Roll {
+					amount: 1,
+					die: Die::D8,
+				},
 				damage_type: "piercing".into(),
 				properties: vec![Property::TwoHanded],
-				ranged: Some(WeaponRange {
+				range: Some(WeaponRange {
 					short_range: 80,
 					long_range: 320,
-					properties: vec![RangeProperty::Ammunition, RangeProperty::Loading],
+					requires_ammunition: true,
+					requires_loading: true,
 				}),
-				*/
 			}),
 			..Default::default()
 		}),
 	};
-	let _halberd = CustomItem {
+	let _halberd = Item {
 		name: "Halberd".into(),
 		description: None,
 		weight: 6,
@@ -240,18 +397,19 @@ fn items_demo() {
 		notes: "".into(),
 		kind: ItemKind::Equipment(Equipment {
 			weapon: Some(Weapon {
-				/*
-				classification: Classification::Martial,
-				damage: Roll { amount: 1, die: Die::D10 },
+				kind: WeaponType::Martial,
+				damage: Roll {
+					amount: 1,
+					die: Die::D10,
+				},
 				damage_type: "slashing".into(),
 				properties: vec![Property::TwoHanded, Property::Heavy, Property::Reach],
-				ranged: None,
-				*/
+				range: None,
 			}),
 			..Default::default()
 		}),
 	};
-	let _longbow = CustomItem {
+	let _longbow = Item {
 		name: "Halberd".into(),
 		description: None,
 		weight: 18,
@@ -259,17 +417,19 @@ fn items_demo() {
 		notes: "".into(),
 		kind: ItemKind::Equipment(Equipment {
 			weapon: Some(Weapon {
-				/*
-				classification: Classification::Martial,
-				damage: Roll { amount: 1, die: Die::D8 },
+				kind: WeaponType::Martial,
+				damage: Roll {
+					amount: 1,
+					die: Die::D8,
+				},
 				damage_type: "slashing".into(),
 				properties: vec![Property::TwoHanded, Property::Heavy],
-				ranged: Some(WeaponRange {
+				range: Some(WeaponRange {
 					short_range: 150,
 					long_range: 600,
-					properties: vec![RangeProperty::Ammunition],
+					requires_ammunition: true,
+					requires_loading: false,
 				}),
-				*/
 			}),
 			..Default::default()
 		}),

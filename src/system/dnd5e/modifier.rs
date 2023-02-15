@@ -54,7 +54,10 @@ where
 }
 
 pub trait Container {
-	fn id(&self) -> String;
+	fn id(&self) -> Option<String> {
+		None
+	}
+
 	fn apply_modifiers<'c>(&self, stats: &mut DerivedBuilder<'c>);
 }
 

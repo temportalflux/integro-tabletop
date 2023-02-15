@@ -68,6 +68,7 @@ impl Character {
 		for feat in &self.feats {
 			stats.apply_from(feat);
 		}
+		stats.apply_from(&self.inventory);
 
 		stats.build()
 	}
@@ -233,9 +234,14 @@ impl<'c> DerivedBuilder<'c> {
 	}
 
 	pub fn apply_from(&mut self, modifiers: &impl Container) {
-		self.scope.push(&modifiers.id());
+		let id = modifiers.id();
+		if let Some(id) = &id {
+			self.scope.push(id);
+		}
 		modifiers.apply_modifiers(self);
-		self.scope.pop();
+		if id.is_some() {
+			self.scope.pop();
+		}
 	}
 
 	pub fn apply(&mut self, modifier: &BoxedModifier) {
@@ -323,7 +329,7 @@ impl<'c> DerivedBuilder<'c> {
 			None => {
 				let mut value = AttributedValue::default();
 				value.push(max_bound_in_feet, scope);
-				self.derived.senses.insert(kind, value);
+				self.derived.senses.insert(kind.clone(), value);
 			}
 		}
 	}
@@ -374,6 +380,10 @@ impl yew::Reducible for State {
 	}
 }
 impl State {
+	pub fn recompile(&mut self) {
+		self.derived = self.character.compile();
+	}
+
 	/// Returns the score/value for a given ability. Any bonuses beyond the character's base scores
 	/// are provided with a path to the feature which provided that bonus.
 	pub fn ability_score(&self, ability: Ability) -> (Score, Vec<(PathBuf, i32)>) {
@@ -467,6 +477,14 @@ impl State {
 
 	pub fn defenses(&self) -> &EnumMap<Defense, BTreeMap<String, BTreeSet<PathBuf>>> {
 		&self.derived.defenses
+	}
+
+	pub fn inventory(&self) -> &inventory::Inventory {
+		&self.character.inventory
+	}
+
+	pub fn inventory_mut(&mut self) -> &mut inventory::Inventory {
+		&mut self.character.inventory
 	}
 }
 

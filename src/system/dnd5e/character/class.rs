@@ -20,9 +20,9 @@ impl Class {
 }
 
 impl modifier::Container for Class {
-	fn id(&self) -> String {
+	fn id(&self) -> Option<String> {
 		use convert_case::Casing;
-		self.name.to_case(convert_case::Case::Pascal)
+		Some(self.name.to_case(convert_case::Case::Pascal))
 	}
 
 	fn apply_modifiers<'c>(&self, _stats: &mut DerivedBuilder<'c>) {}

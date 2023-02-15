@@ -1,5 +1,5 @@
 use super::Selector;
-use crate::system::dnd5e::{character::DerivedBuilder, proficiency, Skill};
+use crate::system::dnd5e::{character::DerivedBuilder, proficiency, roll, Skill};
 use std::str::FromStr;
 
 #[derive(Clone)]
@@ -24,5 +24,17 @@ impl super::Modifier for AddSkill {
 		if let Some(skill) = skill {
 			stats.add_skill(skill, self.proficiency);
 		}
+	}
+}
+
+#[derive(Clone)]
+pub struct AddSkillModifier {
+	pub skill: Skill,
+	pub modifier: roll::Modifier,
+	pub criteria: Option<String>,
+}
+impl super::Modifier for AddSkillModifier {
+	fn apply<'c>(&self, stats: &mut DerivedBuilder<'c>) {
+		// TODO: Apply skill modifier (adv/dis)
 	}
 }

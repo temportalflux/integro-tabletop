@@ -28,7 +28,7 @@ fn create_character() -> system::dnd5e::character::Character {
 	use enum_map::enum_map;
 	use std::{collections::HashMap, path::PathBuf};
 	use system::dnd5e::{
-		character::{inventory::Inventory, Character, Description},
+		character::{Character, Description},
 		hardcoded::*,
 		modifier::{self, AddSavingThrow},
 		*,
@@ -90,7 +90,76 @@ fn create_character() -> system::dnd5e::character::Character {
 				"Elvish".into(),
 			),
 		]),
-		inventory: Inventory::new(),
+		inventory: {
+			use character::inventory::*;
+			use roll::*;
+			let mut inv = Inventory::new();
+			inv.insert(Item {
+				name: "Dagger".into(),
+				description: None,
+				weight: 1,
+				worth: 200, // in copper
+				kind: ItemKind::Equipment(Equipment {
+					weapon: Some(Weapon {
+						kind: WeaponType::Simple,
+						damage: Roll {
+							amount: 1,
+							die: Die::D4,
+						},
+						damage_type: "piercing".into(),
+						properties: vec![
+							Property::Light,
+							Property::Finesse,
+							Property::Thrown(20, 60),
+						],
+						range: None,
+					}),
+					..Default::default()
+				}),
+				..Default::default()
+			});
+			inv.insert(Item {
+				name: "Traveler's Clothes".into(),
+				description: Some(
+					"This set of clothes could consist of boots, a wool skirt or breeches, \
+				a sturdy belt, a shirt (perhaps with a vest or jacket), and an ample cloak with a hood."
+						.into(),
+				),
+				weight: 4,
+				worth: 200,
+				..Default::default()
+			});
+			inv.insert(Item {
+				name: "Goggles of Night".into(),
+				description: Some(
+					"While wearing these dark lenses, you have darkvision \
+				out to a range of 60 feet. If you already have darkvision, wearing the \
+				goggles increases its range by 60 feet."
+						.into(),
+				),
+				kind: ItemKind::Equipment(Equipment {
+					modifiers: vec![modifier::AddMaxSense("Darkvision".into(), 60).into()],
+					..Default::default()
+				}),
+				..Default::default()
+			});
+			inv.insert(Item {
+				name: "Wings of the Owl".into(),
+				kind: ItemKind::Equipment(Equipment {
+					modifiers: vec![
+						modifier::AddMaxSpeed("Flying".into(), 40).into(),
+						modifier::AddSkill {
+							skill: modifier::Selector::Specific(Skill::Perception),
+							proficiency: proficiency::Level::Half,
+						}
+						.into(),
+					],
+					..Default::default()
+				}),
+				..Default::default()
+			});
+			inv
+		},
 		conditions: Vec::new(),
 		hit_points: (0, 0),
 	}
