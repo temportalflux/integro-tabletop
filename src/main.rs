@@ -252,7 +252,7 @@ fn CharacterSheetPage(CharacterSheetPageProps { character }: &CharacterSheetPage
 							</div>
 						</div>
 
-						<div id="skills-container" class="card" style="min-width: 300px; border-color: var(--theme-frame-color);">
+						<div id="skills-container" class="card" style="min-width: 320px; border-color: var(--theme-frame-color);">
 							<div class="card-body" style="padding: 5px;">
 								<ability::SkillTable />
 							</div>

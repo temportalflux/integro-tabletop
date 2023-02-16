@@ -106,6 +106,17 @@ pub fn SkillTable() -> Html {
 					},
 				);
 
+				let disadvantage = match true {
+					true => {
+						html! {
+							<span aria-label="Disadvantage" style="margin-left: 2px; height: 16px; width: 16px; vertical-align: middle; margin-top: -2px;">
+								<crate::components::roll::Modifier value={crate::system::dnd5e::roll::Modifier::Disadvantage} />
+							</span>
+						}
+					}
+					false => html! {},
+				};
+
 				// TODO: Tooltips break when the presentation is changed b/c they havent been initialized
 				let mut table_data = vec![
 					html! {
@@ -113,7 +124,12 @@ pub fn SkillTable() -> Html {
 							{*attributed.value()}
 						</Tooltip>
 					},
-					html! { <td>{skill.display_name()}</td> },
+					html! { <td>
+						<div class="d-flex">
+							<span class="flex-grow-1">{skill.display_name()}</span>
+							{disadvantage}
+						</div>
+					</td> },
 					html! { <td class="text-center">{if modifier >= 0 { "+" } else { "-" }}{modifier.abs()}</td> },
 					html! { <td class="text-center">{passive}</td> },
 				];
