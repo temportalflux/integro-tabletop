@@ -1,4 +1,5 @@
 use crate::{
+	bootstrap::components::Tooltip,
 	data::ContextMut,
 	system::dnd5e::character::{inventory::Item, State},
 };
@@ -41,11 +42,17 @@ pub struct ItemRowProps {
 
 #[function_component]
 pub fn ItemRow(ItemRowProps { id, item }: &ItemRowProps) -> Html {
+	let state = use_context::<ContextMut<State>>().unwrap();
 	let on_click_row = Callback::from(|_| log::debug!("TODO: open item interface modal"));
 	html! {
 		<tr class="align-middle" onclick={on_click_row}>
 			<td class="text-center">
-				<ItemRowEquipBox id={id.clone()} can_be_equipped={item.can_be_equipped()} is_equipped={item.is_equipped()} />
+				<ItemRowEquipBox
+					id={id.clone()}
+					is_equipable={item.is_equipable()}
+					can_be_equipped={item.can_be_equipped(&*state)}
+					is_equipped={item.is_equipped()}
+				/>
 			</td>
 			<td>{item.name.clone()}</td>
 			<td class="text-center">{item.weight}{" lb."}</td>
@@ -58,19 +65,21 @@ pub fn ItemRow(ItemRowProps { id, item }: &ItemRowProps) -> Html {
 #[derive(Clone, PartialEq, Properties)]
 struct EquipBoxProps {
 	id: Uuid,
-	can_be_equipped: bool,
+	is_equipable: bool,
+	can_be_equipped: Result<(), String>,
 	is_equipped: bool,
 }
 #[function_component]
 fn ItemRowEquipBox(
 	EquipBoxProps {
 		id,
+		is_equipable,
 		can_be_equipped,
 		is_equipped,
 	}: &EquipBoxProps,
 ) -> Html {
 	let state = use_context::<ContextMut<State>>().unwrap();
-	if !*can_be_equipped {
+	if !*is_equipable {
 		return html! { {"--"} };
 	}
 
@@ -90,11 +99,17 @@ fn ItemRowEquipBox(
 	});
 
 	html! {
-		<input
-			class={"form-check-input"} type={"checkbox"}
-			checked={*is_equipped}
-			onclick={Callback::from(|evt: web_sys::MouseEvent| evt.stop_propagation())}
-			onchange={on_change}
-		/>
+		<Tooltip content={match *is_equipped {
+			true => None,
+			false => can_be_equipped.clone().err(),
+		}}>
+			<input
+				class={"form-check-input"} type={"checkbox"}
+				checked={*is_equipped}
+				disabled={!*is_equipped && can_be_equipped.is_err()}
+				onclick={Callback::from(|evt: web_sys::MouseEvent| evt.stop_propagation())}
+				onchange={on_change}
+			/>
+		</Tooltip>
 	}
 }

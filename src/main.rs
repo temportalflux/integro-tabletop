@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use yew::prelude::*;
 
 pub mod bootstrap;
@@ -165,6 +167,30 @@ fn create_character() -> system::dnd5e::character::Character {
 				..Default::default()
 			});
 			inv.insert(Item {
+				name: "Leather Armor".into(),
+				description: None,
+				weight: 10,
+				worth: 1000, // in copper
+				notes: "".into(),
+				kind: ItemKind::Equipment(Equipment {
+					armor: Some(Armor {
+						kind: ArmorType::Light,
+						base_score: 11,
+						ability_modifier: Some(Ability::Dexterity),
+						max_ability_bonus: None,
+						min_strength_score: None,
+					}),
+					criteria: Some(
+						criteria::armor::HasArmorEquipped {
+							inverted: true,
+							kinds: HashSet::from([]),
+						}
+						.into(),
+					),
+					..Default::default()
+				}),
+			});
+			inv.insert(Item {
 				name: "Splint".into(),
 				description: None,
 				weight: 60,
@@ -184,6 +210,13 @@ fn create_character() -> system::dnd5e::character::Character {
 						max_ability_bonus: None,
 						min_strength_score: Some(15),
 					}),
+					criteria: Some(
+						criteria::armor::HasArmorEquipped {
+							inverted: true,
+							kinds: HashSet::from([]),
+						}
+						.into(),
+					),
 					..Default::default()
 				}),
 			});

@@ -1,5 +1,6 @@
-use super::DerivedBuilder;
+use super::{DerivedBuilder, State};
 use crate::system::dnd5e::{
+	criteria::BoxedCriteria,
 	modifier::{self, AddSkillModifier, BoxedModifier},
 	roll::{self, Die, Roll},
 	Ability, Skill,
@@ -47,6 +48,10 @@ impl Inventory {
 		self.items_by_id.remove(id)
 	}
 
+	pub fn items_without_ids(&self) -> std::collections::hash_map::Values<'_, Uuid, Item> {
+		self.items_by_id.values()
+	}
+
 	pub fn items(&self) -> Vec<(&Uuid, &Item)> {
 		self.itemids_by_name
 			.iter()
@@ -82,13 +87,23 @@ pub struct Item {
 }
 
 impl Item {
-	pub fn can_be_equipped(&self) -> bool {
+	/// Returns true if the item has the capability to be equipped (i.e. it is a piece of equipment).
+	pub fn is_equipable(&self) -> bool {
 		match &self.kind {
 			ItemKind::Equipment(_) => true,
 			_ => false,
 		}
 	}
 
+	/// Returs Ok if the item can currently be equipped, otherwise returns a user-displayable reason why it cannot be equipped.
+	pub fn can_be_equipped(&self, state: &State) -> Result<(), String> {
+		match &self.kind {
+			ItemKind::Equipment(equipment) => equipment.can_be_equipped(state),
+			_ => Ok(()),
+		}
+	}
+
+	/// Returns true if the item is equipment and is currently equipped.
 	pub fn is_equipped(&self) -> bool {
 		match &self.kind {
 			ItemKind::Equipment(equipment) => equipment.is_equipped,
@@ -135,6 +150,8 @@ impl Default for ItemKind {
 #[derive(Clone, PartialEq, Default)]
 pub struct Equipment {
 	pub is_equipped: bool,
+	/// The criteria which must be met for this item to be equipped.
+	pub criteria: Option<BoxedCriteria>,
 	/// Passive modifiers applied while this item is equipped.
 	pub modifiers: Vec<BoxedModifier>,
 	/// If this item is armor, this is the armor data.
@@ -157,6 +174,15 @@ impl modifier::Container for Equipment {
 		}
 	}
 }
+impl Equipment {
+	/// Returs Ok if the item can currently be equipped, otherwise returns a user-displayable reason why it cannot be equipped.
+	pub fn can_be_equipped(&self, state: &State) -> Result<(), String> {
+		match &self.criteria {
+			Some(criteria) => criteria.evaluate(state),
+			None => Ok(()),
+		}
+	}
+}
 
 #[derive(Clone, PartialEq)]
 pub struct Armor {
@@ -172,7 +198,7 @@ pub struct Armor {
 	pub min_strength_score: Option<u32>,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ArmorType {
 	Light,
 	Medium,

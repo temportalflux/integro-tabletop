@@ -6,6 +6,7 @@ pub use action::*;
 
 pub mod character;
 pub mod condition;
+pub mod criteria;
 
 mod feature;
 pub use feature::*;
