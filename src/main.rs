@@ -5,6 +5,7 @@ use yew::prelude::*;
 pub mod bootstrap;
 pub mod components;
 pub mod data;
+pub mod path_map;
 pub mod system;
 pub mod theme;
 
@@ -65,7 +66,8 @@ fn create_character() -> system::dnd5e::character::Character {
 				modifier::AddDefense(modifier::Defense::Vulnerable, "Fire".into()).into(),
 			],
 			..Default::default()
-		}],
+		}
+		.into()],
 		selected_values: HashMap::from([
 			(
 				PathBuf::from("Incognito/AbilityScoreIncrease"),
@@ -345,7 +347,7 @@ fn CharacterSheetPage(CharacterSheetPageProps { character }: &CharacterSheetPage
 										<panel::Inventory />
 									</TabContent>
 									<TabContent id="features" title={html! {{"Features & Traits"}}}>
-										{"Features & Traits"}
+										<panel::Features />
 									</TabContent>
 									<TabContent id="description" title={html! {{"Description"}}}>
 										{"Description"}

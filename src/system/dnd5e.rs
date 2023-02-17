@@ -57,15 +57,15 @@ pub mod hardcoded {
 			name: "Changeling I".to_owned(),
 			description: "One of your birth parents is a changeling. You can change your appearance at will.".to_owned(),
 			features: vec![
-				changeling_age(),
-				changeling_size(),
+				changeling_age().into(),
+				changeling_size().into(),
 				Feature {
 					name: "Speeds".into(),
 					modifiers: vec![
 						AddMaxSpeed("Walking".into(), 30).into(),
 					],
 					..Default::default()
-				},
+				}.into(),
 				Feature {
 					name: "Shapechanger".to_owned(),
 					description: "As an action, you can change your appearance. You determine the specifics of the changes, \
@@ -76,7 +76,7 @@ pub mod hardcoded {
 					You stay in the new form until you use an action to revert to your true form or until you die.".into(),
 					action: Some(Action::Full),
 					..Default::default()
-				},
+				}.into(),
 			],
 		}
 	}
@@ -86,15 +86,15 @@ pub mod hardcoded {
 			name: "Changeling II".to_owned(),
 			description: "One of your birth parents is a changeling. You can perfectly mimic another person's voice.".to_owned(),
 			features: vec![
-				changeling_age(),
-				changeling_size(),
+				changeling_age().into(),
+				changeling_size().into(),
 				Feature {
 					name: "Voice Change".to_owned(),
 					description: "As an action, you can change your voice. You can't duplicate the voice of a creature you've never heard. \
 					Your appearance remains the same. You keep your mimicked voice until you use an action to revert to your true voice.".into(),
 					action: Some(Action::Full),
 					..Default::default()
-				},
+				}.into(),
 			],
 		}
 	}
@@ -123,7 +123,7 @@ pub mod hardcoded {
 						}.into(),
 					],
 					..Default::default()
-				},
+				}.into(),
 				Feature {
 					name: "Good with People".into(),
 					description: "You gain proficiency with two of the following skills of your choice: Deception, Insight, Intimidation, and Persuasion.".into(),
@@ -139,7 +139,7 @@ pub mod hardcoded {
 						}.into(),
 					],
 					..Default::default()
-				},
+				}.into(),
 				Feature {
 					name: "Languages".into(),
 					description: "You can speak, read, and write Common and two other languages of your choice.".into(),
@@ -149,7 +149,7 @@ pub mod hardcoded {
 						AddLanguage(Selector::Any { id: Some("langB".into()) }).into(),
 					],
 					..Default::default()
-				},
+				}.into(),
 			],
 		}
 	}
@@ -178,7 +178,7 @@ pub mod hardcoded {
 						}.into(),
 					],
 					..Default::default()
-				},
+				}.into(),
 				Feature {
 					name: "Languages".into(),
 					modifiers: vec![
@@ -186,7 +186,7 @@ pub mod hardcoded {
 						AddLanguage(Selector::Any { id: Some("langB".into()) }).into(),
 					],
 					..Default::default()
-				},
+				}.into(),
 				Feature {
 					name: "Adept Linguist".into(),
 					description: "You can communicate with humanoids who don't speak any language you know. \
@@ -194,7 +194,7 @@ pub mod hardcoded {
 					after which you learn a handful of important words, expressions, and gestures—enough \
 					to communicate on a rudimentary level.".into(),
 					..Default::default()
-				},
+				}.into(),
 			],
 		}
 	}

@@ -1,11 +1,11 @@
-use super::{DerivedBuilder, Feature};
-use crate::system::dnd5e::modifier;
+use super::DerivedBuilder;
+use crate::system::dnd5e::{modifier, BoxedFeature};
 
 #[derive(Default, Clone, PartialEq)]
 pub struct Lineage {
 	pub name: String,
 	pub description: String,
-	pub features: Vec<Feature>,
+	pub features: Vec<BoxedFeature>,
 }
 
 impl modifier::Container for Lineage {
@@ -16,7 +16,7 @@ impl modifier::Container for Lineage {
 
 	fn apply_modifiers<'c>(&self, stats: &mut DerivedBuilder<'c>) {
 		for feat in &self.features {
-			stats.apply_from(feat);
+			stats.add_feature(feat);
 		}
 	}
 }

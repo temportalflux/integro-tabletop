@@ -1,9 +1,11 @@
+use crate::path_map::PathMap;
+
 use super::{
 	condition::BoxedCondition,
 	modifier::{BoxedModifier, Container, Defense},
 	proficiency,
 	roll::RollSet,
-	Ability, Feature, Score, Skill,
+	Ability, BoxedFeature, Score, Skill,
 };
 use enum_map::EnumMap;
 use std::{
@@ -32,7 +34,7 @@ pub struct Character {
 	pub upbringing: Option<Upbringing>,
 	pub background: Option<Background>,
 	pub classes: Vec<Class>,
-	pub feats: Vec<Feature>,
+	pub feats: Vec<BoxedFeature>,
 	pub description: Description,
 	pub ability_scores: EnumMap<Ability, Score>,
 	pub selected_values: HashMap<PathBuf, String>,
@@ -66,7 +68,7 @@ impl Character {
 			stats.apply_from(class);
 		}
 		for feat in &self.feats {
-			stats.apply_from(feat);
+			stats.add_feature(feat);
 		}
 		stats.apply_from(&self.inventory);
 
@@ -105,6 +107,7 @@ pub struct Derived {
 	speeds: BTreeMap<String, AttributedValue<i32>>,
 	senses: BTreeMap<String, AttributedValue<i32>>,
 	defenses: EnumMap<Defense, BTreeMap<String, BTreeSet<PathBuf>>>,
+	features: PathMap<BoxedFeature>,
 	pub life_expectancy: i32,
 	pub max_height: (i32, RollSet),
 	max_hit_points: u32,
@@ -122,6 +125,7 @@ impl std::fmt::Debug for Derived {
 			\n  speeds: {}\
 			\n  senses: {}\
 			\n  defenses: {}\
+			\n  features: {}\
 			\n  life_expectancy: {:?}\
 			\n  max_height: {:?}\
 			\n}}",
@@ -220,6 +224,12 @@ impl std::fmt::Debug for Derived {
 							})
 					)
 				}),
+			self.features
+				.as_vec()
+				.into_iter()
+				.fold(String::new(), |str, (path, feat)| {
+					format!("{str}\n    {path:?}: {}", feat.inner().name)
+				}),
 			self.life_expectancy,
 			self.max_height,
 		)
@@ -274,6 +284,12 @@ impl<'c> DerivedBuilder<'c> {
 		if id.is_some() {
 			self.scope.pop();
 		}
+	}
+
+	pub fn add_feature(&mut self, feature: &BoxedFeature) {
+		let scope = self.scope();
+		self.features.insert(&scope, feature.clone());
+		self.apply_from(feature.inner());
 	}
 
 	pub fn get_selection(&mut self) -> Option<&str> {
@@ -524,6 +540,10 @@ impl State {
 	pub fn inventory_mut(&mut self) -> &mut inventory::Inventory {
 		&mut self.character.inventory
 	}
+
+	pub fn features(&self) -> &PathMap<BoxedFeature> {
+		&self.derived.features
+	}
 }
 
 #[derive(Clone, Default, PartialEq, Debug)]
@@ -643,128 +663,146 @@ mod test {
 				Modifier::Disadvantage => vec![],
 			},
 		);
+		let derived = character.compile();
+		assert_eq!(derived.max_hit_points, 0);
 		assert_eq!(
-			character.compile(),
-			Derived {
-				max_hit_points: 0,
-				ability_scores: enum_map! {
-					Ability::Strength => AttributedValue { value: 0, sources: vec![] },
-					Ability::Dexterity => AttributedValue { value: 0, sources: vec![] },
-					Ability::Constitution => AttributedValue { value: 1, sources: vec![
-						(PathBuf::from("Incognito/AbilityScoreIncrease"), 1),
-					] },
-					Ability::Intelligence => AttributedValue { value: 0, sources: vec![] },
-					Ability::Wisdom => AttributedValue { value: 0, sources: vec![] },
-					Ability::Charisma => AttributedValue { value: 2, sources: vec![
-						(PathBuf::from("Incognito/AbilityScoreIncrease"), 2),
-					] },
-				},
-				saving_throws: enum_map! {
-					Ability::Strength => (AttributedValue { value: proficiency::Level::None, sources: vec![] }, Vec::new()),
-					Ability::Dexterity => (AttributedValue { value: proficiency::Level::None, sources: vec![] }, Vec::new()),
-					Ability::Constitution => (AttributedValue { value: proficiency::Level::None, sources: vec![] }, Vec::new()),
-					Ability::Intelligence => (AttributedValue { value: proficiency::Level::None, sources: vec![] }, Vec::new()),
-					Ability::Wisdom => (AttributedValue { value: proficiency::Level::None, sources: vec![] }, Vec::new()),
-					Ability::Charisma => (AttributedValue { value: proficiency::Level::None, sources: vec![] }, Vec::new()),
-				},
-				skills: enum_map! {
-					Skill::Acrobatics => none_skill.clone(),
-					Skill::AnimalHandling => none_skill.clone(),
-					Skill::Arcana => none_skill.clone(),
-					Skill::Athletics => none_skill.clone(),
-					Skill::Deception => (
-						AttributedValue { value: proficiency::Level::Full, sources: vec![
-							(PathBuf::from("Incognito/GoodWithPeople"), proficiency::Level::Full),
-						] },
-						enum_map! {
-							Modifier::Advantage => vec![],
-							Modifier::Disadvantage => vec![],
-						}
-					),
-					Skill::History => none_skill.clone(),
-					Skill::Insight => (
-						AttributedValue { value: proficiency::Level::Full, sources: vec![
-							(PathBuf::from("Anthropologist/SkillProficiencies"), proficiency::Level::Full),
-						] },
-						enum_map! {
-							Modifier::Advantage => vec![],
-							Modifier::Disadvantage => vec![],
-						}
-					),
-					Skill::Intimidation => none_skill.clone(),
-					Skill::Investigation => none_skill.clone(),
-					Skill::Medicine => none_skill.clone(),
-					Skill::Nature => none_skill.clone(),
-					Skill::Perception => none_skill.clone(),
-					Skill::Performance => none_skill.clone(),
-					Skill::Persuasion => none_skill.clone(),
-					Skill::Religion => (
-						AttributedValue { value: proficiency::Level::Full, sources: vec![
-							(PathBuf::from("Anthropologist/SkillProficiencies"), proficiency::Level::Full),
-						] },
-						enum_map! {
-							Modifier::Advantage => vec![],
-							Modifier::Disadvantage => vec![],
-						}
-					),
-					Skill::SleightOfHand => none_skill.clone(),
-					Skill::Stealth => none_skill.clone(),
-					Skill::Survival => none_skill.clone(),
-				},
-				proficiencies: enum_map! {
-					proficiency::Kind::Language => BTreeMap::from([
-						(
-							"Common".into(),
-							BTreeSet::from([PathBuf::from("Incognito/Languages")])
-						),
-						(
-							"Draconic".into(),
-							BTreeSet::from([PathBuf::from("Incognito/Languages/langA")])
-						),
-						(
-							"Undercommon".into(),
-							BTreeSet::from([PathBuf::from("Incognito/Languages/langB")])
-						),
-						(
-							"Sylvan".into(),
-							BTreeSet::from([PathBuf::from("Anthropologist/Languages/langA")])
-						),
-						(
-							"Elvish".into(),
-							BTreeSet::from([PathBuf::from("Anthropologist/Languages/langB")])
-						),
-					]),
-					proficiency::Kind::Armor => BTreeMap::from([]),
-					proficiency::Kind::Weapon => BTreeMap::from([]),
-					proficiency::Kind::Tool => BTreeMap::from([]),
-				},
-				speeds: BTreeMap::from([(
-					"Walking".into(),
-					AttributedValue {
-						value: 30,
-						sources: vec![(PathBuf::from("ChangelingI/Speeds"), 30),]
-					}
-				)]),
-				senses: BTreeMap::from([]),
-				defenses: enum_map! {
-					Defense::Resistant => BTreeMap::from([]),
-					Defense::Immune =>BTreeMap::from([]),
-					Defense::Vulnerable =>BTreeMap::from([]),
-				},
-				life_expectancy: 100,
-				max_height: (
-					60,
-					RollSet(enum_map! {
-						Die::D4 => 2,
-						Die::D6 => 0,
-						Die::D8 => 0,
-						Die::D10 => 0,
-						Die::D12 => 0,
-						Die::D20 => 0,
-					})
-				),
-				missing_selections: vec![],
+			derived.ability_scores,
+			enum_map! {
+				Ability::Strength => AttributedValue { value: 0, sources: vec![] },
+				Ability::Dexterity => AttributedValue { value: 0, sources: vec![] },
+				Ability::Constitution => AttributedValue { value: 1, sources: vec![
+					(PathBuf::from("Incognito/AbilityScoreIncrease"), 1),
+				] },
+				Ability::Intelligence => AttributedValue { value: 0, sources: vec![] },
+				Ability::Wisdom => AttributedValue { value: 0, sources: vec![] },
+				Ability::Charisma => AttributedValue { value: 2, sources: vec![
+					(PathBuf::from("Incognito/AbilityScoreIncrease"), 2),
+				] },
 			}
 		);
+		assert_eq!(
+			derived.saving_throws,
+			enum_map! {
+				Ability::Strength => (AttributedValue { value: proficiency::Level::None, sources: vec![] }, Vec::new()),
+				Ability::Dexterity => (AttributedValue { value: proficiency::Level::None, sources: vec![] }, Vec::new()),
+				Ability::Constitution => (AttributedValue { value: proficiency::Level::None, sources: vec![] }, Vec::new()),
+				Ability::Intelligence => (AttributedValue { value: proficiency::Level::None, sources: vec![] }, Vec::new()),
+				Ability::Wisdom => (AttributedValue { value: proficiency::Level::None, sources: vec![] }, Vec::new()),
+				Ability::Charisma => (AttributedValue { value: proficiency::Level::None, sources: vec![] }, Vec::new()),
+			}
+		);
+		assert_eq!(
+			derived.skills,
+			enum_map! {
+				Skill::Acrobatics => none_skill.clone(),
+				Skill::AnimalHandling => none_skill.clone(),
+				Skill::Arcana => none_skill.clone(),
+				Skill::Athletics => none_skill.clone(),
+				Skill::Deception => (
+					AttributedValue { value: proficiency::Level::Full, sources: vec![
+						(PathBuf::from("Incognito/GoodWithPeople"), proficiency::Level::Full),
+					] },
+					enum_map! {
+						Modifier::Advantage => vec![],
+						Modifier::Disadvantage => vec![],
+					}
+				),
+				Skill::History => none_skill.clone(),
+				Skill::Insight => (
+					AttributedValue { value: proficiency::Level::Full, sources: vec![
+						(PathBuf::from("Anthropologist/SkillProficiencies"), proficiency::Level::Full),
+					] },
+					enum_map! {
+						Modifier::Advantage => vec![],
+						Modifier::Disadvantage => vec![],
+					}
+				),
+				Skill::Intimidation => none_skill.clone(),
+				Skill::Investigation => none_skill.clone(),
+				Skill::Medicine => none_skill.clone(),
+				Skill::Nature => none_skill.clone(),
+				Skill::Perception => none_skill.clone(),
+				Skill::Performance => none_skill.clone(),
+				Skill::Persuasion => none_skill.clone(),
+				Skill::Religion => (
+					AttributedValue { value: proficiency::Level::Full, sources: vec![
+						(PathBuf::from("Anthropologist/SkillProficiencies"), proficiency::Level::Full),
+					] },
+					enum_map! {
+						Modifier::Advantage => vec![],
+						Modifier::Disadvantage => vec![],
+					}
+				),
+				Skill::SleightOfHand => none_skill.clone(),
+				Skill::Stealth => none_skill.clone(),
+				Skill::Survival => none_skill.clone(),
+			}
+		);
+		assert_eq!(
+			derived.proficiencies,
+			enum_map! {
+				proficiency::Kind::Language => BTreeMap::from([
+					(
+						"Common".into(),
+						BTreeSet::from([PathBuf::from("Incognito/Languages")])
+					),
+					(
+						"Draconic".into(),
+						BTreeSet::from([PathBuf::from("Incognito/Languages/langA")])
+					),
+					(
+						"Undercommon".into(),
+						BTreeSet::from([PathBuf::from("Incognito/Languages/langB")])
+					),
+					(
+						"Sylvan".into(),
+						BTreeSet::from([PathBuf::from("Anthropologist/Languages/langA")])
+					),
+					(
+						"Elvish".into(),
+						BTreeSet::from([PathBuf::from("Anthropologist/Languages/langB")])
+					),
+				]),
+				proficiency::Kind::Armor => BTreeMap::from([]),
+				proficiency::Kind::Weapon => BTreeMap::from([]),
+				proficiency::Kind::Tool => BTreeMap::from([]),
+			}
+		);
+		assert_eq!(
+			derived.speeds,
+			BTreeMap::from([(
+				"Walking".into(),
+				AttributedValue {
+					value: 30,
+					sources: vec![(PathBuf::from("ChangelingI/Speeds"), 30),]
+				}
+			)])
+		);
+		assert_eq!(derived.senses, BTreeMap::from([]));
+		assert_eq!(
+			derived.defenses,
+			enum_map! {
+				Defense::Resistant => BTreeMap::from([]),
+				Defense::Immune =>BTreeMap::from([]),
+				Defense::Vulnerable =>BTreeMap::from([]),
+			}
+		);
+		//assert_eq!(derived.features, BTreeMap::from([]));
+		assert_eq!(derived.life_expectancy, 100);
+		assert_eq!(
+			derived.max_height,
+			(
+				60,
+				RollSet(enum_map! {
+					Die::D4 => 2,
+					Die::D6 => 0,
+					Die::D8 => 0,
+					Die::D10 => 0,
+					Die::D12 => 0,
+					Die::D20 => 0,
+				})
+			)
+		);
+		assert_eq!(derived.missing_selections, Vec::<PathBuf>::new());
 	}
 }

@@ -3,6 +3,7 @@ use super::{
 	modifier::{self, BoxedModifier},
 	Action,
 };
+use std::rc::Rc;
 
 #[derive(Default, Clone, PartialEq)]
 pub struct Feature {
@@ -23,6 +24,19 @@ impl modifier::Container for Feature {
 		for modifier in &self.modifiers {
 			stats.apply(modifier);
 		}
+	}
+}
+
+#[derive(Clone, PartialEq)]
+pub struct BoxedFeature(Rc<Feature>);
+impl From<Feature> for BoxedFeature {
+	fn from(feature: Feature) -> Self {
+		Self(Rc::new(feature))
+	}
+}
+impl BoxedFeature {
+	pub fn inner(&self) -> &Feature {
+		&*self.0
 	}
 }
 
