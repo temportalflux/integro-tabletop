@@ -93,7 +93,14 @@ pub struct Derived {
 			/*adv modifiers*/ Vec<(String, PathBuf)>,
 		),
 	>,
-	skills: EnumMap<Skill, AttributedValue<proficiency::Level>>,
+	skills: EnumMap<
+		Skill,
+		(
+			/*proficiency*/ AttributedValue<proficiency::Level>,
+			/*modifiers*/
+			EnumMap<super::roll::Modifier, Vec<(/*context*/ Option<String>, /*source*/ PathBuf)>>,
+		),
+	>,
 	proficiencies: EnumMap<proficiency::Kind, BTreeMap<String, BTreeSet<PathBuf>>>,
 	speeds: BTreeMap<String, AttributedValue<i32>>,
 	senses: BTreeMap<String, AttributedValue<i32>>,
@@ -133,19 +140,33 @@ impl std::fmt::Debug for Derived {
 							})
 					)
 				}),
+			/*
+				"Perception": Full
+					"Lineage1/FeatureA": Full
+					"Advantage":
+						"Lineage2/FeatureC": "when using hearing or smell"
+			*/
 			self.skills
 				.iter()
-				.fold(String::new(), |str, (skill, attributed)| {
-					format!(
-						"{str}\n    {skill:?}: {:?}{}",
-						attributed.value,
-						attributed
-							.sources
+				.fold(String::new(), |str, (skill, (attributed, modifiers))| {
+					let prof = attributed.value;
+					let sources = attributed
+						.sources
+						.iter()
+						.fold(String::new(), |str, (src_path, value)| {
+							format!("{str}\n      {src_path:?}: {value:?}")
+						});
+					let modifiers =
+						modifiers
 							.iter()
-							.fold(String::new(), |str, (src_path, value)| {
-								format!("{str}\n      {src_path:?}: {value:?}")
-							})
-					)
+							.fold(String::new(), |str, (modifier, contexts)| {
+								let sources =
+									contexts.iter().fold(String::new(), |str, (ctx, source)| {
+										format!("{str}\n        {source:?}: {ctx:?}")
+									});
+								format!("{str}\n      {modifier:?}:{sources}")
+							});
+					format!("{str}\n    {skill:?}: {prof:?}{sources}{modifiers}")
 				}),
 			self.proficiencies
 				.iter()
@@ -278,7 +299,17 @@ impl<'c> DerivedBuilder<'c> {
 
 	pub fn add_skill(&mut self, skill: Skill, proficiency: proficiency::Level) {
 		let scope = self.scope();
-		self.derived.skills[skill].push(proficiency, scope);
+		self.derived.skills[skill].0.push(proficiency, scope);
+	}
+
+	pub fn add_skill_modifier(
+		&mut self,
+		skill: Skill,
+		modifier: super::roll::Modifier,
+		context: Option<String>,
+	) {
+		let scope = self.scope();
+		self.derived.skills[skill].1[modifier].push((context, scope));
 	}
 
 	pub fn add_saving_throw(&mut self, ability: Ability) {
@@ -440,7 +471,14 @@ impl State {
 	}
 
 	/// Returns attributed skill proficiencies for the character.
-	pub fn get_skill(&self, skill: Skill) -> &AttributedValue<proficiency::Level> {
+	pub fn get_skill(
+		&self,
+		skill: Skill,
+	) -> &(
+		/*proficiency*/ AttributedValue<proficiency::Level>,
+		/*modifiers*/
+		EnumMap<super::roll::Modifier, Vec<(/*context*/ Option<String>, /*source*/ PathBuf)>>,
+	) {
 		&self.derived.skills[skill]
 	}
 
@@ -593,8 +631,18 @@ mod test {
 
 	#[test]
 	fn test_changeling() {
-		use super::super::roll::Die;
+		use super::super::roll::*;
 		let character = changeling_character();
+		let none_skill = (
+			AttributedValue {
+				value: proficiency::Level::None,
+				sources: vec![],
+			},
+			enum_map! {
+				Modifier::Advantage => vec![],
+				Modifier::Disadvantage => vec![],
+			},
+		);
 		assert_eq!(
 			character.compile(),
 			Derived {
@@ -620,30 +668,48 @@ mod test {
 					Ability::Charisma => (AttributedValue { value: proficiency::Level::None, sources: vec![] }, Vec::new()),
 				},
 				skills: enum_map! {
-					Skill::Acrobatics => AttributedValue { value: proficiency::Level::None, sources: vec![] },
-					Skill::AnimalHandling => AttributedValue { value: proficiency::Level::None, sources: vec![] },
-					Skill::Arcana => AttributedValue { value: proficiency::Level::None, sources: vec![] },
-					Skill::Athletics => AttributedValue { value: proficiency::Level::None, sources: vec![] },
-					Skill::Deception => AttributedValue { value: proficiency::Level::Full, sources: vec![
-						(PathBuf::from("Incognito/GoodWithPeople"), proficiency::Level::Full),
-					] },
-					Skill::History => AttributedValue { value: proficiency::Level::None, sources: vec![] },
-					Skill::Insight => AttributedValue { value: proficiency::Level::Full, sources: vec![
-						(PathBuf::from("Anthropologist/SkillProficiencies"), proficiency::Level::Full),
-					] },
-					Skill::Intimidation => AttributedValue { value: proficiency::Level::None, sources: vec![] },
-					Skill::Investigation => AttributedValue { value: proficiency::Level::None, sources: vec![] },
-					Skill::Medicine => AttributedValue { value: proficiency::Level::None, sources: vec![] },
-					Skill::Nature => AttributedValue { value: proficiency::Level::None, sources: vec![] },
-					Skill::Perception => AttributedValue { value: proficiency::Level::None, sources: vec![] },
-					Skill::Performance => AttributedValue { value: proficiency::Level::None, sources: vec![] },
-					Skill::Persuasion => AttributedValue { value: proficiency::Level::None, sources: vec![] },
-					Skill::Religion => AttributedValue { value: proficiency::Level::Full, sources: vec![
-						(PathBuf::from("Anthropologist/SkillProficiencies"), proficiency::Level::Full),
-					] },
-					Skill::SleightOfHand => AttributedValue { value: proficiency::Level::None, sources: vec![] },
-					Skill::Stealth => AttributedValue { value: proficiency::Level::None, sources: vec![] },
-					Skill::Survival => AttributedValue { value: proficiency::Level::None, sources: vec![] },
+					Skill::Acrobatics => none_skill.clone(),
+					Skill::AnimalHandling => none_skill.clone(),
+					Skill::Arcana => none_skill.clone(),
+					Skill::Athletics => none_skill.clone(),
+					Skill::Deception => (
+						AttributedValue { value: proficiency::Level::Full, sources: vec![
+							(PathBuf::from("Incognito/GoodWithPeople"), proficiency::Level::Full),
+						] },
+						enum_map! {
+							Modifier::Advantage => vec![],
+							Modifier::Disadvantage => vec![],
+						}
+					),
+					Skill::History => none_skill.clone(),
+					Skill::Insight => (
+						AttributedValue { value: proficiency::Level::Full, sources: vec![
+							(PathBuf::from("Anthropologist/SkillProficiencies"), proficiency::Level::Full),
+						] },
+						enum_map! {
+							Modifier::Advantage => vec![],
+							Modifier::Disadvantage => vec![],
+						}
+					),
+					Skill::Intimidation => none_skill.clone(),
+					Skill::Investigation => none_skill.clone(),
+					Skill::Medicine => none_skill.clone(),
+					Skill::Nature => none_skill.clone(),
+					Skill::Perception => none_skill.clone(),
+					Skill::Performance => none_skill.clone(),
+					Skill::Persuasion => none_skill.clone(),
+					Skill::Religion => (
+						AttributedValue { value: proficiency::Level::Full, sources: vec![
+							(PathBuf::from("Anthropologist/SkillProficiencies"), proficiency::Level::Full),
+						] },
+						enum_map! {
+							Modifier::Advantage => vec![],
+							Modifier::Disadvantage => vec![],
+						}
+					),
+					Skill::SleightOfHand => none_skill.clone(),
+					Skill::Stealth => none_skill.clone(),
+					Skill::Survival => none_skill.clone(),
 				},
 				proficiencies: enum_map! {
 					proficiency::Kind::Language => BTreeMap::from([

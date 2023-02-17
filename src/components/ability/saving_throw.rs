@@ -1,4 +1,9 @@
-use crate::{bootstrap::components::Tooltip, data::ContextMut, system::dnd5e::{character::State, roll}, components::roll::Modifier};
+use crate::{
+	bootstrap::components::Tooltip,
+	components::roll::Modifier,
+	data::ContextMut,
+	system::dnd5e::{character::State, roll},
+};
 use yew::prelude::*;
 
 #[derive(Clone, PartialEq, Properties)]

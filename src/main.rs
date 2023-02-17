@@ -153,10 +153,39 @@ fn create_character() -> system::dnd5e::character::Character {
 							proficiency: proficiency::Level::Half,
 						}
 						.into(),
+						modifier::AddSkillModifier {
+							skill: Skill::Perception,
+							modifier: roll::Modifier::Advantage,
+							criteria: Some("when using sight".into()),
+						}
+						.into(),
 					],
 					..Default::default()
 				}),
 				..Default::default()
+			});
+			inv.insert(Item {
+				name: "Splint".into(),
+				description: None,
+				weight: 60,
+				worth: 20000, // in copper
+				notes: "".into(),
+				kind: ItemKind::Equipment(Equipment {
+					modifiers: vec![modifier::AddSkillModifier {
+						skill: Skill::Stealth,
+						modifier: roll::Modifier::Disadvantage,
+						criteria: None,
+					}
+					.into()],
+					armor: Some(Armor {
+						kind: ArmorType::Heavy,
+						base_score: 17,
+						ability_modifier: None,
+						max_ability_bonus: None,
+						min_strength_score: Some(15),
+					}),
+					..Default::default()
+				}),
 			});
 			inv
 		},

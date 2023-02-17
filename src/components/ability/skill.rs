@@ -95,7 +95,7 @@ pub fn SkillTable() -> Html {
 		let rows = skills
 			.into_iter()
 			.map(move |skill| {
-				let attributed = state.get_skill(skill);
+				let (attributed, roll_modifiers) = state.get_skill(skill);
 				let modifier = state.ability_modifier(skill.ability(), *attributed.value());
 				let passive = 10 + modifier;
 				let prof_tooltip = crate::data::as_feature_paths_html_custom(
@@ -106,18 +106,32 @@ pub fn SkillTable() -> Html {
 					},
 				);
 
-				let disadvantage = match true {
-					true => {
-						html! {
-							<span aria-label="Disadvantage" style="margin-left: 2px; height: 16px; width: 16px; vertical-align: middle; margin-top: -2px;">
-								<crate::components::roll::Modifier value={crate::system::dnd5e::roll::Modifier::Disadvantage} />
-							</span>
-						}
+				let roll_modifiers = {
+					let mut modifier_kinds = enumset::EnumSet::<crate::system::dnd5e::roll::Modifier>::all().into_iter().collect::<Vec<_>>();
+					modifier_kinds.sort();
+					modifier_kinds
+				}.into_iter().filter_map(|modifier| {
+					let content = &roll_modifiers[modifier];
+					if content.is_empty() {
+						return None;
 					}
-					false => html! {},
-				};
+					let tooltip = crate::data::as_feature_paths_html_custom(
+						content.iter(),
+						|(criteria, path)| (criteria.clone(), path.as_path()),
+						|criteria, path_str| match criteria {
+							Some(criteria) => format!("<div>{} ({})</div>", criteria, path_str),
+							None => format!("<div>{}</div>", path_str),
+						},
+					);
+					Some(html! {
+						<Tooltip tag={"span"} content={tooltip} use_html={true}>
+							<span aria-label={format!("{modifier:?}")} style="margin-left: 2px; display: block; height: 16px; width: 16px; vertical-align: middle; margin-top: -2px;">
+								<crate::components::roll::Modifier value={modifier} />
+							</span>
+						</Tooltip>
+					})
+				}).collect::<Vec<_>>();
 
-				// TODO: Tooltips break when the presentation is changed b/c they havent been initialized
 				let mut table_data = vec![
 					html! {
 						<Tooltip tag={"td"} classes={"text-center"} content={prof_tooltip} use_html={true}>
@@ -127,7 +141,7 @@ pub fn SkillTable() -> Html {
 					html! { <td>
 						<div class="d-flex">
 							<span class="flex-grow-1">{skill.display_name()}</span>
-							{disadvantage}
+							{roll_modifiers}
 						</div>
 					</td> },
 					html! { <td class="text-center">{if modifier >= 0 { "+" } else { "-" }}{modifier.abs()}</td> },

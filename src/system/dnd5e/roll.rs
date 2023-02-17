@@ -26,7 +26,7 @@ pub enum Die {
 	D20,
 }
 
-#[derive(Debug, Enum, EnumSetType)]
+#[derive(Debug, Enum, EnumSetType, PartialOrd, Ord)]
 pub enum Modifier {
 	Advantage,
 	Disadvantage,

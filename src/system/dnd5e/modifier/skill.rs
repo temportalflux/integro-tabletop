@@ -35,6 +35,6 @@ pub struct AddSkillModifier {
 }
 impl super::Modifier for AddSkillModifier {
 	fn apply<'c>(&self, stats: &mut DerivedBuilder<'c>) {
-		// TODO: Apply skill modifier (adv/dis)
+		stats.add_skill_modifier(self.skill, self.modifier, self.criteria.clone())
 	}
 }

@@ -160,16 +160,16 @@ impl modifier::Container for Equipment {
 
 #[derive(Clone, PartialEq)]
 pub struct Armor {
-	kind: ArmorType,
+	pub kind: ArmorType,
 	/// The minimum armor-class granted while this is equipped.
-	base_score: u32,
+	pub base_score: u32,
 	/// The ability modifier granted to AC.
-	ability_modifier: Option<Ability>,
+	pub ability_modifier: Option<Ability>,
 	/// The maximum ability modifier granted. If none, the modifier is unbounded.
-	max_ability_bonus: Option<i32>,
+	pub max_ability_bonus: Option<i32>,
 	/// The minimum expected strength score to use this armor.
 	/// If provided, characters with a value less than this are hindered (reduced speed).
-	min_strength_score: Option<u32>,
+	pub min_strength_score: Option<u32>,
 }
 
 #[derive(Clone, PartialEq)]
