@@ -108,7 +108,7 @@ pub fn SpeedAndSenses() -> Html {
 	html! {
 		<div class="card m-2" style="max-width: 300px;">
 			<div class="card-body" style="padding: 5px 5px;">
-				<div class="row">
+				<div class="row" style="--bs-gutter-x: 0;">
 					{speed}
 					{divider}
 					{senses_html}
