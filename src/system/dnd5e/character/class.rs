@@ -10,7 +10,7 @@ use crate::system::dnd5e::{
 	mutator::{self, AddDefense, AddSavingThrow, AddSkill, BoxedMutator},
 	proficiency,
 	roll::Die,
-	Ability, Action, Evaluator, Feature, LimitedUses, Rest, Skill,
+	Ability, Action, BoxedFeature, Evaluator, Feature, LimitedUses, Rest, Skill,
 };
 
 #[derive(Clone, PartialEq)]
@@ -18,6 +18,8 @@ pub struct Class {
 	pub name: String,
 	pub hit_die: Die,
 	pub levels: Vec<Level>,
+	pub subclass_selection_level: usize,
+	pub subclass: Option<Subclass>,
 }
 
 impl Class {
@@ -34,9 +36,10 @@ impl mutator::Container for Class {
 
 	fn apply_mutators<'c>(&self, stats: &mut DerivedBuilder<'c>) {
 		for level in &self.levels {
-			for mutator in &level.mutators {
-				stats.apply(mutator);
-			}
+			stats.apply_from(level);
+		}
+		if let Some(subclass) = &self.subclass {
+			stats.apply_from(subclass);
 		}
 	}
 }
@@ -44,7 +47,39 @@ impl mutator::Container for Class {
 #[derive(Clone, PartialEq, Default)]
 pub struct Level {
 	pub mutators: Vec<BoxedMutator>,
-	pub features: Vec<Feature>,
+	pub features: Vec<BoxedFeature>,
+}
+impl mutator::Container for Level {
+	fn id(&self) -> Option<String> {
+		None
+	}
+
+	fn apply_mutators<'c>(&self, stats: &mut DerivedBuilder<'c>) {
+		for mutator in &self.mutators {
+			stats.apply(mutator);
+		}
+		for feature in &self.features {
+			stats.add_feature(feature);
+		}
+	}
+}
+
+#[derive(Clone, PartialEq, Default)]
+pub struct Subclass {
+	pub name: String,
+	pub levels: Vec<Level>,
+}
+impl mutator::Container for Subclass {
+	fn id(&self) -> Option<String> {
+		use convert_case::Casing;
+		Some(self.name.to_case(convert_case::Case::Pascal))
+	}
+
+	fn apply_mutators<'c>(&self, stats: &mut DerivedBuilder<'c>) {
+		for level in &self.levels {
+			stats.apply_from(level);
+		}
+	}
 }
 
 #[allow(dead_code)]
@@ -120,6 +155,8 @@ pub fn barbarian() -> Class {
 	let class = Class {
 		name: "Barbarian".into(),
 		hit_die: Die::D12,
+		subclass_selection_level: 3,
+		subclass: None,
 		levels: vec![Level {
 			mutators: vec![
 				AddProficiency::Armor(ArmorType::Light).into(),
@@ -160,7 +197,8 @@ pub fn barbarian() -> Class {
 				}
 				.into(),
 			],
-			features: vec![rage,
+			features: vec![
+				rage.into(),
 				Feature {
 					name: "Unarmored Defense".into(),
 					description: "While you are not wearing any armor, your Armor Class equals 10 + your Dexterity modifier + your Constitution modifier. You can use a shield and still gain this benefit.".into(),
@@ -172,7 +210,7 @@ pub fn barbarian() -> Class {
 						..Default::default()
 					}.into()),
 					..Default::default()
-				}
+				}.into(),
 			],
 			..Default::default()
 		},
@@ -193,7 +231,7 @@ pub fn barbarian() -> Class {
 					] }),
 					*/
 					..Default::default()
-				}
+				}.into(),
 			],
 			..Default::default()
 		}],
