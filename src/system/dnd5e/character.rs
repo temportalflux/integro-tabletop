@@ -21,6 +21,8 @@ mod description;
 pub use description::*;
 mod lineage;
 pub use lineage::*;
+mod proficiencies;
+pub use proficiencies::*;
 mod upbringing;
 pub use upbringing::*;
 pub mod inventory;
@@ -102,7 +104,7 @@ pub struct Derived {
 			EnumMap<super::roll::Modifier, Vec<(/*context*/ Option<String>, /*source*/ PathBuf)>>,
 		),
 	>,
-	proficiencies: EnumMap<proficiency::Kind, BTreeMap<String, BTreeSet<PathBuf>>>,
+	pub other_proficiencies: OtherProficiencies,
 	speeds: BTreeMap<String, AttributedValue<i32>>,
 	senses: BTreeMap<String, AttributedValue<i32>>,
 	defenses: EnumMap<Defense, BTreeMap<String, BTreeSet<PathBuf>>>,
@@ -110,129 +112,6 @@ pub struct Derived {
 	pub life_expectancy: i32,
 	pub max_height: (i32, RollSet),
 	max_hit_points: u32,
-}
-
-impl std::fmt::Debug for Derived {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(
-			f,
-			"Derived {{\
-			\n  missing_selections: {:?}\
-			\n  ability_scores: {}\
-			\n  skills: {}\
-			\n  proficiencies: {}\
-			\n  speeds: {}\
-			\n  senses: {}\
-			\n  defenses: {}\
-			\n  features: {}\
-			\n  life_expectancy: {:?}\
-			\n  max_height: {:?}\
-			\n}}",
-			self.missing_selections,
-			self.ability_scores
-				.iter()
-				.fold(String::new(), |str, (ability, attributed)| {
-					format!(
-						"{str}\n    {ability:?}: {:?}{}",
-						attributed.value,
-						attributed
-							.sources
-							.iter()
-							.fold(String::new(), |str, (src_path, value)| {
-								format!("{str}\n      {src_path:?}: {value:?}")
-							})
-					)
-				}),
-			/*
-				"Perception": Full
-					"Lineage1/FeatureA": Full
-					"Advantage":
-						"Lineage2/FeatureC": "when using hearing or smell"
-			*/
-			self.skills
-				.iter()
-				.fold(String::new(), |str, (skill, (attributed, modifiers))| {
-					let prof = attributed.value;
-					let sources = attributed
-						.sources
-						.iter()
-						.fold(String::new(), |str, (src_path, value)| {
-							format!("{str}\n      {src_path:?}: {value:?}")
-						});
-					let modifiers =
-						modifiers
-							.iter()
-							.fold(String::new(), |str, (modifier, contexts)| {
-								let sources =
-									contexts.iter().fold(String::new(), |str, (ctx, source)| {
-										format!("{str}\n        {source:?}: {ctx:?}")
-									});
-								format!("{str}\n      {modifier:?}:{sources}")
-							});
-					format!("{str}\n    {skill:?}: {prof:?}{sources}{modifiers}")
-				}),
-			self.proficiencies
-				.iter()
-				.fold(String::new(), |str, (kind, attributed_values)| {
-					format!(
-						"{str}\n    {kind:?} => {}",
-						attributed_values
-							.iter()
-							.fold(String::new(), |str, (value, sources)| {
-								format!("{str}\n      {value:?} => {sources:?}")
-							})
-					)
-				}),
-			self.speeds
-				.iter()
-				.fold(String::new(), |str, (kind, attributed)| {
-					format!(
-						"{str}\n    {kind:?}: {:?}{}",
-						attributed.value,
-						attributed
-							.sources
-							.iter()
-							.fold(String::new(), |str, (src_path, value)| {
-								format!("{str}\n      {src_path:?}: {value:?}")
-							})
-					)
-				}),
-			self.senses
-				.iter()
-				.fold(String::new(), |str, (kind, attributed)| {
-					format!(
-						"{str}\n    {kind:?}: {:?}{}",
-						attributed.value,
-						attributed
-							.sources
-							.iter()
-							.fold(String::new(), |str, (src_path, value)| {
-								format!("{str}\n      {src_path:?}: {value:?}")
-							})
-					)
-				}),
-			self.defenses
-				.iter()
-				.fold(String::new(), |str, (kind, attributed_values)| {
-					format!(
-						"{str}\n    {kind:?} => {}",
-						attributed_values
-							.iter()
-							.fold(String::new(), |str, (value, sources)| {
-								format!("{str}\n      {value:?} => {sources:?}")
-							})
-					)
-				}),
-			self.features
-				.as_vec()
-				.into_iter()
-				.fold(String::new(), |str, (path, feat)| {
-					format!("{str}\n    {path:?}: {}", feat.inner().name)
-				}),
-			self.life_expectancy,
-			self.max_height,
-		)
-	}
 }
 
 /// The builder which compiles `Derived` from `Character`.
@@ -304,6 +183,7 @@ impl<'c> DerivedBuilder<'c> {
 	}
 
 	pub fn build(self) -> Derived {
+		log::debug!("{:?}", self.derived.missing_selections);
 		self.derived
 	}
 
@@ -337,19 +217,6 @@ impl<'c> DerivedBuilder<'c> {
 	pub fn add_saving_throw_modifier(&mut self, ability: Ability, target: String) {
 		let scope = self.scope();
 		self.derived.saving_throws[ability].1.push((target, scope));
-	}
-
-	pub fn add_language(&mut self, language: String) {
-		let scope = self.scope();
-		match self.derived.proficiencies[proficiency::Kind::Language].get_mut(&language) {
-			Some(sources) => {
-				sources.insert(scope);
-			}
-			None => {
-				self.derived.proficiencies[proficiency::Kind::Language]
-					.insert(language, BTreeSet::from([scope]));
-			}
-		}
 	}
 
 	pub fn add_max_speed(&mut self, kind: String, max_bound_in_feet: i32) {
@@ -497,11 +364,8 @@ impl State {
 		&self.derived.skills[skill]
 	}
 
-	pub fn get_proficiencies(
-		&self,
-		kind: proficiency::Kind,
-	) -> &BTreeMap<String, BTreeSet<PathBuf>> {
-		&self.derived.proficiencies[kind]
+	pub fn other_proficiencies(&self) -> &OtherProficiencies {
+		&self.derived.other_proficiencies
 	}
 
 	pub fn speeds(&self) -> &BTreeMap<String, AttributedValue<i32>> {
@@ -738,9 +602,9 @@ mod test {
 			}
 		);
 		assert_eq!(
-			derived.proficiencies,
-			enum_map! {
-				proficiency::Kind::Language => BTreeMap::from([
+			derived.other_proficiencies,
+			OtherProficiencies {
+				languages: BTreeMap::from([
 					(
 						"Common".into(),
 						BTreeSet::from([PathBuf::from("Incognito/Languages")])
@@ -761,10 +625,11 @@ mod test {
 						"Elvish".into(),
 						BTreeSet::from([PathBuf::from("Anthropologist/Languages/langB")])
 					),
-				]),
-				proficiency::Kind::Armor => BTreeMap::from([]),
-				proficiency::Kind::Weapon => BTreeMap::from([]),
-				proficiency::Kind::Tool => BTreeMap::from([]),
+				])
+				.into(),
+				armor: Default::default(),
+				weapons: Default::default(),
+				tools: Default::default(),
 			}
 		);
 		assert_eq!(

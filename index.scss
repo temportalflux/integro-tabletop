@@ -16,3 +16,14 @@
 	display: block;
 	font-size: 12px;
 }
+
+.proficiency-section {
+	border-style: solid;
+	border-color: var(--bs-border-color);
+	border-width: 0;
+	border-bottom-width: var(--bs-border-width);
+}
+.proficiency-section > h6 {
+	font-size: 0.8rem;
+	color: var(--bs-card-title-color);
+}

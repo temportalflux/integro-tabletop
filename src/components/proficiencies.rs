@@ -1,68 +1,60 @@
 use crate::{
 	bootstrap::components::Tooltip,
 	data::ContextMut,
-	system::dnd5e::{character::State, proficiency},
+	system::dnd5e::character::{AttributedValueMap, State},
 };
 use yew::prelude::*;
 
-#[derive(Clone, PartialEq, Properties)]
-pub struct ProficiencySectionProps {
-	pub title: String,
-	pub kind: proficiency::Kind,
-}
-
-#[function_component]
-pub fn ProficiencySection(
-	ProficiencySectionProps { title, kind }: &ProficiencySectionProps,
-) -> Html {
-	let state = use_context::<ContextMut<State>>().unwrap();
-
-	let items = {
-		let entries = state.get_proficiencies(*kind);
-		let count = entries.len();
-		entries
-			.iter()
-			.enumerate()
-			.map(|(idx, (value, srcs))| (value, srcs, idx == count - 1))
-			.fold(Vec::new(), |mut html, (value, sources, is_last)| {
-				let tooltip = crate::data::as_feature_paths_html(sources.iter());
-				html.push(html! {
-					<span>
-						<Tooltip tag="span" content={tooltip} use_html={true}>
-							{value.clone()}
-						</Tooltip>
-						{match is_last {
-							false => ", ",
-							true => "",
-						}}
-					</span>
-				});
-				html
-			})
-	};
-
-	html! {
-		<div style="border-style: solid; border-color: var(--bs-border-color); border-width: 0; border-bottom-width: var(--bs-border-width);">
-			<h6 style="font-size: 0.8rem; color: var(--bs-card-title-color);">{title.clone()}</h6>
-			<span>{match items.is_empty() {
-				true => html! { {"None"} },
-				false => html! {<> {items} </>},
-			}}</span>
-		</div>
-	}
-}
-
 #[function_component]
 pub fn Proficiencies() -> Html {
+	let state = use_context::<ContextMut<State>>().unwrap();
+	let proficiencies = state.other_proficiencies();
+	log::debug!("{:?}", proficiencies);
 	html! {
 		<div id="proficiencies-container" class="card" style="max-width: 200px; margin: 0 auto; border-color: var(--theme-frame-color);">
 			<div class="card-body" style="padding: 5px;">
 				<h5 class="card-title text-center" style="font-size: 0.8rem;">{"Proficiencies"}</h5>
-				<ProficiencySection title={"Languages"} kind={proficiency::Kind::Language} />
-				<ProficiencySection title={"Armor"} kind={proficiency::Kind::Armor} />
-				<ProficiencySection title={"Weapons"} kind={proficiency::Kind::Weapon} />
-				<ProficiencySection title={"Tools"} kind={proficiency::Kind::Tool} />
+				{make_proficiencies_section("Languages", &proficiencies.languages)}
+				{make_proficiencies_section("Armor", &proficiencies.armor)}
+				{make_proficiencies_section("Weapons", &proficiencies.weapons)}
+				{make_proficiencies_section("Tools", &proficiencies.tools)}
 			</div>
+		</div>
+	}
+}
+
+fn make_proficiencies_section<T>(title: &str, values: &AttributedValueMap<T>) -> Html
+where
+	T: ToString,
+{
+	let count = values.len();
+	let iter = values.iter().enumerate();
+	let iter = iter.map(|(idx, (value, srcs))| (value, srcs, idx == count - 1));
+	let items = iter.fold(
+		Vec::with_capacity(count),
+		|mut html, (value, sources, is_last)| {
+			let tooltip = crate::data::as_feature_paths_html(sources.iter());
+			html.push(html! {
+				<span>
+					<Tooltip tag="span" content={tooltip} use_html={true}>
+						{value.to_string()}
+					</Tooltip>
+					{match is_last {
+						false => ", ",
+						true => "",
+					}}
+				</span>
+			});
+			html
+		},
+	);
+	html! {
+		<div class="proficiency-section">
+			<h6>{title}</h6>
+			<span>{match items.is_empty() {
+				true => html! { {"None"} },
+				false => html! {<> {items} </>},
+			}}</span>
 		</div>
 	}
 }

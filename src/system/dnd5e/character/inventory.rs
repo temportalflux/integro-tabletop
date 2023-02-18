@@ -204,6 +204,11 @@ pub enum ArmorType {
 	Medium,
 	Heavy,
 }
+impl ToString for ArmorType {
+	fn to_string(&self) -> String {
+		format!("{self:?}")
+	}
+}
 
 #[derive(Clone, PartialEq)]
 pub struct Weapon {
@@ -213,7 +218,7 @@ pub struct Weapon {
 	pub properties: Vec<Property>,
 	pub range: Option<WeaponRange>,
 }
-#[derive(Clone, PartialEq, Default)]
+#[derive(Clone, Default, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum WeaponType {
 	#[default]
 	Simple,

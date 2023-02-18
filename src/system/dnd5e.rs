@@ -100,8 +100,9 @@ pub mod hardcoded {
 	}
 
 	pub fn incognito() -> character::Upbringing {
+		use character::AddProficiency;
 		use enumset::EnumSet;
-		use mutator::{AddAbilityScore, AddLanguage, AddSkill, Selector};
+		use mutator::{AddAbilityScore, AddSkill, Selector};
 		character::Upbringing {
 			name: "Incognito".into(),
 			description: "You were brought up by those who were not what they seemed.".into(),
@@ -144,9 +145,9 @@ pub mod hardcoded {
 					name: "Languages".into(),
 					description: "You can speak, read, and write Common and two other languages of your choice.".into(),
 					modifiers: vec![
-						AddLanguage(Selector::Specific("Common".into())).into(),
-						AddLanguage(Selector::Any { id: Some("langA".into()) }).into(),
-						AddLanguage(Selector::Any { id: Some("langB".into()) }).into(),
+						AddProficiency::Language(Selector::Specific("Common".into())).into(),
+						AddProficiency::Language(Selector::Any { id: Some("langA".into()) }).into(),
+						AddProficiency::Language(Selector::Any { id: Some("langB".into()) }).into(),
 					],
 					..Default::default()
 				}.into(),
@@ -155,7 +156,8 @@ pub mod hardcoded {
 	}
 
 	pub fn anthropologist() -> character::Background {
-		use mutator::{AddLanguage, AddSkill, Selector};
+		use character::AddProficiency;
+		use mutator::{AddSkill, Selector};
 		character::Background {
 			name: "Anthropologist".into(),
 			description: "You have always been fascinated by other cultures, from the most ancient and \
@@ -182,8 +184,8 @@ pub mod hardcoded {
 				Feature {
 					name: "Languages".into(),
 					modifiers: vec![
-						AddLanguage(Selector::Any { id: Some("langA".into()) }).into(),
-						AddLanguage(Selector::Any { id: Some("langB".into()) }).into(),
+						AddProficiency::Language(Selector::Any { id: Some("langA".into()) }).into(),
+						AddProficiency::Language(Selector::Any { id: Some("langB".into()) }).into(),
 					],
 					..Default::default()
 				}.into(),

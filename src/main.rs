@@ -51,7 +51,9 @@ fn create_character() -> system::dnd5e::character::Character {
 		lineages: [Some(changeling1()), Some(changeling2())],
 		upbringing: Some(incognito()),
 		background: Some(anthropologist()),
-		classes: Vec::new(),
+		classes: vec![
+			character::barbarian(),
+		],
 		feats: vec![Feature {
 			name: "Custom Feat".into(),
 			modifiers: vec![
@@ -91,6 +93,14 @@ fn create_character() -> system::dnd5e::character::Character {
 			(
 				PathBuf::from("Anthropologist/Languages/langB"),
 				"Elvish".into(),
+			),
+			(
+				PathBuf::from("Barbarian/skillA"),
+				"Intimidation".into(),
+			),
+			(
+				PathBuf::from("Barbarian/skillB"),
+				"Athletics".into(),
 			),
 		]),
 		inventory: {

@@ -1,18 +1,25 @@
-use super::DerivedBuilder;
+use super::{
+	inventory::{ArmorType, WeaponType},
+	AddProficiency, DerivedBuilder, WeaponProficiency,
+};
 use crate::system::dnd5e::{
-	condition::Condition, mutator, roll::Die, Action, Feature, LimitedUses,
+	condition::Condition,
+	mutator::{self, AddSavingThrow, AddSkill, BoxedMutator},
+	proficiency,
+	roll::Die,
+	Ability, Action, Feature, LimitedUses, Skill,
 };
 
 #[derive(Clone, PartialEq)]
 pub struct Class {
 	pub name: String,
 	pub hit_die: Die,
+	pub levels: Vec<Level>,
 }
 
 impl Class {
 	pub fn level_count(&self) -> i32 {
-		// TODO
-		0
+		self.levels.len() as i32
 	}
 }
 
@@ -22,11 +29,70 @@ impl mutator::Container for Class {
 		Some(self.name.to_case(convert_case::Case::Pascal))
 	}
 
-	fn apply_mutators<'c>(&self, _stats: &mut DerivedBuilder<'c>) {}
+	fn apply_mutators<'c>(&self, stats: &mut DerivedBuilder<'c>) {
+		for level in &self.levels {
+			for mutator in &level.mutators {
+				stats.apply(mutator);
+			}
+		}
+	}
+}
+
+#[derive(Clone, PartialEq, Default)]
+pub struct Level {
+	pub mutators: Vec<BoxedMutator>,
+	pub features: Vec<Feature>,
 }
 
 #[allow(dead_code)]
-fn barbarian() {
+pub fn barbarian() -> Class {
+	let class = Class {
+		name: "Barbarian".into(),
+		hit_die: Die::D12,
+		levels: vec![Level {
+			mutators: vec![
+				AddProficiency::Armor(ArmorType::Light).into(),
+				AddProficiency::Armor(ArmorType::Medium).into(),
+				AddProficiency::Armor(ArmorType::Heavy).into(),
+				AddProficiency::Weapon(WeaponProficiency::Kind(WeaponType::Simple)).into(),
+				AddProficiency::Weapon(WeaponProficiency::Kind(WeaponType::Martial)).into(),
+				AddSavingThrow::Proficiency(Ability::Strength).into(),
+				AddSavingThrow::Proficiency(Ability::Constitution).into(),
+				AddSkill {
+					skill: mutator::Selector::AnyOf {
+						id: Some("skillA".into()),
+						options: vec![
+							Skill::AnimalHandling,
+							Skill::Athletics,
+							Skill::Intimidation,
+							Skill::Nature,
+							Skill::Perception,
+							Skill::Survival,
+						],
+					},
+					proficiency: proficiency::Level::Full,
+				}
+				.into(),
+				AddSkill {
+					skill: mutator::Selector::AnyOf {
+						id: Some("skillB".into()),
+						options: vec![
+							Skill::AnimalHandling,
+							Skill::Athletics,
+							Skill::Intimidation,
+							Skill::Nature,
+							Skill::Perception,
+							Skill::Survival,
+						],
+					},
+					proficiency: proficiency::Level::Full,
+				}
+				.into(),
+			],
+			..Default::default()
+		}],
+	};
+
 	#[allow(dead_code)]
 	let make_raging_condition = |damage_amt: i32| {
 		CustomCondition {
@@ -165,6 +231,8 @@ fn barbarian() {
 		)],
 	}
 	*/
+
+	class
 }
 
 #[allow(dead_code)]

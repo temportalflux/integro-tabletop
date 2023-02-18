@@ -1,5 +1,3 @@
-use enum_map::Enum;
-
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub enum Level {
 	None,
@@ -60,13 +58,4 @@ impl std::ops::Mul<i32> for Level {
 		let modified = (prof_bonus as f32) * self.bonus_multiplier();
 		modified.floor() as i32
 	}
-}
-
-/// Non-ability/skill proficiencies
-#[derive(Clone, Copy, Debug, PartialEq, Enum)]
-pub enum Kind {
-	Language,
-	Armor,
-	Weapon,
-	Tool,
 }
