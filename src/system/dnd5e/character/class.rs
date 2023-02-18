@@ -1,13 +1,16 @@
+use std::collections::BTreeMap;
+
 use super::{
 	inventory::{ArmorType, WeaponType},
 	AddProficiency, DerivedBuilder, WeaponProficiency,
 };
 use crate::system::dnd5e::{
-	condition::Condition,
-	mutator::{self, AddSavingThrow, AddSkill, BoxedMutator},
+	condition::{self, Condition},
+	criteria::armor::HasArmorEquipped,
+	mutator::{self, AddDefense, AddSavingThrow, AddSkill, BoxedMutator},
 	proficiency,
 	roll::Die,
-	Ability, Action, Feature, LimitedUses, Skill,
+	Ability, Action, Evaluator, Feature, LimitedUses, Rest, Skill,
 };
 
 #[derive(Clone, PartialEq)]
@@ -46,6 +49,74 @@ pub struct Level {
 
 #[allow(dead_code)]
 pub fn barbarian() -> Class {
+	let rage = {
+		let desc = "While raging, you gain the following benefits \
+		if you aren't wearing heavy armor:
+		- You have advantage on Strength checks and Strength saving throws.
+		- When you make a melee weapon attack using Strength, you gain a bonus to the damage roll.
+		- You have resistance to bludgeoning, piercing, and slashing damage.
+		
+		If you are able to cast spells, you can't cast them or concentrate on them while raging.";
+		let condition = condition::Custom {
+			name: "Raging".into(),
+			description: desc.into(),
+			mutators: vec![
+				BonusDamage {
+					amount: crate::system::dnd5e::Value::Evaluated(
+						ByClassLevel::from([(1, 2), (9, 3), (16, 4)]).into(),
+					),
+					restriction: Some(WeaponRestriction {
+						attack_kind: vec![AttackType::Melee],
+						ability: vec![Ability::Strength],
+						..Default::default()
+					}),
+				}
+				.into(),
+				// TODO: AddAbilityModifier::Advantage(Ability::Strength).into(),
+				AddSavingThrow::Advantage(Ability::Strength, None).into(),
+				AddDefense(mutator::Defense::Resistant, "Bludgeoning".into()).into(),
+				AddDefense(mutator::Defense::Resistant, "Piercing".into()).into(),
+				AddDefense(mutator::Defense::Resistant, "Slashing".into()).into(),
+			],
+			criteria: Some(
+				HasArmorEquipped {
+					inverted: true,
+					kinds: [ArmorType::Heavy].into(),
+				}
+				.into(),
+			),
+		};
+
+		Feature {
+			name: "Rage".into(),
+			description: {
+				let mut desc = "In battle, you fight with primal ferocity. On your turn, you can enter a rage as a bonus action.".into();
+				desc += condition.description().as_str();
+				desc += "Your rage lasts for 1 minute. It ends early if you are knocked unconscious or if your turn ends and you haven't attacked \
+				a hostile creature since your last turn or taken damage since then. You can also end your rage on your turn as a bonus action.
+
+				Once you have used all your rages, you must finish a long rest before you can rage again.";
+				desc
+			},
+			action: Some(Action::Bonus),
+			limited_uses: Some(LimitedUses {
+				max_uses: crate::system::dnd5e::Value::Evaluated(
+					ByClassLevel::from([
+						(1, Some(2)),
+						(3, Some(3)),
+						(6, Some(4)),
+						(12, Some(5)),
+						(17, Some(6)),
+						(20, None),
+					])
+					.into(),
+				),
+				reset_on: Some(Rest::Long),
+				apply_conditions: vec![condition.into()],
+			}),
+			..Default::default()
+		}
+	};
 	let class = Class {
 		name: "Barbarian".into(),
 		hit_die: Die::D12,
@@ -89,121 +160,44 @@ pub fn barbarian() -> Class {
 				}
 				.into(),
 			],
+			features: vec![rage,
+				Feature {
+					name: "Unarmored Defense".into(),
+					description: "While you are not wearing any armor, your Armor Class equals 10 + your Dexterity modifier + your Constitution modifier. You can use a shield and still gain this benefit.".into(),
+					mutators: vec![
+						// TODO: AddArmorClassFormula { base: 10, modifiers: vec![Ability::Dexterity, Ability::Constitution] }.into()
+					],
+					criteria: Some(HasArmorEquipped {
+						inverted: true,
+						..Default::default()
+					}.into()),
+					..Default::default()
+				}
+			],
+			..Default::default()
+		},
+		Level {
+			features: vec![
+				Feature {
+					name: "Danger Sense".into(),
+					description: "At 2nd level, you gain an uncanny sense of when things nearby aren't \
+					as they should be, giving you an edge when you dodge away from danger.
+					You have advantage on Dexterity saving throws against effects that you can see, \
+					such as traps and spells. To gain this benefit, you can't be blinded, deafened, or incapacitated.".into(),
+					mutators: vec![],
+					/*
+					criteria: Some(HasAnyCondition { inverted: true, values: vec![
+						condition::Blinded,
+						condition::Deafened,
+						condition::Incapacitated,
+					] }),
+					*/
+					..Default::default()
+				}
+			],
 			..Default::default()
 		}],
 	};
-
-	#[allow(dead_code)]
-	let make_raging_condition = |damage_amt: i32| {
-		CustomCondition {
-			description: format!("While raging, you gain the following benefits if you aren't wearing heavy armor:
-			You have advantage on Strength checks and Strength saving throws.
-			When you make a melee weapon attack using Strength, you gain a +{damage_amt} bonus to the damage roll.
-			You have resistance to bludgeoning, piercing, and slashing damage.
-			
-			If you are able to cast spells, you can't cast them or concentrate on them while raging."),
-			modifiers: vec![
-				BonusDamage {
-					amount: damage_amt,
-					restriction: Some(() /*TODO: weapon is melee using strength*/),
-				}.into(),
-				// TODO: adv on strength checks and saving throws
-				// TODO: restistance to bludgeoning, piercing, and slashing damage
-			],
-			restriction: Some(() /*TODO: Not wearing heavy armor*/),
-		}
-	};
-
-	#[allow(dead_code)]
-	let make_rage_feature = |max_uses: Option<u32>, condition: CustomCondition| {
-		Feature {
-			name: "Rage".into(),
-			description: {
-				let mut desc = "In battle, you fight with primal ferocity. On your turn, you can enter a rage as a bonus action.".into();
-				desc += condition.description().as_str();
-				desc += "Your rage lasts for 1 minute. It ends early if you are knocked unconscious or if your turn ends and you haven't attacked \
-				a hostile creature since your last turn or taken damage since then. You can also end your rage on your turn as a bonus action.";
-				if let Some(uses) = &max_uses {
-					desc += format!("Once you have raged {uses} times, you must finish a long rest before you can rage again.").as_str();
-				}
-				desc
-			},
-			action: Some(Action::Bonus),
-			modifiers: vec![],
-			limited_uses: max_uses.map(|max_uses| LimitedUses {
-				// TODO: max_uses
-				// TODO: Resets on long rest
-				// TODO: Conditions applied on use, which should have a "stop" button to clear the effects
-			}),
-		}
-	};
-
-	/*
-	rage => uses: Uses {
-		// enum Value<T> { Fixed(T), Evaluated(Evaluator<Item=T>) }
-		max_uses: Some(Value::Evaluated(ByClassLevel(hash_map! {
-			1 => Some(2),
-			3 => Some(3),
-			6 => Some(4),
-			12 => Some(5),
-			17 => Some(6),
-			20 => None,
-		}))),
-		reset_on: Rest::Long,
-		apply_conditions: vec![
-			Box::new(CustomCondition {
-				modifiers: vec![
-					Box::new(BonusWeaponAttackDamage {
-						// enum Value<T> { Fixed(T), Evaluated(Evaluator<Item=T>) }
-						amount: Value::Evaluated(ByClassLevel(hash_map! {
-							1 => 2,
-							9 => 3,
-							16 => 4,
-						})),
-						restriction: Some(WeaponRestriction {
-							target: Some(WeaponType::Melee),
-							ability: Some(Ability::Strength),
-						}),
-					}),
-					Box::new(GiveAbilityAdvantage(Ability::Strength)),
-					Box::new(GiveSavingThrowAdvantage(Ability::Strength, None)),
-					Box::new(GiveDefense {
-						defense: Defense::Resistance,
-						damages: vec![
-							DamageType::Blugeoning, DamageType::Piercing, DamageType::Slashing
-						],
-					}),
-				],
-				// do not apply modifiers if wearing heavy armor
-				restriction: Some(IsOneArmorTypeEquippedOf(vec![
-					None, Some(ArmorType::Light), Some(ArmorType::Medium),
-				])),
-			})
-		]
-	}
-	*/
-
-	/* Unarmored Defense
-	"While you are not wearing any armor, your Armor Class equals 10 + your Dexterity modifier + your Constitution modifier. You can use a shield and still gain this benefit."
-	NOTE: AC is 10 + dex by default, so this is just adding CON as a bonus to AC
-	Feature {
-		modifiers: vec![ Box::new(AddArmorClass(Value::Evaluated(AbilityModifier(Ability::Constitution)))) ],
-		restriction: Some(IsOneArmorTypeEquippedOf(vec![None])),
-	}
-	*/
-
-	/* Danger Sense
-	"At 2nd level, you gain an uncanny sense of when things nearby aren’t as they should be, giving you an edge when you dodge away from danger.
-	You have advantage on Dexterity saving throws against effects that you can see, such as traps and spells. To gain this benefit, you can’t be blinded, deafened, or incapacitated."
-	Feature {
-		modifiers: vec![
-			Box::new(GiveSavingThrowAdvantage(Ability::Dexterity, Some("effects you can see (e.g. traps and spells)"))),
-		],
-		restriction: Some(AreAllConditionsInactive(vec![
-			Condition::Blinded, Condition::Deafened, Condition::Incapacitated,
-		]))
-	}
-	*/
 
 	/* Extra Attack
 	Feature {
@@ -217,18 +211,6 @@ pub fn barbarian() -> Class {
 		restriction: Some(IsOneArmorTypeEquippedOf(vec![
 			None, Some(ArmorType::Light), Some(ArmorType::Medium),
 		])),
-	}
-	*/
-
-	/* Primal Path (choose subclass)
-	Feature {
-		modifiers: vec![Box::new(
-			SelectSubclass {
-				// this is a modifier which has a special selector and saved value
-				// it automatically generates options for each subclass of the current class as defined by the user's modules
-				// the modifier will recurse through the subclass when evaluated
-			}
-		)],
 	}
 	*/
 
@@ -375,26 +357,33 @@ fn monk() {
 }
 
 #[derive(Clone, PartialEq)]
-struct CustomCondition {
-	pub description: String,
-	pub modifiers: Vec<mutator::BoxedMutator>,
-	pub restriction: Option<()>, // TODO: check this to conditionally apply the modifiers
-}
-impl Condition for CustomCondition {
-	fn description(&self) -> String {
-		self.description.clone()
-	}
-}
-
-#[derive(Clone, PartialEq)]
 struct BonusDamage {
-	amount: i32,
-	restriction: Option<()>, // TODO: Evaluate for each weapon/attack before applying amount
+	amount: crate::system::dnd5e::Value<i32>,
+	restriction: Option<WeaponRestriction>,
 }
 impl mutator::Mutator for BonusDamage {
-	fn scope_id(&self) -> Option<&str> {
-		None
+	fn apply<'c>(&self, stats: &mut DerivedBuilder<'c>) {
+		// TODO: TBD
 	}
+}
+#[derive(Clone, PartialEq, Default)]
+struct WeaponRestriction {
+	weapon_kind: Vec<WeaponType>,
+	attack_kind: Vec<AttackType>,
+	ability: Vec<Ability>,
+}
+#[derive(Clone, PartialEq)]
+enum AttackType {
+	Melee,
+	Ranged,
+}
 
-	fn apply<'c>(&self, stats: &mut DerivedBuilder<'c>) {}
+struct ByClassLevel<T>(BTreeMap<u32, T>);
+impl<T, const N: usize> From<[(u32, T); N]> for ByClassLevel<T> {
+	fn from(value: [(u32, T); N]) -> Self {
+		Self(BTreeMap::from(value))
+	}
+}
+impl<T> Evaluator for ByClassLevel<T> {
+	type Item = T;
 }

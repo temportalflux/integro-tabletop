@@ -93,7 +93,7 @@ pub struct Derived {
 		Ability,
 		(
 			/*is proficient*/ AttributedValue<proficiency::Level>,
-			/*adv modifiers*/ Vec<(String, PathBuf)>,
+			/*adv modifiers*/ Vec<(Option<String>, PathBuf)>,
 		),
 	>,
 	skills: EnumMap<
@@ -214,7 +214,7 @@ impl<'c> DerivedBuilder<'c> {
 			.push(proficiency::Level::Full, scope);
 	}
 
-	pub fn add_saving_throw_modifier(&mut self, ability: Ability, target: String) {
+	pub fn add_saving_throw_modifier(&mut self, ability: Ability, target: Option<String>) {
 		let scope = self.scope();
 		self.derived.saving_throws[ability].1.push((target, scope));
 	}
@@ -325,6 +325,8 @@ impl State {
 	}
 
 	pub fn armor_class(&self) -> i32 {
+		// This is the default formula:
+		// ArmorClassFormula { base: 10, modifiers: vec![Ability::Dexterity] }
 		10 + self.ability_score(Ability::Dexterity).0.modifier()
 	}
 
@@ -344,7 +346,9 @@ impl State {
 		&self.derived.saving_throws[ability].0
 	}
 
-	pub fn saving_throw_modifiers(&self) -> EnumMap<Ability, Option<&Vec<(String, PathBuf)>>> {
+	pub fn saving_throw_modifiers(
+		&self,
+	) -> EnumMap<Ability, Option<&Vec<(Option<String>, PathBuf)>>> {
 		let mut values = EnumMap::default();
 		for (ability, (_, modifiers)) in &self.derived.saving_throws {
 			values[ability] = Some(modifiers);

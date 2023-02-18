@@ -51,14 +51,12 @@ fn create_character() -> system::dnd5e::character::Character {
 		lineages: [Some(changeling1()), Some(changeling2())],
 		upbringing: Some(incognito()),
 		background: Some(anthropologist()),
-		classes: vec![
-			character::barbarian(),
-		],
+		classes: vec![character::barbarian()],
 		feats: vec![Feature {
 			name: "Custom Feat".into(),
-			modifiers: vec![
+			mutators: vec![
 				mutator::AddSavingThrow::Proficiency(Ability::Charisma).into(),
-				mutator::AddSavingThrow::Advantage(Ability::Charisma, "Magic".into()).into(),
+				mutator::AddSavingThrow::Advantage(Ability::Charisma, Some("Magic".into())).into(),
 				//mutator::AddMaxSpeed("Flying".into(), 10).into(),
 				mutator::AddMaxSense("Darkvision".into(), 30).into(),
 				//mutator::AddMaxSense("Tremorsense".into(), 60).into(),
@@ -94,14 +92,8 @@ fn create_character() -> system::dnd5e::character::Character {
 				PathBuf::from("Anthropologist/Languages/langB"),
 				"Elvish".into(),
 			),
-			(
-				PathBuf::from("Barbarian/skillA"),
-				"Intimidation".into(),
-			),
-			(
-				PathBuf::from("Barbarian/skillB"),
-				"Athletics".into(),
-			),
+			(PathBuf::from("Barbarian/skillA"), "Intimidation".into()),
+			(PathBuf::from("Barbarian/skillB"), "Athletics".into()),
 		]),
 		inventory: {
 			use character::inventory::*;

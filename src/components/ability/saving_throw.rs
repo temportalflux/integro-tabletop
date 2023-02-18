@@ -83,7 +83,10 @@ pub fn SavingThrowContainer() -> Html {
 						<span class="d-inline-flex" aria-label="Advantage" style=" height: 14px; margin-right: 2px; margin-top: -2px; width: 14px; vertical-align: middle;">
 							<Modifier value={roll::Modifier::Advantage} />
 						</span>
-						<span>{"on "}{ability.abbreviated_name().to_uppercase()}{" against "}{target.clone()}</span>
+						<span>
+							{"on "}{ability.abbreviated_name().to_uppercase()}
+							{target.as_ref().map(|target| format!(" against {target}")).unwrap_or_default()}
+						</span>
 					</Tooltip>
 				});
 			}

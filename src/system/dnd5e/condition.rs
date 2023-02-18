@@ -1,5 +1,7 @@
 use dyn_clone::{clone_trait_object, DynClone};
 
+use super::{criteria::BoxedCriteria, mutator::BoxedMutator};
+
 pub trait Condition: DynClone {
 	fn description(&self) -> String
 	where
@@ -265,5 +267,18 @@ impl Exhaustion {
 			l = level;
 		}
 		v
+	}
+}
+
+#[derive(Clone, PartialEq)]
+pub struct Custom {
+	pub name: String,
+	pub description: String,
+	pub mutators: Vec<BoxedMutator>,
+	pub criteria: Option<BoxedCriteria>,
+}
+impl Condition for Custom {
+	fn description(&self) -> String {
+		self.description.clone()
 	}
 }

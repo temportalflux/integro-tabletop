@@ -5,7 +5,7 @@ use crate::system::dnd5e::character::{
 use std::collections::HashSet;
 
 /// Checks if the character has armor equipped.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Default)]
 pub struct HasArmorEquipped {
 	/// By default, this criteria checks if a piece of armor is equipped.
 	/// If this flag is true, the criteria checks if no armor is equipped (or no armor of a particular set of types).

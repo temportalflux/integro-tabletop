@@ -28,7 +28,7 @@ pub mod hardcoded {
 		Feature {
 			name: "Age".into(),
 			description: "Your life expectancy increases by 50 years.".into(),
-			modifiers: vec![AddLifeExpectancy(50).into()],
+			mutators: vec![AddLifeExpectancy(50).into()],
 			..Default::default()
 		}
 	}
@@ -40,7 +40,7 @@ pub mod hardcoded {
 		Feature {
 			name: "Size".into(),
 			description: "Your height increases by 30 + 1d4 inches.".into(),
-			modifiers: vec![
+			mutators: vec![
 				AddMaxHeight::Value(30).into(),
 				AddMaxHeight::Roll(Roll {
 					amount: 1,
@@ -61,7 +61,7 @@ pub mod hardcoded {
 				changeling_size().into(),
 				Feature {
 					name: "Speeds".into(),
-					modifiers: vec![
+					mutators: vec![
 						AddMaxSpeed("Walking".into(), 30).into(),
 					],
 					..Default::default()
@@ -110,7 +110,7 @@ pub mod hardcoded {
 				Feature {
 					name: "Ability Score Increase".into(),
 					description: "Your Charisma score increases by 2. In addition, one ability score of your choice increases by 1.".into(),
-					modifiers: vec![
+					mutators: vec![
 						AddAbilityScore {
 							ability: Selector::Specific(Ability::Charisma),
 							value: 2,
@@ -128,7 +128,7 @@ pub mod hardcoded {
 				Feature {
 					name: "Good with People".into(),
 					description: "You gain proficiency with two of the following skills of your choice: Deception, Insight, Intimidation, and Persuasion.".into(),
-					modifiers: vec![
+					mutators: vec![
 						AddSkill {
 							skill: Selector::AnyOf {
 								id: None,
@@ -144,7 +144,7 @@ pub mod hardcoded {
 				Feature {
 					name: "Languages".into(),
 					description: "You can speak, read, and write Common and two other languages of your choice.".into(),
-					modifiers: vec![
+					mutators: vec![
 						AddProficiency::Language(Selector::Specific("Common".into())).into(),
 						AddProficiency::Language(Selector::Any { id: Some("langA".into()) }).into(),
 						AddProficiency::Language(Selector::Any { id: Some("langB".into()) }).into(),
@@ -169,7 +169,7 @@ pub mod hardcoded {
 			features: vec![
 				Feature {
 					name: "Skill Proficiencies".into(),
-					modifiers: vec![
+					mutators: vec![
 						AddSkill {
 							skill: Selector::Specific(Skill::Insight),
 							proficiency: proficiency::Level::Full,
@@ -183,7 +183,7 @@ pub mod hardcoded {
 				}.into(),
 				Feature {
 					name: "Languages".into(),
-					modifiers: vec![
+					mutators: vec![
 						AddProficiency::Language(Selector::Any { id: Some("langA".into()) }).into(),
 						AddProficiency::Language(Selector::Any { id: Some("langB".into()) }).into(),
 					],

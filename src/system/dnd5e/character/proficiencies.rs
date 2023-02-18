@@ -43,7 +43,7 @@ impl super::mutator::Mutator for AddProficiency {
 			_ => None,
 		}
 	}
-	
+
 	fn apply<'c>(&self, stats: &mut DerivedBuilder<'c>) {
 		let scope = stats.scope();
 		match &self {

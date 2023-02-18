@@ -3,7 +3,7 @@ use crate::system::dnd5e::{character::DerivedBuilder, Ability};
 #[derive(Clone)]
 pub enum AddSavingThrow {
 	Proficiency(Ability),
-	Advantage(Ability, String),
+	Advantage(Ability, Option<String>),
 }
 
 impl super::Mutator for AddSavingThrow {
