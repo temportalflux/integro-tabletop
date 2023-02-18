@@ -33,8 +33,7 @@ fn create_character() -> system::dnd5e::character::Character {
 	use system::dnd5e::{
 		character::{Character, Description},
 		hardcoded::*,
-		modifier::{self, AddSavingThrow},
-		*,
+		mutator, *,
 	};
 	Character {
 		description: Description {
@@ -56,14 +55,14 @@ fn create_character() -> system::dnd5e::character::Character {
 		feats: vec![Feature {
 			name: "Custom Feat".into(),
 			modifiers: vec![
-				AddSavingThrow::Proficiency(Ability::Charisma).into(),
-				AddSavingThrow::Advantage(Ability::Charisma, "Magic".into()).into(),
-				//modifier::AddMaxSpeed("Flying".into(), 10).into(),
-				modifier::AddMaxSense("Darkvision".into(), 30).into(),
-				//modifier::AddMaxSense("Tremorsense".into(), 60).into(),
-				modifier::AddDefense(modifier::Defense::Resistant, "Cold".into()).into(),
-				modifier::AddDefense(modifier::Defense::Immune, "Acid".into()).into(),
-				modifier::AddDefense(modifier::Defense::Vulnerable, "Fire".into()).into(),
+				mutator::AddSavingThrow::Proficiency(Ability::Charisma).into(),
+				mutator::AddSavingThrow::Advantage(Ability::Charisma, "Magic".into()).into(),
+				//mutator::AddMaxSpeed("Flying".into(), 10).into(),
+				mutator::AddMaxSense("Darkvision".into(), 30).into(),
+				//mutator::AddMaxSense("Tremorsense".into(), 60).into(),
+				mutator::AddDefense(mutator::Defense::Resistant, "Cold".into()).into(),
+				mutator::AddDefense(mutator::Defense::Immune, "Acid".into()).into(),
+				mutator::AddDefense(mutator::Defense::Vulnerable, "Fire".into()).into(),
 			],
 			..Default::default()
 		}
@@ -142,7 +141,7 @@ fn create_character() -> system::dnd5e::character::Character {
 						.into(),
 				),
 				kind: ItemKind::Equipment(Equipment {
-					modifiers: vec![modifier::AddMaxSense("Darkvision".into(), 60).into()],
+					modifiers: vec![mutator::AddMaxSense("Darkvision".into(), 60).into()],
 					..Default::default()
 				}),
 				..Default::default()
@@ -151,13 +150,13 @@ fn create_character() -> system::dnd5e::character::Character {
 				name: "Wings of the Owl".into(),
 				kind: ItemKind::Equipment(Equipment {
 					modifiers: vec![
-						modifier::AddMaxSpeed("Flying".into(), 40).into(),
-						modifier::AddSkill {
-							skill: modifier::Selector::Specific(Skill::Perception),
+						mutator::AddMaxSpeed("Flying".into(), 40).into(),
+						mutator::AddSkill {
+							skill: mutator::Selector::Specific(Skill::Perception),
 							proficiency: proficiency::Level::Half,
 						}
 						.into(),
-						modifier::AddSkillModifier {
+						mutator::AddSkillModifier {
 							skill: Skill::Perception,
 							modifier: roll::Modifier::Advantage,
 							criteria: Some("when using sight".into()),
@@ -199,7 +198,7 @@ fn create_character() -> system::dnd5e::character::Character {
 				worth: 20000, // in copper
 				notes: "".into(),
 				kind: ItemKind::Equipment(Equipment {
-					modifiers: vec![modifier::AddSkillModifier {
+					modifiers: vec![mutator::AddSkillModifier {
 						skill: Skill::Stealth,
 						modifier: roll::Modifier::Disadvantage,
 						criteria: None,

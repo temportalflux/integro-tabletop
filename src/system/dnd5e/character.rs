@@ -1,12 +1,11 @@
-use crate::path_map::PathMap;
-
 use super::{
 	condition::BoxedCondition,
-	modifier::{BoxedModifier, Container, Defense},
+	mutator::{self, Defense},
 	proficiency,
 	roll::RollSet,
 	Ability, BoxedFeature, Score, Skill,
 };
+use crate::path_map::PathMap;
 use enum_map::EnumMap;
 use std::{
 	collections::{BTreeMap, BTreeSet, HashMap},
@@ -264,18 +263,18 @@ impl<'c> DerivedBuilder<'c> {
 		}
 	}
 
-	pub fn apply_from(&mut self, modifiers: &impl Container) {
+	pub fn apply_from(&mut self, modifiers: &impl mutator::Container) {
 		let id = modifiers.id();
 		if let Some(id) = &id {
 			self.scope.push(id);
 		}
-		modifiers.apply_modifiers(self);
+		modifiers.apply_mutators(self);
 		if id.is_some() {
 			self.scope.pop();
 		}
 	}
 
-	pub fn apply(&mut self, modifier: &BoxedModifier) {
+	pub fn apply(&mut self, modifier: &mutator::BoxedMutator) {
 		let id = modifier.scope_id();
 		if let Some(id) = id.as_ref() {
 			self.scope.push(*id);

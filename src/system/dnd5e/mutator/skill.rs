@@ -8,7 +8,7 @@ pub struct AddSkill {
 	pub proficiency: proficiency::Level,
 }
 
-impl super::Modifier for AddSkill {
+impl super::Mutator for AddSkill {
 	fn scope_id(&self) -> Option<&str> {
 		self.skill.id()
 	}
@@ -33,7 +33,7 @@ pub struct AddSkillModifier {
 	pub modifier: roll::Modifier,
 	pub criteria: Option<String>,
 }
-impl super::Modifier for AddSkillModifier {
+impl super::Mutator for AddSkillModifier {
 	fn apply<'c>(&self, stats: &mut DerivedBuilder<'c>) {
 		stats.add_skill_modifier(self.skill, self.modifier, self.criteria.clone())
 	}

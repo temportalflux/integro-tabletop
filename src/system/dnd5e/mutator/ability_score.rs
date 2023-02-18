@@ -8,7 +8,7 @@ pub struct AddAbilityScore {
 	pub value: i32,
 }
 
-impl super::Modifier for AddAbilityScore {
+impl super::Mutator for AddAbilityScore {
 	fn scope_id(&self) -> Option<&str> {
 		self.ability.id()
 	}

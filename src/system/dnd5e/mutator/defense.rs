@@ -11,7 +11,7 @@ pub enum Defense {
 #[derive(Clone)]
 pub struct AddDefense(pub Defense, pub String);
 
-impl super::Modifier for AddDefense {
+impl super::Mutator for AddDefense {
 	fn scope_id(&self) -> Option<&str> {
 		None
 	}

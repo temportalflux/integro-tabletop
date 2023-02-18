@@ -3,7 +3,7 @@ use crate::system::dnd5e::character::DerivedBuilder;
 #[derive(Clone)]
 pub struct AddMaxSpeed(pub String, pub i32);
 
-impl super::Modifier for AddMaxSpeed {
+impl super::Mutator for AddMaxSpeed {
 	fn scope_id(&self) -> Option<&str> {
 		None
 	}
@@ -16,7 +16,7 @@ impl super::Modifier for AddMaxSpeed {
 #[derive(Clone)]
 pub struct AddMaxSense(pub String, pub i32);
 
-impl super::Modifier for AddMaxSense {
+impl super::Mutator for AddMaxSense {
 	fn scope_id(&self) -> Option<&str> {
 		None
 	}

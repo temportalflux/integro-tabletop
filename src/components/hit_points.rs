@@ -1,7 +1,7 @@
 use crate::{
 	bootstrap::components::Tooltip,
 	data::ContextMut,
-	system::dnd5e::{character::State, modifier::Defense},
+	system::dnd5e::{character::State, mutator::Defense},
 };
 use yew::prelude::*;
 

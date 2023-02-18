@@ -11,7 +11,7 @@ pub mod criteria;
 mod feature;
 pub use feature::*;
 
-pub mod modifier;
+pub mod mutator;
 
 pub mod proficiency;
 
@@ -21,10 +21,10 @@ mod skill;
 pub use skill::*;
 
 pub mod hardcoded {
-	use super::{modifier::AddMaxSpeed, *};
+	use super::{mutator::AddMaxSpeed, *};
 
 	fn changeling_age() -> Feature {
-		use modifier::AddLifeExpectancy;
+		use mutator::AddLifeExpectancy;
 		Feature {
 			name: "Age".into(),
 			description: "Your life expectancy increases by 50 years.".into(),
@@ -34,7 +34,7 @@ pub mod hardcoded {
 	}
 
 	fn changeling_size() -> Feature {
-		use modifier::AddMaxHeight;
+		use mutator::AddMaxHeight;
 		use roll::{Die, Roll};
 
 		Feature {
@@ -101,7 +101,7 @@ pub mod hardcoded {
 
 	pub fn incognito() -> character::Upbringing {
 		use enumset::EnumSet;
-		use modifier::{AddAbilityScore, AddLanguage, AddSkill, Selector};
+		use mutator::{AddAbilityScore, AddLanguage, AddSkill, Selector};
 		character::Upbringing {
 			name: "Incognito".into(),
 			description: "You were brought up by those who were not what they seemed.".into(),
@@ -155,7 +155,7 @@ pub mod hardcoded {
 	}
 
 	pub fn anthropologist() -> character::Background {
-		use modifier::{AddLanguage, AddSkill, Selector};
+		use mutator::{AddLanguage, AddSkill, Selector};
 		character::Background {
 			name: "Anthropologist".into(),
 			description: "You have always been fascinated by other cultures, from the most ancient and \

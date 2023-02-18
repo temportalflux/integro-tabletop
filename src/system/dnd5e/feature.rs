@@ -1,6 +1,6 @@
 use super::{
 	character::DerivedBuilder,
-	modifier::{self, BoxedModifier},
+	mutator::{self, BoxedMutator},
 	Action,
 };
 use std::rc::Rc;
@@ -10,17 +10,17 @@ pub struct Feature {
 	pub name: String,
 	pub description: String,
 	pub action: Option<Action>,
-	pub modifiers: Vec<BoxedModifier>,
+	pub modifiers: Vec<BoxedMutator>,
 	pub limited_uses: Option<LimitedUses>,
 }
 
-impl modifier::Container for Feature {
+impl mutator::Container for Feature {
 	fn id(&self) -> Option<String> {
 		use convert_case::Casing;
 		Some(self.name.to_case(convert_case::Case::Pascal))
 	}
 
-	fn apply_modifiers<'c>(&self, stats: &mut DerivedBuilder<'c>) {
+	fn apply_mutators<'c>(&self, stats: &mut DerivedBuilder<'c>) {
 		for modifier in &self.modifiers {
 			stats.apply(modifier);
 		}

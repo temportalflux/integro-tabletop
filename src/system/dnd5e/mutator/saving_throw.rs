@@ -6,7 +6,7 @@ pub enum AddSavingThrow {
 	Advantage(Ability, String),
 }
 
-impl super::Modifier for AddSavingThrow {
+impl super::Mutator for AddSavingThrow {
 	fn scope_id(&self) -> Option<&str> {
 		None
 	}

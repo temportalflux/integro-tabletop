@@ -1,7 +1,7 @@
 use super::{DerivedBuilder, State};
 use crate::system::dnd5e::{
 	criteria::BoxedCriteria,
-	modifier::{self, AddSkillModifier, BoxedModifier},
+	mutator::{self, AddSkillModifier, BoxedMutator},
 	roll::{self, Die, Roll},
 	Ability, Skill,
 };
@@ -64,12 +64,12 @@ impl Inventory {
 	}
 }
 
-impl modifier::Container for Inventory {
+impl mutator::Container for Inventory {
 	fn id(&self) -> Option<String> {
 		Some("Inventory".into())
 	}
 
-	fn apply_modifiers<'c>(&self, stats: &mut DerivedBuilder<'c>) {
+	fn apply_mutators<'c>(&self, stats: &mut DerivedBuilder<'c>) {
 		for item in self.items_by_id.values() {
 			stats.apply_from(item);
 		}
@@ -124,12 +124,12 @@ impl Item {
 	}
 }
 
-impl modifier::Container for Item {
+impl mutator::Container for Item {
 	fn id(&self) -> Option<String> {
 		Some(self.name.clone())
 	}
 
-	fn apply_modifiers<'c>(&self, stats: &mut DerivedBuilder<'c>) {
+	fn apply_mutators<'c>(&self, stats: &mut DerivedBuilder<'c>) {
 		if let ItemKind::Equipment(equipment) = &self.kind {
 			stats.apply_from(equipment);
 		}
@@ -153,7 +153,7 @@ pub struct Equipment {
 	/// The criteria which must be met for this item to be equipped.
 	pub criteria: Option<BoxedCriteria>,
 	/// Passive modifiers applied while this item is equipped.
-	pub modifiers: Vec<BoxedModifier>,
+	pub modifiers: Vec<BoxedMutator>,
 	/// If this item is armor, this is the armor data.
 	pub armor: Option<Armor>,
 	/// If this item is a shield, this is the AC bonus it grants.
@@ -163,8 +163,8 @@ pub struct Equipment {
 	/// If this weapon can be attuned, this is the attunement data.
 	pub attunement: Option<Attunement>,
 }
-impl modifier::Container for Equipment {
-	fn apply_modifiers<'c>(&self, stats: &mut DerivedBuilder<'c>) {
+impl mutator::Container for Equipment {
+	fn apply_mutators<'c>(&self, stats: &mut DerivedBuilder<'c>) {
 		if !self.is_equipped {
 			return;
 		}
@@ -239,7 +239,7 @@ pub struct WeaponRange {
 
 #[derive(Clone, PartialEq, Default)]
 pub struct Attunement {
-	pub modifiers: Vec<BoxedModifier>,
+	pub modifiers: Vec<BoxedMutator>,
 }
 
 #[allow(dead_code)]

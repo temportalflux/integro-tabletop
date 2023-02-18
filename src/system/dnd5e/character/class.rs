@@ -1,9 +1,6 @@
 use super::DerivedBuilder;
 use crate::system::dnd5e::{
-	condition::Condition,
-	modifier::{self, Modifier},
-	roll::Die,
-	Action, Feature, LimitedUses,
+	condition::Condition, mutator, roll::Die, Action, Feature, LimitedUses,
 };
 
 #[derive(Clone, PartialEq)]
@@ -19,13 +16,13 @@ impl Class {
 	}
 }
 
-impl modifier::Container for Class {
+impl mutator::Container for Class {
 	fn id(&self) -> Option<String> {
 		use convert_case::Casing;
 		Some(self.name.to_case(convert_case::Case::Pascal))
 	}
 
-	fn apply_modifiers<'c>(&self, _stats: &mut DerivedBuilder<'c>) {}
+	fn apply_mutators<'c>(&self, _stats: &mut DerivedBuilder<'c>) {}
 }
 
 #[allow(dead_code)]
@@ -40,10 +37,10 @@ fn barbarian() {
 			
 			If you are able to cast spells, you can't cast them or concentrate on them while raging."),
 			modifiers: vec![
-				Box::new(BonusDamage {
+				BonusDamage {
 					amount: damage_amt,
 					restriction: Some(() /*TODO: weapon is melee using strength*/),
-				}),
+				}.into(),
 				// TODO: adv on strength checks and saving throws
 				// TODO: restistance to bludgeoning, piercing, and slashing damage
 			],
@@ -309,10 +306,10 @@ fn monk() {
 	*/
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 struct CustomCondition {
 	pub description: String,
-	pub modifiers: Vec<Box<dyn Modifier + 'static>>,
+	pub modifiers: Vec<mutator::BoxedMutator>,
 	pub restriction: Option<()>, // TODO: check this to conditionally apply the modifiers
 }
 impl Condition for CustomCondition {
@@ -326,7 +323,7 @@ struct BonusDamage {
 	amount: i32,
 	restriction: Option<()>, // TODO: Evaluate for each weapon/attack before applying amount
 }
-impl Modifier for BonusDamage {
+impl mutator::Mutator for BonusDamage {
 	fn scope_id(&self) -> Option<&str> {
 		None
 	}

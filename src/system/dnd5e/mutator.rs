@@ -22,31 +22,31 @@ pub use skill::*;
 mod speed;
 pub use speed::*;
 
-pub trait Modifier: DynClone {
+pub trait Mutator: DynClone {
 	fn scope_id(&self) -> Option<&str> {
 		None
 	}
 	fn apply<'c>(&self, _: &mut DerivedBuilder<'c>) {}
 }
-clone_trait_object!(Modifier);
+clone_trait_object!(Mutator);
 
 #[derive(Clone)]
-pub struct BoxedModifier(std::rc::Rc<dyn Modifier + 'static>);
-impl PartialEq for BoxedModifier {
+pub struct BoxedMutator(std::rc::Rc<dyn Mutator + 'static>);
+impl PartialEq for BoxedMutator {
 	fn eq(&self, other: &Self) -> bool {
 		std::rc::Rc::ptr_eq(&self.0, &other.0)
 	}
 }
-impl std::ops::Deref for BoxedModifier {
-	type Target = std::rc::Rc<dyn Modifier + 'static>;
+impl std::ops::Deref for BoxedMutator {
+	type Target = std::rc::Rc<dyn Mutator + 'static>;
 
 	fn deref(&self) -> &Self::Target {
 		&self.0
 	}
 }
-impl<T> From<T> for BoxedModifier
+impl<T> From<T> for BoxedMutator
 where
-	T: Modifier + 'static,
+	T: Mutator + 'static,
 {
 	fn from(value: T) -> Self {
 		Self(std::rc::Rc::new(value))
@@ -58,7 +58,7 @@ pub trait Container {
 		None
 	}
 
-	fn apply_modifiers<'c>(&self, stats: &mut DerivedBuilder<'c>);
+	fn apply_mutators<'c>(&self, stats: &mut DerivedBuilder<'c>);
 }
 
 #[derive(Clone)]

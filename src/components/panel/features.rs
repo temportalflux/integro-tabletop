@@ -1,4 +1,8 @@
-use crate::{data::ContextMut, system::dnd5e::{character::State, BoxedFeature}, path_map::PathMap};
+use crate::{
+	data::ContextMut,
+	path_map::PathMap,
+	system::dnd5e::{character::State, BoxedFeature},
+};
 use yew::prelude::*;
 
 #[function_component]
@@ -36,8 +40,14 @@ fn make_section((title, container): (&String, &PathMap<BoxedFeature>)) -> Html {
 }
 
 fn make_section_contents(container: &PathMap<BoxedFeature>) -> Html {
-	let top_level_features = container.iter_values().map(make_feature_block).collect::<Vec<_>>();
-	let sections = container.iter_children().map(make_section).collect::<Vec<_>>();
+	let top_level_features = container
+		.iter_values()
+		.map(make_feature_block)
+		.collect::<Vec<_>>();
+	let sections = container
+		.iter_children()
+		.map(make_section)
+		.collect::<Vec<_>>();
 	html! {<>
 		{top_level_features}
 		{sections}

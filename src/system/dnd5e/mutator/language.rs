@@ -5,7 +5,7 @@ use super::Selector;
 #[derive(Clone)]
 pub struct AddLanguage(pub Selector<String>);
 
-impl super::Modifier for AddLanguage {
+impl super::Mutator for AddLanguage {
 	fn scope_id(&self) -> Option<&str> {
 		self.0.id()
 	}
