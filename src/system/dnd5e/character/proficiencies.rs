@@ -1,5 +1,8 @@
-use super::inventory::{ArmorType, WeaponType};
-use crate::system::dnd5e::{character::DerivedBuilder, mutator::Selector};
+use crate::system::dnd5e::{
+	character::DerivedBuilder,
+	item::{armor, weapon},
+	mutator::Selector,
+};
 use std::{
 	collections::{BTreeMap, BTreeSet},
 	path::PathBuf,
@@ -8,21 +11,21 @@ use std::{
 #[derive(Clone, Default, PartialEq, Debug)]
 pub struct OtherProficiencies {
 	pub languages: AttributedValueMap<String>,
-	pub armor: AttributedValueMap<ArmorType>,
+	pub armor: AttributedValueMap<armor::Kind>,
 	pub weapons: AttributedValueMap<WeaponProficiency>,
 	pub tools: AttributedValueMap<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum WeaponProficiency {
-	Kind(WeaponType),
+	Kind(weapon::Kind),
 	Classification(String),
 }
 impl ToString for WeaponProficiency {
 	fn to_string(&self) -> String {
 		match self {
-			Self::Kind(WeaponType::Simple) => "Simple Weapons".into(),
-			Self::Kind(WeaponType::Martial) => "Martial Weapons".into(),
+			Self::Kind(weapon::Kind::Simple) => "Simple Weapons".into(),
+			Self::Kind(weapon::Kind::Martial) => "Martial Weapons".into(),
 			Self::Classification(name) => name.clone(),
 		}
 	}
@@ -31,7 +34,7 @@ impl ToString for WeaponProficiency {
 #[derive(Clone)]
 pub enum AddProficiency {
 	Language(Selector<String>),
-	Armor(ArmorType),
+	Armor(armor::Kind),
 	Weapon(WeaponProficiency),
 	Tool(String),
 }

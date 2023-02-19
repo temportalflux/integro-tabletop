@@ -1,7 +1,7 @@
 use crate::{
 	bootstrap::components::Tooltip,
 	data::ContextMut,
-	system::dnd5e::character::{inventory::Item, State},
+	system::dnd5e::{character::State, item::Item},
 };
 use uuid::Uuid;
 use wasm_bindgen::JsCast;

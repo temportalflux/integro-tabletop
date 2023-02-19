@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use yew::prelude::*;
 
 pub mod bootstrap;
@@ -32,7 +30,7 @@ fn create_character() -> system::dnd5e::character::Character {
 	use std::{collections::HashMap, path::PathBuf};
 	use system::dnd5e::{
 		character::{Character, Description},
-		hardcoded::*,
+		content::*,
 		mutator, *,
 	};
 	Character {
@@ -48,10 +46,13 @@ fn create_character() -> system::dnd5e::character::Character {
 			Ability::Wisdom => Score(9),
 			Ability::Charisma => Score(11),
 		},
-		lineages: [Some(changeling1()), Some(changeling2())],
-		upbringing: Some(incognito()),
-		background: Some(anthropologist()),
-		classes: vec![character::barbarian()],
+		lineages: [
+			Some(lineage::changeling::shapechanger()),
+			Some(lineage::changeling::voice_changer()),
+		],
+		upbringing: Some(upbringing::incognito()),
+		background: Some(background::anthropologist()),
+		classes: vec![class::barbarian::barbarian()],
 		feats: vec![Feature {
 			name: "Custom Feat".into(),
 			mutators: vec![
@@ -96,61 +97,13 @@ fn create_character() -> system::dnd5e::character::Character {
 			(PathBuf::from("Barbarian/skillB"), "Athletics".into()),
 		]),
 		inventory: {
-			use character::inventory::*;
-			use roll::*;
-			let mut inv = Inventory::new();
-			inv.insert(Item {
-				name: "Dagger".into(),
-				description: None,
-				weight: 1,
-				worth: 200, // in copper
-				kind: ItemKind::Equipment(Equipment {
-					weapon: Some(Weapon {
-						kind: WeaponType::Simple,
-						damage: Roll {
-							amount: 1,
-							die: Die::D4,
-						},
-						damage_type: "piercing".into(),
-						properties: vec![
-							Property::Light,
-							Property::Finesse,
-							Property::Thrown(20, 60),
-						],
-						range: None,
-					}),
-					..Default::default()
-				}),
-				..Default::default()
-			});
-			inv.insert(Item {
-				name: "Traveler's Clothes".into(),
-				description: Some(
-					"This set of clothes could consist of boots, a wool skirt or breeches, \
-				a sturdy belt, a shirt (perhaps with a vest or jacket), and an ample cloak with a hood."
-						.into(),
-				),
-				weight: 4,
-				worth: 200,
-				..Default::default()
-			});
-			inv.insert(Item {
-				name: "Goggles of Night".into(),
-				description: Some(
-					"While wearing these dark lenses, you have darkvision \
-				out to a range of 60 feet. If you already have darkvision, wearing the \
-				goggles increases its range by 60 feet."
-						.into(),
-				),
-				kind: ItemKind::Equipment(Equipment {
-					modifiers: vec![mutator::AddMaxSense("Darkvision".into(), 60).into()],
-					..Default::default()
-				}),
-				..Default::default()
-			});
-			inv.insert(Item {
+			let mut inv = item::Inventory::new();
+			inv.insert(items::weapon::dagger());
+			inv.insert(items::travelers_clothes());
+			inv.insert(items::goggles_of_night());
+			inv.insert(item::Item {
 				name: "Wings of the Owl".into(),
-				kind: ItemKind::Equipment(Equipment {
+				kind: item::ItemKind::Equipment(item::equipment::Equipment {
 					modifiers: vec![
 						mutator::AddMaxSpeed("Flying".into(), 40).into(),
 						mutator::AddSkill {
@@ -169,60 +122,8 @@ fn create_character() -> system::dnd5e::character::Character {
 				}),
 				..Default::default()
 			});
-			inv.insert(Item {
-				name: "Leather Armor".into(),
-				description: None,
-				weight: 10,
-				worth: 1000, // in copper
-				notes: "".into(),
-				kind: ItemKind::Equipment(Equipment {
-					armor: Some(Armor {
-						kind: ArmorType::Light,
-						base_score: 11,
-						ability_modifier: Some(Ability::Dexterity),
-						max_ability_bonus: None,
-						min_strength_score: None,
-					}),
-					criteria: Some(
-						criteria::armor::HasArmorEquipped {
-							inverted: true,
-							kinds: HashSet::from([]),
-						}
-						.into(),
-					),
-					..Default::default()
-				}),
-			});
-			inv.insert(Item {
-				name: "Splint".into(),
-				description: None,
-				weight: 60,
-				worth: 20000, // in copper
-				notes: "".into(),
-				kind: ItemKind::Equipment(Equipment {
-					modifiers: vec![mutator::AddSkillModifier {
-						skill: Skill::Stealth,
-						modifier: roll::Modifier::Disadvantage,
-						criteria: None,
-					}
-					.into()],
-					armor: Some(Armor {
-						kind: ArmorType::Heavy,
-						base_score: 17,
-						ability_modifier: None,
-						max_ability_bonus: None,
-						min_strength_score: Some(15),
-					}),
-					criteria: Some(
-						criteria::armor::HasArmorEquipped {
-							inverted: true,
-							kinds: HashSet::from([]),
-						}
-						.into(),
-					),
-					..Default::default()
-				}),
-			});
+			inv.insert(items::armor::leather());
+			inv.insert(items::armor::splint());
 			inv
 		},
 		conditions: Vec::new(),

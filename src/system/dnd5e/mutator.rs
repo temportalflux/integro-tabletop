@@ -4,6 +4,9 @@ use dyn_clone::{clone_trait_object, DynClone};
 mod ability_score;
 pub use ability_score::*;
 
+mod bonus_damage;
+pub use bonus_damage::*;
+
 mod description;
 pub use description::*;
 

@@ -1,5 +1,6 @@
 use super::{
 	condition::BoxedCondition,
+	item,
 	mutator::{self, Defense},
 	proficiency,
 	roll::RollSet,
@@ -25,7 +26,6 @@ mod proficiencies;
 pub use proficiencies::*;
 mod upbringing;
 pub use upbringing::*;
-pub mod inventory;
 
 /// Core character data which is (de)serializable and
 /// from which the derived data can be compiled.
@@ -39,7 +39,7 @@ pub struct Character {
 	pub description: Description,
 	pub ability_scores: EnumMap<Ability, Score>,
 	pub selected_values: HashMap<PathBuf, String>,
-	pub inventory: inventory::Inventory,
+	pub inventory: item::Inventory,
 	pub conditions: Vec<BoxedCondition>,
 	pub hit_points: (u32, u32),
 }
@@ -400,11 +400,11 @@ impl State {
 		&self.derived.defenses
 	}
 
-	pub fn inventory(&self) -> &inventory::Inventory {
+	pub fn inventory(&self) -> &item::Inventory {
 		&self.character.inventory
 	}
 
-	pub fn inventory_mut(&mut self) -> &mut inventory::Inventory {
+	pub fn inventory_mut(&mut self) -> &mut item::Inventory {
 		&mut self.character.inventory
 	}
 
@@ -453,13 +453,8 @@ pub struct Culture {
 }
 
 pub fn changeling_character() -> Character {
-	use crate::system::dnd5e::hardcoded::*;
+	use crate::system::dnd5e::content::{background::anthropologist, culture::changeling};
 	use enum_map::enum_map;
-	let culture = Culture {
-		lineages: [changeling1(), changeling2()],
-		upbringing: incognito(),
-	};
-	let background = anthropologist();
 	Character {
 		description: Description {
 			name: "changeling".into(),
@@ -475,7 +470,7 @@ pub fn changeling_character() -> Character {
 		},
 		lineages: [None, None],
 		upbringing: None,
-		background: Some(background),
+		background: Some(anthropologist()),
 		classes: Vec::new(),
 		feats: Vec::new(),
 		selected_values: HashMap::from([
@@ -504,11 +499,11 @@ pub fn changeling_character() -> Character {
 				"Elvish".into(),
 			),
 		]),
-		inventory: inventory::Inventory::new(),
+		inventory: item::Inventory::new(),
 		conditions: Vec::new(),
 		hit_points: (0, 0),
 	}
-	.with_culture(culture)
+	.with_culture(changeling())
 }
 
 #[cfg(test)]

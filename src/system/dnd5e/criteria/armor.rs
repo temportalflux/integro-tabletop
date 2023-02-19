@@ -1,6 +1,6 @@
-use crate::system::dnd5e::character::{
-	inventory::{ArmorType, ItemKind},
-	State,
+use crate::system::dnd5e::{
+	character::State,
+	item::{armor, ItemKind},
 };
 use std::collections::HashSet;
 
@@ -11,7 +11,7 @@ pub struct HasArmorEquipped {
 	/// If this flag is true, the criteria checks if no armor is equipped (or no armor of a particular set of types).
 	pub inverted: bool,
 	/// The list of armor types to check. If empty, all armor is considered.
-	pub kinds: HashSet<ArmorType>,
+	pub kinds: HashSet<armor::Kind>,
 }
 impl HasArmorEquipped {
 	fn kind_list(&self, joiner: &str) -> Option<String> {

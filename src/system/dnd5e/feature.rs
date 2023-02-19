@@ -3,7 +3,7 @@ use super::{
 	condition::BoxedCondition,
 	criteria::BoxedCriteria,
 	mutator::{self, BoxedMutator},
-	Action,
+	Action, Value,
 };
 use std::rc::Rc;
 
@@ -57,56 +57,4 @@ pub struct LimitedUses {
 pub enum Rest {
 	Short,
 	Long,
-}
-
-#[derive(Clone)]
-pub enum Value<T> {
-	Fixed(T),
-	Evaluated(BoxedEvaluator<T>),
-}
-impl<T> Default for Value<T>
-where
-	T: Default,
-{
-	fn default() -> Self {
-		Self::Fixed(T::default())
-	}
-}
-impl<T> PartialEq for Value<T>
-where
-	T: PartialEq,
-{
-	fn eq(&self, other: &Self) -> bool {
-		match (self, other) {
-			(Self::Fixed(a), Self::Fixed(b)) => a == b,
-			(Self::Evaluated(a), Self::Evaluated(b)) => Rc::ptr_eq(a, b),
-			_ => false,
-		}
-	}
-}
-
-pub trait Evaluator {
-	type Item;
-}
-#[derive(Clone)]
-pub struct BoxedEvaluator<V>(std::rc::Rc<dyn Evaluator<Item = V> + 'static>);
-impl<V> PartialEq for BoxedEvaluator<V> {
-	fn eq(&self, other: &Self) -> bool {
-		std::rc::Rc::ptr_eq(&self.0, &other.0)
-	}
-}
-impl<V> std::ops::Deref for BoxedEvaluator<V> {
-	type Target = std::rc::Rc<dyn Evaluator<Item = V> + 'static>;
-
-	fn deref(&self) -> &Self::Target {
-		&self.0
-	}
-}
-impl<T, V> From<T> for BoxedEvaluator<V>
-where
-	T: Evaluator<Item = V> + 'static,
-{
-	fn from(value: T) -> Self {
-		Self(std::rc::Rc::new(value))
-	}
 }
