@@ -52,7 +52,7 @@ fn create_character() -> system::dnd5e::character::Character {
 		],
 		upbringing: Some(upbringing::incognito()),
 		background: Some(background::anthropologist()),
-		classes: vec![class::barbarian::barbarian()],
+		classes: vec![class::barbarian::barbarian(10, None)],
 		feats: vec![Feature {
 			name: "Custom Feat".into(),
 			mutators: vec![

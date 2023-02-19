@@ -1,10 +1,10 @@
-use super::character::State;
+use super::character::Character;
 use dyn_clone::{clone_trait_object, DynClone};
 
 pub mod armor;
 
 pub trait Criteria: DynClone {
-	fn evaluate(&self, state: &State) -> Result<(), String>;
+	fn evaluate(&self, character: &Character) -> Result<(), String>;
 }
 clone_trait_object!(Criteria);
 

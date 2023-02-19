@@ -1,4 +1,5 @@
 use crate::system::dnd5e::{
+	character::{ArmorClassFormula, BoundedAbility},
 	item::{
 		armor::{self, Armor},
 		equipment::Equipment,
@@ -18,9 +19,10 @@ pub fn leather() -> Item {
 		kind: ItemKind::Equipment(Equipment {
 			armor: Some(Armor {
 				kind: armor::Kind::Light,
-				base_score: 11,
-				ability_modifier: Some(Ability::Dexterity),
-				max_ability_bonus: None,
+				formula: ArmorClassFormula {
+					base: 11,
+					bonuses: vec![Ability::Dexterity.into()],
+				},
 				min_strength_score: None,
 			}),
 			..Default::default()
@@ -44,9 +46,14 @@ pub fn scale_mail() -> Item {
 			.into()],
 			armor: Some(Armor {
 				kind: armor::Kind::Medium,
-				base_score: 14,
-				ability_modifier: Some(Ability::Dexterity),
-				max_ability_bonus: Some(2),
+				formula: ArmorClassFormula {
+					base: 14,
+					bonuses: vec![BoundedAbility {
+						ability: Ability::Dexterity,
+						max: Some(2),
+						min: None,
+					}],
+				},
 				min_strength_score: None,
 			}),
 			..Default::default()
@@ -70,9 +77,10 @@ pub fn splint() -> Item {
 			.into()],
 			armor: Some(Armor {
 				kind: armor::Kind::Heavy,
-				base_score: 17,
-				ability_modifier: None,
-				max_ability_bonus: None,
+				formula: ArmorClassFormula {
+					base: 17,
+					bonuses: vec![],
+				},
 				min_strength_score: Some(15),
 			}),
 			..Default::default()

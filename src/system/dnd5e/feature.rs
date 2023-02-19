@@ -13,7 +13,7 @@ pub struct Feature {
 	pub description: String,
 	pub action: Option<Action>,
 	pub mutators: Vec<BoxedMutator>,
-	pub criteria: Option<BoxedCriteria>, // TODO: Implement
+	pub criteria: Option<BoxedCriteria>,
 	pub limited_uses: Option<LimitedUses>,
 }
 
@@ -24,6 +24,12 @@ impl mutator::Container for Feature {
 	}
 
 	fn apply_mutators<'c>(&self, stats: &mut DerivedBuilder<'c>) {
+		if let Some(criteria) = &self.criteria {
+			// TODO: Somehow save the error text for display in feature UI
+			if stats.evaluate(criteria).is_err() {
+				return;
+			}
+		}
 		for mutator in &self.mutators {
 			stats.apply(mutator);
 		}

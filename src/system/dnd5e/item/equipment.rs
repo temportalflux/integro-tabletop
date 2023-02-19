@@ -27,9 +27,11 @@ impl mutator::Container for Equipment {
 		if !self.is_equipped {
 			return;
 		}
-
 		for modifier in &self.modifiers {
 			stats.apply(modifier);
+		}
+		if let Some(armor) = &self.armor {
+			stats.apply_from(armor);
 		}
 	}
 }
@@ -38,7 +40,7 @@ impl Equipment {
 	/// Returs Ok if the item can currently be equipped, otherwise returns a user-displayable reason why it cannot be equipped.
 	pub fn can_be_equipped(&self, state: &State) -> Result<(), String> {
 		match &self.criteria {
-			Some(criteria) => criteria.evaluate(state),
+			Some(criteria) => state.evaluate(criteria),
 			None => Ok(()),
 		}
 	}

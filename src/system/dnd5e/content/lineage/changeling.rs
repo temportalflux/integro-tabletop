@@ -40,7 +40,7 @@ pub fn shapechanger() -> Lineage {
 
 pub fn voice_changer() -> Lineage {
 	Lineage {
-		name: "Changeling II".to_owned(),
+		name: "Changeling (Voice Changer)".to_owned(),
 		description: "One of your birth parents is a changeling. You can perfectly mimic another person's voice.".to_owned(),
 		mutators: vec![
 			AddLifeExpectancy(50).into(),

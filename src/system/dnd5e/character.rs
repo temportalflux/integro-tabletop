@@ -1,5 +1,6 @@
 use super::{
 	condition::BoxedCondition,
+	criteria::BoxedCriteria,
 	item,
 	mutator::{self, Defense},
 	proficiency,
@@ -14,6 +15,8 @@ use std::{
 	rc::Rc,
 };
 
+mod armor_class;
+pub use armor_class::*;
 mod background;
 pub use background::*;
 mod class;
@@ -112,6 +115,7 @@ pub struct Derived {
 	pub life_expectancy: i32,
 	pub max_height: (i32, RollSet),
 	max_hit_points: u32,
+	armor_class: ArmorClass,
 }
 
 /// The builder which compiles `Derived` from `Character`.
@@ -129,6 +133,10 @@ impl<'c> DerivedBuilder<'c> {
 		}
 	}
 
+	pub fn evaluate(&self, criteria: &BoxedCriteria) -> Result<(), String> {
+		criteria.evaluate(&self.character)
+	}
+
 	pub fn scope(&self) -> PathBuf {
 		match std::path::MAIN_SEPARATOR {
 			'/' => self.scope.clone(),
@@ -142,12 +150,12 @@ impl<'c> DerivedBuilder<'c> {
 		}
 	}
 
-	pub fn apply_from(&mut self, modifiers: &impl mutator::Container) {
-		let id = modifiers.id();
+	pub fn apply_from(&mut self, container: &impl mutator::Container) {
+		let id = container.id();
 		if let Some(id) = &id {
 			self.scope.push(id);
 		}
-		modifiers.apply_mutators(self);
+		container.apply_mutators(self);
 		if id.is_some() {
 			self.scope.pop();
 		}
@@ -258,6 +266,10 @@ impl<'c> DerivedBuilder<'c> {
 			}
 		}
 	}
+
+	pub fn armor_class_mut(&mut self) -> &mut ArmorClass {
+		&mut self.derived.armor_class
+	}
 }
 impl<'c> std::ops::Deref for DerivedBuilder<'c> {
 	type Target = Derived;
@@ -297,6 +309,10 @@ impl State {
 		self.derived = self.character.compile();
 	}
 
+	pub fn evaluate(&self, criteria: &BoxedCriteria) -> Result<(), String> {
+		criteria.evaluate(&self.character)
+	}
+
 	/// Returns the score/value for a given ability. Any bonuses beyond the character's base scores
 	/// are provided with a path to the feature which provided that bonus.
 	pub fn ability_score(&self, ability: Ability) -> (Score, Vec<(PathBuf, i32)>) {
@@ -325,9 +341,7 @@ impl State {
 	}
 
 	pub fn armor_class(&self) -> i32 {
-		// This is the default formula:
-		// ArmorClassFormula { base: 10, modifiers: vec![Ability::Dexterity] }
-		10 + self.ability_score(Ability::Dexterity).0.modifier()
+		self.derived.armor_class.evaluate(&self)
 	}
 
 	pub fn ability_modifier(&self, ability: Ability, proficiency: proficiency::Level) -> i32 {
