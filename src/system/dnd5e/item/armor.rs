@@ -9,6 +9,7 @@ pub struct Armor {
 	pub formula: ArmorClassFormula,
 	/// The minimum expected strength score to use this armor.
 	/// If provided, characters with a value less than this are hindered (reduced speed).
+	/// TODO: Reduce speed by 10 if strength score not met
 	pub min_strength_score: Option<u32>,
 }
 
