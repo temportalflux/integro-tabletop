@@ -57,18 +57,6 @@ impl Item {
 	}
 }
 
-impl mutator::Container for Item {
-	fn id(&self) -> Option<String> {
-		Some(self.name.clone())
-	}
-
-	fn apply_mutators<'c>(&self, stats: &mut DerivedBuilder<'c>) {
-		if let ItemKind::Equipment(equipment) = &self.kind {
-			stats.apply_from(equipment);
-		}
-	}
-}
-
 #[derive(Clone, PartialEq)]
 pub enum ItemKind {
 	Simple { count: u32 },
@@ -78,6 +66,35 @@ pub enum ItemKind {
 impl Default for ItemKind {
 	fn default() -> Self {
 		Self::Simple { count: 1 }
+	}
+}
+
+pub struct ItemWithId<'a>(&'a Uuid, &'a Item);
+impl<'a> ItemWithId<'a> {
+	pub fn id(&self) -> &'a Uuid {
+		self.0
+	}
+
+	pub fn item(&self) -> &'a Item {
+		self.1
+	}
+}
+impl<'a> mutator::Container for ItemWithId<'a> {
+	fn id(&self) -> Option<String> {
+		Some(self.item().name.clone())
+	}
+
+	fn apply_mutators<'c>(&self, stats: &mut DerivedBuilder<'c>) {
+		if let ItemKind::Equipment(equipment) = &self.item().kind {
+			stats.apply_from(equipment);
+			if equipment.is_equipped {
+				if let Some(weapon) = &equipment.weapon {
+					stats
+						.actions_mut()
+						.push(weapon.attack_action(self.item().name.clone(), self.id()));
+				}
+			}
+		}
 	}
 }
 
@@ -125,10 +142,10 @@ impl Inventory {
 		self.items_by_id.values()
 	}
 
-	pub fn items(&self) -> Vec<(&Uuid, &Item)> {
+	pub fn items<'a>(&'a self) -> Vec<ItemWithId<'a>> {
 		self.itemids_by_name
 			.iter()
-			.map(|id| (id, self.items_by_id.get(&id).unwrap()))
+			.map(|id| ItemWithId(id, self.items_by_id.get(&id).unwrap()))
 			.collect()
 	}
 
@@ -143,8 +160,8 @@ impl mutator::Container for Inventory {
 	}
 
 	fn apply_mutators<'c>(&self, stats: &mut DerivedBuilder<'c>) {
-		for item in self.items_by_id.values() {
-			stats.apply_from(item);
+		for item_with_id in self.items() {
+			stats.apply_from(&item_with_id);
 		}
 	}
 }

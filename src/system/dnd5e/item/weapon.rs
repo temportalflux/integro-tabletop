@@ -1,8 +1,16 @@
-use crate::system::dnd5e::{roll::Roll, Ability};
+use crate::system::dnd5e::{
+	action::{
+		Action, ActionSource, ActivationKind, Attack, AttackCheckKind, AttackKind, AttackKindValue,
+	},
+	roll::Roll,
+	Ability, Value,
+};
+use uuid::Uuid;
 
 #[derive(Clone, PartialEq)]
 pub struct Weapon {
 	pub kind: Kind,
+	pub classification: String,
 	pub damage: Roll,
 	pub damage_type: String,
 	pub properties: Vec<Property>,
@@ -37,12 +45,41 @@ pub struct Range {
 #[derive(Clone, PartialEq, Default)]
 pub struct Restriction {
 	pub weapon_kind: Vec<Kind>,
-	pub attack_kind: Vec<AttackType>,
+	pub attack_kind: Vec<AttackKind>,
 	pub ability: Vec<Ability>,
 }
 
-#[derive(Clone, PartialEq)]
-pub enum AttackType {
-	Melee,
-	Ranged,
+impl Weapon {
+	pub fn attack_action(&self, name: String, id: &Uuid) -> Action {
+		Action {
+			name,
+			activation_kind: ActivationKind::Action,
+			source: Some(ActionSource::Item(*id)),
+			attack: Some(Attack {
+				kind: match self.range {
+					None => AttackKindValue::Melee { reach: 5 },
+					Some(Range {
+						short_range,
+						long_range,
+						..
+					}) => AttackKindValue::Ranged {
+						short_dist: short_range,
+						long_dist: long_range,
+						kind: None,
+					},
+				},
+				check: AttackCheckKind::AttackRoll {
+					ability: Ability::Dexterity,
+					proficient: {
+						Value::Fixed(true)
+						// TODO: Value::Evaluated(IsProficientWithWeapon(self.classification.clone()).into())
+					},
+				},
+				area_of_effect: None,
+				damage_roll: (Some(self.damage), Value::Fixed(0)),
+				damage_type: self.damage_type.clone(),
+			}),
+			..Default::default()
+		}
+	}
 }

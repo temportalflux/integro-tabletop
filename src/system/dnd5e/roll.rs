@@ -6,6 +6,18 @@ pub struct Roll {
 	pub amount: i32,
 	pub die: Die,
 }
+impl ToString for Roll {
+    fn to_string(&self) -> String {
+        format!("{}d{}", self.amount, match self.die {
+					Die::D4 => 4,
+					Die::D6 => 6,
+					Die::D8 => 8,
+					Die::D10 => 10,
+					Die::D12 => 12,
+					Die::D20 => 20,
+				})
+    }
+}
 
 #[derive(Default, Clone, Copy, PartialEq, Debug)]
 pub struct RollSet(pub EnumMap<Die, i32>);

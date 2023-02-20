@@ -1,9 +1,10 @@
 use super::{
+	action::ActivationKind,
 	character::DerivedBuilder,
 	condition::BoxedCondition,
 	criteria::BoxedCriteria,
 	mutator::{self, BoxedMutator},
-	Action, Value,
+	Value,
 };
 use std::rc::Rc;
 
@@ -11,7 +12,7 @@ use std::rc::Rc;
 pub struct Feature {
 	pub name: String,
 	pub description: String,
-	pub action: Option<Action>,
+	pub action: Option<ActivationKind>,
 	pub mutators: Vec<BoxedMutator>,
 	pub criteria: Option<BoxedCriteria>,
 	pub limited_uses: Option<LimitedUses>,

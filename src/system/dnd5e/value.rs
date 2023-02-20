@@ -1,4 +1,4 @@
-use super::evaluator::BoxedEvaluator;
+use super::{character::State, evaluator::BoxedEvaluator};
 use std::rc::Rc;
 
 #[derive(Clone)]
@@ -25,6 +25,18 @@ where
 			(Self::Fixed(a), Self::Fixed(b)) => a == b,
 			(Self::Evaluated(a), Self::Evaluated(b)) => Rc::ptr_eq(a, b),
 			_ => false,
+		}
+	}
+}
+
+impl<T> Value<T> {
+	pub fn evaluate(&self, state: &State) -> T
+	where
+		T: Clone,
+	{
+		match self {
+			Self::Fixed(value) => value.clone(),
+			Self::Evaluated(evaluator) => evaluator.evaluate(state),
 		}
 	}
 }

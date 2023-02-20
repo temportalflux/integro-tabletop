@@ -25,8 +25,8 @@ pub fn Inventory() -> Html {
 				</tr>
 			</thead>
 			<tbody>
-				{state.inventory().items().into_iter().map(|(id, item)| html! {
-					<ItemRow id={id.clone()} item={item.clone()} />
+				{state.inventory().items().into_iter().map(|item_with_id| html! {
+					<ItemRow id={item_with_id.id().clone()} item={item_with_id.item().clone()} />
 				}).collect::<Vec<_>>()}
 			</tbody>
 		</table>

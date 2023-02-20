@@ -15,8 +15,8 @@ pub struct Class {
 }
 
 impl Class {
-	pub fn level_count(&self) -> i32 {
-		self.levels.len() as i32
+	pub fn level_count(&self) -> usize {
+		self.levels.len()
 	}
 }
 

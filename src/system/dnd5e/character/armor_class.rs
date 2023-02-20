@@ -5,11 +5,13 @@ use super::State;
 #[derive(Clone, PartialEq)]
 pub struct ArmorClass {
 	formulas: Vec<ArmorClassFormula>,
+	bonuses: Vec<i32>,
 }
 impl Default for ArmorClass {
 	fn default() -> Self {
 		Self {
 			formulas: vec![ArmorClassFormula::default()],
+			bonuses: Vec::new(),
 		}
 	}
 }
@@ -18,12 +20,18 @@ impl ArmorClass {
 		self.formulas.push(formula);
 	}
 
+	pub fn push_bonus(&mut self, bonus: i32) {
+		self.bonuses.push(bonus);
+	}
+
 	pub fn evaluate(&self, state: &State) -> i32 {
-		self.formulas
+		let best_formula_value = self
+			.formulas
 			.iter()
 			.map(|formula| formula.evaluate(state))
 			.max()
-			.unwrap_or(0)
+			.unwrap_or(0);
+		best_formula_value + self.bonuses.iter().sum::<i32>()
 	}
 }
 

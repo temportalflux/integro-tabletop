@@ -17,6 +17,7 @@ pub fn club() -> Item {
 		kind: ItemKind::Equipment(Equipment {
 			weapon: Some(Weapon {
 				kind: weapon::Kind::Simple,
+				classification: "Club".into(),
 				damage: Roll {
 					amount: 1,
 					die: Die::D4,
@@ -40,6 +41,7 @@ pub fn dagger() -> Item {
 		kind: ItemKind::Equipment(Equipment {
 			weapon: Some(Weapon {
 				kind: weapon::Kind::Simple,
+				classification: "Dagger".into(),
 				damage: Roll {
 					amount: 1,
 					die: Die::D4,
@@ -63,6 +65,7 @@ pub fn greatclub() -> Item {
 		kind: ItemKind::Equipment(Equipment {
 			weapon: Some(Weapon {
 				kind: weapon::Kind::Simple,
+				classification: "Greatclub".into(),
 				damage: Roll {
 					amount: 1,
 					die: Die::D8,
@@ -86,6 +89,7 @@ pub fn quarterstaff() -> Item {
 		kind: ItemKind::Equipment(Equipment {
 			weapon: Some(Weapon {
 				kind: weapon::Kind::Simple,
+				classification: "Quarterstaff".into(),
 				damage: Roll {
 					amount: 1,
 					die: Die::D6,
@@ -112,6 +116,7 @@ pub fn crossbow_light() -> Item {
 		kind: ItemKind::Equipment(Equipment {
 			weapon: Some(Weapon {
 				kind: weapon::Kind::Simple,
+				classification: "CrossbowLight".into(),
 				damage: Roll {
 					amount: 1,
 					die: Die::D8,
@@ -140,6 +145,7 @@ pub fn halberd() -> Item {
 		kind: ItemKind::Equipment(Equipment {
 			weapon: Some(Weapon {
 				kind: weapon::Kind::Martial,
+				classification: "Halberd".into(),
 				damage: Roll {
 					amount: 1,
 					die: Die::D10,
@@ -147,34 +153,6 @@ pub fn halberd() -> Item {
 				damage_type: "slashing".into(),
 				properties: vec![Property::TwoHanded, Property::Heavy, Property::Reach],
 				range: None,
-			}),
-			..Default::default()
-		}),
-	}
-}
-
-pub fn longbow() -> Item {
-	Item {
-		name: "Halberd".into(),
-		description: None,
-		weight: 18,
-		worth: 5000, // in copper
-		notes: "".into(),
-		kind: ItemKind::Equipment(Equipment {
-			weapon: Some(Weapon {
-				kind: weapon::Kind::Martial,
-				damage: Roll {
-					amount: 1,
-					die: Die::D8,
-				},
-				damage_type: "slashing".into(),
-				properties: vec![Property::TwoHanded, Property::Heavy],
-				range: Some(weapon::Range {
-					short_range: 150,
-					long_range: 600,
-					requires_ammunition: true,
-					requires_loading: false,
-				}),
 			}),
 			..Default::default()
 		}),

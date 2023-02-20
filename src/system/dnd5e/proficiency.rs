@@ -11,6 +11,14 @@ impl Default for Level {
 		Self::None
 	}
 }
+impl From<bool> for Level {
+	fn from(value: bool) -> Self {
+		match value {
+			true => Self::Full,
+			false => Self::None,
+		}
+	}
+}
 
 impl Level {
 	pub fn as_display_name(&self) -> &'static str {

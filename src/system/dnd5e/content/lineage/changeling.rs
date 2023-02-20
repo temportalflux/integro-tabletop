@@ -1,8 +1,9 @@
 use crate::system::dnd5e::{
+	action::ActivationKind,
 	character::Lineage,
 	mutator::{AddLifeExpectancy, AddMaxHeight, AddMaxSpeed},
 	roll::{Die, Roll},
-	Action, Feature,
+	Feature,
 };
 
 pub fn shapechanger() -> Lineage {
@@ -30,7 +31,7 @@ pub fn shapechanger() -> Lineage {
 				You can't duplicate the appearance of a creature you've never seen, and you must adopt a form that has \
 				the same basic arrangement of limbs that you have. Your voice, clothing, and equipment aren't changed by this trait. \
 				You stay in the new form until you use an action to revert to your true form or until you die.".into(),
-				action: Some(Action::Full),
+				action: Some(ActivationKind::Action),
 				..Default::default()
 			}.into(),
 		],
@@ -57,7 +58,7 @@ pub fn voice_changer() -> Lineage {
 				name: "Voice Change".to_owned(),
 				description: "As an action, you can change your voice. You can't duplicate the voice of a creature you've never heard. \
 				Your appearance remains the same. You keep your mimicked voice until you use an action to revert to your true voice.".into(),
-				action: Some(Action::Full),
+				action: Some(ActivationKind::Action),
 				..Default::default()
 			}.into(),
 		],

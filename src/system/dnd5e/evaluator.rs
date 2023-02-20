@@ -1,8 +1,11 @@
+use super::character::State;
+
 mod class_level;
 pub use class_level::*;
 
 pub trait Evaluator {
 	type Item;
+	fn evaluate(&self, state: &State) -> Self::Item;
 }
 
 #[derive(Clone)]

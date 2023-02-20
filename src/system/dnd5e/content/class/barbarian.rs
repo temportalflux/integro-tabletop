@@ -1,16 +1,17 @@
 use crate::system::dnd5e::{
+	action::{ActivationKind, AttackKind},
 	character::{AddProficiency, ArmorClassFormula, Class, Level, Subclass, WeaponProficiency},
 	condition::{self, Condition},
 	criteria::armor::HasArmorEquipped,
-	evaluator::ByClassLevel,
+	evaluator::ByLevel,
 	item::{
 		armor,
-		weapon::{self, AttackType},
+		weapon::{self},
 	},
 	mutator::{self, AddArmorClassFormula, AddDefense, AddSavingThrow, AddSkill, BonusDamage},
 	proficiency,
 	roll::Die,
-	Ability, Action, Feature, LimitedUses, Rest, Skill, Value,
+	Ability, Feature, LimitedUses, Rest, Skill, Value,
 };
 
 pub fn barbarian(levels: usize, subclass: Option<Subclass>) -> Class {
@@ -28,10 +29,14 @@ pub fn barbarian(levels: usize, subclass: Option<Subclass>) -> Class {
 			mutators: vec![
 				BonusDamage {
 					amount: crate::system::dnd5e::Value::Evaluated(
-						ByClassLevel::from([(1, 2), (9, 3), (16, 4)]).into(),
+						ByLevel {
+							class_name: Some("Barbarian".into()),
+							map: [(1, 2), (9, 3), (16, 4)].into(),
+						}
+						.into(),
 					),
 					restriction: Some(weapon::Restriction {
-						attack_kind: vec![AttackType::Melee],
+						attack_kind: vec![AttackKind::Melee],
 						ability: vec![Ability::Strength],
 						..Default::default()
 					}),
@@ -63,17 +68,21 @@ pub fn barbarian(levels: usize, subclass: Option<Subclass>) -> Class {
 				Once you have used all your rages, you must finish a long rest before you can rage again.";
 				desc
 			},
-			action: Some(Action::Bonus),
+			action: Some(ActivationKind::Bonus),
 			limited_uses: Some(LimitedUses {
 				max_uses: Value::Evaluated(
-					ByClassLevel::from([
-						(1, Some(2)),
-						(3, Some(3)),
-						(6, Some(4)),
-						(12, Some(5)),
-						(17, Some(6)),
-						(20, None),
-					])
+					ByLevel {
+						class_name: Some("Barbarian".into()),
+						map: [
+							(1, Some(2)),
+							(3, Some(3)),
+							(6, Some(4)),
+							(12, Some(5)),
+							(17, Some(6)),
+							(20, None),
+						]
+						.into(),
+					}
 					.into(),
 				),
 				reset_on: Some(Rest::Long),

@@ -1,8 +1,7 @@
 mod ability;
 pub use ability::*;
 
-mod action;
-pub use action::*;
+pub mod action;
 
 pub mod character;
 pub mod condition;

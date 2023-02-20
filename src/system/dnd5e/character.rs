@@ -1,4 +1,5 @@
 use super::{
+	action::Action,
 	condition::BoxedCondition,
 	criteria::BoxedCriteria,
 	item,
@@ -79,8 +80,14 @@ impl Character {
 		stats.build()
 	}
 
-	pub fn level(&self) -> i32 {
-		self.classes.iter().map(|class| class.level_count()).sum()
+	pub fn level(&self, class_name: Option<&str>) -> usize {
+		match class_name {
+			Some(class_name) => {
+				let Ok(class_idx) = self.classes.binary_search_by(|class| class.name.as_str().cmp(class_name)) else { return 0; };
+				self.classes.get(class_idx).unwrap().level_count()
+			}
+			None => self.classes.iter().map(|class| class.level_count()).sum(),
+		}
 	}
 }
 
@@ -116,6 +123,7 @@ pub struct Derived {
 	pub max_height: (i32, RollSet),
 	max_hit_points: u32,
 	armor_class: ArmorClass,
+	pub actions: Vec<Action>,
 }
 
 /// The builder which compiles `Derived` from `Character`.
@@ -270,6 +278,10 @@ impl<'c> DerivedBuilder<'c> {
 	pub fn armor_class_mut(&mut self) -> &mut ArmorClass {
 		&mut self.derived.armor_class
 	}
+
+	pub fn actions_mut(&mut self) -> &mut Vec<Action> {
+		&mut self.actions
+	}
 }
 impl<'c> std::ops::Deref for DerivedBuilder<'c> {
 	type Target = Derived;
@@ -325,8 +337,12 @@ impl State {
 		(score, sources)
 	}
 
+	pub fn level(&self, class_name: Option<&str>) -> usize {
+		self.character.level(class_name)
+	}
+
 	pub fn proficiency_bonus(&self) -> i32 {
-		match self.character.level().abs() {
+		match self.character.level(None) {
 			1..=4 => 2,
 			5..=8 => 3,
 			9..=12 => 4,
@@ -424,6 +440,10 @@ impl State {
 
 	pub fn features(&self) -> &PathMap<BoxedFeature> {
 		&self.derived.features
+	}
+
+	pub fn actions(&self) -> &Vec<Action> {
+		&self.derived.actions
 	}
 }
 

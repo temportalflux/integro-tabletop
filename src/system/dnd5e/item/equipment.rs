@@ -33,6 +33,9 @@ impl mutator::Container for Equipment {
 		if let Some(armor) = &self.armor {
 			stats.apply_from(armor);
 		}
+		if let Some(shield) = &self.shield {
+			stats.armor_class_mut().push_bonus(*shield);
+		}
 	}
 }
 
