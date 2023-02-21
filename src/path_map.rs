@@ -3,7 +3,7 @@ use std::{
 	path::{Path, PathBuf},
 };
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct PathMap<T> {
 	values: Vec<T>,
 	children: BTreeMap<String, PathMap<T>>,
@@ -15,6 +15,19 @@ impl<T> Default for PathMap<T> {
 			values: Vec::new(),
 			children: BTreeMap::new(),
 		}
+	}
+}
+
+impl<K, T, const N: usize> From<[(K, T); N]> for PathMap<T>
+where
+	K: AsRef<Path>,
+{
+	fn from(values: [(K, T); N]) -> Self {
+		let mut map = Self::default();
+		for (path, value) in values {
+			map.insert(&path, value);
+		}
+		map
 	}
 }
 
@@ -62,5 +75,19 @@ impl<T> PathMap<T> {
 
 	pub fn iter_children(&self) -> impl Iterator<Item = (&String, &PathMap<T>)> {
 		self.children.iter()
+	}
+
+	pub fn get(&self, path: impl AsRef<Path>) -> Option<&Vec<T>> {
+		self.get_all(path).map(|map| &map.values)
+	}
+
+	pub fn get_all(&self, path: impl AsRef<Path>) -> Option<&PathMap<T>> {
+		let mut map = self;
+		for component in path.as_ref().components() {
+			let key = component.as_os_str().to_str().unwrap();
+			let Some(next_map) = map.children.get(key) else { return None; };
+			map = next_map;
+		}
+		Some(&map)
 	}
 }

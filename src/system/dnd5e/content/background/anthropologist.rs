@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::system::dnd5e::{
 	character::{AddProficiency, Background},
 	mutator::{AddSkill, Selector},
@@ -30,6 +32,7 @@ pub fn anthropologist() -> Background {
 			}.into(),
 			Feature {
 				name: "Languages".into(),
+				description: "You can speak, read, and write {langA} and {langB}.".into(),
 				mutators: vec![
 					AddProficiency::Language(Selector::Any { id: Some("langA".into()) }).into(),
 					AddProficiency::Language(Selector::Any { id: Some("langB".into()) }).into(),

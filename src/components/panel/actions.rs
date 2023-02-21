@@ -1,4 +1,12 @@
-use crate::{components::*, system::dnd5e::{character::State, action::{AttackKindValue, AttackCheckKind}, evaluator::Evaluator}, data::ContextMut};
+use crate::{
+	components::*,
+	data::ContextMut,
+	system::dnd5e::{
+		action::{AttackCheckKind, AttackKindValue},
+		character::State,
+		evaluator::Evaluator,
+	},
+};
 use enumset::{EnumSet, EnumSetType};
 use yew::prelude::*;
 
@@ -50,10 +58,14 @@ pub fn Actions() -> Html {
 	let mut panes = Vec::new();
 	if selected_tags.contains(ActionTag::Attack) {
 		let attacks = {
-			let mut attacks = state.actions().iter().filter_map(|action| match action.attack.as_ref() {
-				Some(attack) => Some((action.name.clone(), attack)),
-				None => None,
-			}).collect::<Vec<_>>();
+			let mut attacks = state
+				.actions()
+				.iter()
+				.filter_map(|action| match action.attack.as_ref() {
+					Some(attack) => Some((action.name.clone(), attack)),
+					None => None,
+				})
+				.collect::<Vec<_>>();
 			attacks.sort_by(|(a, _), (b, _)| a.cmp(b));
 			attacks
 		};

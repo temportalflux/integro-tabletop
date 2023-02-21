@@ -1,5 +1,7 @@
 use yew::prelude::*;
 
+use crate::path_map::PathMap;
+
 pub mod bootstrap;
 pub mod components;
 pub mod data;
@@ -27,7 +29,7 @@ impl<T> Compiled<T> {
 
 fn create_character() -> system::dnd5e::character::Character {
 	use enum_map::enum_map;
-	use std::{collections::HashMap, path::PathBuf};
+	use std::path::PathBuf;
 	use system::dnd5e::{
 		character::{Character, Description},
 		content::*,
@@ -68,7 +70,7 @@ fn create_character() -> system::dnd5e::character::Character {
 			..Default::default()
 		}
 		.into()],
-		selected_values: HashMap::from([
+		selected_values: PathMap::from([
 			(
 				PathBuf::from("Incognito/AbilityScoreIncrease"),
 				"CON".into(),
@@ -90,7 +92,7 @@ fn create_character() -> system::dnd5e::character::Character {
 				"Sylvan".into(),
 			),
 			(
-				PathBuf::from("Anthropologist/Languages/langB"),
+				PathBuf::from("Anthropologist/Languages/langB_"),
 				"Elvish".into(),
 			),
 			(PathBuf::from("Barbarian/skillA"), "Intimidation".into()),
@@ -238,7 +240,7 @@ fn CharacterSheetPage(CharacterSheetPageProps { character }: &CharacterSheetPage
 
 						<div class="card m-2" style="height: 550px;">
 							<div class="card-body" style="padding: 5px;">
-								<Nav root_classes={"onesheet-tabs"} disp={NavDisplay::Tabs} default_tab_id={"inventory"}>
+								<Nav root_classes={"onesheet-tabs"} disp={NavDisplay::Tabs} default_tab_id={"features"}>
 									<TabContent id="actions" title={html! {{"Actions"}}}>
 										<panel::Actions />
 									</TabContent>

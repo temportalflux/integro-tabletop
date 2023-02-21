@@ -6,7 +6,7 @@ use super::{
 	mutator::{self, BoxedMutator},
 	Value,
 };
-use std::rc::Rc;
+use std::{collections::HashMap, rc::Rc};
 
 #[derive(Default, Clone, PartialEq)]
 pub struct Feature {
@@ -16,6 +16,17 @@ pub struct Feature {
 	pub mutators: Vec<BoxedMutator>,
 	pub criteria: Option<BoxedCriteria>,
 	pub limited_uses: Option<LimitedUses>,
+	pub missing_selection_text: Option<(String, HashMap<String, String>)>,
+}
+
+impl Feature {
+	pub fn get_missing_selection_text_for(&self, key: &str) -> Option<&String> {
+		let Some((default_text, specialized)) = &self.missing_selection_text else { return None; };
+		if let Some(key_specific) = specialized.get(key) {
+			return Some(key_specific);
+		}
+		Some(default_text)
+	}
 }
 
 impl mutator::Container for Feature {

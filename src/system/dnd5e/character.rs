@@ -11,8 +11,8 @@ use super::{
 use crate::path_map::PathMap;
 use enum_map::EnumMap;
 use std::{
-	collections::{BTreeMap, BTreeSet, HashMap},
-	path::PathBuf,
+	collections::{BTreeMap, BTreeSet},
+	path::{Path, PathBuf},
 	rc::Rc,
 };
 
@@ -42,7 +42,7 @@ pub struct Character {
 	pub feats: Vec<BoxedFeature>,
 	pub description: Description,
 	pub ability_scores: EnumMap<Ability, Score>,
-	pub selected_values: HashMap<PathBuf, String>,
+	pub selected_values: PathMap<String>,
 	pub inventory: item::Inventory,
 	pub conditions: Vec<BoxedCondition>,
 	pub hit_points: (u32, u32),
@@ -191,6 +191,8 @@ impl<'c> DerivedBuilder<'c> {
 			.character
 			.selected_values
 			.get(&self.scope())
+			.map(|all| all.first())
+			.flatten()
 			.map(String::as_str);
 		if selection.is_none() {
 			self.derived.missing_selections.push(self.scope());
@@ -323,6 +325,23 @@ impl State {
 
 	pub fn evaluate(&self, criteria: &BoxedCriteria) -> Result<(), String> {
 		criteria.evaluate(&self.character)
+	}
+
+	pub fn get_selected_values_of(
+		&self,
+		parent: &Path,
+	) -> (Option<&PathMap<String>>, Vec<PathBuf>) {
+		let missing_children = self
+			.derived
+			.missing_selections
+			.iter()
+			.filter_map(|path| path.strip_prefix(&parent).ok())
+			.map(Path::to_path_buf)
+			.collect::<Vec<_>>();
+		(
+			self.character.selected_values.get_all(parent),
+			missing_children,
+		)
 	}
 
 	/// Returns the score/value for a given ability. Any bonuses beyond the character's base scores
@@ -507,7 +526,7 @@ pub fn changeling_character() -> Character {
 		background: Some(anthropologist()),
 		classes: Vec::new(),
 		feats: Vec::new(),
-		selected_values: HashMap::from([
+		selected_values: PathMap::from([
 			(
 				PathBuf::from("Incognito/AbilityScoreIncrease"),
 				"con".into(),
