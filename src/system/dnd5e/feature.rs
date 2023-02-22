@@ -1,6 +1,6 @@
 use super::{
 	action::ActivationKind,
-	character::DerivedBuilder,
+	character::Character,
 	condition::BoxedCondition,
 	criteria::BoxedCriteria,
 	mutator::{self, BoxedMutator},
@@ -35,7 +35,7 @@ impl mutator::Container for Feature {
 		Some(self.name.to_case(convert_case::Case::Pascal))
 	}
 
-	fn apply_mutators<'c>(&self, stats: &mut DerivedBuilder<'c>) {
+	fn apply_mutators<'c>(&self, stats: &mut Character) {
 		if let Some(criteria) = &self.criteria {
 			// TODO: Somehow save the error text for display in feature UI
 			if stats.evaluate(criteria).is_err() {

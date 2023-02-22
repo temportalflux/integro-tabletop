@@ -1,5 +1,5 @@
 use crate::system::dnd5e::{
-	character::{ArmorClassFormula, DerivedBuilder},
+	character::{ArmorClassFormula, Character},
 	mutator,
 };
 
@@ -26,7 +26,7 @@ impl ToString for Kind {
 }
 
 impl mutator::Container for Armor {
-	fn apply_mutators<'c>(&self, stats: &mut DerivedBuilder<'c>) {
-		stats.armor_class_mut().push(self.formula.clone());
+	fn apply_mutators<'c>(&self, stats: &mut Character) {
+		stats.armor_class_mut().push_formula(self.formula.clone());
 	}
 }

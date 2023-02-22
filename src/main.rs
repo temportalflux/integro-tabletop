@@ -27,15 +27,15 @@ impl<T> Compiled<T> {
 	}
 }
 
-fn create_character() -> system::dnd5e::character::Character {
+fn create_character() -> system::dnd5e::character::Persistent {
 	use enum_map::enum_map;
 	use std::path::PathBuf;
 	use system::dnd5e::{
-		character::{Character, Description},
+		character::{Description, Persistent},
 		content::*,
 		mutator, *,
 	};
-	Character {
+	Persistent {
 		description: Description {
 			name: "Fauxpaul".into(),
 			pronouns: "".into(),
@@ -173,23 +173,23 @@ fn App() -> Html {
 
 #[derive(Clone, PartialEq, Properties)]
 struct CharacterSheetPageProps {
-	character: system::dnd5e::character::Character,
+	character: system::dnd5e::character::Persistent,
 }
 
 #[function_component]
 fn CharacterSheetPage(CharacterSheetPageProps { character }: &CharacterSheetPageProps) -> Html {
 	use components::*;
 	use data::ContextMut;
-	use system::dnd5e::character::State;
+	use system::dnd5e::character::Character;
 	use system::dnd5e::Ability;
 
-	let character = ContextMut::<State>::from(use_reducer({
+	let character = ContextMut::<Character>::from(use_reducer({
 		let character = character.clone();
-		move || State::from(character)
+		move || Character::from(character)
 	}));
 
 	html! {
-		<ContextProvider<ContextMut<State>> context={character.clone()}>
+		<ContextProvider<ContextMut<Character>> context={character.clone()}>
 			<div class="container overflow-hidden" style="--theme-frame-color: #BA90CB; --theme-frame-color-muted: #BA90CB80; --theme-roll-modifier: #ffffff;">
 				<div class="row" style="--bs-gutter-x: 10px;">
 					<div class="col-md-auto">
@@ -226,7 +226,7 @@ fn CharacterSheetPage(CharacterSheetPageProps { character }: &CharacterSheetPage
 							</div>
 							<div class="col p-0">
 								<AnnotatedNumberCard header={"Armor"} footer={"Class"}>
-									<AnnotatedNumber value={character.armor_class()} />
+									<AnnotatedNumber value={character.armor_class().evaluate(&*character)} />
 								</AnnotatedNumberCard>
 							</div>
 						</div>
@@ -273,7 +273,7 @@ fn CharacterSheetPage(CharacterSheetPageProps { character }: &CharacterSheetPage
 					</div>
 				</div>
 			</div>
-		</ContextProvider<ContextMut<State>>>
+		</ContextProvider<ContextMut<Character>>>
 	}
 }
 

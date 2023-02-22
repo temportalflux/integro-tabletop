@@ -1,6 +1,5 @@
 use super::Selector;
-use crate::system::dnd5e::{character::DerivedBuilder, proficiency, roll, Skill};
-use std::str::FromStr;
+use crate::system::dnd5e::{character::Character, proficiency, roll, Skill};
 
 #[derive(Clone)]
 pub struct AddSkill {
@@ -9,20 +8,16 @@ pub struct AddSkill {
 }
 
 impl super::Mutator for AddSkill {
-	fn scope_id(&self) -> Option<&str> {
+	fn id(&self) -> Option<&str> {
 		self.skill.id()
 	}
 
-	fn apply<'c>(&self, stats: &mut DerivedBuilder<'c>) {
-		let skill = match &self.skill {
-			Selector::Specific(skill) => Some(*skill),
-			_ => match stats.get_selection() {
-				Some(value) => Skill::from_str(&value).ok(),
-				None => None,
-			},
-		};
-		if let Some(skill) = skill {
-			stats.add_skill(skill, self.proficiency);
+	fn apply<'c>(&self, stats: &mut Character) {
+		if let Some(skill) = stats.resolve_selector(&self.skill) {
+			let source = stats.source_path();
+			stats
+				.skills_mut()
+				.add_proficiency(skill, self.proficiency, source);
 		}
 	}
 }
@@ -34,7 +29,10 @@ pub struct AddSkillModifier {
 	pub criteria: Option<String>,
 }
 impl super::Mutator for AddSkillModifier {
-	fn apply<'c>(&self, stats: &mut DerivedBuilder<'c>) {
-		stats.add_skill_modifier(self.skill, self.modifier, self.criteria.clone())
+	fn apply<'c>(&self, stats: &mut Character) {
+		let source = stats.source_path();
+		stats
+			.skills_mut()
+			.add_modifier(self.skill, self.modifier, self.criteria.clone(), source);
 	}
 }

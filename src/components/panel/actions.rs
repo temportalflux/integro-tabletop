@@ -3,8 +3,7 @@ use crate::{
 	data::ContextMut,
 	system::dnd5e::{
 		action::{AttackCheckKind, AttackKindValue},
-		character::State,
-		evaluator::Evaluator,
+		character::Character, evaluator::Evaluator,
 	},
 };
 use enumset::{EnumSet, EnumSetType};
@@ -34,7 +33,7 @@ impl ActionTag {
 
 #[function_component]
 pub fn Actions() -> Html {
-	let state = use_context::<ContextMut<State>>().unwrap();
+	let state = use_context::<ContextMut<Character>>().unwrap();
 	let selected_tags = use_state(|| EnumSet::<ActionTag>::all());
 
 	let make_tag_html = {

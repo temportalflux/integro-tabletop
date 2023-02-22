@@ -1,4 +1,4 @@
-use crate::system::dnd5e::{character::DerivedBuilder, Ability};
+use crate::system::dnd5e::{character::Character, Ability};
 
 #[derive(Clone)]
 pub enum AddSavingThrow {
@@ -7,17 +7,17 @@ pub enum AddSavingThrow {
 }
 
 impl super::Mutator for AddSavingThrow {
-	fn scope_id(&self) -> Option<&str> {
-		None
-	}
-
-	fn apply<'c>(&self, stats: &mut DerivedBuilder<'c>) {
+	fn apply<'c>(&self, stats: &mut Character) {
 		match self {
 			Self::Proficiency(ability) => {
-				stats.add_saving_throw(*ability);
+				let source = stats.source_path();
+				stats.saving_throws_mut().add_proficiency(*ability, source);
 			}
 			Self::Advantage(ability, target) => {
-				stats.add_saving_throw_modifier(*ability, target.clone());
+				let source = stats.source_path();
+				stats
+					.saving_throws_mut()
+					.add_modifier(*ability, target.clone(), source);
 			}
 		}
 	}

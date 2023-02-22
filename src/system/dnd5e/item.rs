@@ -1,7 +1,4 @@
-use crate::system::dnd5e::{
-	character::{DerivedBuilder, State},
-	mutator,
-};
+use crate::system::dnd5e::{character::Character, mutator};
 use std::collections::HashMap;
 use uuid::Uuid;
 
@@ -29,7 +26,7 @@ impl Item {
 	}
 
 	/// Returs Ok if the item can currently be equipped, otherwise returns a user-displayable reason why it cannot be equipped.
-	pub fn can_be_equipped(&self, state: &State) -> Result<(), String> {
+	pub fn can_be_equipped(&self, state: &Character) -> Result<(), String> {
 		match &self.kind {
 			ItemKind::Equipment(equipment) => equipment.can_be_equipped(state),
 			_ => Ok(()),
@@ -84,7 +81,7 @@ impl<'a> mutator::Container for ItemWithId<'a> {
 		Some(self.item().name.clone())
 	}
 
-	fn apply_mutators<'c>(&self, stats: &mut DerivedBuilder<'c>) {
+	fn apply_mutators<'c>(&self, stats: &mut Character) {
 		if let ItemKind::Equipment(equipment) = &self.item().kind {
 			stats.apply_from(equipment);
 			if equipment.is_equipped {
@@ -159,7 +156,7 @@ impl mutator::Container for Inventory {
 		Some("Inventory".into())
 	}
 
-	fn apply_mutators<'c>(&self, stats: &mut DerivedBuilder<'c>) {
+	fn apply_mutators<'c>(&self, stats: &mut Character) {
 		for item_with_id in self.items() {
 			stats.apply_from(&item_with_id);
 		}

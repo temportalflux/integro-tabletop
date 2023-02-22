@@ -2,7 +2,7 @@ use crate::{
 	bootstrap::components::Tooltip,
 	components::AnnotatedNumber,
 	data::ContextMut,
-	system::dnd5e::{character::State, Ability},
+	system::dnd5e::{character::Character, Ability},
 };
 use yew::prelude::*;
 
@@ -13,7 +13,7 @@ pub struct ScoreProps {
 
 #[function_component]
 pub fn Score(ScoreProps { ability }: &ScoreProps) -> Html {
-	let state = use_context::<ContextMut<State>>().unwrap();
+	let state = use_context::<ContextMut<Character>>().unwrap();
 	let (score, attributed_to) = state.ability_score(*ability);
 	let tooltip = (!attributed_to.is_empty()).then(|| {
 		format!(

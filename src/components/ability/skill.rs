@@ -1,7 +1,7 @@
 use crate::{
 	bootstrap::components::Tooltip,
 	data::ContextMut,
-	system::dnd5e::{character::State, Ability, Skill},
+	system::dnd5e::{character::Character, Ability, Skill},
 };
 use enumset::{EnumSet, EnumSetType};
 use multimap::MultiMap;
@@ -41,7 +41,7 @@ impl std::str::FromStr for Presentation {
 
 #[function_component]
 pub fn SkillTable() -> Html {
-	let state = use_context::<ContextMut<State>>().unwrap();
+	let state = use_context::<ContextMut<Character>>().unwrap();
 	let presentation = use_state(|| Presentation::Alphabetical);
 
 	let insert_ability_col_at = match *presentation {
@@ -95,8 +95,8 @@ pub fn SkillTable() -> Html {
 		let rows = skills
 			.into_iter()
 			.map(move |skill| {
-				let (attributed, roll_modifiers) = state.get_skill(skill);
-				let modifier = state.ability_modifier(skill.ability(), *attributed.value());
+				let (attributed, roll_modifiers) = &state.skills()[skill];
+				let modifier = state.ability_modifier(skill.ability(), Some(*attributed.value()));
 				let passive = 10 + modifier;
 				let prof_tooltip = crate::data::as_feature_paths_html_custom(
 					attributed.sources().iter(),

@@ -1,7 +1,10 @@
 use crate::{
 	bootstrap::components::Tooltip,
 	data::ContextMut,
-	system::dnd5e::{character::State, mutator::Defense},
+	system::dnd5e::{
+		character::{Character, HitPoint},
+		mutator::Defense,
+	},
 };
 use yew::prelude::*;
 
@@ -29,17 +32,20 @@ fn defence_to_html(defence: Defense) -> Html {
 
 #[function_component]
 pub fn HitPoints() -> Html {
-	let data = use_context::<ContextMut<State>>().unwrap();
+	let state = use_context::<ContextMut<Character>>().unwrap();
 
-	let onclick_heal = data.new_mutator(|character| {
-		character.add_hit_points(1);
+	let onclick_heal = state.new_mutator(|character| {
+		*character.hit_points_mut(HitPoint::Current) = character
+			.hit_points(HitPoint::Current)
+			.saturating_add(1)
+			.min(character.hit_points(HitPoint::Max));
 	});
-	let onclick_dmg = data.new_mutator(|character| {
-		character.sub_hit_points(1);
+	let onclick_dmg = state.new_mutator(|character| {
+		*character.hit_points_mut(HitPoint::Current) =
+			character.hit_points(HitPoint::Current).saturating_sub(1);
 	});
 
-	let hit_points = data.hit_points();
-	let defenses = data
+	let defenses = state
 		.defenses()
 		.iter()
 		.fold(Vec::new(), |all, (kind, targets)| {
@@ -65,7 +71,7 @@ pub fn HitPoints() -> Html {
 						<div class="row text-center m-0" style="--bs-gutter-x: 0;">
 							<div class="col" style="min-width: 50px;">
 								<div style="font-size: 0.75rem; padding: 0 5px;">{"Current"}</div>
-								<div style="font-size: 26px; font-weight: 500;">{hit_points.0}</div>
+								<div style="font-size: 26px; font-weight: 500;">{state.hit_points(HitPoint::Current)}</div>
 							</div>
 							<div class="col-auto">
 								<div style="min-height: 1.2rem;"></div>
@@ -73,11 +79,11 @@ pub fn HitPoints() -> Html {
 							</div>
 							<div class="col" style="min-width: 50px;">
 								<div style="font-size: 0.75rem; padding: 0 5px;">{"Max"}</div>
-								<div style="font-size: 26px; font-weight: 500;">{hit_points.1}</div>
+								<div style="font-size: 26px; font-weight: 500;">{state.hit_points(HitPoint::Max)}</div>
 							</div>
 							<div class="col" style="min-width: 50px; margin: 0 5px;">
 								<div style="font-size: 0.75rem;">{"Temp"}</div>
-								<div style="font-size: 26px; font-weight: 300;">{hit_points.2}</div>
+								<div style="font-size: 26px; font-weight: 300;">{state.hit_points(HitPoint::Temp)}</div>
 							</div>
 						</div>
 					</div>

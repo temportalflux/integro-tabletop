@@ -1,6 +1,5 @@
+use super::{character::Character, evaluator::Evaluator, roll::Roll, Ability, BoxedFeature, Value};
 use uuid::Uuid;
-
-use super::{character::State, evaluator::Evaluator, roll::Roll, Ability, BoxedFeature, Value};
 
 #[derive(Clone, PartialEq, Default)]
 pub struct Action {
@@ -80,19 +79,19 @@ pub enum ActivationKind {
 impl Evaluator for AttackCheckKind {
 	type Item = i32;
 
-	fn evaluate(&self, state: &State) -> Self::Item {
+	fn evaluate(&self, state: &Character) -> Self::Item {
 		self.value(state)
 	}
 }
 impl AttackCheckKind {
-	pub fn value(&self, state: &State) -> i32 {
+	pub fn value(&self, state: &Character) -> i32 {
 		match self {
 			Self::AttackRoll {
 				ability,
 				proficient,
 			} => {
 				let proficient = proficient.evaluate(state);
-				state.ability_modifier(*ability, proficient.into())
+				state.ability_modifier(*ability, Some(proficient.into()))
 			}
 			Self::SavingThrow {
 				base,

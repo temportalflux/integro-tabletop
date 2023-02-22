@@ -1,7 +1,7 @@
 use crate::{
 	bootstrap::components::Tooltip,
 	data::ContextMut,
-	system::dnd5e::{character::State, item::Item},
+	system::dnd5e::{character::Character, item::Item},
 };
 use uuid::Uuid;
 use wasm_bindgen::JsCast;
@@ -10,7 +10,7 @@ use yew::prelude::*;
 
 #[function_component]
 pub fn Inventory() -> Html {
-	let state = use_context::<ContextMut<State>>().unwrap();
+	let state = use_context::<ContextMut<Character>>().unwrap();
 
 	html! {<>
 
@@ -42,7 +42,7 @@ pub struct ItemRowProps {
 
 #[function_component]
 pub fn ItemRow(ItemRowProps { id, item }: &ItemRowProps) -> Html {
-	let state = use_context::<ContextMut<State>>().unwrap();
+	let state = use_context::<ContextMut<Character>>().unwrap();
 	let on_click_row = Callback::from(|_| log::debug!("TODO: open item interface modal"));
 	html! {
 		<tr class="align-middle" onclick={on_click_row}>
@@ -78,7 +78,7 @@ fn ItemRowEquipBox(
 		is_equipped,
 	}: &EquipBoxProps,
 ) -> Html {
-	let state = use_context::<ContextMut<State>>().unwrap();
+	let state = use_context::<ContextMut<Character>>().unwrap();
 	if !*is_equipable {
 		return html! { {"--"} };
 	}
@@ -93,7 +93,7 @@ fn ItemRowEquipBox(
 			state.mutate(move |state| {
 				let Some(item) = state.inventory_mut().get_mut(&id) else { return; };
 				item.set_equipped(should_be_equipped);
-				state.recompile();
+				state.generate_derived();
 			});
 		}
 	});

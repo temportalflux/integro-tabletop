@@ -1,15 +1,12 @@
-use crate::system::dnd5e::character::DerivedBuilder;
+use crate::system::dnd5e::character::Character;
 
 #[derive(Clone)]
 pub struct AddMaxSpeed(pub String, pub i32);
 
 impl super::Mutator for AddMaxSpeed {
-	fn scope_id(&self) -> Option<&str> {
-		None
-	}
-
-	fn apply<'c>(&self, stats: &mut DerivedBuilder<'c>) {
-		stats.add_max_speed(self.0.clone(), self.1);
+	fn apply<'c>(&self, stats: &mut Character) {
+		let source = stats.source_path();
+		stats.speeds_mut().push_max(self.0.clone(), self.1, source);
 	}
 }
 
@@ -17,11 +14,8 @@ impl super::Mutator for AddMaxSpeed {
 pub struct AddMaxSense(pub String, pub i32);
 
 impl super::Mutator for AddMaxSense {
-	fn scope_id(&self) -> Option<&str> {
-		None
-	}
-
-	fn apply<'c>(&self, stats: &mut DerivedBuilder<'c>) {
-		stats.add_max_sense(self.0.clone(), self.1);
+	fn apply<'c>(&self, stats: &mut Character) {
+		let source = stats.source_path();
+		stats.senses_mut().push_max(self.0.clone(), self.1, source);
 	}
 }

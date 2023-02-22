@@ -2,7 +2,7 @@ use crate::{
 	bootstrap::components::Tooltip,
 	components::roll::Modifier,
 	data::ContextMut,
-	system::dnd5e::{character::State, roll},
+	system::dnd5e::{character::Character, roll},
 };
 use yew::prelude::*;
 
@@ -46,13 +46,13 @@ pub fn SavingThrow(
 #[function_component]
 pub fn SavingThrowContainer() -> Html {
 	use crate::system::dnd5e::Ability;
-	let state = use_context::<ContextMut<State>>().unwrap();
+	let state = use_context::<ContextMut<Character>>().unwrap();
 
 	let saving_throw = {
 		let state = state.clone();
 		move |ability: Ability| {
-			let proficiency = state.saving_throw(ability);
-			let modifier = state.ability_modifier(ability, *proficiency.value());
+			let proficiency = &state.saving_throws()[ability].0;
+			let modifier = state.ability_modifier(ability, Some(*proficiency.value()));
 			let mod_sign = match modifier >= 0 {
 				true => "+",
 				false => "-",
@@ -71,10 +71,7 @@ pub fn SavingThrowContainer() -> Html {
 			}
 		}
 	};
-	let modifiers_html = state
-		.saving_throw_modifiers()
-		.into_iter()
-		.filter_map(|(ability, modifiers)| modifiers.map(|modifiers| (ability, modifiers)))
+	let modifiers_html = state.saving_throws().iter_modifiers()
 		.fold(Vec::new(), |mut html, (ability, modifiers)| {
 			for (target, source_path) in modifiers.iter() {
 				let source = crate::data::as_feature_path_text(&source_path);

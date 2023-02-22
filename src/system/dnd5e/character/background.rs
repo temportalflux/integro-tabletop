@@ -1,4 +1,4 @@
-use super::DerivedBuilder;
+use super::Character;
 use crate::system::dnd5e::{
 	mutator::{self, BoxedMutator},
 	BoxedFeature,
@@ -18,7 +18,7 @@ impl mutator::Container for Background {
 		Some(self.name.to_case(convert_case::Case::Pascal))
 	}
 
-	fn apply_mutators<'c>(&self, stats: &mut DerivedBuilder<'c>) {
+	fn apply_mutators<'c>(&self, stats: &mut Character) {
 		for mutator in &self.mutators {
 			stats.apply(mutator);
 		}

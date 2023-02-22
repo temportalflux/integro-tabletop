@@ -1,4 +1,4 @@
-use super::DerivedBuilder;
+use super::{Character, HitPoint};
 use crate::system::dnd5e::{
 	mutator::{self, BoxedMutator, Selector},
 	roll::Die,
@@ -26,7 +26,7 @@ impl mutator::Container for Class {
 		Some(self.name.to_case(convert_case::Case::Pascal))
 	}
 
-	fn apply_mutators<'c>(&self, stats: &mut DerivedBuilder<'c>) {
+	fn apply_mutators<'c>(&self, stats: &mut Character) {
 		let iter = self
 			.levels
 			.iter()
@@ -49,15 +49,19 @@ pub struct Level {
 struct LevelWithIndex<'a>(usize, &'a Level);
 
 impl<'a> mutator::Container for LevelWithIndex<'a> {
+	fn display_id(&self) -> bool {
+		false
+	}
+
 	fn id(&self) -> Option<String> {
 		Some(format!("level{:02}", self.0 + 1))
 	}
 
-	fn apply_mutators<'c>(&self, stats: &mut DerivedBuilder<'c>) {
+	fn apply_mutators<'c>(&self, stats: &mut Character) {
 		if let Some(hit_points) = stats.resolve_selector(&Selector::<u32>::Any {
 			id: Some("hit_points".into()),
 		}) {
-			*stats.max_hit_points_mut() += hit_points;
+			*stats.hit_points_mut(HitPoint::Max) += hit_points;
 		}
 		for mutator in &self.1.mutators {
 			stats.apply(mutator);
@@ -79,7 +83,7 @@ impl mutator::Container for Subclass {
 		Some(self.name.to_case(convert_case::Case::Pascal))
 	}
 
-	fn apply_mutators<'c>(&self, stats: &mut DerivedBuilder<'c>) {
+	fn apply_mutators<'c>(&self, stats: &mut Character) {
 		let iter = self
 			.levels
 			.iter()

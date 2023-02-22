@@ -1,15 +1,14 @@
 use crate::{
 	bootstrap::components::Tooltip,
 	data::ContextMut,
-	system::dnd5e::character::{AttributedValueMap, State},
+	system::dnd5e::character::{AttributedValueMap, Character},
 };
 use yew::prelude::*;
 
 #[function_component]
 pub fn Proficiencies() -> Html {
-	let state = use_context::<ContextMut<State>>().unwrap();
+	let state = use_context::<ContextMut<Character>>().unwrap();
 	let proficiencies = state.other_proficiencies();
-	log::debug!("{:?}", proficiencies);
 	html! {
 		<div id="proficiencies-container" class="card" style="max-width: 200px; margin: 0 auto; border-color: var(--theme-frame-color);">
 			<div class="card-body" style="padding: 5px;">

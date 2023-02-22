@@ -1,5 +1,5 @@
+use super::Character;
 use crate::system::dnd5e::{
-	character::DerivedBuilder,
 	item::{armor, weapon},
 	mutator::Selector,
 };
@@ -40,25 +40,34 @@ pub enum AddProficiency {
 }
 
 impl super::mutator::Mutator for AddProficiency {
-	fn apply<'c>(&self, stats: &mut DerivedBuilder<'c>) {
-		let scope = stats.scope_display();
+	fn apply<'c>(&self, stats: &mut Character) {
+		let source = stats.source_path();
 		match &self {
 			Self::Language(value) => {
 				if let Some(value) = stats.resolve_selector(value) {
-					stats.other_proficiencies.languages.insert(value, scope);
+					stats
+						.other_proficiencies_mut()
+						.languages
+						.insert(value, source);
 				}
 			}
 			Self::Armor(value) => {
-				stats.other_proficiencies.armor.insert(value.clone(), scope);
+				stats
+					.other_proficiencies_mut()
+					.armor
+					.insert(value.clone(), source);
 			}
 			Self::Weapon(value) => {
 				stats
-					.other_proficiencies
+					.other_proficiencies_mut()
 					.weapons
-					.insert(value.clone(), scope);
+					.insert(value.clone(), source);
 			}
 			Self::Tool(value) => {
-				stats.other_proficiencies.tools.insert(value.clone(), scope);
+				stats
+					.other_proficiencies_mut()
+					.tools
+					.insert(value.clone(), source);
 			}
 		}
 	}

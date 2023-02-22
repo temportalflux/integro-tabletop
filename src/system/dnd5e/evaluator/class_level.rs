@@ -1,4 +1,4 @@
-use crate::system::dnd5e::character::State;
+use crate::system::dnd5e::character::Character;
 
 use super::Evaluator;
 use std::collections::BTreeMap;
@@ -24,7 +24,7 @@ where
 {
 	type Item = T;
 
-	fn evaluate(&self, state: &State) -> Self::Item {
+	fn evaluate(&self, state: &Character) -> Self::Item {
 		let class_name = self.class_name.as_ref().map(String::as_str);
 		let character_level = state.level(class_name);
 		for (level, value) in self.map.iter().rev() {

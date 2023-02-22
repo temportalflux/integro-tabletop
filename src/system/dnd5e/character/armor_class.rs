@@ -1,6 +1,5 @@
+use super::Character;
 use crate::system::dnd5e::Ability;
-
-use super::State;
 
 #[derive(Clone, PartialEq)]
 pub struct ArmorClass {
@@ -16,7 +15,7 @@ impl Default for ArmorClass {
 	}
 }
 impl ArmorClass {
-	pub fn push(&mut self, formula: ArmorClassFormula) {
+	pub fn push_formula(&mut self, formula: ArmorClassFormula) {
 		self.formulas.push(formula);
 	}
 
@@ -24,7 +23,7 @@ impl ArmorClass {
 		self.bonuses.push(bonus);
 	}
 
-	pub fn evaluate(&self, state: &State) -> i32 {
+	pub fn evaluate(&self, state: &Character) -> i32 {
 		let best_formula_value = self
 			.formulas
 			.iter()
@@ -61,7 +60,7 @@ impl From<u32> for ArmorClassFormula {
 	}
 }
 impl ArmorClassFormula {
-	fn evaluate(&self, state: &State) -> i32 {
+	fn evaluate(&self, state: &Character) -> i32 {
 		let bonus: i32 = self
 			.bonuses
 			.iter()
@@ -87,7 +86,7 @@ impl From<Ability> for BoundedAbility {
 	}
 }
 impl BoundedAbility {
-	fn evaluate(&self, state: &State) -> i32 {
+	fn evaluate(&self, state: &Character) -> i32 {
 		let value = state.ability_score(self.ability).0.modifier();
 		let value = self.min.map(|min| value.max(min)).unwrap_or(value);
 		let value = self.max.map(|max| value.min(max)).unwrap_or(value);

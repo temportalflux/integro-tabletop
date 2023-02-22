@@ -1,4 +1,4 @@
-use super::{character::State, evaluator::BoxedEvaluator};
+use super::{character::Character, evaluator::BoxedEvaluator};
 use std::rc::Rc;
 
 #[derive(Clone)]
@@ -30,7 +30,7 @@ where
 }
 
 impl<T> Value<T> {
-	pub fn evaluate(&self, state: &State) -> T
+	pub fn evaluate(&self, state: &Character) -> T
 	where
 		T: Clone,
 	{

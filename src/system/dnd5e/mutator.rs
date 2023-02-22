@@ -1,4 +1,4 @@
-use super::character::DerivedBuilder;
+use super::character::Character;
 use dyn_clone::{clone_trait_object, DynClone};
 
 mod ability_score;
@@ -26,10 +26,11 @@ mod speed;
 pub use speed::*;
 
 pub trait Mutator: DynClone {
-	fn scope_id(&self) -> Option<&str> {
+	fn id(&self) -> Option<&str> {
 		None
 	}
-	fn apply<'c>(&self, _: &mut DerivedBuilder<'c>) {}
+
+	fn apply<'c>(&self, _: &mut Character) {}
 }
 clone_trait_object!(Mutator);
 
@@ -57,11 +58,15 @@ where
 }
 
 pub trait Container {
+	fn display_id(&self) -> bool {
+		true
+	}
+
 	fn id(&self) -> Option<String> {
 		None
 	}
 
-	fn apply_mutators<'c>(&self, stats: &mut DerivedBuilder<'c>);
+	fn apply_mutators<'c>(&self, stats: &mut Character);
 }
 
 #[derive(Clone)]

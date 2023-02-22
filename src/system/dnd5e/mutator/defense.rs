@@ -1,4 +1,4 @@
-use crate::system::dnd5e::character::DerivedBuilder;
+use crate::system::dnd5e::character::Character;
 use enum_map::Enum;
 
 #[derive(Clone, Copy, PartialEq, Enum, Debug)]
@@ -10,13 +10,9 @@ pub enum Defense {
 
 #[derive(Clone)]
 pub struct AddDefense(pub Defense, pub String);
-
 impl super::Mutator for AddDefense {
-	fn scope_id(&self) -> Option<&str> {
-		None
-	}
-
-	fn apply<'c>(&self, stats: &mut DerivedBuilder<'c>) {
-		stats.add_defense(self.0, self.1.clone());
+	fn apply<'c>(&self, stats: &mut Character) {
+		let source = stats.source_path();
+		stats.defenses_mut().push(self.0, self.1.clone(), source);
 	}
 }

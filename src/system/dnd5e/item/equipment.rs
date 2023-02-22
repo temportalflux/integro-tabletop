@@ -1,6 +1,6 @@
 use super::{armor::Armor, weapon::Weapon};
 use crate::system::dnd5e::{
-	character::{DerivedBuilder, State},
+	character::Character,
 	criteria::BoxedCriteria,
 	mutator::{self, BoxedMutator},
 };
@@ -23,7 +23,7 @@ pub struct Equipment {
 }
 
 impl mutator::Container for Equipment {
-	fn apply_mutators<'c>(&self, stats: &mut DerivedBuilder<'c>) {
+	fn apply_mutators<'c>(&self, stats: &mut Character) {
 		if !self.is_equipped {
 			return;
 		}
@@ -41,7 +41,7 @@ impl mutator::Container for Equipment {
 
 impl Equipment {
 	/// Returs Ok if the item can currently be equipped, otherwise returns a user-displayable reason why it cannot be equipped.
-	pub fn can_be_equipped(&self, state: &State) -> Result<(), String> {
+	pub fn can_be_equipped(&self, state: &Character) -> Result<(), String> {
 		match &self.criteria {
 			Some(criteria) => state.evaluate(criteria),
 			None => Ok(()),

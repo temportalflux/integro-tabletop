@@ -1,4 +1,6 @@
-use crate::{bootstrap::components::Tooltip, data::ContextMut, system::dnd5e::character::State};
+use crate::{
+	bootstrap::components::Tooltip, data::ContextMut, system::dnd5e::character::Character,
+};
 use yew::prelude::*;
 
 #[derive(Clone, PartialEq, Properties)]
@@ -22,7 +24,7 @@ fn SingleValue(SingleValueProps { title, amount }: &SingleValueProps) -> Html {
 
 #[function_component]
 pub fn SpeedAndSenses() -> Html {
-	let state = use_context::<ContextMut<State>>().unwrap();
+	let state = use_context::<ContextMut<Character>>().unwrap();
 
 	let divider = (state.speeds().len() > 0 && state.senses().len() > 0)
 		.then(|| {
@@ -49,7 +51,7 @@ pub fn SpeedAndSenses() -> Html {
 		// TODO: Walking speed should always be the first entry
 		_ => html! {<div class="col">
 			<h6 class="text-center" style="font-size: 0.8rem; color: var(--bs-card-title-color);">{"Speeds"}</h6>
-			{state.speeds().into_iter().map(|(title, attributed)| {
+			{state.speeds().iter().map(|(title, attributed)| {
 				let tooltip = crate::data::as_feature_paths_html_custom(
 					attributed.sources().iter(),
 					|(path, value)| (*value, path.as_path()),
@@ -85,7 +87,7 @@ pub fn SpeedAndSenses() -> Html {
 		}
 		_ => html! {<div class="col">
 			<h6 class="text-center" style="font-size: 0.8rem; color: var(--bs-card-title-color);">{"Senses"}</h6>
-			{state.senses().into_iter().map(|(title, attributed)| {
+			{state.senses().iter().map(|(title, attributed)| {
 				let tooltip = crate::data::as_feature_paths_html_custom(
 					attributed.sources().iter(),
 					|(path, value)| (*value, path.as_path()),

@@ -2,7 +2,7 @@ use crate::{
 	components::{Tag, Tags},
 	data::ContextMut,
 	path_map::PathMap,
-	system::dnd5e::{character::State, mutator::Container, BoxedFeature},
+	system::dnd5e::{character::Character, mutator::Container, BoxedFeature},
 };
 use std::path::{Path, PathBuf};
 use wasm_bindgen::JsCast;
@@ -11,7 +11,7 @@ use yew::prelude::*;
 
 #[function_component]
 pub fn Features() -> Html {
-	let state = use_context::<ContextMut<State>>().unwrap();
+	let state = use_context::<ContextMut<Character>>().unwrap();
 	let sort_order_alpha = use_state(|| true);
 
 	let features = match *sort_order_alpha {
@@ -107,18 +107,13 @@ fn FeatureBlock(
 	}: &FeatureBlockProps,
 ) -> Html {
 	use convert_case::{Case, Casing};
-	let state = use_context::<ContextMut<State>>().unwrap();
+	let state = use_context::<ContextMut<Character>>().unwrap();
 	let feat_data_path = match feature.inner().id() {
 		Some(id) => parent.join(&id),
 		None => parent.clone(),
 	};
-	let (selected_value_map, missing_selections) = state.get_selected_values_of(&feat_data_path);
-	log::debug!(
-		"{:?} {:?} {:?}",
-		feature.inner().name,
-		selected_value_map.map(|map| map.as_vec()),
-		missing_selections
-	);
+	let selected_value_map = state.selected_values_in(&feat_data_path);
+	let missing_selections = state.missing_selections_in(&feat_data_path);
 
 	let name = feature.inner().name.to_case(Case::Title);
 	let mut description = feature.inner().description.clone();
@@ -215,7 +210,6 @@ fn FeatureBlock(
 						let separator = (list.len() > 0).then(|| ", ").unwrap_or_default();
 						format!("{list}{separator}{value}")
 					});
-					log::debug!("{:?} {:?}", selected_values, list_string);
 					html! {
 						<div>
 							{"Selections: "}{list_string}
