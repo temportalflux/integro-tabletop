@@ -95,8 +95,19 @@ fn create_character() -> system::dnd5e::character::Character {
 				PathBuf::from("Anthropologist/Languages/langB_"),
 				"Elvish".into(),
 			),
-			(PathBuf::from("Barbarian/skillA"), "Intimidation".into()),
-			(PathBuf::from("Barbarian/skillB"), "Athletics".into()),
+			(
+				PathBuf::from("Barbarian/level01/skillA"),
+				"Intimidation".into(),
+			),
+			(
+				PathBuf::from("Barbarian/level01/skillB"),
+				"Athletics".into(),
+			),
+			(PathBuf::from("Barbarian/level01/hit_points"), "12".into()),
+			(PathBuf::from("Barbarian/level02/hit_points"), "7".into()),
+			(PathBuf::from("Barbarian/level03/hit_points"), "3".into()),
+			(PathBuf::from("Barbarian/level04/hit_points"), "11".into()),
+			(PathBuf::from("Barbarian/level05/hit_points"), "8".into()),
 		]),
 		inventory: {
 			let mut inv = item::Inventory::new();
@@ -129,7 +140,7 @@ fn create_character() -> system::dnd5e::character::Character {
 			inv
 		},
 		conditions: Vec::new(),
-		hit_points: (0, 0),
+		hit_points: (41, 0),
 	}
 }
 

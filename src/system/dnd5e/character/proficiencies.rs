@@ -40,22 +40,11 @@ pub enum AddProficiency {
 }
 
 impl super::mutator::Mutator for AddProficiency {
-	fn scope_id(&self) -> Option<&str> {
-		match self {
-			Self::Language(selector) => selector.id(),
-			_ => None,
-		}
-	}
-
 	fn apply<'c>(&self, stats: &mut DerivedBuilder<'c>) {
 		let scope = stats.scope_display();
 		match &self {
 			Self::Language(value) => {
-				let value = match value {
-					Selector::Specific(value) => Some(value.clone()),
-					_ => stats.get_selection().map(str::to_owned),
-				};
-				if let Some(value) = value {
+				if let Some(value) = stats.resolve_selector(value) {
 					stats.other_proficiencies.languages.insert(value, scope);
 				}
 			}

@@ -14,6 +14,7 @@ use std::{
 	collections::{BTreeMap, BTreeSet},
 	path::{Path, PathBuf},
 	rc::Rc,
+	str::FromStr,
 };
 
 mod armor_class;
@@ -212,6 +213,26 @@ impl<'c> DerivedBuilder<'c> {
 		selection
 	}
 
+	pub fn resolve_selector<T>(&mut self, selector: &mutator::Selector<T>) -> Option<T>
+	where
+		T: Clone + 'static + FromStr,
+	{
+		if let mutator::Selector::Specific(value) = selector {
+			return Some(value.clone());
+		}
+		if let Some(id) = selector.id() {
+			self.scope_data.push(id);
+		}
+		let selected_value = self.get_selection().map(str::to_owned);
+		if selector.id().is_some() {
+			self.scope_data.pop();
+		}
+		match selected_value {
+			Some(str) => T::from_str(&str).ok(),
+			None => None,
+		}
+	}
+
 	pub fn build(self) -> Derived {
 		log::debug!("{:?}", self.derived.missing_selections);
 		self.derived
@@ -275,6 +296,10 @@ impl<'c> DerivedBuilder<'c> {
 				self.derived.senses.insert(kind.clone(), value);
 			}
 		}
+	}
+
+	pub fn max_hit_points_mut(&mut self) -> &mut u32 {
+		&mut self.derived.max_hit_points
 	}
 
 	pub fn add_defense(&mut self, kind: Defense, target: String) {
@@ -450,7 +475,12 @@ impl State {
 	}
 
 	pub fn add_hit_points(&mut self, amt: u32) {
-		self.character.hit_points.0 = self.character.hit_points.0.saturating_add(amt);
+		self.character.hit_points.0 = self
+			.character
+			.hit_points
+			.0
+			.saturating_add(amt)
+			.min(self.derived.max_hit_points);
 	}
 
 	pub fn sub_hit_points(&mut self, amt: u32) {

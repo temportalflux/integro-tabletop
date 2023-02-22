@@ -1,5 +1,8 @@
 use super::DerivedBuilder;
-use crate::system::dnd5e::{mutator::{self, BoxedMutator}, BoxedFeature};
+use crate::system::dnd5e::{
+	mutator::{self, BoxedMutator},
+	BoxedFeature,
+};
 
 #[derive(Clone, PartialEq)]
 pub struct Background {

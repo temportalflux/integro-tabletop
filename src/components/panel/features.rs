@@ -112,8 +112,7 @@ fn FeatureBlock(
 		Some(id) => parent.join(&id),
 		None => parent.clone(),
 	};
-	let (selected_value_map, missing_selections) =
-		state.get_selected_values_of(&feat_data_path);
+	let (selected_value_map, missing_selections) = state.get_selected_values_of(&feat_data_path);
 	log::debug!(
 		"{:?} {:?} {:?}",
 		feature.inner().name,

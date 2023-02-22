@@ -1,6 +1,6 @@
 use super::DerivedBuilder;
 use crate::system::dnd5e::{
-	mutator::{self, BoxedMutator},
+	mutator::{self, BoxedMutator, Selector},
 	roll::Die,
 	BoxedFeature,
 };
@@ -27,30 +27,42 @@ impl mutator::Container for Class {
 	}
 
 	fn apply_mutators<'c>(&self, stats: &mut DerivedBuilder<'c>) {
-		for level in &self.levels {
-			stats.apply_from(level);
+		let iter = self
+			.levels
+			.iter()
+			.enumerate()
+			.map(|(idx, lvl)| LevelWithIndex(idx, lvl));
+		for level in iter {
+			stats.apply_from(&level);
 		}
 		if let Some(subclass) = &self.subclass {
 			stats.apply_from(subclass);
 		}
 	}
 }
-
 #[derive(Clone, PartialEq, Default)]
 pub struct Level {
 	pub mutators: Vec<BoxedMutator>,
 	pub features: Vec<BoxedFeature>,
 }
-impl mutator::Container for Level {
+
+struct LevelWithIndex<'a>(usize, &'a Level);
+
+impl<'a> mutator::Container for LevelWithIndex<'a> {
 	fn id(&self) -> Option<String> {
-		None
+		Some(format!("level{:02}", self.0 + 1))
 	}
 
 	fn apply_mutators<'c>(&self, stats: &mut DerivedBuilder<'c>) {
-		for mutator in &self.mutators {
+		if let Some(hit_points) = stats.resolve_selector(&Selector::<u32>::Any {
+			id: Some("hit_points".into()),
+		}) {
+			*stats.max_hit_points_mut() += hit_points;
+		}
+		for mutator in &self.1.mutators {
 			stats.apply(mutator);
 		}
-		for feature in &self.features {
+		for feature in &self.1.features {
 			stats.add_feature(feature);
 		}
 	}
@@ -68,8 +80,13 @@ impl mutator::Container for Subclass {
 	}
 
 	fn apply_mutators<'c>(&self, stats: &mut DerivedBuilder<'c>) {
-		for level in &self.levels {
-			stats.apply_from(level);
+		let iter = self
+			.levels
+			.iter()
+			.enumerate()
+			.map(|(idx, lvl)| LevelWithIndex(idx, lvl));
+		for level in iter {
+			stats.apply_from(&level);
 		}
 	}
 }
