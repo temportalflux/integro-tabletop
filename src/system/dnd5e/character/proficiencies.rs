@@ -48,7 +48,7 @@ impl super::mutator::Mutator for AddProficiency {
 	}
 
 	fn apply<'c>(&self, stats: &mut DerivedBuilder<'c>) {
-		let scope = stats.scope();
+		let scope = stats.scope_display();
 		match &self {
 			Self::Language(value) => {
 				let value = match value {

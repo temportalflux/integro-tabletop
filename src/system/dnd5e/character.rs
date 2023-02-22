@@ -130,14 +130,16 @@ pub struct Derived {
 pub struct DerivedBuilder<'c> {
 	character: &'c Character,
 	derived: Derived,
-	scope: PathBuf,
+	scope_data: PathBuf,
+	scope_display: PathBuf,
 }
 impl<'c> DerivedBuilder<'c> {
 	pub fn new(character: &'c Character) -> Self {
 		Self {
 			character,
 			derived: Derived::default(),
-			scope: PathBuf::new(),
+			scope_data: PathBuf::new(),
+			scope_display: PathBuf::new(),
 		}
 	}
 
@@ -145,11 +147,11 @@ impl<'c> DerivedBuilder<'c> {
 		criteria.evaluate(&self.character)
 	}
 
-	pub fn scope(&self) -> PathBuf {
+	fn adjust_scope(&self, scope: &PathBuf) -> PathBuf {
 		match std::path::MAIN_SEPARATOR {
-			'/' => self.scope.clone(),
+			'/' => scope.clone(),
 			_ => PathBuf::from(
-				self.scope
+				scope
 					.iter()
 					.map(|s| s.to_str().unwrap())
 					.collect::<Vec<_>>()
@@ -158,30 +160,40 @@ impl<'c> DerivedBuilder<'c> {
 		}
 	}
 
+	pub fn scope_data(&self) -> PathBuf {
+		self.adjust_scope(&self.scope_data)
+	}
+
+	pub fn scope_display(&self) -> PathBuf {
+		self.adjust_scope(&self.scope_display)
+	}
+
 	pub fn apply_from(&mut self, container: &impl mutator::Container) {
 		let id = container.id();
 		if let Some(id) = &id {
-			self.scope.push(id);
+			self.scope_data.push(id);
+			self.scope_display.push(id);
 		}
 		container.apply_mutators(self);
 		if id.is_some() {
-			self.scope.pop();
+			self.scope_data.pop();
+			self.scope_display.pop();
 		}
 	}
 
 	pub fn apply(&mut self, modifier: &mutator::BoxedMutator) {
 		let id = modifier.scope_id();
 		if let Some(id) = id.as_ref() {
-			self.scope.push(*id);
+			self.scope_data.push(*id);
 		}
 		modifier.apply(self);
 		if id.is_some() {
-			self.scope.pop();
+			self.scope_data.pop();
 		}
 	}
 
 	pub fn add_feature(&mut self, feature: &BoxedFeature) {
-		let scope = self.scope();
+		let scope = self.scope_display();
 		self.features.insert(&scope, feature.clone());
 		self.apply_from(feature.inner());
 	}
@@ -190,12 +202,12 @@ impl<'c> DerivedBuilder<'c> {
 		let selection = self
 			.character
 			.selected_values
-			.get(&self.scope())
+			.get(&self.scope_data())
 			.map(|all| all.first())
 			.flatten()
 			.map(String::as_str);
 		if selection.is_none() {
-			self.derived.missing_selections.push(self.scope());
+			self.derived.missing_selections.push(self.scope_data());
 		}
 		selection
 	}
@@ -206,12 +218,12 @@ impl<'c> DerivedBuilder<'c> {
 	}
 
 	pub fn add_to_ability_score(&mut self, ability: Ability, bonus: i32) {
-		let scope = self.scope();
+		let scope = self.scope_display();
 		self.derived.ability_scores[ability].push(bonus, scope);
 	}
 
 	pub fn add_skill(&mut self, skill: Skill, proficiency: proficiency::Level) {
-		let scope = self.scope();
+		let scope = self.scope_display();
 		self.derived.skills[skill].0.push(proficiency, scope);
 	}
 
@@ -221,24 +233,24 @@ impl<'c> DerivedBuilder<'c> {
 		modifier: super::roll::Modifier,
 		context: Option<String>,
 	) {
-		let scope = self.scope();
+		let scope = self.scope_display();
 		self.derived.skills[skill].1[modifier].push((context, scope));
 	}
 
 	pub fn add_saving_throw(&mut self, ability: Ability) {
-		let scope = self.scope();
+		let scope = self.scope_display();
 		self.derived.saving_throws[ability]
 			.0
 			.push(proficiency::Level::Full, scope);
 	}
 
 	pub fn add_saving_throw_modifier(&mut self, ability: Ability, target: Option<String>) {
-		let scope = self.scope();
+		let scope = self.scope_display();
 		self.derived.saving_throws[ability].1.push((target, scope));
 	}
 
 	pub fn add_max_speed(&mut self, kind: String, max_bound_in_feet: i32) {
-		let scope = self.scope();
+		let scope = self.scope_display();
 		match self.derived.speeds.get_mut(&kind) {
 			Some(value) => {
 				value.push(max_bound_in_feet, scope);
@@ -252,7 +264,7 @@ impl<'c> DerivedBuilder<'c> {
 	}
 
 	pub fn add_max_sense(&mut self, kind: String, max_bound_in_feet: i32) {
-		let scope = self.scope();
+		let scope = self.scope_display();
 		match self.derived.senses.get_mut(&kind) {
 			Some(value) => {
 				value.push(max_bound_in_feet, scope);
@@ -266,7 +278,7 @@ impl<'c> DerivedBuilder<'c> {
 	}
 
 	pub fn add_defense(&mut self, kind: Defense, target: String) {
-		let scope = self.scope();
+		let scope = self.scope_display();
 		match self.derived.defenses[kind].get_mut(&target) {
 			Some(sources) => {
 				sources.insert(scope);
