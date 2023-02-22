@@ -60,9 +60,9 @@ pub fn barbarian(levels: usize, subclass: Option<Subclass>) -> Class {
 		Feature {
 			name: "Rage".into(),
 			description: {
-				let mut desc = "In battle, you fight with primal ferocity. On your turn, you can enter a rage as a bonus action.".into();
+				let mut desc = "In battle, you fight with primal ferocity. On your turn, you can enter a rage as a bonus action.\n".into();
 				desc += condition.description().as_str();
-				desc += "Your rage lasts for 1 minute. It ends early if you are knocked unconscious or if your turn ends and you haven't attacked \
+				desc += "\nYour rage lasts for 1 minute. It ends early if you are knocked unconscious or if your turn ends and you haven't attacked \
 				a hostile creature since your last turn or taken damage since then. You can also end your rage on your turn as a bonus action.
 
 				Once you have used all your rages, you must finish a long rest before you can rage again.";

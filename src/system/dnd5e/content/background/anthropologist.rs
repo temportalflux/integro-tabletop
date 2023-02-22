@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::system::dnd5e::{
 	character::{AddProficiency, Background},
 	mutator::{AddSkill, Selector},
@@ -15,24 +13,20 @@ pub fn anthropologist() -> Background {
 		and all forms of society in between craft their own destinies and doom. This knowledge came to \
 		you not only through books and scrolls, but also through first-hand observation—by visiting far-flung \
 		settlements and exploring local histories and customs.".into(),
+		mutators: vec![
+			AddSkill {
+				skill: Selector::Specific(Skill::Insight),
+				proficiency: proficiency::Level::Full,
+			}.into(),
+			AddSkill {
+				skill: Selector::Specific(Skill::Religion),
+				proficiency: proficiency::Level::Full,
+			}.into(),
+		],
 		features: vec![
 			Feature {
-				name: "Skill Proficiencies".into(),
-				mutators: vec![
-					AddSkill {
-						skill: Selector::Specific(Skill::Insight),
-						proficiency: proficiency::Level::Full,
-					}.into(),
-					AddSkill {
-						skill: Selector::Specific(Skill::Religion),
-						proficiency: proficiency::Level::Full,
-					}.into(),
-				],
-				..Default::default()
-			}.into(),
-			Feature {
 				name: "Languages".into(),
-				description: "You can speak, read, and write {langA} and {langB}.".into(),
+				description: "You can speak, read, and write two languages of your choice.".into(),
 				mutators: vec![
 					AddProficiency::Language(Selector::Any { id: Some("langA".into()) }).into(),
 					AddProficiency::Language(Selector::Any { id: Some("langB".into()) }).into(),

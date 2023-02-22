@@ -2,9 +2,11 @@ use crate::{
 	components::{Tag, Tags},
 	data::ContextMut,
 	path_map::PathMap,
-	system::dnd5e::{character::State, BoxedFeature},
+	system::dnd5e::{character::State, mutator::Container, BoxedFeature},
 };
 use std::path::{Path, PathBuf};
+use wasm_bindgen::JsCast;
+use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
 #[function_component]
@@ -106,25 +108,33 @@ fn FeatureBlock(
 ) -> Html {
 	use convert_case::{Case, Casing};
 	let state = use_context::<ContextMut<State>>().unwrap();
+	let feat_data_path = match feature.inner().id() {
+		Some(id) => parent.join(&id),
+		None => parent.clone(),
+	};
 	let (selected_value_map, missing_selections) =
-		state.get_selected_values_of(&parent.join(&feature.inner().name));
+		state.get_selected_values_of(&feat_data_path);
 	log::debug!(
-		"{:?} {:?}",
+		"{:?} {:?} {:?}",
+		feature.inner().name,
 		selected_value_map.map(|map| map.as_vec()),
 		missing_selections
 	);
 
 	let name = feature.inner().name.to_case(Case::Title);
 	let mut description = feature.inner().description.clone();
+	let mut selected_values = Vec::new();
 	if let Some(value_map) = selected_value_map {
-		description = value_map.as_vec().into_iter().fold(
-			feature.inner().description.clone(),
-			|desc, (key, value)| {
-				let key = key.to_str().unwrap();
-				let search_key = format!("{{{key}}}");
-				desc.replace(&search_key, value)
-			},
-		);
+		let values = value_map.as_vec();
+		selected_values = values.iter().map(|(_, value)| (*value).clone()).collect();
+		description =
+			values
+				.into_iter()
+				.fold(feature.inner().description.clone(), |desc, (key, value)| {
+					let key = key.to_str().unwrap();
+					let search_key = format!("{{{key}}}");
+					desc.replace(&search_key, value)
+				});
 	}
 	description = missing_selections.iter().fold(description, |desc, key| {
 		let key = key.to_str().unwrap();
@@ -137,6 +147,51 @@ fn FeatureBlock(
 			},
 		)
 	});
+
+	let consumed_uses = use_state(|| 0);
+
+	let uses = match &feature.inner().limited_uses {
+		Some(limited_uses) => match limited_uses.max_uses.evaluate(&*state) {
+			Some(max_uses) => {
+				let toggle_use = Callback::from({
+					let consumed_uses = consumed_uses.clone();
+					move |evt: web_sys::Event| {
+						let Some(target) = evt.target() else { return; };
+						let Some(input) = target.dyn_ref::<HtmlInputElement>() else { return; };
+						let consume_use = input.checked();
+						if consume_use {
+							consumed_uses.set(*consumed_uses + 1);
+						} else {
+							consumed_uses.set(*consumed_uses - 1);
+						}
+					}
+				});
+				let use_checkboxes = (0..max_uses)
+					.map(|idx| {
+						html! {
+							<input
+								class={"form-check-input"} type={"checkbox"}
+								checked={idx < *consumed_uses}
+								onclick={Callback::from(|evt: web_sys::MouseEvent| evt.stop_propagation())}
+								onchange={toggle_use.clone()}
+							/>
+						}
+					})
+					.collect::<Vec<_>>();
+				html! {
+					<span>
+						{use_checkboxes}
+						{match &limited_uses.reset_on {
+							Some(rest) => html! { <span>{"/"}{format!("{:?} Rest", rest)}</span> },
+							None => html! {},
+						}}
+					</span>
+				}
+			}
+			None => html! {},
+		},
+		None => html! {},
+	};
 
 	html! {
 		<div style="border-width: 0; border-bottom: 1px; border-style: solid; border-color: var(--theme-frame-color-muted);">
@@ -154,6 +209,22 @@ fn FeatureBlock(
 			<div style="white-space: pre-line;">
 				{description}
 			</div>
+			{match selected_values.len() {
+				0 => html! {},
+				_ => {
+					let list_string = selected_values.iter().fold(String::new(), |list, value| {
+						let separator = (list.len() > 0).then(|| ", ").unwrap_or_default();
+						format!("{list}{separator}{value}")
+					});
+					log::debug!("{:?} {:?}", selected_values, list_string);
+					html! {
+						<div>
+							{"Selections: "}{list_string}
+						</div>
+					}
+				}
+			}}
+			{uses}
 		</div>
 	}
 }

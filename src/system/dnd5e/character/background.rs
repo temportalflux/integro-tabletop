@@ -1,10 +1,11 @@
 use super::DerivedBuilder;
-use crate::system::dnd5e::{mutator, BoxedFeature};
+use crate::system::dnd5e::{mutator::{self, BoxedMutator}, BoxedFeature};
 
 #[derive(Clone, PartialEq)]
 pub struct Background {
 	pub name: String,
 	pub description: String,
+	pub mutators: Vec<BoxedMutator>,
 	pub features: Vec<BoxedFeature>,
 }
 
@@ -15,6 +16,9 @@ impl mutator::Container for Background {
 	}
 
 	fn apply_mutators<'c>(&self, stats: &mut DerivedBuilder<'c>) {
+		for mutator in &self.mutators {
+			stats.apply(mutator);
+		}
 		for feat in &self.features {
 			stats.add_feature(feat);
 		}
