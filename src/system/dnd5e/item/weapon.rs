@@ -7,7 +7,7 @@ use crate::system::dnd5e::{
 		DamageRoll,
 	},
 	character::WeaponProficiency,
-	evaluator::IsProficientWith,
+	evaluator::{self, IsProficientWith},
 	roll::Roll,
 	Ability, Value,
 };
@@ -84,9 +84,13 @@ impl Weapon {
 				check: AttackCheckKind::AttackRoll {
 					ability: attack_ability,
 					proficient: Value::Evaluated(
-						IsProficientWith::Weapon(WeaponProficiency::Classification(
-							self.classification.clone(),
-						))
+						evaluator::Any(vec![
+							IsProficientWith::Weapon(WeaponProficiency::Kind(self.kind)).into(),
+							IsProficientWith::Weapon(WeaponProficiency::Classification(
+								self.classification.clone(),
+							))
+							.into(),
+						])
 						.into(),
 					),
 				},
