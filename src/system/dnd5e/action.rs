@@ -1,4 +1,5 @@
 use super::{character::Character, evaluator::Evaluator, roll::Roll, Ability, BoxedFeature, Value};
+use std::path::PathBuf;
 use uuid::Uuid;
 
 #[derive(Clone, PartialEq, Default)]
@@ -16,21 +17,21 @@ pub enum ActionSource {
 	Feature(BoxedFeature),
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Attack {
 	pub kind: AttackKindValue,
 	pub check: AttackCheckKind,
 	pub area_of_effect: Option<(AreaOfEffect, usize)>,
-	pub damage_roll: (Option<Roll>, /*bonus*/ Value<i32>),
+	pub damage_roll: DamageRoll,
 	pub damage_type: String,
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum AttackKind {
 	Melee,
 	Ranged,
 }
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum AttackKindValue {
 	Melee {
 		reach: i32,
@@ -41,8 +42,16 @@ pub enum AttackKindValue {
 		kind: Option<RangeKind>,
 	},
 }
+impl AttackKindValue {
+	pub fn kind(&self) -> AttackKind {
+		match self {
+			Self::Melee { .. } => AttackKind::Melee,
+			Self::Ranged { .. } => AttackKind::Ranged,
+		}
+	}
+}
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum AreaOfEffect {
 	Cone,
 	Cube,
@@ -52,7 +61,7 @@ pub enum AreaOfEffect {
 	Square,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum AttackCheckKind {
 	AttackRoll {
 		ability: Ability,
@@ -66,7 +75,7 @@ pub enum AttackCheckKind {
 	},
 }
 
-#[derive(Clone, Copy, PartialEq, PartialOrd, Default)]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Default, Debug)]
 pub enum ActivationKind {
 	#[default]
 	Action,
@@ -113,11 +122,18 @@ impl AttackCheckKind {
 	}
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum RangeKind {
 	OnlySelf,
 	Touch,
 	Bounded, // abide by the short/long dist range
 	Sight,
 	Unlimited,
+}
+
+#[derive(Clone, PartialEq, Default, Debug)]
+pub struct DamageRoll {
+	pub roll: Option<Roll>,
+	pub base_bonus: Value<i32>,
+	pub additional_bonuses: Vec<(i32, PathBuf)>,
 }

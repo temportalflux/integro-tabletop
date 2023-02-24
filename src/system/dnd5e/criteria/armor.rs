@@ -1,6 +1,6 @@
 use crate::system::dnd5e::{
 	character::Persistent,
-	item::{armor, ItemKind},
+	item::{armor, EquipableEntry, ItemKind},
 };
 use std::collections::HashSet;
 
@@ -39,8 +39,13 @@ impl HasArmorEquipped {
 }
 impl super::Criteria for HasArmorEquipped {
 	fn evaluate(&self, character: &Persistent) -> Result<(), String> {
-		for item in character.inventory.items_without_ids() {
-			if !item.is_equipable() || !item.is_equipped() {
+		for EquipableEntry {
+			id: _,
+			item,
+			is_equipped,
+		} in character.inventory.entries()
+		{
+			if !item.is_equipable() || !is_equipped {
 				continue;
 			}
 			let ItemKind::Equipment(equipment) = &item.kind else { continue; };

@@ -1,9 +1,12 @@
-use super::super::roll::Modifier;
-use super::super::{
-	action::Action, mutator::Defense, proficiency, roll::RollSet, Ability, BoxedFeature, Skill,
-};
-use super::*;
 use crate::path_map::PathMap;
+use crate::system::dnd5e::{
+	action::{Action, Attack, AttackCheckKind, AttackKindValue, DamageRoll},
+	character::*,
+	mutator::Defense,
+	proficiency,
+	roll::{Modifier, RollSet},
+	Ability, BoxedFeature, Skill, Value,
+};
 use enum_map::EnumMap;
 use std::{
 	collections::{BTreeMap, BTreeSet},
@@ -14,7 +17,7 @@ use std::{
 /// proficiencies, and actions. This data all lives within `Persistent` in
 /// its various features and subtraits, and is compiled into one flat
 /// structure for easy reference when displaying the character information.
-#[derive(Clone, Default, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct Derived {
 	pub missing_selections: Vec<PathBuf>,
 	pub ability_scores: AbilityScores,
@@ -29,6 +32,49 @@ pub struct Derived {
 	pub armor_class: ArmorClass,
 	pub actions: Vec<Action>,
 	pub description: DerivedDescription,
+}
+
+impl Default for Derived {
+	fn default() -> Self {
+		Self {
+			missing_selections: Default::default(),
+			ability_scores: Default::default(),
+			saving_throws: Default::default(),
+			skills: Default::default(),
+			other_proficiencies: Default::default(),
+			speeds: Default::default(),
+			senses: Default::default(),
+			defenses: Default::default(),
+			features: Default::default(),
+			max_hit_points: Default::default(),
+			armor_class: Default::default(),
+			actions: vec![Action {
+				name: "Unarmed Strike".into(),
+				description: "Instead of using a weapon to make a melee weapon attack, \
+				you can use an unarmed strike: a punch, kick, head-butt, or similar \
+				forceful blow (none of which count as weapons). On a hit, an unarmed \
+				strike deals bludgeoning damage equal to 1 + your Strength modifier. \
+				You are proficient with your unarmed strikes."
+					.into(),
+				activation_kind: crate::system::dnd5e::action::ActivationKind::Action,
+				attack: Some(Attack {
+					kind: AttackKindValue::Melee { reach: 5 },
+					check: AttackCheckKind::AttackRoll {
+						ability: Ability::Strength,
+						proficient: Value::Fixed(true),
+					},
+					area_of_effect: None,
+					damage_roll: DamageRoll {
+						base_bonus: Value::Fixed(1),
+						..Default::default()
+					},
+					damage_type: "bludgeoning".into(),
+				}),
+				source: None,
+			}],
+			description: Default::default(),
+		}
+	}
 }
 
 #[derive(Clone, Default, PartialEq)]

@@ -8,6 +8,10 @@ pub struct AddSkill {
 }
 
 impl super::Mutator for AddSkill {
+	fn node_id(&self) -> &'static str {
+		"add_skill"
+	}
+
 	fn id(&self) -> Option<&str> {
 		self.skill.id()
 	}
@@ -29,6 +33,10 @@ pub struct AddSkillModifier {
 	pub criteria: Option<String>,
 }
 impl super::Mutator for AddSkillModifier {
+	fn node_id(&self) -> &'static str {
+		"add_skill_modifier"
+	}
+
 	fn apply<'c>(&self, stats: &mut Character) {
 		let source = stats.source_path();
 		stats

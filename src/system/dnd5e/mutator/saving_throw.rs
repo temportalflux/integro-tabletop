@@ -7,6 +7,10 @@ pub enum AddSavingThrow {
 }
 
 impl super::Mutator for AddSavingThrow {
+	fn node_id(&self) -> &'static str {
+		"add_saving_throw"
+	}
+
 	fn apply<'c>(&self, stats: &mut Character) {
 		match self {
 			Self::Proficiency(ability) => {

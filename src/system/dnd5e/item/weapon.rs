@@ -1,13 +1,16 @@
+use std::collections::HashSet;
+
+use super::EquipableEntry;
 use crate::system::dnd5e::{
 	action::{
 		Action, ActionSource, ActivationKind, Attack, AttackCheckKind, AttackKind, AttackKindValue,
+		DamageRoll,
 	},
 	character::WeaponProficiency,
 	evaluator::IsProficientWith,
 	roll::Roll,
 	Ability, Value,
 };
-use uuid::Uuid;
 
 #[derive(Clone, PartialEq)]
 pub struct Weapon {
@@ -19,7 +22,7 @@ pub struct Weapon {
 	pub range: Option<Range>,
 }
 
-#[derive(Clone, Copy, Default, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Default, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Kind {
 	#[default]
 	Simple,
@@ -46,13 +49,13 @@ pub struct Range {
 
 #[derive(Clone, PartialEq, Default)]
 pub struct Restriction {
-	pub weapon_kind: Vec<Kind>,
-	pub attack_kind: Vec<AttackKind>,
-	pub ability: Vec<Ability>,
+	pub weapon_kind: HashSet<Kind>,
+	pub attack_kind: HashSet<AttackKind>,
+	pub ability: HashSet<Ability>,
 }
 
 impl Weapon {
-	pub fn attack_action(&self, name: String, id: &Uuid) -> Action {
+	pub fn attack_action(&self, entry: &EquipableEntry) -> Action {
 		let attack_kind = match self.range {
 			None => AttackKindValue::Melee { reach: 5 },
 			Some(Range {
@@ -73,9 +76,9 @@ impl Weapon {
 			AttackKindValue::Ranged { .. } => Ability::Dexterity,
 		};
 		Action {
-			name,
+			name: entry.item.name.clone(),
 			activation_kind: ActivationKind::Action,
-			source: Some(ActionSource::Item(*id)),
+			source: Some(ActionSource::Item(entry.id.clone())),
 			attack: Some(Attack {
 				kind: attack_kind,
 				check: AttackCheckKind::AttackRoll {
@@ -88,7 +91,10 @@ impl Weapon {
 					),
 				},
 				area_of_effect: None,
-				damage_roll: (Some(self.damage), Value::Fixed(0)),
+				damage_roll: DamageRoll {
+					roll: Some(self.damage),
+					..Default::default()
+				},
 				damage_type: self.damage_type.clone(),
 			}),
 			..Default::default()

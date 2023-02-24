@@ -26,6 +26,12 @@ mod speed;
 pub use speed::*;
 
 pub trait Mutator: DynClone {
+	fn node_id(&self) -> &'static str;
+
+	fn dependencies(&self) -> Option<Vec<&'static str>> {
+		None
+	}
+
 	fn id(&self) -> Option<&str> {
 		None
 	}

@@ -1,5 +1,17 @@
 use super::Mutator;
-use crate::system::dnd5e::{character::Character, item::weapon, Value};
+use crate::system::dnd5e::{action::Action, character::Character, item::weapon, Value};
+
+#[derive(Clone, PartialEq)]
+pub struct AddAction(pub Action);
+impl Mutator for AddAction {
+	fn node_id(&self) -> &'static str {
+		"add_action"
+	}
+
+	fn apply<'c>(&self, stats: &mut Character) {
+		stats.actions_mut().push(self.0.clone());
+	}
+}
 
 #[derive(Clone, PartialEq)]
 pub struct BonusDamage {
@@ -7,7 +19,23 @@ pub struct BonusDamage {
 	pub restriction: Option<weapon::Restriction>,
 }
 impl Mutator for BonusDamage {
+	fn node_id(&self) -> &'static str {
+		"bonus_damage"
+	}
+
+	fn dependencies(&self) -> Option<Vec<&'static str>> {
+		Some(vec!["add_action"])
+	}
+
 	fn apply<'c>(&self, stats: &mut Character) {
-		// TODO: For each equipped weapon, if the restriction is met, apply the bonus to the attack
+		let source = stats.source_path();
+		let bonus_amt = self.amount.evaluate(stats);
+		for action in stats.iter_actions_mut_for(&self.restriction) {
+			let Some(attack) = &mut action.attack else { continue; };
+			attack
+				.damage_roll
+				.additional_bonuses
+				.push((bonus_amt, source.clone()));
+		}
 	}
 }

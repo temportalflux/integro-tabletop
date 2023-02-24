@@ -1,3 +1,4 @@
+use super::mutator::AddAction;
 use crate::system::dnd5e::{character::Character, mutator};
 use std::collections::HashMap;
 use uuid::Uuid;
@@ -33,19 +34,6 @@ impl Item {
 		}
 	}
 
-	/// Returns true if the item is equipment and is currently equipped.
-	pub fn is_equipped(&self) -> bool {
-		match &self.kind {
-			ItemKind::Equipment(equipment) => equipment.is_equipped,
-			_ => false,
-		}
-	}
-
-	pub fn set_equipped(&mut self, equipped: bool) {
-		let ItemKind::Equipment(equipment) = &mut self.kind else { return; };
-		equipment.is_equipped = equipped;
-	}
-
 	pub fn quantity(&self) -> u32 {
 		match &self.kind {
 			ItemKind::Simple { count } => *count,
@@ -66,29 +54,23 @@ impl Default for ItemKind {
 	}
 }
 
-pub struct ItemWithId<'a>(&'a Uuid, &'a Item);
-impl<'a> ItemWithId<'a> {
-	pub fn id(&self) -> &'a Uuid {
-		self.0
-	}
-
-	pub fn item(&self) -> &'a Item {
-		self.1
-	}
+#[derive(Clone, PartialEq)]
+pub struct EquipableEntry {
+	pub id: Uuid,
+	pub item: Item,
+	pub is_equipped: bool,
 }
-impl<'a> mutator::Container for ItemWithId<'a> {
+impl mutator::Container for EquipableEntry {
 	fn id(&self) -> Option<String> {
-		Some(self.item().name.clone())
+		Some(self.item.name.clone())
 	}
 
 	fn apply_mutators<'c>(&self, stats: &mut Character) {
-		if let ItemKind::Equipment(equipment) = &self.item().kind {
-			stats.apply_from(equipment);
-			if equipment.is_equipped {
+		if let ItemKind::Equipment(equipment) = &self.item.kind {
+			if self.is_equipped {
+				stats.apply_from(equipment);
 				if let Some(weapon) = &equipment.weapon {
-					stats
-						.actions_mut()
-						.push(weapon.attack_action(self.item().name.clone(), self.id()));
+					stats.apply(&AddAction(weapon.attack_action(self)).into());
 				}
 			}
 		}
@@ -97,7 +79,7 @@ impl<'a> mutator::Container for ItemWithId<'a> {
 
 #[derive(Clone, PartialEq, Default)]
 pub struct Inventory {
-	items_by_id: HashMap<Uuid, Item>,
+	items_by_id: HashMap<Uuid, EquipableEntry>,
 	itemids_by_name: Vec<Uuid>,
 }
 
@@ -109,15 +91,15 @@ impl Inventory {
 		}
 	}
 
-	fn find_name_for_id(&self, id: &Uuid) -> &String {
-		&self.items_by_id.get(id).unwrap().name
+	pub fn get_item(&self, id: &Uuid) -> Option<&Item> {
+		self.items_by_id.get(id).map(|entry| &entry.item)
 	}
 
 	pub fn insert(&mut self, item: Item) {
 		let id = Uuid::new_v4();
 		let search = self
 			.itemids_by_name
-			.binary_search_by(|id| self.find_name_for_id(id).cmp(&item.name));
+			.binary_search_by(|id| self.get_item(id).unwrap().name.cmp(&item.name));
 		let idx = match search {
 			// an item with the same name already exists at this index
 			Ok(idx) => idx,
@@ -125,29 +107,40 @@ impl Inventory {
 			Err(idx) => idx,
 		};
 		self.itemids_by_name.insert(idx, id.clone());
-		self.items_by_id.insert(id, item);
+		self.items_by_id.insert(
+			id.clone(),
+			EquipableEntry {
+				id,
+				item,
+				is_equipped: false,
+			},
+		);
 	}
 
 	pub fn remove(&mut self, id: &Uuid) -> Option<Item> {
 		if let Ok(idx) = self.itemids_by_name.binary_search(id) {
 			self.itemids_by_name.remove(idx);
 		}
-		self.items_by_id.remove(id)
+		self.items_by_id.remove(id).map(|entry| entry.item)
 	}
 
-	pub fn items_without_ids(&self) -> std::collections::hash_map::Values<'_, Uuid, Item> {
+	pub fn entries(&self) -> impl Iterator<Item = &EquipableEntry> {
 		self.items_by_id.values()
 	}
 
-	pub fn items<'a>(&'a self) -> Vec<ItemWithId<'a>> {
+	pub fn items_by_name(&self) -> impl Iterator<Item = &EquipableEntry> {
 		self.itemids_by_name
 			.iter()
-			.map(|id| ItemWithId(id, self.items_by_id.get(&id).unwrap()))
-			.collect()
+			.map(|id| self.items_by_id.get(&id).unwrap())
 	}
 
 	pub fn get_mut(&mut self, id: &Uuid) -> Option<&mut Item> {
-		self.items_by_id.get_mut(id)
+		self.items_by_id.get_mut(id).map(|entry| &mut entry.item)
+	}
+
+	pub fn set_equipped(&mut self, id: &Uuid, equipped: bool) {
+		let Some(entry) = self.items_by_id.get_mut(&id) else { return; };
+		entry.is_equipped = equipped;
 	}
 }
 
@@ -157,8 +150,8 @@ impl mutator::Container for Inventory {
 	}
 
 	fn apply_mutators<'c>(&self, stats: &mut Character) {
-		for item_with_id in self.items() {
-			stats.apply_from(&item_with_id);
+		for entry in self.items_by_name() {
+			stats.apply_from(entry);
 		}
 	}
 }

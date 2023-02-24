@@ -36,8 +36,8 @@ pub fn barbarian(levels: usize, subclass: Option<Subclass>) -> Class {
 						.into(),
 					),
 					restriction: Some(weapon::Restriction {
-						attack_kind: vec![AttackKind::Melee],
-						ability: vec![Ability::Strength],
+						attack_kind: [AttackKind::Melee].into(),
+						ability: [Ability::Strength].into(),
 						..Default::default()
 					}),
 				}

@@ -25,8 +25,8 @@ pub fn Inventory() -> Html {
 				</tr>
 			</thead>
 			<tbody>
-				{state.inventory().items().into_iter().map(|item_with_id| html! {
-					<ItemRow id={item_with_id.id().clone()} item={item_with_id.item().clone()} />
+				{state.inventory().items_by_name().map(|entry| html! {
+					<ItemRow id={entry.id.clone()} item={entry.item.clone()} is_equipped={entry.is_equipped} />
 				}).collect::<Vec<_>>()}
 			</tbody>
 		</table>
@@ -38,10 +38,17 @@ pub fn Inventory() -> Html {
 pub struct ItemRowProps {
 	id: Uuid,
 	item: Item,
+	is_equipped: bool,
 }
 
 #[function_component]
-pub fn ItemRow(ItemRowProps { id, item }: &ItemRowProps) -> Html {
+pub fn ItemRow(
+	ItemRowProps {
+		id,
+		item,
+		is_equipped,
+	}: &ItemRowProps,
+) -> Html {
 	let state = use_context::<ContextMut<Character>>().unwrap();
 	let on_click_row = Callback::from(|_| log::debug!("TODO: open item interface modal"));
 	html! {
@@ -51,7 +58,7 @@ pub fn ItemRow(ItemRowProps { id, item }: &ItemRowProps) -> Html {
 					id={id.clone()}
 					is_equipable={item.is_equipable()}
 					can_be_equipped={item.can_be_equipped(&*state)}
-					is_equipped={item.is_equipped()}
+					is_equipped={*is_equipped}
 				/>
 			</td>
 			<td>{item.name.clone()}</td>
@@ -91,8 +98,7 @@ fn ItemRowEquipBox(
 			let Some(input) = target.dyn_ref::<HtmlInputElement>() else { return; };
 			let should_be_equipped = input.checked();
 			state.mutate(move |state| {
-				let Some(item) = state.inventory_mut().get_mut(&id) else { return; };
-				item.set_equipped(should_be_equipped);
+				state.inventory_mut().set_equipped(&id, should_be_equipped);
 				state.generate_derived();
 			});
 		}

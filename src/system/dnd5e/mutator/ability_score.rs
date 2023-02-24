@@ -8,6 +8,10 @@ pub struct AddAbilityScore {
 }
 
 impl super::Mutator for AddAbilityScore {
+	fn node_id(&self) -> &'static str {
+		"add_ability_score"
+	}
+
 	fn apply<'c>(&self, stats: &mut Character) {
 		if let Some(ability) = stats.resolve_selector(&self.ability) {
 			let source = stats.source_path();

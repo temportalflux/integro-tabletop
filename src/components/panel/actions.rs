@@ -105,9 +105,14 @@ pub fn Actions() -> Html {
 									}
 								}}</td>
 								<td class="text-center">{{
-									let (roll, bonus) = &attack.damage_roll;
-									let bonus = bonus.evaluate(&*state);
-									let roll = roll.as_ref().map(|roll| html!{{roll.to_string()}});
+									// TODO: tooltip for where bonus come from
+									let additional_bonus: i32 = attack.damage_roll.additional_bonuses.iter().map(|(v, _)| *v).sum();
+									let ability_bonus = match &attack.check {
+										AttackCheckKind::AttackRoll { ability, .. } => state.ability_modifier(*ability, None),
+										_ => 0,
+									};
+									let bonus = attack.damage_roll.base_bonus.evaluate(&*state) + ability_bonus + additional_bonus;
+									let roll = attack.damage_roll.roll.as_ref().map(|roll| html!{{roll.to_string()}});
 									match (roll, bonus) {
 										(None, bonus) => html! {{bonus.max(0)}},
 										(Some(roll), 0) => html! {{roll}},

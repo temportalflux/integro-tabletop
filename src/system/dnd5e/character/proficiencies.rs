@@ -40,6 +40,10 @@ pub enum AddProficiency {
 }
 
 impl super::mutator::Mutator for AddProficiency {
+	fn node_id(&self) -> &'static str {
+		"add_proficiency"
+	}
+
 	fn apply<'c>(&self, stats: &mut Character) {
 		let source = stats.source_path();
 		match &self {

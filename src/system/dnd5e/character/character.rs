@@ -5,8 +5,11 @@ use super::{
 use crate::{
 	path_map::PathMap,
 	system::dnd5e::{
-		action::Action, criteria::BoxedCriteria, item, mutator, proficiency, Ability, BoxedFeature,
-		Score,
+		action::{Action, ActionSource, AttackCheckKind},
+		criteria::BoxedCriteria,
+		item::{self, weapon, ItemKind},
+		mutator::{self, BoxedMutator},
+		proficiency, Ability, BoxedFeature, Score,
 	},
 };
 use enum_map::Enum;
@@ -23,13 +26,22 @@ use std::{
 pub struct Character {
 	character: Persistent,
 	derived: Derived,
+	mutators: Vec<MutatorEntry>,
 	source_path: SourcePath,
+}
+#[derive(Clone, PartialEq)]
+struct MutatorEntry {
+	node_id: &'static str,
+	dependencies: Option<Vec<&'static str>>,
+	mutator: BoxedMutator,
+	source: SourcePath,
 }
 impl From<Persistent> for Character {
 	fn from(character: Persistent) -> Self {
 		let mut full = Self {
 			character,
 			derived: Derived::default(),
+			mutators: Vec::new(),
 			source_path: SourcePath::default(),
 		};
 		full.generate_derived();
@@ -46,7 +58,16 @@ impl yew::Reducible for Character {
 impl Character {
 	pub fn generate_derived(&mut self) {
 		self.derived = Derived::default();
+		self.mutators.clear();
+		self.source_path = SourcePath::default();
+
 		self.apply_from(&self.character.clone());
+
+		let mutators = self.mutators.drain(..).collect::<Vec<_>>();
+		for entry in mutators.into_iter() {
+			self.source_path = entry.source;
+			entry.mutator.apply(self);
+		}
 	}
 
 	pub fn apply_from(&mut self, container: &impl mutator::Container) {
@@ -59,8 +80,36 @@ impl Character {
 
 	pub fn apply(&mut self, mutator: &mutator::BoxedMutator) {
 		let scope = self.source_path.push(mutator.id(), true);
-		mutator.apply(self);
+		self.insert_mutator(MutatorEntry {
+			node_id: mutator.node_id(),
+			dependencies: mutator.dependencies(),
+			mutator: mutator.clone(),
+			source: self.source_path.clone(),
+		});
 		self.source_path.pop(scope);
+	}
+
+	fn insert_mutator(&mut self, entry: MutatorEntry) {
+		let idx = self.mutators.binary_search_by(|value| {
+			match (&value.dependencies, &entry.dependencies) {
+				// neither have dependencies, so they are considered equal, might as well order by node_id.
+				(None, None) => value.node_id.cmp(&entry.node_id),
+				// existing element has dependencies, but the new one doesn't. New one goes before existing.
+				(Some(_), None) => std::cmp::Ordering::Less,
+				// new entry has dependencies, all deps in new must come before it
+				(_, Some(deps)) => match deps.contains(&value.node_id) {
+					// existing is not required for new, might as well sort by node_id.
+					false => value.node_id.cmp(&entry.node_id),
+					// existing is required, it must come before the new entry
+					true => std::cmp::Ordering::Less,
+				},
+			}
+		});
+		let idx = match idx {
+			Ok(idx) => idx,
+			Err(idx) => idx,
+		};
+		self.mutators.insert(idx, entry);
 	}
 
 	pub fn source_path(&self) -> PathBuf {
@@ -267,6 +316,51 @@ impl Character {
 
 	pub fn inventory_mut(&mut self) -> &mut item::Inventory {
 		&mut self.character.inventory
+	}
+
+	pub fn iter_actions_mut_for(
+		&mut self,
+		restriction: &Option<weapon::Restriction>,
+	) -> Vec<&mut Action> {
+		let mut actions = self.derived.actions.iter_mut().collect::<Vec<_>>();
+		if let Some(weapon::Restriction {
+			weapon_kind,
+			attack_kind,
+			ability,
+		}) = restriction
+		{
+			if !weapon_kind.is_empty() {
+				actions = actions
+					.into_iter()
+					.filter_map(|action| {
+						let Some(ActionSource::Item(item_id)) = &action.source else { return None; };
+						let Some(item) = self.character.inventory.get_item(item_id) else { return None; };
+						let ItemKind::Equipment(equipment) = &item.kind else { return None; };
+						let Some(weapon) = &equipment.weapon else { return None; };
+						weapon_kind.contains(&weapon.kind).then_some(action)
+					})
+					.collect();
+			}
+
+			if !attack_kind.is_empty() {
+				actions = actions
+					.into_iter()
+					.filter_map(|action| {
+						let Some(attack) = &action.attack else { return None; };
+						attack_kind.contains(&attack.kind.kind()).then_some(action)
+					})
+					.collect();
+			}
+
+			if !ability.is_empty() {
+				actions = actions.into_iter().filter_map(|action| {
+					let Some(attack) = &action.attack else { return None; };
+					let AttackCheckKind::AttackRoll { ability: atk_roll_ability, .. } = &attack.check else { return None; };
+					ability.contains(atk_roll_ability).then_some(action)
+				}).collect();
+			}
+		}
+		actions
 	}
 
 	pub fn derived_description_mut(&mut self) -> &mut DerivedDescription {

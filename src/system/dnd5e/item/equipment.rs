@@ -7,7 +7,6 @@ use crate::system::dnd5e::{
 
 #[derive(Clone, PartialEq, Default)]
 pub struct Equipment {
-	pub is_equipped: bool,
 	/// The criteria which must be met for this item to be equipped.
 	pub criteria: Option<BoxedCriteria>,
 	/// Passive modifiers applied while this item is equipped.
@@ -24,9 +23,6 @@ pub struct Equipment {
 
 impl mutator::Container for Equipment {
 	fn apply_mutators<'c>(&self, stats: &mut Character) {
-		if !self.is_equipped {
-			return;
-		}
 		for modifier in &self.modifiers {
 			stats.apply(modifier);
 		}

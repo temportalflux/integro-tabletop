@@ -29,6 +29,18 @@ where
 	}
 }
 
+impl<T> std::fmt::Debug for Value<T>
+where
+	T: std::fmt::Debug,
+{
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Fixed(value) => write!(f, "Value::Fixed({value:?})"),
+			Self::Evaluated(_eval) => write!(f, "Value::Evaluated(?)"),
+		}
+	}
+}
+
 impl<T> Value<T> {
 	pub fn evaluate(&self, state: &Character) -> T
 	where
