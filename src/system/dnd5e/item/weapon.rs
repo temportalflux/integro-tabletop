@@ -2,6 +2,8 @@ use crate::system::dnd5e::{
 	action::{
 		Action, ActionSource, ActivationKind, Attack, AttackCheckKind, AttackKind, AttackKindValue,
 	},
+	character::WeaponProficiency,
+	evaluator::IsProficientWith,
 	roll::Roll,
 	Ability, Value,
 };
@@ -17,7 +19,7 @@ pub struct Weapon {
 	pub range: Option<Range>,
 }
 
-#[derive(Clone, Default, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Default, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Kind {
 	#[default]
 	Simple,
@@ -51,29 +53,39 @@ pub struct Restriction {
 
 impl Weapon {
 	pub fn attack_action(&self, name: String, id: &Uuid) -> Action {
+		let attack_kind = match self.range {
+			None => AttackKindValue::Melee { reach: 5 },
+			Some(Range {
+				short_range,
+				long_range,
+				..
+			}) => AttackKindValue::Ranged {
+				short_dist: short_range,
+				long_dist: long_range,
+				kind: None,
+			},
+		};
+		// TODO: The ability modifier used for a melee weapon attack is Strength,
+		// and the ability modifier used for a ranged weapon attack is Dexterity.
+		// Weapons that have the finesse or thrown property break this rule.
+		let attack_ability = match attack_kind {
+			AttackKindValue::Melee { .. } => Ability::Strength,
+			AttackKindValue::Ranged { .. } => Ability::Dexterity,
+		};
 		Action {
 			name,
 			activation_kind: ActivationKind::Action,
 			source: Some(ActionSource::Item(*id)),
 			attack: Some(Attack {
-				kind: match self.range {
-					None => AttackKindValue::Melee { reach: 5 },
-					Some(Range {
-						short_range,
-						long_range,
-						..
-					}) => AttackKindValue::Ranged {
-						short_dist: short_range,
-						long_dist: long_range,
-						kind: None,
-					},
-				},
+				kind: attack_kind,
 				check: AttackCheckKind::AttackRoll {
-					ability: Ability::Dexterity,
-					proficient: {
-						Value::Fixed(true)
-						// TODO: Value::Evaluated(IsProficientWithWeapon(self.classification.clone()).into())
-					},
+					ability: attack_ability,
+					proficient: Value::Evaluated(
+						IsProficientWith::Weapon(WeaponProficiency::Classification(
+							self.classification.clone(),
+						))
+						.into(),
+					),
 				},
 				area_of_effect: None,
 				damage_roll: (Some(self.damage), Value::Fixed(0)),

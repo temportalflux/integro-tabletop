@@ -1,6 +1,5 @@
-use crate::system::dnd5e::character::Character;
-
 use super::Evaluator;
+use crate::system::dnd5e::character::Character;
 use std::collections::BTreeMap;
 
 #[derive(Clone, PartialEq)]

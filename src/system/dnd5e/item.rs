@@ -95,7 +95,7 @@ impl<'a> mutator::Container for ItemWithId<'a> {
 	}
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Default)]
 pub struct Inventory {
 	items_by_id: HashMap<Uuid, Item>,
 	itemids_by_name: Vec<Uuid>,

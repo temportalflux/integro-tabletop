@@ -8,7 +8,7 @@ use enum_map::EnumMap;
 
 /// Core character data which is (de)serializable and
 /// from which the derived data can be compiled.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Default)]
 pub struct Persistent {
 	pub lineages: [Option<Lineage>; 2],
 	pub upbringing: Option<Upbringing>,

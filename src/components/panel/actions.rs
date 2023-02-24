@@ -3,7 +3,8 @@ use crate::{
 	data::ContextMut,
 	system::dnd5e::{
 		action::{AttackCheckKind, AttackKindValue},
-		character::Character, evaluator::Evaluator,
+		character::Character,
+		evaluator::Evaluator,
 	},
 };
 use enumset::{EnumSet, EnumSetType};

@@ -52,7 +52,7 @@ impl FromStr for Ability {
 	}
 }
 
-#[derive(Clone, Copy, PartialEq, Default)]
+#[derive(Clone, Copy, PartialEq, Default, Debug)]
 pub struct Score(pub i32);
 impl std::ops::Deref for Score {
 	type Target = i32;

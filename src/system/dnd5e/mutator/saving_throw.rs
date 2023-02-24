@@ -22,3 +22,51 @@ impl super::Mutator for AddSavingThrow {
 		}
 	}
 }
+
+#[cfg(test)]
+mod test {
+	use super::AddSavingThrow;
+	use crate::system::dnd5e::{
+		character::{Character, Persistent},
+		proficiency, Ability, Feature,
+	};
+
+	#[test]
+	fn proficiency() {
+		let character = Character::from(Persistent {
+			feats: vec![Feature {
+				name: "AddSavingThrow".into(),
+				mutators: vec![AddSavingThrow::Proficiency(Ability::Wisdom).into()],
+				..Default::default()
+			}
+			.into()],
+			..Default::default()
+		});
+		let (prof, _) = &character.saving_throws()[Ability::Wisdom];
+		assert_eq!(*prof.value(), proficiency::Level::Full);
+		assert_eq!(
+			*prof.sources(),
+			vec![("AddSavingThrow".into(), proficiency::Level::Full)]
+		);
+	}
+
+	#[test]
+	fn advantage() {
+		let character = Character::from(Persistent {
+			feats: vec![Feature {
+				name: "AddSavingThrow".into(),
+				mutators: vec![
+					AddSavingThrow::Advantage(Ability::Wisdom, Some("Magic".into())).into(),
+				],
+				..Default::default()
+			}
+			.into()],
+			..Default::default()
+		});
+		let (_, advantages) = &character.saving_throws()[Ability::Wisdom];
+		assert_eq!(
+			*advantages,
+			vec![(Some("Magic".into()), "AddSavingThrow".into())]
+		);
+	}
+}
