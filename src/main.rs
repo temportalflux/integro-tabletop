@@ -92,7 +92,7 @@ fn create_character() -> system::dnd5e::character::Persistent {
 				"Sylvan".into(),
 			),
 			(
-				PathBuf::from("Anthropologist/Languages/langB_"),
+				PathBuf::from("Anthropologist/Languages/langB"),
 				"Elvish".into(),
 			),
 			(

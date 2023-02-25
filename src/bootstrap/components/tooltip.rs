@@ -22,7 +22,7 @@ impl Placement {
 #[derive(Clone, PartialEq, Properties)]
 pub struct Props {
 	#[prop_or_else(|| "div".into())]
-	pub tag: String,
+	pub tag: AttrValue,
 	#[prop_or_default]
 	pub classes: Classes,
 
@@ -32,7 +32,7 @@ pub struct Props {
 	pub use_html: bool,
 
 	#[prop_or_default]
-	pub content: Option<String>,
+	pub content: Option<AttrValue>,
 
 	#[prop_or_default]
 	pub children: Children,
@@ -62,7 +62,7 @@ pub fn Component(
 		(node.clone(), content.clone()),
 	);
 
-	html! {<@{tag.clone()} ref={node}
+	html! {<@{tag.as_str().to_owned()} ref={node}
 		class={classes.clone()}
 		data-bs-toggle={content.is_some().then(|| "tooltip").unwrap_or("")}
 		data-bs-placement={placement.as_str()}

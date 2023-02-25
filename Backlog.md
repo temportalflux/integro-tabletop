@@ -25,10 +25,6 @@ Modals for all elements with tooltips & more.
 ### Prof Bons
 - description of use
 
-### Other Proficiencies
-- all one modal
-- list each element and its source
-
 ### Armor Class
 - description
 - formula list (and evaluations) + sources

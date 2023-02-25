@@ -95,6 +95,12 @@ impl Reducible for State {
 pub struct Props {
 	/// Content to show in the `modal-content` div.
 	pub content: Html,
+	/// If the modal dialog should be scrollable.
+	/// https://getbootstrap.com/docs/5.3/components/modal/#scrolling-long-content
+	pub scrollable: bool,
+	/// If the modal should be vertically centered.
+	/// https://getbootstrap.com/docs/5.3/components/modal/#vertically-centered
+	pub centered: bool,
 }
 
 /// The modal compont used to display any modal. Controlled via [State]/[Context].
@@ -173,9 +179,17 @@ pub fn GeneralPurpose() -> Html {
 		context.clone(),
 	);
 
+	let mut dialog_classes = classes!("modal-dialog");
+	if context.map_props(|props| props.centered) {
+		dialog_classes.push("modal-dialog-centered");
+	}
+	if context.map_props(|props| props.scrollable) {
+		dialog_classes.push("modal-dialog-scrollable");
+	}
+
 	html! {
 		<div class="modal fade" id="generalModal" ref={node}>
-			<div class="modal-dialog">
+			<div class={dialog_classes}>
 				<div class="modal-content">
 					{context.map_props(|props| props.content.clone())}
 				</div>
