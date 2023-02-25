@@ -103,6 +103,9 @@ Allow users to create new elements
 - Other Proficiencies
 - Defenses
 
+## Serialization
+- `trait AsKDL` & `trait FromKDL` to handling kdl text <=> structs
+
 ## Save Data
 - Save persistent data to session storage while character is open
 - eventually have this all query against github repos where classes, subclasses, backgrounds, lineages, upbringings, items, & spells all have a `repo`+`path` tuple which describes from where to fetch data updates from
@@ -117,3 +120,15 @@ Allow users to create new elements
 ## Mailbox
 - Pull requests are used to send items between characters
 - Characters in other repos can be added as friends (so mail can be sent)
+
+## Write Modules
+written in kdl, hosted in github
+- D&D Basic Rules
+- Elf and an Orc had a little baby (v2?)
+- Other Official D&D Content
+
+## User-Written Modules
+- users can create new modules, saved to github (or other backend servicer)
+- modules are querried from backend(s) on app load, and opt-in able for any given character
+- modules have permissions (based on backend) and user access can be added by the module owner via the app
+- App has interface support for editing modules (adding/removing content, updating content with versioning)
