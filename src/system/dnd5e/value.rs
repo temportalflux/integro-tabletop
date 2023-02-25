@@ -1,4 +1,4 @@
-use super::{character::Character, evaluator::BoxedEvaluator};
+use super::{data::character::Character, evaluator::BoxedEvaluator};
 use std::rc::Rc;
 
 #[derive(Clone)]

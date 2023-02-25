@@ -1,10 +1,11 @@
-use enumset::EnumSet;
-
 use crate::system::dnd5e::{
-	character::{AddProficiency, Upbringing},
-	mutator::{AddAbilityScore, AddSkill, Selector},
-	proficiency, Ability, Feature, Skill,
+	data::{
+		mutator::{AddAbilityScore, AddSkill},
+		proficiency, Ability, AddProficiency, Feature, Skill, Upbringing,
+	},
+	mutator::Selector,
 };
+use enumset::EnumSet;
 
 pub fn incognito() -> Upbringing {
 	Upbringing {

@@ -1,4 +1,4 @@
-use crate::system::dnd5e::{
+use crate::system::dnd5e::data::{
 	item::{
 		equipment::Equipment,
 		weapon::{self, Property, Weapon},

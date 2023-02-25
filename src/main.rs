@@ -27,13 +27,13 @@ impl<T> Compiled<T> {
 	}
 }
 
-fn create_character() -> system::dnd5e::character::Persistent {
+fn create_character() -> system::dnd5e::data::character::Persistent {
 	use enum_map::enum_map;
 	use std::path::PathBuf;
 	use system::dnd5e::{
-		character::{Description, Persistent},
 		content::*,
-		mutator, *,
+		data::{character::Persistent, mutator, Description, *},
+		mutator::Selector,
 	};
 	Persistent {
 		description: Description {
@@ -120,7 +120,7 @@ fn create_character() -> system::dnd5e::character::Persistent {
 					modifiers: vec![
 						mutator::AddMaxSpeed("Flying".into(), 40).into(),
 						mutator::AddSkill {
-							skill: mutator::Selector::Specific(Skill::Perception),
+							skill: Selector::Specific(Skill::Perception),
 							proficiency: proficiency::Level::Half,
 						}
 						.into(),
@@ -173,15 +173,17 @@ fn App() -> Html {
 
 #[derive(Clone, PartialEq, Properties)]
 struct CharacterSheetPageProps {
-	character: system::dnd5e::character::Persistent,
+	character: system::dnd5e::data::character::Persistent,
 }
 
 #[function_component]
 fn CharacterSheetPage(CharacterSheetPageProps { character }: &CharacterSheetPageProps) -> Html {
 	use components::*;
 	use data::ContextMut;
-	use system::dnd5e::character::Character;
-	use system::dnd5e::Ability;
+	use system::dnd5e::{
+		components::*,
+		data::{character::Character, Ability},
+	};
 
 	let character = ContextMut::<Character>::from(use_reducer({
 		let character = character.clone();

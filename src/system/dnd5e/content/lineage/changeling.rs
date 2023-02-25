@@ -1,9 +1,8 @@
-use crate::system::dnd5e::{
+use crate::system::dnd5e::data::{
 	action::ActivationKind,
-	character::Lineage,
 	mutator::{AddLifeExpectancy, AddMaxHeight, AddMaxSpeed},
 	roll::{Die, Roll},
-	Feature,
+	Feature, Lineage,
 };
 
 pub fn shapechanger() -> Lineage {

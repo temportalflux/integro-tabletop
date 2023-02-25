@@ -1,13 +1,4 @@
-use super::character::Character;
-
-mod class_level;
-pub use class_level::*;
-
-mod logic;
-pub use logic::*;
-
-mod proficient;
-pub use proficient::*;
+use super::data::character::Character;
 
 pub trait Evaluator {
 	type Item;

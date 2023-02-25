@@ -1,7 +1,5 @@
-use super::character::Persistent;
+use crate::system::dnd5e::data::character::Persistent;
 use dyn_clone::{clone_trait_object, DynClone};
-
-pub mod armor;
 
 pub trait Criteria: DynClone {
 	fn evaluate(&self, character: &Persistent) -> Result<(), String>;

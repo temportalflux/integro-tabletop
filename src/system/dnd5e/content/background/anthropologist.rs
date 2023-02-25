@@ -1,7 +1,6 @@
 use crate::system::dnd5e::{
-	character::{AddProficiency, Background},
-	mutator::{AddSkill, Selector},
-	proficiency, Feature, Skill,
+	data::{mutator::AddSkill, proficiency, AddProficiency, Background, Feature, Skill},
+	mutator::Selector,
 };
 
 pub fn anthropologist() -> Background {

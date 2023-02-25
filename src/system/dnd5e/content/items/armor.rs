@@ -1,12 +1,11 @@
-use crate::system::dnd5e::{
-	character::{ArmorClassFormula, BoundedAbility},
+use crate::system::dnd5e::data::{
 	item::{
 		armor::{self, Armor},
 		equipment::Equipment,
 		Item, ItemKind,
 	},
 	mutator::AddSkillModifier,
-	roll, Ability, Skill,
+	roll, Ability, ArmorClassFormula, BoundedAbility, Skill,
 };
 
 pub fn leather() -> Item {

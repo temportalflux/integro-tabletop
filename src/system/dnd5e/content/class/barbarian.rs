@@ -1,17 +1,21 @@
 use crate::system::dnd5e::{
-	action::{ActivationKind, AttackKind},
-	character::{AddProficiency, ArmorClassFormula, Class, Level, Subclass, WeaponProficiency},
-	condition::{self, Condition},
-	criteria::armor::HasArmorEquipped,
-	evaluator::ByLevel,
-	item::{
-		armor,
-		weapon::{self},
+	data::{
+		action::{ActivationKind, AttackKind},
+		condition::{self, Condition},
+		criteria::armor::HasArmorEquipped,
+		evaluator::ByLevel,
+		item::{
+			armor,
+			weapon::{self},
+		},
+		mutator::{self, AddArmorClassFormula, AddDefense, AddSavingThrow, AddSkill, BonusDamage},
+		proficiency,
+		roll::Die,
+		Ability, AddProficiency, ArmorClassFormula, Class, Feature, Level, LimitedUses, Rest,
+		Skill, Subclass, WeaponProficiency,
 	},
-	mutator::{self, AddArmorClassFormula, AddDefense, AddSavingThrow, AddSkill, BonusDamage},
-	proficiency,
-	roll::Die,
-	Ability, Feature, LimitedUses, Rest, Skill, Value,
+	mutator::Selector,
+	Value,
 };
 
 pub fn barbarian(levels: usize, subclass: Option<Subclass>) -> Class {
@@ -28,7 +32,7 @@ pub fn barbarian(levels: usize, subclass: Option<Subclass>) -> Class {
 			description: desc.into(),
 			mutators: vec![
 				BonusDamage {
-					amount: crate::system::dnd5e::Value::Evaluated(
+					amount: Value::Evaluated(
 						ByLevel {
 							class_name: Some("Barbarian".into()),
 							map: [(1, 2), (9, 3), (16, 4)].into(),
@@ -110,7 +114,7 @@ pub fn barbarian(levels: usize, subclass: Option<Subclass>) -> Class {
 				AddSavingThrow::Proficiency(Ability::Strength).into(),
 				AddSavingThrow::Proficiency(Ability::Constitution).into(),
 				AddSkill {
-					skill: mutator::Selector::AnyOf {
+					skill: Selector::AnyOf {
 						id: Some("skillA".into()),
 						options: vec![
 							Skill::AnimalHandling,
@@ -125,7 +129,7 @@ pub fn barbarian(levels: usize, subclass: Option<Subclass>) -> Class {
 				}
 				.into(),
 				AddSkill {
-					skill: mutator::Selector::AnyOf {
+					skill: Selector::AnyOf {
 						id: Some("skillB".into()),
 						options: vec![
 							Skill::AnimalHandling,
