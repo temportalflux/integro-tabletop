@@ -1,6 +1,6 @@
-use crate::system::dnd5e::{
-	data::{character::Character, ArmorClassFormula},
-	mutator,
+use crate::{
+	system::dnd5e::data::{character::Character, ArmorClassFormula},
+	utility::MutatorGroup,
 };
 
 #[derive(Clone, PartialEq)]
@@ -25,7 +25,9 @@ impl ToString for Kind {
 	}
 }
 
-impl mutator::Container for Armor {
+impl MutatorGroup for Armor {
+	type Target = Character;
+
 	fn apply_mutators<'c>(&self, stats: &mut Character) {
 		stats.armor_class_mut().push_formula(self.formula.clone());
 	}

@@ -2,10 +2,8 @@ use crate::{
 	components::{Tag, Tags},
 	data::ContextMut,
 	path_map::PathMap,
-	system::dnd5e::{
-		data::{character::Character, BoxedFeature},
-		mutator::Container,
-	},
+	system::dnd5e::data::{character::Character, BoxedFeature},
+	utility::{Evaluator, MutatorGroup},
 };
 use std::path::{Path, PathBuf};
 use wasm_bindgen::JsCast;

@@ -1,11 +1,13 @@
-use crate::system::dnd5e::{
-	data::{character::Character, roll::Roll},
-	mutator::Mutator,
+use crate::{
+	system::dnd5e::data::{character::Character, roll::Roll},
+	utility::Mutator,
 };
 
 #[derive(Clone)]
 pub struct AddLifeExpectancy(pub i32);
 impl Mutator for AddLifeExpectancy {
+	type Target = Character;
+
 	fn node_id(&self) -> &'static str {
 		"add_life_expectancy"
 	}
@@ -22,6 +24,8 @@ pub enum AddMaxHeight {
 }
 
 impl Mutator for AddMaxHeight {
+	type Target = Character;
+
 	fn node_id(&self) -> &'static str {
 		"add_max_height"
 	}

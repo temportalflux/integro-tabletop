@@ -1,12 +1,10 @@
 use crate::{
 	path_map::PathMap,
-	system::dnd5e::{
-		data::{
-			character::Character, condition::BoxedCondition, item, Ability, Background,
-			BoxedFeature, Class, Description, Lineage, Score, Upbringing,
-		},
-		mutator,
+	system::dnd5e::data::{
+		character::Character, condition::BoxedCondition, item, Ability, Background, BoxedFeature,
+		Class, Description, Lineage, Score, Upbringing,
 	},
+	utility::MutatorGroup,
 };
 use enum_map::EnumMap;
 
@@ -26,7 +24,9 @@ pub struct Persistent {
 	pub conditions: Vec<BoxedCondition>,
 	pub hit_points: (u32, u32),
 }
-impl mutator::Container for Persistent {
+impl MutatorGroup for Persistent {
+	type Target = Character;
+
 	fn apply_mutators<'c>(&self, stats: &mut Character) {
 		for lineage in &self.lineages {
 			if let Some(lineage) = lineage {

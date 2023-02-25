@@ -1,13 +1,11 @@
 use crate::{
 	components::*,
 	data::ContextMut,
-	system::dnd5e::{
-		data::{
-			action::{AttackCheckKind, AttackKindValue},
-			character::Character,
-		},
-		evaluator::Evaluator,
+	system::dnd5e::data::{
+		action::{AttackCheckKind, AttackKindValue},
+		character::Character,
 	},
+	utility::Evaluator,
 };
 use enumset::{EnumSet, EnumSetType};
 use yew::prelude::*;

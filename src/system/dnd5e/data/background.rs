@@ -1,7 +1,7 @@
 use super::character::Character;
-use crate::system::dnd5e::{
-	data::BoxedFeature,
-	mutator::{self, BoxedMutator},
+use crate::{
+	system::dnd5e::{data::BoxedFeature, BoxedMutator},
+	utility::MutatorGroup,
 };
 
 #[derive(Clone, PartialEq)]
@@ -12,7 +12,9 @@ pub struct Background {
 	pub features: Vec<BoxedFeature>,
 }
 
-impl mutator::Container for Background {
+impl MutatorGroup for Background {
+	type Target = Character;
+
 	fn id(&self) -> Option<String> {
 		use convert_case::Casing;
 		Some(self.name.to_case(convert_case::Case::Pascal))

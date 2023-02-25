@@ -1,6 +1,9 @@
-use crate::system::dnd5e::{
-	data::{character::Character, BoxedFeature},
-	mutator::{self, BoxedMutator},
+use crate::{
+	system::dnd5e::{
+		data::{character::Character, BoxedFeature},
+		BoxedMutator,
+	},
+	utility::MutatorGroup,
 };
 
 #[derive(Default, Clone, PartialEq)]
@@ -11,7 +14,9 @@ pub struct Upbringing {
 	pub features: Vec<BoxedFeature>,
 }
 
-impl mutator::Container for Upbringing {
+impl MutatorGroup for Upbringing {
+	type Target = Character;
+
 	fn id(&self) -> Option<String> {
 		use convert_case::Casing;
 		Some(self.name.to_case(convert_case::Case::Pascal))

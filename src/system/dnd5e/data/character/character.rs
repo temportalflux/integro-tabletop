@@ -1,7 +1,6 @@
 use crate::{
 	path_map::PathMap,
 	system::dnd5e::{
-		criteria::BoxedCriteria,
 		data::{
 			action::{Action, ActionSource, AttackCheckKind},
 			character::{
@@ -11,8 +10,9 @@ use crate::{
 			item::{self, weapon, ItemKind},
 			proficiency, Ability, ArmorClass, BoxedFeature, OtherProficiencies, Score,
 		},
-		mutator::{self, BoxedMutator},
+		BoxedCriteria, BoxedMutator,
 	},
+	utility::{MutatorGroup, Selector},
 };
 use enum_map::Enum;
 use enumset::EnumSetType;
@@ -72,7 +72,7 @@ impl Character {
 		}
 	}
 
-	pub fn apply_from(&mut self, container: &impl mutator::Container) {
+	pub fn apply_from(&mut self, container: &impl MutatorGroup<Target = Self>) {
 		let scope = self
 			.source_path
 			.push(container.id(), container.display_id());
@@ -80,7 +80,7 @@ impl Character {
 		self.source_path.pop(scope);
 	}
 
-	pub fn apply(&mut self, mutator: &mutator::BoxedMutator) {
+	pub fn apply(&mut self, mutator: &BoxedMutator) {
 		let scope = self.source_path.push(mutator.id(), true);
 		self.insert_mutator(MutatorEntry {
 			node_id: mutator.node_id(),
@@ -122,11 +122,11 @@ impl Character {
 		self.character.selected_values.get(&path.to_data())
 	}
 
-	pub fn resolve_selector<T>(&mut self, selector: &mutator::Selector<T>) -> Option<T>
+	pub fn resolve_selector<T>(&mut self, selector: &Selector<T>) -> Option<T>
 	where
 		T: Clone + 'static + FromStr,
 	{
-		if let mutator::Selector::Specific(value) = selector {
+		if let Selector::Specific(value) = selector {
 			return Some(value.clone());
 		}
 		let scope = self.source_path.push(selector.id(), false);

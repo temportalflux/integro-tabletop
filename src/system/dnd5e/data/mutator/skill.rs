@@ -1,6 +1,6 @@
-use crate::system::dnd5e::{
-	data::{character::Character, proficiency, roll, Skill},
-	mutator::{Mutator, Selector},
+use crate::{
+	system::dnd5e::data::{character::Character, proficiency, roll, Skill},
+	utility::{Mutator, Selector},
 };
 
 #[derive(Clone)]
@@ -10,6 +10,8 @@ pub struct AddSkill {
 }
 
 impl Mutator for AddSkill {
+	type Target = Character;
+
 	fn node_id(&self) -> &'static str {
 		"add_skill"
 	}
@@ -35,6 +37,8 @@ pub struct AddSkillModifier {
 	pub criteria: Option<String>,
 }
 impl Mutator for AddSkillModifier {
+	type Target = Character;
+
 	fn node_id(&self) -> &'static str {
 		"add_skill_modifier"
 	}

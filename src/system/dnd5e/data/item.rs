@@ -1,5 +1,5 @@
 use super::mutator::AddAction;
-use crate::system::dnd5e::{data::character::Character, mutator};
+use crate::{system::dnd5e::data::character::Character, utility::MutatorGroup};
 use std::collections::HashMap;
 use uuid::Uuid;
 
@@ -60,7 +60,9 @@ pub struct EquipableEntry {
 	pub item: Item,
 	pub is_equipped: bool,
 }
-impl mutator::Container for EquipableEntry {
+impl MutatorGroup for EquipableEntry {
+	type Target = Character;
+
 	fn id(&self) -> Option<String> {
 		Some(self.item.name.clone())
 	}
@@ -144,7 +146,9 @@ impl Inventory {
 	}
 }
 
-impl mutator::Container for Inventory {
+impl MutatorGroup for Inventory {
+	type Target = Character;
+
 	fn id(&self) -> Option<String> {
 		Some("Inventory".into())
 	}

@@ -1,4 +1,4 @@
-use crate::system::dnd5e::{data::character::Character, mutator::Mutator};
+use crate::{system::dnd5e::data::character::Character, utility::Mutator};
 use enum_map::Enum;
 
 #[derive(Clone, Copy, PartialEq, Enum, Debug)]
@@ -11,6 +11,8 @@ pub enum Defense {
 #[derive(Clone)]
 pub struct AddDefense(pub Defense, pub String);
 impl Mutator for AddDefense {
+	type Target = Character;
+
 	fn node_id(&self) -> &'static str {
 		"add_defense"
 	}

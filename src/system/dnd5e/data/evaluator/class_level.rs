@@ -1,4 +1,4 @@
-use crate::system::dnd5e::{data::character::Character, evaluator::Evaluator};
+use crate::{system::dnd5e::data::character::Character, utility::Evaluator};
 use std::collections::BTreeMap;
 
 #[derive(Clone, PartialEq)]
@@ -20,9 +20,10 @@ impl<T> Evaluator for ByLevel<T>
 where
 	T: Clone + Default,
 {
+	type Context = Character;
 	type Item = T;
 
-	fn evaluate(&self, state: &Character) -> Self::Item {
+	fn evaluate(&self, state: &Self::Context) -> Self::Item {
 		let class_name = self.class_name.as_ref().map(String::as_str);
 		let character_level = state.level(class_name);
 		for (level, value) in self.map.iter().rev() {

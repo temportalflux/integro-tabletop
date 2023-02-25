@@ -1,9 +1,11 @@
+use crate::utility::RcEvaluator;
+use self::data::character::{Character, Persistent};
+
 pub mod components;
 pub mod content;
 pub mod data;
 
-pub mod criteria;
-pub mod evaluator;
-pub mod mutator;
-mod value;
-pub use value::*;
+pub type BoxedCriteria = RcEvaluator<Persistent, Result<(), String>>;
+pub type BoxedEvaluator<V> = RcEvaluator<Character, V>;
+pub type BoxedMutator = crate::utility::RcMutator<Character>;
+pub type Value<T> = crate::utility::Value<Character, T>;

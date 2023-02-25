@@ -1,9 +1,9 @@
-use crate::system::dnd5e::{
-	data::{
+use crate::{
+	system::dnd5e::data::{
 		character::Character,
 		item::{armor, weapon},
 	},
-	mutator::{Mutator, Selector},
+	utility::{Mutator, Selector},
 };
 use std::{
 	collections::{BTreeMap, BTreeSet},
@@ -42,6 +42,8 @@ pub enum AddProficiency {
 }
 
 impl Mutator for AddProficiency {
+	type Target = Character;
+
 	fn node_id(&self) -> &'static str {
 		"add_proficiency"
 	}

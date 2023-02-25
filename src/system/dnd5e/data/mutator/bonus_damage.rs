@@ -1,12 +1,16 @@
-use crate::system::dnd5e::{
-	data::{action::Action, character::Character, item::weapon},
-	mutator::Mutator,
-	Value,
+use crate::{
+	system::dnd5e::{
+		data::{action::Action, character::Character, item::weapon},
+		Value,
+	},
+	utility::{Evaluator, Mutator},
 };
 
 #[derive(Clone, PartialEq)]
 pub struct AddAction(pub Action);
 impl Mutator for AddAction {
+	type Target = Character;
+
 	fn node_id(&self) -> &'static str {
 		"add_action"
 	}
@@ -22,6 +26,8 @@ pub struct BonusDamage {
 	pub restriction: Option<weapon::Restriction>,
 }
 impl Mutator for BonusDamage {
+	type Target = Character;
+
 	fn node_id(&self) -> &'static str {
 		"bonus_damage"
 	}

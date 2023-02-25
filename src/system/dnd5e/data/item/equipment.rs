@@ -1,8 +1,7 @@
 use super::{armor::Armor, weapon::Weapon};
-use crate::system::dnd5e::{
-	criteria::BoxedCriteria,
-	data::character::Character,
-	mutator::{self, BoxedMutator},
+use crate::{
+	system::dnd5e::{data::character::Character, BoxedCriteria, BoxedMutator},
+	utility::MutatorGroup,
 };
 
 #[derive(Clone, PartialEq, Default)]
@@ -21,7 +20,9 @@ pub struct Equipment {
 	pub attunement: Option<Attunement>,
 }
 
-impl mutator::Container for Equipment {
+impl MutatorGroup for Equipment {
+	type Target = Character;
+
 	fn apply_mutators<'c>(&self, stats: &mut Character) {
 		for modifier in &self.modifiers {
 			stats.apply(modifier);

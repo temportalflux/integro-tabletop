@@ -1,6 +1,6 @@
-use crate::system::dnd5e::{
-	data::{character::Character, Ability},
-	mutator::{Mutator, Selector},
+use crate::{
+	system::dnd5e::data::{character::Character, Ability},
+	utility::{Mutator, Selector},
 };
 
 #[derive(Clone)]
@@ -10,6 +10,8 @@ pub struct AddAbilityScore {
 }
 
 impl Mutator for AddAbilityScore {
+	type Target = Character;
+
 	fn node_id(&self) -> &'static str {
 		"add_ability_score"
 	}
@@ -29,13 +31,11 @@ mod test {
 	use super::AddAbilityScore;
 	use crate::{
 		path_map::PathMap,
-		system::dnd5e::{
-			data::{
-				character::{Character, Persistent},
-				Ability, Feature, Score,
-			},
-			mutator::Selector,
+		system::dnd5e::data::{
+			character::{Character, Persistent},
+			Ability, Feature, Score,
 		},
+		utility::Selector,
 	};
 
 	#[test]

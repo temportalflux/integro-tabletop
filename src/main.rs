@@ -1,13 +1,12 @@
 use yew::prelude::*;
 
-use crate::path_map::PathMap;
-
 pub mod bootstrap;
 pub mod components;
 pub mod data;
 pub mod path_map;
 pub mod system;
 pub mod theme;
+pub mod utility;
 
 #[derive(Clone, PartialEq)]
 pub struct Compiled<T> {
@@ -29,12 +28,13 @@ impl<T> Compiled<T> {
 
 fn create_character() -> system::dnd5e::data::character::Persistent {
 	use enum_map::enum_map;
+	use path_map::PathMap;
 	use std::path::PathBuf;
 	use system::dnd5e::{
 		content::*,
 		data::{character::Persistent, mutator, Description, *},
-		mutator::Selector,
 	};
+	use utility::Selector;
 	Persistent {
 		description: Description {
 			name: "Fauxpaul".into(),

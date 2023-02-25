@@ -1,9 +1,6 @@
-use crate::system::dnd5e::{
-	criteria::Criteria,
-	data::{
-		character::Persistent,
-		item::{armor, EquipableEntry, ItemKind},
-	},
+use crate::system::dnd5e::data::{
+	character::Persistent,
+	item::{armor, EquipableEntry, ItemKind},
 };
 use std::collections::HashSet;
 
@@ -40,8 +37,11 @@ impl HasArmorEquipped {
 		})
 	}
 }
-impl Criteria for HasArmorEquipped {
-	fn evaluate(&self, character: &Persistent) -> Result<(), String> {
+impl crate::utility::Evaluator for HasArmorEquipped {
+	type Context = Persistent;
+	type Item = Result<(), String>;
+
+	fn evaluate(&self, character: &Self::Context) -> Result<(), String> {
 		for EquipableEntry {
 			id: _,
 			item,

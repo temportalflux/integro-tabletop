@@ -1,24 +1,24 @@
-use super::{data::character::Character, evaluator::BoxedEvaluator};
+use super::{Evaluator, RcEvaluator};
 use std::rc::Rc;
 
 #[derive(Clone)]
-pub enum Value<T> {
-	Fixed(T),
-	Evaluated(BoxedEvaluator<T>),
+pub enum Value<C, V> {
+	Fixed(V),
+	Evaluated(RcEvaluator<C, V>),
 }
 
-impl<T> Default for Value<T>
+impl<C, V> Default for Value<C, V>
 where
-	T: Default,
+	V: Default,
 {
 	fn default() -> Self {
-		Self::Fixed(T::default())
+		Self::Fixed(V::default())
 	}
 }
 
-impl<T> PartialEq for Value<T>
+impl<C, V> PartialEq for Value<C, V>
 where
-	T: PartialEq,
+	V: PartialEq,
 {
 	fn eq(&self, other: &Self) -> bool {
 		match (self, other) {
@@ -29,9 +29,9 @@ where
 	}
 }
 
-impl<T> std::fmt::Debug for Value<T>
+impl<C, V> std::fmt::Debug for Value<C, V>
 where
-	T: std::fmt::Debug,
+	V: std::fmt::Debug,
 {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
@@ -41,11 +41,14 @@ where
 	}
 }
 
-impl<T> Value<T> {
-	pub fn evaluate(&self, state: &Character) -> T
-	where
-		T: Clone,
-	{
+impl<C, V> Evaluator for Value<C, V>
+where
+	V: Clone,
+{
+	type Context = C;
+	type Item = V;
+
+	fn evaluate(&self, state: &Self::Context) -> Self::Item {
 		match self {
 			Self::Fixed(value) => value.clone(),
 			Self::Evaluated(evaluator) => evaluator.evaluate(state),

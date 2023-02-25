@@ -1,21 +1,25 @@
-use crate::system::dnd5e::{
-	data::{
-		action::{ActivationKind, AttackKind},
-		condition::{self, Condition},
-		criteria::armor::HasArmorEquipped,
-		evaluator::ByLevel,
-		item::{
-			armor,
-			weapon::{self},
+use crate::{
+	system::dnd5e::{
+		data::{
+			action::{ActivationKind, AttackKind},
+			condition::{self, Condition},
+			criteria::armor::HasArmorEquipped,
+			evaluator::ByLevel,
+			item::{
+				armor,
+				weapon::{self},
+			},
+			mutator::{
+				self, AddArmorClassFormula, AddDefense, AddSavingThrow, AddSkill, BonusDamage,
+			},
+			proficiency,
+			roll::Die,
+			Ability, AddProficiency, ArmorClassFormula, Class, Feature, Level, LimitedUses, Rest,
+			Skill, Subclass, WeaponProficiency,
 		},
-		mutator::{self, AddArmorClassFormula, AddDefense, AddSavingThrow, AddSkill, BonusDamage},
-		proficiency,
-		roll::Die,
-		Ability, AddProficiency, ArmorClassFormula, Class, Feature, Level, LimitedUses, Rest,
-		Skill, Subclass, WeaponProficiency,
+		Value,
 	},
-	mutator::Selector,
-	Value,
+	utility::Selector,
 };
 
 pub fn barbarian(levels: usize, subclass: Option<Subclass>) -> Class {

@@ -1,9 +1,9 @@
-use crate::system::dnd5e::{
-	data::{
+use crate::{
+	system::dnd5e::data::{
 		mutator::{AddAbilityScore, AddSkill},
 		proficiency, Ability, AddProficiency, Feature, Skill, Upbringing,
 	},
-	mutator::Selector,
+	utility::Selector,
 };
 use enumset::EnumSet;
 

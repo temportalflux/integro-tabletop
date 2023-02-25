@@ -1,11 +1,13 @@
-use crate::system::dnd5e::{
-	data::{character::Character, ArmorClassFormula},
-	mutator::Mutator,
+use crate::{
+	system::dnd5e::data::{character::Character, ArmorClassFormula},
+	utility::Mutator,
 };
 
 #[derive(Clone, PartialEq)]
 pub struct AddArmorClassFormula(pub ArmorClassFormula);
 impl Mutator for AddArmorClassFormula {
+	type Target = Character;
+
 	fn node_id(&self) -> &'static str {
 		"add_armor_class_formula"
 	}

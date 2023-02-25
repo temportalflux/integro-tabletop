@@ -1,9 +1,11 @@
-use crate::system::dnd5e::{data::character::Character, mutator::Mutator};
+use crate::{system::dnd5e::data::character::Character, utility::Mutator};
 
 #[derive(Clone)]
 pub struct AddMaxSpeed(pub String, pub i32);
 
 impl Mutator for AddMaxSpeed {
+	type Target = Character;
+
 	fn node_id(&self) -> &'static str {
 		"add_max_speed"
 	}
@@ -18,6 +20,8 @@ impl Mutator for AddMaxSpeed {
 pub struct AddMaxSense(pub String, pub i32);
 
 impl Mutator for AddMaxSense {
+	type Target = Character;
+
 	fn node_id(&self) -> &'static str {
 		"add_max_sense"
 	}

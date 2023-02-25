@@ -1,7 +1,9 @@
-use crate::system::dnd5e::{
-	data::{character::Character, roll::Roll, Ability, BoxedFeature},
-	evaluator::Evaluator,
-	Value,
+use crate::{
+	system::dnd5e::{
+		data::{character::Character, roll::Roll, Ability, BoxedFeature},
+		Value,
+	},
+	utility::Evaluator,
 };
 use std::path::PathBuf;
 use uuid::Uuid;
@@ -90,14 +92,10 @@ pub enum ActivationKind {
 }
 
 impl Evaluator for AttackCheckKind {
+	type Context = Character;
 	type Item = i32;
 
-	fn evaluate(&self, state: &Character) -> Self::Item {
-		self.value(state)
-	}
-}
-impl AttackCheckKind {
-	pub fn value(&self, state: &Character) -> i32 {
+	fn evaluate(&self, state: &Self::Context) -> Self::Item {
 		match self {
 			Self::AttackRoll {
 				ability,

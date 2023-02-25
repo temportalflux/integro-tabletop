@@ -1,4 +1,4 @@
-use super::super::{criteria::BoxedCriteria, mutator::BoxedMutator};
+use super::super::{BoxedCriteria, BoxedMutator};
 use dyn_clone::{clone_trait_object, DynClone};
 
 pub trait Condition: DynClone {

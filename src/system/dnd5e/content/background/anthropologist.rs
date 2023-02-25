@@ -1,6 +1,8 @@
-use crate::system::dnd5e::{
-	data::{mutator::AddSkill, proficiency, AddProficiency, Background, Feature, Skill},
-	mutator::Selector,
+use crate::{
+	system::dnd5e::data::{
+		mutator::AddSkill, proficiency, AddProficiency, Background, Feature, Skill,
+	},
+	utility::Selector,
 };
 
 pub fn anthropologist() -> Background {

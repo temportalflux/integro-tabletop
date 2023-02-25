@@ -1,8 +1,7 @@
 use super::{action::ActivationKind, character::Character, condition::BoxedCondition};
-use crate::system::dnd5e::{
-	criteria::BoxedCriteria,
-	mutator::{self, BoxedMutator},
-	Value,
+use crate::{
+	system::dnd5e::{BoxedCriteria, BoxedMutator, Value},
+	utility::MutatorGroup,
 };
 use std::{collections::HashMap, rc::Rc};
 
@@ -27,7 +26,9 @@ impl Feature {
 	}
 }
 
-impl mutator::Container for Feature {
+impl MutatorGroup for Feature {
+	type Target = Character;
+
 	fn id(&self) -> Option<String> {
 		use convert_case::Casing;
 		Some(self.name.to_case(convert_case::Case::Pascal))

@@ -3,7 +3,10 @@ use super::{
 	roll::Die,
 	BoxedFeature,
 };
-use crate::system::dnd5e::mutator::{self, BoxedMutator, Selector};
+use crate::{
+	system::dnd5e::BoxedMutator,
+	utility::{MutatorGroup, Selector},
+};
 
 #[derive(Clone, PartialEq)]
 pub struct Class {
@@ -20,7 +23,9 @@ impl Class {
 	}
 }
 
-impl mutator::Container for Class {
+impl MutatorGroup for Class {
+	type Target = Character;
+
 	fn id(&self) -> Option<String> {
 		use convert_case::Casing;
 		Some(self.name.to_case(convert_case::Case::Pascal))
@@ -48,7 +53,9 @@ pub struct Level {
 
 struct LevelWithIndex<'a>(usize, &'a Level);
 
-impl<'a> mutator::Container for LevelWithIndex<'a> {
+impl<'a> MutatorGroup for LevelWithIndex<'a> {
+	type Target = Character;
+
 	fn display_id(&self) -> bool {
 		false
 	}
@@ -77,7 +84,9 @@ pub struct Subclass {
 	pub name: String,
 	pub levels: Vec<Level>,
 }
-impl mutator::Container for Subclass {
+impl MutatorGroup for Subclass {
+	type Target = Character;
+
 	fn id(&self) -> Option<String> {
 		use convert_case::Casing;
 		Some(self.name.to_case(convert_case::Case::Pascal))

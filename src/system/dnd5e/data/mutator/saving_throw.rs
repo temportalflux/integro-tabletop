@@ -1,6 +1,6 @@
-use crate::system::dnd5e::{
-	data::{character::Character, Ability},
-	mutator::Mutator,
+use crate::{
+	system::dnd5e::data::{character::Character, Ability},
+	utility::Mutator,
 };
 
 #[derive(Clone)]
@@ -10,6 +10,8 @@ pub enum AddSavingThrow {
 }
 
 impl Mutator for AddSavingThrow {
+	type Target = Character;
+
 	fn node_id(&self) -> &'static str {
 		"add_saving_throw"
 	}
