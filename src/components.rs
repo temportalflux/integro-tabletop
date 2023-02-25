@@ -6,6 +6,7 @@ pub use annotated_number::*;
 mod hit_points;
 pub use hit_points::*;
 
+pub mod modal;
 mod nav;
 pub use nav::*;
 

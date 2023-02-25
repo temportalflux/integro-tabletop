@@ -1,5 +1,6 @@
 use crate::{
 	bootstrap::components::Tooltip,
+	components::modal,
 	data::ContextMut,
 	system::dnd5e::character::{AttributedValueMap, Character},
 };
@@ -8,9 +9,19 @@ use yew::prelude::*;
 #[function_component]
 pub fn Proficiencies() -> Html {
 	let state = use_context::<ContextMut<Character>>().unwrap();
+	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 	let proficiencies = state.other_proficiencies();
+	let onclick = modal_dispatcher.callback(|_| {
+		modal::Action::Open(modal::Props {
+			content: html! {
+				<div class="modal-body">
+					{"TODO: Proficiencies modal"}
+				</div>
+			},
+		})
+	});
 	html! {
-		<div id="proficiencies-container" class="card" style="max-width: 200px; margin: 0 auto; border-color: var(--theme-frame-color);">
+		<div id="proficiencies-container" class="card" style="max-width: 200px; margin: 0 auto; border-color: var(--theme-frame-color);" {onclick}>
 			<div class="card-body" style="padding: 5px;">
 				<h5 class="card-title text-center" style="font-size: 0.8rem;">{"Proficiencies"}</h5>
 				{make_proficiencies_section("Languages", &proficiencies.languages)}

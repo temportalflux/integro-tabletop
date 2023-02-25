@@ -57,16 +57,6 @@ Modals for all elements with tooltips & more.
 - Each Attack
 - Each Feature
 
-## Unarmed Strike
-
-Add Unarmed Strike as a default attack
-- atk roll: d20 + strength mod + prof bonus
-- dmg: 1 + strength mod
-- bludgeoning
-- melee
-- reach: 5ft
-- type "Unarmed Strike"
-
 ## Attacks per Action
 Track Attacks per Action & display in attacks pane
 
@@ -80,7 +70,7 @@ Track Attacks per Action & display in attacks pane
 - Add 1 subclass for each class in content
 
 ## Item Containers
-- Split "is_equipped" out of `Item` so that only items in the characters main inventory can be equipped
+- Only items in the characters main inventory can be equipped
 - Weight Capacity (optional)
 - Entries (list of items)
 
