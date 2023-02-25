@@ -6,7 +6,7 @@ pub struct AnnotatedNumberProps {
 	#[prop_or_default]
 	pub show_sign: bool,
 	#[prop_or_default]
-	pub suffix: Option<String>,
+	pub suffix: Option<AttrValue>,
 }
 
 #[function_component]
@@ -47,8 +47,8 @@ pub fn AnnotatedNumber(
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct AnnotatedNumberCardProps {
-	pub header: String,
-	pub footer: String,
+	pub header: AttrValue,
+	pub footer: AttrValue,
 	pub children: ChildrenWithProps<AnnotatedNumber>,
 }
 

@@ -5,7 +5,7 @@ use yew::prelude::*;
 
 #[derive(Clone, PartialEq, Properties)]
 struct SingleValueProps {
-	title: String,
+	title: AttrValue,
 	amount: i32,
 }
 

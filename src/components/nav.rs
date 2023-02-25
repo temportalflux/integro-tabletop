@@ -79,7 +79,7 @@ pub struct NavProps {
 	pub width: Option<NavWidth>,
 	/// The id in `TabContent` of the default tab.
 	#[prop_or_default]
-	pub default_tab_id: String,
+	pub default_tab_id: AttrValue,
 	#[prop_or_default]
 	pub children: ChildrenWithProps<TabContent>,
 }
@@ -97,7 +97,7 @@ pub fn Nav(
 		children,
 	}: &NavProps,
 ) -> Html {
-	let default_tab_id = default_tab_id.clone();
+	let default_tab_id = default_tab_id.as_str().to_owned();
 	let selected_tab = use_state(move || default_tab_id);
 
 	let nav_classes = {
@@ -120,7 +120,7 @@ pub fn Nav(
 	let mut tab_children = Vec::with_capacity(children.len());
 	for mut child in children.iter() {
 		let mut props = Rc::make_mut(&mut child.props);
-		props.active = *selected_tab == props.id;
+		props.active = *selected_tab == props.id.as_str();
 
 		let mut classes = classes!("nav-link");
 		if props.active {
@@ -129,7 +129,7 @@ pub fn Nav(
 		let onclick = {
 			let id = props.id.clone();
 			let selected_tab = selected_tab.clone();
-			Callback::from(move |_| selected_tab.set(id.clone()))
+			Callback::from(move |_| selected_tab.set(id.as_str().to_owned()))
 		};
 		nav_items.push(html! {
 			<li class="nav-item" role="presentation">
@@ -153,7 +153,7 @@ pub fn Nav(
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct TabContentProps {
-	pub id: String,
+	pub id: AttrValue,
 	pub title: VNode,
 	#[prop_or_default]
 	pub children: Children,

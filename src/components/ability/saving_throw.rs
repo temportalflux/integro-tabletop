@@ -8,7 +8,7 @@ use yew::prelude::*;
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct SavingThrowProps {
-	pub title: String,
+	pub title: AttrValue,
 	pub value: i32,
 	pub proficient: bool,
 }

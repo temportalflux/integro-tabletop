@@ -13,11 +13,15 @@ pub fn Proficiencies() -> Html {
 	let proficiencies = state.other_proficiencies();
 	let onclick = modal_dispatcher.callback(|_| {
 		modal::Action::Open(modal::Props {
-			content: html! {
+			content: html! {<>
+				<div class="modal-header">
+					<h1 class="modal-title fs-5">{"General Proficiencies"}</h1>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
+				</div>
 				<div class="modal-body">
 					{"TODO: Proficiencies modal"}
 				</div>
-			},
+			</>},
 		})
 	});
 	html! {
