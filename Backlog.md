@@ -22,9 +22,6 @@ Modals for all elements with tooltips & more.
 - proficiency source
 - modifier + source (e.g. disadv on stealth with heavy armor)
 
-### Prof Bons
-- description of use
-
 ### Armor Class
 - description
 - formula list (and evaluations) + sources

@@ -67,3 +67,58 @@ impl std::ops::Mul<i32> for Level {
 		modified.floor() as i32
 	}
 }
+
+pub fn level_map() -> &'static [(usize, Option<usize>, i32)] {
+	static MAP: [(usize, Option<usize>, i32); 5] = [
+		(1, Some(4), 2),
+		(5, Some(8), 3),
+		(9, Some(12), 4),
+		(13, Some(16), 5),
+		(17, None, 6),
+	];
+	&MAP
+}
+
+pub fn proficiency_bonus(level: usize) -> i32 {
+	level_map()
+		.iter()
+		.filter(|(min, _, _)| level >= *min)
+		.filter(|(_, max, _)| match max {
+			Some(max) => level <= *max,
+			None => true,
+		})
+		.map(|(_, _, bonus)| *bonus)
+		.next()
+		.unwrap_or_default()
+}
+
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	#[test]
+	fn prof_map() {
+		assert_eq!(proficiency_bonus(0), 0);
+		assert_eq!(proficiency_bonus(1), 2);
+		assert_eq!(proficiency_bonus(2), 2);
+		assert_eq!(proficiency_bonus(3), 2);
+		assert_eq!(proficiency_bonus(4), 2);
+		assert_eq!(proficiency_bonus(5), 3);
+		assert_eq!(proficiency_bonus(6), 3);
+		assert_eq!(proficiency_bonus(7), 3);
+		assert_eq!(proficiency_bonus(8), 3);
+		assert_eq!(proficiency_bonus(9), 4);
+		assert_eq!(proficiency_bonus(10), 4);
+		assert_eq!(proficiency_bonus(11), 4);
+		assert_eq!(proficiency_bonus(12), 4);
+		assert_eq!(proficiency_bonus(13), 5);
+		assert_eq!(proficiency_bonus(14), 5);
+		assert_eq!(proficiency_bonus(15), 5);
+		assert_eq!(proficiency_bonus(16), 5);
+		assert_eq!(proficiency_bonus(17), 6);
+		assert_eq!(proficiency_bonus(18), 6);
+		assert_eq!(proficiency_bonus(19), 6);
+		assert_eq!(proficiency_bonus(20), 6);
+		assert_eq!(proficiency_bonus(21), 6);
+	}
+}

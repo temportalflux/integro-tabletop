@@ -1,5 +1,15 @@
+use crate::{
+	components::{modal, AnnotatedNumber, AnnotatedNumberCard, Nav, NavDisplay, TabContent},
+	data::ContextMut,
+	system::dnd5e::{
+		components::{ability, panel, HitPoints, ProfBonus, Proficiencies, SpeedAndSenses},
+		data::{
+			character::{Character, Persistent},
+			Ability,
+		},
+	},
+};
 use yew::prelude::*;
-use crate::{system::dnd5e::{data::{character::{Persistent, Character}, Ability}, components::{ability, Proficiencies, SpeedAndSenses, HitPoints, panel}}, data::ContextMut, components::{modal, AnnotatedNumberCard, AnnotatedNumber, TabContent, Nav, NavDisplay}};
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct CharacterSheetPageProps {
@@ -43,9 +53,7 @@ pub fn CharacterSheetPage(CharacterSheetPageProps { character }: &CharacterSheet
 
 							<div class="row m-0 justify-content-center">
 								<div class="col p-0">
-									<AnnotatedNumberCard header={"Proficiency"} footer={"Bonus"}>
-										<AnnotatedNumber value={character.proficiency_bonus()} show_sign={true} />
-									</AnnotatedNumberCard>
+									<ProfBonus />
 								</div>
 								<div class="col p-0">
 									<AnnotatedNumberCard header={"Initiative"} footer={"Bonus"}>

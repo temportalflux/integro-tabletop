@@ -50,6 +50,8 @@ pub struct AnnotatedNumberCardProps {
 	pub header: AttrValue,
 	pub footer: AttrValue,
 	pub children: ChildrenWithProps<AnnotatedNumber>,
+	#[prop_or_default]
+	pub on_click: Option<Callback<()>>,
 }
 
 #[function_component]
@@ -58,10 +60,11 @@ pub fn AnnotatedNumberCard(
 		header,
 		footer,
 		children,
+		on_click,
 	}: &AnnotatedNumberCardProps,
 ) -> Html {
 	html! {
-		<div class="card m-2">
+		<div class="card m-2" onclick={on_click.as_ref().map(|callback| callback.reform(|_| ()))}>
 			<div class="card-body text-center" style="padding: 5px 5px;">
 				<h6 class="card-title" style="font-size: 0.8rem;">{header.clone()}</h6>
 				<div style="font-size: 26px; font-weight: 500; margin: -8px 0;">

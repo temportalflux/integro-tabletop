@@ -247,14 +247,7 @@ impl Character {
 	}
 
 	pub fn proficiency_bonus(&self) -> i32 {
-		match self.character.level(None) {
-			1..=4 => 2,
-			5..=8 => 3,
-			9..=12 => 4,
-			13..=16 => 5,
-			17.. => 6,
-			_ => 0,
-		}
+		proficiency::proficiency_bonus(self.character.level(None))
 	}
 
 	pub fn initiative_bonus(&self) -> i32 {

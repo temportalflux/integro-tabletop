@@ -5,6 +5,9 @@ pub use hit_points::*;
 
 pub mod panel;
 
+mod prof_bonus;
+pub use prof_bonus::*;
+
 mod proficiencies;
 pub use proficiencies::*;
 

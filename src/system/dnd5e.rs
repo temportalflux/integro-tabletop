@@ -1,5 +1,5 @@
-use crate::utility::RcEvaluator;
 use self::data::character::{Character, Persistent};
+use crate::utility::RcEvaluator;
 
 pub mod components;
 pub mod content;
