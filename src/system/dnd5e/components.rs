@@ -1,5 +1,8 @@
 pub mod ability;
 
+mod armor_class;
+pub use armor_class::*;
+
 mod hit_points;
 pub use hit_points::*;
 

@@ -86,3 +86,17 @@ pub fn splint() -> Item {
 		}),
 	}
 }
+
+pub fn shield() -> Item {
+	Item {
+		name: "Shield".into(),
+		description: None,
+		weight: 6,
+		worth: 1000, // in copper
+		notes: "".into(),
+		kind: ItemKind::Equipment(Equipment {
+			shield: Some(2),
+			..Default::default()
+		}),
+	}
+}

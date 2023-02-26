@@ -245,29 +245,29 @@ fn SkillModal(SkillModalProps { skill }: &SkillModalProps) -> Html {
 	let prof_table = match proficiency.sources().is_empty() {
 		true => html! {},
 		false => html! {<div style="margin-bottom: 10px;">
-			<table class="table table-compact table-striped m-0">
-				<thead>
-					<tr class="text-center" style="color: var(--bs-heading-color);">
-						<th scope="col" style="width: 180px;">{"Proficiency"}</th>
-						<th scope="col">{"Sources"}</th>
-					</tr>
-				</thead>
-				<tbody>
-					{proficiency.sources().iter().map(|(path, value)| {
-						let source_text = crate::data::as_feature_path_text(&path).unwrap_or_default();
-						html! {
-							<tr>
-								<td class="d-flex align-items-center">
-									{*value}
-									<span class="flex-grow-1 text-center" style="margin-left: 5px;">{value.as_display_name()}</span>
-								</td>
-								<td>{source_text}</td>
-							</tr>
-						}
-					}).collect::<Vec<_>>()}
-				</tbody>
-			</table>
-			</div>},
+		<table class="table table-compact table-striped m-0">
+			<thead>
+				<tr class="text-center" style="color: var(--bs-heading-color);">
+					<th scope="col" style="width: 180px;">{"Proficiency"}</th>
+					<th scope="col">{"Sources"}</th>
+				</tr>
+			</thead>
+			<tbody>
+				{proficiency.sources().iter().map(|(path, value)| {
+					let source_text = crate::data::as_feature_path_text(&path).unwrap_or_default();
+					html! {
+						<tr>
+							<td class="d-flex align-items-center">
+								{*value}
+								<span class="flex-grow-1 text-center" style="margin-left: 5px;">{value.as_display_name()}</span>
+							</td>
+							<td>{source_text}</td>
+						</tr>
+					}
+				}).collect::<Vec<_>>()}
+			</tbody>
+		</table>
+		</div>},
 	};
 
 	let roll_modifiers = {

@@ -4,11 +4,6 @@
 ## Descriptive Modals
 Modals for all elements with tooltips & more.
 
-### Armor Class
-- description
-- formula list (and evaluations) + sources
-	e.g. `11 + Dex (+2) + Con (+1) = 14 (Barbarian > Unarmored Defense)`
-
 ### Speeds & Senses
 - values & sources
 - description of speeds & senses
@@ -39,6 +34,11 @@ Track Attacks per Action & display in attacks pane
 ## Classes
 - Add hard-coded class content for each class (Barbarian, Bard, Cleric, Druid, Fighter, Monk, Paladin, Ranger, Rogue, Sorcerer, Warlock, Wizard)
 - Add 1 subclass for each class in content
+
+## Currency
+- Items can have the ability to hold currency
+- Main inventory has the primary currency container
+- can store as u64 where: PP: x1000, GP: x100, SP: x10, CP: x1
 
 ## Item Containers
 - Only items in the characters main inventory can be equipped

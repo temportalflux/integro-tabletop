@@ -21,7 +21,7 @@ affected by advantage and disadvantage, as determined by the DM.
 
 Each class gives proficiency in at least two saving throws. The wizard, for example, \
 is proficient in Intelligence saves. As with skill proficiencies, proficiency in a saving throw \
-lets a character add his or her proficiency bonus to saving throws made using a \
+lets a character add their proficiency bonus to saving throws made using a \
 particular ability score. Some monsters have saving throw proficiencies as well.
 
 The Difficulty Class for a saving throw is determined by the effect that causes it. \

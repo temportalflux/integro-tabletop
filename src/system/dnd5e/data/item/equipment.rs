@@ -31,7 +31,8 @@ impl MutatorGroup for Equipment {
 			stats.apply_from(armor);
 		}
 		if let Some(shield) = &self.shield {
-			stats.armor_class_mut().push_bonus(*shield);
+			let source = stats.source_path();
+			stats.armor_class_mut().push_bonus(*shield, source);
 		}
 	}
 }

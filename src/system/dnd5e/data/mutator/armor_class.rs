@@ -13,7 +13,8 @@ impl Mutator for AddArmorClassFormula {
 	}
 
 	fn apply<'c>(&self, stats: &mut Character) {
-		stats.armor_class_mut().push_formula(self.0.clone());
+		let source = stats.source_path();
+		stats.armor_class_mut().push_formula(self.0.clone(), source);
 	}
 }
 

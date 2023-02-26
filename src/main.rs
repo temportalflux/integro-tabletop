@@ -142,6 +142,7 @@ fn create_character() -> system::dnd5e::data::character::Persistent {
 			});
 			inv.insert(items::armor::leather());
 			inv.insert(items::armor::splint());
+			inv.insert(items::armor::shield());
 			inv
 		},
 		conditions: Vec::new(),

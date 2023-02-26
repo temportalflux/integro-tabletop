@@ -46,7 +46,7 @@ pub fn ProfBonus() -> Html {
 							<table class="table table-compact table-striped m-0">
 								<thead>
 									<tr>
-										<th scope="col">{"Levels"}</th>
+										<th scope="col">{"Charcter Level"}</th>
 										<th scope="col">{"Bonus"}</th>
 									</tr>
 								</thead>
