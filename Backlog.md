@@ -10,12 +10,6 @@ Modals for all elements with tooltips & more.
 - skills
 - other uses (dex for initiative and AC)
 
-### Saving Throw Proficiencies (& Modifiers)
-- modal encompases them all
-- description of saving throws in general
-- each saving throw value, & if its proficient (+sources)
-- modifiers (+sources)
-
 ### Each Skill
 - each has its own modal
 - description of skill
