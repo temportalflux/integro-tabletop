@@ -169,9 +169,9 @@ impl Character {
 	/// are provided with a path to the feature which provided that bonus.
 	pub fn ability_score(&self, ability: Ability) -> (Score, Vec<(PathBuf, i32)>) {
 		let mut score = self.character.ability_scores[ability];
-		let original_score = score.0;
+		let original_score = *score as i32;
 		let attributed = self.derived.ability_scores.get(ability);
-		(*score) += attributed.value;
+		*score = original_score.saturating_add(attributed.value) as u32;
 		let mut sources = attributed.sources.clone();
 		sources.insert(0, ("".into(), original_score));
 		(score, sources)

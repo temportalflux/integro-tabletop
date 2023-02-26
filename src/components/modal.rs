@@ -93,6 +93,8 @@ impl Reducible for State {
 /// Properties provided to [GeneralPurpose] via the global [State].
 #[derive(Clone, PartialEq, Default, Properties)]
 pub struct Props {
+	#[prop_or_default]
+	pub root_classes: Classes,
 	/// Content to show in the `modal-content` div.
 	pub content: Html,
 	/// If the modal dialog should be scrollable.
@@ -179,6 +181,9 @@ pub fn GeneralPurpose() -> Html {
 		context.clone(),
 	);
 
+	let mut root_classes = classes!("modal", "fade");
+	root_classes.extend(context.map_props(|props| props.root_classes.clone()));
+
 	let mut dialog_classes = classes!("modal-dialog");
 	if context.map_props(|props| props.centered) {
 		dialog_classes.push("modal-dialog-centered");
@@ -188,7 +193,7 @@ pub fn GeneralPurpose() -> Html {
 	}
 
 	html! {
-		<div class="modal fade" id="generalModal" ref={node}>
+		<div class={root_classes} id="generalModal" ref={node}>
 			<div class={dialog_classes}>
 				<div class="modal-content">
 					{context.map_props(|props| props.content.clone())}

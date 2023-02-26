@@ -17,3 +17,11 @@
 	font-size: 16px;
 	font-weight: 700;
 }
+
+.modal.ability-score .modal-header > .modal-title > svg {
+	display: inline-flex;
+	height: 30px;
+	width: 30px;
+	margin-top: -8px;
+	margin-right: 10px;
+}

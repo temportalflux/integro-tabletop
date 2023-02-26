@@ -3,7 +3,7 @@ use crate::{
 	components::modal,
 	data::ContextMut,
 	system::dnd5e::components::roll::Modifier,
-	system::dnd5e::data::{character::Character, proficiency, roll, Ability},
+	system::dnd5e::data::{character::Character, roll, Ability},
 };
 use enumset::EnumSet;
 use yew::prelude::*;
@@ -146,25 +146,28 @@ fn Modal() -> Html {
 		all
 	};
 	let modifiers_section = {
-		let modifier_rows = state.saving_throws().iter_modifiers().map(|(ability, target, source_path)| {
-			let style="height: 14px; margin-right: 2px; margin-top: -2px; width: 14px; vertical-align: middle;";
-			html! {
-				<tr>
-					<td class="text-center">
-						<span class="d-inline-flex" aria-label="Advantage" {style}>
-							<Modifier value={roll::Modifier::Advantage} />
-						</span>
-					</td>
-					<td class="text-center">{ability.long_name()}</td>
-					<td class="text-center">{target.clone().unwrap_or_default()}</td>
-					<td>{crate::data::as_feature_path_text(&source_path)}</td>
-				</tr>
-			}
-		}).collect::<Vec<_>>();
+		let modifier_rows = state
+			.saving_throws()
+			.iter_modifiers()
+			.map(|(ability, target, source_path)| {
+				let style="height: 14px; margin-right: 2px; margin-top: -2px; width: 14px; vertical-align: middle;";
+				html! {
+					<tr>
+						<td class="text-center">
+							<span class="d-inline-flex" aria-label="Advantage" {style}>
+								<Modifier value={roll::Modifier::Advantage} />
+							</span>
+						</td>
+						<td class="text-center">{ability.long_name()}</td>
+						<td class="text-center">{target.clone().unwrap_or_default()}</td>
+						<td>{crate::data::as_feature_path_text(&source_path)}</td>
+					</tr>
+				}
+			})
+			.collect::<Vec<_>>();
 		if modifier_rows.is_empty() {
 			html! {}
-		}
-		else {
+		} else {
 			html! {<>
 				<h5 class="text-center" style="margin-top: 15px;">{"Modifiers"}</h5>
 				<table class="table table-compact table-striped m-0">
