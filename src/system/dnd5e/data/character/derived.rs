@@ -115,12 +115,19 @@ impl SavingThrows {
 		self.0[ability].1.push((target, source));
 	}
 
-	pub fn iter_modifiers(
-		&self,
-	) -> impl Iterator<Item = (Ability, &Vec<(Option<String>, PathBuf)>)> {
+	pub fn get_prof(&self, ability: Ability) -> &AttributedValue<proficiency::Level> {
+		&self.0[ability].0
+	}
+
+	pub fn iter_modifiers(&self) -> impl Iterator<Item = (Ability, &Option<String>, &PathBuf)> {
 		self.0
 			.iter()
-			.map(|(ability, (_, modifiers))| (ability, modifiers))
+			.map(|(ability, (_, modifiers))| {
+				modifiers
+					.iter()
+					.map(move |(target, path)| (ability, target, path))
+			})
+			.flatten()
 	}
 }
 impl std::ops::Index<Ability> for SavingThrows {
