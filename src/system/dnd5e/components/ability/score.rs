@@ -77,7 +77,9 @@ fn Modal(ModalProps { ability }: &ModalProps) -> Html {
 	let state = use_context::<ContextMut<Character>>().unwrap();
 	let (score, attributed_to) = state.ability_score(*ability);
 	let modifier = score.modifier();
-	let skills = EnumSet::<Skill>::all().into_iter().filter(|skill| skill.ability() == *ability);
+	let skills = EnumSet::<Skill>::all()
+		.into_iter()
+		.filter(|skill| skill.ability() == *ability);
 	html! {<>
 		<div class="modal-header">
 			<h1 class="modal-title fs-4">

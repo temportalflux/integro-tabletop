@@ -4,18 +4,6 @@
 ## Descriptive Modals
 Modals for all elements with tooltips & more.
 
-### Ability Scores
-- bonuses & sources
-- description
-- skills
-- other uses (dex for initiative and AC)
-
-### Each Skill
-- each has its own modal
-- description of skill
-- proficiency source
-- modifier + source (e.g. disadv on stealth with heavy armor)
-
 ### Armor Class
 - description
 - formula list (and evaluations) + sources

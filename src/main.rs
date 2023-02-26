@@ -66,6 +66,11 @@ fn create_character() -> system::dnd5e::data::character::Persistent {
 				mutator::AddDefense(mutator::Defense::Resistant, "Cold".into()).into(),
 				mutator::AddDefense(mutator::Defense::Immune, "Acid".into()).into(),
 				mutator::AddDefense(mutator::Defense::Vulnerable, "Fire".into()).into(),
+				mutator::AddSkill {
+					skill: Selector::Specific(Skill::Stealth),
+					proficiency: proficiency::Level::Double,
+				}
+				.into(),
 			],
 			..Default::default()
 		}

@@ -47,3 +47,11 @@ pub enum Modifier {
 	Advantage,
 	Disadvantage,
 }
+impl Modifier {
+	pub fn display_name(&self) -> &'static str {
+		match self {
+			Modifier::Advantage => "Advantage",
+			Modifier::Disadvantage => "Disadvantage",
+		}
+	}
+}
