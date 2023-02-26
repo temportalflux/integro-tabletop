@@ -1,5 +1,3 @@
-use yew::function_component;
-
 use crate::{
 	components::{modal, AnnotatedNumber, AnnotatedNumberCard},
 	data::ContextMut,

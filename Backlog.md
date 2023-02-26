@@ -27,10 +27,6 @@ Modals for all elements with tooltips & more.
 - formula list (and evaluations) + sources
 	e.g. `11 + Dex (+2) + Con (+1) = 14 (Barbarian > Unarmored Defense)`
 
-### Initiative Bonus
-- description
-- bonuses & sources
-
 ### Speeds & Senses
 - values & sources
 - description of speeds & senses

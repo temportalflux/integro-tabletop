@@ -2,7 +2,9 @@ use crate::{
 	components::{modal, AnnotatedNumber, AnnotatedNumberCard, Nav, NavDisplay, TabContent},
 	data::ContextMut,
 	system::dnd5e::{
-		components::{ability, panel, HitPoints, ProfBonus, Proficiencies, SpeedAndSenses},
+		components::{
+			ability, panel, HitPoints, InitiativeBonus, ProfBonus, Proficiencies, SpeedAndSenses,
+		},
 		data::{
 			character::{Character, Persistent},
 			Ability,
@@ -56,9 +58,7 @@ pub fn CharacterSheetPage(CharacterSheetPageProps { character }: &CharacterSheet
 									<ProfBonus />
 								</div>
 								<div class="col p-0">
-									<AnnotatedNumberCard header={"Initiative"} footer={"Bonus"}>
-										<AnnotatedNumber value={character.initiative_bonus()} show_sign={true} />
-									</AnnotatedNumberCard>
+									<InitiativeBonus />
 								</div>
 								<div class="col p-0">
 									<AnnotatedNumberCard header={"Armor"} footer={"Class"}>
