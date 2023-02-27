@@ -1,0 +1,3 @@
+[submodule "modules/basic-rules"]
+	path = modules/basic-rules
+	url = git@github.com:flux-tabletop/dnd5e-basic-rules.git
