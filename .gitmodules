@@ -1,3 +1,6 @@
 [submodule "modules/basic-rules"]
 	path = modules/basic-rules
 	url = git@github.com:flux-tabletop/dnd5e-basic-rules.git
+[submodule "modules/elf-and-orc"]
+	path = modules/elf-and-orc
+	url = git@github.com:flux-tabletop/elf-and-orc.git

@@ -10,6 +10,7 @@ use crate::{
 pub struct Lineage {
 	pub name: String,
 	pub description: String,
+	pub can_select_twice: bool,
 	pub mutators: Vec<BoxedMutator>,
 	pub features: Vec<BoxedFeature>,
 }

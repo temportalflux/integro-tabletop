@@ -9,10 +9,15 @@ use std::{collections::HashMap, rc::Rc};
 pub struct Feature {
 	pub name: String,
 	pub description: String,
+
+	// TODO: Vec of Actions which are added when applied. Each action has the activation and a description, as already supported by Weapons.
+	// This is in addition to the existing action + limited uses (which allows the feature to display in the actions panel).
 	pub action: Option<ActivationKind>,
+	pub limited_uses: Option<LimitedUses>,
+	
 	pub mutators: Vec<BoxedMutator>,
 	pub criteria: Option<BoxedCriteria>,
-	pub limited_uses: Option<LimitedUses>,
+	
 	pub missing_selection_text: Option<(String, HashMap<String, String>)>,
 }
 
