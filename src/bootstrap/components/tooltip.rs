@@ -25,6 +25,8 @@ pub struct Props {
 	pub tag: AttrValue,
 	#[prop_or_default]
 	pub classes: Classes,
+	#[prop_or_default]
+	pub style: AttrValue,
 
 	#[prop_or(Placement::Bottom)]
 	pub placement: Placement,
@@ -43,6 +45,7 @@ pub fn Component(
 	Props {
 		tag,
 		classes,
+		style,
 		placement,
 		content,
 		use_html,
@@ -64,6 +67,7 @@ pub fn Component(
 
 	html! {<@{tag.as_str().to_owned()} ref={node}
 		class={classes.clone()}
+		{style}
 		data-bs-toggle={content.is_some().then(|| "tooltip").unwrap_or("")}
 		data-bs-placement={placement.as_str()}
 		data-bs-html={format!("{use_html}")}

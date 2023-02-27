@@ -61,8 +61,8 @@ fn create_character() -> system::dnd5e::data::character::Persistent {
 				mutator::AddSavingThrow::Proficiency(Ability::Charisma).into(),
 				mutator::AddSavingThrow::Advantage(Ability::Charisma, Some("Magic".into())).into(),
 				//mutator::AddMaxSpeed("Flying".into(), 10).into(),
-				mutator::AddMaxSense("Darkvision".into(), 30).into(),
-				//mutator::AddMaxSense("Tremorsense".into(), 60).into(),
+				//mutator::AddMaxSense("Darkvision".into(), 30).into(),
+				mutator::AddMaxSense("Tremorsense".into(), 60).into(),
 				mutator::AddDefense(mutator::Defense::Resistant, "Cold".into()).into(),
 				mutator::AddDefense(mutator::Defense::Immune, "Acid".into()).into(),
 				mutator::AddDefense(mutator::Defense::Vulnerable, "Fire".into()).into(),
@@ -147,6 +147,7 @@ fn create_character() -> system::dnd5e::data::character::Persistent {
 		},
 		conditions: Vec::new(),
 		hit_points: (41, 0),
+		inspiration: false,
 	}
 }
 

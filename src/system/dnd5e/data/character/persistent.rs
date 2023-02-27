@@ -23,6 +23,7 @@ pub struct Persistent {
 	pub inventory: item::Inventory,
 	pub conditions: Vec<BoxedCondition>,
 	pub hit_points: (u32, u32),
+	pub inspiration: bool,
 }
 impl MutatorGroup for Persistent {
 	type Target = Character;

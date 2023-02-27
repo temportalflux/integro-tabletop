@@ -55,7 +55,7 @@ pub fn Score(ScoreProps { ability }: &ScoreProps) -> Html {
 		)
 	});
 	html! {
-		<div class="card ability-card" style="margin: 10px 5px; border-color: var(--theme-frame-color-muted);">
+		<div class="card ability-card m-1" style="border-color: var(--theme-frame-color-muted);">
 			<div class="card-body text-center" {onclick}>
 				<h6 class="card-title">{ability.long_name()}</h6>
 				<div class="primary-stat">

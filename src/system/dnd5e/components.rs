@@ -14,6 +14,9 @@ pub use prof_bonus::*;
 mod initiative_bonus;
 pub use initiative_bonus::*;
 
+mod inspiration;
+pub use inspiration::*;
+
 mod proficiencies;
 pub use proficiencies::*;
 

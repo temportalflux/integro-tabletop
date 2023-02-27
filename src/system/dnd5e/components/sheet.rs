@@ -2,8 +2,8 @@ use crate::{
 	components::{modal, Nav, NavDisplay, TabContent},
 	system::dnd5e::{
 		components::{
-			ability, panel, ArmorClass, HitPoints, InitiativeBonus, ProfBonus, Proficiencies,
-			SpeedAndSenses,
+			ability, panel, ArmorClass, HitPoints, DefensesCard, ConditionsCard, InitiativeBonus, Inspiration, ProfBonus,
+			Proficiencies, SpeedAndSenses,
 		},
 		data::{
 			character::{Character, Persistent},
@@ -79,16 +79,8 @@ pub fn CharacterSheetPage(CharacterSheetPageProps { character }: &CharacterSheet
 							</div>
 							<div class="col-md-auto">
 
-								<div class="row m-0 justify-content-center">
-									<div class="col p-0">
-										<ProfBonus />
-									</div>
-									<div class="col p-0">
-										<InitiativeBonus />
-									</div>
-									<div class="col p-0">
-										<ArmorClass />
-									</div>
+								<div class="d-flex justify-content-center">
+									<SpeedAndSenses />
 								</div>
 
 								<div id="skills-container" class="card" style="min-width: 320px; border-color: var(--theme-frame-color);">
@@ -100,16 +92,32 @@ pub fn CharacterSheetPage(CharacterSheetPageProps { character }: &CharacterSheet
 							</div>
 							<div class="col">
 								<div class="row m-0" style="--bs-gutter-x: 0;">
-									<div class="col">
-										{"TODO: Inspiration"}
-										<SpeedAndSenses />
-									</div>
 									<div class="col-auto">
+										<div class="d-flex align-items-center" style="height: 100%;">
+											<InitiativeBonus />
+											<ArmorClass />
+											<Inspiration />
+										</div>
+									</div>
+									<div class="col">
 										<HitPoints />
 									</div>
 								</div>
+								<div class="row m-0" style="--bs-gutter-x: 0;">
+									<div class="col-auto">
+										<div class="d-flex align-items-center" style="height: 100%;">
+											<ProfBonus />
+										</div>
+									</div>
+									<div class="col">
+										<DefensesCard />
+									</div>
+									<div class="col">
+										<ConditionsCard />									
+									</div>
+								</div>
 
-								<div class="card m-2" style="height: 550px;">
+								<div class="card m-1" style="height: 550px;">
 									<div class="card-body" style="padding: 5px;">
 										<Nav root_classes={"onesheet-tabs"} disp={NavDisplay::Tabs} default_tab_id={"features"}>
 											<TabContent id="actions" title={html! {{"Actions"}}}>

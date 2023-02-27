@@ -263,6 +263,10 @@ impl Character {
 		self.ability_modifier(Ability::Dexterity, None)
 	}
 
+	pub fn inspiration(&self) -> bool {
+		self.character.inspiration
+	}
+
 	pub fn hit_points(&self, kind: HitPoint) -> u32 {
 		match kind {
 			HitPoint::Current => self.character.hit_points.0,

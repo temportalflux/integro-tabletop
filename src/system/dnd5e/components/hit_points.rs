@@ -3,12 +3,12 @@ use crate::{
 	system::dnd5e::{
 		components::SharedCharacter,
 		data::{character::HitPoint, mutator::Defense},
-	},
+	}, components::{Tags, Tag},
 };
 use yew::prelude::*;
 
 fn defence_to_html(defence: Defense) -> Html {
-	let style = "width: 12px; height: 12px; margin-top: -4px;".to_owned();
+	let style = "width: 12px; height: 12px;".to_owned();
 	match defence {
 		Defense::Resistant => html! {
 			<svg {style} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40.89941 48">
@@ -43,29 +43,12 @@ pub fn HitPoints() -> Html {
 		character.hit_points.0 = prev.hit_points(HitPoint::Current).saturating_sub(1);
 	});
 
-	let defenses = state
-		.defenses()
-		.iter()
-		.fold(Vec::new(), |all, (kind, targets)| {
-			targets.iter().fold(all, |mut all, (target, sources)| {
-				let tooltip = crate::data::as_feature_paths_html(sources.iter());
-				all.push(html! {<div>
-					<Tooltip tag={"span"} content={tooltip} use_html={true}>
-						{defence_to_html(kind)}
-						<span style="margin-left: 5px;">{target.clone()}</span>
-					</Tooltip>
-				</div>});
-				all
-			})
-		});
-	let conditions = Vec::<Html>::new();
-
 	html! {
-		<div class="card m-2" style="min-width: 270px; max-width: 270px;">
+		<div class="card m-1" style="height: 80px;">
 			<div class="card-body" style="padding: 5px 5px;">
 				<div class="d-flex">
 					<div class="flex-grow-1">
-						<h5 class="text-center" style="font-size: 0.8rem; color: var(--bs-card-title-color); margin: 0 0 7px 0;">{"Hit Points"}</h5>
+						<h5 class="text-center" style="font-size: 0.8rem; color: var(--bs-card-title-color); margin: 0 0 2px 0;">{"Hit Points"}</h5>
 						<div class="row text-center m-0" style="--bs-gutter-x: 0;">
 							<div class="col" style="min-width: 50px;">
 								<div style="font-size: 0.75rem; padding: 0 5px;">{"Current"}</div>
@@ -87,29 +70,57 @@ pub fn HitPoints() -> Html {
 					</div>
 					<div style="width: 80px;">
 						<button type="button" class="btn btn-success" style="vertical-align: top; width: 100%; --bs-btn-padding-y: 0px; --bs-btn-font-size: .75rem;" onclick={onclick_heal}>{"Heal"}</button>
-						<input type="text" class="form-control text-center" id="hp-amount" style="padding: 0; margin: 0 0 4px 0;" />
+						<input type="text" class="form-control text-center" id="hp-amount" style="padding: 0; margin: 0 0 4px 0; height: 20px;" />
 						<button type="button" class="btn btn-danger" style="vertical-align: top; width: 100%; --bs-btn-padding-y: 0px; --bs-btn-font-size: .75rem;" onclick={onclick_dmg}>{"Damage"}</button>
 					</div>
 				</div>
-				<div class="row m-0 pt-2" style="--bs-gutter-x: 0;">
-					<div class="col">
-						<h6 class="text-center" style="font-size: 0.8rem; color: var(--bs-card-title-color);">{"Defences"}</h6>
-						<div>
-							{match defenses.is_empty() {
-								true => html! { "None" },
-								false => html! {<> {defenses} </>},
-							}}
-						</div>
-					</div>
-					<div class="col-auto p-0"><div class="vr" style="min-height: 100%;" /></div>
-					<div class="col">
-						<h6 class="text-center" style="font-size: 0.8rem; color: var(--bs-card-title-color);">{"Conditions"}</h6>
-						{match conditions.is_empty() {
-							true => html! { "None" },
-							false => html! {<> {conditions} </>},
-						}}
-					</div>
+			</div>
+		</div>
+	}
+}
+
+#[function_component]
+pub fn DefensesCard() -> Html {
+	let state = use_context::<SharedCharacter>().unwrap();
+	let defenses = state
+		.defenses()
+		.iter()
+		.fold(Vec::new(), |all, (kind, targets)| {
+			targets.iter().fold(all, |mut all, (target, sources)| {
+				let tooltip = crate::data::as_feature_paths_html(sources.iter());
+				all.push(html! {
+					<Tooltip tag={"span"} style={"margin: 2px;"} content={tooltip} use_html={true}>
+						<Tag>
+							{defence_to_html(kind)}
+							<span style="margin-left: 5px;">{target.clone()}</span>
+						</Tag>
+					</Tooltip>
+				});
+				all
+			})
+		});
+	html! {
+		<div class="card m-1" style="height: 100px;">
+			<div class="card-body text-center" style="padding: 5px 5px;">
+				<h6 class="card-title" style="font-size: 0.8rem;">{"Defenses"}</h6>
+				<div class="d-flex justify-content-center" style="overflow: hidden;">
+					{match defenses.is_empty() {
+						true => html! { "None" },
+						false => html! {<Tags> {defenses} </Tags>},
+					}}
 				</div>
+			</div>
+		</div>
+	}
+}
+
+#[function_component]
+pub fn ConditionsCard() -> Html {
+	html! {
+		<div class="card m-1" style="height: 100px;">
+			<div class="card-body text-center" style="padding: 5px 5px;">
+				<h6 class="card-title" style="font-size: 0.8rem;">{"Conditions"}</h6>
+				
 			</div>
 		</div>
 	}

@@ -92,8 +92,8 @@ pub fn SavingThrowContainer() -> Html {
 
 	html! {
 		<div id="saving-throw-container" class="card" onclick={on_click}>
-			<div class="card-body text-center" style="padding: 5px;">
-				<h5 class="card-title" style="font-size: 0.8rem;">{"Saving Throws"}</h5>
+			<div class="card-body" style="padding: 5px;">
+				<h5 class="card-title text-center" style="font-size: 0.8rem;">{"Saving Throws"}</h5>
 				<div class="row" style="--bs-gutter-x: 0; margin: 0 0 10px 0;">
 					<div class="col">
 						<table class="table table-compact" style="margin-bottom: 0;">
