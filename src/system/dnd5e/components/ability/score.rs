@@ -1,10 +1,9 @@
 use crate::{
 	bootstrap::components::Tooltip,
 	components::{modal, AnnotatedNumber},
-	data::ContextMut,
 	system::dnd5e::{
-		components::ability::AbilityGlyph,
-		data::{character::Character, Ability, Skill},
+		components::{ability::AbilityGlyph, SharedCharacter},
+		data::{Ability, Skill},
 	},
 };
 use enumset::EnumSet;
@@ -17,7 +16,7 @@ pub struct ScoreProps {
 
 #[function_component]
 pub fn Score(ScoreProps { ability }: &ScoreProps) -> Html {
-	let state = use_context::<ContextMut<Character>>().unwrap();
+	let state = use_context::<SharedCharacter>().unwrap();
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 
 	let (score, attributed_to) = state.ability_score(*ability);
@@ -74,7 +73,7 @@ struct ModalProps {
 }
 #[function_component]
 fn Modal(ModalProps { ability }: &ModalProps) -> Html {
-	let state = use_context::<ContextMut<Character>>().unwrap();
+	let state = use_context::<SharedCharacter>().unwrap();
 	let (score, attributed_to) = state.ability_score(*ability);
 	let modifier = score.modifier();
 	let skills = EnumSet::<Skill>::all()

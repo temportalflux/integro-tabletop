@@ -46,29 +46,30 @@ impl From<Persistent> for Character {
 			mutators: Vec::new(),
 			source_path: SourcePath::default(),
 		};
-		full.generate_derived();
+		full.apply_from(&full.character.clone());
+		full.apply_cached_mutators();
 		full
 	}
 }
 impl yew::Reducible for Character {
-	type Action = yew::Callback<Self, Self>;
+	type Action = Box<dyn FnOnce(&mut Persistent, &Rc<Self>)>;
 
 	fn reduce(self: Rc<Self>, action: Self::Action) -> Rc<Self> {
-		Rc::new(action.emit((*self).clone()))
+		let mut persistent = self.character.clone();
+		action(&mut persistent, &self);
+		let mut updated = Self::new(persistent.clone());
+		updated.apply_from(&persistent);
+		updated.apply_cached_mutators();
+		Rc::new(updated)
 	}
 }
 impl Character {
-	pub fn generate_derived(&mut self) {
-		self.derived = Derived::default();
-		self.mutators.clear();
-		self.source_path = SourcePath::default();
-
-		self.apply_from(&self.character.clone());
-
-		let mutators = self.mutators.drain(..).collect::<Vec<_>>();
-		for entry in mutators.into_iter() {
-			self.source_path = entry.source;
-			entry.mutator.apply(self);
+	pub fn new(character: Persistent) -> Self {
+		Self {
+			character,
+			derived: Derived::default(),
+			mutators: Vec::new(),
+			source_path: SourcePath::default(),
 		}
 	}
 
@@ -112,6 +113,14 @@ impl Character {
 			Err(idx) => idx,
 		};
 		self.mutators.insert(idx, entry);
+	}
+
+	fn apply_cached_mutators(&mut self) {
+		let mutators = self.mutators.drain(..).collect::<Vec<_>>();
+		for entry in mutators.into_iter() {
+			self.source_path = entry.source;
+			entry.mutator.apply(self);
+		}
 	}
 
 	pub fn source_path(&self) -> PathBuf {

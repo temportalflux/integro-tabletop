@@ -1,9 +1,8 @@
 use crate::{
 	components::*,
-	data::ContextMut,
-	system::dnd5e::data::{
-		action::{AttackCheckKind, AttackKindValue, DamageRoll},
-		character::Character,
+	system::dnd5e::{
+		components::SharedCharacter,
+		data::action::{AttackCheckKind, AttackKindValue, DamageRoll},
 	},
 	utility::Evaluator,
 };
@@ -34,7 +33,7 @@ impl ActionTag {
 
 #[function_component]
 pub fn Actions() -> Html {
-	let state = use_context::<ContextMut<Character>>().unwrap();
+	let state = use_context::<SharedCharacter>().unwrap();
 	let selected_tags = use_state(|| EnumSet::<ActionTag>::all());
 
 	let make_tag_html = {

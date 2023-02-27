@@ -1,6 +1,4 @@
-use crate::{
-	bootstrap::components::Tooltip, data::ContextMut, system::dnd5e::data::character::Character,
-};
+use crate::{bootstrap::components::Tooltip, system::dnd5e::components::SharedCharacter};
 use yew::prelude::*;
 
 #[derive(Clone, PartialEq, Properties)]
@@ -24,7 +22,7 @@ fn SingleValue(SingleValueProps { title, amount }: &SingleValueProps) -> Html {
 
 #[function_component]
 pub fn SpeedAndSenses() -> Html {
-	let state = use_context::<ContextMut<Character>>().unwrap();
+	let state = use_context::<SharedCharacter>().unwrap();
 
 	let divider = (state.speeds().len() > 0 && state.senses().len() > 0)
 		.then(|| {

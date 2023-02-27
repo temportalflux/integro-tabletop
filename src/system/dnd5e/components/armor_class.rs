@@ -1,7 +1,6 @@
 use crate::{
 	components::{modal, AnnotatedNumber, AnnotatedNumberCard},
-	data::ContextMut,
-	system::dnd5e::data::character::Character,
+	system::dnd5e::components::SharedCharacter,
 };
 use yew::prelude::*;
 
@@ -13,7 +12,7 @@ Without armor or a shield, your character's AC equals 10 + their Dexterity modif
 
 #[function_component]
 pub fn ArmorClass() -> Html {
-	let state = use_context::<ContextMut<Character>>().unwrap();
+	let state = use_context::<SharedCharacter>().unwrap();
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 	let on_click = modal_dispatcher.callback({
 		move |_| {
@@ -34,7 +33,7 @@ pub fn ArmorClass() -> Html {
 
 #[function_component]
 fn Modal() -> Html {
-	let state = use_context::<ContextMut<Character>>().unwrap();
+	let state = use_context::<SharedCharacter>().unwrap();
 	let value = state.armor_class().evaluate(&*state);
 
 	let formula_table = {

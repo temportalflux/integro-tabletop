@@ -1,7 +1,6 @@
 use crate::{
 	components::{modal, AnnotatedNumber, AnnotatedNumberCard},
-	data::ContextMut,
-	system::dnd5e::data::{character::Character, Ability},
+	system::dnd5e::{components::SharedCharacter, data::Ability},
 };
 use yew::prelude::*;
 
@@ -21,7 +20,7 @@ a d20 to determine the order, highest roll going first.";
 
 #[function_component]
 pub fn InitiativeBonus() -> Html {
-	let state = use_context::<ContextMut<Character>>().unwrap();
+	let state = use_context::<SharedCharacter>().unwrap();
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 	let value = state.initiative_bonus();
 	let on_click = modal_dispatcher.callback({

@@ -1,9 +1,8 @@
 use crate::{
 	bootstrap::components::Tooltip,
-	data::ContextMut,
-	system::dnd5e::data::{
-		character::{Character, HitPoint},
-		mutator::Defense,
+	system::dnd5e::{
+		components::SharedCharacter,
+		data::{character::HitPoint, mutator::Defense},
 	},
 };
 use yew::prelude::*;
@@ -32,17 +31,16 @@ fn defence_to_html(defence: Defense) -> Html {
 
 #[function_component]
 pub fn HitPoints() -> Html {
-	let state = use_context::<ContextMut<Character>>().unwrap();
+	let state = use_context::<SharedCharacter>().unwrap();
 
-	let onclick_heal = state.new_mutator(|character| {
-		*character.hit_points_mut(HitPoint::Current) = character
+	let onclick_heal = state.new_dispatch(|character, prev| {
+		character.hit_points.0 = prev
 			.hit_points(HitPoint::Current)
 			.saturating_add(1)
-			.min(character.hit_points(HitPoint::Max));
+			.min(prev.hit_points(HitPoint::Max));
 	});
-	let onclick_dmg = state.new_mutator(|character| {
-		*character.hit_points_mut(HitPoint::Current) =
-			character.hit_points(HitPoint::Current).saturating_sub(1);
+	let onclick_dmg = state.new_dispatch(|character, prev| {
+		character.hit_points.0 = prev.hit_points(HitPoint::Current).saturating_sub(1);
 	});
 
 	let defenses = state

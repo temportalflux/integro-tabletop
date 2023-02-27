@@ -1,8 +1,10 @@
 use crate::{
 	bootstrap::components::Tooltip,
 	components::modal,
-	data::ContextMut,
-	system::dnd5e::data::{character::Character, roll, Ability, Skill},
+	system::dnd5e::{
+		components::SharedCharacter,
+		data::{roll, Ability, Skill},
+	},
 };
 use enumset::{EnumSet, EnumSetType};
 use multimap::MultiMap;
@@ -149,7 +151,7 @@ fn Row(
 		ability_name_col,
 	}: &RowProps,
 ) -> Html {
-	let state = use_context::<ContextMut<Character>>().unwrap();
+	let state = use_context::<SharedCharacter>().unwrap();
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 
 	let (proficiency, roll_modifiers) = &state.skills()[*skill];
@@ -237,7 +239,7 @@ struct SkillModalProps {
 
 #[function_component]
 fn SkillModal(SkillModalProps { skill }: &SkillModalProps) -> Html {
-	let state = use_context::<ContextMut<Character>>().unwrap();
+	let state = use_context::<SharedCharacter>().unwrap();
 
 	let (proficiency, roll_modifiers) = &state.skills()[*skill];
 	let bonus = state.ability_modifier(skill.ability(), Some(*proficiency.value()));

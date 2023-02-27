@@ -1,7 +1,6 @@
 use crate::{
 	components::{modal, AnnotatedNumber, AnnotatedNumberCard},
-	data::ContextMut,
-	system::dnd5e::data::{character::Character, proficiency},
+	system::dnd5e::{components::SharedCharacter, data::proficiency},
 };
 use yew::prelude::*;
 
@@ -29,7 +28,7 @@ If a feature or effect allows you to do so, these same rules apply.";
 
 #[function_component]
 pub fn ProfBonus() -> Html {
-	let state = use_context::<ContextMut<Character>>().unwrap();
+	let state = use_context::<SharedCharacter>().unwrap();
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 	let on_click = modal_dispatcher.callback({
 		move |_| {

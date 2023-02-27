@@ -1,14 +1,13 @@
 use crate::{
 	bootstrap::components::Tooltip,
 	components::modal,
-	data::ContextMut,
-	system::dnd5e::data::{character::Character, AttributedValueMap},
+	system::dnd5e::{components::SharedCharacter, data::AttributedValueMap},
 };
 use yew::prelude::*;
 
 #[function_component]
 pub fn Proficiencies() -> Html {
-	let state = use_context::<ContextMut<Character>>().unwrap();
+	let state = use_context::<SharedCharacter>().unwrap();
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 	let proficiencies = state.other_proficiencies();
 	let onclick = modal_dispatcher.callback({

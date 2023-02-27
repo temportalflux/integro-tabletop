@@ -1,9 +1,8 @@
 use crate::{
 	bootstrap::components::Tooltip,
 	components::modal,
-	data::ContextMut,
-	system::dnd5e::components::roll::Modifier,
-	system::dnd5e::data::{character::Character, roll, Ability},
+	system::dnd5e::components::{roll::Modifier, SharedCharacter},
+	system::dnd5e::data::{roll, Ability},
 };
 use enumset::EnumSet;
 use yew::prelude::*;
@@ -45,7 +44,7 @@ pub fn SavingThrow(
 		abbreviated,
 	}: &SavingThrowProps,
 ) -> Html {
-	let state = use_context::<ContextMut<Character>>().unwrap();
+	let state = use_context::<SharedCharacter>().unwrap();
 	let proficiency = &state.saving_throws().get_prof(*ability);
 	let modifier = state.ability_modifier(*ability, Some(*proficiency.value()));
 	let mod_sign = match modifier >= 0 {
@@ -77,7 +76,7 @@ pub fn SavingThrow(
 
 #[function_component]
 pub fn SavingThrowContainer() -> Html {
-	let state = use_context::<ContextMut<Character>>().unwrap();
+	let state = use_context::<SharedCharacter>().unwrap();
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 
 	let on_click = modal_dispatcher.callback({
@@ -139,7 +138,7 @@ pub fn SavingThrowContainer() -> Html {
 
 #[function_component]
 fn Modal() -> Html {
-	let state = use_context::<ContextMut<Character>>().unwrap();
+	let state = use_context::<SharedCharacter>().unwrap();
 	let abilities = {
 		let mut all = EnumSet::<Ability>::all().into_iter().collect::<Vec<_>>();
 		all.sort();

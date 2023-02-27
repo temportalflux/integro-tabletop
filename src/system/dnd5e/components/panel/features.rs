@@ -1,8 +1,7 @@
 use crate::{
 	components::{Tag, Tags},
-	data::ContextMut,
 	path_map::PathMap,
-	system::dnd5e::data::{character::Character, BoxedFeature},
+	system::dnd5e::{components::SharedCharacter, data::BoxedFeature},
 	utility::{Evaluator, MutatorGroup},
 };
 use std::path::{Path, PathBuf};
@@ -12,7 +11,7 @@ use yew::prelude::*;
 
 #[function_component]
 pub fn Features() -> Html {
-	let state = use_context::<ContextMut<Character>>().unwrap();
+	let state = use_context::<SharedCharacter>().unwrap();
 	let sort_order_alpha = use_state(|| true);
 
 	let features = match *sort_order_alpha {
@@ -108,7 +107,7 @@ fn FeatureBlock(
 	}: &FeatureBlockProps,
 ) -> Html {
 	use convert_case::{Case, Casing};
-	let state = use_context::<ContextMut<Character>>().unwrap();
+	let state = use_context::<SharedCharacter>().unwrap();
 	let feat_data_path = match feature.inner().id() {
 		Some(id) => parent.join(&id),
 		None => parent.clone(),

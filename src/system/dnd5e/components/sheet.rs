@@ -1,6 +1,5 @@
 use crate::{
 	components::{modal, Nav, NavDisplay, TabContent},
-	data::ContextMut,
 	system::dnd5e::{
 		components::{
 			ability, panel, ArmorClass, HitPoints, InitiativeBonus, ProfBonus, Proficiencies,
@@ -14,6 +13,31 @@ use crate::{
 };
 use yew::prelude::*;
 
+#[derive(Clone, PartialEq)]
+pub struct SharedCharacter(UseReducerHandle<Character>);
+impl std::ops::Deref for SharedCharacter {
+	type Target = UseReducerHandle<Character>;
+	fn deref(&self) -> &Self::Target {
+		&self.0
+	}
+}
+impl SharedCharacter {
+	pub fn new_dispatch<I, F>(&self, mutator: F) -> Callback<I>
+	where
+		I: 'static,
+		F: Fn(&mut Persistent, &std::rc::Rc<Character>) + 'static,
+	{
+		let handle = self.0.clone();
+		let mutator = std::rc::Rc::new(mutator);
+		Callback::from(move |_: I| {
+			let mutator = mutator.clone();
+			handle.dispatch(Box::new(move |a, b| {
+				(*mutator)(a, b);
+			}));
+		})
+	}
+}
+
 #[derive(Clone, PartialEq, Properties)]
 pub struct CharacterSheetPageProps {
 	pub character: Persistent,
@@ -21,14 +45,14 @@ pub struct CharacterSheetPageProps {
 
 #[function_component]
 pub fn CharacterSheetPage(CharacterSheetPageProps { character }: &CharacterSheetPageProps) -> Html {
-	let character = ContextMut::<Character>::from(use_reducer({
+	let character = SharedCharacter(use_reducer({
 		let character = character.clone();
 		move || Character::from(character)
 	}));
 	let modal_dispatcher = modal::Context::from(use_reducer(|| modal::State::default()));
 
 	html! {
-		<ContextProvider<ContextMut<Character>> context={character.clone()}>
+		<ContextProvider<SharedCharacter> context={character.clone()}>
 			<ContextProvider<modal::Context> context={modal_dispatcher.clone()}>
 				<div style="--theme-frame-color: #BA90CB; --theme-frame-color-muted: #BA90CB80; --theme-roll-modifier: #ffffff;">
 					<modal::GeneralPurpose />
@@ -111,6 +135,6 @@ pub fn CharacterSheetPage(CharacterSheetPageProps { character }: &CharacterSheet
 					</div>
 				</div>
 			</ContextProvider<modal::Context>>
-		</ContextProvider<ContextMut<Character>>>
+		</ContextProvider<SharedCharacter>>
 	}
 }
