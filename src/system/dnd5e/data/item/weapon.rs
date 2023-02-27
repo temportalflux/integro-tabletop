@@ -17,10 +17,16 @@ use std::collections::HashSet;
 pub struct Weapon {
 	pub kind: Kind,
 	pub classification: String,
-	pub damage: Roll,
-	pub damage_type: String,
+	pub damage: Option<WeaponDamage>,
 	pub properties: Vec<Property>,
 	pub range: Option<Range>,
+}
+
+#[derive(Clone, PartialEq, Default)]
+pub struct WeaponDamage {
+	pub roll: Option<Roll>,
+	pub bonus: i32,
+	pub damage_type: String,
 }
 
 #[derive(Clone, Copy, Default, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -34,7 +40,7 @@ pub enum Property {
 	Light,   // used by two handed fighting feature
 	Finesse, // melee weapons use strength, ranged use dex, finesse take the better of either modifier
 	Heavy,   // small or tiny get disadvantage on attack rolls when using this weapon
-	Reach,
+	Reach, // This weapon adds 5 feet to your reach when you attack with it, as well as when determining your reach for opportunity attacks with it.
 	TwoHanded,
 	Thrown(u32, u32),
 	Versatile(Roll),
@@ -96,11 +102,12 @@ impl Weapon {
 					),
 				},
 				area_of_effect: None,
-				damage_roll: DamageRoll {
-					roll: Some(self.damage),
+				damage: self.damage.as_ref().map(|dmg| DamageRoll {
+					roll: dmg.roll,
+					base_bonus: Value::Fixed(dmg.bonus),
+					damage_type: dmg.damage_type.clone(),
 					..Default::default()
-				},
-				damage_type: self.damage_type.clone(),
+				}),
 			}),
 			..Default::default()
 		}

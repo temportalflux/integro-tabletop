@@ -2,7 +2,7 @@ use crate::{
 	components::*,
 	data::ContextMut,
 	system::dnd5e::data::{
-		action::{AttackCheckKind, AttackKindValue},
+		action::{AttackCheckKind, AttackKindValue, DamageRoll},
 		character::Character,
 	},
 	utility::Evaluator,
@@ -105,19 +105,24 @@ pub fn Actions() -> Html {
 									}
 								}}</td>
 								<td class="text-center">{{
-									// TODO: tooltip for where bonus come from
-									let additional_bonus: i32 = attack.damage_roll.additional_bonuses.iter().map(|(v, _)| *v).sum();
 									let ability_bonus = match &attack.check {
 										AttackCheckKind::AttackRoll { ability, .. } => state.ability_modifier(*ability, None),
 										_ => 0,
 									};
-									let bonus = attack.damage_roll.base_bonus.evaluate(&*state) + ability_bonus + additional_bonus;
-									let roll = attack.damage_roll.roll.as_ref().map(|roll| html!{{roll.to_string()}});
-									match (roll, bonus) {
-										(None, bonus) => html! {{bonus.max(0)}},
-										(Some(roll), 0) => html! {{roll}},
-										(Some(roll), 1..=i32::MAX) => html! {<>{roll}{" + "}{bonus}</>},
-										(Some(roll), i32::MIN..=-1) => html! {<>{roll}{" - "}{bonus.abs()}</>},
+									match &attack.damage {
+										// TODO: tooltip for where bonus come from
+										Some(DamageRoll { roll, base_bonus, damage_type: _, additional_bonuses }) => {
+											let additional_bonus: i32 = additional_bonuses.iter().map(|(v, _)| *v).sum();
+											let bonus = base_bonus.evaluate(&*state) + ability_bonus + additional_bonus;
+											let roll = roll.as_ref().map(|roll| html!{{roll.to_string()}});
+											match (roll, bonus) {
+												(None, bonus) => html! {{bonus.max(0)}},
+												(Some(roll), 0) => html! {{roll}},
+												(Some(roll), 1..=i32::MAX) => html! {<>{roll}{" + "}{bonus}</>},
+												(Some(roll), i32::MIN..=-1) => html! {<>{roll}{" - "}{bonus.abs()}</>},
+											}
+										}
+										None => html! {},
 									}
 								}}</td>
 								<td style="width: 200px;"></td>

@@ -11,10 +11,11 @@ pub mod weapon;
 pub struct Item {
 	pub name: String,
 	pub description: Option<String>,
-	pub weight: u32,
+	pub weight: f32,
 	pub worth: u32,
 	pub notes: String,
 	pub kind: ItemKind,
+	pub tags: Vec<String>,
 }
 
 impl Item {

@@ -41,28 +41,30 @@ fn Modal() -> Html {
 		let rows = state
 			.armor_class()
 			.iter_formulas()
-			.map(|(formula, source)| html! {<tr>
-				<td>
-					<span>{formula.base}</span>
-					{formula.bonuses.iter().fold(Vec::new(), |mut html, bounded| {
-						let bonus = bounded.evaluate(&state);
-						let min = bounded.min.map(|min| format!("min {min}"));
-						let max = bounded.max.map(|max| format!("max {max}"));
-						html.push(html! {<span>
-							{" + "}
-							{bounded.ability.abbreviated_name().to_uppercase()}
-							{match (min, max) {
-								(None, None) => html! {},
-								(Some(v), None) | (None, Some(v)) => html! { {format!(" ({v})")} },
-								(Some(min), Some(max)) => html! { {format!(" ({min}, {max})")} },
-							}}
-							{format!(" ({})", bonus)}
-						</span>});
-						html
-					})}
-				</td>
-				<td>{crate::data::as_feature_path_text(source).unwrap_or_default()}</td>
-			</tr>})
+			.map(|(formula, source)| {
+				html! {<tr>
+					<td>
+						<span>{formula.base}</span>
+						{formula.bonuses.iter().fold(Vec::new(), |mut html, bounded| {
+							let bonus = bounded.evaluate(&state);
+							let min = bounded.min.map(|min| format!("min {min}"));
+							let max = bounded.max.map(|max| format!("max {max}"));
+							html.push(html! {<span>
+								{" + "}
+								{bounded.ability.abbreviated_name().to_uppercase()}
+								{match (min, max) {
+									(None, None) => html! {},
+									(Some(v), None) | (None, Some(v)) => html! { {format!(" ({v})")} },
+									(Some(min), Some(max)) => html! { {format!(" ({min}, {max})")} },
+								}}
+								{format!(" ({})", bonus)}
+							</span>});
+							html
+						})}
+					</td>
+					<td>{crate::data::as_feature_path_text(source).unwrap_or_default()}</td>
+				</tr>}
+			})
 			.collect::<Vec<_>>();
 		match rows.is_empty() {
 			true => html! {},
@@ -85,10 +87,12 @@ fn Modal() -> Html {
 		let rows = state
 			.armor_class()
 			.iter_bonuses()
-			.map(|(bonus, source)| html! {<tr>
-				<td class="text-center">{match *bonus >= 0 { true => "+", false => "-" }}{bonus.abs()}</td>
-				<td>{crate::data::as_feature_path_text(source).unwrap_or_default()}</td>
-			</tr>})
+			.map(|(bonus, source)| {
+				html! {<tr>
+					<td class="text-center">{match *bonus >= 0 { true => "+", false => "-" }}{bonus.abs()}</td>
+					<td>{crate::data::as_feature_path_text(source).unwrap_or_default()}</td>
+				</tr>}
+			})
 			.collect::<Vec<_>>();
 		match rows.is_empty() {
 			true => html! {},

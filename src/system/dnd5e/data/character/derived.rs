@@ -71,11 +71,11 @@ impl Default for Derived {
 						proficient: Value::Fixed(true),
 					},
 					area_of_effect: None,
-					damage_roll: DamageRoll {
+					damage: Some(DamageRoll {
 						base_bonus: Value::Fixed(1),
+						damage_type: "bludgeoning".into(),
 						..Default::default()
-					},
-					damage_type: "bludgeoning".into(),
+					}),
 				}),
 				source: None,
 			}],

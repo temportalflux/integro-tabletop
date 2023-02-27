@@ -12,7 +12,7 @@ pub fn leather() -> Item {
 	Item {
 		name: "Leather Armor".into(),
 		description: None,
-		weight: 10,
+		weight: 10.0,
 		worth: 1000, // in copper
 		notes: "".into(),
 		kind: ItemKind::Equipment(Equipment {
@@ -26,6 +26,7 @@ pub fn leather() -> Item {
 			}),
 			..Default::default()
 		}),
+		..Default::default()
 	}
 }
 
@@ -33,7 +34,7 @@ pub fn scale_mail() -> Item {
 	Item {
 		name: "Scale Mail".into(),
 		description: None,
-		weight: 45,
+		weight: 45.0,
 		worth: 5000, // in copper
 		notes: "".into(),
 		kind: ItemKind::Equipment(Equipment {
@@ -57,6 +58,7 @@ pub fn scale_mail() -> Item {
 			}),
 			..Default::default()
 		}),
+		..Default::default()
 	}
 }
 
@@ -64,7 +66,7 @@ pub fn splint() -> Item {
 	Item {
 		name: "Splint".into(),
 		description: None,
-		weight: 60,
+		weight: 60.0,
 		worth: 20000, // in copper
 		notes: "".into(),
 		kind: ItemKind::Equipment(Equipment {
@@ -84,6 +86,7 @@ pub fn splint() -> Item {
 			}),
 			..Default::default()
 		}),
+		..Default::default()
 	}
 }
 
@@ -91,12 +94,13 @@ pub fn shield() -> Item {
 	Item {
 		name: "Shield".into(),
 		description: None,
-		weight: 6,
+		weight: 6.0,
 		worth: 1000, // in copper
 		notes: "".into(),
 		kind: ItemKind::Equipment(Equipment {
 			shield: Some(2),
 			..Default::default()
 		}),
+		..Default::default()
 	}
 }

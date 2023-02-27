@@ -14,7 +14,7 @@ pub fn travelers_clothes() -> Item {
 		a sturdy belt, a shirt (perhaps with a vest or jacket), and an ample cloak with a hood."
 				.into(),
 		),
-		weight: 4,
+		weight: 4.0,
 		worth: 200,
 		..Default::default()
 	}

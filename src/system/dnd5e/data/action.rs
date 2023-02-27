@@ -28,8 +28,7 @@ pub struct Attack {
 	pub kind: AttackKindValue,
 	pub check: AttackCheckKind,
 	pub area_of_effect: Option<(AreaOfEffect, usize)>,
-	pub damage_roll: DamageRoll,
-	pub damage_type: String,
+	pub damage: Option<DamageRoll>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -137,5 +136,6 @@ pub enum RangeKind {
 pub struct DamageRoll {
 	pub roll: Option<Roll>,
 	pub base_bonus: Value<i32>,
+	pub damage_type: String,
 	pub additional_bonuses: Vec<(i32, PathBuf)>,
 }

@@ -41,10 +41,8 @@ impl Mutator for BonusDamage {
 		let bonus_amt = self.amount.evaluate(stats);
 		for action in stats.iter_actions_mut_for(&self.restriction) {
 			let Some(attack) = &mut action.attack else { continue; };
-			attack
-				.damage_roll
-				.additional_bonuses
-				.push((bonus_amt, source.clone()));
+			let Some(damage) = &mut attack.damage else { continue; };
+			damage.additional_bonuses.push((bonus_amt, source.clone()));
 		}
 	}
 }
