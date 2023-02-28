@@ -246,8 +246,8 @@ fn Modal() -> Html {
 				<div class="col-auto text-center m-auto">
 					<h6 class="m-0">{"NEW HP"}</h6>
 					<div style="font-size: 40px; font-weight: 500; margin-top: -10px;">{state.hit_points(HitPoint::Current)}</div>
-					<button type="button" class="m-2 btn btn-theme">{"Apply Changes"}</button>
-					<button type="button" class="m-2 btn btn-outline-theme">{"Cancel"}</button>
+					<button type="button" class="m-2 btn btn-theme" disabled={true}>{"Apply Changes"}</button>
+					<button type="button" class="m-2 btn btn-outline-theme" disabled={true}>{"Cancel"}</button>
 				</div>
 			</div>
 			<span class="my-3" style="display: block; width: 100%; border-style: solid; border-width: 0; border-bottom-width: var(--bs-border-width); border-color: var(--theme-frame-color-muted);" />
