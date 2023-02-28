@@ -4,7 +4,7 @@ use yew::prelude::*;
 #[function_component]
 pub fn Inspiration() -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
-	let onclick = state.new_dispatch(|character, _| {
+	let onclick = state.new_dispatch(|_, character, _| {
 		character.inspiration = !character.inspiration;
 	});
 	let color = "var(--theme-frame-color)";

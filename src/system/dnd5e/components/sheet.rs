@@ -25,14 +25,14 @@ impl SharedCharacter {
 	pub fn new_dispatch<I, F>(&self, mutator: F) -> Callback<I>
 	where
 		I: 'static,
-		F: Fn(&mut Persistent, &std::rc::Rc<Character>) + 'static,
+		F: Fn(I, &mut Persistent, &std::rc::Rc<Character>) + 'static,
 	{
 		let handle = self.0.clone();
 		let mutator = std::rc::Rc::new(mutator);
-		Callback::from(move |_: I| {
+		Callback::from(move |input: I| {
 			let mutator = mutator.clone();
 			handle.dispatch(Box::new(move |a, b| {
-				(*mutator)(a, b);
+				(*mutator)(input, a, b);
 			}));
 		})
 	}

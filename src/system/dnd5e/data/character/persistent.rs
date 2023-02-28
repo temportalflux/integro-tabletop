@@ -60,4 +60,24 @@ impl Persistent {
 			None => self.classes.iter().map(|class| class.level_count()).sum(),
 		}
 	}
+
+	pub fn temp_hp_mut(&mut self) -> &mut u32 {
+		&mut self.hit_points.1
+	}
+
+	pub fn add_hp(&mut self, amount: u32, max: u32) {
+		self.hit_points.0 = self.hit_points.0.saturating_add(amount).min(max);
+	}
+
+	pub fn sub_hp(&mut self, mut amount: u32) {
+		if self.hit_points.1 >= amount {
+			self.hit_points.1 = self.hit_points.1.saturating_sub(amount);
+			return;
+		}
+		else {
+			amount -= self.hit_points.1;
+			self.hit_points.1 = 0;
+		}
+		self.hit_points.0 = self.hit_points.0.saturating_sub(amount);
+	}
 }
