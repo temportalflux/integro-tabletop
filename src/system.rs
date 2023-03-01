@@ -1,5 +1,6 @@
 use std::{
 	collections::HashMap,
+	default,
 	sync::{Arc, Mutex, MutexGuard},
 };
 
@@ -34,47 +35,22 @@ pub trait System {
 	fn insert_document(&mut self, _document: kdl::KdlDocument) {}
 }
 
-#[derive(Default)]
-pub struct DnD5e {
-	node_registry: FactoryRegistry<DnD5e>,
-}
-
-impl System for DnD5e {
-	fn id(&self) -> &'static str {
-		"dnd5e"
-	}
-
-	fn insert_document(&mut self, document: kdl::KdlDocument) {
-		for node in document.nodes() {
-			let node_name = node.name().value();
-			let Some(factory) = self.node_registry.get(node_name).cloned() else {
-				log::error!("Failed to find factory to deserialize node \"{node_name}\".");
-				continue;
-			};
-			if let Err(err) = factory.deserialize(node, self) {
-				log::error!("Failed to deserialize entry: {err:?}");
-			}
-		}
-	}
-}
-
-impl DnD5e {
-	pub fn with_node_factory(
-		mut self,
-		node_name: &'static str,
-		factory: impl Factory<System = Self> + 'static + Send + Sync,
-	) -> Self {
-		self.node_registry.register(node_name, factory);
-		self
-	}
-}
-
-#[derive(Default)]
 pub struct FactoryRegistry<TSystem> {
 	node_factories:
 		HashMap<&'static str, Arc<dyn Factory<System = TSystem> + 'static + Send + Sync>>,
 }
-
+impl<TSystem> Default for FactoryRegistry<TSystem>
+where
+	TSystem: 'static + Default + System + Send + Sync,
+{
+	fn default() -> Self {
+		let mut registry = Self {
+			node_factories: HashMap::default(),
+		};
+		registry.register("system", FactoryNull::<TSystem>::default());
+		registry
+	}
+}
 impl<TSystem> FactoryRegistry<TSystem>
 where
 	TSystem: System,
