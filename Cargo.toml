@@ -10,8 +10,7 @@ edition = "2021"
 [dependencies]
 any-range = "0.1"
 wasm-bindgen = "0.2"
-wasm-logger = "0.2.0"
-log = "0.4"
+log = { version = "0.4", features = ["std"] }
 yew = { version = "0.20", features = ["csr"] }
 yew-router = { version = "0.17" }
 yewdux = "0.9"

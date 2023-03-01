@@ -3,6 +3,7 @@ use yew::prelude::*;
 pub mod bootstrap;
 pub mod components;
 pub mod data;
+pub mod logging;
 pub mod path_map;
 pub mod system;
 pub mod theme;
@@ -179,6 +180,6 @@ fn App() -> Html {
 }
 
 fn main() {
-	wasm_logger::init(wasm_logger::Config::default());
+	logging::init(logging::Config::default().prefer_target());
 	yew::Renderer::<App>::new().render();
 }
