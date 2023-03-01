@@ -1,13 +1,17 @@
+use anyhow::Context;
 use yew::prelude::*;
 
 pub mod bootstrap;
 pub mod components;
 pub mod data;
+pub mod kdl_ext;
 pub mod logging;
 pub mod path_map;
 pub mod system;
 pub mod theme;
 pub mod utility;
+
+static EXAMPLE_DOC: &'static str = include_str!("../modules/example.kdl");
 
 #[derive(Clone, PartialEq)]
 pub struct Compiled<T> {
@@ -179,7 +183,37 @@ fn App() -> Html {
 	</>};
 }
 
+#[cfg(target_family = "wasm")]
 fn main() {
-	logging::init(logging::Config::default().prefer_target());
+	logging::wasm::init(logging::wasm::Config::default().prefer_target());
 	yew::Renderer::<App>::new().render();
+}
+
+#[cfg(target_family = "windows")]
+fn main() -> anyhow::Result<()> {
+	use kdl_ext::DocumentQueryExt;
+
+	let _ = logging::console::init("tabletop-tools", &[]);
+
+	let mut system_reg = system::SystemRegistry::default();
+	system_reg.register(
+		system::DnD5e::default().with_node_factory("system", system::FactoryNull::default()),
+	);
+
+	let document = EXAMPLE_DOC.parse::<kdl::KdlDocument>()?;
+	let system_id = document.query_str("system", 0)?;
+	let mut system = system_reg
+		.get(system_id)
+		.ok_or(GeneralError(format!("System {system_id:?} not found")))?;
+	system.insert_document(document);
+
+	Ok(())
+}
+
+#[derive(thiserror::Error, Debug)]
+pub struct GeneralError(pub String);
+impl std::fmt::Display for GeneralError {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{}", self.0)
+	}
 }

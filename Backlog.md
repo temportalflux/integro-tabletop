@@ -4,6 +4,9 @@
 ## Descriptive Modals
 Modals for all elements with tooltips & more.
 
+### Death Saving Throws
+- in the hit points UI, shown when current hp is 0
+
 ### Speeds & Senses
 - values & sources
 - description of speeds & senses

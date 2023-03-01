@@ -1,0 +1,13 @@
+system "dnd5e"
+lineage
+upbringing
+background
+class
+subclass
+condition
+item name="Special Club" {
+
+}
+character name="Bruise the Barbarian" {
+
+}
