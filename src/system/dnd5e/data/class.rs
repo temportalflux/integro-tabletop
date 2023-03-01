@@ -1,10 +1,6 @@
-use super::{
-	character::{Character, HitPoint},
-	roll::Die,
-	BoxedFeature,
-};
+use super::{character::Character, mutator::AddMaxHitPoints, roll::Die, BoxedFeature};
 use crate::{
-	system::dnd5e::BoxedMutator,
+	system::dnd5e::{BoxedMutator, Value},
 	utility::{MutatorGroup, Selector},
 };
 
@@ -68,7 +64,13 @@ impl<'a> MutatorGroup for LevelWithIndex<'a> {
 		if let Some(hit_points) = stats.resolve_selector(&Selector::<u32>::Any {
 			id: Some("hit_points".into()),
 		}) {
-			*stats.hit_points_mut(HitPoint::Max) += hit_points;
+			stats.apply(
+				&AddMaxHitPoints {
+					id: Some(format!("Level {:02}", self.0 + 1)),
+					value: Value::Fixed(hit_points as i32),
+				}
+				.into(),
+			);
 		}
 		for mutator in &self.1.mutators {
 			stats.apply(mutator);

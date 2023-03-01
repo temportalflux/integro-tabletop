@@ -246,6 +246,31 @@ fn validate_uint_only() -> Callback<KeyboardEvent> {
 fn Modal() -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
 
+	let max_hp_table = {
+		let rows = state.max_hit_points().sources().iter().fold(Vec::new(), |mut html, (source, bonus)| {
+			html.push(html! {
+				<tr>
+					<td class="text-center">{*bonus}</td>
+					<td>{crate::data::as_feature_path_text(source).unwrap_or_default()}</td>
+				</tr>
+			});
+			html
+		});
+		html! {
+			<table class="table table-compact table-striped m-0">
+				<thead>
+					<tr class="text-center" style="color: var(--bs-heading-color);">
+						<th scope="col">{"Bonus"}</th>
+						<th scope="col">{"Source"}</th>
+					</tr>
+				</thead>
+				<tbody>
+					{rows}
+				</tbody>
+			</table>
+		}
+	};
+
 	let temp_hp_oncommit = Callback::from({
 		let state = state.clone();
 		move |evt: web_sys::Event| {
@@ -454,7 +479,7 @@ fn Modal() -> Html {
 					</h2>
 					<div id="collapseMaxHP" class="accordion-collapse collapse" data-bs-parent="#hitPointsInformation">
 						<div class="accordion-body" style="white-space: pre-line;">
-							{"TODO: Max HP breakdown, e.g. the classes that grant HP"}
+							{max_hp_table}
 						</div>
 					</div>
 				</div>
@@ -572,7 +597,7 @@ fn Modal() -> Html {
 								</div>
 							</div>
 						</div>
-					</div>	
+					</div>
 				</div>
 			</div>
 		</div>

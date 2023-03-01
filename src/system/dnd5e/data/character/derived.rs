@@ -35,7 +35,7 @@ pub struct Derived {
 	pub senses: Senses,
 	pub defenses: Defenses,
 	pub features: PathMap<BoxedFeature>,
-	pub max_hit_points: u32,
+	pub max_hit_points: MaxHitPoints,
 	pub armor_class: ArmorClass,
 	pub actions: Vec<Action>,
 	pub description: DerivedDescription,
@@ -252,4 +252,21 @@ impl std::ops::Deref for Defenses {
 pub struct DerivedDescription {
 	pub life_expectancy: i32,
 	pub max_height: (i32, RollSet),
+}
+
+#[derive(Clone, Default, PartialEq)]
+pub struct MaxHitPoints(i32, BTreeMap<PathBuf, i32>);
+impl MaxHitPoints {
+	pub fn push(&mut self, bonus: i32, source: PathBuf) {
+		self.0 = self.0.saturating_add(bonus);
+		self.1.insert(source, bonus);
+	}
+
+	pub fn value(&self) -> u32 {
+		self.0 as u32
+	}
+
+	pub fn sources(&self) -> &BTreeMap<PathBuf, i32> {
+		&self.1
+	}
 }

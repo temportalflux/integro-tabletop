@@ -4,8 +4,8 @@ use crate::{
 		data::{
 			action::{Action, ActionSource, AttackCheckKind},
 			character::{
-				AbilityScores, Defenses, Derived, DerivedDescription, Persistent, SavingThrows,
-				Senses, Skills, Speeds,
+				AbilityScores, Defenses, Derived, DerivedDescription, MaxHitPoints, Persistent,
+				SavingThrows, Senses, Skills, Speeds,
 			},
 			item::{self, weapon, ItemKind},
 			proficiency, Ability, ArmorClass, BoxedFeature, OtherProficiencies, Score,
@@ -98,13 +98,13 @@ impl Character {
 				// neither have dependencies, so they are considered equal, might as well order by node_id.
 				(None, None) => value.node_id.cmp(&entry.node_id),
 				// existing element has dependencies, but the new one doesn't. New one goes before existing.
-				(Some(_), None) => std::cmp::Ordering::Less,
+				(Some(_), None) => std::cmp::Ordering::Greater,
 				// new entry has dependencies, all deps in new must come before it
 				(_, Some(deps)) => match deps.contains(&value.node_id) {
 					// existing is not required for new, might as well sort by node_id.
 					false => value.node_id.cmp(&entry.node_id),
 					// existing is required, it must come before the new entry
-					true => std::cmp::Ordering::Less,
+					true => std::cmp::Ordering::Greater,
 				},
 			}
 		});
@@ -127,8 +127,22 @@ impl Character {
 		self.source_path.to_display()
 	}
 
-	fn get_selections_at(&self, path: &SourcePath) -> Option<&Vec<String>> {
-		self.character.selected_values.get(&path.to_data())
+	fn get_selections_at(&self, path: impl AsRef<Path>) -> Option<&Vec<String>> {
+		self.character.selected_values.get(path.as_ref())
+	}
+
+	pub fn get_first_selection_at<T>(
+		&self,
+		data_path: impl AsRef<Path>,
+	) -> Option<Result<T, <T as FromStr>::Err>>
+	where
+		T: Clone + 'static + FromStr,
+	{
+		let selections = self.get_selections_at(data_path);
+		selections
+			.map(|all| all.first())
+			.flatten()
+			.map(|selected| T::from_str(&selected))
 	}
 
 	pub fn resolve_selector<T>(&mut self, selector: &Selector<T>) -> Option<T>
@@ -139,12 +153,9 @@ impl Character {
 			return Some(value.clone());
 		}
 		let scope = self.source_path.push(selector.id(), false);
-		let selections = self.get_selections_at(&self.source_path);
-		let value = match selections {
-			Some(selections) => match selections.first() {
-				Some(selected) => T::from_str(&selected).ok(),
-				None => None,
-			},
+		let value = match self.get_first_selection_at::<T>(&self.source_path.to_data()) {
+			Some(Ok(value)) => Some(value),
+			Some(Err(_)) => None,
 			None => {
 				self.derived
 					.missing_selections
@@ -274,17 +285,17 @@ impl Character {
 	pub fn hit_points(&self, kind: HitPoint) -> u32 {
 		match kind {
 			HitPoint::Current => self.character.hit_points.0,
-			HitPoint::Max => self.derived.max_hit_points,
+			HitPoint::Max => self.derived.max_hit_points.value(),
 			HitPoint::Temp => self.character.hit_points.1,
 		}
 	}
 
-	pub fn hit_points_mut(&mut self, kind: HitPoint) -> &mut u32 {
-		match kind {
-			HitPoint::Current => &mut self.character.hit_points.0,
-			HitPoint::Max => &mut self.derived.max_hit_points,
-			HitPoint::Temp => &mut self.character.hit_points.1,
-		}
+	pub fn max_hit_points(&self) -> &MaxHitPoints {
+		&self.derived.max_hit_points
+	}
+
+	pub fn max_hit_points_mut(&mut self) -> &mut MaxHitPoints {
+		&mut self.derived.max_hit_points
 	}
 
 	pub fn defenses(&self) -> &Defenses {

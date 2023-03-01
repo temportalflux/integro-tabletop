@@ -13,6 +13,9 @@ pub use description::*;
 mod defense;
 pub use defense::*;
 
+mod hit_points;
+pub use hit_points::*;
+
 mod saving_throw;
 pub use saving_throw::*;
 

@@ -1,5 +1,68 @@
-use crate::{system::dnd5e::data::character::Character, utility::Evaluator};
-use std::collections::BTreeMap;
+use crate::{
+	system::dnd5e::{data::character::Character, Value},
+	utility::Evaluator,
+};
+use std::{collections::BTreeMap, iter::Product, fmt::Debug};
+
+#[derive(Clone, PartialEq, Default)]
+pub struct GetLevel<T> {
+	class_name: Option<String>,
+	marker: std::marker::PhantomData<T>,
+}
+impl<T, S> From<Option<S>> for GetLevel<T>
+where
+	S: ToString,
+	T: Default,
+{
+	fn from(value: Option<S>) -> Self {
+		Self {
+			class_name: value.map(|s| s.to_string()),
+			marker: std::marker::PhantomData::default(),
+		}
+	}
+}
+impl<T> Evaluator for GetLevel<T>
+where
+	T: 'static + Copy + Debug,
+	usize: num_traits::AsPrimitive<T>,
+{
+	type Context = Character;
+	type Item = T;
+
+	fn evaluate(&self, state: &Self::Context) -> Self::Item {
+		use num_traits::AsPrimitive;
+		let value = state
+			.level(self.class_name.as_ref().map(String::as_str))
+			.as_();
+		value
+	}
+}
+
+#[derive(Clone, PartialEq)]
+pub struct GetAbilityModifier(pub crate::system::dnd5e::data::Ability);
+impl Evaluator for GetAbilityModifier {
+	type Context = Character;
+	type Item = i32;
+
+	fn evaluate(&self, state: &Self::Context) -> Self::Item {
+		let value = state.ability_modifier(self.0, None);
+		value
+	}
+}
+
+#[derive(Clone, PartialEq)]
+pub struct MulValues<T>(pub Vec<Value<T>>);
+impl<T> Evaluator for MulValues<T>
+where
+	T: Product + Clone,
+{
+	type Context = Character;
+	type Item = T;
+
+	fn evaluate(&self, state: &Self::Context) -> Self::Item {
+		self.0.iter().map(|value| value.evaluate(state)).product()
+	}
+}
 
 #[derive(Clone, PartialEq)]
 pub struct ByLevel<T> {
@@ -24,8 +87,7 @@ where
 	type Item = T;
 
 	fn evaluate(&self, state: &Self::Context) -> Self::Item {
-		let class_name = self.class_name.as_ref().map(String::as_str);
-		let character_level = state.level(class_name);
+		let character_level = GetLevel::from(self.class_name.clone()).evaluate(state);
 		for (level, value) in self.map.iter().rev() {
 			if *level <= character_level {
 				return value.clone();

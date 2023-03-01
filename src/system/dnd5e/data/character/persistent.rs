@@ -1,8 +1,15 @@
 use crate::{
 	path_map::PathMap,
-	system::dnd5e::data::{
-		character::Character, condition::BoxedCondition, item, Ability, Background, BoxedFeature,
-		Class, Description, Lineage, Score, Upbringing,
+	system::dnd5e::{
+		data::{
+			character::Character,
+			condition::BoxedCondition,
+			evaluator::{GetAbilityModifier, GetLevel, MulValues},
+			item,
+			mutator::AddMaxHitPoints,
+			Ability, Background, BoxedFeature, Class, Description, Lineage, Score, Upbringing,
+		},
+		Value,
 	},
 	utility::MutatorGroup,
 };
@@ -29,6 +36,20 @@ impl MutatorGroup for Persistent {
 	type Target = Character;
 
 	fn apply_mutators<'c>(&self, stats: &mut Character) {
+		stats.apply(
+			&AddMaxHitPoints {
+				id: Some("Constitution x Levels".into()),
+				value: Value::Evaluated(
+					MulValues(vec![
+						Value::Evaluated(GetLevel::<i32>::default().into()),
+						Value::Evaluated(GetAbilityModifier(Ability::Constitution).into()),
+					])
+					.into(),
+				),
+			}
+			.into(),
+		);
+		
 		for lineage in &self.lineages {
 			if let Some(lineage) = lineage {
 				stats.apply_from(lineage);
