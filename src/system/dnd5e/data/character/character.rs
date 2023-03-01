@@ -174,6 +174,10 @@ impl Character {
 			.collect::<Vec<_>>()
 	}
 
+	pub fn persistent(&self) -> &Persistent {
+		&self.character
+	}
+
 	/// Returns the score/value for a given ability. Any bonuses beyond the character's base scores
 	/// are provided with a path to the feature which provided that bonus.
 	pub fn ability_score(&self, ability: Ability) -> (Score, Vec<(PathBuf, i32)>) {

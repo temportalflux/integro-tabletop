@@ -14,10 +14,10 @@ pub struct Feature {
 	// This is in addition to the existing action + limited uses (which allows the feature to display in the actions panel).
 	pub action: Option<ActivationKind>,
 	pub limited_uses: Option<LimitedUses>,
-	
+
 	pub mutators: Vec<BoxedMutator>,
 	pub criteria: Option<BoxedCriteria>,
-	
+
 	pub missing_selection_text: Option<(String, HashMap<String, String>)>,
 }
 

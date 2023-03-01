@@ -65,19 +65,27 @@ impl Persistent {
 		&mut self.hit_points.1
 	}
 
-	pub fn add_hp(&mut self, amount: u32, max: u32) {
-		self.hit_points.0 = self.hit_points.0.saturating_add(amount).min(max);
+	pub fn add_hit_points(&self, amount: i32, max: u32) -> (u32, u32) {
+		let (mut hp, mut temp) = self.hit_points;
+		let mut amt_abs = amount.abs() as u32;
+		match amount.signum() {
+			1 => {
+				hp = hp.saturating_add(amt_abs).min(max);
+			}
+			-1 if temp >= amt_abs => {
+				temp = temp.saturating_sub(amt_abs);
+			}
+			-1 if temp < amt_abs => {
+				amt_abs -= temp;
+				temp = 0;
+				hp = hp.saturating_sub(amt_abs);
+			}
+			_ => {}
+		}
+		(hp, temp)
 	}
 
-	pub fn sub_hp(&mut self, mut amount: u32) {
-		if self.hit_points.1 >= amount {
-			self.hit_points.1 = self.hit_points.1.saturating_sub(amount);
-			return;
-		}
-		else {
-			amount -= self.hit_points.1;
-			self.hit_points.1 = 0;
-		}
-		self.hit_points.0 = self.hit_points.0.saturating_sub(amount);
+	pub fn add_assign_hit_points(&mut self, amount: i32, max: u32) {
+		self.hit_points = self.add_hit_points(amount, max);
 	}
 }

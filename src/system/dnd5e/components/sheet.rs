@@ -2,8 +2,8 @@ use crate::{
 	components::{modal, Nav, NavDisplay, TabContent},
 	system::dnd5e::{
 		components::{
-			ability, panel, ArmorClass, HitPoints, DefensesCard, ConditionsCard, InitiativeBonus, Inspiration, ProfBonus,
-			Proficiencies, SpeedAndSenses,
+			ability, panel, ArmorClass, ConditionsCard, DefensesCard, HitPoints, InitiativeBonus,
+			Inspiration, ProfBonus, Proficiencies, SpeedAndSenses,
 		},
 		data::{
 			character::{Character, Persistent},
@@ -113,7 +113,7 @@ pub fn CharacterSheetPage(CharacterSheetPageProps { character }: &CharacterSheet
 										<DefensesCard />
 									</div>
 									<div class="col">
-										<ConditionsCard />									
+										<ConditionsCard />
 									</div>
 								</div>
 

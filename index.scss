@@ -66,6 +66,19 @@
 	--bs-gradient: none;
 }
 
+[data-bs-theme=light] * {
+	--theme-healing: #40d250;
+}
+[data-bs-theme=dark] * {
+	--theme-healing: #00c797;
+}
+[data-bs-theme=light] * {
+	--theme-damage: #d24040;
+}
+[data-bs-theme=dark] * {
+	--theme-damage: #c53131;
+}
+
 [data-bs-theme=light] label.theme-healing {
 	color: #40d250;
 }
@@ -112,4 +125,16 @@
 }
 .modal.hit-points button.hp-action.sub:before {
 	background-position: -17px 0;
+}
+.modal.hit-points .heal {
+	color: var(--theme-healing);
+}
+.modal.hit-points .damage {
+	color: var(--theme-damage);
+}
+.modal.hit-points .heal .new-hp-header {
+	color: var(--theme-healing);
+}
+.modal.hit-points .damage .new-hp-header {
+	color: var(--theme-damage);
 }

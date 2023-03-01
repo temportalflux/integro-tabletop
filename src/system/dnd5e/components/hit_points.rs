@@ -1,9 +1,15 @@
+use std::cmp::Ordering;
+
 use crate::{
 	bootstrap::components::Tooltip,
+	components::{modal, Tag, Tags},
 	system::dnd5e::{
 		components::SharedCharacter,
-		data::{character::{HitPoint, Persistent}, mutator::Defense},
-	}, components::{Tags, Tag, modal},
+		data::{
+			character::{HitPoint, Persistent},
+			mutator::Defense,
+		},
+	},
 };
 use wasm_bindgen::JsCast;
 use web_sys::HtmlInputElement;
@@ -60,25 +66,25 @@ pub fn HitPoints() -> Html {
 		move |evt: MouseEvent, character, prev| {
 			evt.stop_propagation();
 			let Some(amt) = take_hp_input.emit(()) else { return; };
-			character.add_hp(amt, prev.hit_points(HitPoint::Max));
+			character.add_assign_hit_points(amt as i32, prev.hit_points(HitPoint::Max));
 		}
 	});
 	let onclick_dmg = state.new_dispatch({
 		let take_hp_input = take_hp_input.clone();
-		move |evt: MouseEvent, character, _| {
+		move |evt: MouseEvent, character, prev| {
 			evt.stop_propagation();
 			let Some(amt) = take_hp_input.emit(()) else { return; };
-			character.sub_hp(amt);
+			character.add_assign_hit_points(-1 * (amt as i32), prev.hit_points(HitPoint::Max));
 		}
 	});
 	let onclick_amt = Callback::from(|evt: MouseEvent| evt.stop_propagation());
 	let onclick = modal_dispatcher.callback(|_| {
 		modal::Action::Open(modal::Props {
-				centered: true,
-				scrollable: true,
-				root_classes: classes!("hit-points"),
-				content: html! {<Modal />},
-				..Default::default()
+			centered: true,
+			scrollable: true,
+			root_classes: classes!("hit-points"),
+			content: html! {<Modal />},
+			..Default::default()
 		})
 	});
 
@@ -159,25 +165,73 @@ fn Modal() -> Html {
 		}
 	});
 
-	/* TODO: HP Form
-	New HP: label + value
-	- white when matching current hp
-	- red when <
-	- green when >
-	- displays the projected post-adjustment value
-	- TODO: how does this interact with temp hp
-	Healing (input)
-	- green border + label
-	- directly modifying clears damage (input) on focus lost
-	Damage (input)
-	- red border + label
-	- directly modifying clears healing (input) on focus lost
-	+ Button: +1 to diff
-	- Button: -1 to diff
-	Apply Changes Button: Commits the diff to character hp (disabled/hidden if new hp = current hp)
-	Cancel Button: Discards changes to form (disabled/hidden if new hp = current hp)
-	*/
-	
+	let delta = use_state_eq(|| 0i32);
+	let (delta_sig, delta_abs) = (delta.signum(), delta.abs() as u32);
+	let prev_hp = state.hit_points(HitPoint::Current);
+	let prev_temp = state.hit_points(HitPoint::Temp);
+	let (next_hp, next_temp) = state
+		.persistent()
+		.add_hit_points(*delta, state.hit_points(HitPoint::Max));
+	let healing_amt = delta_sig.max(0) as u32 * delta_abs;
+	let damage_amt = (-delta_sig).max(0) as u32 * delta_abs;
+	let new_hp_color_classes = match next_hp.cmp(&prev_hp) {
+		Ordering::Greater => classes!("heal"),
+		Ordering::Less => classes!("damage"),
+		Ordering::Equal => classes!(),
+	};
+	let temp_hp_color_classes = match next_temp.cmp(&prev_temp) {
+		Ordering::Greater => classes!("heal"),
+		Ordering::Less => classes!("damage"),
+		Ordering::Equal => classes!(),
+	};
+	let temp_hp_classes = (prev_temp <= 0)
+		.then(|| classes!("d-none"))
+		.unwrap_or_default();
+
+	let onchange_healing = Callback::from({
+		let delta = delta.clone();
+		move |evt: web_sys::Event| {
+			let Some(target) = evt.target() else { return; };
+			let Some(input) = target.dyn_ref::<HtmlInputElement>() else { return; };
+			let Ok(value) = input.value().parse::<u32>() else { return; };
+			delta.set(value as i32);
+		}
+	});
+	let onchange_damage = Callback::from({
+		let delta = delta.clone();
+		move |evt: web_sys::Event| {
+			let Some(target) = evt.target() else { return; };
+			let Some(input) = target.dyn_ref::<HtmlInputElement>() else { return; };
+			let Ok(value) = input.value().parse::<u32>() else { return; };
+			delta.set(value as i32 * -1);
+		}
+	});
+	let onclick_add = Callback::from({
+		let delta = delta.clone();
+		move |_| {
+			delta.set(delta.saturating_add(1));
+		}
+	});
+	let onclick_sub = Callback::from({
+		let delta = delta.clone();
+		move |_| {
+			delta.set(delta.saturating_sub(1));
+		}
+	});
+	let apply_delta = state.new_dispatch({
+		let delta = delta.clone();
+		move |_: MouseEvent, character, prev| {
+			character.add_assign_hit_points(*delta, prev.hit_points(HitPoint::Max));
+			delta.set(0);
+		}
+	});
+	let clear_delta = Callback::from({
+		let delta = delta.clone();
+		move |_| {
+			delta.set(0);
+		}
+	});
+
 	html! {<>
 		<div class="modal-header">
 			<h1 class="modal-title fs-4">{"Hit Point Management"}</h1>
@@ -218,36 +272,80 @@ fn Modal() -> Html {
 								class="form-control text-center theme-healing"
 								type="number" id="inputHealing"
 								style="font-size: 20px; font-weight: 500; padding: 0; height: 100%;"
-								min="0" value="0"
+								min="0" value={healing_amt.to_string()}
+								onkeydown={validate_uint_only()}
+								onchange={onchange_healing}
 							/>
 						</div>
 					</div>
-					
+
 					<div class="d-flex justify-content-center">
-						<button type="button" class="btn btn-theme hp-action sub" />
-						<button type="button" class="btn btn-theme hp-action add" />
+						<button type="button" class="btn btn-theme hp-action sub" onclick={onclick_sub} />
+						<button type="button" class="btn btn-theme hp-action add" onclick={onclick_add} />
 					</div>
 
 					<div class="row mx-0 my-2">
 						<div class="col-4 p-0">
-							<label class="col-form-label text-center theme-damage" for="inputDamage" style="width: 100%">{"Damage"}</label>
+							<label
+								class={classes!(
+									"col-form-label",
+									"text-center",
+									"theme-damage"
+								)}
+								for="inputDamage" style="width: 100%"
+							>{"Damage"}</label>
 						</div>
 						<div class="col">
 							<input
-								class="form-control text-center theme-damage"
+								class={classes!(
+									"form-control",
+									"text-center",
+									"theme-damage"
+								)}
 								type="number" id="inputDamage"
 								style="font-size: 20px; font-weight: 500; padding: 0; height: 100%;"
-								min="0" value="0"
+								min="0" value={damage_amt.to_string()}
+								onkeydown={validate_uint_only()}
+								onchange={onchange_damage}
 							/>
 						</div>
 					</div>
-					
+
 				</div>
 				<div class="col-auto text-center m-auto">
-					<h6 class="m-0">{"NEW HP"}</h6>
-					<div style="font-size: 40px; font-weight: 500; margin-top: -10px;">{state.hit_points(HitPoint::Current)}</div>
-					<button type="button" class="m-2 btn btn-theme" disabled={true}>{"Apply Changes"}</button>
-					<button type="button" class="m-2 btn btn-outline-theme" disabled={true}>{"Cancel"}</button>
+
+					<div class="row m-0">
+						<div class={{
+							let mut classes = classes!("col");
+							classes.extend(new_hp_color_classes.clone());
+							classes
+						}}>
+							<h6 class="m-0 new-hp-header">{"NEW HP"}</h6>
+							<div style="font-size: 40px; font-weight: 500; margin-top: -10px;">{next_hp}</div>
+						</div>
+						<div class={{
+							let mut classes = classes!("col");
+							classes.extend(temp_hp_color_classes.clone());
+							classes.extend(temp_hp_classes);
+							classes
+						}}>
+							<h6 class="m-0 new-hp-header">{"TEMP HP"}</h6>
+							<div style="font-size: 40px; font-weight: 500; margin-top: -10px;">{next_temp}</div>
+						</div>
+					</div>
+
+					<button
+						type="button"
+						class="m-2 btn btn-theme"
+						disabled={*delta == 0}
+						onclick={apply_delta}
+					>{"Apply Changes"}</button>
+					<button
+						type="button"
+						class="m-2 btn btn-outline-theme"
+						disabled={*delta == 0}
+						onclick={clear_delta}
+					>{"Cancel"}</button>
 				</div>
 			</div>
 			<span class="my-3" style="display: block; width: 100%; border-style: solid; border-width: 0; border-bottom-width: var(--bs-border-width); border-color: var(--theme-frame-color-muted);" />
@@ -299,7 +397,7 @@ pub fn ConditionsCard() -> Html {
 		<div class="card m-1" style="height: 100px;">
 			<div class="card-body text-center" style="padding: 5px 5px;">
 				<h6 class="card-title" style="font-size: 0.8rem;">{"Conditions"}</h6>
-				
+
 			</div>
 		</div>
 	}

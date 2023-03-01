@@ -58,18 +58,11 @@ impl AttackKindValue {
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum AreaOfEffect {
-	Cone {
-		width: i32,
-	},
+	Cone { width: i32 },
 	Cube,
 	Cylinder,
-	Line {
-		width: i32,
-		length: i32,
-	},
-	Sphere {
-		radius: i32,
-	},
+	Line { width: i32, length: i32 },
+	Sphere { radius: i32 },
 	Square,
 }
 
