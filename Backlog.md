@@ -8,10 +8,6 @@ Modals for all elements with tooltips & more.
 - values & sources
 - description of speeds & senses
 
-### Hit Points
-- Max HP sumation + sources
-- Larger HP modification interface
-
 ### Defenses
 - Long-form description, split into sections (resistant, immune, vulnerable) with values and their sources
 
