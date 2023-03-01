@@ -12,7 +12,7 @@ use crate::{
 		},
 		BoxedCriteria, BoxedMutator,
 	},
-	utility::{MutatorGroup, Selector},
+	utility::{Dependencies, MutatorGroup, Selector},
 };
 use enum_map::Enum;
 use enumset::EnumSetType;
@@ -34,7 +34,7 @@ pub struct Character {
 #[derive(Clone, PartialEq)]
 struct MutatorEntry {
 	node_id: &'static str,
-	dependencies: Option<Vec<&'static str>>,
+	dependencies: Dependencies,
 	mutator: BoxedMutator,
 	source: SourcePath,
 }
@@ -94,7 +94,7 @@ impl Character {
 
 	fn insert_mutator(&mut self, entry: MutatorEntry) {
 		let idx = self.mutators.binary_search_by(|value| {
-			match (&value.dependencies, &entry.dependencies) {
+			match (&*value.dependencies, &*entry.dependencies) {
 				// neither have dependencies, so they are considered equal, might as well order by node_id.
 				(None, None) => value.node_id.cmp(&entry.node_id),
 				// existing element has dependencies, but the new one doesn't. New one goes before existing.
@@ -118,6 +118,12 @@ impl Character {
 	fn apply_cached_mutators(&mut self) {
 		let mutators = self.mutators.drain(..).collect::<Vec<_>>();
 		for entry in mutators.into_iter() {
+			log::debug!(
+				target: "character",
+				"applying mutator: {:?} deps:{:?}",
+				entry.node_id,
+				entry.dependencies
+			);
 			self.source_path = entry.source;
 			entry.mutator.apply(self);
 		}

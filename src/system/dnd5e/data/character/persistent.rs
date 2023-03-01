@@ -49,7 +49,7 @@ impl MutatorGroup for Persistent {
 			}
 			.into(),
 		);
-		
+
 		for lineage in &self.lineages {
 			if let Some(lineage) = lineage {
 				stats.apply_from(lineage);

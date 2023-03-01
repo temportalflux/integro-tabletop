@@ -1,6 +1,6 @@
 use crate::{
 	system::dnd5e::{data::character::Character, Value},
-	utility::{Evaluator, Mutator},
+	utility::{Dependencies, Evaluator, Mutator},
 };
 
 #[derive(Clone)]
@@ -16,9 +16,8 @@ impl Mutator for AddMaxHitPoints {
 		"add_max_hit_points"
 	}
 
-	fn dependencies(&self) -> Option<Vec<&'static str>> {
-		// TODO: This should actually be derived from what the dependencies are of the provided evaluator
-		Some(vec!["add_ability_score"])
+	fn dependencies(&self) -> Dependencies {
+		self.value.dependencies()
 	}
 
 	fn id(&self) -> Option<&str> {

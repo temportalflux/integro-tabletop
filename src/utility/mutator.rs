@@ -1,3 +1,4 @@
+use super::Dependencies;
 use std::rc::Rc;
 
 pub trait Mutator {
@@ -5,8 +6,8 @@ pub trait Mutator {
 
 	fn node_id(&self) -> &'static str;
 
-	fn dependencies(&self) -> Option<Vec<&'static str>> {
-		None
+	fn dependencies(&self) -> Dependencies {
+		Dependencies::default()
 	}
 
 	fn id(&self) -> Option<&str> {

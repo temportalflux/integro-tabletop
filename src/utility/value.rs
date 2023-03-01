@@ -1,5 +1,5 @@
 use super::{Evaluator, RcEvaluator};
-use std::rc::Rc;
+use std::{collections::HashSet, ops::Deref, rc::Rc};
 
 #[derive(Clone)]
 pub enum Value<C, V> {
@@ -48,10 +48,49 @@ where
 	type Context = C;
 	type Item = V;
 
+	fn dependencies(&self) -> Dependencies {
+		match self {
+			Self::Fixed(_) => Dependencies::default(),
+			Self::Evaluated(evaluator) => evaluator.dependencies(),
+		}
+	}
+
 	fn evaluate(&self, state: &Self::Context) -> Self::Item {
 		match self {
 			Self::Fixed(value) => value.clone(),
 			Self::Evaluated(evaluator) => evaluator.evaluate(state),
 		}
+	}
+}
+
+#[derive(Clone, PartialEq, Default)]
+pub struct Dependencies(Option<HashSet<&'static str>>);
+impl<const N: usize> From<[&'static str; N]> for Dependencies {
+	fn from(values: [&'static str; N]) -> Self {
+		Self(Some(HashSet::from(values)))
+	}
+}
+impl std::fmt::Debug for Dependencies {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match &self.0 {
+			None => write!(f, "{{}}"),
+			Some(deps) => write!(f, "{:?}", deps),
+		}
+	}
+}
+impl Dependencies {
+	pub fn join(self, other: Self) -> Self {
+		match (self.0, other.0) {
+			(None, None) => Self(None),
+			(None, Some(deps)) | (Some(deps), None) => Self(Some(deps)),
+			(Some(a), Some(b)) => Self(Some(a.union(&b).cloned().collect())),
+		}
+	}
+}
+impl Deref for Dependencies {
+	type Target = Option<HashSet<&'static str>>;
+
+	fn deref(&self) -> &Self::Target {
+		&self.0
 	}
 }

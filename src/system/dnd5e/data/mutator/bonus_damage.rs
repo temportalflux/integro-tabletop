@@ -3,7 +3,7 @@ use crate::{
 		data::{action::Action, character::Character, item::weapon},
 		Value,
 	},
-	utility::{Evaluator, Mutator},
+	utility::{Dependencies, Evaluator, Mutator},
 };
 
 #[derive(Clone, PartialEq)]
@@ -32,8 +32,8 @@ impl Mutator for BonusDamage {
 		"bonus_damage"
 	}
 
-	fn dependencies(&self) -> Option<Vec<&'static str>> {
-		Some(vec!["add_action"])
+	fn dependencies(&self) -> Dependencies {
+		Dependencies::from(["add_action"]).join(self.amount.dependencies())
 	}
 
 	fn apply<'c>(&self, stats: &mut Character) {

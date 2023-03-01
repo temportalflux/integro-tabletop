@@ -247,15 +247,18 @@ fn Modal() -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
 
 	let max_hp_table = {
-		let rows = state.max_hit_points().sources().iter().fold(Vec::new(), |mut html, (source, bonus)| {
-			html.push(html! {
-				<tr>
-					<td class="text-center">{*bonus}</td>
-					<td>{crate::data::as_feature_path_text(source).unwrap_or_default()}</td>
-				</tr>
-			});
-			html
-		});
+		let rows = state.max_hit_points().sources().iter().fold(
+			Vec::new(),
+			|mut html, (source, bonus)| {
+				html.push(html! {
+					<tr>
+						<td class="text-center">{*bonus}</td>
+						<td>{crate::data::as_feature_path_text(source).unwrap_or_default()}</td>
+					</tr>
+				});
+				html
+			},
+		);
 		html! {
 			<table class="table table-compact table-striped m-0">
 				<thead>

@@ -1,8 +1,8 @@
 use crate::{
 	system::dnd5e::{data::character::Character, Value},
-	utility::Evaluator,
+	utility::{Dependencies, Evaluator},
 };
-use std::{collections::BTreeMap, iter::Product, fmt::Debug};
+use std::{collections::BTreeMap, fmt::Debug, iter::Product};
 
 #[derive(Clone, PartialEq, Default)]
 pub struct GetLevel<T> {
@@ -44,6 +44,10 @@ impl Evaluator for GetAbilityModifier {
 	type Context = Character;
 	type Item = i32;
 
+	fn dependencies(&self) -> Dependencies {
+		["add_ability_score"].into()
+	}
+
 	fn evaluate(&self, state: &Self::Context) -> Self::Item {
 		let value = state.ability_modifier(self.0, None);
 		value
@@ -58,6 +62,12 @@ where
 {
 	type Context = Character;
 	type Item = T;
+
+	fn dependencies(&self) -> Dependencies {
+		self.0.iter().fold(Dependencies::default(), |deps, value| {
+			deps.join(value.dependencies())
+		})
+	}
 
 	fn evaluate(&self, state: &Self::Context) -> Self::Item {
 		self.0.iter().map(|value| value.evaluate(state)).product()
