@@ -6,6 +6,7 @@ pub fn Inspiration() -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
 	let onclick = state.new_dispatch(|_, character, _| {
 		character.inspiration = !character.inspiration;
+		None
 	});
 	let color = "var(--theme-frame-color)";
 	let icon = match state.inspiration() {

@@ -22,6 +22,11 @@ use std::{
 	str::FromStr,
 };
 
+#[derive(Clone, Copy, PartialEq)]
+pub enum ActionEffect {
+	Recompile,
+}
+
 /// The pairing of `Character` and `Derived` to form a singlular reference
 /// structure for all character data.
 #[derive(Clone, PartialEq)]
@@ -52,15 +57,19 @@ impl From<Persistent> for Character {
 	}
 }
 impl yew::Reducible for Character {
-	type Action = Box<dyn FnOnce(&mut Persistent, &Rc<Self>)>;
+	type Action = Box<dyn FnOnce(&mut Persistent, &Rc<Self>) -> Option<ActionEffect>>;
 
 	fn reduce(self: Rc<Self>, action: Self::Action) -> Rc<Self> {
-		let mut persistent = self.character.clone();
-		action(&mut persistent, &self);
-		let mut updated = Self::new(persistent.clone());
-		updated.apply_from(&persistent);
-		updated.apply_cached_mutators();
-		Rc::new(updated)
+		let mut full = (*self).clone();
+		Rc::new(match action(&mut full.character, &self) {
+			None => full,
+			Some(ActionEffect::Recompile) => {
+				let mut updated = Self::new(full.character.clone());
+				updated.apply_from(&full.character);
+				updated.apply_cached_mutators();
+				updated
+			}
+		})
 	}
 }
 impl Character {
@@ -302,6 +311,14 @@ impl Character {
 
 	pub fn max_hit_points_mut(&mut self) -> &mut MaxHitPoints {
 		&mut self.derived.max_hit_points
+	}
+
+	pub fn death_saving_throws(&self) -> (u8, u8) {
+		self.character.death_saves
+	}
+
+	pub fn death_saving_throw_mut(&mut self) -> &mut (u8, u8) {
+		&mut self.character.death_saves
 	}
 
 	pub fn defenses(&self) -> &Defenses {

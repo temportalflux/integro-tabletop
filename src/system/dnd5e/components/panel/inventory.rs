@@ -1,6 +1,9 @@
 use crate::{
 	bootstrap::components::Tooltip,
-	system::dnd5e::{components::SharedCharacter, data::item::Item},
+	system::dnd5e::{
+		components::SharedCharacter,
+		data::{character::ActionEffect, item::Item},
+	},
 };
 use uuid::Uuid;
 use wasm_bindgen::JsCast;
@@ -98,6 +101,7 @@ fn ItemRowEquipBox(
 			let should_be_equipped = input.checked();
 			state.dispatch(Box::new(move |persistent, _| {
 				persistent.inventory.set_equipped(&id, should_be_equipped);
+				Some(ActionEffect::Recompile)
 			}));
 		}
 	});

@@ -2,11 +2,11 @@ use crate::{
 	components::{modal, Nav, NavDisplay, TabContent},
 	system::dnd5e::{
 		components::{
-			ability, panel, ArmorClass, ConditionsCard, DefensesCard, HitPoints, InitiativeBonus,
-			Inspiration, ProfBonus, Proficiencies, SpeedAndSenses,
+			ability, panel, ArmorClass, ConditionsCard, DefensesCard, HitPointMgmtCard,
+			InitiativeBonus, Inspiration, ProfBonus, Proficiencies, SpeedAndSenses,
 		},
 		data::{
-			character::{Character, Persistent},
+			character::{ActionEffect, Character, Persistent},
 			Ability,
 		},
 	},
@@ -25,15 +25,13 @@ impl SharedCharacter {
 	pub fn new_dispatch<I, F>(&self, mutator: F) -> Callback<I>
 	where
 		I: 'static,
-		F: Fn(I, &mut Persistent, &std::rc::Rc<Character>) + 'static,
+		F: Fn(I, &mut Persistent, &std::rc::Rc<Character>) -> Option<ActionEffect> + 'static,
 	{
 		let handle = self.0.clone();
 		let mutator = std::rc::Rc::new(mutator);
 		Callback::from(move |input: I| {
 			let mutator = mutator.clone();
-			handle.dispatch(Box::new(move |a, b| {
-				(*mutator)(input, a, b);
-			}));
+			handle.dispatch(Box::new(move |a, b| (*mutator)(input, a, b)));
 		})
 	}
 }
@@ -100,7 +98,7 @@ pub fn CharacterSheetPage(CharacterSheetPageProps { character }: &CharacterSheet
 										</div>
 									</div>
 									<div class="col">
-										<HitPoints />
+										<HitPointMgmtCard />
 									</div>
 								</div>
 								<div class="row m-0" style="--bs-gutter-x: 0;">

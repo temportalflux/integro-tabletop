@@ -89,9 +89,9 @@ You are in the hands of fate now, aided only by spells and features that improve
 chances of succeeding on a saving throw.";
 static TEXT_DTZ_SAVING_THROWS_ROLL: &'static str = "\
 If the roll is 10 or higher, you succeed. Otherwise, you fail. \
-A success or failure has no effect by itself. On your third success, \
-you become stable (see below). On your third failure, you die. The successes and failures \
-don't need to be consecutive; keep track of both until you collect three of a kind. \
+A success or failure has no effect by itself. On your third success, you become stable. \
+On your third failure, you die. The successes and failures don't need to be consecutive; \
+keep track of both until you collect three of a kind. \
 The number of both is reset to zero when you regain any hit points or become stable.";
 static TEXT_DTZ_SAVING_THROWS_ROLL_CRIT: &'static str = "\
 When you make a death saving throw and roll a 1 on the d20, it counts as two failures. \
@@ -135,9 +135,38 @@ fn defence_to_html(defence: Defense) -> Html {
 }
 
 #[function_component]
-pub fn HitPoints() -> Html {
+pub fn HitPointMgmtCard() -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();
+	let on_open_modal = modal_dispatcher.callback(|_| {
+		modal::Action::Open(modal::Props {
+			centered: true,
+			scrollable: true,
+			root_classes: classes!("hit-points"),
+			content: html! {<Modal />},
+			..Default::default()
+		})
+	});
+	let current_hp = state.hit_points(HitPoint::Current);
+	html! {
+		<div class="card m-1 hit-points" style="height: 80px;">
+			<div class="card-body" style="padding: 5px 5px;">
+				{match current_hp > 0 {
+					true => html! { <HitPointsBody {on_open_modal} /> },
+					false => html! { <DeathSavesBody {on_open_modal} /> },
+				}}
+			</div>
+		</div>
+	}
+}
+
+#[derive(Clone, PartialEq, Properties)]
+struct BodyProps {
+	on_open_modal: Callback<MouseEvent>,
+}
+#[function_component]
+fn HitPointsBody(BodyProps { on_open_modal }: &BodyProps) -> Html {
+	let state = use_context::<SharedCharacter>().unwrap();
 
 	let hp_input_node = use_node_ref();
 	let take_hp_input = Callback::from({
@@ -158,71 +187,119 @@ pub fn HitPoints() -> Html {
 		let take_hp_input = take_hp_input.clone();
 		move |evt: MouseEvent, character, prev| {
 			evt.stop_propagation();
-			let Some(amt) = take_hp_input.emit(()) else { return; };
+			let Some(amt) = take_hp_input.emit(()) else { return None; };
 			character.add_assign_hit_points(amt as i32, prev.hit_points(HitPoint::Max));
+			None
 		}
 	});
 	let onclick_dmg = state.new_dispatch({
 		let take_hp_input = take_hp_input.clone();
 		move |evt: MouseEvent, character, prev| {
 			evt.stop_propagation();
-			let Some(amt) = take_hp_input.emit(()) else { return; };
+			let Some(amt) = take_hp_input.emit(()) else { return None; };
 			character.add_assign_hit_points(-1 * (amt as i32), prev.hit_points(HitPoint::Max));
+			None
 		}
 	});
 	let onclick_amt = Callback::from(|evt: MouseEvent| evt.stop_propagation());
-	let onclick = modal_dispatcher.callback(|_| {
-		modal::Action::Open(modal::Props {
-			centered: true,
-			scrollable: true,
-			root_classes: classes!("hit-points"),
-			content: html! {<Modal />},
-			..Default::default()
-		})
-	});
 
 	html! {
-		<div class="card m-1" style="height: 80px;">
-			<div class="card-body" style="padding: 5px 5px;">
-				<div class="d-flex">
-					<div class="flex-grow-1" {onclick}>
-						<h5 class="text-center" style="font-size: 0.8rem; color: var(--bs-card-title-color); margin: 0 0 2px 0;">{"Hit Points"}</h5>
-						<div class="row text-center m-0" style="--bs-gutter-x: 0;">
-							<div class="col" style="min-width: 50px;">
-								<div style="font-size: 0.75rem; padding: 0 5px;">{"Current"}</div>
-								<div style="font-size: 26px; font-weight: 500;">{state.hit_points(HitPoint::Current)}</div>
-							</div>
-							<div class="col-auto">
-								<div style="min-height: 1.2rem;"></div>
-								<div style="font-size: 23px; font-weight: 300;">{"/"}</div>
-							</div>
-							<div class="col" style="min-width: 50px;">
-								<div style="font-size: 0.75rem; padding: 0 5px;">{"Max"}</div>
-								<div style="font-size: 26px; font-weight: 500;">{state.hit_points(HitPoint::Max)}</div>
-							</div>
-							<div class="col" style="min-width: 50px; margin: 0 5px;">
-								<div style="font-size: 0.75rem;">{"Temp"}</div>
-								<div style="font-size: 26px; font-weight: 300;">{state.hit_points(HitPoint::Temp)}</div>
-							</div>
-						</div>
+		<div class="d-flex">
+			<div class="flex-grow-1" onclick={on_open_modal.clone()}>
+				<h5 class="text-center" style="font-size: 0.8rem; color: var(--bs-card-title-color); margin: 0 0 2px 0;">{"Hit Points"}</h5>
+				<div class="row text-center m-0" style="--bs-gutter-x: 0;">
+					<div class="col" style="min-width: 50px;">
+						<div style="font-size: 0.75rem; padding: 0 5px;">{"Current"}</div>
+						<div style="font-size: 26px; font-weight: 500;">{state.hit_points(HitPoint::Current)}</div>
 					</div>
-					<div style="width: 80px;">
-						<button
-							type="button" class="btn btn-success"
-							style="vertical-align: top; width: 100%; --bs-btn-padding-y: 0px; --bs-btn-font-size: .75rem;"
-							onclick={onclick_heal}
-						>{"Heal"}</button>
-						<input ref={hp_input_node}
-							type="number" class="form-control text-center" id="hp-amount"
-							style="padding: 0; margin: 0 0 4px 0; height: 20px;"
-							min="0"
-							onclick={onclick_amt} onkeydown={validate_uint_only()}
-						/>
-						<button
-							type="button" class="btn btn-danger"
-							style="vertical-align: top; width: 100%; --bs-btn-padding-y: 0px; --bs-btn-font-size: .75rem;"
-							onclick={onclick_dmg}
-						>{"Damage"}</button>
+					<div class="col-auto">
+						<div style="min-height: 1.2rem;"></div>
+						<div style="font-size: 23px; font-weight: 300;">{"/"}</div>
+					</div>
+					<div class="col" style="min-width: 50px;">
+						<div style="font-size: 0.75rem; padding: 0 5px;">{"Max"}</div>
+						<div style="font-size: 26px; font-weight: 500;">{state.hit_points(HitPoint::Max)}</div>
+					</div>
+					<div class="col" style="min-width: 50px; margin: 0 5px;">
+						<div style="font-size: 0.75rem;">{"Temp"}</div>
+						<div style="font-size: 26px; font-weight: 300;">{state.hit_points(HitPoint::Temp)}</div>
+					</div>
+				</div>
+			</div>
+			<div style="width: 80px;">
+				<button
+					type="button" class="btn btn-success"
+					style="vertical-align: top; width: 100%; --bs-btn-padding-y: 0px; --bs-btn-font-size: .75rem;"
+					onclick={onclick_heal}
+				>{"Heal"}</button>
+				<input ref={hp_input_node}
+					type="number" class="form-control text-center" id="hp-amount"
+					style="padding: 0; margin: 0 0 4px 0; height: 20px;"
+					min="0"
+					onclick={onclick_amt} onkeydown={validate_uint_only()}
+				/>
+				<button
+					type="button" class="btn btn-danger"
+					style="vertical-align: top; width: 100%; --bs-btn-padding-y: 0px; --bs-btn-font-size: .75rem;"
+					onclick={onclick_dmg}
+				>{"Damage"}</button>
+			</div>
+		</div>
+	}
+}
+
+#[function_component]
+fn DeathSavesBody(BodyProps { on_open_modal }: &BodyProps) -> Html {
+	let state = use_context::<SharedCharacter>().unwrap();
+
+	let onclick = Callback::from(|evt: MouseEvent| {
+		evt.stop_propagation();
+	});
+	let onchange = state.new_dispatch(|evt: web_sys::Event, persistent, _| {
+		let Some(node) = evt.target() else { return None; };
+		let Some(input) = node.dyn_ref::<HtmlInputElement>() else { return None; };
+		let checked = input.checked();
+		let is_failure = input.class_list().contains("failure");
+		let is_success = input.class_list().contains("success");
+		let target = match (is_failure, is_success) {
+			(true, _) => Some(&mut persistent.death_saves.0),
+			(_, true) => Some(&mut persistent.death_saves.1),
+			_ => None,
+		};
+		log::debug!("[success={is_success}] checked={checked}");
+		if let Some(target) = target {
+			*target = match checked {
+				true => target.saturating_add(1),
+				false => target.saturating_sub(1),
+			};
+		}
+		None
+	});
+
+	let (failure_count, success_count) = state.death_saving_throws();
+	html! {
+		<div class="death-saves" onclick={on_open_modal.clone()}>
+			<h5 class="text-center" style="font-size: 0.8rem; color: var(--bs-card-title-color); margin: 0 0 2px 0;">{"Hit Points"}</h5>
+			<div class="row my-0 mx-4">
+				<div class="col-auto p-0">
+					<div style="height: 100%;" class="d-flex align-items-center">
+						<span class="death-save-icon" />
+					</div>
+				</div>
+				<div class="col">
+					<div class="death-save-label">{"FAILURE"}</div>
+					<div class="death-save-label">{"SUCCESS"}</div>
+				</div>
+				<div class="col-auto p-0" {onclick}>
+					<div>
+						<input class="form-check-input failure" type="checkbox" onchange={onchange.clone()} checked={failure_count >= 1} />
+						<input class="form-check-input failure" type="checkbox" onchange={onchange.clone()} checked={failure_count >= 2} />
+						<input class="form-check-input failure" type="checkbox" onchange={onchange.clone()} checked={failure_count >= 3} />
+					</div>
+					<div>
+						<input class="form-check-input success" type="checkbox" onchange={onchange.clone()} checked={success_count >= 1} />
+						<input class="form-check-input success" type="checkbox" onchange={onchange.clone()} checked={success_count >= 2} />
+						<input class="form-check-input success" type="checkbox" onchange={onchange.clone()} checked={success_count >= 3} />
 					</div>
 				</div>
 			</div>
@@ -282,6 +359,7 @@ fn Modal() -> Html {
 			let Ok(value) = input.value().parse::<u32>() else { return; };
 			state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
 				*persistent.temp_hp_mut() = value;
+				None
 			}));
 		}
 	});
@@ -344,6 +422,7 @@ fn Modal() -> Html {
 		move |_: MouseEvent, character, prev| {
 			character.add_assign_hit_points(*delta, prev.hit_points(HitPoint::Max));
 			delta.set(0);
+			None
 		}
 	});
 	let clear_delta = Callback::from({
@@ -353,7 +432,53 @@ fn Modal() -> Html {
 		}
 	});
 
-	// TODO: Show sources for how Max HP was calculated
+	let death_save_state = state.clone();
+	let death_saves_section = (state.hit_points(HitPoint::Current) == 0).then(move || {
+		let state = death_save_state;
+		let onchange = state.new_dispatch(|evt: web_sys::Event, persistent, _| {
+			let Some(node) = evt.target() else { return None; };
+			let Some(input) = node.dyn_ref::<HtmlInputElement>() else { return None; };
+			let checked = input.checked();
+			let is_failure = input.class_list().contains("failure");
+			let is_success = input.class_list().contains("success");
+			let target = match (is_failure, is_success) {
+				(true, _) => Some(&mut persistent.death_saves.0),
+				(_, true) => Some(&mut persistent.death_saves.1),
+				_ => None,
+			};
+			log::debug!("[success={is_success}] checked={checked}");
+			if let Some(target) = target {
+				*target = match checked {
+					true => target.saturating_add(1),
+					false => target.saturating_sub(1),
+				};
+			}
+			None
+		});
+		let (failure_count, success_count) = state.death_saving_throws();
+		html! {<div class="death-saves">
+			<h5>{"CURRENT HP"}</h5>
+			<div class="row m-0 justify-content-center">
+				<div class="col-auto py-0 px-4">
+					<h6>{"Failures"}</h6>
+					<div>
+						<input class="form-check-input failure" type="checkbox" onchange={onchange.clone()} checked={failure_count >= 1} />
+						<input class="form-check-input failure" type="checkbox" onchange={onchange.clone()} checked={failure_count >= 2} />
+						<input class="form-check-input failure" type="checkbox" onchange={onchange.clone()} checked={failure_count >= 3} />
+					</div>
+				</div>
+				<div class="col-auto py-0 px-4">
+					<h6>{"Successes"}</h6>
+					<div>
+						<input class="form-check-input success" type="checkbox" onchange={onchange.clone()} checked={success_count >= 1} />
+						<input class="form-check-input success" type="checkbox" onchange={onchange.clone()} checked={success_count >= 2} />
+						<input class="form-check-input success" type="checkbox" onchange={onchange.clone()} checked={success_count >= 3} />
+					</div>
+				</div>
+			</div>
+			<span class="my-3" style="display: block; width: 100%; border-style: solid; border-width: 0; border-bottom-width: var(--bs-border-width); border-color: var(--theme-frame-color-muted);" />
+		</div>}
+	});
 
 	html! {<>
 		<div class="modal-header">
@@ -361,6 +486,7 @@ fn Modal() -> Html {
 			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
 		</div>
 		<div class="modal-body">
+			{death_saves_section.unwrap_or_default()}
 			<div class="row my-1" style="--bs-gutter-x: 0;">
 				<div class="col text-center">
 					<h6>{"CURRENT HP"}</h6>

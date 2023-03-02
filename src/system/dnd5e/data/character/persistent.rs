@@ -30,6 +30,7 @@ pub struct Persistent {
 	pub inventory: item::Inventory,
 	pub conditions: Vec<BoxedCondition>,
 	pub hit_points: (u32, u32),
+	pub death_saves: (u8, u8), // TODO: Merge with hit points into a struct
 	pub inspiration: bool,
 }
 impl MutatorGroup for Persistent {
@@ -108,5 +109,8 @@ impl Persistent {
 
 	pub fn add_assign_hit_points(&mut self, amount: i32, max: u32) {
 		self.hit_points = self.add_hit_points(amount, max);
+		if self.hit_points.0 > 0 {
+			self.death_saves = Default::default();
+		}
 	}
 }
