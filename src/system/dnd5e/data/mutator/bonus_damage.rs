@@ -11,8 +11,12 @@ pub struct AddAction(pub Action);
 impl Mutator for AddAction {
 	type Target = Character;
 
-	fn node_id(&self) -> &'static str {
+	fn node_name() -> &'static str {
 		"add_action"
+	}
+
+	fn get_node_name(&self) -> &'static str {
+		Self::node_name()
 	}
 
 	fn apply<'c>(&self, stats: &mut Character) {
@@ -28,8 +32,12 @@ pub struct BonusDamage {
 impl Mutator for BonusDamage {
 	type Target = Character;
 
-	fn node_id(&self) -> &'static str {
+	fn node_name() -> &'static str {
 		"bonus_damage"
+	}
+
+	fn get_node_name(&self) -> &'static str {
+		Self::node_name()
 	}
 
 	fn dependencies(&self) -> Dependencies {

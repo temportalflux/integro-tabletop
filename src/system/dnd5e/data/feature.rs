@@ -3,7 +3,7 @@ use crate::{
 	system::dnd5e::{BoxedCriteria, BoxedMutator, Value},
 	utility::MutatorGroup,
 };
-use std::{collections::HashMap, rc::Rc};
+use std::{collections::HashMap, sync::Arc};
 
 #[derive(Default, Clone, PartialEq)]
 pub struct Feature {
@@ -53,10 +53,10 @@ impl MutatorGroup for Feature {
 }
 
 #[derive(Clone, PartialEq)]
-pub struct BoxedFeature(Rc<Feature>);
+pub struct BoxedFeature(Arc<Feature>);
 impl From<Feature> for BoxedFeature {
 	fn from(feature: Feature) -> Self {
-		Self(Rc::new(feature))
+		Self(Arc::new(feature))
 	}
 }
 impl BoxedFeature {

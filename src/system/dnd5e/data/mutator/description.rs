@@ -8,8 +8,12 @@ pub struct AddLifeExpectancy(pub i32);
 impl Mutator for AddLifeExpectancy {
 	type Target = Character;
 
-	fn node_id(&self) -> &'static str {
+	fn node_name() -> &'static str {
 		"add_life_expectancy"
+	}
+
+	fn get_node_name(&self) -> &'static str {
+		Self::node_name()
 	}
 
 	fn apply<'c>(&self, stats: &mut Character) {
@@ -26,8 +30,12 @@ pub enum AddMaxHeight {
 impl Mutator for AddMaxHeight {
 	type Target = Character;
 
-	fn node_id(&self) -> &'static str {
+	fn node_name() -> &'static str {
 		"add_max_height"
+	}
+
+	fn get_node_name(&self) -> &'static str {
+		Self::node_name()
 	}
 
 	fn apply<'c>(&self, stats: &mut Character) {

@@ -1,5 +1,6 @@
 use super::super::{BoxedCriteria, BoxedMutator};
 use dyn_clone::{clone_trait_object, DynClone};
+use std::sync::Arc;
 
 pub trait Condition: DynClone {
 	fn description(&self) -> String
@@ -9,14 +10,14 @@ pub trait Condition: DynClone {
 clone_trait_object!(Condition);
 
 #[derive(Clone)]
-pub struct BoxedCondition(std::rc::Rc<dyn Condition + 'static>);
+pub struct BoxedCondition(Arc<dyn Condition + 'static + Send + Sync>);
 impl PartialEq for BoxedCondition {
 	fn eq(&self, other: &Self) -> bool {
-		std::rc::Rc::ptr_eq(&self.0, &other.0)
+		Arc::ptr_eq(&self.0, &other.0)
 	}
 }
 impl std::ops::Deref for BoxedCondition {
-	type Target = std::rc::Rc<dyn Condition + 'static>;
+	type Target = Arc<dyn Condition + 'static + Send + Sync>;
 
 	fn deref(&self) -> &Self::Target {
 		&self.0
@@ -24,10 +25,10 @@ impl std::ops::Deref for BoxedCondition {
 }
 impl<T> From<T> for BoxedCondition
 where
-	T: Condition + 'static,
+	T: Condition + 'static + Send + Sync,
 {
 	fn from(value: T) -> Self {
-		Self(std::rc::Rc::new(value))
+		Self(Arc::new(value))
 	}
 }
 

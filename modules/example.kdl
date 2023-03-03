@@ -1,5 +1,34 @@
 system "dnd5e"
-lineage
+lineage name="Aarakocra" can_select_twice=true {
+	description "One of your birth parents is an aarakocra. You have feathered wings and can fly, and you gain natural weapons in the form of talons.
+	- Your life expectancy increases by 15 years.
+	- Your height increases by 26 + 1d8 inches.
+	- Your base walking speed is 25 feet."
+	mutator "extend_life_expectancy" 15
+	mutator "add_max_height" 30
+	mutator "add_max_height" (Roll)"1d4"
+	mutator "add_max_speed" "Walking" 25
+	feature name="Flight" {
+		description "You have a flying speed of 20 feet. To use this speed, you can't be wearing medium or heavy armor. If you already have a flying speed, increase it by 20 feet."
+		mutator "add_speed" "Flying" 20
+		criteria "has_armor_equipped" inverted=true {
+			kind "Medium"
+			kind "Heavy"
+		}
+	}
+	feature name="Talons" {
+		description "Your talons are natural weapons, which you can use to make unarmed strikes. If you hit with them, you deal slashing damage equal to 1d4 + your Strength modifier, instead of the bludgeoning damage normal for an unarmed strike."
+		unique // Can only be added once, even if lineage is selected twice
+		action name="Talons" {
+			activation "Action"
+			attack {
+				kind "Melee" reach=5
+				check "AttackRoll" ability="Strength" proficient=true
+				damage roll=(Roll)"1d4" type="Slashing"
+			}
+		}
+	}
+}
 upbringing
 background
 class

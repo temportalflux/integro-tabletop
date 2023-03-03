@@ -1,29 +1,106 @@
 use crate::GeneralError;
 
 pub trait DocumentQueryExt {
+	fn as_document(&self) -> anyhow::Result<&kdl::KdlDocument>;
+
 	fn query_bool(
 		&self,
 		query: impl kdl::IntoKdlQuery + Clone,
 		key: impl Into<kdl::NodeKey> + Clone,
-	) -> anyhow::Result<bool>;
+	) -> anyhow::Result<bool> {
+		query_type(self.as_document()?, query, key, as_bool)
+	}
 
 	fn query_i64(
 		&self,
 		query: impl kdl::IntoKdlQuery + Clone,
 		key: impl Into<kdl::NodeKey> + Clone,
-	) -> anyhow::Result<i64>;
+	) -> anyhow::Result<i64> {
+		query_type(self.as_document()?, query, key, as_i64)
+	}
 
 	fn query_f64(
 		&self,
 		query: impl kdl::IntoKdlQuery + Clone,
 		key: impl Into<kdl::NodeKey> + Clone,
-	) -> anyhow::Result<f64>;
+	) -> anyhow::Result<f64> {
+		query_type(self.as_document()?, query, key, as_f64)
+	}
 
 	fn query_str(
 		&self,
 		query: impl kdl::IntoKdlQuery + Clone,
 		key: impl Into<kdl::NodeKey> + Clone,
-	) -> anyhow::Result<&str>;
+	) -> anyhow::Result<&str> {
+		query_type(self.as_document()?, query, key, as_str)
+	}
+
+	fn query_bool_opt(
+		&self,
+		query: impl kdl::IntoKdlQuery + Clone,
+		key: impl Into<kdl::NodeKey> + Clone,
+	) -> anyhow::Result<Option<bool>> {
+		query_type_opt(self.as_document()?, query, key, as_bool)
+	}
+
+	fn query_i64_opt(
+		&self,
+		query: impl kdl::IntoKdlQuery + Clone,
+		key: impl Into<kdl::NodeKey> + Clone,
+	) -> anyhow::Result<Option<i64>> {
+		query_type_opt(self.as_document()?, query, key, as_i64)
+	}
+
+	fn query_f64_opt(
+		&self,
+		query: impl kdl::IntoKdlQuery + Clone,
+		key: impl Into<kdl::NodeKey> + Clone,
+	) -> anyhow::Result<Option<f64>> {
+		query_type_opt(self.as_document()?, query, key, as_f64)
+	}
+
+	fn query_str_opt(
+		&self,
+		query: impl kdl::IntoKdlQuery + Clone,
+		key: impl Into<kdl::NodeKey> + Clone,
+	) -> anyhow::Result<Option<&str>> {
+		query_type_opt(self.as_document()?, query, key, as_str)
+	}
+}
+pub trait NodeQueryExt {
+	fn as_node(&self) -> &kdl::KdlNode;
+
+	fn get_bool(&self, key: impl Into<kdl::NodeKey> + Clone) -> anyhow::Result<bool> {
+		get_type(self.as_node(), key, as_bool)
+	}
+
+	fn get_i64(&self, key: impl Into<kdl::NodeKey> + Clone) -> anyhow::Result<i64> {
+		get_type(self.as_node(), key, as_i64)
+	}
+
+	fn get_f64(&self, key: impl Into<kdl::NodeKey> + Clone) -> anyhow::Result<f64> {
+		get_type(self.as_node(), key, as_f64)
+	}
+
+	fn get_str(&self, key: impl Into<kdl::NodeKey> + Clone) -> anyhow::Result<&str> {
+		get_type(self.as_node(), key, as_str)
+	}
+
+	fn get_bool_opt(&self, key: impl Into<kdl::NodeKey> + Clone) -> anyhow::Result<Option<bool>> {
+		get_type_opt(self.as_node(), key, as_bool)
+	}
+
+	fn get_i64_opt(&self, key: impl Into<kdl::NodeKey> + Clone) -> anyhow::Result<Option<i64>> {
+		get_type_opt(self.as_node(), key, as_i64)
+	}
+
+	fn get_f64_opt(&self, key: impl Into<kdl::NodeKey> + Clone) -> anyhow::Result<Option<f64>> {
+		get_type_opt(self.as_node(), key, as_f64)
+	}
+
+	fn get_str_opt(&self, key: impl Into<kdl::NodeKey> + Clone) -> anyhow::Result<Option<&str>> {
+		get_type_opt(self.as_node(), key, as_str)
+	}
 }
 
 fn query_type<'doc, T>(
@@ -37,63 +114,94 @@ fn query_type<'doc, T>(
 		_ => "[unknown]".into(),
 	};
 	let key_str = format!("{:?}", key.clone().into());
-	let value = doc.query_get(query, key)?;
-	let value = value.ok_or_else(|| {
-		GeneralError(format!(
+	match query_type_opt(doc, query, key, map)? {
+		Some(value) => Ok(value),
+		None => Err(GeneralError(format!(
 			"Node {query_str:?} is missing value at {key_str:?}"
 		))
-	})?;
+		.into()),
+	}
+}
+
+fn query_type_opt<'doc, T>(
+	doc: &'doc kdl::KdlDocument,
+	query: impl kdl::IntoKdlQuery + Clone,
+	key: impl Into<kdl::NodeKey> + Clone,
+	map: impl FnOnce(&'doc kdl::KdlValue) -> Result<T, &'static str>,
+) -> anyhow::Result<Option<T>> {
+	let query_str = match query.clone().into_query() {
+		Ok(query) => format!("{query:?}"),
+		_ => "[unknown]".into(),
+	};
+	let key_str = format!("{:?}", key.clone().into());
+	let Ok(Some(value)) = doc.query_get(query, key) else { return Ok(None); };
 	let value = map(value).map_err(|type_name| {
 		GeneralError(format!(
 			"Value at {key_str:?} of node {query_str:?} is not a {type_name}"
 		))
 	})?;
-	Ok(value)
+	Ok(Some(value))
+}
+
+fn get_type<'doc, T>(
+	node: &'doc kdl::KdlNode,
+	key: impl Into<kdl::NodeKey> + Clone,
+	map: impl FnOnce(&'doc kdl::KdlValue) -> Result<T, &'static str>,
+) -> anyhow::Result<T> {
+	let key_str = format!("{:?}", key.clone().into());
+	match get_type_opt::<T>(node, key, map)? {
+		Some(value) => Ok(value),
+		None => Err(GeneralError(format!(
+			"Node {:?} is missing value at {key_str:?}",
+			node.name().value()
+		))
+		.into()),
+	}
+}
+
+fn get_type_opt<'doc, T>(
+	node: &'doc kdl::KdlNode,
+	key: impl Into<kdl::NodeKey> + Clone,
+	map: impl FnOnce(&'doc kdl::KdlValue) -> Result<T, &'static str>,
+) -> anyhow::Result<Option<T>> {
+	let key_str = format!("{:?}", key.clone().into());
+	let Some(value) = node.get(key) else { return Ok(None); };
+	let value = map(value).map_err(|type_name| {
+		GeneralError(format!(
+			"Value at {key_str:?} of node {:?} is not a {type_name}",
+			node.name().value()
+		))
+	})?;
+	Ok(Some(value))
+}
+
+fn as_bool(value: &kdl::KdlValue) -> Result<bool, &'static str> {
+	value.as_bool().ok_or("bool")
+}
+fn as_i64(value: &kdl::KdlValue) -> Result<i64, &'static str> {
+	value.as_i64().ok_or("integer")
+}
+fn as_f64(value: &kdl::KdlValue) -> Result<f64, &'static str> {
+	value.as_f64().ok_or("decimal")
+}
+fn as_str(value: &kdl::KdlValue) -> Result<&str, &'static str> {
+	value.as_string().ok_or("string")
 }
 
 impl DocumentQueryExt for kdl::KdlDocument {
-	fn query_bool(
-		&self,
-		query: impl kdl::IntoKdlQuery + Clone,
-		key: impl Into<kdl::NodeKey> + Clone,
-	) -> anyhow::Result<bool> {
-		query_type(self, query, key, |value| match value.as_bool() {
-			Some(value) => Ok(value),
-			None => Err("bool"),
-		})
+	fn as_document(&self) -> anyhow::Result<&kdl::KdlDocument> {
+		Ok(&self)
 	}
-
-	fn query_i64(
-		&self,
-		query: impl kdl::IntoKdlQuery + Clone,
-		key: impl Into<kdl::NodeKey> + Clone,
-	) -> anyhow::Result<i64> {
-		query_type(self, query, key, |value| match value.as_i64() {
-			Some(value) => Ok(value),
-			None => Err("integer"),
-		})
+}
+impl NodeQueryExt for kdl::KdlNode {
+	fn as_node(&self) -> &kdl::KdlNode {
+		self
 	}
-
-	fn query_f64(
-		&self,
-		query: impl kdl::IntoKdlQuery + Clone,
-		key: impl Into<kdl::NodeKey> + Clone,
-	) -> anyhow::Result<f64> {
-		query_type(self, query, key, |value| match value.as_f64() {
-			Some(value) => Ok(value),
-			None => Err("float"),
-		})
-	}
-
-	fn query_str(
-		&self,
-		query: impl kdl::IntoKdlQuery + Clone,
-		key: impl Into<kdl::NodeKey> + Clone,
-	) -> anyhow::Result<&str> {
-		query_type(self, query, key, |value| match value.as_string() {
-			Some(value) => Ok(value),
-			None => Err("string"),
-		})
+}
+impl DocumentQueryExt for kdl::KdlNode {
+	fn as_document(&self) -> anyhow::Result<&kdl::KdlDocument> {
+		self.children()
+			.ok_or(GeneralError(format!("Node {:?} has no children", self.name().value())).into())
 	}
 }
 

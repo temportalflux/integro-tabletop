@@ -12,8 +12,12 @@ pub struct AddSkill {
 impl Mutator for AddSkill {
 	type Target = Character;
 
-	fn node_id(&self) -> &'static str {
+	fn node_name() -> &'static str {
 		"add_skill"
+	}
+
+	fn get_node_name(&self) -> &'static str {
+		Self::node_name()
 	}
 
 	fn id(&self) -> Option<&str> {
@@ -39,8 +43,12 @@ pub struct AddSkillModifier {
 impl Mutator for AddSkillModifier {
 	type Target = Character;
 
-	fn node_id(&self) -> &'static str {
+	fn node_name() -> &'static str {
 		"add_skill_modifier"
+	}
+
+	fn get_node_name(&self) -> &'static str {
+		Self::node_name()
 	}
 
 	fn apply<'c>(&self, stats: &mut Character) {

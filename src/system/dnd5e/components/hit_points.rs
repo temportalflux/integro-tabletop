@@ -376,7 +376,9 @@ pub fn ModalSectionApplyChangeForm() -> Html {
 	let prev_hp = state.get_hp(HitPoint::Current);
 	let prev_temp = state.get_hp(HitPoint::Temp);
 	let next_hit_points = state
-		.persistent().hit_points().plus_hp(*delta, state.get_hp(HitPoint::Max));
+		.persistent()
+		.hit_points()
+		.plus_hp(*delta, state.get_hp(HitPoint::Max));
 	let healing_amt = delta_sig.max(0) as u32 * delta_abs;
 	let damage_amt = (-delta_sig).max(0) as u32 * delta_abs;
 	let new_hp_color_classes = match next_hit_points.current.cmp(&prev_hp) {
@@ -533,18 +535,20 @@ pub fn ModalSectionApplyChangeForm() -> Html {
 #[function_component]
 pub fn MaxHitPointsTable() -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
-	let rows = state.max_hit_points().sources().iter().fold(
-		Vec::new(),
-		|mut html, (source, bonus)| {
-			html.push(html! {
-				<tr>
-					<td class="text-center">{*bonus}</td>
-					<td>{crate::data::as_feature_path_text(source).unwrap_or_default()}</td>
-				</tr>
+	let rows =
+		state
+			.max_hit_points()
+			.sources()
+			.iter()
+			.fold(Vec::new(), |mut html, (source, bonus)| {
+				html.push(html! {
+					<tr>
+						<td class="text-center">{*bonus}</td>
+						<td>{crate::data::as_feature_path_text(source).unwrap_or_default()}</td>
+					</tr>
+				});
+				html
 			});
-			html
-		},
-	);
 	html! {
 		<table class="table table-compact table-striped m-0">
 			<thead>

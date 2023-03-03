@@ -12,8 +12,12 @@ pub struct AddMaxHitPoints {
 impl Mutator for AddMaxHitPoints {
 	type Target = Character;
 
-	fn node_id(&self) -> &'static str {
+	fn node_name() -> &'static str {
 		"add_max_hit_points"
+	}
+
+	fn get_node_name(&self) -> &'static str {
+		Self::node_name()
 	}
 
 	fn dependencies(&self) -> Dependencies {

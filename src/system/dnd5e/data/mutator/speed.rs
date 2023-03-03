@@ -6,8 +6,12 @@ pub struct AddMaxSpeed(pub String, pub i32);
 impl Mutator for AddMaxSpeed {
 	type Target = Character;
 
-	fn node_id(&self) -> &'static str {
+	fn node_name() -> &'static str {
 		"add_max_speed"
+	}
+
+	fn get_node_name(&self) -> &'static str {
+		Self::node_name()
 	}
 
 	fn apply<'c>(&self, stats: &mut Character) {
@@ -22,8 +26,12 @@ pub struct AddMaxSense(pub String, pub i32);
 impl Mutator for AddMaxSense {
 	type Target = Character;
 
-	fn node_id(&self) -> &'static str {
+	fn node_name() -> &'static str {
 		"add_max_sense"
+	}
+
+	fn get_node_name(&self) -> &'static str {
+		Self::node_name()
 	}
 
 	fn apply<'c>(&self, stats: &mut Character) {

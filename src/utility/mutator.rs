@@ -1,10 +1,14 @@
 use super::Dependencies;
-use std::rc::Rc;
+use std::sync::Arc;
 
 pub trait Mutator {
 	type Target;
 
-	fn node_id(&self) -> &'static str;
+	fn node_name() -> &'static str
+	where
+		Self: Sized;
+
+	fn get_node_name(&self) -> &'static str;
 
 	fn dependencies(&self) -> Dependencies {
 		Dependencies::default()
@@ -18,25 +22,25 @@ pub trait Mutator {
 }
 
 #[derive(Clone)]
-pub struct RcMutator<T>(Rc<dyn Mutator<Target = T> + 'static>);
-impl<T> PartialEq for RcMutator<T> {
+pub struct ArcMutator<T>(Arc<dyn Mutator<Target = T> + 'static + Send + Sync>);
+impl<T> PartialEq for ArcMutator<T> {
 	fn eq(&self, other: &Self) -> bool {
-		Rc::ptr_eq(&self.0, &other.0)
+		Arc::ptr_eq(&self.0, &other.0)
 	}
 }
-impl<T> std::ops::Deref for RcMutator<T> {
-	type Target = Rc<dyn Mutator<Target = T> + 'static>;
+impl<T> std::ops::Deref for ArcMutator<T> {
+	type Target = Arc<dyn Mutator<Target = T> + 'static + Send + Sync>;
 
 	fn deref(&self) -> &Self::Target {
 		&self.0
 	}
 }
-impl<M, T> From<M> for RcMutator<T>
+impl<M, T> From<M> for ArcMutator<T>
 where
-	M: Mutator<Target = T> + 'static,
+	M: Mutator<Target = T> + 'static + Send + Sync,
 {
 	fn from(value: M) -> Self {
-		Self(Rc::new(value))
+		Self(Arc::new(value))
 	}
 }
 

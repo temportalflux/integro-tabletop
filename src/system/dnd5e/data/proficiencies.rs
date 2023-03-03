@@ -44,8 +44,12 @@ pub enum AddProficiency {
 impl Mutator for AddProficiency {
 	type Target = Character;
 
-	fn node_id(&self) -> &'static str {
+	fn node_name() -> &'static str {
 		"add_proficiency"
+	}
+
+	fn get_node_name(&self) -> &'static str {
+		Self::node_name()
 	}
 
 	fn apply<'c>(&self, stats: &mut Character) {

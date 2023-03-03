@@ -1,5 +1,5 @@
 use super::{Evaluator, RcEvaluator};
-use std::{collections::HashSet, ops::Deref, rc::Rc};
+use std::{collections::HashSet, ops::Deref, sync::Arc};
 
 #[derive(Clone)]
 pub enum Value<C, V> {
@@ -23,7 +23,7 @@ where
 	fn eq(&self, other: &Self) -> bool {
 		match (self, other) {
 			(Self::Fixed(a), Self::Fixed(b)) => a == b,
-			(Self::Evaluated(a), Self::Evaluated(b)) => Rc::ptr_eq(a, b),
+			(Self::Evaluated(a), Self::Evaluated(b)) => Arc::ptr_eq(a, b),
 			_ => false,
 		}
 	}

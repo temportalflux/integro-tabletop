@@ -194,8 +194,8 @@ fn main() -> anyhow::Result<()> {
 
 	let _ = logging::console::init("tabletop-tools", &[]);
 
-	let mut system_reg = system::SystemRegistry::default();
-	system_reg.register(system::dnd5e::DnD5e::default());
+	let mut system_reg = system::core::SystemRegistry::default();
+	system_reg.register(system::dnd5e::DnD5e::new());
 
 	let document = EXAMPLE_DOC.parse::<kdl::KdlDocument>()?;
 	let system_id = document.query_str("system", 0)?;

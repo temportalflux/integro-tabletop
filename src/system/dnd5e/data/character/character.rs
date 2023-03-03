@@ -95,7 +95,7 @@ impl Character {
 	pub fn apply(&mut self, mutator: &BoxedMutator) {
 		let scope = self.source_path.push(mutator.id(), true);
 		self.insert_mutator(MutatorEntry {
-			node_id: mutator.node_id(),
+			node_id: mutator.get_node_name(),
 			dependencies: mutator.dependencies(),
 			mutator: mutator.clone(),
 			source: self.source_path.clone(),
