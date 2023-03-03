@@ -104,6 +104,15 @@
 	border-color: #c53131;
 }
 
+.hr {
+	display: block;
+	width: 100%;
+	border-style: solid;
+	border-width: 0;
+	border-bottom-width: var(--bs-border-width);
+	border-color: var(--theme-frame-color-muted);
+}
+
 .modal.hit-points button.hp-action {
 	margin-left: 0.8rem!important;
 	margin-right: 0.8rem!important;

@@ -287,37 +287,50 @@ fn validate_uint_only() -> Callback<KeyboardEvent> {
 
 #[function_component]
 fn Modal() -> Html {
+	html! {<>
+		<div class="modal-header">
+			<h1 class="modal-title fs-4">{"Hit Point Management"}</h1>
+			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
+		</div>
+		<div class="modal-body">
+			<ModalSectionDeathSaves />
+			<ModalSectionCurrentStats />
+			<span class="hr my-3" />
+			<ModalSectionApplyChangeForm />
+			<span class="hr my-3" />
+			<ModalSectionInfo />
+		</div>
+	</>}
+}
+
+#[function_component]
+pub fn ModalSectionDeathSaves() -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
+	if state.get_hp(HitPoint::Current) > 0 {
+		return html! {};
+	}
+	html! {
+		<div class="death-saves">
+			<h6 class="text-center">{"Death Saving Throws"}</h6>
+			<div class="row m-0 justify-content-center">
+				<div class="col-auto py-0 px-4">
+					<h6>{"Failures"}</h6>
+					<DeathSaveBoxes class_name={"failure"} />
+				</div>
+				<div class="col-auto py-0 px-4">
+					<h6>{"Successes"}</h6>
+					<DeathSaveBoxes class_name={"success"} />
+				</div>
+			</div>
+			<span class="hr my-3" />
+		</div>
+	}
+}
 
-	let max_hp_table = {
-		let rows = state.max_hit_points().sources().iter().fold(
-			Vec::new(),
-			|mut html, (source, bonus)| {
-				html.push(html! {
-					<tr>
-						<td class="text-center">{*bonus}</td>
-						<td>{crate::data::as_feature_path_text(source).unwrap_or_default()}</td>
-					</tr>
-				});
-				html
-			},
-		);
-		html! {
-			<table class="table table-compact table-striped m-0">
-				<thead>
-					<tr class="text-center" style="color: var(--bs-heading-color);">
-						<th scope="col">{"Bonus"}</th>
-						<th scope="col">{"Source"}</th>
-					</tr>
-				</thead>
-				<tbody>
-					{rows}
-				</tbody>
-			</table>
-		}
-	};
-
-	let temp_hp_oncommit = Callback::from({
+#[function_component]
+pub fn ModalSectionCurrentStats() -> Html {
+	let state = use_context::<SharedCharacter>().unwrap();
+	let apply_temp_hp = Callback::from({
 		let state = state.clone();
 		move |evt: web_sys::Event| {
 			let Some(target) = evt.target() else { return; };
@@ -329,6 +342,34 @@ fn Modal() -> Html {
 			}));
 		}
 	});
+	html! {
+		<div class="row my-1" style="--bs-gutter-x: 0;">
+			<div class="col text-center">
+				<h6>{"CURRENT HP"}</h6>
+				<div style="font-size: 26px; font-weight: 500;">{state.get_hp(HitPoint::Current)}</div>
+			</div>
+			<div class="col text-center">
+				<h6>{"MAX HP"}</h6>
+				<div style="font-size: 26px; font-weight: 500;">{state.get_hp(HitPoint::Max)}</div>
+			</div>
+			<div class="col text-center">
+				<h6>{"TEMP HP"}</h6>
+				<input
+					type="number" class="form-control text-center"
+					style="font-size: 26px; font-weight: 500; padding: 0; height: 40px;"
+					min="0"
+					value={format!("{}", state.get_hp(HitPoint::Temp))}
+					onkeydown={validate_uint_only()}
+					onchange={apply_temp_hp}
+				/>
+			</div>
+		</div>
+	}
+}
+
+#[function_component]
+pub fn ModalSectionApplyChangeForm() -> Html {
+	let state = use_context::<SharedCharacter>().unwrap();
 
 	let delta = use_state_eq(|| 0i32);
 	let (delta_sig, delta_abs) = (delta.signum(), delta.abs() as u32);
@@ -397,265 +438,254 @@ fn Modal() -> Html {
 		}
 	});
 
-	let death_saves_section = (state.get_hp(HitPoint::Current) == 0).then(move || {		
-		html! {<div class="death-saves">
-			<h6 class="text-center">{"Death Saving Throws"}</h6>
-			<div class="row m-0 justify-content-center">
-				<div class="col-auto py-0 px-4">
-					<h6>{"Failures"}</h6>
-					<DeathSaveBoxes class_name={"failure"} />
-				</div>
-				<div class="col-auto py-0 px-4">
-					<h6>{"Successes"}</h6>
-					<DeathSaveBoxes class_name={"success"} />
-				</div>
-			</div>
-			<span class="my-3" style="display: block; width: 100%; border-style: solid; border-width: 0; border-bottom-width: var(--bs-border-width); border-color: var(--theme-frame-color-muted);" />
-		</div>}
-	});
+	html! {
+		<div class="row my-1">
+			<div class="col">
 
-	html! {<>
-		<div class="modal-header">
-			<h1 class="modal-title fs-4">{"Hit Point Management"}</h1>
-			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
+				<div class="row mx-0 my-2">
+					<div class="col-4 p-0">
+						<label class="col-form-label text-center theme-healing" for="inputHealing" style="width: 100%">{"Healing"}</label>
+					</div>
+					<div class="col">
+						<input
+							class="form-control text-center theme-healing"
+							type="number" id="inputHealing"
+							style="font-size: 20px; font-weight: 500; padding: 0; height: 100%;"
+							min="0" value={healing_amt.to_string()}
+							onkeydown={validate_uint_only()}
+							onchange={onchange_healing}
+						/>
+					</div>
+				</div>
+
+				<div class="d-flex justify-content-center">
+					<button type="button" class="btn btn-theme hp-action sub" onclick={onclick_sub} />
+					<button type="button" class="btn btn-theme hp-action add" onclick={onclick_add} />
+				</div>
+
+				<div class="row mx-0 my-2">
+					<div class="col-4 p-0">
+						<label
+							class={classes!(
+								"col-form-label",
+								"text-center",
+								"theme-damage"
+							)}
+							for="inputDamage" style="width: 100%"
+						>{"Damage"}</label>
+					</div>
+					<div class="col">
+						<input
+							class={classes!(
+								"form-control",
+								"text-center",
+								"theme-damage"
+							)}
+							type="number" id="inputDamage"
+							style="font-size: 20px; font-weight: 500; padding: 0; height: 100%;"
+							min="0" value={damage_amt.to_string()}
+							onkeydown={validate_uint_only()}
+							onchange={onchange_damage}
+						/>
+					</div>
+				</div>
+
+			</div>
+			<div class="col-auto text-center m-auto">
+
+				<div class="row m-0">
+					<div class={{
+						let mut classes = classes!("col");
+						classes.extend(new_hp_color_classes.clone());
+						classes
+					}}>
+						<h6 class="m-0 new-hp-header">{"NEW HP"}</h6>
+						<div style="font-size: 40px; font-weight: 500; margin-top: -10px;">{next_hit_points.current}</div>
+					</div>
+					<div class={{
+						let mut classes = classes!("col");
+						classes.extend(temp_hp_color_classes.clone());
+						classes.extend(temp_hp_classes);
+						classes
+					}}>
+						<h6 class="m-0 new-hp-header">{"TEMP HP"}</h6>
+						<div style="font-size: 40px; font-weight: 500; margin-top: -10px;">{next_hit_points.temp}</div>
+					</div>
+				</div>
+
+				<button
+					type="button"
+					class="m-2 btn btn-theme"
+					disabled={*delta == 0}
+					onclick={apply_delta}
+				>{"Apply Changes"}</button>
+				<button
+					type="button"
+					class="m-2 btn btn-outline-theme"
+					disabled={*delta == 0}
+					onclick={clear_delta}
+				>{"Cancel"}</button>
+			</div>
 		</div>
-		<div class="modal-body">
-			{death_saves_section.unwrap_or_default()}
-			<div class="row my-1" style="--bs-gutter-x: 0;">
-				<div class="col text-center">
-					<h6>{"CURRENT HP"}</h6>
-					<div style="font-size: 26px; font-weight: 500;">{state.get_hp(HitPoint::Current)}</div>
-				</div>
-				<div class="col text-center">
-					<h6>{"MAX HP"}</h6>
-					<div style="font-size: 26px; font-weight: 500;">{state.get_hp(HitPoint::Max)}</div>
-				</div>
-				<div class="col text-center">
-					<h6>{"TEMP HP"}</h6>
-					<input
-						type="number" class="form-control text-center"
-						style="font-size: 26px; font-weight: 500; padding: 0; height: 40px;"
-						min="0"
-						value={format!("{}", state.get_hp(HitPoint::Temp))}
-						onkeydown={validate_uint_only()}
-						onchange={temp_hp_oncommit}
-					/>
+	}
+}
+
+#[function_component]
+pub fn MaxHitPointsTable() -> Html {
+	let state = use_context::<SharedCharacter>().unwrap();
+	let rows = state.max_hit_points().sources().iter().fold(
+		Vec::new(),
+		|mut html, (source, bonus)| {
+			html.push(html! {
+				<tr>
+					<td class="text-center">{*bonus}</td>
+					<td>{crate::data::as_feature_path_text(source).unwrap_or_default()}</td>
+				</tr>
+			});
+			html
+		},
+	);
+	html! {
+		<table class="table table-compact table-striped m-0">
+			<thead>
+				<tr class="text-center" style="color: var(--bs-heading-color);">
+					<th scope="col">{"Bonus"}</th>
+					<th scope="col">{"Source"}</th>
+				</tr>
+			</thead>
+			<tbody>
+				{rows}
+			</tbody>
+		</table>
+	}
+}
+
+#[function_component]
+pub fn ModalSectionInfo() -> Html {
+	html! {
+		<div class="accordion" id="hitPointsInformation">
+			<div class="accordion-item">
+				<h2 class="accordion-header">
+					<button
+						class="accordion-button collapsed" type="button"
+						data-bs-toggle="collapse" data-bs-target="#collapseMaxHP"
+					>{"Max HP Breakdown"}</button>
+				</h2>
+				<div id="collapseMaxHP" class="accordion-collapse collapse" data-bs-parent="#hitPointsInformation">
+					<div class="accordion-body" style="white-space: pre-line;">
+						<MaxHitPointsTable />
+					</div>
 				</div>
 			</div>
-			<span class="my-3" style="display: block; width: 100%; border-style: solid; border-width: 0; border-bottom-width: var(--bs-border-width); border-color: var(--theme-frame-color-muted);" />
-			<div class="row my-1">
-				<div class="col">
-
-					<div class="row mx-0 my-2">
-						<div class="col-4 p-0">
-							<label class="col-form-label text-center theme-healing" for="inputHealing" style="width: 100%">{"Healing"}</label>
-						</div>
-						<div class="col">
-							<input
-								class="form-control text-center theme-healing"
-								type="number" id="inputHealing"
-								style="font-size: 20px; font-weight: 500; padding: 0; height: 100%;"
-								min="0" value={healing_amt.to_string()}
-								onkeydown={validate_uint_only()}
-								onchange={onchange_healing}
-							/>
-						</div>
-					</div>
-
-					<div class="d-flex justify-content-center">
-						<button type="button" class="btn btn-theme hp-action sub" onclick={onclick_sub} />
-						<button type="button" class="btn btn-theme hp-action add" onclick={onclick_add} />
-					</div>
-
-					<div class="row mx-0 my-2">
-						<div class="col-4 p-0">
-							<label
-								class={classes!(
-									"col-form-label",
-									"text-center",
-									"theme-damage"
-								)}
-								for="inputDamage" style="width: 100%"
-							>{"Damage"}</label>
-						</div>
-						<div class="col">
-							<input
-								class={classes!(
-									"form-control",
-									"text-center",
-									"theme-damage"
-								)}
-								type="number" id="inputDamage"
-								style="font-size: 20px; font-weight: 500; padding: 0; height: 100%;"
-								min="0" value={damage_amt.to_string()}
-								onkeydown={validate_uint_only()}
-								onchange={onchange_damage}
-							/>
-						</div>
-					</div>
-
-				</div>
-				<div class="col-auto text-center m-auto">
-
-					<div class="row m-0">
-						<div class={{
-							let mut classes = classes!("col");
-							classes.extend(new_hp_color_classes.clone());
-							classes
-						}}>
-							<h6 class="m-0 new-hp-header">{"NEW HP"}</h6>
-							<div style="font-size: 40px; font-weight: 500; margin-top: -10px;">{next_hit_points.current}</div>
-						</div>
-						<div class={{
-							let mut classes = classes!("col");
-							classes.extend(temp_hp_color_classes.clone());
-							classes.extend(temp_hp_classes);
-							classes
-						}}>
-							<h6 class="m-0 new-hp-header">{"TEMP HP"}</h6>
-							<div style="font-size: 40px; font-weight: 500; margin-top: -10px;">{next_hit_points.temp}</div>
-						</div>
-					</div>
-
+			<div class="accordion-item">
+				<h2 class="accordion-header">
 					<button
-						type="button"
-						class="m-2 btn btn-theme"
-						disabled={*delta == 0}
-						onclick={apply_delta}
-					>{"Apply Changes"}</button>
-					<button
-						type="button"
-						class="m-2 btn btn-outline-theme"
-						disabled={*delta == 0}
-						onclick={clear_delta}
-					>{"Cancel"}</button>
+						class="accordion-button collapsed" type="button"
+						data-bs-toggle="collapse" data-bs-target="#collapseHitPoints"
+					>{"Hit Points"}</button>
+				</h2>
+				<div id="collapseHitPoints" class="accordion-collapse collapse" data-bs-parent="#hitPointsInformation">
+					<div class="accordion-body" style="white-space: pre-line;">
+						{TEXT_HIT_POINTS}
+					</div>
 				</div>
 			</div>
-			<span class="my-3" style="display: block; width: 100%; border-style: solid; border-width: 0; border-bottom-width: var(--bs-border-width); border-color: var(--theme-frame-color-muted);" />
-			<div class="accordion" id="hitPointsInformation">
-				<div class="accordion-item">
-					<h2 class="accordion-header">
-						<button
-							class="accordion-button collapsed" type="button"
-							data-bs-toggle="collapse" data-bs-target="#collapseMaxHP"
-						>{"Max HP Breakdown"}</button>
-					</h2>
-					<div id="collapseMaxHP" class="accordion-collapse collapse" data-bs-parent="#hitPointsInformation">
-						<div class="accordion-body" style="white-space: pre-line;">
-							{max_hp_table}
-						</div>
+			<div class="accordion-item">
+				<h2 class="accordion-header">
+					<button
+						class="accordion-button collapsed" type="button"
+						data-bs-toggle="collapse" data-bs-target="#collapseTempHP"
+					>{"Temporary Hit Points"}</button>
+				</h2>
+				<div id="collapseTempHP" class="accordion-collapse collapse" data-bs-parent="#hitPointsInformation">
+					<div class="accordion-body" style="white-space: pre-line;">
+						{TEXT_TEMP_HP}
 					</div>
 				</div>
-				<div class="accordion-item">
-					<h2 class="accordion-header">
-						<button
-							class="accordion-button collapsed" type="button"
-							data-bs-toggle="collapse" data-bs-target="#collapseHitPoints"
-						>{"Hit Points"}</button>
-					</h2>
-					<div id="collapseHitPoints" class="accordion-collapse collapse" data-bs-parent="#hitPointsInformation">
-						<div class="accordion-body" style="white-space: pre-line;">
-							{TEXT_HIT_POINTS}
-						</div>
+			</div>
+			<div class="accordion-item">
+				<h2 class="accordion-header">
+					<button
+						class="accordion-button collapsed" type="button"
+						data-bs-toggle="collapse" data-bs-target="#collapseHealing"
+					>{"Healing"}</button>
+				</h2>
+				<div id="collapseHealing" class="accordion-collapse collapse" data-bs-parent="#hitPointsInformation">
+					<div class="accordion-body" style="white-space: pre-line;">
+						{TEXT_HEALING}
 					</div>
 				</div>
-				<div class="accordion-item">
-					<h2 class="accordion-header">
-						<button
-							class="accordion-button collapsed" type="button"
-							data-bs-toggle="collapse" data-bs-target="#collapseTempHP"
-						>{"Temporary Hit Points"}</button>
-					</h2>
-					<div id="collapseTempHP" class="accordion-collapse collapse" data-bs-parent="#hitPointsInformation">
-						<div class="accordion-body" style="white-space: pre-line;">
-							{TEXT_TEMP_HP}
-						</div>
-					</div>
-				</div>
-				<div class="accordion-item">
-					<h2 class="accordion-header">
-						<button
-							class="accordion-button collapsed" type="button"
-							data-bs-toggle="collapse" data-bs-target="#collapseHealing"
-						>{"Healing"}</button>
-					</h2>
-					<div id="collapseHealing" class="accordion-collapse collapse" data-bs-parent="#hitPointsInformation">
-						<div class="accordion-body" style="white-space: pre-line;">
-							{TEXT_HEALING}
-						</div>
-					</div>
-				</div>
-				<div class="accordion-item">
-					<h2 class="accordion-header">
-						<button
-							class="accordion-button collapsed" type="button"
-							data-bs-toggle="collapse" data-bs-target="#collapseDTZ"
-						>{"Dropping to 0 Hit Points"}</button>
-					</h2>
-					<div id="collapseDTZ" class="accordion-collapse collapse" data-bs-parent="#hitPointsInformation">
-						<div class="accordion-body" style="white-space: pre-line;">
-							{TEXT_DROP_TO_ZERO}
-							<span class="d-block my-2" />
-							<div class="accordion" id="drop-to-zero">
-								<div class="accordion-item">
-									<h2 class="accordion-header">
-										<button
-											class="accordion-button collapsed" type="button"
-											data-bs-toggle="collapse" data-bs-target="#collapseDTZInstantDeath"
-										>{"Instant Death"}</button>
-									</h2>
-									<div id="collapseDTZInstantDeath" class="accordion-collapse collapse" data-bs-parent="#drop-to-zero">
-										<div class="accordion-body" style="white-space: pre-line;">
-											{TEXT_DTZ_INSTANT_DEATH}
-										</div>
+			</div>
+			<div class="accordion-item">
+				<h2 class="accordion-header">
+					<button
+						class="accordion-button collapsed" type="button"
+						data-bs-toggle="collapse" data-bs-target="#collapseDTZ"
+					>{"Dropping to 0 Hit Points"}</button>
+				</h2>
+				<div id="collapseDTZ" class="accordion-collapse collapse" data-bs-parent="#hitPointsInformation">
+					<div class="accordion-body" style="white-space: pre-line;">
+						{TEXT_DROP_TO_ZERO}
+						<span class="d-block my-2" />
+						<div class="accordion" id="drop-to-zero">
+							<div class="accordion-item">
+								<h2 class="accordion-header">
+									<button
+										class="accordion-button collapsed" type="button"
+										data-bs-toggle="collapse" data-bs-target="#collapseDTZInstantDeath"
+									>{"Instant Death"}</button>
+								</h2>
+								<div id="collapseDTZInstantDeath" class="accordion-collapse collapse" data-bs-parent="#drop-to-zero">
+									<div class="accordion-body" style="white-space: pre-line;">
+										{TEXT_DTZ_INSTANT_DEATH}
 									</div>
 								</div>
-								<div class="accordion-item">
-									<h2 class="accordion-header">
-										<button
-											class="accordion-button collapsed" type="button"
-											data-bs-toggle="collapse" data-bs-target="#collapseDTZUnconscious"
-										>{"Falling Unconscious"}</button>
-									</h2>
-									<div id="collapseDTZUnconscious" class="accordion-collapse collapse" data-bs-parent="#drop-to-zero">
-										<div class="accordion-body" style="white-space: pre-line;">
-											{TEXT_DTZ_FALLING_UNCONSCIOUS}
-										</div>
+							</div>
+							<div class="accordion-item">
+								<h2 class="accordion-header">
+									<button
+										class="accordion-button collapsed" type="button"
+										data-bs-toggle="collapse" data-bs-target="#collapseDTZUnconscious"
+									>{"Falling Unconscious"}</button>
+								</h2>
+								<div id="collapseDTZUnconscious" class="accordion-collapse collapse" data-bs-parent="#drop-to-zero">
+									<div class="accordion-body" style="white-space: pre-line;">
+										{TEXT_DTZ_FALLING_UNCONSCIOUS}
 									</div>
 								</div>
-								<div class="accordion-item">
-									<h2 class="accordion-header">
-										<button
-											class="accordion-button collapsed" type="button"
-											data-bs-toggle="collapse" data-bs-target="#collapseDTZSavingThrows"
-										>{"Death Saving Throws"}</button>
-									</h2>
-									<div id="collapseDTZSavingThrows" class="accordion-collapse collapse" data-bs-parent="#drop-to-zero">
-										<div class="accordion-body" style="white-space: pre-line;">
-											{TEXT_DTZ_SAVING_THROWS}
-											<br /><br />
-											<strong>{"Roll a d20. "}</strong>
-											{TEXT_DTZ_SAVING_THROWS_ROLL}
-											<br /><br />
-											<strong>{"Rolling 1 or 20. "}</strong>
-											{TEXT_DTZ_SAVING_THROWS_ROLL_CRIT}
-											<br /><br />
-											<strong>{"Damage at 0 Hit Points. "}</strong>
-											{TEXT_DTZ_SAVING_THROWS_DMG}
-										</div>
+							</div>
+							<div class="accordion-item">
+								<h2 class="accordion-header">
+									<button
+										class="accordion-button collapsed" type="button"
+										data-bs-toggle="collapse" data-bs-target="#collapseDTZSavingThrows"
+									>{"Death Saving Throws"}</button>
+								</h2>
+								<div id="collapseDTZSavingThrows" class="accordion-collapse collapse" data-bs-parent="#drop-to-zero">
+									<div class="accordion-body" style="white-space: pre-line;">
+										{TEXT_DTZ_SAVING_THROWS}
+										<br /><br />
+										<strong>{"Roll a d20. "}</strong>
+										{TEXT_DTZ_SAVING_THROWS_ROLL}
+										<br /><br />
+										<strong>{"Rolling 1 or 20. "}</strong>
+										{TEXT_DTZ_SAVING_THROWS_ROLL_CRIT}
+										<br /><br />
+										<strong>{"Damage at 0 Hit Points. "}</strong>
+										{TEXT_DTZ_SAVING_THROWS_DMG}
 									</div>
 								</div>
-								<div class="accordion-item">
-									<h2 class="accordion-header">
-										<button
-											class="accordion-button collapsed" type="button"
-											data-bs-toggle="collapse" data-bs-target="#collapseDTZStabilizing"
-										>{"Stabilizing a Creature"}</button>
-									</h2>
-									<div id="collapseDTZStabilizing" class="accordion-collapse collapse" data-bs-parent="#drop-to-zero">
-										<div class="accordion-body" style="white-space: pre-line;">
-											{TEXT_DTZ_STABILIZING}
-										</div>
+							</div>
+							<div class="accordion-item">
+								<h2 class="accordion-header">
+									<button
+										class="accordion-button collapsed" type="button"
+										data-bs-toggle="collapse" data-bs-target="#collapseDTZStabilizing"
+									>{"Stabilizing a Creature"}</button>
+								</h2>
+								<div id="collapseDTZStabilizing" class="accordion-collapse collapse" data-bs-parent="#drop-to-zero">
+									<div class="accordion-body" style="white-space: pre-line;">
+										{TEXT_DTZ_STABILIZING}
 									</div>
 								</div>
 							</div>
@@ -664,7 +694,7 @@ fn Modal() -> Html {
 				</div>
 			</div>
 		</div>
-	</>}
+	}
 }
 
 #[derive(Clone, PartialEq, Properties)]
