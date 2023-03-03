@@ -22,6 +22,8 @@ use std::{
 	str::FromStr,
 };
 
+use super::HitPoints;
+
 #[derive(Clone, Copy, PartialEq)]
 pub enum ActionEffect {
 	Recompile,
@@ -297,11 +299,11 @@ impl Character {
 		self.character.inspiration
 	}
 
-	pub fn hit_points(&self, kind: HitPoint) -> u32 {
+	pub fn get_hp(&self, kind: HitPoint) -> u32 {
 		match kind {
-			HitPoint::Current => self.character.hit_points.0,
+			HitPoint::Current => self.character.hit_points.current,
 			HitPoint::Max => self.derived.max_hit_points.value(),
-			HitPoint::Temp => self.character.hit_points.1,
+			HitPoint::Temp => self.character.hit_points.temp,
 		}
 	}
 
@@ -313,12 +315,12 @@ impl Character {
 		&mut self.derived.max_hit_points
 	}
 
-	pub fn death_saving_throws(&self) -> (u8, u8) {
-		self.character.death_saves
+	pub fn hit_points(&self) -> &HitPoints {
+		self.character.hit_points()
 	}
 
-	pub fn death_saving_throw_mut(&mut self) -> &mut (u8, u8) {
-		&mut self.character.death_saves
+	pub fn hit_points_mut(&mut self) -> &mut HitPoints {
+		self.character.hit_points_mut()
 	}
 
 	pub fn defenses(&self) -> &Defenses {

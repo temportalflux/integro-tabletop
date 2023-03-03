@@ -147,7 +147,7 @@ pub fn HitPointMgmtCard() -> Html {
 			..Default::default()
 		})
 	});
-	let current_hp = state.hit_points(HitPoint::Current);
+	let current_hp = state.get_hp(HitPoint::Current);
 	html! {
 		<div class="card m-1 hit-points" style="height: 80px;">
 			<div class="card-body" style="padding: 5px 5px;">
@@ -188,7 +188,7 @@ fn HitPointsBody(BodyProps { on_open_modal }: &BodyProps) -> Html {
 		move |evt: MouseEvent, character, prev| {
 			evt.stop_propagation();
 			let Some(amt) = take_hp_input.emit(()) else { return None; };
-			character.add_assign_hit_points(amt as i32, prev.hit_points(HitPoint::Max));
+			*character.hit_points_mut() += (amt as i32, prev.get_hp(HitPoint::Max));
 			None
 		}
 	});
@@ -197,7 +197,7 @@ fn HitPointsBody(BodyProps { on_open_modal }: &BodyProps) -> Html {
 		move |evt: MouseEvent, character, prev| {
 			evt.stop_propagation();
 			let Some(amt) = take_hp_input.emit(()) else { return None; };
-			character.add_assign_hit_points(-1 * (amt as i32), prev.hit_points(HitPoint::Max));
+			*character.hit_points_mut() += (-1 * (amt as i32), prev.get_hp(HitPoint::Max));
 			None
 		}
 	});
@@ -210,7 +210,7 @@ fn HitPointsBody(BodyProps { on_open_modal }: &BodyProps) -> Html {
 				<div class="row text-center m-0" style="--bs-gutter-x: 0;">
 					<div class="col" style="min-width: 50px;">
 						<div style="font-size: 0.75rem; padding: 0 5px;">{"Current"}</div>
-						<div style="font-size: 26px; font-weight: 500;">{state.hit_points(HitPoint::Current)}</div>
+						<div style="font-size: 26px; font-weight: 500;">{state.get_hp(HitPoint::Current)}</div>
 					</div>
 					<div class="col-auto">
 						<div style="min-height: 1.2rem;"></div>
@@ -218,11 +218,11 @@ fn HitPointsBody(BodyProps { on_open_modal }: &BodyProps) -> Html {
 					</div>
 					<div class="col" style="min-width: 50px;">
 						<div style="font-size: 0.75rem; padding: 0 5px;">{"Max"}</div>
-						<div style="font-size: 26px; font-weight: 500;">{state.hit_points(HitPoint::Max)}</div>
+						<div style="font-size: 26px; font-weight: 500;">{state.get_hp(HitPoint::Max)}</div>
 					</div>
 					<div class="col" style="min-width: 50px; margin: 0 5px;">
 						<div style="font-size: 0.75rem;">{"Temp"}</div>
-						<div style="font-size: 26px; font-weight: 300;">{state.hit_points(HitPoint::Temp)}</div>
+						<div style="font-size: 26px; font-weight: 300;">{state.get_hp(HitPoint::Temp)}</div>
 					</div>
 				</div>
 			</div>
@@ -250,36 +250,10 @@ fn HitPointsBody(BodyProps { on_open_modal }: &BodyProps) -> Html {
 
 #[function_component]
 fn DeathSavesBody(BodyProps { on_open_modal }: &BodyProps) -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
-
-	let onclick = Callback::from(|evt: MouseEvent| {
-		evt.stop_propagation();
-	});
-	let onchange = state.new_dispatch(|evt: web_sys::Event, persistent, _| {
-		let Some(node) = evt.target() else { return None; };
-		let Some(input) = node.dyn_ref::<HtmlInputElement>() else { return None; };
-		let checked = input.checked();
-		let is_failure = input.class_list().contains("failure");
-		let is_success = input.class_list().contains("success");
-		let target = match (is_failure, is_success) {
-			(true, _) => Some(&mut persistent.death_saves.0),
-			(_, true) => Some(&mut persistent.death_saves.1),
-			_ => None,
-		};
-		log::debug!("[success={is_success}] checked={checked}");
-		if let Some(target) = target {
-			*target = match checked {
-				true => target.saturating_add(1),
-				false => target.saturating_sub(1),
-			};
-		}
-		None
-	});
-
-	let (failure_count, success_count) = state.death_saving_throws();
+	let onclick = Callback::from(|evt: MouseEvent| evt.stop_propagation());
 	html! {
 		<div class="death-saves" onclick={on_open_modal.clone()}>
-			<h5 class="text-center" style="font-size: 0.8rem; color: var(--bs-card-title-color); margin: 0 0 2px 0;">{"Hit Points"}</h5>
+			<h5 class="text-center" style="font-size: 0.8rem; color: var(--bs-card-title-color); margin: 0 0 2px 0;">{"Death Saves"}</h5>
 			<div class="row my-0 mx-4">
 				<div class="col-auto p-0">
 					<div style="height: 100%;" class="d-flex align-items-center">
@@ -291,16 +265,8 @@ fn DeathSavesBody(BodyProps { on_open_modal }: &BodyProps) -> Html {
 					<div class="death-save-label">{"SUCCESS"}</div>
 				</div>
 				<div class="col-auto p-0" {onclick}>
-					<div>
-						<input class="form-check-input failure" type="checkbox" onchange={onchange.clone()} checked={failure_count >= 1} />
-						<input class="form-check-input failure" type="checkbox" onchange={onchange.clone()} checked={failure_count >= 2} />
-						<input class="form-check-input failure" type="checkbox" onchange={onchange.clone()} checked={failure_count >= 3} />
-					</div>
-					<div>
-						<input class="form-check-input success" type="checkbox" onchange={onchange.clone()} checked={success_count >= 1} />
-						<input class="form-check-input success" type="checkbox" onchange={onchange.clone()} checked={success_count >= 2} />
-						<input class="form-check-input success" type="checkbox" onchange={onchange.clone()} checked={success_count >= 3} />
-					</div>
+					<DeathSaveBoxes class_name={"failure"} />
+					<DeathSaveBoxes class_name={"success"} />
 				</div>
 			</div>
 		</div>
@@ -358,7 +324,7 @@ fn Modal() -> Html {
 			let Some(input) = target.dyn_ref::<HtmlInputElement>() else { return; };
 			let Ok(value) = input.value().parse::<u32>() else { return; };
 			state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
-				*persistent.temp_hp_mut() = value;
+				persistent.hit_points_mut().temp = value;
 				None
 			}));
 		}
@@ -366,19 +332,18 @@ fn Modal() -> Html {
 
 	let delta = use_state_eq(|| 0i32);
 	let (delta_sig, delta_abs) = (delta.signum(), delta.abs() as u32);
-	let prev_hp = state.hit_points(HitPoint::Current);
-	let prev_temp = state.hit_points(HitPoint::Temp);
-	let (next_hp, next_temp) = state
-		.persistent()
-		.add_hit_points(*delta, state.hit_points(HitPoint::Max));
+	let prev_hp = state.get_hp(HitPoint::Current);
+	let prev_temp = state.get_hp(HitPoint::Temp);
+	let next_hit_points = state
+		.persistent().hit_points().plus_hp(*delta, state.get_hp(HitPoint::Max));
 	let healing_amt = delta_sig.max(0) as u32 * delta_abs;
 	let damage_amt = (-delta_sig).max(0) as u32 * delta_abs;
-	let new_hp_color_classes = match next_hp.cmp(&prev_hp) {
+	let new_hp_color_classes = match next_hit_points.current.cmp(&prev_hp) {
 		Ordering::Greater => classes!("heal"),
 		Ordering::Less => classes!("damage"),
 		Ordering::Equal => classes!(),
 	};
-	let temp_hp_color_classes = match next_temp.cmp(&prev_temp) {
+	let temp_hp_color_classes = match next_hit_points.temp.cmp(&prev_temp) {
 		Ordering::Greater => classes!("heal"),
 		Ordering::Less => classes!("damage"),
 		Ordering::Equal => classes!(),
@@ -420,7 +385,7 @@ fn Modal() -> Html {
 	let apply_delta = state.new_dispatch({
 		let delta = delta.clone();
 		move |_: MouseEvent, character, prev| {
-			character.add_assign_hit_points(*delta, prev.hit_points(HitPoint::Max));
+			*character.hit_points_mut() += (*delta, prev.get_hp(HitPoint::Max));
 			delta.set(0);
 			None
 		}
@@ -432,48 +397,17 @@ fn Modal() -> Html {
 		}
 	});
 
-	let death_save_state = state.clone();
-	let death_saves_section = (state.hit_points(HitPoint::Current) == 0).then(move || {
-		let state = death_save_state;
-		let onchange = state.new_dispatch(|evt: web_sys::Event, persistent, _| {
-			let Some(node) = evt.target() else { return None; };
-			let Some(input) = node.dyn_ref::<HtmlInputElement>() else { return None; };
-			let checked = input.checked();
-			let is_failure = input.class_list().contains("failure");
-			let is_success = input.class_list().contains("success");
-			let target = match (is_failure, is_success) {
-				(true, _) => Some(&mut persistent.death_saves.0),
-				(_, true) => Some(&mut persistent.death_saves.1),
-				_ => None,
-			};
-			log::debug!("[success={is_success}] checked={checked}");
-			if let Some(target) = target {
-				*target = match checked {
-					true => target.saturating_add(1),
-					false => target.saturating_sub(1),
-				};
-			}
-			None
-		});
-		let (failure_count, success_count) = state.death_saving_throws();
+	let death_saves_section = (state.get_hp(HitPoint::Current) == 0).then(move || {		
 		html! {<div class="death-saves">
-			<h5>{"CURRENT HP"}</h5>
+			<h6 class="text-center">{"Death Saving Throws"}</h6>
 			<div class="row m-0 justify-content-center">
 				<div class="col-auto py-0 px-4">
 					<h6>{"Failures"}</h6>
-					<div>
-						<input class="form-check-input failure" type="checkbox" onchange={onchange.clone()} checked={failure_count >= 1} />
-						<input class="form-check-input failure" type="checkbox" onchange={onchange.clone()} checked={failure_count >= 2} />
-						<input class="form-check-input failure" type="checkbox" onchange={onchange.clone()} checked={failure_count >= 3} />
-					</div>
+					<DeathSaveBoxes class_name={"failure"} />
 				</div>
 				<div class="col-auto py-0 px-4">
 					<h6>{"Successes"}</h6>
-					<div>
-						<input class="form-check-input success" type="checkbox" onchange={onchange.clone()} checked={success_count >= 1} />
-						<input class="form-check-input success" type="checkbox" onchange={onchange.clone()} checked={success_count >= 2} />
-						<input class="form-check-input success" type="checkbox" onchange={onchange.clone()} checked={success_count >= 3} />
-					</div>
+					<DeathSaveBoxes class_name={"success"} />
 				</div>
 			</div>
 			<span class="my-3" style="display: block; width: 100%; border-style: solid; border-width: 0; border-bottom-width: var(--bs-border-width); border-color: var(--theme-frame-color-muted);" />
@@ -490,11 +424,11 @@ fn Modal() -> Html {
 			<div class="row my-1" style="--bs-gutter-x: 0;">
 				<div class="col text-center">
 					<h6>{"CURRENT HP"}</h6>
-					<div style="font-size: 26px; font-weight: 500;">{state.hit_points(HitPoint::Current)}</div>
+					<div style="font-size: 26px; font-weight: 500;">{state.get_hp(HitPoint::Current)}</div>
 				</div>
 				<div class="col text-center">
 					<h6>{"MAX HP"}</h6>
-					<div style="font-size: 26px; font-weight: 500;">{state.hit_points(HitPoint::Max)}</div>
+					<div style="font-size: 26px; font-weight: 500;">{state.get_hp(HitPoint::Max)}</div>
 				</div>
 				<div class="col text-center">
 					<h6>{"TEMP HP"}</h6>
@@ -502,7 +436,7 @@ fn Modal() -> Html {
 						type="number" class="form-control text-center"
 						style="font-size: 26px; font-weight: 500; padding: 0; height: 40px;"
 						min="0"
-						value={format!("{}", state.hit_points(HitPoint::Temp))}
+						value={format!("{}", state.get_hp(HitPoint::Temp))}
 						onkeydown={validate_uint_only()}
 						onchange={temp_hp_oncommit}
 					/>
@@ -570,7 +504,7 @@ fn Modal() -> Html {
 							classes
 						}}>
 							<h6 class="m-0 new-hp-header">{"NEW HP"}</h6>
-							<div style="font-size: 40px; font-weight: 500; margin-top: -10px;">{next_hp}</div>
+							<div style="font-size: 40px; font-weight: 500; margin-top: -10px;">{next_hit_points.current}</div>
 						</div>
 						<div class={{
 							let mut classes = classes!("col");
@@ -579,7 +513,7 @@ fn Modal() -> Html {
 							classes
 						}}>
 							<h6 class="m-0 new-hp-header">{"TEMP HP"}</h6>
-							<div style="font-size: 40px; font-weight: 500; margin-top: -10px;">{next_temp}</div>
+							<div style="font-size: 40px; font-weight: 500; margin-top: -10px;">{next_hit_points.temp}</div>
 						</div>
 					</div>
 
@@ -731,6 +665,51 @@ fn Modal() -> Html {
 			</div>
 		</div>
 	</>}
+}
+
+#[derive(Clone, PartialEq, Properties)]
+struct DeathSaveBoxesProps {
+	class_name: AttrValue,
+}
+#[function_component]
+fn DeathSaveBoxes(DeathSaveBoxesProps { class_name }: &DeathSaveBoxesProps) -> Html {
+	let state = use_context::<SharedCharacter>().unwrap();
+
+	let mut classes = classes!("form-check-input");
+	classes.push(class_name.as_str().to_owned());
+
+	let onchange = state.new_dispatch({
+		let class_name = class_name.clone();
+		move |evt: web_sys::Event, persistent, _| {
+			let Some(node) = evt.target() else { return None; };
+			let Some(input) = node.dyn_ref::<HtmlInputElement>() else { return None; };
+			let checked = input.checked();
+			log::debug!("[{class_name}] checked={checked}");
+			let save_count = match class_name.as_str() {
+				"failure" => &mut persistent.hit_points_mut().failure_saves,
+				"success" => &mut persistent.hit_points_mut().success_saves,
+				_ => return None,
+			};
+			*save_count = match checked {
+				true => save_count.saturating_add(1),
+				false => save_count.saturating_sub(1),
+			};
+			None
+		}
+	});
+
+	let save_count = match class_name.as_str() {
+		"failure" => state.hit_points().failure_saves,
+		"success" => state.hit_points().success_saves,
+		_ => 0,
+	};
+	html! {
+		<div>
+			<input class={classes.clone()} type="checkbox" onchange={onchange.clone()} checked={save_count >= 1} />
+			<input class={classes.clone()} type="checkbox" onchange={onchange.clone()} checked={save_count >= 2} />
+			<input class={classes.clone()} type="checkbox" onchange={onchange.clone()} checked={save_count >= 3} />
+		</div>
+	}
 }
 
 #[function_component]

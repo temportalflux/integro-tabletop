@@ -29,8 +29,7 @@ pub struct Persistent {
 	pub selected_values: PathMap<String>,
 	pub inventory: item::Inventory,
 	pub conditions: Vec<BoxedCondition>,
-	pub hit_points: (u32, u32),
-	pub death_saves: (u8, u8), // TODO: Merge with hit points into a struct
+	pub hit_points: HitPoints,
 	pub inspiration: bool,
 }
 impl MutatorGroup for Persistent {
@@ -83,34 +82,60 @@ impl Persistent {
 		}
 	}
 
-	pub fn temp_hp_mut(&mut self) -> &mut u32 {
-		&mut self.hit_points.1
+	pub fn hit_points(&self) -> &HitPoints {
+		&self.hit_points
 	}
 
-	pub fn add_hit_points(&self, amount: i32, max: u32) -> (u32, u32) {
-		let (mut hp, mut temp) = self.hit_points;
+	pub fn hit_points_mut(&mut self) -> &mut HitPoints {
+		&mut self.hit_points
+	}
+}
+
+#[derive(Clone, Copy, PartialEq, Default)]
+pub struct HitPoints {
+	pub current: u32,
+	pub temp: u32,
+	pub failure_saves: u8,
+	pub success_saves: u8,
+}
+impl HitPoints {
+	pub fn set_temp_hp(&mut self, value: u32) {
+		self.temp = value;
+	}
+
+	pub fn plus_hp(mut self, amount: i32, max: u32) -> Self {
 		let mut amt_abs = amount.abs() as u32;
+		let had_hp = self.current > 0;
 		match amount.signum() {
 			1 => {
-				hp = hp.saturating_add(amt_abs).min(max);
+				self.current = self.current.saturating_add(amt_abs).min(max);
 			}
-			-1 if temp >= amt_abs => {
-				temp = temp.saturating_sub(amt_abs);
+			-1 if self.temp >= amt_abs => {
+				self.temp = self.temp.saturating_sub(amt_abs);
 			}
-			-1 if temp < amt_abs => {
-				amt_abs -= temp;
-				temp = 0;
-				hp = hp.saturating_sub(amt_abs);
+			-1 if self.temp < amt_abs => {
+				amt_abs -= self.temp;
+				self.temp = 0;
+				self.current = self.current.saturating_sub(amt_abs);
 			}
 			_ => {}
 		}
-		(hp, temp)
-	}
-
-	pub fn add_assign_hit_points(&mut self, amount: i32, max: u32) {
-		self.hit_points = self.add_hit_points(amount, max);
-		if self.hit_points.0 > 0 {
-			self.death_saves = Default::default();
+		if !had_hp && self.current != 0 {
+			self.failure_saves = 0;
+			self.success_saves = 0;
 		}
+		self
+	}
+}
+impl std::ops::Add<(i32, u32)> for HitPoints {
+	type Output = Self;
+
+	fn add(self, (amount, max): (i32, u32)) -> Self::Output {
+		self.plus_hp(amount, max)
+	}
+}
+impl std::ops::AddAssign<(i32, u32)> for HitPoints {
+	fn add_assign(&mut self, rhs: (i32, u32)) {
+		*self = *self + rhs;
 	}
 }

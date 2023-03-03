@@ -150,8 +150,7 @@ fn create_character() -> system::dnd5e::data::character::Persistent {
 			inv
 		},
 		conditions: Vec::new(),
-		hit_points: (0, 0),
-		death_saves: (0, 0),
+		hit_points: Default::default(),
 		inspiration: false,
 	}
 }
