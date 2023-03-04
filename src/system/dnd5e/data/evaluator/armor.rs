@@ -44,6 +44,12 @@ impl HasArmorEquipped {
 	}
 }
 
+impl crate::utility::TraitEq for HasArmorEquipped {
+	fn equals_trait(&self, other: &dyn crate::utility::TraitEq) -> bool {
+		crate::utility::downcast_trait_eq(self, other)
+	}
+}
+
 impl crate::utility::Evaluator for HasArmorEquipped {
 	type Context = Character;
 	type Item = Result<(), String>;
@@ -98,5 +104,30 @@ impl FromKDL for HasArmorEquipped {
 			}
 		}
 		Ok(Self { inverted, kinds })
+	}
+}
+
+#[cfg(test)]
+mod test {
+	use super::*;
+	use crate::utility::GenericEvaluator;
+
+	#[test]
+	fn from_kdl() {
+		let mut system = DnD5e::default();
+		system.register_evaluator::<HasArmorEquipped>();
+		let factory = system
+			.get_evaluator_factory(HasArmorEquipped::id())
+			.expect("evaluator must be registered");
+		let doc_str = "evaluator \"has_armor_equipped\"";
+		let document = doc_str
+			.parse::<kdl::KdlDocument>()
+			.expect("kdl document must be valid");
+		let node = document.query("evaluator").expect("query must be valid");
+		let node = node.expect("kdl document must include node");
+		let parsed = factory
+			.from_kdl::<Result<(), String>>(node, &system)
+			.expect("failed to parse kdl");
+		assert_eq!(parsed, GenericEvaluator::from(HasArmorEquipped::default()));
 	}
 }

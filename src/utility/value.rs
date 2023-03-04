@@ -41,10 +41,20 @@ where
 	}
 }
 
+impl<C, V> super::TraitEq for Value<C, V>
+where
+	C: 'static,
+	V: 'static + PartialEq,
+{
+	fn equals_trait(&self, other: &dyn super::TraitEq) -> bool {
+		super::downcast_trait_eq(self, other)
+	}
+}
+
 impl<C, V> Evaluator for Value<C, V>
 where
 	C: 'static + Send + Sync,
-	V: 'static + Clone + Send + Sync + Debug,
+	V: 'static + Clone + Send + Sync + Debug + PartialEq,
 {
 	type Context = C;
 	type Item = V;

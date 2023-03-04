@@ -25,10 +25,20 @@ where
 	}
 }
 
+impl<K, V> crate::utility::TraitEq for BySelection<K, V>
+where
+	K: 'static + PartialEq,
+	V: 'static + PartialEq,
+{
+	fn equals_trait(&self, other: &dyn crate::utility::TraitEq) -> bool {
+		crate::utility::downcast_trait_eq(self, other)
+	}
+}
+
 impl<K, V> Evaluator for BySelection<K, V>
 where
-	K: 'static + Clone + FromStr + Ord + Send + Sync + Debug,
-	V: 'static + Clone + Default + Send + Sync + Debug,
+	K: 'static + Clone + Send + Sync + Debug + PartialEq + FromStr + Ord,
+	V: 'static + Clone + Send + Sync + Debug + PartialEq + Default,
 {
 	type Context = Character;
 	type Item = V;

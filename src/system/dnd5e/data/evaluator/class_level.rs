@@ -21,9 +21,19 @@ where
 		}
 	}
 }
+
+impl<T> crate::utility::TraitEq for GetLevel<T>
+where
+	T: 'static + PartialEq,
+{
+	fn equals_trait(&self, other: &dyn crate::utility::TraitEq) -> bool {
+		crate::utility::downcast_trait_eq(self, other)
+	}
+}
+
 impl<T> Evaluator for GetLevel<T>
 where
-	T: 'static + Copy + Debug + Send + Sync,
+	T: 'static + Copy + Debug + Send + Sync + PartialEq,
 	usize: num_traits::AsPrimitive<T>,
 {
 	type Context = Character;
@@ -40,6 +50,13 @@ where
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct GetAbilityModifier(pub crate::system::dnd5e::data::Ability);
+
+impl crate::utility::TraitEq for GetAbilityModifier {
+	fn equals_trait(&self, other: &dyn crate::utility::TraitEq) -> bool {
+		crate::utility::downcast_trait_eq(self, other)
+	}
+}
+
 impl Evaluator for GetAbilityModifier {
 	type Context = Character;
 	type Item = i32;
@@ -56,9 +73,19 @@ impl Evaluator for GetAbilityModifier {
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct MulValues<T>(pub Vec<Value<T>>);
+
+impl<T> crate::utility::TraitEq for MulValues<T>
+where
+	T: 'static + PartialEq,
+{
+	fn equals_trait(&self, other: &dyn crate::utility::TraitEq) -> bool {
+		crate::utility::downcast_trait_eq(self, other)
+	}
+}
+
 impl<T> Evaluator for MulValues<T>
 where
-	T: 'static + Product + Clone + Send + Sync + Debug,
+	T: 'static + Product + Clone + Send + Sync + Debug + PartialEq,
 {
 	type Context = Character;
 	type Item = T;
@@ -89,9 +116,18 @@ impl<T, const N: usize> From<[(usize, T); N]> for ByLevel<T> {
 	}
 }
 
+impl<T> crate::utility::TraitEq for ByLevel<T>
+where
+	T: 'static + PartialEq,
+{
+	fn equals_trait(&self, other: &dyn crate::utility::TraitEq) -> bool {
+		crate::utility::downcast_trait_eq(self, other)
+	}
+}
+
 impl<T> Evaluator for ByLevel<T>
 where
-	T: 'static + Clone + Default + Send + Sync + Debug,
+	T: 'static + Clone + Default + Send + Sync + Debug + PartialEq,
 {
 	type Context = Character;
 	type Item = T;

@@ -6,6 +6,12 @@ use crate::{
 #[derive(Clone, PartialEq, Debug)]
 pub struct Any(pub Vec<BoxedEvaluator<bool>>);
 
+impl crate::utility::TraitEq for Any {
+	fn equals_trait(&self, other: &dyn crate::utility::TraitEq) -> bool {
+		crate::utility::downcast_trait_eq(self, other)
+	}
+}
+
 impl Evaluator for Any {
 	type Context = Character;
 	type Item = bool;

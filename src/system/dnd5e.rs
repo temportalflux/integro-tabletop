@@ -3,7 +3,11 @@ use crate::{
 	utility::{ArcEvaluator, Evaluator, GenericEvaluator, Mutator},
 	GeneralError,
 };
-use std::{any::{Any, TypeId}, collections::HashMap, sync::Arc};
+use std::{
+	any::{Any, TypeId},
+	collections::HashMap,
+	sync::Arc,
+};
 
 pub mod components;
 pub mod content;
