@@ -1,19 +1,23 @@
 use crate::{
-	system::dnd5e::data::{character::Character, roll::Roll},
+	system::dnd5e::{
+		data::{character::Character, roll::Roll},
+		KDLNode,
+	},
 	utility::Mutator,
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct AddLifeExpectancy(pub i32);
+impl KDLNode for AddLifeExpectancy {
+	fn id() -> &'static str {
+		"extend_life_expectancy"
+	}
+}
 impl Mutator for AddLifeExpectancy {
 	type Target = Character;
 
-	fn node_name() -> &'static str {
-		"add_life_expectancy"
-	}
-
 	fn get_node_name(&self) -> &'static str {
-		Self::node_name()
+		Self::id()
 	}
 
 	fn apply<'c>(&self, stats: &mut Character) {
@@ -21,21 +25,23 @@ impl Mutator for AddLifeExpectancy {
 	}
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum AddMaxHeight {
 	Value(i32),
 	Roll(Roll),
 }
 
+impl KDLNode for AddMaxHeight {
+	fn id() -> &'static str {
+		"add_max_height"
+	}
+}
+
 impl Mutator for AddMaxHeight {
 	type Target = Character;
 
-	fn node_name() -> &'static str {
-		"add_max_height"
-	}
-
 	fn get_node_name(&self) -> &'static str {
-		Self::node_name()
+		Self::id()
 	}
 
 	fn apply<'c>(&self, stats: &mut Character) {

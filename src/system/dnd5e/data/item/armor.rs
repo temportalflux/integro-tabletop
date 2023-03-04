@@ -1,3 +1,7 @@
+use std::str::FromStr;
+
+use enumset::EnumSetType;
+
 use crate::{
 	system::dnd5e::data::{character::Character, ArmorClassFormula},
 	utility::MutatorGroup,
@@ -13,7 +17,7 @@ pub struct Armor {
 	pub min_strength_score: Option<u32>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, PartialOrd, Ord, Hash, EnumSetType)]
 pub enum Kind {
 	Light,
 	Medium,
@@ -22,6 +26,23 @@ pub enum Kind {
 impl ToString for Kind {
 	fn to_string(&self) -> String {
 		format!("{self:?}")
+	}
+}
+impl FromStr for Kind {
+	type Err = crate::GeneralError;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		match s.to_lowercase().as_str() {
+			"light" => Ok(Self::Light),
+			"medium" => Ok(Self::Medium),
+			"heavy" => Ok(Self::Heavy),
+			_ => Err(crate::GeneralError(format!(
+				"{s:?} is not a valid armor kind: {:?}.",
+				enumset::EnumSet::<Kind>::all()
+					.into_iter()
+					.collect::<Vec<_>>(),
+			))),
+		}
 	}
 }
 

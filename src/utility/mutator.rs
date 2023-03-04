@@ -1,12 +1,8 @@
 use super::Dependencies;
-use std::sync::Arc;
+use std::{fmt::Debug, sync::Arc};
 
-pub trait Mutator {
+pub trait Mutator: Debug {
 	type Target;
-
-	fn node_name() -> &'static str
-	where
-		Self: Sized;
 
 	fn get_node_name(&self) -> &'static str;
 
@@ -14,7 +10,7 @@ pub trait Mutator {
 		Dependencies::default()
 	}
 
-	fn id(&self) -> Option<&str> {
+	fn data_id(&self) -> Option<&str> {
 		None
 	}
 
@@ -41,6 +37,11 @@ where
 {
 	fn from(value: M) -> Self {
 		Self(Arc::new(value))
+	}
+}
+impl<T> std::fmt::Debug for ArcMutator<T> {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		self.0.fmt(f)
 	}
 }
 

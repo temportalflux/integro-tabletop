@@ -43,7 +43,7 @@ impl ArmorClass {
 	}
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct ArmorClassFormula {
 	pub base: u32,
 	pub bonuses: Vec<BoundedAbility>,
@@ -79,7 +79,7 @@ impl ArmorClassFormula {
 	}
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub struct BoundedAbility {
 	pub ability: Ability,
 	pub min: Option<i32>,

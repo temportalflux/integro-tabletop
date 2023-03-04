@@ -8,7 +8,7 @@ use crate::{
 use std::path::PathBuf;
 use uuid::Uuid;
 
-#[derive(Clone, PartialEq, Default)]
+#[derive(Clone, PartialEq, Default, Debug)]
 pub struct Action {
 	pub name: String,
 	pub description: String,
@@ -17,7 +17,7 @@ pub struct Action {
 	pub source: Option<ActionSource>,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum ActionSource {
 	Item(Uuid),
 	Feature(BoxedFeature),
@@ -31,7 +31,7 @@ pub struct Attack {
 	pub damage: Option<DamageRoll>,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum AttackKind {
 	Melee,
 	Ranged,

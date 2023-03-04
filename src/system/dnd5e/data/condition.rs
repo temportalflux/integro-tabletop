@@ -1,8 +1,8 @@
 use super::super::{BoxedCriteria, BoxedMutator};
 use dyn_clone::{clone_trait_object, DynClone};
-use std::sync::Arc;
+use std::{fmt::Debug, sync::Arc};
 
-pub trait Condition: DynClone {
+pub trait Condition: DynClone + Debug {
 	fn description(&self) -> String
 	where
 		Self: Sized;
@@ -31,8 +31,13 @@ where
 		Self(Arc::new(value))
 	}
 }
+impl Debug for BoxedCondition {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		self.0.fmt(f)
+	}
+}
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Blinded;
 impl Condition for Blinded {
 	fn description(&self) -> String {
@@ -41,7 +46,7 @@ impl Condition for Blinded {
 	}
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Charmed;
 impl Condition for Charmed {
 	fn description(&self) -> String {
@@ -50,7 +55,7 @@ impl Condition for Charmed {
 	}
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Deafened;
 impl Condition for Deafened {
 	fn description(&self) -> String {
@@ -58,7 +63,7 @@ impl Condition for Deafened {
 	}
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Frightened;
 impl Condition for Frightened {
 	fn description(&self) -> String {
@@ -67,7 +72,7 @@ impl Condition for Frightened {
 	}
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Grappled;
 impl Condition for Grappled {
 	fn description(&self) -> String {
@@ -79,7 +84,7 @@ impl Condition for Grappled {
 	}
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Incapacitated;
 impl Condition for Incapacitated {
 	fn description(&self) -> String {
@@ -87,7 +92,7 @@ impl Condition for Incapacitated {
 	}
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Invisible;
 impl Condition for Invisible {
 	fn description(&self) -> String {
@@ -98,7 +103,7 @@ impl Condition for Invisible {
 	}
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Paralyzed;
 impl Condition for Paralyzed {
 	fn description(&self) -> String {
@@ -108,7 +113,7 @@ impl Condition for Paralyzed {
 	}
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Petrified;
 impl Condition for Petrified {
 	fn description(&self) -> String {
@@ -123,7 +128,7 @@ impl Condition for Petrified {
 	}
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Poisoned;
 impl Condition for Poisoned {
 	fn description(&self) -> String {
@@ -131,7 +136,7 @@ impl Condition for Poisoned {
 	}
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Prone;
 impl Condition for Prone {
 	fn description(&self) -> String {
@@ -142,7 +147,7 @@ impl Condition for Prone {
 	}
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Restrained;
 impl Condition for Restrained {
 	fn description(&self) -> String {
@@ -152,7 +157,7 @@ impl Condition for Restrained {
 	}
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Stunned;
 impl Condition for Stunned {
 	fn description(&self) -> String {
@@ -162,7 +167,7 @@ impl Condition for Stunned {
 	}
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Unconscious;
 impl Condition for Unconscious {
 	fn description(&self) -> String {
@@ -174,7 +179,7 @@ impl Condition for Unconscious {
 	}
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Exhasted(Exhaustion);
 impl Condition for Exhasted {
 	fn description(&self) -> String {
@@ -270,7 +275,7 @@ impl Exhaustion {
 	}
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Custom {
 	pub name: String,
 	pub description: String,

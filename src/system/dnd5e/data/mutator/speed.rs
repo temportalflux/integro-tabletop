@@ -1,17 +1,22 @@
-use crate::{system::dnd5e::data::character::Character, utility::Mutator};
+use crate::{
+	system::dnd5e::{data::character::Character, KDLNode},
+	utility::Mutator,
+};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct AddMaxSpeed(pub String, pub i32);
+
+impl KDLNode for AddMaxSpeed {
+	fn id() -> &'static str {
+		"add_max_speed"
+	}
+}
 
 impl Mutator for AddMaxSpeed {
 	type Target = Character;
 
-	fn node_name() -> &'static str {
-		"add_max_speed"
-	}
-
 	fn get_node_name(&self) -> &'static str {
-		Self::node_name()
+		Self::id()
 	}
 
 	fn apply<'c>(&self, stats: &mut Character) {
@@ -20,18 +25,20 @@ impl Mutator for AddMaxSpeed {
 	}
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct AddMaxSense(pub String, pub i32);
+
+impl KDLNode for AddMaxSense {
+	fn id() -> &'static str {
+		"add_max_sense"
+	}
+}
 
 impl Mutator for AddMaxSense {
 	type Target = Character;
 
-	fn node_name() -> &'static str {
-		"add_max_sense"
-	}
-
 	fn get_node_name(&self) -> &'static str {
-		Self::node_name()
+		Self::id()
 	}
 
 	fn apply<'c>(&self, stats: &mut Character) {

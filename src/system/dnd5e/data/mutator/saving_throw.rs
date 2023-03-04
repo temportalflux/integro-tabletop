@@ -1,23 +1,28 @@
 use crate::{
-	system::dnd5e::data::{character::Character, Ability},
+	system::dnd5e::{
+		data::{character::Character, Ability},
+		KDLNode,
+	},
 	utility::Mutator,
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum AddSavingThrow {
 	Proficiency(Ability),
 	Advantage(Ability, Option<String>),
 }
 
+impl KDLNode for AddSavingThrow {
+	fn id() -> &'static str {
+		"add_saving_throw"
+	}
+}
+
 impl Mutator for AddSavingThrow {
 	type Target = Character;
 
-	fn node_name() -> &'static str {
-		"add_saving_throw"
-	}
-
 	fn get_node_name(&self) -> &'static str {
-		Self::node_name()
+		Self::id()
 	}
 
 	fn apply<'c>(&self, stats: &mut Character) {

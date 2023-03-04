@@ -4,13 +4,13 @@ lineage name="Aarakocra" can_select_twice=true {
 	- Your life expectancy increases by 15 years.
 	- Your height increases by 26 + 1d8 inches.
 	- Your base walking speed is 25 feet."
-	mutator "extend_life_expectancy" 15
-	mutator "add_max_height" 30
-	mutator "add_max_height" (Roll)"1d4"
-	mutator "add_max_speed" "Walking" 25
+	//mutator "extend_life_expectancy" 15
+	//mutator "add_max_height" 30
+	//mutator "add_max_height" (Roll)"1d4"
+	//mutator "add_max_speed" "Walking" 25
 	feature name="Flight" {
 		description "You have a flying speed of 20 feet. To use this speed, you can't be wearing medium or heavy armor. If you already have a flying speed, increase it by 20 feet."
-		mutator "add_speed" "Flying" 20
+		//mutator "add_speed" "Flying" 20
 		criteria "has_armor_equipped" inverted=true {
 			kind "Medium"
 			kind "Heavy"

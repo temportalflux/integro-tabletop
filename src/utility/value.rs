@@ -1,10 +1,10 @@
-use super::{Evaluator, RcEvaluator};
-use std::{collections::HashSet, ops::Deref, sync::Arc};
+use super::{Evaluator, GenericEvaluator};
+use std::{collections::HashSet, fmt::Debug, ops::Deref, sync::Arc};
 
 #[derive(Clone)]
 pub enum Value<C, V> {
 	Fixed(V),
-	Evaluated(RcEvaluator<C, V>),
+	Evaluated(GenericEvaluator<C, V>),
 }
 
 impl<C, V> Default for Value<C, V>
@@ -36,14 +36,15 @@ where
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
 			Self::Fixed(value) => write!(f, "Value::Fixed({value:?})"),
-			Self::Evaluated(_eval) => write!(f, "Value::Evaluated(?)"),
+			Self::Evaluated(eval) => write!(f, "Value::Evaluated({eval:?})"),
 		}
 	}
 }
 
 impl<C, V> Evaluator for Value<C, V>
 where
-	V: Clone,
+	C: 'static + Send + Sync,
+	V: 'static + Clone + Send + Sync + Debug,
 {
 	type Context = C;
 	type Item = V;

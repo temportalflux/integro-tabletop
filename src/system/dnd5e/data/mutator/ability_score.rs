@@ -1,23 +1,27 @@
 use crate::{
-	system::dnd5e::data::{character::Character, Ability},
+	system::dnd5e::{
+		data::{character::Character, Ability},
+		KDLNode,
+	},
 	utility::{Mutator, Selector},
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct AddAbilityScore {
 	pub ability: Selector<Ability>,
 	pub value: i32,
 }
 
+impl KDLNode for AddAbilityScore {
+	fn id() -> &'static str {
+		"add_ability_score"
+	}
+}
 impl Mutator for AddAbilityScore {
 	type Target = Character;
 
-	fn node_name() -> &'static str {
-		"add_ability_score"
-	}
-
 	fn get_node_name(&self) -> &'static str {
-		Self::node_name()
+		Self::id()
 	}
 
 	fn apply<'c>(&self, stats: &mut Character) {

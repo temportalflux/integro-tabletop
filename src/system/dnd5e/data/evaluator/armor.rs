@@ -1,11 +1,17 @@
-use crate::system::dnd5e::data::{
-	character::Persistent,
-	item::{armor, EquipableEntry, ItemKind},
+use crate::{
+	kdl_ext::{DocumentQueryExt, NodeQueryExt},
+	system::dnd5e::{
+		data::{
+			character::Character,
+			item::{armor, EquipableEntry, ItemKind},
+		},
+		DnD5e, FromKDL, KDLNode,
+	},
 };
-use std::collections::HashSet;
+use std::{collections::HashSet, str::FromStr};
 
 /// Checks if the character has armor equipped.
-#[derive(Clone, PartialEq, Default)]
+#[derive(Clone, PartialEq, Default, Debug)]
 pub struct HasArmorEquipped {
 	/// By default, this criteria checks if a piece of armor is equipped.
 	/// If this flag is true, the criteria checks if no armor is equipped (or no armor of a particular set of types).
@@ -37,8 +43,9 @@ impl HasArmorEquipped {
 		})
 	}
 }
+
 impl crate::utility::Evaluator for HasArmorEquipped {
-	type Context = Persistent;
+	type Context = Character;
 	type Item = Result<(), String>;
 
 	fn evaluate(&self, character: &Self::Context) -> Result<(), String> {
@@ -46,7 +53,7 @@ impl crate::utility::Evaluator for HasArmorEquipped {
 			id: _,
 			item,
 			is_equipped,
-		} in character.inventory.entries()
+		} in character.inventory().entries()
 		{
 			if !item.is_equipable() || !is_equipped {
 				continue;
@@ -70,5 +77,26 @@ impl crate::utility::Evaluator for HasArmorEquipped {
 			)),
 			true => Ok(()),
 		}
+	}
+}
+
+impl KDLNode for HasArmorEquipped {
+	fn id() -> &'static str {
+		"has_armor_equipped"
+	}
+}
+
+impl FromKDL for HasArmorEquipped {
+	type System = DnD5e;
+
+	fn from_kdl(node: &kdl::KdlNode, _system: &Self::System) -> anyhow::Result<Self> {
+		let inverted = node.get_bool_opt("inverted")?.unwrap_or_default();
+		let mut kinds = HashSet::new();
+		if let Some(children) = node.children() {
+			for kind_str_result in children.query_str_all("kind", 0)? {
+				kinds.insert(armor::Kind::from_str(kind_str_result?)?);
+			}
+		}
+		Ok(Self { inverted, kinds })
 	}
 }

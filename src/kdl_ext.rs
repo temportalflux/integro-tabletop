@@ -66,6 +66,58 @@ pub trait DocumentQueryExt {
 	) -> anyhow::Result<Option<&str>> {
 		query_type_opt(self.as_document()?, query, key, as_str)
 	}
+
+	fn query_bool_all<'doc>(
+		&'doc self,
+		query: impl kdl::IntoKdlQuery + Clone + 'doc,
+		key: impl Into<kdl::NodeKey> + Clone + 'doc,
+	) -> anyhow::Result<Box<dyn Iterator<Item = anyhow::Result<bool>> + 'doc>> {
+		Ok(Box::new(query_type_all(
+			self.as_document()?,
+			query,
+			key,
+			as_bool,
+		)?))
+	}
+
+	fn query_i64_all<'doc>(
+		&'doc self,
+		query: impl kdl::IntoKdlQuery + Clone + 'doc,
+		key: impl Into<kdl::NodeKey> + Clone + 'doc,
+	) -> anyhow::Result<Box<dyn Iterator<Item = anyhow::Result<i64>> + 'doc>> {
+		Ok(Box::new(query_type_all(
+			self.as_document()?,
+			query,
+			key,
+			as_i64,
+		)?))
+	}
+
+	fn query_f64_all<'doc>(
+		&'doc self,
+		query: impl kdl::IntoKdlQuery + Clone + 'doc,
+		key: impl Into<kdl::NodeKey> + Clone + 'doc,
+	) -> anyhow::Result<Box<dyn Iterator<Item = anyhow::Result<f64>> + 'doc>> {
+		Ok(Box::new(query_type_all(
+			self.as_document()?,
+			query,
+			key,
+			as_f64,
+		)?))
+	}
+
+	fn query_str_all<'doc>(
+		&'doc self,
+		query: impl kdl::IntoKdlQuery + Clone + 'doc,
+		key: impl Into<kdl::NodeKey> + Clone + 'doc,
+	) -> anyhow::Result<Box<dyn Iterator<Item = anyhow::Result<&str>> + 'doc>> {
+		Ok(Box::new(query_type_all(
+			self.as_document()?,
+			query,
+			key,
+			as_str,
+		)?))
+	}
 }
 pub trait NodeQueryExt {
 	fn as_node(&self) -> &kdl::KdlNode;
@@ -141,6 +193,29 @@ fn query_type_opt<'doc, T>(
 		))
 	})?;
 	Ok(Some(value))
+}
+
+fn query_type_all<'doc, T>(
+	doc: &'doc kdl::KdlDocument,
+	query: impl kdl::IntoKdlQuery + Clone + 'doc,
+	key: impl Into<kdl::NodeKey> + Clone + 'doc,
+	map: impl Fn(&'doc kdl::KdlValue) -> Result<T, &'static str> + 'doc,
+) -> anyhow::Result<impl Iterator<Item = anyhow::Result<T>> + 'doc> {
+	let query_str = match query.clone().into_query() {
+		Ok(query) => format!("{query:?}"),
+		_ => "[unknown]".into(),
+	};
+	let key_str = format!("{:?}", key.clone().into());
+	Ok(doc.query_get_all(query, key)?.map(move |kdl_value| {
+		let query_str = query_str.clone();
+		let key_str = key_str.clone();
+		map(kdl_value).map_err(move |type_name| {
+			GeneralError(format!(
+				"Value at {key_str:?} of a node in {query_str:?} is not a {type_name}"
+			))
+			.into()
+		})
+	}))
 }
 
 fn get_type<'doc, T>(

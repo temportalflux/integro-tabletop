@@ -43,3 +43,4 @@ uuid = { version = "1.3", features = ["v4", "js"] }
 num-traits = "0.2"
 simplelog = "0.12"
 time = "0.3"
+downcast-rs = "1.2"

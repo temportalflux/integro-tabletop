@@ -3,7 +3,7 @@ use crate::{
 	utility::Evaluator,
 };
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum IsProficientWith {
 	Weapon(WeaponProficiency),
 }

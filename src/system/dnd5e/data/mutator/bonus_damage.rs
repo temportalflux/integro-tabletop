@@ -1,22 +1,23 @@
 use crate::{
 	system::dnd5e::{
 		data::{action::Action, character::Character, item::weapon},
-		Value,
+		KDLNode, Value,
 	},
 	utility::{Dependencies, Evaluator, Mutator},
 };
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct AddAction(pub Action);
+impl KDLNode for AddAction {
+	fn id() -> &'static str {
+		"add_action"
+	}
+}
 impl Mutator for AddAction {
 	type Target = Character;
 
-	fn node_name() -> &'static str {
-		"add_action"
-	}
-
 	fn get_node_name(&self) -> &'static str {
-		Self::node_name()
+		Self::id()
 	}
 
 	fn apply<'c>(&self, stats: &mut Character) {
@@ -24,20 +25,21 @@ impl Mutator for AddAction {
 	}
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct BonusDamage {
 	pub amount: Value<i32>,
 	pub restriction: Option<weapon::Restriction>,
 }
+impl KDLNode for BonusDamage {
+	fn id() -> &'static str {
+		"bonus_damage"
+	}
+}
 impl Mutator for BonusDamage {
 	type Target = Character;
 
-	fn node_name() -> &'static str {
-		"bonus_damage"
-	}
-
 	fn get_node_name(&self) -> &'static str {
-		Self::node_name()
+		Self::id()
 	}
 
 	fn dependencies(&self) -> Dependencies {

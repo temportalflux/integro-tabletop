@@ -1,19 +1,23 @@
 use crate::{
-	system::dnd5e::data::{character::Character, ArmorClassFormula},
+	system::dnd5e::{
+		data::{character::Character, ArmorClassFormula},
+		KDLNode,
+	},
 	utility::Mutator,
 };
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct AddArmorClassFormula(pub ArmorClassFormula);
+impl KDLNode for AddArmorClassFormula {
+	fn id() -> &'static str {
+		"add_armor_class_formula"
+	}
+}
 impl Mutator for AddArmorClassFormula {
 	type Target = Character;
 
-	fn node_name() -> &'static str {
-		"add_armor_class_formula"
-	}
-
 	fn get_node_name(&self) -> &'static str {
-		Self::node_name()
+		Self::id()
 	}
 
 	fn apply<'c>(&self, stats: &mut Character) {

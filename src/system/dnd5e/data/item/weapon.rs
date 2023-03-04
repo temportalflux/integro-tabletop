@@ -54,7 +54,7 @@ pub struct Range {
 	pub requires_loading: bool,
 }
 
-#[derive(Clone, PartialEq, Default)]
+#[derive(Clone, PartialEq, Default, Debug)]
 pub struct Restriction {
 	pub weapon_kind: HashSet<Kind>,
 	pub attack_kind: HashSet<AttackKind>,

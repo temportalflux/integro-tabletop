@@ -3,7 +3,6 @@ pub use ability::*;
 pub mod action;
 pub mod character;
 pub mod condition;
-pub mod criteria;
 pub mod evaluator;
 mod feature;
 pub use feature::*;

@@ -1,12 +1,13 @@
 use crate::{system::dnd5e::data::character::Character, utility::Evaluator};
 use std::{
 	collections::BTreeMap,
+	fmt::Debug,
 	path::{Component, PathBuf},
 	str::FromStr,
 };
 
 /// Maps some selection value `K`, at selector `selector_path`, to a evaluation value `V`.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct BySelection<K, V> {
 	pub selector_path: PathBuf,
 	pub map: BTreeMap<K, V>,
@@ -26,8 +27,8 @@ where
 
 impl<K, V> Evaluator for BySelection<K, V>
 where
-	K: 'static + Clone + FromStr + Ord,
-	V: Clone + Default,
+	K: 'static + Clone + FromStr + Ord + Send + Sync + Debug,
+	V: 'static + Clone + Default + Send + Sync + Debug,
 {
 	type Context = Character;
 	type Item = V;

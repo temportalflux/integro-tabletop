@@ -3,7 +3,7 @@ use crate::{
 	utility::{Dependencies, Evaluator},
 };
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Any(pub Vec<BoxedEvaluator<bool>>);
 
 impl Evaluator for Any {

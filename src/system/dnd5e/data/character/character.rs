@@ -93,7 +93,7 @@ impl Character {
 	}
 
 	pub fn apply(&mut self, mutator: &BoxedMutator) {
-		let scope = self.source_path.push(mutator.id(), true);
+		let scope = self.source_path.push(mutator.data_id(), true);
 		self.insert_mutator(MutatorEntry {
 			node_id: mutator.get_node_name(),
 			dependencies: mutator.dependencies(),
@@ -187,7 +187,7 @@ impl Character {
 
 impl Character {
 	pub fn evaluate(&self, criteria: &BoxedCriteria) -> Result<(), String> {
-		criteria.evaluate(&self.character)
+		criteria.evaluate(&self)
 	}
 
 	pub fn selected_values_in(&self, parent: impl AsRef<Path>) -> Option<&PathMap<String>> {

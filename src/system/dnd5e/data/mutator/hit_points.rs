@@ -1,30 +1,32 @@
 use crate::{
-	system::dnd5e::{data::character::Character, Value},
+	system::dnd5e::{data::character::Character, KDLNode, Value},
 	utility::{Dependencies, Evaluator, Mutator},
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct AddMaxHitPoints {
 	pub id: Option<String>,
 	pub value: Value<i32>,
 }
 
+impl KDLNode for AddMaxHitPoints {
+	fn id() -> &'static str {
+		"add_max_hit_points"
+	}
+}
+
 impl Mutator for AddMaxHitPoints {
 	type Target = Character;
 
-	fn node_name() -> &'static str {
-		"add_max_hit_points"
-	}
-
 	fn get_node_name(&self) -> &'static str {
-		Self::node_name()
+		Self::id()
 	}
 
 	fn dependencies(&self) -> Dependencies {
 		self.value.dependencies()
 	}
 
-	fn id(&self) -> Option<&str> {
+	fn data_id(&self) -> Option<&str> {
 		self.id.as_ref().map(String::as_str)
 	}
 

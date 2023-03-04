@@ -1,7 +1,10 @@
 use crate::{
-	system::dnd5e::data::{
-		character::Character,
-		item::{armor, weapon},
+	system::dnd5e::{
+		data::{
+			character::Character,
+			item::{armor, weapon},
+		},
+		KDLNode,
 	},
 	utility::{Mutator, Selector},
 };
@@ -33,7 +36,7 @@ impl ToString for WeaponProficiency {
 	}
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum AddProficiency {
 	Language(Selector<String>),
 	Armor(armor::Kind),
@@ -41,15 +44,16 @@ pub enum AddProficiency {
 	Tool(String),
 }
 
+impl KDLNode for AddProficiency {
+	fn id() -> &'static str {
+		"add_proficiency"
+	}
+}
 impl Mutator for AddProficiency {
 	type Target = Character;
 
-	fn node_name() -> &'static str {
-		"add_proficiency"
-	}
-
 	fn get_node_name(&self) -> &'static str {
-		Self::node_name()
+		Self::id()
 	}
 
 	fn apply<'c>(&self, stats: &mut Character) {

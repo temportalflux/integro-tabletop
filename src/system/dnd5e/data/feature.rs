@@ -1,11 +1,12 @@
 use super::{action::ActivationKind, character::Character, condition::BoxedCondition};
 use crate::{
-	system::dnd5e::{BoxedCriteria, BoxedMutator, Value},
+	kdl_ext::{DocumentQueryExt, NodeQueryExt},
+	system::dnd5e::{BoxedCriteria, BoxedMutator, DnD5e, FromKDL, Value},
 	utility::MutatorGroup,
 };
 use std::{collections::HashMap, sync::Arc};
 
-#[derive(Default, Clone, PartialEq)]
+#[derive(Default, Clone, PartialEq, Debug)]
 pub struct Feature {
 	pub name: String,
 	pub description: String,
@@ -52,6 +53,55 @@ impl MutatorGroup for Feature {
 	}
 }
 
+impl FromKDL for Feature {
+	type System = DnD5e;
+
+	fn from_kdl(node: &kdl::KdlNode, system: &Self::System) -> anyhow::Result<Self> {
+		let name = node.get_str("name")?.to_owned();
+		let description = node
+			.query_str_opt("description", 0)?
+			.unwrap_or_default()
+			.to_owned();
+		// Specifies if this feature can appear twice.
+		// If true, any other features with the same name are ignored/discarded.
+		// TODO: Unimplemented
+		let _is_unique = node.get_bool_opt("unique")?.unwrap_or_default();
+
+		let criteria = match node.query("criteria")? {
+			None => None,
+			Some(entry_node) => {
+				let id = entry_node.get_str(0)?;
+				let factory = system.get_evaluator_factory(id)?;
+				Some(factory.from_kdl::<Result<(), String>>(entry_node, system)?)
+			}
+		};
+
+		// TODO: These
+		let action = Default::default();
+		let limited_uses = Default::default();
+
+		let mut mutators = Vec::new();
+		if let Some(children) = node.children() {
+			for entry_node in children.query_all("mutator")? {
+				let id = entry_node.get_str(0)?;
+				let factory = system.get_mutator_factory(id)?;
+				mutators.push(factory.from_kdl(entry_node, system)?);
+			}
+		}
+
+		Ok(Self {
+			name,
+			description,
+			mutators,
+			action,
+			limited_uses,
+			criteria,
+			// Generated data
+			missing_selection_text: None,
+		})
+	}
+}
+
 #[derive(Clone, PartialEq)]
 pub struct BoxedFeature(Arc<Feature>);
 impl From<Feature> for BoxedFeature {
@@ -64,8 +114,13 @@ impl BoxedFeature {
 		&*self.0
 	}
 }
+impl std::fmt::Debug for BoxedFeature {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		self.0.fmt(f)
+	}
+}
 
-#[derive(Default, Clone, PartialEq)]
+#[derive(Default, Clone, PartialEq, Debug)]
 pub struct LimitedUses {
 	/// The number of uses the feature has until it resets.
 	pub max_uses: Value<Option<usize>>,

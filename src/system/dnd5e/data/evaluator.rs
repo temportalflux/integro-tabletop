@@ -1,3 +1,5 @@
+pub mod armor;
+
 mod class_level;
 pub use class_level::*;
 

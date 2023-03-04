@@ -2,12 +2,14 @@ use crate::{
 	kdl_ext::{DocumentQueryExt, NodeQueryExt},
 	system::dnd5e::{
 		data::{character::Character, BoxedFeature},
-		BoxedMutator, DnD5e, FromKDL, SystemComponent,
+		BoxedMutator, DnD5e, FromKDL, KDLNode, SystemComponent,
 	},
 	utility::MutatorGroup,
 };
 
-#[derive(Default, Clone, PartialEq)]
+use super::Feature;
+
+#[derive(Default, Clone, PartialEq, Debug)]
 pub struct Lineage {
 	pub name: String,
 	pub description: String,
@@ -37,12 +39,15 @@ impl MutatorGroup for Lineage {
 impl SystemComponent for Lineage {
 	type System = DnD5e;
 
-	fn node_name() -> &'static str {
-		"lineage"
-	}
-
 	fn add_component(self, system: &mut Self::System) {
+		log::debug!("adding lineage: {self:?}");
 		system.add_lineage(self);
+	}
+}
+
+impl KDLNode for Lineage {
+	fn id() -> &'static str {
+		"lineage"
 	}
 }
 
@@ -59,11 +64,14 @@ impl FromKDL for Lineage {
 		let mut mutators = Vec::new();
 		let mut features = Vec::new();
 		if let Some(children) = node.children() {
-			for mutator_node in children.query_all("mutator")? {
-				let factory = system.get_mutator_factory(mutator_node.get_str(0)?)?;
-				mutators.push(factory.from_kdl(mutator_node, system)?);
+			for entry_node in children.query_all("mutator")? {
+				let id = entry_node.get_str(0)?;
+				let factory = system.get_mutator_factory(id)?;
+				mutators.push(factory.from_kdl(entry_node, system)?);
 			}
-			for feature_node in children.query_all("feature")? {}
+			for entry_node in children.query_all("feature")? {
+				features.push(Feature::from_kdl(entry_node, system)?.into());
+			}
 		}
 		Ok(Lineage {
 			name,

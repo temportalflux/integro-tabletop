@@ -3,7 +3,7 @@ use crate::{
 		data::{
 			action::{ActivationKind, AttackKind},
 			condition::{self, Condition},
-			criteria::armor::HasArmorEquipped,
+			evaluator::armor::HasArmorEquipped,
 			evaluator::ByLevel,
 			item::{
 				armor,

@@ -4,7 +4,7 @@ use crate::{
 };
 use std::{collections::BTreeMap, fmt::Debug, iter::Product};
 
-#[derive(Clone, PartialEq, Default)]
+#[derive(Clone, PartialEq, Default, Debug)]
 pub struct GetLevel<T> {
 	class_name: Option<String>,
 	marker: std::marker::PhantomData<T>,
@@ -23,7 +23,7 @@ where
 }
 impl<T> Evaluator for GetLevel<T>
 where
-	T: 'static + Copy + Debug,
+	T: 'static + Copy + Debug + Send + Sync,
 	usize: num_traits::AsPrimitive<T>,
 {
 	type Context = Character;
@@ -38,7 +38,7 @@ where
 	}
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct GetAbilityModifier(pub crate::system::dnd5e::data::Ability);
 impl Evaluator for GetAbilityModifier {
 	type Context = Character;
@@ -54,11 +54,11 @@ impl Evaluator for GetAbilityModifier {
 	}
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct MulValues<T>(pub Vec<Value<T>>);
 impl<T> Evaluator for MulValues<T>
 where
-	T: Product + Clone,
+	T: 'static + Product + Clone + Send + Sync + Debug,
 {
 	type Context = Character;
 	type Item = T;
@@ -74,7 +74,7 @@ where
 	}
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct ByLevel<T> {
 	pub class_name: Option<String>,
 	pub map: BTreeMap<usize, T>,
@@ -91,7 +91,7 @@ impl<T, const N: usize> From<[(usize, T); N]> for ByLevel<T> {
 
 impl<T> Evaluator for ByLevel<T>
 where
-	T: Clone + Default,
+	T: 'static + Clone + Default + Send + Sync + Debug,
 {
 	type Context = Character;
 	type Item = T;

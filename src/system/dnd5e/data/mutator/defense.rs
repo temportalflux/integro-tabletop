@@ -1,4 +1,7 @@
-use crate::{system::dnd5e::data::character::Character, utility::Mutator};
+use crate::{
+	system::dnd5e::{data::character::Character, KDLNode},
+	utility::Mutator,
+};
 use enum_map::Enum;
 
 #[derive(Clone, Copy, PartialEq, Enum, Debug)]
@@ -8,17 +11,18 @@ pub enum Defense {
 	Vulnerable,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct AddDefense(pub Defense, pub String);
+impl KDLNode for AddDefense {
+	fn id() -> &'static str {
+		"add_defense"
+	}
+}
 impl Mutator for AddDefense {
 	type Target = Character;
 
-	fn node_name() -> &'static str {
-		"add_defense"
-	}
-
 	fn get_node_name(&self) -> &'static str {
-		Self::node_name()
+		Self::id()
 	}
 
 	fn apply<'c>(&self, stats: &mut Character) {
