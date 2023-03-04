@@ -3,7 +3,7 @@ use crate::{
 	utility::{ArcEvaluator, Evaluator, GenericEvaluator, Mutator},
 	GeneralError,
 };
-use std::{any::Any, collections::HashMap, sync::Arc};
+use std::{any::{Any, TypeId}, collections::HashMap, sync::Arc};
 
 pub mod components;
 pub mod content;
@@ -78,6 +78,11 @@ impl<T, S> FromKDLFactory<T, S> {
 
 type BoxAny = Box<dyn Any + 'static + Send + Sync>;
 pub struct EvaluatorFactory {
+	/// Information about the expected output type of the evaluator.
+	/// Used to ensure the expected output type of `from_kdl` matches
+	/// that of the registered evaluator, otherwise Any downcast will implode.
+	type_info: (TypeId, &'static str),
+	eval_type_name: &'static str,
 	fn_from_kdl:
 		Box<dyn Fn(&kdl::KdlNode, &DnD5e) -> anyhow::Result<BoxAny> + 'static + Send + Sync>,
 }
@@ -87,6 +92,8 @@ impl EvaluatorFactory {
 		E: Evaluator<Context = Character> + FromKDL<System = DnD5e> + 'static + Send + Sync,
 	{
 		Self {
+			eval_type_name: std::any::type_name::<E>(),
+			type_info: (TypeId::of::<E::Item>(), std::any::type_name::<E::Item>()),
 			fn_from_kdl: Box::new(|node, system| {
 				let arc_eval: ArcEvaluator<E::Context, E::Item> =
 					Arc::new(E::from_kdl(node, system)?);
@@ -103,6 +110,17 @@ impl EvaluatorFactory {
 	where
 		T: 'static,
 	{
+		if TypeId::of::<T>() != self.type_info.0 {
+			return Err(GeneralError(format!(
+				"Incompatible output types: \
+				the the evaluator specified by kdl {:?} has the output type {:?}, \
+				but the node is expecting an output type of {:?}.",
+				self.eval_type_name,
+				self.type_info.1,
+				std::any::type_name::<T>()
+			))
+			.into());
+		}
 		let any = (self.fn_from_kdl)(node, system)?;
 		let eval = any
 			.downcast::<ArcEvaluator<Character, T>>()
