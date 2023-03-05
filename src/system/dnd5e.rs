@@ -248,3 +248,51 @@ impl DnD5e {
 		self.lineages.push(lineage);
 	}
 }
+
+#[cfg(test)]
+impl DnD5e {
+	pub fn default_with_eval<E>() -> Self
+	where
+		E: Evaluator<Context = Character>
+			+ KDLNode
+			+ FromKDL<System = DnD5e>
+			+ 'static
+			+ Send
+			+ Sync,
+	{
+		let mut system = Self::default();
+		system.register_evaluator::<E>();
+		system
+	}
+
+	pub fn parse_kdl_evaluator<T>(
+		&self,
+		doc: &str,
+	) -> anyhow::Result<GenericEvaluator<Character, T>>
+	where
+		T: 'static,
+	{
+		use crate::kdl_ext::NodeQueryExt;
+		let document = doc.parse::<kdl::KdlDocument>()?;
+		let node = document
+			.query("evaluator")?
+			.expect("missing evaluator node");
+		let factory = self.get_evaluator_factory(node.get_str(0)?)?;
+		factory.from_kdl::<T>(node, &self)
+	}
+
+	pub fn defaulteval_parse_kdl<E>(
+		doc: &str,
+	) -> anyhow::Result<GenericEvaluator<Character, E::Item>>
+	where
+		E: Evaluator<Context = Character>
+			+ KDLNode
+			+ FromKDL<System = DnD5e>
+			+ 'static
+			+ Send
+			+ Sync,
+		E::Item: 'static,
+	{
+		Self::default_with_eval::<E>().parse_kdl_evaluator::<E::Item>(doc)
+	}
+}
