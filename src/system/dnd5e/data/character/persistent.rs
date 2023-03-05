@@ -4,7 +4,7 @@ use crate::{
 		data::{
 			character::Character,
 			condition::BoxedCondition,
-			evaluator::{GetAbilityModifier, GetLevel, MulValues},
+			evaluator::{operator::Product, GetAbilityModifier, GetLevel},
 			item,
 			mutator::AddMaxHitPoints,
 			Ability, Background, BoxedFeature, Class, Description, Lineage, Score, Upbringing,
@@ -40,7 +40,7 @@ impl MutatorGroup for Persistent {
 			&AddMaxHitPoints {
 				id: Some("Constitution x Levels".into()),
 				value: Value::Evaluated(
-					MulValues(vec![
+					Product(vec![
 						Value::Evaluated(GetLevel::<i32>::default().into()),
 						Value::Evaluated(GetAbilityModifier(Ability::Constitution).into()),
 					])

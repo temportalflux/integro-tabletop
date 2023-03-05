@@ -267,8 +267,13 @@ impl FromStr for Ability {
 	}
 }
 
-#[derive(Clone, Copy, PartialEq, Default, Debug)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Score(pub u32);
+impl Default for Score {
+	fn default() -> Self {
+		Self(10)
+	}
+}
 impl std::ops::Deref for Score {
 	type Target = u32;
 
