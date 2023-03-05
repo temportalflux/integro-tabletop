@@ -1,6 +1,6 @@
 use super::{action::ActivationKind, character::Character, condition::BoxedCondition};
 use crate::{
-	kdl_ext::{DocumentQueryExt, NodeQueryExt},
+	kdl_ext::{DocumentQueryExt, NodeQueryExt, ValueIdx},
 	system::dnd5e::{BoxedCriteria, BoxedMutator, DnD5e, FromKDL, Value},
 	utility::MutatorGroup,
 };
@@ -53,10 +53,12 @@ impl MutatorGroup for Feature {
 	}
 }
 
-impl FromKDL for Feature {
-	type System = DnD5e;
-
-	fn from_kdl(node: &kdl::KdlNode, system: &Self::System) -> anyhow::Result<Self> {
+impl FromKDL<DnD5e> for Feature {
+	fn from_kdl(
+		node: &kdl::KdlNode,
+		_value_idx: &mut ValueIdx,
+		system: &DnD5e,
+	) -> anyhow::Result<Self> {
 		let name = node.get_str("name")?.to_owned();
 		let description = node
 			.query_str_opt("description", 0)?
@@ -70,9 +72,10 @@ impl FromKDL for Feature {
 		let criteria = match node.query("criteria")? {
 			None => None,
 			Some(entry_node) => {
-				let id = entry_node.get_str(0)?;
+				let mut value_idx = ValueIdx::default();
+				let id = entry_node.get_str(value_idx.next())?;
 				let factory = system.get_evaluator_factory(id)?;
-				Some(factory.from_kdl::<Result<(), String>>(entry_node, system)?)
+				Some(factory.from_kdl::<Result<(), String>>(entry_node, &mut value_idx, system)?)
 			}
 		};
 
@@ -83,9 +86,10 @@ impl FromKDL for Feature {
 		let mut mutators = Vec::new();
 		if let Some(children) = node.children() {
 			for entry_node in children.query_all("mutator")? {
-				let id = entry_node.get_str(0)?;
+				let mut value_idx = ValueIdx::default();
+				let id = entry_node.get_str(value_idx.next())?;
 				let factory = system.get_mutator_factory(id)?;
-				mutators.push(factory.from_kdl(entry_node, system)?);
+				mutators.push(factory.from_kdl(entry_node, &mut value_idx, system)?);
 			}
 		}
 

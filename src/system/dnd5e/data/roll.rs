@@ -1,7 +1,7 @@
 use enum_map::{Enum, EnumMap};
 use enumset::EnumSetType;
 
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Debug, Default)]
 pub struct Roll {
 	pub amount: i32,
 	pub die: Die,
@@ -32,8 +32,9 @@ impl RollSet {
 	}
 }
 
-#[derive(Debug, Enum, EnumSetType)]
+#[derive(Debug, Enum, EnumSetType, Default)]
 pub enum Die {
+	#[default]
 	D4,
 	D6,
 	D8,

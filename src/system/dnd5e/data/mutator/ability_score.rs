@@ -64,8 +64,8 @@ mod test {
 		assert_eq!(
 			character.ability_score(Ability::Strength),
 			(
-				Score(1),
-				vec![("".into(), 0), ("AddAbilityScore".into(), 1)]
+				Score(11),
+				vec![("".into(), 10), ("AddAbilityScore".into(), 1)]
 			)
 		);
 	}
@@ -89,8 +89,8 @@ mod test {
 		assert_eq!(
 			character.ability_score(Ability::Dexterity),
 			(
-				Score(5),
-				vec![("".into(), 0), ("AddAbilityScore".into(), 5)]
+				Score(15),
+				vec![("".into(), 10), ("AddAbilityScore".into(), 5)]
 			)
 		);
 	}

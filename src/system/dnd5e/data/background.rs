@@ -4,7 +4,7 @@ use crate::{
 	utility::MutatorGroup,
 };
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Background {
 	pub name: String,
 	pub description: String,

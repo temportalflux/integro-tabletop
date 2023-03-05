@@ -4,7 +4,7 @@ use crate::{
 	utility::{MutatorGroup, Selector},
 };
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Default, Debug)]
 pub struct Class {
 	pub name: String,
 	pub hit_die: Die,
@@ -41,7 +41,7 @@ impl MutatorGroup for Class {
 		}
 	}
 }
-#[derive(Clone, PartialEq, Default)]
+#[derive(Clone, PartialEq, Default, Debug)]
 pub struct Level {
 	pub mutators: Vec<BoxedMutator>,
 	pub features: Vec<BoxedFeature>,
@@ -81,7 +81,7 @@ impl<'a> MutatorGroup for LevelWithIndex<'a> {
 	}
 }
 
-#[derive(Clone, PartialEq, Default)]
+#[derive(Clone, PartialEq, Default, Debug)]
 pub struct Subclass {
 	pub name: String,
 	pub levels: Vec<Level>,

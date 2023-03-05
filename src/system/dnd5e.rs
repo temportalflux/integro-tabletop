@@ -1,5 +1,6 @@
 use self::data::character::Character;
 use crate::{
+	kdl_ext::{NodeQueryExt, ValueIdx},
 	utility::{ArcEvaluator, Evaluator, GenericEvaluator, Mutator},
 	GeneralError,
 };
@@ -19,25 +20,34 @@ pub type BoxedMutator = crate::utility::ArcMutator<Character>;
 pub type Value<T> = crate::utility::Value<Character, T>;
 
 struct ComponentFactory {
-	add_from_kdl:
-		Box<dyn Fn(&kdl::KdlNode, &mut DnD5e) -> anyhow::Result<()> + 'static + Send + Sync>,
+	add_from_kdl: Box<
+		dyn Fn(&kdl::KdlNode, &mut ValueIdx, &mut DnD5e) -> anyhow::Result<()>
+			+ 'static
+			+ Send
+			+ Sync,
+	>,
 }
 impl ComponentFactory {
 	fn new<T>() -> Self
 	where
-		T: FromKDL<System = DnD5e> + SystemComponent<System = DnD5e> + 'static + Send + Sync,
+		T: FromKDL<DnD5e> + SystemComponent<System = DnD5e> + 'static + Send + Sync,
 	{
 		Self {
-			add_from_kdl: Box::new(|node, system| {
-				let value = T::from_kdl(node, &system)?;
+			add_from_kdl: Box::new(|node, idx, system| {
+				let value = T::from_kdl(node, idx, &system)?;
 				T::add_component(value, system);
 				Ok(())
 			}),
 		}
 	}
 
-	fn add_from_kdl(&self, node: &kdl::KdlNode, system: &mut DnD5e) -> anyhow::Result<()> {
-		(*self.add_from_kdl)(node, system)?;
+	fn add_from_kdl(
+		&self,
+		node: &kdl::KdlNode,
+		value_idx: &mut ValueIdx,
+		system: &mut DnD5e,
+	) -> anyhow::Result<()> {
+		(*self.add_from_kdl)(node, value_idx, system)?;
 		Ok(())
 	}
 }
@@ -48,12 +58,61 @@ pub trait KDLNode {
 		Self: Sized;
 }
 
-pub trait FromKDL {
-	type System;
-	fn from_kdl(node: &kdl::KdlNode, system: &Self::System) -> anyhow::Result<Self>
+pub trait FromKDL<System> {
+	fn from_kdl(
+		node: &kdl::KdlNode,
+		value_idx: &mut ValueIdx,
+		system: &System,
+	) -> anyhow::Result<Self>
 	where
 		Self: Sized;
 }
+macro_rules! impl_fromkdl {
+	($target:ty, $method:ident, $map:expr) => {
+		impl<S> FromKDL<S> for $target {
+			fn from_kdl(
+				node: &kdl::KdlNode,
+				value_idx: &mut ValueIdx,
+				_: &S,
+			) -> anyhow::Result<Self> {
+				Ok(node.$method(value_idx.next()).map($map)?)
+			}
+		}
+	};
+}
+impl_fromkdl!(bool, get_bool, |v| v);
+impl_fromkdl!(u8, get_i64, |v| v as u8);
+impl_fromkdl!(i8, get_i64, |v| v as i8);
+impl_fromkdl!(u16, get_i64, |v| v as u16);
+impl_fromkdl!(i16, get_i64, |v| v as i16);
+impl_fromkdl!(u32, get_i64, |v| v as u32);
+impl_fromkdl!(i32, get_i64, |v| v as i32);
+impl_fromkdl!(u64, get_i64, |v| v as u64);
+impl_fromkdl!(i64, get_i64, |v| v);
+impl_fromkdl!(u128, get_i64, |v| v as u128);
+impl_fromkdl!(i128, get_i64, |v| v as i128);
+impl_fromkdl!(usize, get_i64, |v| v as usize);
+impl_fromkdl!(isize, get_i64, |v| v as isize);
+impl_fromkdl!(f32, get_f64, |v| v as f32);
+impl_fromkdl!(f64, get_f64, |v| v);
+impl<S> FromKDL<S> for String {
+	fn from_kdl(node: &kdl::KdlNode, value_idx: &mut ValueIdx, _: &S) -> anyhow::Result<Self> {
+		Ok(node.get_str(value_idx.next())?.to_string())
+	}
+}
+impl<T, S> FromKDL<S> for Option<T>
+where
+	T: FromKDL<S>,
+{
+	fn from_kdl(node: &kdl::KdlNode, value_idx: &mut ValueIdx, system: &S) -> anyhow::Result<Self> {
+		// Instead of consuming the next-idx, just peek to see if there is a value there or not.
+		match node.get(**value_idx) {
+			Some(_) => T::from_kdl(node, value_idx, system).map(|v| Some(v)),
+			None => Ok(None),
+		}
+	}
+}
+
 pub trait SystemComponent {
 	type System;
 
@@ -63,20 +122,26 @@ pub trait SystemComponent {
 }
 
 pub struct FromKDLFactory<T, S> {
-	fn_from_kdl: Box<dyn Fn(&kdl::KdlNode, &S) -> anyhow::Result<T> + 'static + Send + Sync>,
+	fn_from_kdl:
+		Box<dyn Fn(&kdl::KdlNode, &mut ValueIdx, &S) -> anyhow::Result<T> + 'static + Send + Sync>,
 }
 impl<T, S> FromKDLFactory<T, S> {
 	fn new<U>() -> Self
 	where
-		U: FromKDL<System = S> + Into<T> + 'static + Send + Sync,
+		U: FromKDL<S> + Into<T> + 'static + Send + Sync,
 	{
 		Self {
-			fn_from_kdl: Box::new(|node, system| Ok(U::from_kdl(node, system)?.into())),
+			fn_from_kdl: Box::new(|node, idx, system| Ok(U::from_kdl(node, idx, system)?.into())),
 		}
 	}
 
-	pub fn from_kdl(&self, node: &kdl::KdlNode, system: &S) -> anyhow::Result<T> {
-		(*self.fn_from_kdl)(node, system)
+	pub fn from_kdl(
+		&self,
+		node: &kdl::KdlNode,
+		idx: &mut ValueIdx,
+		system: &S,
+	) -> anyhow::Result<T> {
+		(*self.fn_from_kdl)(node, idx, system)
 	}
 }
 
@@ -87,20 +152,24 @@ pub struct EvaluatorFactory {
 	/// that of the registered evaluator, otherwise Any downcast will implode.
 	type_info: (TypeId, &'static str),
 	eval_type_name: &'static str,
-	fn_from_kdl:
-		Box<dyn Fn(&kdl::KdlNode, &DnD5e) -> anyhow::Result<BoxAny> + 'static + Send + Sync>,
+	fn_from_kdl: Box<
+		dyn Fn(&kdl::KdlNode, &mut ValueIdx, &DnD5e) -> anyhow::Result<BoxAny>
+			+ 'static
+			+ Send
+			+ Sync,
+	>,
 }
 impl EvaluatorFactory {
 	pub fn new<E>() -> Self
 	where
-		E: Evaluator<Context = Character> + FromKDL<System = DnD5e> + 'static + Send + Sync,
+		E: Evaluator<Context = Character> + FromKDL<DnD5e> + 'static + Send + Sync,
 	{
 		Self {
 			eval_type_name: std::any::type_name::<E>(),
 			type_info: (TypeId::of::<E::Item>(), std::any::type_name::<E::Item>()),
-			fn_from_kdl: Box::new(|node, system| {
+			fn_from_kdl: Box::new(|node, idx, system| {
 				let arc_eval: ArcEvaluator<E::Context, E::Item> =
-					Arc::new(E::from_kdl(node, system)?);
+					Arc::new(E::from_kdl(node, idx, system)?);
 				Ok(Box::new(arc_eval))
 			}),
 		}
@@ -109,6 +178,7 @@ impl EvaluatorFactory {
 	pub fn from_kdl<T>(
 		&self,
 		node: &kdl::KdlNode,
+		value_idx: &mut ValueIdx,
 		system: &DnD5e,
 	) -> anyhow::Result<GenericEvaluator<Character, T>>
 	where
@@ -125,7 +195,7 @@ impl EvaluatorFactory {
 			))
 			.into());
 		}
-		let any = (self.fn_from_kdl)(node, system)?;
+		let any = (self.fn_from_kdl)(node, value_idx, system)?;
 		let eval = any
 			.downcast::<ArcEvaluator<Character, T>>()
 			.expect("failed to unpack boxed arc-evaluator");
@@ -156,7 +226,7 @@ impl super::core::System for DnD5e {
 				log::error!("Failed to find factory to deserialize node \"{node_name}\".");
 				continue;
 			};
-			if let Err(err) = comp_factory.add_from_kdl(node, self) {
+			if let Err(err) = comp_factory.add_from_kdl(node, &mut ValueIdx::default(), self) {
 				log::error!("Failed to deserialize entry: {err:?}");
 			}
 		}
@@ -189,12 +259,7 @@ impl DnD5e {
 
 	pub fn register_component<T>(&mut self)
 	where
-		T: FromKDL<System = Self>
-			+ KDLNode
-			+ SystemComponent<System = Self>
-			+ 'static
-			+ Send
-			+ Sync,
+		T: FromKDL<Self> + KDLNode + SystemComponent<System = Self> + 'static + Send + Sync,
 	{
 		assert!(!self.root_registry.contains_key(T::id()));
 		self.root_registry
@@ -205,7 +270,7 @@ impl DnD5e {
 	where
 		T: Mutator<Target = data::character::Character>
 			+ KDLNode
-			+ FromKDL<System = DnD5e>
+			+ FromKDL<DnD5e>
 			+ 'static
 			+ Send
 			+ Sync,
@@ -217,12 +282,7 @@ impl DnD5e {
 
 	pub fn register_evaluator<E>(&mut self)
 	where
-		E: Evaluator<Context = Character>
-			+ KDLNode
-			+ FromKDL<System = DnD5e>
-			+ 'static
-			+ Send
-			+ Sync,
+		E: Evaluator<Context = Character> + KDLNode + FromKDL<DnD5e> + 'static + Send + Sync,
 	{
 		assert!(!self.evaluator_registry.contains_key(E::id()));
 		self.evaluator_registry
@@ -253,12 +313,7 @@ impl DnD5e {
 impl DnD5e {
 	pub fn default_with_eval<E>() -> Self
 	where
-		E: Evaluator<Context = Character>
-			+ KDLNode
-			+ FromKDL<System = DnD5e>
-			+ 'static
-			+ Send
-			+ Sync,
+		E: Evaluator<Context = Character> + KDLNode + FromKDL<DnD5e> + 'static + Send + Sync,
 	{
 		let mut system = Self::default();
 		system.register_evaluator::<E>();
@@ -272,25 +327,20 @@ impl DnD5e {
 	where
 		T: 'static,
 	{
-		use crate::kdl_ext::NodeQueryExt;
 		let document = doc.parse::<kdl::KdlDocument>()?;
 		let node = document
 			.query("evaluator")?
 			.expect("missing evaluator node");
-		let factory = self.get_evaluator_factory(node.get_str(0)?)?;
-		factory.from_kdl::<T>(node, &self)
+		let mut idx = ValueIdx::default();
+		let factory = self.get_evaluator_factory(node.get_str(idx.next())?)?;
+		factory.from_kdl::<T>(node, &mut idx, &self)
 	}
 
 	pub fn defaulteval_parse_kdl<E>(
 		doc: &str,
 	) -> anyhow::Result<GenericEvaluator<Character, E::Item>>
 	where
-		E: Evaluator<Context = Character>
-			+ KDLNode
-			+ FromKDL<System = DnD5e>
-			+ 'static
-			+ Send
-			+ Sync,
+		E: Evaluator<Context = Character> + KDLNode + FromKDL<DnD5e> + 'static + Send + Sync,
 		E::Item: 'static,
 	{
 		Self::default_with_eval::<E>().parse_kdl_evaluator::<E::Item>(doc)

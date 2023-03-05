@@ -31,14 +31,14 @@ pub enum ActionEffect {
 
 /// The pairing of `Character` and `Derived` to form a singlular reference
 /// structure for all character data.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Character {
 	character: Persistent,
 	derived: Derived,
 	mutators: Vec<MutatorEntry>,
 	source_path: SourcePath,
 }
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 struct MutatorEntry {
 	node_id: &'static str,
 	dependencies: Dependencies,
@@ -423,7 +423,7 @@ pub enum HitPoint {
 	Temp,
 }
 
-#[derive(Clone, PartialEq, Default)]
+#[derive(Clone, PartialEq, Default, Debug)]
 pub struct SourcePath {
 	display: PathBuf,
 	data: PathBuf,

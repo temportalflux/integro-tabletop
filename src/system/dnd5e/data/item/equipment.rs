@@ -4,7 +4,7 @@ use crate::{
 	utility::MutatorGroup,
 };
 
-#[derive(Clone, PartialEq, Default)]
+#[derive(Clone, PartialEq, Default, Debug)]
 pub struct Equipment {
 	/// The criteria which must be met for this item to be equipped.
 	pub criteria: Option<BoxedCriteria>,
@@ -47,7 +47,7 @@ impl Equipment {
 	}
 }
 
-#[derive(Clone, PartialEq, Default)]
+#[derive(Clone, PartialEq, Default, Debug)]
 pub struct Attunement {
 	pub modifiers: Vec<BoxedMutator>,
 }

@@ -6,7 +6,7 @@ use crate::{
 	utility::MutatorGroup,
 };
 
-#[derive(Default, Clone, PartialEq)]
+#[derive(Default, Clone, PartialEq, Debug)]
 pub struct Upbringing {
 	pub name: String,
 	pub description: String,

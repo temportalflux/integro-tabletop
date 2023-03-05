@@ -17,7 +17,7 @@ use enum_map::EnumMap;
 
 /// Core character data which is (de)serializable and
 /// from which the derived data can be compiled.
-#[derive(Clone, PartialEq, Default)]
+#[derive(Clone, PartialEq, Default, Debug)]
 pub struct Persistent {
 	pub lineages: [Option<Lineage>; 2],
 	pub upbringing: Option<Upbringing>,
@@ -75,8 +75,12 @@ impl Persistent {
 	pub fn level(&self, class_name: Option<&str>) -> usize {
 		match class_name {
 			Some(class_name) => {
-				let Ok(class_idx) = self.classes.binary_search_by(|class| class.name.as_str().cmp(class_name)) else { return 0; };
-				self.classes.get(class_idx).unwrap().level_count()
+				for class in &self.classes {
+					if class.name == class_name {
+						return class.level_count();
+					}
+				}
+				return 0;
 			}
 			None => self.classes.iter().map(|class| class.level_count()).sum(),
 		}
@@ -91,7 +95,7 @@ impl Persistent {
 	}
 }
 
-#[derive(Clone, Copy, PartialEq, Default)]
+#[derive(Clone, Copy, PartialEq, Default, Debug)]
 pub struct HitPoints {
 	pub current: u32,
 	pub temp: u32,

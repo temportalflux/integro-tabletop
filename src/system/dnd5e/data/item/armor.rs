@@ -7,7 +7,7 @@ use crate::{
 	utility::MutatorGroup,
 };
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Armor {
 	pub kind: Kind,
 	pub formula: ArmorClassFormula,

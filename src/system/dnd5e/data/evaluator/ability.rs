@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use crate::{
-	kdl_ext::NodeQueryExt,
+	kdl_ext::{NodeQueryExt, ValueIdx},
 	system::dnd5e::{
 		data::{character::Character, Ability},
 		DnD5e, FromKDL, KDLNode,
@@ -39,11 +39,13 @@ impl KDLNode for GetAbilityModifier {
 	}
 }
 
-impl FromKDL for GetAbilityModifier {
-	type System = DnD5e;
-
-	fn from_kdl(node: &kdl::KdlNode, _system: &Self::System) -> anyhow::Result<Self> {
-		let ability_str = node.get_str(1)?;
+impl FromKDL<DnD5e> for GetAbilityModifier {
+	fn from_kdl(
+		node: &kdl::KdlNode,
+		value_idx: &mut ValueIdx,
+		_system: &DnD5e,
+	) -> anyhow::Result<Self> {
+		let ability_str = node.get_str(value_idx.next())?;
 		let ability = Ability::from_str(ability_str)
 			.map_err(|_| GeneralError(format!("Invalid ability name {ability_str:?}")))?;
 		Ok(Self(ability))

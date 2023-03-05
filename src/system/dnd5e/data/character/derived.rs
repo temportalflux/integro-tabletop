@@ -24,7 +24,7 @@ use std::{
 /// proficiencies, and actions. This data all lives within `Persistent` in
 /// its various features and subtraits, and is compiled into one flat
 /// structure for easy reference when displaying the character information.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Derived {
 	pub missing_selections: Vec<PathBuf>,
 	pub ability_scores: AbilityScores,
@@ -84,7 +84,7 @@ impl Default for Derived {
 	}
 }
 
-#[derive(Clone, Default, PartialEq)]
+#[derive(Clone, Default, PartialEq, Debug)]
 pub struct AbilityScores(EnumMap<Ability, AttributedValue<i32>>);
 impl AbilityScores {
 	pub fn push_bonus(&mut self, ability: Ability, bonus: i32, source: PathBuf) {
@@ -96,7 +96,7 @@ impl AbilityScores {
 	}
 }
 
-#[derive(Clone, Default, PartialEq)]
+#[derive(Clone, Default, PartialEq, Debug)]
 pub struct SavingThrows(
 	EnumMap<
 		Ability,
@@ -140,7 +140,7 @@ impl std::ops::Index<Ability> for SavingThrows {
 	}
 }
 
-#[derive(Clone, Default, PartialEq)]
+#[derive(Clone, Default, PartialEq, Debug)]
 pub struct Skills(
 	EnumMap<
 		Skill,
@@ -178,7 +178,7 @@ impl std::ops::Index<Skill> for Skills {
 	}
 }
 
-#[derive(Clone, Default, PartialEq)]
+#[derive(Clone, Default, PartialEq, Debug)]
 pub struct Speeds(BTreeMap<String, AttributedValue<i32>>);
 impl Speeds {
 	pub fn push_max(&mut self, kind: String, max_bound_in_feet: i32, source: PathBuf) {
@@ -202,7 +202,7 @@ impl std::ops::Deref for Speeds {
 	}
 }
 
-#[derive(Clone, Default, PartialEq)]
+#[derive(Clone, Default, PartialEq, Debug)]
 pub struct Senses(BTreeMap<String, AttributedValue<i32>>);
 impl Senses {
 	pub fn push_max(&mut self, kind: String, max_bound_in_feet: i32, source: PathBuf) {
@@ -226,7 +226,7 @@ impl std::ops::Deref for Senses {
 	}
 }
 
-#[derive(Clone, Default, PartialEq)]
+#[derive(Clone, Default, PartialEq, Debug)]
 pub struct Defenses(EnumMap<Defense, BTreeMap<String, BTreeSet<PathBuf>>>);
 impl Defenses {
 	pub fn push(&mut self, kind: Defense, target: String, source: PathBuf) {
@@ -248,13 +248,13 @@ impl std::ops::Deref for Defenses {
 	}
 }
 
-#[derive(Clone, Default, PartialEq)]
+#[derive(Clone, Default, PartialEq, Debug)]
 pub struct DerivedDescription {
 	pub life_expectancy: i32,
 	pub max_height: (i32, RollSet),
 }
 
-#[derive(Clone, Default, PartialEq)]
+#[derive(Clone, Default, PartialEq, Debug)]
 pub struct MaxHitPoints(i32, BTreeMap<PathBuf, i32>);
 impl MaxHitPoints {
 	pub fn push(&mut self, bonus: i32, source: PathBuf) {

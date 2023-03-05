@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use crate::system::dnd5e::data::{character::Character, Ability};
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct ArmorClass {
 	formulas: Vec<(ArmorClassFormula, PathBuf)>,
 	bonuses: Vec<(i32, PathBuf)>,

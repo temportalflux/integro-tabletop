@@ -13,7 +13,7 @@ use crate::system::dnd5e::{
 };
 use std::collections::HashSet;
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Weapon {
 	pub kind: Kind,
 	pub classification: String,
@@ -22,7 +22,7 @@ pub struct Weapon {
 	pub range: Option<Range>,
 }
 
-#[derive(Clone, PartialEq, Default)]
+#[derive(Clone, PartialEq, Default, Debug)]
 pub struct WeaponDamage {
 	pub roll: Option<Roll>,
 	pub bonus: i32,
@@ -35,7 +35,7 @@ pub enum Kind {
 	Simple,
 	Martial,
 }
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum Property {
 	Light,   // used by two handed fighting feature
 	Finesse, // melee weapons use strength, ranged use dex, finesse take the better of either modifier
@@ -46,7 +46,7 @@ pub enum Property {
 	Versatile(Roll),
 }
 
-#[derive(Clone, PartialEq, Default)]
+#[derive(Clone, PartialEq, Default, Debug)]
 pub struct Range {
 	pub short_range: u32,
 	pub long_range: u32,

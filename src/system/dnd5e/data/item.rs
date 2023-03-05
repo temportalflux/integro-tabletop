@@ -7,7 +7,7 @@ pub mod armor;
 pub mod equipment;
 pub mod weapon;
 
-#[derive(Clone, PartialEq, Default)]
+#[derive(Clone, PartialEq, Default, Debug)]
 pub struct Item {
 	pub name: String,
 	pub description: Option<String>,
@@ -43,7 +43,7 @@ impl Item {
 	}
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum ItemKind {
 	Simple { count: u32 },
 	Equipment(equipment::Equipment),
@@ -55,7 +55,7 @@ impl Default for ItemKind {
 	}
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct EquipableEntry {
 	pub id: Uuid,
 	pub item: Item,
@@ -80,7 +80,7 @@ impl MutatorGroup for EquipableEntry {
 	}
 }
 
-#[derive(Clone, PartialEq, Default)]
+#[derive(Clone, PartialEq, Default, Debug)]
 pub struct Inventory {
 	items_by_id: HashMap<Uuid, EquipableEntry>,
 	itemids_by_name: Vec<Uuid>,

@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{DocumentQueryExt, NodeQueryExt},
+	kdl_ext::{DocumentQueryExt, NodeQueryExt, ValueIdx},
 	system::dnd5e::{
 		data::{
 			character::Character,
@@ -92,10 +92,8 @@ impl KDLNode for HasArmorEquipped {
 	}
 }
 
-impl FromKDL for HasArmorEquipped {
-	type System = DnD5e;
-
-	fn from_kdl(node: &kdl::KdlNode, _system: &Self::System) -> anyhow::Result<Self> {
+impl FromKDL<DnD5e> for HasArmorEquipped {
+	fn from_kdl(node: &kdl::KdlNode, _: &mut ValueIdx, _system: &DnD5e) -> anyhow::Result<Self> {
 		let inverted = node.get_bool_opt("inverted")?.unwrap_or_default();
 		let mut kinds = HashSet::new();
 		if let Some(children) = node.children() {
