@@ -98,7 +98,7 @@ impl Inventory {
 		self.items_by_id.get(id).map(|entry| &entry.item)
 	}
 
-	pub fn insert(&mut self, item: Item) {
+	pub fn insert(&mut self, item: Item) -> Uuid {
 		let id = Uuid::new_v4();
 		let search = self
 			.itemids_by_name
@@ -118,6 +118,7 @@ impl Inventory {
 				is_equipped: false,
 			},
 		);
+		id
 	}
 
 	pub fn remove(&mut self, id: &Uuid) -> Option<Item> {

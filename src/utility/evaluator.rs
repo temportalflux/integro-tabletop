@@ -1,4 +1,4 @@
-use super::{Dependencies, TraitEq, AsTraitEq};
+use super::{AsTraitEq, Dependencies, TraitEq};
 use downcast_rs::{impl_downcast, DowncastSync};
 use std::{fmt::Debug, sync::Arc};
 
@@ -38,7 +38,11 @@ impl<C, V> GenericEvaluator<C, V> {
 	}
 }
 
-impl<C, V> PartialEq for GenericEvaluator<C, V> where C: 'static, V: 'static {
+impl<C, V> PartialEq for GenericEvaluator<C, V>
+where
+	C: 'static,
+	V: 'static,
+{
 	fn eq(&self, other: &Self) -> bool {
 		self.0.equals_trait((*other.0).as_trait_eq())
 	}
