@@ -14,7 +14,7 @@ pub fn leather() -> Item {
 		description: None,
 		weight: 10.0,
 		worth: 1000, // in copper
-		notes: "".into(),
+		notes: None,
 		kind: ItemKind::Equipment(Equipment {
 			armor: Some(Armor {
 				kind: armor::Kind::Light,
@@ -36,7 +36,7 @@ pub fn scale_mail() -> Item {
 		description: None,
 		weight: 45.0,
 		worth: 5000, // in copper
-		notes: "".into(),
+		notes: None,
 		kind: ItemKind::Equipment(Equipment {
 			modifiers: vec![AddSkillModifier {
 				skill: Skill::Stealth,
@@ -68,7 +68,7 @@ pub fn splint() -> Item {
 		description: None,
 		weight: 60.0,
 		worth: 20000, // in copper
-		notes: "".into(),
+		notes: None,
 		kind: ItemKind::Equipment(Equipment {
 			modifiers: vec![AddSkillModifier {
 				skill: Skill::Stealth,
@@ -96,7 +96,7 @@ pub fn shield() -> Item {
 		description: None,
 		weight: 6.0,
 		worth: 1000, // in copper
-		notes: "".into(),
+		notes: None,
 		kind: ItemKind::Equipment(Equipment {
 			shield: Some(2),
 			..Default::default()

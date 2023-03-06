@@ -1,5 +1,10 @@
 use super::mutator::AddAction;
-use crate::{system::dnd5e::data::character::Character, utility::MutatorGroup};
+use crate::{
+	kdl_ext::{DocumentQueryExt, NodeQueryExt, ValueIdx},
+	system::dnd5e::{data::character::Character, DnD5e, FromKDL},
+	utility::MutatorGroup,
+	GeneralError,
+};
 use std::collections::HashMap;
 use uuid::Uuid;
 
@@ -13,7 +18,7 @@ pub struct Item {
 	pub description: Option<String>,
 	pub weight: f32,
 	pub worth: u32,
-	pub notes: String,
+	pub notes: Option<String>,
 	pub kind: ItemKind,
 	pub tags: Vec<String>,
 }
@@ -43,6 +48,50 @@ impl Item {
 	}
 }
 
+impl FromKDL<DnD5e> for Item {
+	fn from_kdl(
+		node: &kdl::KdlNode,
+		_value_idx: &mut crate::kdl_ext::ValueIdx,
+		system: &DnD5e,
+	) -> anyhow::Result<Self> {
+		let name = node.get_str("name")?.to_owned();
+		let weight = node.get_f64_opt("weight")?.unwrap_or(0.0) as f32;
+		let description = node.query_str_opt("description", 0)?.map(str::to_owned);
+		let worth = match node.query("worth")? {
+			Some(node) => {
+				// TODO: Support currency type
+				let amount = node.get_i64(0)?;
+				let _currency = node.get_str(1)?;
+				Some(amount as u32)
+			}
+			None => None,
+		}
+		.unwrap_or(0);
+		let notes = node.query_str_opt("notes", 0)?.map(str::to_owned);
+		let tags = {
+			let mut tags = Vec::new();
+			for tag_result in node.query_str_all("tag", 0)? {
+				tags.push(tag_result?.to_owned());
+			}
+			tags
+		};
+		let kind = match node.query("kind")? {
+			Some(node) => ItemKind::from_kdl(node, &mut ValueIdx::default(), system)?,
+			None => ItemKind::default(),
+		};
+
+		Ok(Self {
+			name,
+			description,
+			weight,
+			worth,
+			notes,
+			kind,
+			tags,
+		})
+	}
+}
+
 #[derive(Clone, PartialEq, Debug)]
 pub enum ItemKind {
 	Simple { count: u32 },
@@ -52,6 +101,29 @@ pub enum ItemKind {
 impl Default for ItemKind {
 	fn default() -> Self {
 		Self::Simple { count: 1 }
+	}
+}
+
+impl FromKDL<DnD5e> for ItemKind {
+	fn from_kdl(
+		node: &kdl::KdlNode,
+		value_idx: &mut ValueIdx,
+		system: &DnD5e,
+	) -> anyhow::Result<Self> {
+		match node.get_str(value_idx.next())? {
+			"Simple" => {
+				let count = node.get_i64_opt("count")?.unwrap_or(1) as u32;
+				Ok(Self::Simple { count })
+			}
+			"Equipment" => {
+				let equipment = equipment::Equipment::from_kdl(node, value_idx, system)?;
+				Ok(Self::Equipment(equipment))
+			}
+			value => Err(GeneralError(format!(
+				"{value:?} is not a valid item kind, expected Simple or Equipment."
+			))
+			.into()),
+		}
 	}
 }
 

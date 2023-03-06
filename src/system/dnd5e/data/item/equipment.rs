@@ -1,6 +1,7 @@
 use super::{armor::Armor, weapon::Weapon};
 use crate::{
-	system::dnd5e::{data::character::Character, BoxedCriteria, BoxedMutator},
+	kdl_ext::{NodeQueryExt, ValueIdx},
+	system::dnd5e::{data::character::Character, BoxedCriteria, BoxedMutator, DnD5e, FromKDL},
 	utility::MutatorGroup,
 };
 
@@ -44,6 +45,66 @@ impl Equipment {
 			Some(criteria) => state.evaluate(criteria),
 			None => Ok(()),
 		}
+	}
+}
+
+impl FromKDL<DnD5e> for Equipment {
+	fn from_kdl(
+		node: &kdl::KdlNode,
+		_value_idx: &mut ValueIdx,
+		system: &DnD5e,
+	) -> anyhow::Result<Self> {
+		let criteria = match node.query("criteria")? {
+			None => None,
+			Some(entry_node) => {
+				let mut value_idx = ValueIdx::default();
+				let id = entry_node.get_str(value_idx.next())?;
+				let factory = system.get_evaluator_factory(id)?;
+				Some(factory.from_kdl::<Result<(), String>>(entry_node, &mut value_idx, system)?)
+			}
+		};
+
+		// TODO: Item kdls current list these as `modifier`
+		let mutators = {
+			let mut mutators = Vec::new();
+			for entry_node in node.query_all("mutator")? {
+				let mut value_idx = ValueIdx::default();
+				let id = entry_node.get_str(value_idx.next())?;
+				let factory = system.get_mutator_factory(id)?;
+				mutators.push(factory.from_kdl(entry_node, &mut value_idx, system)?);
+			}
+			mutators
+		};
+
+		let armor = match node.query("armor")? {
+			None => None,
+			Some(node) => Some(Armor::from_kdl(node, &mut ValueIdx::default(), system)?),
+		};
+		let shield = match node.query("shield")? {
+			None => None,
+			Some(node) => Some(node.get_i64("bonus")? as i32),
+		};
+		let weapon = match node.query("weapon")? {
+			None => None,
+			Some(_node) => {
+				None // TODO: Some(Weapon::from_kdl(node, &mut ValueIdx::default(), system)?)
+			}
+		};
+		let attunement = match node.query("attunement")? {
+			None => None,
+			Some(_node) => {
+				None // TODO: Some(Attunement::from_kdl(node, &mut ValueIdx::default(), system)?)
+			}
+		};
+
+		Ok(Self {
+			criteria,
+			modifiers: mutators,
+			armor,
+			shield,
+			weapon,
+			attunement,
+		})
 	}
 }
 

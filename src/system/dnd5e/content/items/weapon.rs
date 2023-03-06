@@ -13,7 +13,7 @@ pub fn club() -> Item {
 		description: None,
 		weight: 2.0,
 		worth: 10, // in copper
-		notes: "".into(),
+		notes: None,
 		kind: ItemKind::Equipment(Equipment {
 			weapon: Some(Weapon {
 				kind: weapon::Kind::Simple,
@@ -41,7 +41,7 @@ pub fn dagger() -> Item {
 		description: None,
 		weight: 1.0,
 		worth: 200, // in copper
-		notes: "".into(),
+		notes: None,
 		kind: ItemKind::Equipment(Equipment {
 			weapon: Some(Weapon {
 				kind: weapon::Kind::Simple,
@@ -69,7 +69,7 @@ pub fn greatclub() -> Item {
 		description: None,
 		weight: 10.0,
 		worth: 20, // in copper
-		notes: "".into(),
+		notes: None,
 		kind: ItemKind::Equipment(Equipment {
 			weapon: Some(Weapon {
 				kind: weapon::Kind::Simple,
@@ -97,7 +97,7 @@ pub fn quarterstaff() -> Item {
 		description: None,
 		weight: 4.0,
 		worth: 20, // in copper
-		notes: "".into(),
+		notes: None,
 		kind: ItemKind::Equipment(Equipment {
 			weapon: Some(Weapon {
 				kind: weapon::Kind::Simple,
@@ -128,7 +128,7 @@ pub fn crossbow_light() -> Item {
 		description: None,
 		weight: 5.0,
 		worth: 2500, // in copper
-		notes: "".into(),
+		notes: None,
 		kind: ItemKind::Equipment(Equipment {
 			weapon: Some(Weapon {
 				kind: weapon::Kind::Simple,
@@ -161,7 +161,7 @@ pub fn halberd() -> Item {
 		description: None,
 		weight: 6.0,
 		worth: 2000, // in copper
-		notes: "".into(),
+		notes: None,
 		kind: ItemKind::Equipment(Equipment {
 			weapon: Some(Weapon {
 				kind: weapon::Kind::Martial,

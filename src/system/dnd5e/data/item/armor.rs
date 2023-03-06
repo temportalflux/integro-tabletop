@@ -3,8 +3,13 @@ use std::str::FromStr;
 use enumset::EnumSetType;
 
 use crate::{
-	system::dnd5e::data::{character::Character, ArmorClassFormula},
+	kdl_ext::{DocumentQueryExt, NodeQueryExt, ValueIdx},
+	system::dnd5e::{
+		data::{character::Character, ArmorClassFormula},
+		DnD5e, FromKDL,
+	},
 	utility::MutatorGroup,
+	GeneralError,
 };
 
 #[derive(Clone, PartialEq, Debug)]
@@ -15,6 +20,26 @@ pub struct Armor {
 	/// If provided, characters with a value less than this are hindered (reduced speed).
 	/// TODO: Reduce speed by 10 if strength score not met
 	pub min_strength_score: Option<u32>,
+}
+
+impl FromKDL<DnD5e> for Armor {
+	fn from_kdl(
+		node: &kdl::KdlNode,
+		value_idx: &mut ValueIdx,
+		system: &DnD5e,
+	) -> anyhow::Result<Self> {
+		let kind = Kind::from_str(node.get_str(value_idx.next())?)?;
+		let formula = node.query("formula")?.ok_or(GeneralError(format!(
+			"Node {node:?} must have a child node named \"formula\"."
+		)))?;
+		let formula = ArmorClassFormula::from_kdl(formula, &mut ValueIdx::default(), system)?;
+		let min_strength_score = node.query_i64_opt("min-strength", 0)?.map(|v| v as u32);
+		Ok(Self {
+			kind,
+			formula,
+			min_strength_score,
+		})
+	}
 }
 
 #[derive(Debug, PartialOrd, Ord, Hash, EnumSetType)]
@@ -56,3 +81,5 @@ impl MutatorGroup for Armor {
 			.push_formula(self.formula.clone(), source);
 	}
 }
+
+// TODO: Test Armor
