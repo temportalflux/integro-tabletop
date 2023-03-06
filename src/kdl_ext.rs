@@ -161,15 +161,12 @@ fn query_type<'doc, T>(
 	key: impl Into<kdl::NodeKey> + Clone,
 	map: impl FnOnce(&'doc kdl::KdlValue) -> Result<T, &'static str>,
 ) -> anyhow::Result<T> {
-	let query_str = match query.clone().into_query() {
-		Ok(query) => format!("{query:?}"),
-		_ => "[unknown]".into(),
-	};
 	let key_str = format!("{:?}", key.clone().into());
-	match query_type_opt(doc, query, key, map)? {
+	match query_type_opt(doc, query.clone(), key, map)? {
 		Some(value) => Ok(value),
 		None => Err(GeneralError(format!(
-			"Node {query_str:?} is missing value at {key_str:?}"
+			"Node {:?} is missing value at {key_str:?}",
+			doc.query(query).unwrap().unwrap()
 		))
 		.into()),
 	}
@@ -181,15 +178,12 @@ fn query_type_opt<'doc, T>(
 	key: impl Into<kdl::NodeKey> + Clone,
 	map: impl FnOnce(&'doc kdl::KdlValue) -> Result<T, &'static str>,
 ) -> anyhow::Result<Option<T>> {
-	let query_str = match query.clone().into_query() {
-		Ok(query) => format!("{query:?}"),
-		_ => "[unknown]".into(),
-	};
 	let key_str = format!("{:?}", key.clone().into());
-	let Ok(Some(value)) = doc.query_get(query, key) else { return Ok(None); };
+	let Ok(Some(value)) = doc.query_get(query.clone(), key) else { return Ok(None); };
 	let value = map(value).map_err(|type_name| {
 		GeneralError(format!(
-			"Value at {key_str:?} of node {query_str:?} is not a {type_name}"
+			"Value at {key_str:?} of node {:?} is not a {type_name}",
+			doc.query(query).unwrap().unwrap()
 		))
 	})?;
 	Ok(Some(value))
@@ -227,8 +221,7 @@ fn get_type<'doc, T>(
 	match get_type_opt::<T>(node, key, map)? {
 		Some(value) => Ok(value),
 		None => Err(GeneralError(format!(
-			"Node {:?} is missing value at {key_str:?}",
-			node.name().value()
+			"Node {node:?} is missing value at {key_str:?}"
 		))
 		.into()),
 	}

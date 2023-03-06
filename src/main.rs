@@ -1,3 +1,4 @@
+use std::path::{Path, PathBuf};
 use yew::prelude::*;
 
 pub mod bootstrap;
@@ -9,8 +10,6 @@ pub mod path_map;
 pub mod system;
 pub mod theme;
 pub mod utility;
-
-static EXAMPLE_DOC: &'static str = include_str!("../modules/example.kdl");
 
 #[derive(Clone, PartialEq)]
 pub struct Compiled<T> {
@@ -194,20 +193,39 @@ fn main() {
 
 #[cfg(target_family = "windows")]
 fn main() -> anyhow::Result<()> {
-	use kdl_ext::DocumentQueryExt;
-
 	let _ = logging::console::init("tabletop-tools", &[]);
 
 	let mut system_reg = system::core::SystemRegistry::default();
 	system_reg.register(system::dnd5e::DnD5e::new());
 
-	let document = EXAMPLE_DOC.parse::<kdl::KdlDocument>()?;
+	for item in WalkDir::new("./modules") {
+		let Some(ext) = item.extension() else { continue; };
+		if ext.to_str() != Some("kdl") {
+			continue;
+		}
+		let Ok(content) = std::fs::read_to_string(&item) else { continue; };
+		if let Err(err) = insert_system_document(&system_reg, &content) {
+			log::error!("Failed to parse module document {item:?}: {err:?}");
+		}
+	}
+
+	Ok(())
+}
+
+fn insert_system_document(
+	system_reg: &system::core::SystemRegistry,
+	content: &str,
+) -> anyhow::Result<()> {
+	use anyhow::Context;
+	use kdl_ext::DocumentQueryExt;
+	let document = content
+		.parse::<kdl::KdlDocument>()
+		.context("Invalid KDL format")?;
 	let system_id = document.query_str("system", 0)?;
 	let mut system = system_reg
 		.get(system_id)
 		.ok_or(GeneralError(format!("System {system_id:?} not found")))?;
 	system.insert_document(document);
-
 	Ok(())
 }
 
@@ -216,5 +234,55 @@ pub struct GeneralError(pub String);
 impl std::fmt::Display for GeneralError {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		write!(f, "{}", self.0)
+	}
+}
+
+struct WalkDir {
+	iter: Option<std::fs::ReadDir>,
+	stack: Vec<std::fs::ReadDir>,
+}
+impl WalkDir {
+	fn new(path: impl AsRef<Path>) -> Self {
+		Self {
+			iter: std::fs::read_dir(path).ok(),
+			stack: Vec::new(),
+		}
+	}
+}
+impl Iterator for WalkDir {
+	type Item = PathBuf;
+
+	fn next(&mut self) -> Option<Self::Item> {
+		loop {
+			let Some(mut iter) = self.iter.take() else { return None; };
+			let Some(item) = iter.next() else {
+				// current entry has finished
+				self.iter = self.stack.pop();
+				continue;
+			};
+			let Ok(entry) = item else {
+				self.iter = Some(iter);
+				continue;
+			};
+			let Ok(metadata) = entry.metadata() else {
+				self.iter = Some(iter);
+				continue;
+			};
+			if metadata.is_dir() {
+				let Ok(entry_iter) = std::fs::read_dir(entry.path()) else {
+					self.iter = Some(iter);
+					continue;
+				};
+				self.stack.push(iter);
+				self.iter = Some(entry_iter);
+				continue;
+			}
+			if !metadata.is_file() {
+				self.iter = Some(iter);
+				continue;
+			}
+			self.iter = Some(iter);
+			return Some(entry.path());
+		}
 	}
 }

@@ -1,17 +1,28 @@
 use super::EquipableEntry;
-use crate::system::dnd5e::{
-	data::{
-		action::{
-			Action, ActionSource, ActivationKind, Attack, AttackCheckKind, AttackKind,
-			AttackKindValue, DamageRoll,
+use crate::{
+	kdl_ext::{NodeQueryExt, ValueIdx},
+	system::dnd5e::{
+		data::{
+			action::{
+				Action, ActionSource, ActivationKind, Attack, AttackCheckKind, AttackKind,
+				AttackKindValue, DamageRoll,
+			},
+			evaluator::{self, IsProficientWith},
+			roll::Roll,
+			Ability, WeaponProficiency,
 		},
-		evaluator::{self, IsProficientWith},
-		roll::Roll,
-		Ability, WeaponProficiency,
+		DnD5e, FromKDL, Value,
 	},
-	Value,
+	GeneralError,
 };
-use std::collections::HashSet;
+use std::{collections::HashSet, str::FromStr};
+
+#[derive(Clone, PartialEq, Default, Debug)]
+pub struct Restriction {
+	pub weapon_kind: HashSet<Kind>,
+	pub attack_kind: HashSet<AttackKind>,
+	pub ability: HashSet<Ability>,
+}
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Weapon {
@@ -22,43 +33,33 @@ pub struct Weapon {
 	pub range: Option<Range>,
 }
 
-#[derive(Clone, PartialEq, Default, Debug)]
-pub struct WeaponDamage {
-	pub roll: Option<Roll>,
-	pub bonus: i32,
-	pub damage_type: String,
-}
-
 #[derive(Clone, Copy, Default, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Kind {
 	#[default]
 	Simple,
 	Martial,
 }
-#[derive(Clone, PartialEq, Debug)]
-pub enum Property {
-	Light,   // used by two handed fighting feature
-	Finesse, // melee weapons use strength, ranged use dex, finesse take the better of either modifier
-	Heavy,   // small or tiny get disadvantage on attack rolls when using this weapon
-	Reach, // This weapon adds 5 feet to your reach when you attack with it, as well as when determining your reach for opportunity attacks with it.
-	TwoHanded,
-	Thrown(u32, u32),
-	Versatile(Roll),
+impl ToString for Kind {
+	fn to_string(&self) -> String {
+		match self {
+			Self::Simple => "Simple",
+			Self::Martial => "Martial",
+		}
+		.to_owned()
+	}
 }
+impl FromStr for Kind {
+	type Err = GeneralError;
 
-#[derive(Clone, PartialEq, Default, Debug)]
-pub struct Range {
-	pub short_range: u32,
-	pub long_range: u32,
-	pub requires_ammunition: bool,
-	pub requires_loading: bool,
-}
-
-#[derive(Clone, PartialEq, Default, Debug)]
-pub struct Restriction {
-	pub weapon_kind: HashSet<Kind>,
-	pub attack_kind: HashSet<AttackKind>,
-	pub ability: HashSet<Ability>,
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		match s {
+			"Simple" => Ok(Self::Simple),
+			"Martial" => Ok(Self::Martial),
+			_ => Err(GeneralError(format!(
+				"Invalid weapon kind {s:?}, expected Simple or Martial."
+			))),
+		}
+	}
 }
 
 impl Weapon {
@@ -113,3 +114,132 @@ impl Weapon {
 		}
 	}
 }
+
+impl FromKDL<DnD5e> for Weapon {
+	fn from_kdl(
+		node: &kdl::KdlNode,
+		value_idx: &mut ValueIdx,
+		system: &DnD5e,
+	) -> anyhow::Result<Self> {
+		let kind = Kind::from_str(node.get_str(value_idx.next())?)?;
+		let classification = node.get_str("class")?.to_owned();
+		let damage = match node.query("damage")? {
+			None => None,
+			Some(node) => Some(WeaponDamage::from_kdl(
+				node,
+				&mut ValueIdx::default(),
+				system,
+			)?),
+		};
+		let properties = {
+			let mut props = Vec::new();
+			for node in node.query_all("property")? {
+				props.push(Property::from_kdl(node, &mut ValueIdx::default(), system)?);
+			}
+			props
+		};
+		let range = match node.query("range")? {
+			None => None,
+			Some(node) => Some(Range::from_kdl(node, &mut ValueIdx::default(), system)?),
+		};
+		Ok(Self {
+			kind,
+			classification,
+			damage,
+			properties,
+			range,
+		})
+	}
+}
+
+#[derive(Clone, PartialEq, Default, Debug)]
+pub struct WeaponDamage {
+	pub roll: Option<Roll>,
+	pub bonus: i32,
+	pub damage_type: String, // TODO: DamageType enum
+}
+
+impl FromKDL<DnD5e> for WeaponDamage {
+	fn from_kdl(
+		node: &kdl::KdlNode,
+		value_idx: &mut ValueIdx,
+		_system: &DnD5e,
+	) -> anyhow::Result<Self> {
+		let roll = match node.get_str_opt("roll")? {
+			Some(roll_str) => Some(Roll::from_str(roll_str)?),
+			None => None,
+		};
+		let base = node.get_i64_opt("base")?.unwrap_or(0) as i32;
+		let damage_type = node.get_str(value_idx.next())?.to_owned();
+		Ok(Self {
+			roll,
+			bonus: base,
+			damage_type,
+		})
+	}
+}
+
+#[derive(Clone, PartialEq, Debug)]
+pub enum Property {
+	Light,   // used by two handed fighting feature
+	Finesse, // melee weapons use strength, ranged use dex, finesse take the better of either modifier
+	Heavy,   // small or tiny get disadvantage on attack rolls when using this weapon
+	Reach, // This weapon adds 5 feet to your reach when you attack with it, as well as when determining your reach for opportunity attacks with it.
+	TwoHanded,
+	Thrown(u32, u32),
+	Versatile(Roll),
+}
+impl FromKDL<DnD5e> for Property {
+	fn from_kdl(
+		node: &kdl::KdlNode,
+		value_idx: &mut ValueIdx,
+		_system: &DnD5e,
+	) -> anyhow::Result<Self> {
+		match node.get_str(value_idx.next())? {
+			"Light" => Ok(Self::Light),
+			"Finesse" => Ok(Self::Finesse),
+			"Heavy" => Ok(Self::Heavy),
+			"Reach" => Ok(Self::Reach),
+			"TwoHanded" => Ok(Self::TwoHanded),
+			"Thrown" => {
+				let short = node.get_i64(value_idx.next())? as u32;
+				let long = node.get_i64(value_idx.next())? as u32;
+				Ok(Self::Thrown(short, long))
+			}
+			"Versatile" => {
+				let roll = Roll::from_str(node.get_str(value_idx.next())?)?;
+				Ok(Self::Versatile(roll))
+			}
+			name => Err(GeneralError(format!("Unrecognized weapon property {name:?}")).into()),
+		}
+	}
+}
+
+#[derive(Clone, PartialEq, Default, Debug)]
+pub struct Range {
+	pub short_range: u32,
+	pub long_range: u32,
+	pub requires_ammunition: bool,
+	pub requires_loading: bool,
+}
+
+impl FromKDL<DnD5e> for Range {
+	fn from_kdl(
+		node: &kdl::KdlNode,
+		value_idx: &mut ValueIdx,
+		_system: &DnD5e,
+	) -> anyhow::Result<Self> {
+		let short_range = node.get_i64(value_idx.next())? as u32;
+		let long_range = node.get_i64(value_idx.next())? as u32;
+		let requires_ammunition = node.query("ammunition")?.is_some();
+		let requires_loading = node.query("loading")?.is_some();
+		Ok(Self {
+			short_range,
+			long_range,
+			requires_ammunition,
+			requires_loading,
+		})
+	}
+}
+
+// TODO: Test just all of it

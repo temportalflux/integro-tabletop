@@ -40,7 +40,6 @@ impl SystemComponent for Lineage {
 	type System = DnD5e;
 
 	fn add_component(self, system: &mut Self::System) {
-		log::debug!("adding lineage: {self:?}");
 		system.add_lineage(self);
 	}
 }

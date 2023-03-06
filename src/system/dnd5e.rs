@@ -209,6 +209,7 @@ pub struct DnD5e {
 	mutator_registry: HashMap<&'static str, FromKDLFactory<BoxedMutator, DnD5e>>,
 	evaluator_registry: HashMap<&'static str, EvaluatorFactory>,
 	lineages: Vec<data::Lineage>,
+	items: Vec<data::item::Item>,
 }
 
 impl super::core::System for DnD5e {
@@ -237,6 +238,7 @@ impl DnD5e {
 	pub fn new() -> Self {
 		let mut system = Self::default();
 		system.register_component::<data::Lineage>();
+		system.register_component::<data::item::Item>();
 		//system.register_mutator::<data::AddProficiency>();
 		//system.register_mutator::<data::mutator::AddAbilityScore>();
 		//system.register_mutator::<data::mutator::AddArmorClassFormula>();

@@ -1,7 +1,7 @@
 use super::mutator::AddAction;
 use crate::{
 	kdl_ext::{DocumentQueryExt, NodeQueryExt, ValueIdx},
-	system::dnd5e::{data::character::Character, DnD5e, FromKDL},
+	system::dnd5e::{data::character::Character, DnD5e, FromKDL, KDLNode, SystemComponent},
 	utility::MutatorGroup,
 	GeneralError,
 };
@@ -45,6 +45,20 @@ impl Item {
 			ItemKind::Simple { count } => *count,
 			_ => 1,
 		}
+	}
+}
+
+impl KDLNode for Item {
+	fn id() -> &'static str {
+		"item"
+	}
+}
+
+impl SystemComponent for Item {
+	type System = DnD5e;
+
+	fn add_component(self, system: &mut Self::System) {
+		system.items.push(self);
 	}
 }
 

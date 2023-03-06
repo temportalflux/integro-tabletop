@@ -86,9 +86,7 @@ impl FromKDL<DnD5e> for Equipment {
 		};
 		let weapon = match node.query("weapon")? {
 			None => None,
-			Some(_node) => {
-				None // TODO: Some(Weapon::from_kdl(node, &mut ValueIdx::default(), system)?)
-			}
+			Some(node) => Some(Weapon::from_kdl(node, &mut ValueIdx::default(), system)?),
 		};
 		let attunement = match node.query("attunement")? {
 			None => None,
