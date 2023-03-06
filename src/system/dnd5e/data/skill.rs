@@ -1,5 +1,7 @@
 use std::str::FromStr;
 
+use crate::GeneralError;
+
 use super::Ability;
 use enum_map::Enum;
 use enumset::EnumSetType;
@@ -193,7 +195,7 @@ impl Skill {
 }
 
 impl FromStr for Skill {
-	type Err = ();
+	type Err = GeneralError;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		match s.to_lowercase().as_str() {
@@ -215,7 +217,7 @@ impl FromStr for Skill {
 			"sleightofhand" => Ok(Self::SleightOfHand),
 			"stealth" => Ok(Self::Stealth),
 			"survival" => Ok(Self::Survival),
-			_ => Err(()),
+			_ => Err(GeneralError(format!("Invalid Skill name {s:?}"))),
 		}
 	}
 }

@@ -1,5 +1,6 @@
 use crate::{
-	system::dnd5e::{data::character::Character, KDLNode, Value},
+	kdl_ext::NodeQueryExt,
+	system::dnd5e::{data::character::Character, DnD5e, FromKDL, KDLNode, Value},
 	utility::{Dependencies, Evaluator, Mutator},
 };
 
@@ -36,3 +37,18 @@ impl Mutator for AddMaxHitPoints {
 		stats.max_hit_points_mut().push(value, source);
 	}
 }
+
+impl FromKDL<DnD5e> for AddMaxHitPoints {
+	fn from_kdl(
+		node: &kdl::KdlNode,
+		_value_idx: &mut crate::kdl_ext::ValueIdx,
+		_system: &DnD5e,
+	) -> anyhow::Result<Self> {
+		let id = node.get_str_opt("id")?.map(str::to_owned);
+		// TODO: let value = Value::from_kdl(node, value_idx, system)?;
+		let value = Value::default();
+		Ok(Self { id, value })
+	}
+}
+
+// TODO: Test AddMaxHitPoints

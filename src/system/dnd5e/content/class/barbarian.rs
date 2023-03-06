@@ -10,7 +10,8 @@ use crate::{
 				weapon::{self},
 			},
 			mutator::{
-				self, AddArmorClassFormula, AddDefense, AddSavingThrow, AddSkill, BonusDamage,
+				self, AddArmorClassFormula, AddDefense, AddSavingThrow, AddSavingThrowModifier,
+				AddSkill, BonusDamage,
 			},
 			proficiency,
 			roll::Die,
@@ -51,10 +52,14 @@ pub fn barbarian(levels: usize, subclass: Option<Subclass>) -> Class {
 				}
 				.into(),
 				// TODO: AddAbilityModifier::Advantage(Ability::Strength).into(),
-				AddSavingThrow::Advantage(Ability::Strength, None).into(),
-				AddDefense(mutator::Defense::Resistant, "Bludgeoning".into()).into(),
-				AddDefense(mutator::Defense::Resistant, "Piercing".into()).into(),
-				AddDefense(mutator::Defense::Resistant, "Slashing".into()).into(),
+				AddSavingThrowModifier {
+					ability: Ability::Strength,
+					target: None,
+				}
+				.into(),
+				AddDefense(mutator::Defense::Resistance, "Bludgeoning".into()).into(),
+				AddDefense(mutator::Defense::Resistance, "Piercing".into()).into(),
+				AddDefense(mutator::Defense::Resistance, "Slashing".into()).into(),
 			],
 			criteria: Some(
 				HasArmorEquipped {
@@ -115,8 +120,8 @@ pub fn barbarian(levels: usize, subclass: Option<Subclass>) -> Class {
 				AddProficiency::Armor(armor::Kind::Heavy).into(),
 				AddProficiency::Weapon(WeaponProficiency::Kind(weapon::Kind::Simple)).into(),
 				AddProficiency::Weapon(WeaponProficiency::Kind(weapon::Kind::Martial)).into(),
-				AddSavingThrow::Proficiency(Ability::Strength).into(),
-				AddSavingThrow::Proficiency(Ability::Constitution).into(),
+				AddSavingThrow(Ability::Strength).into(),
+				AddSavingThrow(Ability::Constitution).into(),
 				AddSkill {
 					skill: Selector::AnyOf {
 						id: Some("skillA".into()),
@@ -192,10 +197,10 @@ pub fn barbarian(levels: usize, subclass: Option<Subclass>) -> Class {
 						You have advantage on Dexterity saving throws against effects that you can see, \
 						such as traps and spells. To gain this benefit, you can't be blinded, deafened, or incapacitated."
 							.into(),
-					mutators: vec![AddSavingThrow::Advantage(
-						Ability::Dexterity,
-						Some("effects you can see".into()),
-					)
+					mutators: vec![AddSavingThrowModifier {
+						ability: Ability::Dexterity,
+						target: Some("effects you can see".into()),
+					}
 					.into()],
 					/*
 					criteria: Some(HasAnyCondition { inverted: true, values: vec![

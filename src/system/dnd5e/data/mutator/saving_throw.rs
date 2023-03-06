@@ -1,16 +1,16 @@
+use std::str::FromStr;
+
 use crate::{
+	kdl_ext::{NodeQueryExt, ValueIdx},
 	system::dnd5e::{
 		data::{character::Character, Ability},
-		KDLNode,
+		DnD5e, FromKDL, KDLNode,
 	},
 	utility::Mutator,
 };
 
-#[derive(Clone, Debug)]
-pub enum AddSavingThrow {
-	Proficiency(Ability),
-	Advantage(Ability, Option<String>),
-}
+#[derive(Clone, Debug, PartialEq)]
+pub struct AddSavingThrow(pub Ability);
 
 impl KDLNode for AddSavingThrow {
 	fn id() -> &'static str {
@@ -26,24 +26,67 @@ impl Mutator for AddSavingThrow {
 	}
 
 	fn apply<'c>(&self, stats: &mut Character) {
-		match self {
-			Self::Proficiency(ability) => {
-				let source = stats.source_path();
-				stats.saving_throws_mut().add_proficiency(*ability, source);
-			}
-			Self::Advantage(ability, target) => {
-				let source = stats.source_path();
-				stats
-					.saving_throws_mut()
-					.add_modifier(*ability, target.clone(), source);
-			}
-		}
+		let source = stats.source_path();
+		stats.saving_throws_mut().add_proficiency(self.0, source);
 	}
 }
 
+impl FromKDL<DnD5e> for AddSavingThrow {
+	fn from_kdl(
+		node: &kdl::KdlNode,
+		value_idx: &mut ValueIdx,
+		_system: &DnD5e,
+	) -> anyhow::Result<Self> {
+		Ok(Self(Ability::from_str(node.get_str(value_idx.next())?)?))
+	}
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct AddSavingThrowModifier {
+	pub ability: Ability,
+	pub target: Option<String>,
+}
+
+impl KDLNode for AddSavingThrowModifier {
+	fn id() -> &'static str {
+		"add_saving_throw_modifier"
+	}
+}
+
+impl Mutator for AddSavingThrowModifier {
+	type Target = Character;
+
+	fn get_node_name(&self) -> &'static str {
+		Self::id()
+	}
+
+	fn apply<'c>(&self, stats: &mut Character) {
+		let source = stats.source_path();
+		stats
+			.saving_throws_mut()
+			.add_modifier(self.ability, self.target.clone(), source);
+	}
+}
+
+impl FromKDL<DnD5e> for AddSavingThrowModifier {
+	fn from_kdl(
+		node: &kdl::KdlNode,
+		value_idx: &mut ValueIdx,
+		_system: &DnD5e,
+	) -> anyhow::Result<Self> {
+		let ability = Ability::from_str(node.get_str(value_idx.next())?)?;
+		let target = node.get_str_opt(value_idx.next())?.map(str::to_owned);
+		Ok(Self { ability, target })
+	}
+}
+
+// TODO: Split into submodules
+// TODO: Test AddSavingThrow FromKDL
+// TODO: Test AddSavingThrowModifier FromKDL
+
 #[cfg(test)]
 mod test {
-	use super::AddSavingThrow;
+	use super::*;
 	use crate::system::dnd5e::data::{
 		character::{Character, Persistent},
 		proficiency, Ability, Feature,
@@ -54,7 +97,7 @@ mod test {
 		let character = Character::from(Persistent {
 			feats: vec![Feature {
 				name: "AddSavingThrow".into(),
-				mutators: vec![AddSavingThrow::Proficiency(Ability::Wisdom).into()],
+				mutators: vec![AddSavingThrow(Ability::Wisdom).into()],
 				..Default::default()
 			}
 			.into()],
@@ -72,10 +115,12 @@ mod test {
 	fn advantage() {
 		let character = Character::from(Persistent {
 			feats: vec![Feature {
-				name: "AddSavingThrow".into(),
-				mutators: vec![
-					AddSavingThrow::Advantage(Ability::Wisdom, Some("Magic".into())).into(),
-				],
+				name: "AddSavingThrowModifier".into(),
+				mutators: vec![AddSavingThrowModifier {
+					ability: Ability::Wisdom,
+					target: Some("Magic".into()),
+				}
+				.into()],
 				..Default::default()
 			}
 			.into()],
@@ -84,7 +129,7 @@ mod test {
 		let (_, advantages) = &character.saving_throws()[Ability::Wisdom];
 		assert_eq!(
 			*advantages,
-			vec![(Some("Magic".into()), "AddSavingThrow".into())]
+			vec![(Some("Magic".into()), "AddSavingThrowModifier".into())]
 		);
 	}
 }

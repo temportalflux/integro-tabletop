@@ -41,7 +41,7 @@ impl MutatorGroup for Persistent {
 				id: Some("Constitution x Levels".into()),
 				value: Value::Evaluated(
 					Product(vec![
-						Value::Evaluated(GetLevel::<i32>::default().into()),
+						Value::Evaluated(GetLevel::default().into()),
 						Value::Evaluated(GetAbilityModifier(Ability::Constitution).into()),
 					])
 					.into(),

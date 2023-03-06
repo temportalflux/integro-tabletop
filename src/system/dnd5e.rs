@@ -237,23 +237,31 @@ impl DnD5e {
 	pub fn new() -> Self {
 		let mut system = Self::default();
 		system.register_component::<data::Lineage>();
-		/*
-		system.register_mutator::<data::AddProficiency>();
-		system.register_mutator::<data::mutator::AddAbilityScore>();
-		system.register_mutator::<data::mutator::AddArmorClassFormula>();
-		system.register_mutator::<data::mutator::AddAction>();
-		system.register_mutator::<data::mutator::BonusDamage>();
+		//system.register_mutator::<data::AddProficiency>();
+		//system.register_mutator::<data::mutator::AddAbilityScore>();
+		//system.register_mutator::<data::mutator::AddArmorClassFormula>();
+		//system.register_mutator::<data::mutator::AddAction>();
+		//system.register_mutator::<data::mutator::BonusDamage>();
 		system.register_mutator::<data::mutator::AddDefense>();
 		system.register_mutator::<data::mutator::AddLifeExpectancy>();
 		system.register_mutator::<data::mutator::AddMaxHeight>();
 		system.register_mutator::<data::mutator::AddMaxHitPoints>();
 		system.register_mutator::<data::mutator::AddSavingThrow>();
+		system.register_mutator::<data::mutator::AddSavingThrowModifier>();
 		system.register_mutator::<data::mutator::AddSkill>();
 		system.register_mutator::<data::mutator::AddSkillModifier>();
 		system.register_mutator::<data::mutator::AddMaxSpeed>();
 		system.register_mutator::<data::mutator::AddMaxSense>();
-		*/
 		system.register_evaluator::<data::evaluator::armor::HasArmorEquipped>();
+		system.register_evaluator::<data::evaluator::GetAbilityModifier>();
+		//system.register_evaluator::<Any>();
+		//system.register_evaluator::<IsProficientWith>();
+		//system.register_evaluator::<BySelection<?, ?>>();
+		system.register_evaluator::<data::evaluator::GetLevel>();
+		system.register_evaluator::<data::evaluator::ByLevel<i64>>();
+		system.register_evaluator::<data::evaluator::ByLevel<Option<i64>>>();
+		system.register_evaluator::<data::evaluator::ByLevel<String>>();
+		system.register_evaluator::<data::evaluator::ByLevel<Option<String>>>();
 		system
 	}
 

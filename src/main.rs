@@ -62,14 +62,18 @@ fn create_character() -> system::dnd5e::data::character::Persistent {
 		feats: vec![Feature {
 			name: "Custom Feat".into(),
 			mutators: vec![
-				mutator::AddSavingThrow::Proficiency(Ability::Charisma).into(),
-				mutator::AddSavingThrow::Advantage(Ability::Charisma, Some("Magic".into())).into(),
+				mutator::AddSavingThrow(Ability::Charisma).into(),
+				mutator::AddSavingThrowModifier {
+					ability: Ability::Charisma,
+					target: Some("Magic".into()),
+				}
+				.into(),
 				//mutator::AddMaxSpeed("Flying".into(), 10).into(),
 				//mutator::AddMaxSense("Darkvision".into(), 30).into(),
 				mutator::AddMaxSense("Tremorsense".into(), 60).into(),
-				mutator::AddDefense(mutator::Defense::Resistant, "Cold".into()).into(),
-				mutator::AddDefense(mutator::Defense::Immune, "Acid".into()).into(),
-				mutator::AddDefense(mutator::Defense::Vulnerable, "Fire".into()).into(),
+				mutator::AddDefense(mutator::Defense::Resistance, "Cold".into()).into(),
+				mutator::AddDefense(mutator::Defense::Immunity, "Acid".into()).into(),
+				mutator::AddDefense(mutator::Defense::Vulnerability, "Fire".into()).into(),
 				mutator::AddSkill {
 					skill: Selector::Specific(Skill::Stealth),
 					proficiency: proficiency::Level::Double,

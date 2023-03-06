@@ -2,6 +2,8 @@ use enum_map::Enum;
 use enumset::EnumSetType;
 use std::str::FromStr;
 
+use crate::GeneralError;
+
 #[derive(Debug, EnumSetType, Enum, PartialOrd, Ord, Hash)]
 pub enum Ability {
 	Strength,
@@ -252,7 +254,7 @@ impl Ability {
 }
 
 impl FromStr for Ability {
-	type Err = ();
+	type Err = GeneralError;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		match s.to_lowercase().as_str() {
@@ -262,7 +264,7 @@ impl FromStr for Ability {
 			"int" | "intelligence" => Ok(Self::Intelligence),
 			"wis" | "wisdom" => Ok(Self::Wisdom),
 			"cha" | "charisma" => Ok(Self::Charisma),
-			_ => Err(()),
+			_ => Err(GeneralError(format!("Invalid Ability value {s:?}"))),
 		}
 	}
 }

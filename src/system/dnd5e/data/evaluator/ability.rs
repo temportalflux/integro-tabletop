@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use crate::{
 	kdl_ext::{NodeQueryExt, ValueIdx},
 	system::dnd5e::{
@@ -7,8 +5,8 @@ use crate::{
 		DnD5e, FromKDL, KDLNode,
 	},
 	utility::{Dependencies, Evaluator},
-	GeneralError,
 };
+use std::str::FromStr;
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct GetAbilityModifier(pub Ability);
@@ -45,10 +43,7 @@ impl FromKDL<DnD5e> for GetAbilityModifier {
 		value_idx: &mut ValueIdx,
 		_system: &DnD5e,
 	) -> anyhow::Result<Self> {
-		let ability_str = node.get_str(value_idx.next())?;
-		let ability = Ability::from_str(ability_str)
-			.map_err(|_| GeneralError(format!("Invalid ability name {ability_str:?}")))?;
-		Ok(Self(ability))
+		Ok(Self(Ability::from_str(node.get_str(value_idx.next())?)?))
 	}
 }
 

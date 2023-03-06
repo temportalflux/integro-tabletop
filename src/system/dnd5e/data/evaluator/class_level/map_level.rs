@@ -1,4 +1,3 @@
-use super::GetLevel;
 use crate::{
 	kdl_ext::{NodeQueryExt, ValueIdx},
 	system::dnd5e::{data::character::Character, DnD5e, FromKDL, KDLNode},
@@ -38,7 +37,7 @@ where
 	type Item = T;
 
 	fn evaluate(&self, state: &Self::Context) -> Self::Item {
-		let character_level = GetLevel::from(self.class_name.clone()).evaluate(state);
+		let character_level = state.level(self.class_name.as_ref().map(String::as_str));
 		for (min_level, value) in self.map.iter().rev() {
 			if *min_level <= character_level {
 				return value.clone();
@@ -48,9 +47,27 @@ where
 	}
 }
 
-impl<T> KDLNode for ByLevel<T> {
+impl KDLNode for ByLevel<String> {
 	fn id() -> &'static str {
-		"by_level"
+		"map_level_to_string"
+	}
+}
+
+impl KDLNode for ByLevel<Option<String>> {
+	fn id() -> &'static str {
+		"map_level_to_string_opt"
+	}
+}
+
+impl KDLNode for ByLevel<i64> {
+	fn id() -> &'static str {
+		"map_level_to_integer"
+	}
+}
+
+impl KDLNode for ByLevel<Option<i64>> {
+	fn id() -> &'static str {
+		"map_level_to_integer_opt"
 	}
 }
 
@@ -87,9 +104,14 @@ mod test {
 
 	fn from_doc<T>(doc: &str) -> anyhow::Result<GenericEvaluator<Character, T>>
 	where
-		T: 'static + Clone + Default + Send + Sync + Debug + PartialEq + FromKDL<DnD5e>,
+		T: 'static,
 	{
-		DnD5e::defaulteval_parse_kdl::<ByLevel<T>>(doc)
+		let mut system = DnD5e::default();
+		system.register_evaluator::<ByLevel<i64>>();
+		system.register_evaluator::<ByLevel<Option<i64>>>();
+		system.register_evaluator::<ByLevel<String>>();
+		system.register_evaluator::<ByLevel<Option<String>>>();
+		system.parse_kdl_evaluator::<T>(doc)
 	}
 
 	mod from_kdl {
@@ -97,17 +119,17 @@ mod test {
 
 		#[test]
 		fn empty() -> anyhow::Result<()> {
-			let doc = "evaluator \"by_level\"";
-			assert_eq!(from_doc(doc)?, ByLevel::<usize>::default().into());
+			let doc = "evaluator \"map_level_to_integer\"";
+			assert_eq!(from_doc(doc)?, ByLevel::<i64>::default().into());
 			Ok(())
 		}
 
 		#[test]
 		fn class_only() -> anyhow::Result<()> {
-			let doc = "evaluator \"by_level\" class=\"SomeClass\"";
+			let doc = "evaluator \"map_level_to_integer\" class=\"SomeClass\"";
 			assert_eq!(
 				from_doc(doc)?,
-				ByLevel::<usize> {
+				ByLevel::<i64> {
 					class_name: Some("SomeClass".into()),
 					..Default::default()
 				}
@@ -118,7 +140,7 @@ mod test {
 
 		#[test]
 		fn character_level() -> anyhow::Result<()> {
-			let doc = "evaluator \"by_level\" {
+			let doc = "evaluator \"map_level_to_integer\" {
 				map 1 2
 				map 5 3
 				map 9 4
@@ -127,7 +149,7 @@ mod test {
 			}";
 			assert_eq!(
 				from_doc(doc)?,
-				ByLevel::<usize> {
+				ByLevel::<i64> {
 					map: [(1, 2), (5, 3), (9, 4), (13, 5), (17, 6),].into(),
 					..Default::default()
 				}
@@ -138,7 +160,7 @@ mod test {
 
 		#[test]
 		fn class_level() -> anyhow::Result<()> {
-			let doc = "evaluator \"by_level\" class=\"SomeClass\" {
+			let doc = "evaluator \"map_level_to_integer\" class=\"SomeClass\" {
 				map 1 2
 				map 5 3
 				map 9 4
@@ -147,7 +169,7 @@ mod test {
 			}";
 			assert_eq!(
 				from_doc(doc)?,
-				ByLevel::<usize> {
+				ByLevel::<i64> {
 					class_name: Some("SomeClass".into()),
 					map: [(1, 2), (5, 3), (9, 4), (13, 5), (17, 6),].into(),
 				}
@@ -158,7 +180,7 @@ mod test {
 
 		#[test]
 		fn optional_value() -> anyhow::Result<()> {
-			let doc = "evaluator \"by_level\" {
+			let doc = "evaluator \"map_level_to_string_opt\" {
 				map 3 \"Electric\"
 				map 5
 				map 8 \"Boogaloo\"
@@ -198,14 +220,14 @@ mod test {
 
 		#[test]
 		fn empty() {
-			let eval = ByLevel::<Option<u32>>::default();
+			let eval = ByLevel::<Option<i64>>::default();
 			let character = character(&[]);
 			assert_eq!(eval.evaluate(&character), None);
 		}
 
 		#[test]
 		fn character_thresholds() {
-			let eval = ByLevel {
+			let eval = ByLevel::<Option<i64>> {
 				class_name: None,
 				map: [
 					(1, Some(0)),
