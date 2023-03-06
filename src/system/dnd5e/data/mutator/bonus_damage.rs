@@ -8,6 +8,11 @@ use crate::{
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct AddAction(pub Action);
+impl crate::utility::TraitEq for AddAction {
+	fn equals_trait(&self, other: &dyn crate::utility::TraitEq) -> bool {
+		crate::utility::downcast_trait_eq(self, other)
+	}
+}
 impl KDLNode for AddAction {
 	fn id() -> &'static str {
 		"add_action"
@@ -29,6 +34,11 @@ impl Mutator for AddAction {
 pub struct BonusDamage {
 	pub amount: Value<i32>,
 	pub restriction: Option<weapon::Restriction>,
+}
+impl crate::utility::TraitEq for BonusDamage {
+	fn equals_trait(&self, other: &dyn crate::utility::TraitEq) -> bool {
+		crate::utility::downcast_trait_eq(self, other)
+	}
 }
 impl KDLNode for BonusDamage {
 	fn id() -> &'static str {

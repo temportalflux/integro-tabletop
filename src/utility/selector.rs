@@ -1,4 +1,4 @@
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Selector<T> {
 	Specific(T),
 	AnyOf { id: Option<String>, options: Vec<T> },

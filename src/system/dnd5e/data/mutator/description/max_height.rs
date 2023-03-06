@@ -8,10 +8,16 @@ use crate::{
 };
 use std::str::FromStr;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum AddMaxHeight {
 	Value(i32),
 	Roll(Roll),
+}
+
+impl crate::utility::TraitEq for AddMaxHeight {
+	fn equals_trait(&self, other: &dyn crate::utility::TraitEq) -> bool {
+		crate::utility::downcast_trait_eq(self, other)
+	}
 }
 
 impl std::fmt::Debug for AddMaxHeight {

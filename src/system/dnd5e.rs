@@ -328,6 +328,20 @@ impl DnD5e {
 		system
 	}
 
+	pub fn default_with_mut<M>() -> Self
+	where
+		M: Mutator<Target = data::character::Character>
+			+ KDLNode
+			+ FromKDL<DnD5e>
+			+ 'static
+			+ Send
+			+ Sync,
+	{
+		let mut system = Self::default();
+		system.register_mutator::<M>();
+		system
+	}
+
 	pub fn parse_kdl_evaluator<T>(
 		&self,
 		doc: &str,
@@ -344,6 +358,14 @@ impl DnD5e {
 		factory.from_kdl::<T>(node, &mut idx, &self)
 	}
 
+	pub fn parse_kdl_mutator(&self, doc: &str) -> anyhow::Result<BoxedMutator> {
+		let document = doc.parse::<kdl::KdlDocument>()?;
+		let node = document.query("mutator")?.expect("missing mutator node");
+		let mut idx = ValueIdx::default();
+		let factory = self.get_mutator_factory(node.get_str(idx.next())?)?;
+		factory.from_kdl(node, &mut idx, &self)
+	}
+
 	pub fn defaulteval_parse_kdl<E>(
 		doc: &str,
 	) -> anyhow::Result<GenericEvaluator<Character, E::Item>>
@@ -352,5 +374,17 @@ impl DnD5e {
 		E::Item: 'static,
 	{
 		Self::default_with_eval::<E>().parse_kdl_evaluator::<E::Item>(doc)
+	}
+
+	pub fn defaultmut_parse_kdl<M>(doc: &str) -> anyhow::Result<BoxedMutator>
+	where
+		M: Mutator<Target = data::character::Character>
+			+ KDLNode
+			+ FromKDL<DnD5e>
+			+ 'static
+			+ Send
+			+ Sync,
+	{
+		Self::default_with_mut::<M>().parse_kdl_mutator(doc)
 	}
 }

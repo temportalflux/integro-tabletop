@@ -36,12 +36,18 @@ impl ToString for WeaponProficiency {
 	}
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum AddProficiency {
 	Language(Selector<String>),
 	Armor(armor::Kind),
 	Weapon(WeaponProficiency),
 	Tool(String),
+}
+
+impl crate::utility::TraitEq for AddProficiency {
+	fn equals_trait(&self, other: &dyn crate::utility::TraitEq) -> bool {
+		crate::utility::downcast_trait_eq(self, other)
+	}
 }
 
 impl KDLNode for AddProficiency {

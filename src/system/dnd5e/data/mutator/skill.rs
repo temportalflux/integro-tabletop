@@ -10,10 +10,16 @@ use crate::{
 	GeneralError,
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AddSkill {
 	pub skill: Selector<Skill>,
 	pub proficiency: proficiency::Level,
+}
+
+impl crate::utility::TraitEq for AddSkill {
+	fn equals_trait(&self, other: &dyn crate::utility::TraitEq) -> bool {
+		crate::utility::downcast_trait_eq(self, other)
+	}
 }
 
 impl KDLNode for AddSkill {
@@ -68,11 +74,17 @@ impl FromKDL<DnD5e> for AddSkill {
 
 // TODO: Tests for AddSkill
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AddSkillModifier {
 	pub skill: Skill,
 	pub modifier: roll::Modifier,
 	pub criteria: Option<String>,
+}
+
+impl crate::utility::TraitEq for AddSkillModifier {
+	fn equals_trait(&self, other: &dyn crate::utility::TraitEq) -> bool {
+		crate::utility::downcast_trait_eq(self, other)
+	}
 }
 
 impl KDLNode for AddSkillModifier {

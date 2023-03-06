@@ -8,11 +8,19 @@ use crate::{
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct AddArmorClassFormula(pub ArmorClassFormula);
+
+impl crate::utility::TraitEq for AddArmorClassFormula {
+	fn equals_trait(&self, other: &dyn crate::utility::TraitEq) -> bool {
+		crate::utility::downcast_trait_eq(self, other)
+	}
+}
+
 impl KDLNode for AddArmorClassFormula {
 	fn id() -> &'static str {
 		"add_armor_class_formula"
 	}
 }
+
 impl Mutator for AddArmorClassFormula {
 	type Target = Character;
 

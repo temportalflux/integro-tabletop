@@ -12,6 +12,12 @@ use crate::{
 #[derive(Clone, Debug, PartialEq)]
 pub struct AddSavingThrow(pub Ability);
 
+impl crate::utility::TraitEq for AddSavingThrow {
+	fn equals_trait(&self, other: &dyn crate::utility::TraitEq) -> bool {
+		crate::utility::downcast_trait_eq(self, other)
+	}
+}
+
 impl KDLNode for AddSavingThrow {
 	fn id() -> &'static str {
 		"add_saving_throw"
@@ -45,6 +51,12 @@ impl FromKDL<DnD5e> for AddSavingThrow {
 pub struct AddSavingThrowModifier {
 	pub ability: Ability,
 	pub target: Option<String>,
+}
+
+impl crate::utility::TraitEq for AddSavingThrowModifier {
+	fn equals_trait(&self, other: &dyn crate::utility::TraitEq) -> bool {
+		crate::utility::downcast_trait_eq(self, other)
+	}
 }
 
 impl KDLNode for AddSavingThrowModifier {

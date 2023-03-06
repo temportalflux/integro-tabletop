@@ -40,8 +40,13 @@ impl FromStr for Defense {
 }
 
 /*TODO: its a defense to a damage type and/or some context (e.g. Cold Damage, Ranged Attacks, Fire Damage from Ranged Attacks)*/
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AddDefense(pub Defense, pub String);
+impl crate::utility::TraitEq for AddDefense {
+	fn equals_trait(&self, other: &dyn crate::utility::TraitEq) -> bool {
+		crate::utility::downcast_trait_eq(self, other)
+	}
+}
 impl KDLNode for AddDefense {
 	fn id() -> &'static str {
 		"add_defense"

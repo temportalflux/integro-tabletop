@@ -6,10 +6,16 @@ use crate::{
 	utility::{Mutator, Selector},
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AddAbilityScore {
 	pub ability: Selector<Ability>,
 	pub value: i32,
+}
+
+impl crate::utility::TraitEq for AddAbilityScore {
+	fn equals_trait(&self, other: &dyn crate::utility::TraitEq) -> bool {
+		crate::utility::downcast_trait_eq(self, other)
+	}
 }
 
 impl KDLNode for AddAbilityScore {

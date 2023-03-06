@@ -1,7 +1,7 @@
-use super::Dependencies;
+use super::{AsTraitEq, Dependencies, TraitEq};
 use std::{fmt::Debug, sync::Arc};
 
-pub trait Mutator: Debug {
+pub trait Mutator: Debug + TraitEq + AsTraitEq<dyn TraitEq> {
 	type Target;
 
 	fn get_node_name(&self) -> &'static str;
@@ -19,9 +19,12 @@ pub trait Mutator: Debug {
 
 #[derive(Clone)]
 pub struct ArcMutator<T>(Arc<dyn Mutator<Target = T> + 'static + Send + Sync>);
-impl<T> PartialEq for ArcMutator<T> {
+impl<T> PartialEq for ArcMutator<T>
+where
+	T: 'static,
+{
 	fn eq(&self, other: &Self) -> bool {
-		Arc::ptr_eq(&self.0, &other.0)
+		self.0.equals_trait((*other.0).as_trait_eq())
 	}
 }
 impl<T> std::ops::Deref for ArcMutator<T> {

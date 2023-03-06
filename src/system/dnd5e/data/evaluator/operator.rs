@@ -5,8 +5,17 @@ use crate::{
 	utility::{Dependencies, Evaluator},
 };
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, Debug)]
 pub struct Product<T>(pub Vec<Value<T>>);
+
+impl<T> PartialEq for Product<T>
+where
+	T: 'static + PartialEq,
+{
+	fn eq(&self, other: &Self) -> bool {
+		self.0 == other.0
+	}
+}
 
 impl<T> crate::utility::TraitEq for Product<T>
 where

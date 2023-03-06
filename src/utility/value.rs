@@ -1,5 +1,6 @@
 use super::{Evaluator, GenericEvaluator};
-use std::{collections::HashSet, fmt::Debug, ops::Deref, sync::Arc};
+use crate::{kdl_ext::ValueIdx, GeneralError};
+use std::{collections::HashSet, fmt::Debug, ops::Deref};
 
 #[derive(Clone)]
 pub enum Value<C, V> {
@@ -18,12 +19,13 @@ where
 
 impl<C, V> PartialEq for Value<C, V>
 where
-	V: PartialEq,
+	C: 'static,
+	V: 'static + PartialEq,
 {
 	fn eq(&self, other: &Self) -> bool {
 		match (self, other) {
 			(Self::Fixed(a), Self::Fixed(b)) => a == b,
-			(Self::Evaluated(a), Self::Evaluated(b)) => Arc::ptr_eq(a, b),
+			(Self::Evaluated(a), Self::Evaluated(b)) => a == b,
 			_ => false,
 		}
 	}
@@ -70,6 +72,42 @@ where
 		match self {
 			Self::Fixed(value) => value.clone(),
 			Self::Evaluated(evaluator) => evaluator.evaluate(state),
+		}
+	}
+}
+
+// TODO: Test Value::from_kdl
+impl<V> Value<crate::system::dnd5e::data::character::Character, V>
+where
+	V: 'static,
+{
+	pub fn from_kdl(
+		node: &kdl::KdlNode,
+		value_idx: &mut ValueIdx,
+		system: &crate::system::dnd5e::DnD5e,
+		map_value: impl Fn(&kdl::KdlValue) -> Option<V>,
+	) -> anyhow::Result<Self> {
+		let entry_idx = value_idx.next();
+		let entry = node.entry(entry_idx).ok_or(GeneralError(format!(
+			"Missing value at index {entry_idx} in node {node:?}"
+		)))?;
+		match entry.ty().map(|id| id.value()) {
+			Some("Evaluator") => {
+				let evaluator_name = entry.value().as_string().ok_or(GeneralError(format!(
+					"Evaluator-typed values must be associated with a string, {entry:?} is not."
+				)))?;
+				let factory = system.get_evaluator_factory(evaluator_name)?;
+				Ok(Self::Evaluated(
+					factory.from_kdl::<V>(node, value_idx, system)?,
+				))
+			}
+			_ => Ok(Self::Fixed(map_value(entry.value()).ok_or(
+				GeneralError(format!(
+					"Failed to parse value from {:?}, expected {:?}",
+					entry.value(),
+					std::any::type_name::<V>()
+				)),
+			)?)),
 		}
 	}
 }

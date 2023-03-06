@@ -4,8 +4,14 @@ use crate::{
 	utility::Mutator,
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AddMaxSpeed(pub String, pub i32);
+
+impl crate::utility::TraitEq for AddMaxSpeed {
+	fn equals_trait(&self, other: &dyn crate::utility::TraitEq) -> bool {
+		crate::utility::downcast_trait_eq(self, other)
+	}
+}
 
 impl KDLNode for AddMaxSpeed {
 	fn id() -> &'static str {
@@ -38,8 +44,14 @@ impl FromKDL<DnD5e> for AddMaxSpeed {
 	}
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AddMaxSense(pub String, pub i32);
+
+impl crate::utility::TraitEq for AddMaxSense {
+	fn equals_trait(&self, other: &dyn crate::utility::TraitEq) -> bool {
+		crate::utility::downcast_trait_eq(self, other)
+	}
+}
 
 impl KDLNode for AddMaxSense {
 	fn id() -> &'static str {
