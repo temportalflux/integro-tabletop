@@ -220,10 +220,7 @@ fn get_type<'doc, T>(
 	let key_str = format!("{:?}", key.clone().into());
 	match get_type_opt::<T>(node, key, map)? {
 		Some(value) => Ok(value),
-		None => Err(GeneralError(format!(
-			"Node {node:?} is missing value at {key_str:?}"
-		))
-		.into()),
+		None => Err(GeneralError(format!("Node {node:?} is missing value at {key_str:?}")).into()),
 	}
 }
 

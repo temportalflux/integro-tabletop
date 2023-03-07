@@ -49,7 +49,7 @@ impl FromKDL<DnD5e> for AddSavingThrow {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AddSavingThrowModifier {
-	pub ability: Ability,
+	pub ability: Option<Ability>,
 	pub target: Option<String>,
 }
 
@@ -83,11 +83,14 @@ impl Mutator for AddSavingThrowModifier {
 impl FromKDL<DnD5e> for AddSavingThrowModifier {
 	fn from_kdl(
 		node: &kdl::KdlNode,
-		value_idx: &mut ValueIdx,
+		_value_idx: &mut ValueIdx,
 		_system: &DnD5e,
 	) -> anyhow::Result<Self> {
-		let ability = Ability::from_str(node.get_str(value_idx.next())?)?;
-		let target = node.get_str_opt(value_idx.next())?.map(str::to_owned);
+		let ability = match node.get_str_opt("ability")? {
+			Some(str) => Some(Ability::from_str(str)?),
+			None => None,
+		};
+		let target = node.get_str_opt("target")?.map(str::to_owned);
 		Ok(Self { ability, target })
 	}
 }
@@ -129,7 +132,7 @@ mod test {
 			feats: vec![Feature {
 				name: "AddSavingThrowModifier".into(),
 				mutators: vec![AddSavingThrowModifier {
-					ability: Ability::Wisdom,
+					ability: Some(Ability::Wisdom),
 					target: Some("Magic".into()),
 				}
 				.into()],

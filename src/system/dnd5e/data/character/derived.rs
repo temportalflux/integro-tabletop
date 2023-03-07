@@ -97,37 +97,56 @@ impl AbilityScores {
 }
 
 #[derive(Clone, Default, PartialEq, Debug)]
-pub struct SavingThrows(
-	EnumMap<
+pub struct SavingThrows {
+	by_ability: EnumMap<
 		Ability,
 		(
 			/*is proficient*/ AttributedValue<proficiency::Level>,
 			/*adv modifiers*/ Vec<(Option<String>, PathBuf)>,
 		),
 	>,
-);
+	general_modifiers: Vec<(Option<String>, PathBuf)>,
+}
 impl SavingThrows {
 	pub fn add_proficiency(&mut self, ability: Ability, source: PathBuf) {
-		self.0[ability].0.push(proficiency::Level::Full, source);
+		self.by_ability[ability]
+			.0
+			.push(proficiency::Level::Full, source);
 	}
 
-	pub fn add_modifier(&mut self, ability: Ability, target: Option<String>, source: PathBuf) {
-		self.0[ability].1.push((target, source));
+	pub fn add_modifier(
+		&mut self,
+		ability: Option<Ability>,
+		target: Option<String>,
+		source: PathBuf,
+	) {
+		match ability {
+			Some(ability) => &mut self.by_ability[ability].1,
+			None => &mut self.general_modifiers,
+		}
+		.push((target, source));
 	}
 
 	pub fn get_prof(&self, ability: Ability) -> &AttributedValue<proficiency::Level> {
-		&self.0[ability].0
+		&self.by_ability[ability].0
 	}
 
-	pub fn iter_modifiers(&self) -> impl Iterator<Item = (Ability, &Option<String>, &PathBuf)> {
-		self.0
+	pub fn iter_modifiers(
+		&self,
+	) -> impl Iterator<Item = (Option<Ability>, &Option<String>, &PathBuf)> {
+		self.by_ability
 			.iter()
 			.map(|(ability, (_, modifiers))| {
 				modifiers
 					.iter()
-					.map(move |(target, path)| (ability, target, path))
+					.map(move |(target, path)| (Some(ability), target, path))
 			})
 			.flatten()
+			.chain(
+				self.general_modifiers
+					.iter()
+					.map(|(target, path)| (None, target, path)),
+			)
 	}
 }
 impl std::ops::Index<Ability> for SavingThrows {
@@ -136,7 +155,7 @@ impl std::ops::Index<Ability> for SavingThrows {
 		Vec<(Option<String>, PathBuf)>,
 	);
 	fn index(&self, index: Ability) -> &Self::Output {
-		&self.0[index]
+		&self.by_ability[index]
 	}
 }
 

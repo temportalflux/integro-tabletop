@@ -32,7 +32,6 @@ impl<T> Compiled<T> {
 fn create_character() -> system::dnd5e::data::character::Persistent {
 	use enum_map::enum_map;
 	use path_map::PathMap;
-	use std::path::PathBuf;
 	use system::dnd5e::{
 		content::*,
 		data::{character::Persistent, mutator, Description, *},
@@ -63,7 +62,7 @@ fn create_character() -> system::dnd5e::data::character::Persistent {
 			mutators: vec![
 				mutator::AddSavingThrow(Ability::Charisma).into(),
 				mutator::AddSavingThrowModifier {
-					ability: Ability::Charisma,
+					ability: Some(Ability::Charisma),
 					target: Some("Magic".into()),
 				}
 				.into(),
@@ -212,6 +211,7 @@ fn main() -> anyhow::Result<()> {
 	Ok(())
 }
 
+#[cfg(target_family = "windows")]
 fn insert_system_document(
 	system_reg: &system::core::SystemRegistry,
 	content: &str,

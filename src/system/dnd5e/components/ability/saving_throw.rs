@@ -123,8 +123,10 @@ pub fn SavingThrowContainer() -> Html {
 								<span class="d-inline-flex" aria-label="Advantage" {style}>
 									<Modifier value={roll::Modifier::Advantage} />
 								</span>
+								{ability.map(|ability| html! {
+									<span>{"on "}{ability.abbreviated_name().to_uppercase()}</span>
+								}).unwrap_or_default()}
 								<span>
-									{"on "}{ability.abbreviated_name().to_uppercase()}
 									{target.as_ref().map(|target| format!(" against {target}")).unwrap_or_default()}
 								</span>
 							</Tooltip>
@@ -157,7 +159,7 @@ fn Modal() -> Html {
 								<Modifier value={roll::Modifier::Advantage} />
 							</span>
 						</td>
-						<td class="text-center">{ability.long_name()}</td>
+						<td class="text-center">{ability.map(|ability| ability.long_name()).unwrap_or_default()}</td>
 						<td class="text-center">{target.clone().unwrap_or_default()}</td>
 						<td>{crate::data::as_feature_path_text(&source_path)}</td>
 					</tr>

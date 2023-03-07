@@ -53,7 +53,7 @@ pub fn barbarian(levels: usize, subclass: Option<Subclass>) -> Class {
 				.into(),
 				// TODO: AddAbilityModifier::Advantage(Ability::Strength).into(),
 				AddSavingThrowModifier {
-					ability: Ability::Strength,
+					ability: Some(Ability::Strength),
 					target: None,
 				}
 				.into(),
@@ -198,7 +198,7 @@ pub fn barbarian(levels: usize, subclass: Option<Subclass>) -> Class {
 						such as traps and spells. To gain this benefit, you can't be blinded, deafened, or incapacitated."
 							.into(),
 					mutators: vec![AddSavingThrowModifier {
-						ability: Ability::Dexterity,
+						ability: Some(Ability::Dexterity),
 						target: Some("effects you can see".into()),
 					}
 					.into()],
