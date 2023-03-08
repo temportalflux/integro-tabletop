@@ -1,7 +1,10 @@
-use super::{action::ActivationKind, character::Character, condition::BoxedCondition};
+use super::{
+	action::{Action, ActionSource},
+	character::Character,
+};
 use crate::{
 	kdl_ext::{DocumentQueryExt, NodeQueryExt, ValueIdx},
-	system::dnd5e::{BoxedCriteria, BoxedMutator, DnD5e, FromKDL, Value},
+	system::dnd5e::{BoxedCriteria, BoxedMutator, DnD5e, FromKDL},
 	utility::MutatorGroup,
 };
 use std::{collections::HashMap, sync::Arc};
@@ -11,10 +14,7 @@ pub struct Feature {
 	pub name: String,
 	pub description: String,
 
-	// TODO: Vec of Actions which are added when applied. Each action has the activation and a description, as already supported by Weapons.
-	// This is in addition to the existing action + limited uses (which allows the feature to display in the actions panel).
-	pub action: Option<ActivationKind>,
-	pub limited_uses: Option<LimitedUses>,
+	pub actions: Vec<Action>,
 
 	pub mutators: Vec<BoxedMutator>,
 	pub criteria: Option<BoxedCriteria>,
@@ -50,6 +50,11 @@ impl MutatorGroup for Feature {
 		for mutator in &self.mutators {
 			stats.apply(mutator);
 		}
+		for action in &self.actions {
+			let mut action = action.clone();
+			action.source = Some(ActionSource::Feature(stats.source_path()));
+			stats.actions_mut().push(action);
+		}
 	}
 }
 
@@ -79,26 +84,25 @@ impl FromKDL<DnD5e> for Feature {
 			}
 		};
 
-		// TODO: These
-		let action = Default::default();
-		let limited_uses = Default::default();
+		let mut actions = Vec::new();
+		for entry_node in node.query_all("action")? {
+			let mut value_idx = ValueIdx::default();
+			actions.push(Action::from_kdl(entry_node, &mut value_idx, system)?);
+		}
 
 		let mut mutators = Vec::new();
-		if let Some(children) = node.children() {
-			for entry_node in children.query_all("mutator")? {
-				let mut value_idx = ValueIdx::default();
-				let id = entry_node.get_str(value_idx.next())?;
-				let factory = system.get_mutator_factory(id)?;
-				mutators.push(factory.from_kdl(entry_node, &mut value_idx, system)?);
-			}
+		for entry_node in node.query_all("mutator")? {
+			let mut value_idx = ValueIdx::default();
+			let id = entry_node.get_str(value_idx.next())?;
+			let factory = system.get_mutator_factory(id)?;
+			mutators.push(factory.from_kdl(entry_node, &mut value_idx, system)?);
 		}
 
 		Ok(Self {
 			name,
 			description,
 			mutators,
-			action,
-			limited_uses,
+			actions,
 			criteria,
 			// Generated data
 			missing_selection_text: None,
@@ -122,20 +126,4 @@ impl std::fmt::Debug for BoxedFeature {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		self.0.fmt(f)
 	}
-}
-
-#[derive(Default, Clone, PartialEq, Debug)]
-pub struct LimitedUses {
-	/// The number of uses the feature has until it resets.
-	pub max_uses: Value<Option<usize>>,
-	/// Consumed uses resets when the user takes at least this rest
-	/// (a reset on a short rest will also reset on long rest).
-	pub reset_on: Option<Rest>,
-	pub apply_conditions: Vec<BoxedCondition>,
-}
-
-#[derive(Clone, Copy, PartialEq, Debug)]
-pub enum Rest {
-	Short,
-	Long,
 }

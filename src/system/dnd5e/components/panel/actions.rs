@@ -112,7 +112,7 @@ pub fn Actions() -> Html {
 										// TODO: tooltip for where bonus come from
 										Some(DamageRoll { roll, base_bonus, damage_type: _, additional_bonuses }) => {
 											let additional_bonus: i32 = additional_bonuses.iter().map(|(v, _)| *v).sum();
-											let bonus = base_bonus.evaluate(&*state) + ability_bonus + additional_bonus;
+											let bonus = base_bonus + ability_bonus + additional_bonus;
 											let roll = roll.as_ref().map(|roll| html!{{roll.to_string()}});
 											match (roll, bonus) {
 												(None, bonus) => html! {{bonus.max(0)}},

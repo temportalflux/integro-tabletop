@@ -70,12 +70,12 @@ impl Default for Derived {
 					},
 					area_of_effect: None,
 					damage: Some(DamageRoll {
-						base_bonus: Value::Fixed(1),
-						damage_type: "bludgeoning".into(),
+						base_bonus: 1,
+						damage_type: DamageType::Bludgeoning,
 						..Default::default()
 					}),
 				}),
-				source: None,
+				..Default::default()
 			}],
 			description: Default::default(),
 		}

@@ -2,11 +2,9 @@ use crate::{
 	components::{Tag, Tags},
 	path_map::PathMap,
 	system::dnd5e::{components::SharedCharacter, data::BoxedFeature},
-	utility::{Evaluator, MutatorGroup},
+	utility::MutatorGroup,
 };
 use std::path::{Path, PathBuf};
-use wasm_bindgen::JsCast;
-use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
 #[function_component]
@@ -142,8 +140,8 @@ fn FeatureBlock(
 		)
 	});
 
+	/*
 	let consumed_uses = use_state(|| 0);
-
 	let uses = match &feature.inner().limited_uses {
 		Some(limited_uses) => match limited_uses.max_uses.evaluate(&*state) {
 			Some(max_uses) => {
@@ -186,6 +184,8 @@ fn FeatureBlock(
 		},
 		None => html! {},
 	};
+	*/
+	let uses = html! {};
 
 	html! {
 		<div style="border-width: 0; border-bottom: 1px; border-style: solid; border-color: var(--theme-frame-color-muted);">

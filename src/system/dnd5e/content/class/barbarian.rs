@@ -1,7 +1,7 @@
 use crate::{
 	system::dnd5e::{
 		data::{
-			action::{ActivationKind, AttackKind, DamageType},
+			action::DamageType,
 			condition::{self, Condition},
 			evaluator::armor::HasArmorEquipped,
 			item::{
@@ -10,12 +10,12 @@ use crate::{
 			},
 			mutator::{
 				self, AddArmorClassFormula, AddDefense, AddSavingThrow, AddSavingThrowModifier,
-				AddSkill, BonusDamage,
+				AddSkill,
 			},
 			proficiency,
 			roll::Die,
-			Ability, AddProficiency, ArmorClassFormula, Class, Feature, Level, LimitedUses, Rest,
-			Skill, Subclass, WeaponProficiency,
+			Ability, AddProficiency, ArmorClassFormula, Class, Feature, Level, Skill, Subclass,
+			WeaponProficiency,
 		},
 		Value,
 	},
@@ -97,7 +97,6 @@ pub fn barbarian(levels: usize, subclass: Option<Subclass>) -> Class {
 				Once you have used all your rages, you must finish a long rest before you can rage again.";
 				desc
 			},
-			action: Some(ActivationKind::Bonus),
 			/* TODO
 			limited_uses: Some(LimitedUses {
 				max_uses: Value::Evaluated(

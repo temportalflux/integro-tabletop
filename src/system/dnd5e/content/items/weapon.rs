@@ -4,7 +4,7 @@ use crate::system::dnd5e::data::{
 		weapon::{self, Property, Weapon, WeaponDamage},
 		Item, ItemKind,
 	},
-	roll::{Die, Roll},
+	roll::{Die, Roll}, action::DamageType,
 };
 
 pub fn club() -> Item {
@@ -23,7 +23,7 @@ pub fn club() -> Item {
 						amount: 1,
 						die: Die::D4,
 					}),
-					damage_type: "bludgeoning".into(),
+					damage_type: DamageType::Bludgeoning,
 					..Default::default()
 				}),
 				properties: vec![Property::Light],
@@ -51,7 +51,7 @@ pub fn dagger() -> Item {
 						amount: 1,
 						die: Die::D4,
 					}),
-					damage_type: "piercing".into(),
+					damage_type: DamageType::Piercing,
 					..Default::default()
 				}),
 				properties: vec![Property::Light, Property::Finesse, Property::Thrown(20, 60)],
@@ -79,7 +79,7 @@ pub fn greatclub() -> Item {
 						amount: 1,
 						die: Die::D8,
 					}),
-					damage_type: "bludgeoning".into(),
+					damage_type: DamageType::Bludgeoning,
 					..Default::default()
 				}),
 				properties: vec![Property::TwoHanded],
@@ -107,7 +107,7 @@ pub fn quarterstaff() -> Item {
 						amount: 1,
 						die: Die::D6,
 					}),
-					damage_type: "bludgeoning".into(),
+					damage_type: DamageType::Bludgeoning,
 					..Default::default()
 				}),
 				properties: vec![Property::Versatile(Roll {
@@ -138,7 +138,7 @@ pub fn crossbow_light() -> Item {
 						amount: 1,
 						die: Die::D8,
 					}),
-					damage_type: "piercing".into(),
+					damage_type: DamageType::Piercing,
 					..Default::default()
 				}),
 				properties: vec![Property::TwoHanded],
@@ -171,7 +171,7 @@ pub fn halberd() -> Item {
 						amount: 1,
 						die: Die::D10,
 					}),
-					damage_type: "slashing".into(),
+					damage_type: DamageType::Slashing,
 					..Default::default()
 				}),
 				properties: vec![Property::TwoHanded, Property::Heavy, Property::Reach],

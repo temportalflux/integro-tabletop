@@ -122,6 +122,20 @@ pub trait DocumentQueryExt {
 pub trait NodeQueryExt {
 	fn as_node(&self) -> &kdl::KdlNode;
 
+	fn query_req(
+		&self,
+		query: impl kdl::IntoKdlQuery + Clone + std::fmt::Debug,
+	) -> anyhow::Result<&kdl::KdlNode> {
+		self.as_node().query(query.clone())?.ok_or(
+			GeneralError(format!(
+				"Missing child {:?} in node {:?}",
+				query,
+				self.as_node()
+			))
+			.into(),
+		)
+	}
+
 	fn entry_req(&self, key: impl Into<kdl::NodeKey> + Clone) -> anyhow::Result<&kdl::KdlEntry> {
 		self.as_node().entry(key.clone()).ok_or(
 			GeneralError(format!(

@@ -5,7 +5,7 @@ use crate::{
 		data::{
 			action::{
 				Action, ActionSource, ActivationKind, Attack, AttackCheckKind, AttackKind,
-				AttackKindValue, DamageRoll,
+				AttackKindValue, DamageRoll, DamageType,
 			},
 			evaluator::{self, IsProficientWith},
 			roll::Roll,
@@ -105,8 +105,8 @@ impl Weapon {
 				area_of_effect: None,
 				damage: self.damage.as_ref().map(|dmg| DamageRoll {
 					roll: dmg.roll,
-					base_bonus: Value::Fixed(dmg.bonus),
-					damage_type: dmg.damage_type.clone(),
+					base_bonus: dmg.bonus,
+					damage_type: dmg.damage_type,
 					..Default::default()
 				}),
 			}),
@@ -156,7 +156,7 @@ impl FromKDL<DnD5e> for Weapon {
 pub struct WeaponDamage {
 	pub roll: Option<Roll>,
 	pub bonus: i32,
-	pub damage_type: String, // TODO: DamageType enum
+	pub damage_type: DamageType,
 }
 
 impl FromKDL<DnD5e> for WeaponDamage {
@@ -170,7 +170,7 @@ impl FromKDL<DnD5e> for WeaponDamage {
 			None => None,
 		};
 		let base = node.get_i64_opt("base")?.unwrap_or(0) as i32;
-		let damage_type = node.get_str(value_idx.next())?.to_owned();
+		let damage_type = DamageType::from_str(node.get_str(value_idx.next())?)?;
 		Ok(Self {
 			roll,
 			bonus: base,
