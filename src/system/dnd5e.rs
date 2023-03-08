@@ -260,7 +260,6 @@ impl DnD5e {
 		//system.register_evaluator::<IsProficientWith>();
 		//system.register_evaluator::<BySelection<?, ?>>();
 		system.register_evaluator::<data::evaluator::GetLevel>();
-		system.register_evaluator::<data::evaluator::ByLevel>();
 		system
 	}
 

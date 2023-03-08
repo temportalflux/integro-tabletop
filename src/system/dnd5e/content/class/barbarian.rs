@@ -4,7 +4,6 @@ use crate::{
 			action::{ActivationKind, AttackKind, DamageType},
 			condition::{self, Condition},
 			evaluator::armor::HasArmorEquipped,
-			evaluator::ByLevel,
 			item::{
 				armor,
 				weapon::{self},

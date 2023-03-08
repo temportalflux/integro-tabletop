@@ -117,7 +117,6 @@ mod test {
 		data::{
 			action::DamageType,
 			character::{Character, DefenseEntry, Persistent},
-			evaluator::ByLevel,
 			Feature,
 		},
 		BoxedMutator, DnD5e, Value,
@@ -126,7 +125,6 @@ mod test {
 	fn from_doc(doc: &str) -> anyhow::Result<BoxedMutator> {
 		let mut system = DnD5e::default();
 		system.register_mutator::<AddDefense>();
-		system.register_evaluator::<ByLevel>();
 		system.parse_kdl_mutator(doc)
 	}
 
