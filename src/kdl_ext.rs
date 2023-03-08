@@ -1,14 +1,15 @@
 use crate::GeneralError;
 
 pub trait DocumentQueryExt {
-	fn as_document(&self) -> anyhow::Result<&kdl::KdlDocument>;
+	fn as_document(&self) -> Option<&kdl::KdlDocument>;
 
 	fn query_bool(
 		&self,
 		query: impl kdl::IntoKdlQuery + Clone,
 		key: impl Into<kdl::NodeKey> + Clone,
 	) -> anyhow::Result<bool> {
-		query_type(self.as_document()?, query, key, as_bool)
+		let doc = self.as_document().ok_or(MissingChildren)?;
+		query_type(doc, query, key, as_bool)
 	}
 
 	fn query_i64(
@@ -16,7 +17,8 @@ pub trait DocumentQueryExt {
 		query: impl kdl::IntoKdlQuery + Clone,
 		key: impl Into<kdl::NodeKey> + Clone,
 	) -> anyhow::Result<i64> {
-		query_type(self.as_document()?, query, key, as_i64)
+		let doc = self.as_document().ok_or(MissingChildren)?;
+		query_type(doc, query, key, as_i64)
 	}
 
 	fn query_f64(
@@ -24,7 +26,8 @@ pub trait DocumentQueryExt {
 		query: impl kdl::IntoKdlQuery + Clone,
 		key: impl Into<kdl::NodeKey> + Clone,
 	) -> anyhow::Result<f64> {
-		query_type(self.as_document()?, query, key, as_f64)
+		let doc = self.as_document().ok_or(MissingChildren)?;
+		query_type(doc, query, key, as_f64)
 	}
 
 	fn query_str(
@@ -32,7 +35,8 @@ pub trait DocumentQueryExt {
 		query: impl kdl::IntoKdlQuery + Clone,
 		key: impl Into<kdl::NodeKey> + Clone,
 	) -> anyhow::Result<&str> {
-		query_type(self.as_document()?, query, key, as_str)
+		let doc = self.as_document().ok_or(MissingChildren)?;
+		query_type(doc, query, key, as_str)
 	}
 
 	fn query_bool_opt(
@@ -40,7 +44,8 @@ pub trait DocumentQueryExt {
 		query: impl kdl::IntoKdlQuery + Clone,
 		key: impl Into<kdl::NodeKey> + Clone,
 	) -> anyhow::Result<Option<bool>> {
-		query_type_opt(self.as_document()?, query, key, as_bool)
+		let Some(doc) = self.as_document() else { return Ok(None); };
+		query_type_opt(doc, query, key, as_bool)
 	}
 
 	fn query_i64_opt(
@@ -48,7 +53,8 @@ pub trait DocumentQueryExt {
 		query: impl kdl::IntoKdlQuery + Clone,
 		key: impl Into<kdl::NodeKey> + Clone,
 	) -> anyhow::Result<Option<i64>> {
-		query_type_opt(self.as_document()?, query, key, as_i64)
+		let Some(doc) = self.as_document() else { return Ok(None); };
+		query_type_opt(doc, query, key, as_i64)
 	}
 
 	fn query_f64_opt(
@@ -56,7 +62,8 @@ pub trait DocumentQueryExt {
 		query: impl kdl::IntoKdlQuery + Clone,
 		key: impl Into<kdl::NodeKey> + Clone,
 	) -> anyhow::Result<Option<f64>> {
-		query_type_opt(self.as_document()?, query, key, as_f64)
+		let Some(doc) = self.as_document() else { return Ok(None); };
+		query_type_opt(doc, query, key, as_f64)
 	}
 
 	fn query_str_opt(
@@ -64,7 +71,8 @@ pub trait DocumentQueryExt {
 		query: impl kdl::IntoKdlQuery + Clone,
 		key: impl Into<kdl::NodeKey> + Clone,
 	) -> anyhow::Result<Option<&str>> {
-		query_type_opt(self.as_document()?, query, key, as_str)
+		let Some(doc) = self.as_document() else { return Ok(None); };
+		query_type_opt(doc, query, key, as_str)
 	}
 
 	fn query_bool_all<'doc>(
@@ -72,12 +80,8 @@ pub trait DocumentQueryExt {
 		query: impl kdl::IntoKdlQuery + Clone + 'doc,
 		key: impl Into<kdl::NodeKey> + Clone + 'doc,
 	) -> anyhow::Result<Box<dyn Iterator<Item = anyhow::Result<bool>> + 'doc>> {
-		Ok(Box::new(query_type_all(
-			self.as_document()?,
-			query,
-			key,
-			as_bool,
-		)?))
+		let Some(doc) = self.as_document() else { return Ok(Box::new(Vec::new().into_iter())); };
+		Ok(Box::new(query_type_all(doc, query, key, as_bool)?))
 	}
 
 	fn query_i64_all<'doc>(
@@ -85,12 +89,8 @@ pub trait DocumentQueryExt {
 		query: impl kdl::IntoKdlQuery + Clone + 'doc,
 		key: impl Into<kdl::NodeKey> + Clone + 'doc,
 	) -> anyhow::Result<Box<dyn Iterator<Item = anyhow::Result<i64>> + 'doc>> {
-		Ok(Box::new(query_type_all(
-			self.as_document()?,
-			query,
-			key,
-			as_i64,
-		)?))
+		let Some(doc) = self.as_document() else { return Ok(Box::new(Vec::new().into_iter())); };
+		Ok(Box::new(query_type_all(doc, query, key, as_i64)?))
 	}
 
 	fn query_f64_all<'doc>(
@@ -98,12 +98,8 @@ pub trait DocumentQueryExt {
 		query: impl kdl::IntoKdlQuery + Clone + 'doc,
 		key: impl Into<kdl::NodeKey> + Clone + 'doc,
 	) -> anyhow::Result<Box<dyn Iterator<Item = anyhow::Result<f64>> + 'doc>> {
-		Ok(Box::new(query_type_all(
-			self.as_document()?,
-			query,
-			key,
-			as_f64,
-		)?))
+		let Some(doc) = self.as_document() else { return Ok(Box::new(Vec::new().into_iter())); };
+		Ok(Box::new(query_type_all(doc, query, key, as_f64)?))
 	}
 
 	fn query_str_all<'doc>(
@@ -111,12 +107,8 @@ pub trait DocumentQueryExt {
 		query: impl kdl::IntoKdlQuery + Clone + 'doc,
 		key: impl Into<kdl::NodeKey> + Clone + 'doc,
 	) -> anyhow::Result<Box<dyn Iterator<Item = anyhow::Result<&str>> + 'doc>> {
-		Ok(Box::new(query_type_all(
-			self.as_document()?,
-			query,
-			key,
-			as_str,
-		)?))
+		let Some(doc) = self.as_document() else { return Ok(Box::new(Vec::new().into_iter())); };
+		Ok(Box::new(query_type_all(doc, query, key, as_str)?))
 	}
 }
 pub trait NodeQueryExt {
@@ -279,8 +271,8 @@ fn as_str(value: &kdl::KdlValue) -> Result<&str, &'static str> {
 }
 
 impl DocumentQueryExt for kdl::KdlDocument {
-	fn as_document(&self) -> anyhow::Result<&kdl::KdlDocument> {
-		Ok(&self)
+	fn as_document(&self) -> Option<&kdl::KdlDocument> {
+		Some(&self)
 	}
 }
 impl NodeQueryExt for kdl::KdlNode {
@@ -289,11 +281,14 @@ impl NodeQueryExt for kdl::KdlNode {
 	}
 }
 impl DocumentQueryExt for kdl::KdlNode {
-	fn as_document(&self) -> anyhow::Result<&kdl::KdlDocument> {
+	fn as_document(&self) -> Option<&kdl::KdlDocument> {
 		self.children()
-			.ok_or(GeneralError(format!("Node {:?} has no children", self.name().value())).into())
 	}
 }
+
+#[derive(thiserror::Error, Debug)]
+#[error("Document query requires children, but none are present.")]
+struct MissingChildren;
 
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
 pub struct ValueIdx(usize);

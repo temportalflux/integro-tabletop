@@ -122,3 +122,89 @@ impl DamageType {
 		}
 	}
 }
+
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	mod from_kdl {
+		use super::*;
+		use crate::system::dnd5e::data::roll::Die;
+
+		fn from_doc(doc: &str) -> anyhow::Result<DamageRoll> {
+			let system = DnD5e::default();
+			let document = doc.parse::<kdl::KdlDocument>()?;
+			let node = document.query("damage")?.expect("missing damage node");
+			let mut idx = ValueIdx::default();
+			DamageRoll::from_kdl(node, &mut idx, &system)
+		}
+
+		#[test]
+		fn empty() -> anyhow::Result<()> {
+			let doc = "damage {
+				damage_type \"Force\"
+			}";
+			let expected = DamageRoll {
+				roll: None,
+				base_bonus: 0,
+				damage_type: DamageType::Force,
+				additional_bonuses: vec![],
+			};
+			assert_eq!(from_doc(doc)?, expected);
+			Ok(())
+		}
+
+		#[test]
+		fn flat_damage() -> anyhow::Result<()> {
+			let doc = "damage base=5 {
+				damage_type \"Force\"
+			}";
+			let expected = DamageRoll {
+				roll: None,
+				base_bonus: 5,
+				damage_type: DamageType::Force,
+				additional_bonuses: vec![],
+			};
+			assert_eq!(from_doc(doc)?, expected);
+			Ok(())
+		}
+
+		#[test]
+		fn roll_only() -> anyhow::Result<()> {
+			let doc = "damage {
+				roll (Roll)\"2d4\"
+				damage_type \"Force\"
+			}";
+			let expected = DamageRoll {
+				roll: Some(Roll {
+					amount: 2,
+					die: Die::D4,
+				}),
+				base_bonus: 0,
+				damage_type: DamageType::Force,
+				additional_bonuses: vec![],
+			};
+			assert_eq!(from_doc(doc)?, expected);
+			Ok(())
+		}
+
+		#[test]
+		fn combined() -> anyhow::Result<()> {
+			let doc = "damage base=2 {
+				roll (Roll)\"1d6\"
+				damage_type \"Bludgeoning\"
+			}";
+			let expected = DamageRoll {
+				roll: Some(Roll {
+					amount: 1,
+					die: Die::D6,
+				}),
+				base_bonus: 2,
+				damage_type: DamageType::Bludgeoning,
+				additional_bonuses: vec![],
+			};
+			assert_eq!(from_doc(doc)?, expected);
+			Ok(())
+		}
+	}
+}

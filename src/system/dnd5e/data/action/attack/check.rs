@@ -120,3 +120,114 @@ impl FromKDL<DnD5e> for AttackCheckKind {
 		}
 	}
 }
+
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	mod from_kdl {
+		use super::*;
+		use crate::system::dnd5e::data::{
+			evaluator::IsProficientWith, item::weapon, WeaponProficiency,
+		};
+
+		fn from_doc(doc: &str) -> anyhow::Result<AttackCheckKind> {
+			let system = DnD5e::default_with_eval::<IsProficientWith>();
+			let document = doc.parse::<kdl::KdlDocument>()?;
+			let node = document.query("check")?.expect("missing check node");
+			let mut idx = ValueIdx::default();
+			AttackCheckKind::from_kdl(node, &mut idx, &system)
+		}
+
+		#[test]
+		fn atkroll_simple() -> anyhow::Result<()> {
+			let doc = "check \"AttackRoll\" (Ability)\"Strength\"";
+			let expected = AttackCheckKind::AttackRoll {
+				ability: Ability::Strength,
+				proficient: Value::Fixed(false),
+			};
+			assert_eq!(from_doc(doc)?, expected);
+			Ok(())
+		}
+
+		#[test]
+		fn atkroll_proficient() -> anyhow::Result<()> {
+			let doc = "check \"AttackRoll\" (Ability)\"Strength\" proficient=true";
+			let expected = AttackCheckKind::AttackRoll {
+				ability: Ability::Strength,
+				proficient: Value::Fixed(true),
+			};
+			assert_eq!(from_doc(doc)?, expected);
+			Ok(())
+		}
+
+		#[test]
+		fn atkroll_proficient_eval() -> anyhow::Result<()> {
+			let doc = "check \"AttackRoll\" (Ability)\"Strength\" {
+				proficient (Evaluator)\"is_proficient_with\" (Weapon)\"Martial\"
+			}";
+			let expected = AttackCheckKind::AttackRoll {
+				ability: Ability::Strength,
+				proficient: Value::Evaluated(
+					IsProficientWith::Weapon(WeaponProficiency::Kind(weapon::Kind::Martial)).into(),
+				),
+			};
+			assert_eq!(from_doc(doc)?, expected);
+			Ok(())
+		}
+
+		#[test]
+		fn save_simple() -> anyhow::Result<()> {
+			let doc = "check \"SavingThrow\" {
+				difficulty_class 8
+				save_ability \"CON\"
+			}";
+			let expected = AttackCheckKind::SavingThrow {
+				base: 8,
+				dc_ability: None,
+				proficient: false,
+				save_ability: Ability::Constitution,
+			};
+			assert_eq!(from_doc(doc)?, expected);
+			Ok(())
+		}
+
+		#[test]
+		fn save_dc_ability() -> anyhow::Result<()> {
+			let doc = "check \"SavingThrow\" {
+				difficulty_class 8 {
+					ability_bonus \"WIS\"
+				}
+				save_ability \"CON\"
+			}";
+			let expected = AttackCheckKind::SavingThrow {
+				base: 8,
+				dc_ability: Some(Ability::Wisdom),
+				proficient: false,
+				save_ability: Ability::Constitution,
+			};
+			assert_eq!(from_doc(doc)?, expected);
+			Ok(())
+		}
+
+		#[test]
+		fn save_dc_proficiency() -> anyhow::Result<()> {
+			let doc = "check \"SavingThrow\" {
+				difficulty_class 8 {
+					proficiency_bonus true
+				}
+				save_ability \"CON\"
+			}";
+			let expected = AttackCheckKind::SavingThrow {
+				base: 8,
+				dc_ability: None,
+				proficient: true,
+				save_ability: Ability::Constitution,
+			};
+			assert_eq!(from_doc(doc)?, expected);
+			Ok(())
+		}
+	}
+
+	// TODO: Test AttackCheckKind::Evaluate
+}

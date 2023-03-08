@@ -34,9 +34,6 @@ impl Mutator for AddArmorClassFormula {
 	}
 }
 
-// TODO: FromKDL ArmorClassFormula
-// TODO: Test FromKDL ArmorClassFormula
-
 #[cfg(test)]
 mod test {
 	use super::AddArmorClassFormula;
