@@ -239,7 +239,6 @@ impl DnD5e {
 		let mut system = Self::default();
 		system.register_component::<data::Lineage>();
 		system.register_component::<data::item::Item>();
-		//system.register_mutator::<data::AddProficiency>();
 		//system.register_mutator::<data::mutator::AddAbilityScore>();
 		//system.register_mutator::<data::mutator::AddArmorClassFormula>();
 		//system.register_mutator::<data::mutator::AddAction>();
@@ -248,9 +247,8 @@ impl DnD5e {
 		system.register_mutator::<data::mutator::AddLifeExpectancy>();
 		system.register_mutator::<data::mutator::AddMaxHeight>();
 		system.register_mutator::<data::mutator::AddMaxHitPoints>();
-		system.register_mutator::<data::mutator::AddSavingThrow>();
+		system.register_mutator::<data::mutator::AddProficiency>();
 		system.register_mutator::<data::mutator::AddSavingThrowModifier>();
-		system.register_mutator::<data::mutator::AddSkill>();
 		system.register_mutator::<data::mutator::AddSkillModifier>();
 		system.register_mutator::<data::mutator::AddMaxSpeed>();
 		system.register_mutator::<data::mutator::AddMaxSense>();

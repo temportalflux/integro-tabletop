@@ -8,45 +8,6 @@ use crate::{
 };
 use std::str::FromStr;
 
-// TODO: DEPRECATED: Use AddProficiency::SavingThrow
-#[derive(Clone, Debug, PartialEq)]
-pub struct AddSavingThrow(pub Ability);
-
-impl crate::utility::TraitEq for AddSavingThrow {
-	fn equals_trait(&self, other: &dyn crate::utility::TraitEq) -> bool {
-		crate::utility::downcast_trait_eq(self, other)
-	}
-}
-
-impl KDLNode for AddSavingThrow {
-	fn id() -> &'static str {
-		"add_saving_throw"
-	}
-}
-
-impl Mutator for AddSavingThrow {
-	type Target = Character;
-
-	fn get_node_name(&self) -> &'static str {
-		Self::id()
-	}
-
-	fn apply<'c>(&self, stats: &mut Character) {
-		let source = stats.source_path();
-		stats.saving_throws_mut().add_proficiency(self.0, source);
-	}
-}
-
-impl FromKDL<DnD5e> for AddSavingThrow {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		value_idx: &mut ValueIdx,
-		_system: &DnD5e,
-	) -> anyhow::Result<Self> {
-		Ok(Self(Ability::from_str(node.get_str(value_idx.next())?)?))
-	}
-}
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct AddSavingThrowModifier {
 	pub ability: Option<Ability>,
@@ -95,8 +56,6 @@ impl FromKDL<DnD5e> for AddSavingThrowModifier {
 	}
 }
 
-// TODO: Split into submodules
-// TODO: Test AddSavingThrow FromKDL
 // TODO: Test AddSavingThrowModifier FromKDL
 
 #[cfg(test)]
@@ -106,25 +65,6 @@ mod test {
 		character::{Character, Persistent},
 		proficiency, Ability, Feature,
 	};
-
-	#[test]
-	fn proficiency() {
-		let character = Character::from(Persistent {
-			feats: vec![Feature {
-				name: "AddSavingThrow".into(),
-				mutators: vec![AddSavingThrow(Ability::Wisdom).into()],
-				..Default::default()
-			}
-			.into()],
-			..Default::default()
-		});
-		let (prof, _) = &character.saving_throws()[Ability::Wisdom];
-		assert_eq!(*prof.value(), proficiency::Level::Full);
-		assert_eq!(
-			*prof.sources(),
-			vec![("AddSavingThrow".into(), proficiency::Level::Full)]
-		);
-	}
 
 	#[test]
 	fn advantage() {

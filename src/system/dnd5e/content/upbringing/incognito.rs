@@ -1,6 +1,6 @@
 use crate::{
 	system::dnd5e::data::{
-		mutator::{AddAbilityScore, AddProficiency, AddSkill},
+		mutator::{AddAbilityScore, AddProficiency},
 		proficiency, Ability, Feature, Skill, Upbringing,
 	},
 	utility::Selector,
@@ -34,15 +34,15 @@ pub fn incognito() -> Upbringing {
 				name: "Good with People".into(),
 				description: "You gain proficiency with two of the following skills of your choice: Deception, Insight, Intimidation, and Persuasion.".into(),
 				mutators: vec![
-					AddSkill {
-						skill: Selector::AnyOf {
+					AddProficiency::Skill(
+						Selector::AnyOf {
 							id: None,
 							options: vec![
 								Skill::Deception, Skill::Insight, Skill::Intimidation, Skill::Persuasion,
 							],
 						},
-						proficiency: proficiency::Level::Full,
-					}.into(),
+						proficiency::Level::Full
+					).into(),
 				],
 				..Default::default()
 			}.into(),

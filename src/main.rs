@@ -61,7 +61,7 @@ fn create_character() -> system::dnd5e::data::character::Persistent {
 		feats: vec![Feature {
 			name: "Custom Feat".into(),
 			mutators: vec![
-				mutator::AddSavingThrow(Ability::Charisma).into(),
+				mutator::AddProficiency::SavingThrow(Ability::Charisma).into(),
 				mutator::AddSavingThrowModifier {
 					ability: Some(Ability::Charisma),
 					target: Some("Magic".into()),
@@ -88,11 +88,10 @@ fn create_character() -> system::dnd5e::data::character::Persistent {
 					..Default::default()
 				}
 				.into(),
-				mutator::AddSkill {
-					skill: Selector::Specific(Skill::Stealth),
-					proficiency: proficiency::Level::Double,
-				}
-				.into(),
+				mutator::AddProficiency::Skill(
+					Selector::Specific(Skill::Stealth),
+					proficiency::Level::Double
+				).into()
 			],
 			..Default::default()
 		}
@@ -146,11 +145,10 @@ fn create_character() -> system::dnd5e::data::character::Persistent {
 				kind: item::ItemKind::Equipment(item::equipment::Equipment {
 					modifiers: vec![
 						mutator::AddMaxSpeed("Flying".into(), 40).into(),
-						mutator::AddSkill {
-							skill: Selector::Specific(Skill::Perception),
-							proficiency: proficiency::Level::Half,
-						}
-						.into(),
+						mutator::AddProficiency::Skill(
+							Selector::Specific(Skill::Perception),
+							proficiency::Level::Half
+						).into(),
 						mutator::AddSkillModifier {
 							skill: Skill::Perception,
 							modifier: roll::Modifier::Advantage,

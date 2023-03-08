@@ -8,8 +8,8 @@ use crate::{
 				weapon::{self},
 			},
 			mutator::{
-				self, AddArmorClassFormula, AddDefense, AddProficiency, AddSavingThrow,
-				AddSavingThrowModifier, AddSkill,
+				self, AddArmorClassFormula, AddDefense, AddProficiency,
+				AddSavingThrowModifier,
 			},
 			proficiency,
 			roll::Die,
@@ -128,10 +128,10 @@ pub fn barbarian(levels: usize, subclass: Option<Subclass>) -> Class {
 				AddProficiency::Armor(armor::Kind::Heavy).into(),
 				AddProficiency::Weapon(WeaponProficiency::Kind(weapon::Kind::Simple)).into(),
 				AddProficiency::Weapon(WeaponProficiency::Kind(weapon::Kind::Martial)).into(),
-				AddSavingThrow(Ability::Strength).into(),
-				AddSavingThrow(Ability::Constitution).into(),
-				AddSkill {
-					skill: Selector::AnyOf {
+				AddProficiency::SavingThrow(Ability::Strength).into(),
+				AddProficiency::SavingThrow(Ability::Constitution).into(),
+				AddProficiency::Skill(
+					Selector::AnyOf {
 						id: Some("skillA".into()),
 						options: vec![
 							Skill::AnimalHandling,
@@ -142,11 +142,10 @@ pub fn barbarian(levels: usize, subclass: Option<Subclass>) -> Class {
 							Skill::Survival,
 						],
 					},
-					proficiency: proficiency::Level::Full,
-				}
-				.into(),
-				AddSkill {
-					skill: Selector::AnyOf {
+					proficiency::Level::Full
+				).into(),
+				AddProficiency::Skill(
+					Selector::AnyOf {
 						id: Some("skillB".into()),
 						options: vec![
 							Skill::AnimalHandling,
@@ -157,9 +156,8 @@ pub fn barbarian(levels: usize, subclass: Option<Subclass>) -> Class {
 							Skill::Survival,
 						],
 					},
-					proficiency: proficiency::Level::Full,
-				}
-				.into(),
+					proficiency::Level::Full
+				).into(),
 			],
 			features: vec![
 				rage.into(),

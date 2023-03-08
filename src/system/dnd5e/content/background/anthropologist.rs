@@ -1,6 +1,6 @@
 use crate::{
 	system::dnd5e::data::{
-		mutator::{AddProficiency, AddSkill},
+		mutator::{AddProficiency},
 		proficiency, Background, Feature, Skill,
 	},
 	utility::Selector,
@@ -16,14 +16,14 @@ pub fn anthropologist() -> Background {
 		you not only through books and scrolls, but also through first-hand observation—by visiting far-flung \
 		settlements and exploring local histories and customs.".into(),
 		mutators: vec![
-			AddSkill {
-				skill: Selector::Specific(Skill::Insight),
-				proficiency: proficiency::Level::Full,
-			}.into(),
-			AddSkill {
-				skill: Selector::Specific(Skill::Religion),
-				proficiency: proficiency::Level::Full,
-			}.into(),
+			AddProficiency::Skill(
+				Selector::Specific(Skill::Insight),
+				proficiency::Level::Full
+			).into(),
+			AddProficiency::Skill(
+				Selector::Specific(Skill::Religion),
+				proficiency::Level::Full
+			).into(),
 		],
 		features: vec![
 			Feature {
