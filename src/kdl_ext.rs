@@ -122,6 +122,17 @@ pub trait DocumentQueryExt {
 pub trait NodeQueryExt {
 	fn as_node(&self) -> &kdl::KdlNode;
 
+	fn entry_req(&self, key: impl Into<kdl::NodeKey> + Clone) -> anyhow::Result<&kdl::KdlEntry> {
+		self.as_node().entry(key.clone()).ok_or(
+			GeneralError(format!(
+				"Missing value at {:?} in node {:?}",
+				key.into(),
+				self.as_node()
+			))
+			.into(),
+		)
+	}
+
 	fn get_bool(&self, key: impl Into<kdl::NodeKey> + Clone) -> anyhow::Result<bool> {
 		get_type(self.as_node(), key, as_bool)
 	}

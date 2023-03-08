@@ -83,14 +83,11 @@ where
 {
 	pub fn from_kdl(
 		node: &kdl::KdlNode,
+		entry: &kdl::KdlEntry,
 		value_idx: &mut ValueIdx,
 		system: &crate::system::dnd5e::DnD5e,
-		map_value: impl Fn(&kdl::KdlValue) -> Option<V>,
+		map_value: impl Fn(&kdl::KdlValue) -> anyhow::Result<Option<V>>,
 	) -> anyhow::Result<Self> {
-		let entry_idx = value_idx.next();
-		let entry = node.entry(entry_idx).ok_or(GeneralError(format!(
-			"Missing value at index {entry_idx} in node {node:?}"
-		)))?;
 		match entry.ty().map(|id| id.value()) {
 			Some("Evaluator") => {
 				let evaluator_name = entry.value().as_string().ok_or(GeneralError(format!(
@@ -101,7 +98,7 @@ where
 					factory.from_kdl::<V>(node, value_idx, system)?,
 				))
 			}
-			_ => Ok(Self::Fixed(map_value(entry.value()).ok_or(
+			_ => Ok(Self::Fixed(map_value(entry.value())?.ok_or(
 				GeneralError(format!(
 					"Failed to parse value from {:?}, expected {:?}",
 					entry.value(),

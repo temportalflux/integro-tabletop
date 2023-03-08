@@ -1,6 +1,8 @@
 use std::path::{Path, PathBuf};
 use yew::prelude::*;
 
+use crate::system::dnd5e::{data::action::DamageType, Value};
+
 pub mod bootstrap;
 pub mod components;
 pub mod data;
@@ -69,9 +71,24 @@ fn create_character() -> system::dnd5e::data::character::Persistent {
 				//mutator::AddMaxSpeed("Flying".into(), 10).into(),
 				//mutator::AddMaxSense("Darkvision".into(), 30).into(),
 				mutator::AddMaxSense("Tremorsense".into(), 60).into(),
-				mutator::AddDefense(mutator::Defense::Resistance, "Cold".into()).into(),
-				mutator::AddDefense(mutator::Defense::Immunity, "Acid".into()).into(),
-				mutator::AddDefense(mutator::Defense::Vulnerability, "Fire".into()).into(),
+				mutator::AddDefense {
+					defense: mutator::Defense::Resistance,
+					damage_type: Some(Value::Fixed(DamageType::Cold)),
+					..Default::default()
+				}
+				.into(),
+				mutator::AddDefense {
+					defense: mutator::Defense::Immunity,
+					damage_type: Some(Value::Fixed(DamageType::Acid)),
+					..Default::default()
+				}
+				.into(),
+				mutator::AddDefense {
+					defense: mutator::Defense::Vulnerability,
+					damage_type: Some(Value::Fixed(DamageType::Fire)),
+					..Default::default()
+				}
+				.into(),
 				mutator::AddSkill {
 					skill: Selector::Specific(Skill::Stealth),
 					proficiency: proficiency::Level::Double,

@@ -1,7 +1,7 @@
 use crate::{
 	system::dnd5e::{
 		data::{
-			action::{ActivationKind, AttackKind},
+			action::{ActivationKind, AttackKind, DamageType},
 			condition::{self, Condition},
 			evaluator::armor::HasArmorEquipped,
 			evaluator::ByLevel,
@@ -36,11 +36,12 @@ pub fn barbarian(levels: usize, subclass: Option<Subclass>) -> Class {
 			name: "Raging".into(),
 			description: desc.into(),
 			mutators: vec![
+				/* TODO
 				BonusDamage {
 					amount: Value::Evaluated(
 						ByLevel {
 							class_name: Some("Barbarian".into()),
-							map: [(1, 2), (9, 3), (16, 4)].into(),
+							map: [(1, "2".into()), (9, "3".into()), (16, "4".into())].into(),
 						}
 						.into(),
 					),
@@ -51,15 +52,31 @@ pub fn barbarian(levels: usize, subclass: Option<Subclass>) -> Class {
 					}),
 				}
 				.into(),
+				*/
 				// TODO: AddAbilityModifier::Advantage(Ability::Strength).into(),
 				AddSavingThrowModifier {
 					ability: Some(Ability::Strength),
 					target: None,
 				}
 				.into(),
-				AddDefense(mutator::Defense::Resistance, "Bludgeoning".into()).into(),
-				AddDefense(mutator::Defense::Resistance, "Piercing".into()).into(),
-				AddDefense(mutator::Defense::Resistance, "Slashing".into()).into(),
+				AddDefense {
+					defense: mutator::Defense::Resistance,
+					damage_type: Some(Value::Fixed(DamageType::Bludgeoning)),
+					..Default::default()
+				}
+				.into(),
+				AddDefense {
+					defense: mutator::Defense::Resistance,
+					damage_type: Some(Value::Fixed(DamageType::Piercing)),
+					..Default::default()
+				}
+				.into(),
+				AddDefense {
+					defense: mutator::Defense::Resistance,
+					damage_type: Some(Value::Fixed(DamageType::Slashing)),
+					..Default::default()
+				}
+				.into(),
 			],
 			criteria: Some(
 				HasArmorEquipped {
@@ -82,25 +99,19 @@ pub fn barbarian(levels: usize, subclass: Option<Subclass>) -> Class {
 				desc
 			},
 			action: Some(ActivationKind::Bonus),
+			/* TODO
 			limited_uses: Some(LimitedUses {
 				max_uses: Value::Evaluated(
 					ByLevel {
 						class_name: Some("Barbarian".into()),
-						map: [
-							(1, Some(2)),
-							(3, Some(3)),
-							(6, Some(4)),
-							(12, Some(5)),
-							(17, Some(6)),
-							(20, None),
-						]
-						.into(),
+						map: [(1, "2"), (3, "3"), (6, "4"), (12, "5"), (17, "6"), (20, "")].into(),
 					}
 					.into(),
 				),
 				reset_on: Some(Rest::Long),
 				apply_conditions: vec![condition.into()],
 			}),
+			*/
 			..Default::default()
 		}
 	};

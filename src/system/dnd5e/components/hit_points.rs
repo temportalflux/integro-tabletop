@@ -10,6 +10,7 @@ use crate::{
 			mutator::Defense,
 		},
 	},
+	utility::Evaluator,
 };
 use wasm_bindgen::JsCast;
 use web_sys::HtmlInputElement;
@@ -753,13 +754,29 @@ pub fn DefensesCard() -> Html {
 		.defenses()
 		.iter()
 		.fold(Vec::new(), |all, (kind, targets)| {
-			targets.iter().fold(all, |mut all, (target, sources)| {
-				let tooltip = crate::data::as_feature_paths_html(sources.iter());
+			targets.iter().fold(all, |mut all, entry| {
+				let tooltip = crate::data::as_feature_path_text(&entry.source);
+				let damage_type = match &entry.damage_type {
+					Some(value) => {
+						let damage_type = value.evaluate(&state);
+						html! {
+							<span style="margin-left: 5px;">{damage_type.display_name()}</span>
+						}
+					}
+					None => html! {},
+				};
+				let context = match &entry.context {
+					Some(context) => html! {
+						<span style="margin-left: 5px;">{context.clone()}</span>
+					},
+					None => html! {},
+				};
 				all.push(html! {
 					<Tooltip tag={"span"} style={"margin: 2px;"} content={tooltip} use_html={true}>
 						<Tag>
 							{defence_to_html(kind)}
-							<span style="margin-left: 5px;">{target.clone()}</span>
+							{damage_type}
+							{context}
 						</Tag>
 					</Tooltip>
 				});

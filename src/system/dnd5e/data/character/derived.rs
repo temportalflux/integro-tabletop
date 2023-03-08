@@ -5,6 +5,7 @@ use crate::{
 		data::{
 			action::{
 				Action, ActivationKind, Attack, AttackCheckKind, AttackKindValue, DamageRoll,
+				DamageType,
 			},
 			mutator::Defense,
 			proficiency,
@@ -15,10 +16,7 @@ use crate::{
 	},
 };
 use enum_map::EnumMap;
-use std::{
-	collections::{BTreeMap, BTreeSet},
-	path::PathBuf,
-};
+use std::{collections::BTreeMap, path::PathBuf};
 
 /// Data derived from the `Persistent`, such as bonuses to abilities/skills,
 /// proficiencies, and actions. This data all lives within `Persistent` in
@@ -246,21 +244,30 @@ impl std::ops::Deref for Senses {
 }
 
 #[derive(Clone, Default, PartialEq, Debug)]
-pub struct Defenses(EnumMap<Defense, BTreeMap<String, BTreeSet<PathBuf>>>);
+pub struct Defenses(EnumMap<Defense, Vec<DefenseEntry>>);
+#[derive(Clone, PartialEq, Debug)]
+pub struct DefenseEntry {
+	pub damage_type: Option<Value<DamageType>>,
+	pub context: Option<String>,
+	pub source: PathBuf,
+}
 impl Defenses {
-	pub fn push(&mut self, kind: Defense, target: String, source: PathBuf) {
-		match self.0[kind].get_mut(&target) {
-			Some(sources) => {
-				sources.insert(source);
-			}
-			None => {
-				self.0[kind].insert(target, BTreeSet::from([source]));
-			}
-		}
+	pub fn push(
+		&mut self,
+		kind: Defense,
+		damage_type: Option<Value<DamageType>>,
+		context: Option<String>,
+		source: PathBuf,
+	) {
+		self.0[kind].push(DefenseEntry {
+			damage_type,
+			context,
+			source,
+		});
 	}
 }
 impl std::ops::Deref for Defenses {
-	type Target = EnumMap<Defense, BTreeMap<String, BTreeSet<PathBuf>>>;
+	type Target = EnumMap<Defense, Vec<DefenseEntry>>;
 
 	fn deref(&self) -> &Self::Target {
 		&self.0

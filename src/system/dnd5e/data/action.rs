@@ -4,8 +4,9 @@ use crate::{
 		Value,
 	},
 	utility::Evaluator,
+	GeneralError,
 };
-use std::path::PathBuf;
+use std::{path::PathBuf, str::FromStr};
 use uuid::Uuid;
 
 #[derive(Clone, PartialEq, Default, Debug)]
@@ -161,6 +162,28 @@ pub enum DamageType {
 	Radiant,
 	Slashing,
 	Thunder,
+}
+impl FromStr for DamageType {
+	type Err = GeneralError;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		match s {
+			"Acid" => Ok(Self::Acid),
+			"Bludgeoning" => Ok(Self::Bludgeoning),
+			"Cold" => Ok(Self::Cold),
+			"Fire" => Ok(Self::Fire),
+			"Force" => Ok(Self::Force),
+			"Lightning" => Ok(Self::Lightning),
+			"Necrotic" => Ok(Self::Necrotic),
+			"Piercing" => Ok(Self::Piercing),
+			"Poison" => Ok(Self::Poison),
+			"Psychic" => Ok(Self::Psychic),
+			"Radiant" => Ok(Self::Radiant),
+			"Slashing" => Ok(Self::Slashing),
+			"Thunder" => Ok(Self::Thunder),
+			_ => Err(GeneralError(format!("Invalid damage type {s:?}")).into()),
+		}
+	}
 }
 impl DamageType {
 	pub fn display_name(&self) -> &'static str {
