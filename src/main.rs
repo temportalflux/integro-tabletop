@@ -1,8 +1,6 @@
 use std::path::{Path, PathBuf};
 use yew::prelude::*;
 
-use crate::system::dnd5e::{data::action::DamageType, Value};
-
 pub mod bootstrap;
 pub mod components;
 pub mod data;
@@ -37,6 +35,7 @@ fn create_character() -> system::dnd5e::data::character::Persistent {
 	use system::dnd5e::{
 		content::*,
 		data::{character::Persistent, mutator, Description, *},
+		Value,
 	};
 	use utility::Selector;
 	Persistent {

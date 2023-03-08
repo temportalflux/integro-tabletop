@@ -1,7 +1,6 @@
 use crate::{
 	system::dnd5e::{
 		data::{
-			action::DamageType,
 			condition::{self, Condition},
 			evaluator::armor::HasArmorEquipped,
 			item::{
@@ -14,8 +13,8 @@ use crate::{
 			},
 			proficiency,
 			roll::Die,
-			Ability, AddProficiency, ArmorClassFormula, Class, Feature, Level, Skill, Subclass,
-			WeaponProficiency,
+			Ability, AddProficiency, ArmorClassFormula, Class, DamageType, Feature, Level, Skill,
+			Subclass, WeaponProficiency,
 		},
 		Value,
 	},

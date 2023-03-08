@@ -4,7 +4,8 @@ use crate::system::dnd5e::data::{
 		weapon::{self, Property, Weapon, WeaponDamage},
 		Item, ItemKind,
 	},
-	roll::{Die, Roll}, action::DamageType,
+	roll::{Die, Roll},
+	DamageType,
 };
 
 pub fn club() -> Item {

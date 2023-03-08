@@ -3,7 +3,7 @@ use std::str::FromStr;
 use crate::{
 	kdl_ext::NodeQueryExt,
 	system::dnd5e::{
-		data::{action::DamageType, character::Character},
+		data::{character::Character, DamageType},
 		DnD5e, FromKDL, KDLNode, Value,
 	},
 	utility::Mutator,
@@ -115,9 +115,8 @@ mod test {
 	use super::{AddDefense, Defense};
 	use crate::system::dnd5e::{
 		data::{
-			action::DamageType,
 			character::{Character, DefenseEntry, Persistent},
-			Feature,
+			DamageType, Feature,
 		},
 		BoxedMutator, DnD5e, Value,
 	};

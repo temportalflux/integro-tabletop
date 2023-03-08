@@ -3,14 +3,11 @@ use crate::{
 	path_map::PathMap,
 	system::dnd5e::{
 		data::{
-			action::{
-				Action, ActivationKind, Attack, AttackCheckKind, AttackKindValue, DamageRoll,
-				DamageType,
-			},
+			action::{Action, ActivationKind, Attack, AttackCheckKind, AttackKindValue},
 			mutator::Defense,
 			proficiency,
 			roll::{Modifier, RollSet},
-			Ability, ArmorClass, BoxedFeature, OtherProficiencies, Skill,
+			Ability, ArmorClass, BoxedFeature, DamageRoll, DamageType, OtherProficiencies, Skill,
 		},
 		Value,
 	},

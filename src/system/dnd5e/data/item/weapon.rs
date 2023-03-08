@@ -5,11 +5,11 @@ use crate::{
 		data::{
 			action::{
 				Action, ActionSource, ActivationKind, Attack, AttackCheckKind, AttackKind,
-				AttackKindValue, DamageRoll, DamageType,
+				AttackKindValue,
 			},
 			evaluator::{self, IsProficientWith},
 			roll::Roll,
-			Ability, WeaponProficiency,
+			Ability, DamageRoll, DamageType, WeaponProficiency,
 		},
 		DnD5e, FromKDL, Value,
 	},

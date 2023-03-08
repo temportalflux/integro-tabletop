@@ -2,7 +2,10 @@ use crate::{
 	components::*,
 	system::dnd5e::{
 		components::SharedCharacter,
-		data::action::{AttackCheckKind, AttackKindValue, DamageRoll},
+		data::{
+			action::{AttackCheckKind, AttackKindValue},
+			DamageRoll,
+		},
 	},
 	utility::Evaluator,
 };
