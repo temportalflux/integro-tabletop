@@ -16,6 +16,9 @@ pub use defense::*;
 mod hit_points;
 pub use hit_points::*;
 
+mod proficient;
+pub use proficient::*;
+
 mod saving_throw;
 pub use saving_throw::*;
 

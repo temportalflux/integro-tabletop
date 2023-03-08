@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use crate::{
 	kdl_ext::{NodeQueryExt, ValueIdx},
 	system::dnd5e::{
@@ -8,7 +6,9 @@ use crate::{
 	},
 	utility::Mutator,
 };
+use std::str::FromStr;
 
+// TODO: DEPRECATED: Use AddProficiency::SavingThrow
 #[derive(Clone, Debug, PartialEq)]
 pub struct AddSavingThrow(pub Ability);
 

@@ -13,6 +13,11 @@ pub struct AttributedValue<T> {
 	value: T,
 	sources: Vec<(PathBuf, T)>,
 }
+impl<T> From<(T, Vec<(PathBuf, T)>)> for AttributedValue<T> {
+	fn from((value, sources): (T, Vec<(PathBuf, T)>)) -> Self {
+		Self { value, sources }
+	}
+}
 impl<T> AttributedValue<T>
 where
 	T: Clone,

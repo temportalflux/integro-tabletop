@@ -1,13 +1,4 @@
-use crate::{
-	system::dnd5e::{
-		data::{
-			character::Character,
-			item::{armor, weapon},
-		},
-		KDLNode,
-	},
-	utility::{Mutator, Selector},
-};
+use crate::system::dnd5e::data::item::{armor, weapon};
 use std::{
 	collections::{BTreeMap, BTreeSet},
 	path::PathBuf,
@@ -32,65 +23,6 @@ impl ToString for WeaponProficiency {
 			Self::Kind(weapon::Kind::Simple) => "Simple Weapons".into(),
 			Self::Kind(weapon::Kind::Martial) => "Martial Weapons".into(),
 			Self::Classification(name) => name.clone(),
-		}
-	}
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum AddProficiency {
-	Language(Selector<String>),
-	Armor(armor::Kind),
-	Weapon(WeaponProficiency),
-	Tool(String),
-}
-
-impl crate::utility::TraitEq for AddProficiency {
-	fn equals_trait(&self, other: &dyn crate::utility::TraitEq) -> bool {
-		crate::utility::downcast_trait_eq(self, other)
-	}
-}
-
-impl KDLNode for AddProficiency {
-	fn id() -> &'static str {
-		"add_proficiency"
-	}
-}
-impl Mutator for AddProficiency {
-	type Target = Character;
-
-	fn get_node_name(&self) -> &'static str {
-		Self::id()
-	}
-
-	fn apply<'c>(&self, stats: &mut Character) {
-		let source = stats.source_path();
-		match &self {
-			Self::Language(value) => {
-				if let Some(value) = stats.resolve_selector(value) {
-					stats
-						.other_proficiencies_mut()
-						.languages
-						.insert(value, source);
-				}
-			}
-			Self::Armor(value) => {
-				stats
-					.other_proficiencies_mut()
-					.armor
-					.insert(value.clone(), source);
-			}
-			Self::Weapon(value) => {
-				stats
-					.other_proficiencies_mut()
-					.weapons
-					.insert(value.clone(), source);
-			}
-			Self::Tool(value) => {
-				stats
-					.other_proficiencies_mut()
-					.tools
-					.insert(value.clone(), source);
-			}
 		}
 	}
 }

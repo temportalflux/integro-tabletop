@@ -10,6 +10,7 @@ use crate::{
 	GeneralError,
 };
 
+// TODO: Deprecated use AddProficiency::Skill
 #[derive(Clone, Debug, PartialEq)]
 pub struct AddSkill {
 	pub skill: Selector<Skill>,

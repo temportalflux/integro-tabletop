@@ -1,3 +1,7 @@
+use std::str::FromStr;
+
+use crate::GeneralError;
+
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub enum Level {
 	None,
@@ -36,6 +40,33 @@ impl Level {
 			Self::Half => 0.5,
 			Self::Full => 1.0,
 			Self::Double => 2.0,
+		}
+	}
+
+	// TODO: ToString impl conflicts with Into<Html>
+	pub fn to_string(&self) -> String {
+		match self {
+			Self::None => "None",
+			Self::Half => "Half",
+			Self::Full => "Full",
+			Self::Double => "Double",
+		}
+		.to_owned()
+	}
+}
+
+impl FromStr for Level {
+	type Err = GeneralError;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		match s {
+			"None" => Ok(Self::None),
+			"Half" => Ok(Self::Half),
+			"Full" => Ok(Self::Full),
+			"Double" => Ok(Self::Double),
+			_ => Err(GeneralError(format!(
+				"Invalid proficiency level {s:?}, expected None, Half, Full, or Double"
+			))),
 		}
 	}
 }
