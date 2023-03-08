@@ -63,7 +63,7 @@ mod test {
 	use super::*;
 	use crate::system::dnd5e::data::{
 		character::{Character, Persistent},
-		proficiency, Ability, Feature,
+		Ability, Feature,
 	};
 
 	#[test]

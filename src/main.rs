@@ -90,8 +90,9 @@ fn create_character() -> system::dnd5e::data::character::Persistent {
 				.into(),
 				mutator::AddProficiency::Skill(
 					Selector::Specific(Skill::Stealth),
-					proficiency::Level::Double
-				).into()
+					proficiency::Level::Double,
+				)
+				.into(),
 			],
 			..Default::default()
 		}
@@ -147,8 +148,9 @@ fn create_character() -> system::dnd5e::data::character::Persistent {
 						mutator::AddMaxSpeed("Flying".into(), 40).into(),
 						mutator::AddProficiency::Skill(
 							Selector::Specific(Skill::Perception),
-							proficiency::Level::Half
-						).into(),
+							proficiency::Level::Half,
+						)
+						.into(),
 						mutator::AddSkillModifier {
 							skill: Skill::Perception,
 							modifier: roll::Modifier::Advantage,

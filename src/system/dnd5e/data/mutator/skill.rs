@@ -1,13 +1,12 @@
-use std::str::FromStr;
 use crate::{
 	kdl_ext::NodeQueryExt,
 	system::dnd5e::{
-		data::{character::Character, proficiency, roll, Skill},
+		data::{character::Character, roll, Skill},
 		DnD5e, FromKDL, KDLNode,
 	},
-	utility::{Mutator, Selector},
-	GeneralError,
+	utility::Mutator,
 };
+use std::str::FromStr;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AddSkillModifier {

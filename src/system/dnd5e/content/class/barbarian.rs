@@ -8,8 +8,7 @@ use crate::{
 				weapon::{self},
 			},
 			mutator::{
-				self, AddArmorClassFormula, AddDefense, AddProficiency,
-				AddSavingThrowModifier,
+				self, AddArmorClassFormula, AddDefense, AddProficiency, AddSavingThrowModifier,
 			},
 			proficiency,
 			roll::Die,

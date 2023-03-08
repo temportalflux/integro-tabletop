@@ -1,11 +1,8 @@
-use crate::{
-	kdl_ext::{NodeQueryExt, ValueIdx},
-	system::dnd5e::{
-		data::{character::Character, Ability},
-		DnD5e, FromKDL,
-	},
-};
-use std::{path::PathBuf, str::FromStr};
+use crate::system::dnd5e::data::{character::Character, Ability};
+use std::path::PathBuf;
+
+mod formula;
+pub use formula::*;
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct ArmorClass {
@@ -47,62 +44,6 @@ impl ArmorClass {
 		self.bonuses.iter()
 	}
 }
-
-#[derive(Clone, PartialEq, Debug)]
-pub struct ArmorClassFormula {
-	pub base: u32,
-	pub bonuses: Vec<BoundedAbility>,
-}
-impl Default for ArmorClassFormula {
-	fn default() -> Self {
-		Self {
-			base: 10,
-			bonuses: vec![BoundedAbility {
-				ability: Ability::Dexterity,
-				min: None,
-				max: None,
-			}],
-		}
-	}
-}
-impl From<u32> for ArmorClassFormula {
-	fn from(base: u32) -> Self {
-		Self {
-			base,
-			bonuses: Vec::new(),
-		}
-	}
-}
-impl ArmorClassFormula {
-	fn evaluate(&self, state: &Character) -> i32 {
-		let bonus: i32 = self
-			.bonuses
-			.iter()
-			.map(|bounded| bounded.evaluate(state))
-			.sum();
-		(self.base as i32) + bonus
-	}
-}
-impl FromKDL<DnD5e> for ArmorClassFormula {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		_value_idx: &mut ValueIdx,
-		_system: &DnD5e,
-	) -> anyhow::Result<Self> {
-		let base = node.get_i64("base")? as u32;
-		let mut bonuses = Vec::new();
-		for node in node.query_all("bonus")? {
-			let mut value_idx = ValueIdx::default();
-			let ability = Ability::from_str(node.get_str(value_idx.next())?)?;
-			let min = node.get_i64_opt("min")?.map(|v| v as i32);
-			let max = node.get_i64_opt("max")?.map(|v| v as i32);
-			bonuses.push(BoundedAbility { ability, min, max });
-		}
-		Ok(Self { base, bonuses })
-	}
-}
-
-// TODO: Test ArmorClassFormula (at least FromKDL)
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct BoundedAbility {

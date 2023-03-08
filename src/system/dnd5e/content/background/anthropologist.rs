@@ -1,8 +1,5 @@
 use crate::{
-	system::dnd5e::data::{
-		mutator::{AddProficiency},
-		proficiency, Background, Feature, Skill,
-	},
+	system::dnd5e::data::{mutator::AddProficiency, proficiency, Background, Feature, Skill},
 	utility::Selector,
 };
 
