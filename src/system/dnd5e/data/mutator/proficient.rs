@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use crate::{
 	kdl_ext::NodeQueryExt,
 	system::dnd5e::{
@@ -13,6 +11,7 @@ use crate::{
 	utility::{Mutator, Selector},
 	GeneralError,
 };
+use std::str::FromStr;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum AddProficiency {
