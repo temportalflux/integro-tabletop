@@ -1,25 +1,31 @@
 use crate::{
 	kdl_ext::NodeQueryExt,
-	system::dnd5e::{data::character::Character, DnD5e, FromKDL, KDLNode},
+	system::dnd5e::{
+		data::{bounded::BoundValue, character::Character},
+		DnD5e, FromKDL, KDLNode,
+	},
 	utility::Mutator,
 };
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct IncMinSpeed(pub String, pub i32);
+pub struct Speed {
+	pub name: String,
+	pub argument: BoundValue,
+}
 
-impl crate::utility::TraitEq for IncMinSpeed {
+impl crate::utility::TraitEq for Speed {
 	fn equals_trait(&self, other: &dyn crate::utility::TraitEq) -> bool {
 		crate::utility::downcast_trait_eq(self, other)
 	}
 }
 
-impl KDLNode for IncMinSpeed {
+impl KDLNode for Speed {
 	fn id() -> &'static str {
-		"increase_min_speed"
+		"speed"
 	}
 }
 
-impl Mutator for IncMinSpeed {
+impl Mutator for Speed {
 	type Target = Character;
 
 	fn get_node_name(&self) -> &'static str {
@@ -28,19 +34,21 @@ impl Mutator for IncMinSpeed {
 
 	fn apply<'c>(&self, stats: &mut Character) {
 		let source = stats.source_path();
-		stats.speeds_mut().push_min(self.0.clone(), self.1, source);
+		stats
+			.speeds_mut()
+			.insert(self.name.clone(), self.argument.clone(), source);
 	}
 }
 
-impl FromKDL<DnD5e> for IncMinSpeed {
+impl FromKDL<DnD5e> for Speed {
 	fn from_kdl(
 		node: &kdl::KdlNode,
 		value_idx: &mut crate::kdl_ext::ValueIdx,
-		_system: &DnD5e,
+		system: &DnD5e,
 	) -> anyhow::Result<Self> {
-		let kind = node.get_str(value_idx.next())?.to_owned();
-		let amount = node.get_i64(value_idx.next())? as i32;
-		Ok(Self(kind, amount))
+		let name = node.get_str(value_idx.next())?.to_owned();
+		let argument = BoundValue::from_kdl(node, value_idx, system)?;
+		Ok(Self { name, argument })
 	}
 }
 
@@ -53,13 +61,27 @@ mod test {
 		use crate::system::dnd5e::{BoxedMutator, DnD5e};
 
 		fn from_doc(doc: &str) -> anyhow::Result<BoxedMutator> {
-			DnD5e::defaultmut_parse_kdl::<IncMinSpeed>(doc)
+			DnD5e::defaultmut_parse_kdl::<Speed>(doc)
 		}
 
 		#[test]
-		fn valid_format() -> anyhow::Result<()> {
-			let doc = "mutator \"increase_min_speed\" \"Walking\" 30";
-			let expected = IncMinSpeed("Walking".into(), 30);
+		fn minimum() -> anyhow::Result<()> {
+			let doc = "mutator \"speed\" \"Walking\" (Minimum)30";
+			let expected = Speed {
+				name: "Walking".into(),
+				argument: BoundValue::Minimum(30),
+			};
+			assert_eq!(from_doc(doc)?, expected.into());
+			Ok(())
+		}
+
+		#[test]
+		fn additive() -> anyhow::Result<()> {
+			let doc = "mutator \"speed\" \"Walking\" (Additive)30";
+			let expected = Speed {
+				name: "Walking".into(),
+				argument: BoundValue::Additive(30),
+			};
 			assert_eq!(from_doc(doc)?, expected.into());
 			Ok(())
 		}
@@ -68,11 +90,12 @@ mod test {
 	mod mutate {
 		use super::*;
 		use crate::system::dnd5e::data::{
+			bounded::BoundKind,
 			character::{Character, Persistent},
 			Feature,
 		};
 
-		fn character(mutators: Vec<(&'static str, IncMinSpeed)>) -> Character {
+		fn character(mutators: Vec<(&'static str, Speed)>) -> Character {
 			Character::from(Persistent {
 				feats: mutators
 					.into_iter()
@@ -90,24 +113,127 @@ mod test {
 		}
 
 		#[test]
-		fn set_max() {
-			let character = character(vec![("TestFeature", IncMinSpeed("Walking".into(), 30))]);
-			assert_eq!(
-				character.speeds().get("Walking"),
-				Some(&(30, [("TestFeature".into(), 30)].into()).into())
-			);
+		fn minimum_single() {
+			let character = character(vec![(
+				"TestFeature",
+				Speed {
+					name: "Walking".into(),
+					argument: BoundValue::Minimum(60),
+				},
+			)]);
+			let sense = character.speeds().get("Walking").unwrap();
+			let expected = [(BoundKind::Minimum, [("TestFeature".into(), 60)].into())].into();
+			assert_eq!(sense, &expected);
+			assert_eq!(sense.value(), 60);
 		}
 
 		#[test]
-		fn extend_max() {
+		fn minimum_multiple() {
 			let character = character(vec![
-				("SpeedB", IncMinSpeed("Walking".into(), 35)),
-				("SpeedA", IncMinSpeed("Walking".into(), 20)),
+				(
+					"B",
+					Speed {
+						name: "Walking".into(),
+						argument: BoundValue::Minimum(60),
+					},
+				),
+				(
+					"A",
+					Speed {
+						name: "Walking".into(),
+						argument: BoundValue::Minimum(40),
+					},
+				),
 			]);
-			assert_eq!(
-				character.speeds().get("Walking"),
-				Some(&(35, [("SpeedA".into(), 20), ("SpeedB".into(), 35)].into()).into())
-			);
+			let sense = character.speeds().get("Walking").unwrap();
+			let expected = [(
+				BoundKind::Minimum,
+				[("A".into(), 40), ("B".into(), 60)].into(),
+			)]
+			.into();
+			assert_eq!(sense, &expected);
+			assert_eq!(sense.value(), 60);
+		}
+
+		#[test]
+		fn single_additive() {
+			let character = character(vec![(
+				"TestFeature",
+				Speed {
+					name: "Walking".into(),
+					argument: BoundValue::Additive(20),
+				},
+			)]);
+			let sense = character.speeds().get("Walking").unwrap();
+			let expected = [(BoundKind::Additive, [("TestFeature".into(), 20)].into())].into();
+			assert_eq!(sense, &expected);
+			assert_eq!(sense.value(), 20);
+		}
+
+		#[test]
+		fn minimum_gt_additive() {
+			let character = character(vec![
+				(
+					"A",
+					Speed {
+						name: "Walking".into(),
+						argument: BoundValue::Minimum(60),
+					},
+				),
+				(
+					"B",
+					Speed {
+						name: "Walking".into(),
+						argument: BoundValue::Additive(40),
+					},
+				),
+			]);
+			let sense = character.speeds().get("Walking").unwrap();
+			let expected = [
+				(BoundKind::Minimum, [("A".into(), 60)].into()),
+				(BoundKind::Additive, [("B".into(), 40)].into()),
+			]
+			.into();
+			assert_eq!(sense, &expected);
+			assert_eq!(sense.value(), 60);
+		}
+
+		#[test]
+		fn minimum_lt_additive() {
+			let character = character(vec![
+				(
+					"A",
+					Speed {
+						name: "Walking".into(),
+						argument: BoundValue::Minimum(60),
+					},
+				),
+				(
+					"B",
+					Speed {
+						name: "Walking".into(),
+						argument: BoundValue::Additive(40),
+					},
+				),
+				(
+					"C",
+					Speed {
+						name: "Walking".into(),
+						argument: BoundValue::Additive(30),
+					},
+				),
+			]);
+			let sense = character.speeds().get("Walking").unwrap();
+			let expected = [
+				(BoundKind::Minimum, [("A".into(), 60)].into()),
+				(
+					BoundKind::Additive,
+					[("B".into(), 40), ("C".into(), 30)].into(),
+				),
+			]
+			.into();
+			assert_eq!(sense, &expected);
+			assert_eq!(sense.value(), 70);
 		}
 	}
 }

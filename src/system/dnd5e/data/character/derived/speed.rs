@@ -1,24 +1,24 @@
-use crate::system::dnd5e::data::character::AttributedValue;
+use crate::system::dnd5e::data::bounded::{BoundValue, BoundedValue};
 use std::{collections::BTreeMap, path::PathBuf};
 
 #[derive(Clone, Default, PartialEq, Debug)]
-pub struct Speeds(BTreeMap<String, AttributedValue<i32>>);
+pub struct Speeds(BTreeMap<String, BoundedValue>);
 impl Speeds {
-	pub fn push_min(&mut self, kind: String, max_bound_in_feet: i32, source: PathBuf) {
+	pub fn insert(&mut self, kind: String, bound: BoundValue, source: PathBuf) {
 		match self.0.get_mut(&kind) {
 			Some(value) => {
-				value.push(max_bound_in_feet, source);
+				value.insert(bound, source);
 			}
 			None => {
-				let mut value = AttributedValue::default();
-				value.push(max_bound_in_feet, source);
+				let mut value = BoundedValue::default();
+				value.insert(bound, source);
 				self.0.insert(kind, value);
 			}
 		}
 	}
 }
 impl std::ops::Deref for Speeds {
-	type Target = BTreeMap<String, AttributedValue<i32>>;
+	type Target = BTreeMap<String, BoundedValue>;
 
 	fn deref(&self) -> &Self::Target {
 		&self.0

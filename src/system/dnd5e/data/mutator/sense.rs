@@ -5,7 +5,6 @@ use crate::{
 		DnD5e, FromKDL, KDLNode,
 	},
 	utility::Mutator,
-	GeneralError,
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -45,29 +44,10 @@ impl FromKDL<DnD5e> for Sense {
 	fn from_kdl(
 		node: &kdl::KdlNode,
 		value_idx: &mut crate::kdl_ext::ValueIdx,
-		_system: &DnD5e,
+		system: &DnD5e,
 	) -> anyhow::Result<Self> {
 		let name = node.get_str(value_idx.next())?.to_owned();
-
-		let entry_idx = value_idx.next();
-		let argument = match node
-			.entry_req(entry_idx)?
-			.ty()
-			.ok_or(GeneralError(format!(
-				"Type id missing on value at index {entry_idx} of node {node:?}"
-			)))?
-			.value()
-		{
-			"Minimum" => BoundValue::Minimum(node.get_i64(entry_idx)? as i32),
-			"Additive" => BoundValue::Additive(node.get_i64(entry_idx)? as i32),
-			type_name => {
-				return Err(GeneralError(format!(
-					"Invalid bound value id {type_name:?}, \
-					expected Minimum or Additive"
-				))
-				.into());
-			}
-		};
+		let argument = BoundValue::from_kdl(node, value_idx, system)?;
 		Ok(Self { name, argument })
 	}
 }

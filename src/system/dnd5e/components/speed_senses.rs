@@ -1,4 +1,4 @@
-use crate::{bootstrap::components::Tooltip, system::dnd5e::components::SharedCharacter};
+use crate::system::dnd5e::components::SharedCharacter;
 use yew::prelude::*;
 
 #[derive(Clone, PartialEq, Properties)]
@@ -34,37 +34,21 @@ pub fn SpeedAndSenses() -> Html {
 	let speed = match state.speeds().len() {
 		0 => html! {},
 		1 => {
-			let (title, attributed) = state.speeds().iter().next().unwrap();
-			let tooltip = crate::data::as_feature_paths_html_custom(
-				attributed.sources().iter(),
-				|(path, value)| (*value, path.as_path()),
-				|value, path_str| format!("<div>{}ft. ({})</div>", value, path_str),
-			);
+			let (title, bounded) = state.speeds().iter().next().unwrap();
 			html! {<div class="col">
-				<Tooltip content={tooltip} use_html={true}>
-					<SingleValue title={format!("{title} Speed")} amount={attributed.value()} />
-				</Tooltip>
+				<SingleValue title={format!("{title} Speed")} amount={bounded.value()} />
 			</div>}
 		}
 		// TODO: Walking speed should always be the first entry
 		_ => html! {<div class="col">
 			<h6 class="text-center" style="font-size: 0.8rem; color: var(--bs-card-title-color);">{"Speeds"}</h6>
 			<div style="margin-left: 5px; margin-right: 5px;">
-				{state.speeds().iter().map(|(title, attributed)| {
-					let tooltip = crate::data::as_feature_paths_html_custom(
-						attributed.sources().iter(),
-						|(path, value)| (*value, path.as_path()),
-						|value, path_str| {
-							format!("<div>{}ft. ({})</div>", value, path_str)
-						},
-					);
+				{state.speeds().iter().map(|(title, bounded)| {
 					html! {
-						<Tooltip content={tooltip} use_html={true}>
-							<span class="d-flex" style="border-style: solid; border-color: var(--bs-border-color); border-width: 0; border-bottom-width: var(--bs-border-width);">
-								<span class="flex-grow-1">{title}</span>
-								<span class="ps-2">{attributed.value()}{"ft."}</span>
-							</span>
-						</Tooltip>
+						<span class="d-flex" style="border-style: solid; border-color: var(--bs-border-color); border-width: 0; border-bottom-width: var(--bs-border-width);">
+							<span class="flex-grow-1">{title}</span>
+							<span class="ps-2">{bounded.value()}{"ft."}</span>
+						</span>
 					}
 				}).collect::<Vec<_>>()}
 			</div>

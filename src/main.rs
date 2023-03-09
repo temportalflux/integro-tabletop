@@ -69,7 +69,7 @@ fn create_character() -> system::dnd5e::data::character::Persistent {
 					target: Some("Magic".into()),
 				}
 				.into(),
-				//mutator::IncMinSpeed("Flying".into(), 10).into(),
+				//mutator::Speed("Flying".into(), 10).into(),
 				//mutator::Sense { name: "Darkvision".into(), operation: BoundValue::Minimum(30) }.into(),
 				mutator::Sense {
 					name: "Tremorsense".into(),
@@ -151,7 +151,11 @@ fn create_character() -> system::dnd5e::data::character::Persistent {
 				name: "Wings of the Owl".into(),
 				kind: item::ItemKind::Equipment(item::equipment::Equipment {
 					modifiers: vec![
-						mutator::IncMinSpeed("Flying".into(), 40).into(),
+						mutator::Speed {
+							name: "Flying".into(),
+							argument: BoundValue::Minimum(40),
+						}
+						.into(),
 						mutator::AddProficiency::Skill(
 							Selector::Specific(Skill::Perception),
 							proficiency::Level::Half,

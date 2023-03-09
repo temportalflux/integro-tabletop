@@ -1,3 +1,8 @@
+use crate::{
+	kdl_ext::NodeQueryExt,
+	system::dnd5e::{DnD5e, FromKDL},
+	GeneralError,
+};
 use enum_map::{Enum, EnumMap};
 use std::{collections::BTreeMap, path::PathBuf};
 
@@ -87,6 +92,32 @@ impl BoundValue {
 	}
 }
 
+impl FromKDL<DnD5e> for BoundValue {
+	fn from_kdl(
+		node: &kdl::KdlNode,
+		value_idx: &mut crate::kdl_ext::ValueIdx,
+		_system: &DnD5e,
+	) -> anyhow::Result<Self> {
+		let entry_idx = value_idx.next();
+		match node
+			.entry_req(entry_idx)?
+			.ty()
+			.ok_or(GeneralError(format!(
+				"Type id missing on value at index {entry_idx} of node {node:?}"
+			)))?
+			.value()
+		{
+			"Minimum" => Ok(Self::Minimum(node.get_i64(entry_idx)? as i32)),
+			"Additive" => Ok(Self::Additive(node.get_i64(entry_idx)? as i32)),
+			type_name => Err(GeneralError(format!(
+				"Invalid bound value id {type_name:?}, \
+				expected Minimum or Additive"
+			))
+			.into()),
+		}
+	}
+}
+
 #[cfg(test)]
 mod test {
 	use super::*;
@@ -130,8 +161,7 @@ mod test {
 	#[test]
 	fn value_add_multiple() {
 		let mut sense = BoundedValue::default();
-		sense.0[BoundKind::Additive] = [("A".into(), 5)].into();
-		sense.0[BoundKind::Additive] = [("B".into(), 10)].into();
+		sense.0[BoundKind::Additive] = [("A".into(), 5), ("B".into(), 10)].into();
 		assert_eq!(sense.value(), 15);
 	}
 
@@ -155,8 +185,7 @@ mod test {
 	fn value_min_lt_add_multiple() {
 		let mut sense = BoundedValue::default();
 		sense.0[BoundKind::Minimum] = [("A".into(), 60)].into();
-		sense.0[BoundKind::Additive] = [("B".into(), 60)].into();
-		sense.0[BoundKind::Additive] = [("C".into(), 60)].into();
+		sense.0[BoundKind::Additive] = [("B".into(), 60), ("C".into(), 60)].into();
 		assert_eq!(sense.value(), 120);
 	}
 }
