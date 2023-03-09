@@ -4,7 +4,7 @@ use crate::{
 	system::dnd5e::{
 		data::{
 			action::{Action, ActivationKind, Attack, AttackCheckKind, AttackKindValue},
-			mutator::Defense,
+			mutator::{Defense, Flag},
 			proficiency,
 			roll::{Modifier, RollSet},
 			Ability, ArmorClass, BoxedFeature, DamageRoll, DamageType, OtherProficiencies, Skill,
@@ -12,7 +12,7 @@ use crate::{
 		Value,
 	},
 };
-use enum_map::EnumMap;
+use enum_map::{enum_map, EnumMap};
 use std::{collections::BTreeMap, path::PathBuf};
 
 mod sense;
@@ -39,6 +39,7 @@ pub struct Derived {
 	pub armor_class: ArmorClass,
 	pub actions: Vec<Action>,
 	pub description: DerivedDescription,
+	pub flags: EnumMap<Flag, bool>,
 }
 
 impl Default for Derived {
@@ -80,6 +81,9 @@ impl Default for Derived {
 				..Default::default()
 			}],
 			description: Default::default(),
+			flags: enum_map! {
+				Flag::ArmorStrengthRequirement => true,
+			},
 		}
 	}
 }

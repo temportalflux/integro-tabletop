@@ -8,13 +8,14 @@ use crate::{
 				SavingThrows, Senses, Skills, Speeds,
 			},
 			item::{self, weapon, ItemKind},
+			mutator::Flag,
 			proficiency, Ability, ArmorClass, BoxedFeature, OtherProficiencies, Score,
 		},
 		BoxedCriteria, BoxedMutator,
 	},
 	utility::{Dependencies, MutatorGroup, Selector},
 };
-use enum_map::Enum;
+use enum_map::{Enum, EnumMap};
 use enumset::EnumSetType;
 use std::{
 	path::{Path, PathBuf},
@@ -204,6 +205,14 @@ impl Character {
 
 	pub fn persistent(&self) -> &Persistent {
 		&self.character
+	}
+
+	pub fn flags(&self) -> &EnumMap<Flag, bool> {
+		&self.derived.flags
+	}
+
+	pub fn flags_mut(&mut self) -> &mut EnumMap<Flag, bool> {
+		&mut self.derived.flags
 	}
 
 	/// Returns the score/value for a given ability. Any bonuses beyond the character's base scores

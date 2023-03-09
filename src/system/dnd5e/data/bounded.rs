@@ -32,9 +32,11 @@ impl BoundedValue {
 	pub fn value(&self) -> i32 {
 		let minimum = self.args(BoundKind::Minimum).cloned().max();
 		let additive: i32 = self.args(BoundKind::Additive).cloned().sum();
+		let subtract: i32 = self.args(BoundKind::Subtract).cloned().sum();
+		let total = additive - subtract;
 		match minimum {
-			None => additive,
-			Some(min_value) => additive.max(min_value),
+			None => total,
+			Some(min_value) => total.max(min_value),
 		}
 	}
 
@@ -58,18 +60,21 @@ impl BoundedValue {
 pub enum BoundKind {
 	Minimum,
 	Additive,
+	Subtract,
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum BoundValue {
 	Minimum(i32),
 	Additive(i32),
+	Subtract(i32),
 }
 impl BoundValue {
 	pub fn kind(&self) -> BoundKind {
 		match self {
 			Self::Minimum(_) => BoundKind::Minimum,
 			Self::Additive(_) => BoundKind::Additive,
+			Self::Subtract(_) => BoundKind::Subtract,
 		}
 	}
 
@@ -77,6 +82,7 @@ impl BoundValue {
 		match self {
 			Self::Minimum(v) => v,
 			Self::Additive(v) => v,
+			Self::Subtract(v) => v,
 		}
 	}
 
@@ -84,6 +90,7 @@ impl BoundValue {
 		match self {
 			Self::Minimum(v) => v,
 			Self::Additive(v) => v,
+			Self::Subtract(v) => v,
 		}
 	}
 
@@ -109,15 +116,17 @@ impl FromKDL<DnD5e> for BoundValue {
 		{
 			"Minimum" => Ok(Self::Minimum(node.get_i64(entry_idx)? as i32)),
 			"Additive" => Ok(Self::Additive(node.get_i64(entry_idx)? as i32)),
+			"Subtract" => Ok(Self::Subtract(node.get_i64(entry_idx)? as i32)),
 			type_name => Err(GeneralError(format!(
 				"Invalid bound value id {type_name:?}, \
-				expected Minimum or Additive"
+				expected Minimum, Additive, or Subtract"
 			))
 			.into()),
 		}
 	}
 }
 
+// TODO: Tests for BoundValue::Subtract
 #[cfg(test)]
 mod test {
 	use super::*;

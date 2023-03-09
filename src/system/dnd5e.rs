@@ -252,6 +252,7 @@ impl DnD5e {
 		system.register_mutator::<data::mutator::AddSkillModifier>();
 		system.register_mutator::<data::mutator::Speed>();
 		system.register_mutator::<data::mutator::Sense>();
+		system.register_mutator::<data::mutator::SetFlag>();
 		system.register_evaluator::<data::evaluator::armor::HasArmorEquipped>();
 		system.register_evaluator::<data::evaluator::GetAbilityModifier>();
 		//system.register_evaluator::<Any>();

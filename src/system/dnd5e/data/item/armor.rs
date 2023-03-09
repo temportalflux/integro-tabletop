@@ -5,7 +5,7 @@ use enumset::EnumSetType;
 use crate::{
 	kdl_ext::{DocumentQueryExt, NodeQueryExt, ValueIdx},
 	system::dnd5e::{
-		data::{character::Character, ArmorClassFormula},
+		data::{character::Character, mutator::ArmorStrengthRequirement, ArmorClassFormula},
 		DnD5e, FromKDL,
 	},
 	utility::MutatorGroup,
@@ -18,7 +18,6 @@ pub struct Armor {
 	pub formula: ArmorClassFormula,
 	/// The minimum expected strength score to use this armor.
 	/// If provided, characters with a value less than this are hindered (reduced speed).
-	/// TODO: Reduce speed by 10 if strength score not met
 	pub min_strength_score: Option<u32>,
 }
 
@@ -76,9 +75,18 @@ impl MutatorGroup for Armor {
 
 	fn apply_mutators<'c>(&self, stats: &mut Character) {
 		let source = stats.source_path();
+
 		stats
 			.armor_class_mut()
-			.push_formula(self.formula.clone(), source);
+			.push_formula(self.formula.clone(), source.clone());
+
+		if let Some(min_strength_score) = &self.min_strength_score {
+			let mutator = ArmorStrengthRequirement {
+				score: *min_strength_score,
+				source_path: source.clone(),
+			};
+			stats.apply(&mutator.into());
+		}
 	}
 }
 
