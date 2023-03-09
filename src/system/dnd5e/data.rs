@@ -18,6 +18,7 @@ pub use rest::*;
 pub mod roll;
 mod skill;
 pub use skill::*;
+pub mod bounded;
 
 mod armor_class;
 pub use armor_class::*;

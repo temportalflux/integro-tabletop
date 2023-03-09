@@ -1,6 +1,7 @@
 use crate::system::dnd5e::data::{
+	bounded::BoundValue,
 	item::{equipment::Equipment, Item, ItemKind},
-	mutator,
+	mutator::{self},
 };
 
 pub mod armor;
@@ -30,7 +31,11 @@ pub fn goggles_of_night() -> Item {
 				.into(),
 		),
 		kind: ItemKind::Equipment(Equipment {
-			modifiers: vec![mutator::IncMinSense("Darkvision".into(), 60).into()],
+			modifiers: vec![mutator::Sense {
+				name: "Darkvision".into(),
+				argument: BoundValue::Minimum(60),
+			}
+			.into()],
 			..Default::default()
 		}),
 		..Default::default()

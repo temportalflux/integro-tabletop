@@ -1,6 +1,8 @@
 use std::path::{Path, PathBuf};
 use yew::prelude::*;
 
+use crate::system::dnd5e::data::bounded::BoundValue;
+
 pub mod bootstrap;
 pub mod components;
 pub mod data;
@@ -68,8 +70,12 @@ fn create_character() -> system::dnd5e::data::character::Persistent {
 				}
 				.into(),
 				//mutator::IncMinSpeed("Flying".into(), 10).into(),
-				//mutator::IncMinSense("Darkvision".into(), 30).into(),
-				mutator::IncMinSense("Tremorsense".into(), 60).into(),
+				//mutator::Sense { name: "Darkvision".into(), operation: BoundValue::Minimum(30) }.into(),
+				mutator::Sense {
+					name: "Tremorsense".into(),
+					argument: BoundValue::Minimum(60),
+				}
+				.into(),
 				mutator::AddDefense {
 					defense: mutator::Defense::Resistance,
 					damage_type: Some(Value::Fixed(DamageType::Cold)),

@@ -73,36 +73,20 @@ pub fn SpeedAndSenses() -> Html {
 	let senses_html = match state.senses().len() {
 		0 => html! {},
 		1 => {
-			let (title, attributed) = state.senses().iter().next().unwrap();
-			let tooltip = crate::data::as_feature_paths_html_custom(
-				attributed.sources().iter(),
-				|(path, value)| (*value, path.as_path()),
-				|value, path_str| format!("<div>{}ft. ({})</div>", value, path_str),
-			);
+			let (title, bounded) = state.senses().iter().next().unwrap();
 			html! {<div class="col">
-				<Tooltip content={tooltip} use_html={true}>
-					<SingleValue title={title.clone()} amount={attributed.value()} />
-				</Tooltip>
+				<SingleValue title={title.clone()} amount={bounded.value()} />
 			</div>}
 		}
 		_ => html! {<div class="col">
 			<h6 class="text-center" style="font-size: 0.8rem; color: var(--bs-card-title-color);">{"Senses"}</h6>
 			<div style="margin-left: 5px; margin-right: 5px;">
-				{state.senses().iter().map(|(title, attributed)| {
-					let tooltip = crate::data::as_feature_paths_html_custom(
-						attributed.sources().iter(),
-						|(path, value)| (*value, path.as_path()),
-						|value, path_str| {
-							format!("<div>{}ft. ({})</div>", value, path_str)
-						},
-					);
+				{state.senses().iter().map(|(title, bounded)| {
 					html! {
-						<Tooltip content={tooltip} use_html={true}>
-							<span class="d-flex" style="border-style: solid; border-color: var(--bs-border-color); border-width: 0; border-bottom-width: var(--bs-border-width);">
-								<span class="flex-grow-1">{title}</span>
-								<span class="ps-2">{attributed.value()}{"ft."}</span>
-							</span>
-						</Tooltip>
+						<span class="d-flex" style="border-style: solid; border-color: var(--bs-border-color); border-width: 0; border-bottom-width: var(--bs-border-width);">
+							<span class="flex-grow-1">{title}</span>
+							<span class="ps-2">{bounded.value()}{"ft."}</span>
+						</span>
 					}
 				}).collect::<Vec<_>>()}
 			</div>

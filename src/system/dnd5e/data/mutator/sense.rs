@@ -1,25 +1,32 @@
 use crate::{
 	kdl_ext::NodeQueryExt,
-	system::dnd5e::{data::character::Character, DnD5e, FromKDL, KDLNode},
+	system::dnd5e::{
+		data::{bounded::BoundValue, character::Character},
+		DnD5e, FromKDL, KDLNode,
+	},
 	utility::Mutator,
+	GeneralError,
 };
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct IncMinSense(pub String, pub i32);
+pub struct Sense {
+	pub name: String,
+	pub argument: BoundValue,
+}
 
-impl crate::utility::TraitEq for IncMinSense {
+impl crate::utility::TraitEq for Sense {
 	fn equals_trait(&self, other: &dyn crate::utility::TraitEq) -> bool {
 		crate::utility::downcast_trait_eq(self, other)
 	}
 }
 
-impl KDLNode for IncMinSense {
+impl KDLNode for Sense {
 	fn id() -> &'static str {
-		"increase_min_sense"
+		"sense"
 	}
 }
 
-impl Mutator for IncMinSense {
+impl Mutator for Sense {
 	type Target = Character;
 
 	fn get_node_name(&self) -> &'static str {
@@ -28,19 +35,40 @@ impl Mutator for IncMinSense {
 
 	fn apply<'c>(&self, stats: &mut Character) {
 		let source = stats.source_path();
-		stats.senses_mut().push_min(self.0.clone(), self.1, source);
+		stats
+			.senses_mut()
+			.insert(self.name.clone(), self.argument.clone(), source);
 	}
 }
 
-impl FromKDL<DnD5e> for IncMinSense {
+impl FromKDL<DnD5e> for Sense {
 	fn from_kdl(
 		node: &kdl::KdlNode,
 		value_idx: &mut crate::kdl_ext::ValueIdx,
 		_system: &DnD5e,
 	) -> anyhow::Result<Self> {
-		let kind = node.get_str(value_idx.next())?.to_owned();
-		let amount = node.get_i64(value_idx.next())? as i32;
-		Ok(Self(kind, amount))
+		let name = node.get_str(value_idx.next())?.to_owned();
+
+		let entry_idx = value_idx.next();
+		let argument = match node
+			.entry_req(entry_idx)?
+			.ty()
+			.ok_or(GeneralError(format!(
+				"Type id missing on value at index {entry_idx} of node {node:?}"
+			)))?
+			.value()
+		{
+			"Minimum" => BoundValue::Minimum(node.get_i64(entry_idx)? as i32),
+			"Additive" => BoundValue::Additive(node.get_i64(entry_idx)? as i32),
+			type_name => {
+				return Err(GeneralError(format!(
+					"Invalid bound value id {type_name:?}, \
+					expected Minimum or Additive"
+				))
+				.into());
+			}
+		};
+		Ok(Self { name, argument })
 	}
 }
 
@@ -53,13 +81,27 @@ mod test {
 		use crate::system::dnd5e::{BoxedMutator, DnD5e};
 
 		fn from_doc(doc: &str) -> anyhow::Result<BoxedMutator> {
-			DnD5e::defaultmut_parse_kdl::<IncMinSense>(doc)
+			DnD5e::defaultmut_parse_kdl::<Sense>(doc)
 		}
 
 		#[test]
-		fn valid_format() -> anyhow::Result<()> {
-			let doc = "mutator \"increase_min_sense\" \"Darkvision\" 60";
-			let expected = IncMinSense("Darkvision".into(), 60);
+		fn minimum() -> anyhow::Result<()> {
+			let doc = "mutator \"sense\" \"Darkvision\" (Minimum)60";
+			let expected = Sense {
+				name: "Darkvision".into(),
+				argument: BoundValue::Minimum(60),
+			};
+			assert_eq!(from_doc(doc)?, expected.into());
+			Ok(())
+		}
+
+		#[test]
+		fn additive() -> anyhow::Result<()> {
+			let doc = "mutator \"sense\" \"Darkvision\" (Additive)60";
+			let expected = Sense {
+				name: "Darkvision".into(),
+				argument: BoundValue::Additive(60),
+			};
 			assert_eq!(from_doc(doc)?, expected.into());
 			Ok(())
 		}
@@ -68,11 +110,12 @@ mod test {
 	mod mutate {
 		use super::*;
 		use crate::system::dnd5e::data::{
+			bounded::BoundKind,
 			character::{Character, Persistent},
 			Feature,
 		};
 
-		fn character(mutators: Vec<(&'static str, IncMinSense)>) -> Character {
+		fn character(mutators: Vec<(&'static str, Sense)>) -> Character {
 			Character::from(Persistent {
 				feats: mutators
 					.into_iter()
@@ -90,25 +133,127 @@ mod test {
 		}
 
 		#[test]
-		fn set_max() {
-			let character = character(vec![("TestFeature", IncMinSense("Darkvision".into(), 60))]);
-			assert_eq!(
-				character.senses().get("Darkvision"),
-				Some(&(60, [("TestFeature".into(), 60)].into()).into())
-			);
+		fn minimum_single() {
+			let character = character(vec![(
+				"TestFeature",
+				Sense {
+					name: "Darkvision".into(),
+					argument: BoundValue::Minimum(60),
+				},
+			)]);
+			let sense = character.senses().get("Darkvision").unwrap();
+			let expected = [(BoundKind::Minimum, [("TestFeature".into(), 60)].into())].into();
+			assert_eq!(sense, &expected);
+			assert_eq!(sense.value(), 60);
 		}
 
 		#[test]
-		fn extend_max() {
+		fn minimum_multiple() {
 			let character = character(vec![
-				("SenseB", IncMinSense("Darkvision".into(), 60)),
-				("SenseA", IncMinSense("Darkvision".into(), 40)),
+				(
+					"SenseB",
+					Sense {
+						name: "Darkvision".into(),
+						argument: BoundValue::Minimum(60),
+					},
+				),
+				(
+					"SenseA",
+					Sense {
+						name: "Darkvision".into(),
+						argument: BoundValue::Minimum(40),
+					},
+				),
 			]);
-			assert_eq!(
-				character.senses().get("Darkvision"),
-				Some(&(60, [("SenseA".into(), 40), ("SenseB".into(), 60)].into()).into())
-			);
+			let sense = character.senses().get("Darkvision").unwrap();
+			let expected = [(
+				BoundKind::Minimum,
+				[("SenseA".into(), 40), ("SenseB".into(), 60)].into(),
+			)]
+			.into();
+			assert_eq!(sense, &expected);
+			assert_eq!(sense.value(), 60);
+		}
+
+		#[test]
+		fn single_additive() {
+			let character = character(vec![(
+				"TestFeature",
+				Sense {
+					name: "Darkvision".into(),
+					argument: BoundValue::Additive(20),
+				},
+			)]);
+			let sense = character.senses().get("Darkvision").unwrap();
+			let expected = [(BoundKind::Additive, [("TestFeature".into(), 20)].into())].into();
+			assert_eq!(sense, &expected);
+			assert_eq!(sense.value(), 20);
+		}
+
+		#[test]
+		fn minimum_gt_additive() {
+			let character = character(vec![
+				(
+					"A",
+					Sense {
+						name: "Darkvision".into(),
+						argument: BoundValue::Minimum(60),
+					},
+				),
+				(
+					"B",
+					Sense {
+						name: "Darkvision".into(),
+						argument: BoundValue::Additive(40),
+					},
+				),
+			]);
+			let sense = character.senses().get("Darkvision").unwrap();
+			let expected = [
+				(BoundKind::Minimum, [("A".into(), 60)].into()),
+				(BoundKind::Additive, [("B".into(), 40)].into()),
+			]
+			.into();
+			assert_eq!(sense, &expected);
+			assert_eq!(sense.value(), 60);
+		}
+
+		#[test]
+		fn minimum_lt_additive() {
+			let character = character(vec![
+				(
+					"A",
+					Sense {
+						name: "Darkvision".into(),
+						argument: BoundValue::Minimum(60),
+					},
+				),
+				(
+					"B",
+					Sense {
+						name: "Darkvision".into(),
+						argument: BoundValue::Additive(40),
+					},
+				),
+				(
+					"C",
+					Sense {
+						name: "Darkvision".into(),
+						argument: BoundValue::Additive(30),
+					},
+				),
+			]);
+			let sense = character.senses().get("Darkvision").unwrap();
+			let expected = [
+				(BoundKind::Minimum, [("A".into(), 60)].into()),
+				(
+					BoundKind::Additive,
+					[("B".into(), 40), ("C".into(), 30)].into(),
+				),
+			]
+			.into();
+			assert_eq!(sense, &expected);
+			assert_eq!(sense.value(), 70);
 		}
 	}
 }
-

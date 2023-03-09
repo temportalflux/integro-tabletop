@@ -15,6 +15,11 @@ use crate::{
 use enum_map::EnumMap;
 use std::{collections::BTreeMap, path::PathBuf};
 
+mod sense;
+pub use sense::*;
+mod speed;
+pub use speed::*;
+
 /// Data derived from the `Persistent`, such as bonuses to abilities/skills,
 /// proficiencies, and actions. This data all lives within `Persistent` in
 /// its various features and subtraits, and is compiled into one flat
@@ -189,54 +194,6 @@ impl std::ops::Index<Skill> for Skills {
 
 	fn index(&self, index: Skill) -> &Self::Output {
 		&self.0[index]
-	}
-}
-
-#[derive(Clone, Default, PartialEq, Debug)]
-pub struct Speeds(BTreeMap<String, AttributedValue<i32>>);
-impl Speeds {
-	pub fn push_min(&mut self, kind: String, max_bound_in_feet: i32, source: PathBuf) {
-		match self.0.get_mut(&kind) {
-			Some(value) => {
-				value.push(max_bound_in_feet, source);
-			}
-			None => {
-				let mut value = AttributedValue::default();
-				value.push(max_bound_in_feet, source);
-				self.0.insert(kind, value);
-			}
-		}
-	}
-}
-impl std::ops::Deref for Speeds {
-	type Target = BTreeMap<String, AttributedValue<i32>>;
-
-	fn deref(&self) -> &Self::Target {
-		&self.0
-	}
-}
-
-#[derive(Clone, Default, PartialEq, Debug)]
-pub struct Senses(BTreeMap<String, AttributedValue<i32>>);
-impl Senses {
-	pub fn push_min(&mut self, kind: String, max_bound_in_feet: i32, source: PathBuf) {
-		match self.0.get_mut(&kind) {
-			Some(value) => {
-				value.push(max_bound_in_feet, source);
-			}
-			None => {
-				let mut value = AttributedValue::default();
-				value.push(max_bound_in_feet, source);
-				self.0.insert(kind, value);
-			}
-		}
-	}
-}
-impl std::ops::Deref for Senses {
-	type Target = BTreeMap<String, AttributedValue<i32>>;
-
-	fn deref(&self) -> &Self::Target {
-		&self.0
 	}
 }
 
