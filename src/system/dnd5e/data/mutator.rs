@@ -22,6 +22,9 @@ pub use proficient::*;
 mod saving_throw;
 pub use saving_throw::*;
 
+mod sense;
+pub use sense::*;
+
 mod skill;
 pub use skill::*;
 

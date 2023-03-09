@@ -195,7 +195,7 @@ impl std::ops::Index<Skill> for Skills {
 #[derive(Clone, Default, PartialEq, Debug)]
 pub struct Speeds(BTreeMap<String, AttributedValue<i32>>);
 impl Speeds {
-	pub fn push_max(&mut self, kind: String, max_bound_in_feet: i32, source: PathBuf) {
+	pub fn push_min(&mut self, kind: String, max_bound_in_feet: i32, source: PathBuf) {
 		match self.0.get_mut(&kind) {
 			Some(value) => {
 				value.push(max_bound_in_feet, source);
@@ -219,7 +219,7 @@ impl std::ops::Deref for Speeds {
 #[derive(Clone, Default, PartialEq, Debug)]
 pub struct Senses(BTreeMap<String, AttributedValue<i32>>);
 impl Senses {
-	pub fn push_max(&mut self, kind: String, max_bound_in_feet: i32, source: PathBuf) {
+	pub fn push_min(&mut self, kind: String, max_bound_in_feet: i32, source: PathBuf) {
 		match self.0.get_mut(&kind) {
 			Some(value) => {
 				value.push(max_bound_in_feet, source);

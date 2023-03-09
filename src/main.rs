@@ -67,9 +67,9 @@ fn create_character() -> system::dnd5e::data::character::Persistent {
 					target: Some("Magic".into()),
 				}
 				.into(),
-				//mutator::AddMaxSpeed("Flying".into(), 10).into(),
-				//mutator::AddMaxSense("Darkvision".into(), 30).into(),
-				mutator::AddMaxSense("Tremorsense".into(), 60).into(),
+				//mutator::IncMinSpeed("Flying".into(), 10).into(),
+				//mutator::IncMinSense("Darkvision".into(), 30).into(),
+				mutator::IncMinSense("Tremorsense".into(), 60).into(),
 				mutator::AddDefense {
 					defense: mutator::Defense::Resistance,
 					damage_type: Some(Value::Fixed(DamageType::Cold)),
@@ -145,7 +145,7 @@ fn create_character() -> system::dnd5e::data::character::Persistent {
 				name: "Wings of the Owl".into(),
 				kind: item::ItemKind::Equipment(item::equipment::Equipment {
 					modifiers: vec![
-						mutator::AddMaxSpeed("Flying".into(), 40).into(),
+						mutator::IncMinSpeed("Flying".into(), 40).into(),
 						mutator::AddProficiency::Skill(
 							Selector::Specific(Skill::Perception),
 							proficiency::Level::Half,

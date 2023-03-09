@@ -1,5 +1,5 @@
 use crate::system::dnd5e::data::{
-	mutator::{AddLifeExpectancy, AddMaxHeight, AddMaxSpeed},
+	mutator::{AddLifeExpectancy, AddMaxHeight, IncMinSpeed},
 	roll::{Die, Roll},
 	Feature, Lineage,
 };
@@ -18,7 +18,7 @@ pub fn shapechanger() -> Lineage {
 				die: Die::D4,
 			})
 			.into(),
-			AddMaxSpeed("Walking".into(), 30).into(),
+			IncMinSpeed("Walking".into(), 30).into(),
 		],
 		features: vec![
 			Feature {
@@ -48,7 +48,7 @@ pub fn voice_changer() -> Lineage {
 				die: Die::D4,
 			})
 			.into(),
-			AddMaxSpeed("Walking".into(), 30).into(),
+			IncMinSpeed("Walking".into(), 30).into(),
 		],
 		features: vec![
 			Feature {

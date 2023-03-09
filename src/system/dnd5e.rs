@@ -250,8 +250,8 @@ impl DnD5e {
 		system.register_mutator::<data::mutator::AddProficiency>();
 		system.register_mutator::<data::mutator::AddSavingThrowModifier>();
 		system.register_mutator::<data::mutator::AddSkillModifier>();
-		system.register_mutator::<data::mutator::AddMaxSpeed>();
-		system.register_mutator::<data::mutator::AddMaxSense>();
+		system.register_mutator::<data::mutator::IncMinSpeed>();
+		system.register_mutator::<data::mutator::IncMinSense>();
 		system.register_evaluator::<data::evaluator::armor::HasArmorEquipped>();
 		system.register_evaluator::<data::evaluator::GetAbilityModifier>();
 		//system.register_evaluator::<Any>();

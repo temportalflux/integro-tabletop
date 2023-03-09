@@ -30,7 +30,7 @@ pub fn goggles_of_night() -> Item {
 				.into(),
 		),
 		kind: ItemKind::Equipment(Equipment {
-			modifiers: vec![mutator::AddMaxSense("Darkvision".into(), 60).into()],
+			modifiers: vec![mutator::IncMinSense("Darkvision".into(), 60).into()],
 			..Default::default()
 		}),
 		..Default::default()
