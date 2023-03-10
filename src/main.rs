@@ -220,6 +220,8 @@ fn main() {
 fn main() -> anyhow::Result<()> {
 	use system::core::ModuleId;
 
+	use crate::system::core::SourceId;
+
 	let _ = logging::console::init("tabletop-tools", &[]);
 
 	let mut system_reg = system::core::SystemRegistry::default();
@@ -241,7 +243,13 @@ fn main() -> anyhow::Result<()> {
 				continue;
 			}
 			let Ok(content) = std::fs::read_to_string(&item) else { continue; };
-			if let Err(err) = insert_system_document(&system_reg, &content) {
+			let source_id = SourceId {
+				module: module_id.clone(),
+				path: item.strip_prefix(&module_path)?.to_owned(),
+				version: None,
+				node_idx: 0,
+			};
+			if let Err(err) = insert_system_document(&system_reg, source_id, &content) {
 				log::error!("Failed to parse module document {item:?}: {err:?}");
 			}
 		}
@@ -253,6 +261,7 @@ fn main() -> anyhow::Result<()> {
 #[cfg(target_family = "windows")]
 fn insert_system_document(
 	system_reg: &system::core::SystemRegistry,
+	source_id: system::core::SourceId,
 	content: &str,
 ) -> anyhow::Result<()> {
 	use anyhow::Context;
@@ -264,7 +273,7 @@ fn insert_system_document(
 	let mut system = system_reg
 		.get(system_id)
 		.ok_or(GeneralError(format!("System {system_id:?} not found")))?;
-	system.insert_document(document);
+	system.insert_document(source_id, document);
 	Ok(())
 }
 

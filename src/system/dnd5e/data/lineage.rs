@@ -1,8 +1,11 @@
 use crate::{
 	kdl_ext::{DocumentQueryExt, NodeQueryExt, ValueIdx},
-	system::dnd5e::{
-		data::{character::Character, BoxedFeature},
-		BoxedMutator, DnD5e, FromKDL, KDLNode, SystemComponent,
+	system::{
+		core::SourceId,
+		dnd5e::{
+			data::{character::Character, BoxedFeature},
+			BoxedMutator, DnD5e, FromKDL, KDLNode, SystemComponent,
+		},
 	},
 	utility::MutatorGroup,
 };
@@ -39,8 +42,8 @@ impl MutatorGroup for Lineage {
 impl SystemComponent for Lineage {
 	type System = DnD5e;
 
-	fn add_component(self, system: &mut Self::System) {
-		system.add_lineage(self);
+	fn add_component(self, source_id: SourceId, system: &mut Self::System) {
+		system.lineages.insert(source_id, self);
 	}
 }
 

@@ -5,6 +5,8 @@ use crate::{
 };
 use std::{collections::HashMap, sync::Arc};
 
+use super::core::SourceId;
+
 pub mod components;
 pub mod content;
 pub mod data;
@@ -16,7 +18,7 @@ pub type Value<T> = crate::utility::Value<Character, T>;
 
 struct ComponentFactory {
 	add_from_kdl: Box<
-		dyn Fn(&kdl::KdlNode, &mut ValueIdx, &mut DnD5e) -> anyhow::Result<()>
+		dyn Fn(&kdl::KdlNode, SourceId, &mut DnD5e) -> anyhow::Result<()>
 			+ 'static
 			+ Send
 			+ Sync,
@@ -28,9 +30,9 @@ impl ComponentFactory {
 		T: FromKDL + SystemComponent<System = DnD5e> + 'static + Send + Sync,
 	{
 		Self {
-			add_from_kdl: Box::new(|node, idx, system| {
-				let value = T::from_kdl(node, idx, &system.node_registry)?;
-				T::add_component(value, system);
+			add_from_kdl: Box::new(|node, source_id, system| {
+				let value = T::from_kdl(node, &mut ValueIdx::default(), &system.node_registry)?;
+				T::add_component(value, source_id, system);
 				Ok(())
 			}),
 		}
@@ -39,10 +41,10 @@ impl ComponentFactory {
 	fn add_from_kdl(
 		&self,
 		node: &kdl::KdlNode,
-		value_idx: &mut ValueIdx,
+		source_id: SourceId,
 		system: &mut DnD5e,
 	) -> anyhow::Result<()> {
-		(*self.add_from_kdl)(node, value_idx, system)?;
+		(*self.add_from_kdl)(node, source_id, system)?;
 		Ok(())
 	}
 }
@@ -119,7 +121,7 @@ where
 pub trait SystemComponent {
 	type System;
 
-	fn add_component(self, system: &mut Self::System)
+	fn add_component(self, source_id: SourceId, system: &mut Self::System)
 	where
 		Self: Sized;
 }
@@ -128,8 +130,8 @@ pub trait SystemComponent {
 pub struct DnD5e {
 	root_registry: HashMap<&'static str, Arc<ComponentFactory>>,
 	node_registry: NodeRegistry,
-	lineages: Vec<data::Lineage>,
-	items: Vec<data::item::Item>,
+	pub lineages: HashMap<SourceId, data::Lineage>,
+	pub items: HashMap<SourceId, data::item::Item>,
 }
 
 impl super::core::System for DnD5e {
@@ -137,8 +139,13 @@ impl super::core::System for DnD5e {
 		"dnd5e"
 	}
 
-	fn insert_document(&mut self, document: kdl::KdlDocument) {
-		for node in document.nodes() {
+	fn insert_document(
+		&mut self,
+		mut source_id: SourceId,
+		document: kdl::KdlDocument,
+	) {
+		for (idx, node) in document.nodes().iter().enumerate() {
+			source_id.node_idx = idx;
 			let node_name = node.name().value();
 			if node_name == "system" {
 				continue;
@@ -147,7 +154,7 @@ impl super::core::System for DnD5e {
 				log::error!("Failed to find factory to deserialize node \"{node_name}\".");
 				continue;
 			};
-			if let Err(err) = comp_factory.add_from_kdl(node, &mut ValueIdx::default(), self) {
+			if let Err(err) = comp_factory.add_from_kdl(node, source_id.clone(), self) {
 				log::error!("Failed to deserialize entry: {err:?}");
 			}
 		}
@@ -215,9 +222,5 @@ impl DnD5e {
 		assert!(!self.root_registry.contains_key(T::id()));
 		self.root_registry
 			.insert(T::id(), ComponentFactory::new::<T>().into());
-	}
-
-	pub fn add_lineage(&mut self, lineage: data::Lineage) {
-		self.lineages.push(lineage);
 	}
 }

@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::str::FromStr;
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ModuleId {
 	File(PathBuf),
 	Github {
@@ -10,7 +10,7 @@ pub enum ModuleId {
 	},
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct SourceId {
 	pub module: ModuleId,
 	pub path: PathBuf,
