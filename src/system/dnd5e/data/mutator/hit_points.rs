@@ -1,6 +1,9 @@
 use crate::{
-	kdl_ext::NodeQueryExt,
-	system::dnd5e::{data::character::Character, DnD5e, FromKDL, KDLNode, Value},
+	kdl_ext::{NodeQueryExt, ValueIdx},
+	system::{
+		core::NodeRegistry,
+		dnd5e::{data::character::Character, FromKDL, KDLNode, Value},
+	},
 	utility::{Dependencies, Evaluator, Mutator},
 };
 
@@ -44,17 +47,17 @@ impl Mutator for AddMaxHitPoints {
 	}
 }
 
-impl FromKDL<DnD5e> for AddMaxHitPoints {
+impl FromKDL for AddMaxHitPoints {
 	fn from_kdl(
 		node: &kdl::KdlNode,
-		value_idx: &mut crate::kdl_ext::ValueIdx,
-		system: &DnD5e,
+		value_idx: &mut ValueIdx,
+		node_reg: &NodeRegistry,
 	) -> anyhow::Result<Self> {
 		let value = Value::from_kdl(
 			node,
 			node.entry_req(value_idx.next())?,
 			value_idx,
-			system,
+			node_reg,
 			|value| Ok(value.as_i64().map(|v| v as i32)),
 		)?;
 		Ok(Self { id: None, value })
@@ -68,10 +71,10 @@ mod test {
 	use crate::system::dnd5e::BoxedMutator;
 
 	fn from_doc(doc: &str) -> anyhow::Result<BoxedMutator> {
-		let mut system = DnD5e::default();
-		system.register_mutator::<AddMaxHitPoints>();
-		system.register_evaluator::<crate::system::dnd5e::data::evaluator::GetAbilityModifier>();
-		system.parse_kdl_mutator(doc)
+		let mut node_reg = NodeRegistry::default();
+		node_reg.register_mutator::<AddMaxHitPoints>();
+		node_reg.register_evaluator::<crate::system::dnd5e::data::evaluator::GetAbilityModifier>();
+		node_reg.parse_kdl_mutator(doc)
 	}
 
 	mod from_kdl {

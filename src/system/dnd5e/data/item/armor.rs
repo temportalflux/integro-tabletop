@@ -1,16 +1,14 @@
-use std::str::FromStr;
-
-use enumset::EnumSetType;
-
 use crate::{
 	kdl_ext::{DocumentQueryExt, NodeQueryExt, ValueIdx},
 	system::dnd5e::{
 		data::{character::Character, mutator::ArmorStrengthRequirement, ArmorClassFormula},
-		DnD5e, FromKDL,
+		FromKDL,
 	},
 	utility::MutatorGroup,
 	GeneralError,
 };
+use enumset::EnumSetType;
+use std::str::FromStr;
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Armor {
@@ -21,17 +19,17 @@ pub struct Armor {
 	pub min_strength_score: Option<u32>,
 }
 
-impl FromKDL<DnD5e> for Armor {
+impl FromKDL for Armor {
 	fn from_kdl(
 		node: &kdl::KdlNode,
 		value_idx: &mut ValueIdx,
-		system: &DnD5e,
+		node_reg: &crate::system::core::NodeRegistry,
 	) -> anyhow::Result<Self> {
 		let kind = Kind::from_str(node.get_str(value_idx.next())?)?;
 		let formula = node.query("formula")?.ok_or(GeneralError(format!(
 			"Node {node:?} must have a child node named \"formula\"."
 		)))?;
-		let formula = ArmorClassFormula::from_kdl(formula, &mut ValueIdx::default(), system)?;
+		let formula = ArmorClassFormula::from_kdl(formula, &mut ValueIdx::default(), node_reg)?;
 		let min_strength_score = node.query_i64_opt("min-strength", 0)?.map(|v| v as u32);
 		Ok(Self {
 			kind,

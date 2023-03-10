@@ -2,7 +2,7 @@ use crate::{
 	kdl_ext::{DocumentQueryExt, NodeQueryExt, ValueIdx},
 	system::dnd5e::{
 		data::{character::Character, Ability},
-		DnD5e, FromKDL, Value,
+		FromKDL, Value,
 	},
 	utility::Evaluator,
 	GeneralError,
@@ -61,11 +61,11 @@ impl Evaluator for AttackCheckKind {
 	}
 }
 
-impl FromKDL<DnD5e> for AttackCheckKind {
+impl FromKDL for AttackCheckKind {
 	fn from_kdl(
 		node: &kdl::KdlNode,
 		value_idx: &mut ValueIdx,
-		system: &DnD5e,
+		node_reg: &crate::system::core::NodeRegistry,
 	) -> anyhow::Result<Self> {
 		match node.get_str(value_idx.next())? {
 			"AttackRoll" => {
@@ -80,7 +80,7 @@ impl FromKDL<DnD5e> for AttackCheckKind {
 							node,
 							node.entry_req(value_idx.next())?,
 							&mut value_idx,
-							system,
+							node_reg,
 							|value| Ok(value.as_bool()),
 						)?
 					}
@@ -127,16 +127,17 @@ mod test {
 
 	mod from_kdl {
 		use super::*;
-		use crate::system::dnd5e::data::{
-			evaluator::IsProficientWith, item::weapon, WeaponProficiency,
+		use crate::system::dnd5e::{
+			data::{evaluator::IsProficientWith, item::weapon, WeaponProficiency},
+			NodeRegistry,
 		};
 
 		fn from_doc(doc: &str) -> anyhow::Result<AttackCheckKind> {
-			let system = DnD5e::default_with_eval::<IsProficientWith>();
+			let node_reg = NodeRegistry::default_with_eval::<IsProficientWith>();
 			let document = doc.parse::<kdl::KdlDocument>()?;
 			let node = document.query("check")?.expect("missing check node");
 			let mut idx = ValueIdx::default();
-			AttackCheckKind::from_kdl(node, &mut idx, &system)
+			AttackCheckKind::from_kdl(node, &mut idx, &node_reg)
 		}
 
 		#[test]

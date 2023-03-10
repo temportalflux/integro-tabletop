@@ -1,7 +1,10 @@
 use super::{armor::Armor, weapon::Weapon};
 use crate::{
 	kdl_ext::{NodeQueryExt, ValueIdx},
-	system::dnd5e::{data::character::Character, BoxedCriteria, BoxedMutator, DnD5e, FromKDL},
+	system::{
+		core::NodeRegistry,
+		dnd5e::{data::character::Character, BoxedCriteria, BoxedMutator, FromKDL},
+	},
 	utility::MutatorGroup,
 };
 
@@ -48,19 +51,16 @@ impl Equipment {
 	}
 }
 
-impl FromKDL<DnD5e> for Equipment {
+impl FromKDL for Equipment {
 	fn from_kdl(
 		node: &kdl::KdlNode,
 		_value_idx: &mut ValueIdx,
-		system: &DnD5e,
+		node_reg: &NodeRegistry,
 	) -> anyhow::Result<Self> {
 		let criteria = match node.query("criteria")? {
 			None => None,
 			Some(entry_node) => {
-				let mut value_idx = ValueIdx::default();
-				let id = entry_node.get_str(value_idx.next())?;
-				let factory = system.get_evaluator_factory(id)?;
-				Some(factory.from_kdl::<Result<(), String>>(entry_node, &mut value_idx, system)?)
+				Some(node_reg.parse_evaluator::<Character, Result<(), String>>(entry_node)?)
 			}
 		};
 
@@ -68,17 +68,14 @@ impl FromKDL<DnD5e> for Equipment {
 		let mutators = {
 			let mut mutators = Vec::new();
 			for entry_node in node.query_all("mutator")? {
-				let mut value_idx = ValueIdx::default();
-				let id = entry_node.get_str(value_idx.next())?;
-				let factory = system.get_mutator_factory(id)?;
-				mutators.push(factory.from_kdl(entry_node, &mut value_idx, system)?);
+				mutators.push(node_reg.parse_mutator(entry_node)?);
 			}
 			mutators
 		};
 
 		let armor = match node.query("armor")? {
 			None => None,
-			Some(node) => Some(Armor::from_kdl(node, &mut ValueIdx::default(), system)?),
+			Some(node) => Some(Armor::from_kdl(node, &mut ValueIdx::default(), node_reg)?),
 		};
 		let shield = match node.query("shield")? {
 			None => None,
@@ -86,7 +83,7 @@ impl FromKDL<DnD5e> for Equipment {
 		};
 		let weapon = match node.query("weapon")? {
 			None => None,
-			Some(node) => Some(Weapon::from_kdl(node, &mut ValueIdx::default(), system)?),
+			Some(node) => Some(Weapon::from_kdl(node, &mut ValueIdx::default(), node_reg)?),
 		};
 		let attunement = match node.query("attunement")? {
 			None => None,

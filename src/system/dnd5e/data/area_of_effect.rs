@@ -1,6 +1,6 @@
 use crate::{
 	kdl_ext::{NodeQueryExt, ValueIdx},
-	system::dnd5e::{DnD5e, FromKDL},
+	system::{core::NodeRegistry, dnd5e::FromKDL},
 	GeneralError,
 };
 
@@ -13,11 +13,11 @@ pub enum AreaOfEffect {
 	Sphere { radius: u32 },
 }
 
-impl FromKDL<DnD5e> for AreaOfEffect {
+impl FromKDL for AreaOfEffect {
 	fn from_kdl(
 		node: &kdl::KdlNode,
 		value_idx: &mut ValueIdx,
-		_system: &DnD5e,
+		_node_reg: &NodeRegistry,
 	) -> anyhow::Result<Self> {
 		match node.get_str(value_idx.next())? {
 			"Cone" => Ok(Self::Cone {

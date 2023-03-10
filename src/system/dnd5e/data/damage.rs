@@ -1,7 +1,7 @@
 use super::roll::Roll;
 use crate::{
 	kdl_ext::{DocumentQueryExt, NodeQueryExt, ValueIdx},
-	system::dnd5e::{DnD5e, FromKDL},
+	system::{core::NodeRegistry, dnd5e::FromKDL},
 	GeneralError,
 };
 use std::{path::PathBuf, str::FromStr};
@@ -16,11 +16,11 @@ pub struct DamageRoll {
 	pub additional_bonuses: Vec<(i32, PathBuf)>,
 }
 
-impl FromKDL<DnD5e> for DamageRoll {
+impl FromKDL for DamageRoll {
 	fn from_kdl(
 		node: &kdl::KdlNode,
 		_value_idx: &mut ValueIdx,
-		_system: &DnD5e,
+		_node_reg: &NodeRegistry,
 	) -> anyhow::Result<Self> {
 		let roll = match node.query_str_opt("roll", 0)? {
 			None => None,
@@ -132,11 +132,11 @@ mod test {
 		use crate::system::dnd5e::data::roll::Die;
 
 		fn from_doc(doc: &str) -> anyhow::Result<DamageRoll> {
-			let system = DnD5e::default();
+			let node_reg = NodeRegistry::default();
 			let document = doc.parse::<kdl::KdlDocument>()?;
 			let node = document.query("damage")?.expect("missing damage node");
 			let mut idx = ValueIdx::default();
-			DamageRoll::from_kdl(node, &mut idx, &system)
+			DamageRoll::from_kdl(node, &mut idx, &node_reg)
 		}
 
 		#[test]

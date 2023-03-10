@@ -1,8 +1,11 @@
 use crate::{
-	kdl_ext::NodeQueryExt,
-	system::dnd5e::{
-		data::{bounded::BoundValue, character::Character},
-		DnD5e, FromKDL, KDLNode,
+	kdl_ext::{NodeQueryExt, ValueIdx},
+	system::{
+		core::NodeRegistry,
+		dnd5e::{
+			data::{bounded::BoundValue, character::Character},
+			FromKDL, KDLNode,
+		},
 	},
 	utility::Mutator,
 };
@@ -40,14 +43,14 @@ impl Mutator for Sense {
 	}
 }
 
-impl FromKDL<DnD5e> for Sense {
+impl FromKDL for Sense {
 	fn from_kdl(
 		node: &kdl::KdlNode,
-		value_idx: &mut crate::kdl_ext::ValueIdx,
-		system: &DnD5e,
+		value_idx: &mut ValueIdx,
+		node_reg: &NodeRegistry,
 	) -> anyhow::Result<Self> {
 		let name = node.get_str(value_idx.next())?.to_owned();
-		let argument = BoundValue::from_kdl(node, value_idx, system)?;
+		let argument = BoundValue::from_kdl(node, value_idx, node_reg)?;
 		Ok(Self { name, argument })
 	}
 }
@@ -58,10 +61,10 @@ mod test {
 
 	mod from_kdl {
 		use super::*;
-		use crate::system::dnd5e::{BoxedMutator, DnD5e};
+		use crate::system::dnd5e::BoxedMutator;
 
 		fn from_doc(doc: &str) -> anyhow::Result<BoxedMutator> {
-			DnD5e::defaultmut_parse_kdl::<Sense>(doc)
+			NodeRegistry::defaultmut_parse_kdl::<Sense>(doc)
 		}
 
 		#[test]

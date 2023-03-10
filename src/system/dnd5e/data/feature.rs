@@ -4,7 +4,10 @@ use super::{
 };
 use crate::{
 	kdl_ext::{DocumentQueryExt, NodeQueryExt, ValueIdx},
-	system::dnd5e::{BoxedCriteria, BoxedMutator, DnD5e, FromKDL},
+	system::{
+		core::NodeRegistry,
+		dnd5e::{BoxedCriteria, BoxedMutator, FromKDL},
+	},
 	utility::MutatorGroup,
 };
 use std::{collections::HashMap, sync::Arc};
@@ -58,11 +61,11 @@ impl MutatorGroup for Feature {
 	}
 }
 
-impl FromKDL<DnD5e> for Feature {
+impl FromKDL for Feature {
 	fn from_kdl(
 		node: &kdl::KdlNode,
 		_value_idx: &mut ValueIdx,
-		system: &DnD5e,
+		node_reg: &NodeRegistry,
 	) -> anyhow::Result<Self> {
 		let name = node.get_str("name")?.to_owned();
 		let description = node
@@ -77,25 +80,19 @@ impl FromKDL<DnD5e> for Feature {
 		let criteria = match node.query("criteria")? {
 			None => None,
 			Some(entry_node) => {
-				let mut value_idx = ValueIdx::default();
-				let id = entry_node.get_str(value_idx.next())?;
-				let factory = system.get_evaluator_factory(id)?;
-				Some(factory.from_kdl::<Result<(), String>>(entry_node, &mut value_idx, system)?)
+				Some(node_reg.parse_evaluator::<Character, Result<(), String>>(entry_node)?)
 			}
 		};
 
 		let mut actions = Vec::new();
 		for entry_node in node.query_all("action")? {
 			let mut value_idx = ValueIdx::default();
-			actions.push(Action::from_kdl(entry_node, &mut value_idx, system)?);
+			actions.push(Action::from_kdl(entry_node, &mut value_idx, node_reg)?);
 		}
 
 		let mut mutators = Vec::new();
 		for entry_node in node.query_all("mutator")? {
-			let mut value_idx = ValueIdx::default();
-			let id = entry_node.get_str(value_idx.next())?;
-			let factory = system.get_mutator_factory(id)?;
-			mutators.push(factory.from_kdl(entry_node, &mut value_idx, system)?);
+			mutators.push(node_reg.parse_mutator(entry_node)?);
 		}
 
 		Ok(Self {

@@ -1,9 +1,12 @@
 use super::BoundedAbility;
 use crate::{
 	kdl_ext::{NodeQueryExt, ValueIdx},
-	system::dnd5e::{
-		data::{character::Character, Ability},
-		DnD5e, FromKDL,
+	system::{
+		core::NodeRegistry,
+		dnd5e::{
+			data::{character::Character, Ability},
+			FromKDL,
+		},
 	},
 };
 use std::str::FromStr;
@@ -47,11 +50,11 @@ impl ArmorClassFormula {
 	}
 }
 
-impl FromKDL<DnD5e> for ArmorClassFormula {
+impl FromKDL for ArmorClassFormula {
 	fn from_kdl(
 		node: &kdl::KdlNode,
 		_value_idx: &mut ValueIdx,
-		_system: &DnD5e,
+		_node_reg: &NodeRegistry,
 	) -> anyhow::Result<Self> {
 		let base = node.get_i64("base")? as u32;
 		let mut bonuses = Vec::new();
@@ -87,13 +90,14 @@ mod test {
 
 	mod from_kdl {
 		use super::*;
+		use crate::system::core::NodeRegistry;
 
 		fn from_doc(doc: &str) -> anyhow::Result<ArmorClassFormula> {
-			let system = DnD5e::default();
+			let node_reg = NodeRegistry::default();
 			let document = doc.parse::<kdl::KdlDocument>()?;
 			let node = document.query("formula")?.expect("missing formula node");
 			let mut idx = ValueIdx::default();
-			ArmorClassFormula::from_kdl(node, &mut idx, &system)
+			ArmorClassFormula::from_kdl(node, &mut idx, &node_reg)
 		}
 
 		#[test]

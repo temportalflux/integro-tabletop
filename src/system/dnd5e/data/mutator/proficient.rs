@@ -1,12 +1,15 @@
 use crate::{
-	kdl_ext::NodeQueryExt,
-	system::dnd5e::{
-		data::{
-			character::Character,
-			item::{armor, weapon},
-			proficiency, Ability, Skill, WeaponProficiency,
+	kdl_ext::{NodeQueryExt, ValueIdx},
+	system::{
+		core::NodeRegistry,
+		dnd5e::{
+			data::{
+				character::Character,
+				item::{armor, weapon},
+				proficiency, Ability, Skill, WeaponProficiency,
+			},
+			FromKDL, KDLNode,
 		},
-		DnD5e, FromKDL, KDLNode,
 	},
 	utility::{Mutator, Selector},
 	GeneralError,
@@ -83,11 +86,11 @@ impl Mutator for AddProficiency {
 	}
 }
 
-impl FromKDL<DnD5e> for AddProficiency {
+impl FromKDL for AddProficiency {
 	fn from_kdl(
 		node: &kdl::KdlNode,
-		value_idx: &mut crate::kdl_ext::ValueIdx,
-		_system: &DnD5e,
+		value_idx: &mut ValueIdx,
+		_node_reg: &NodeRegistry,
 	) -> anyhow::Result<Self> {
 		let entry_idx = value_idx.next();
 		let entry = node.entry_req(entry_idx)?;
@@ -150,10 +153,10 @@ mod test {
 
 	mod from_kdl {
 		use super::*;
-		use crate::system::dnd5e::{data::item::weapon, BoxedMutator, DnD5e};
+		use crate::system::dnd5e::{data::item::weapon, BoxedMutator};
 
 		fn from_doc(doc: &str) -> anyhow::Result<BoxedMutator> {
-			DnD5e::defaultmut_parse_kdl::<AddProficiency>(doc)
+			NodeRegistry::defaultmut_parse_kdl::<AddProficiency>(doc)
 		}
 
 		#[test]

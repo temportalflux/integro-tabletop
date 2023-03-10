@@ -1,8 +1,11 @@
 use crate::{
 	kdl_ext::{NodeQueryExt, ValueIdx},
-	system::dnd5e::{
-		data::{character::Character, Ability},
-		DnD5e, FromKDL, KDLNode,
+	system::{
+		core::NodeRegistry,
+		dnd5e::{
+			data::{character::Character, Ability},
+			FromKDL, KDLNode,
+		},
 	},
 	utility::{Dependencies, Evaluator},
 };
@@ -37,11 +40,11 @@ impl KDLNode for GetAbilityModifier {
 	}
 }
 
-impl FromKDL<DnD5e> for GetAbilityModifier {
+impl FromKDL for GetAbilityModifier {
 	fn from_kdl(
 		node: &kdl::KdlNode,
 		value_idx: &mut ValueIdx,
-		_system: &DnD5e,
+		_node_reg: &NodeRegistry,
 	) -> anyhow::Result<Self> {
 		Ok(Self(Ability::from_str(node.get_str(value_idx.next())?)?))
 	}
@@ -50,13 +53,10 @@ impl FromKDL<DnD5e> for GetAbilityModifier {
 #[cfg(test)]
 mod test {
 	use super::*;
-	use crate::{
-		system::dnd5e::{data::character::Persistent, DnD5e},
-		utility::GenericEvaluator,
-	};
+	use crate::{system::dnd5e::data::character::Persistent, utility::GenericEvaluator};
 
 	fn from_doc(doc: &str) -> anyhow::Result<GenericEvaluator<Character, i32>> {
-		DnD5e::defaulteval_parse_kdl::<GetAbilityModifier>(doc)
+		NodeRegistry::defaulteval_parse_kdl::<GetAbilityModifier>(doc)
 	}
 
 	mod from_kdl {

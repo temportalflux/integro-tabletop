@@ -1,15 +1,17 @@
-use std::str::FromStr;
-
 use crate::{
-	kdl_ext::NodeQueryExt,
-	system::dnd5e::{
-		data::{character::Character, DamageType},
-		DnD5e, FromKDL, KDLNode, Value,
+	kdl_ext::{NodeQueryExt, ValueIdx},
+	system::{
+		core::NodeRegistry,
+		dnd5e::{
+			data::{character::Character, DamageType},
+			FromKDL, KDLNode, Value,
+		},
 	},
 	utility::Mutator,
 	GeneralError,
 };
 use enum_map::Enum;
+use std::str::FromStr;
 
 #[derive(Clone, Copy, PartialEq, Enum, Debug)]
 pub enum Defense {
@@ -85,15 +87,15 @@ impl Mutator for AddDefense {
 	}
 }
 
-impl FromKDL<DnD5e> for AddDefense {
+impl FromKDL for AddDefense {
 	fn from_kdl(
 		node: &kdl::KdlNode,
-		value_idx: &mut crate::kdl_ext::ValueIdx,
-		system: &DnD5e,
+		value_idx: &mut ValueIdx,
+		node_reg: &NodeRegistry,
 	) -> anyhow::Result<Self> {
 		let defense = Defense::from_str(node.get_str(value_idx.next())?)?;
 		let damage_type = match node.entry("damage_type") {
-			Some(entry) => Some(Value::from_kdl(node, entry, value_idx, system, |kdl| {
+			Some(entry) => Some(Value::from_kdl(node, entry, value_idx, node_reg, |kdl| {
 				Ok(match kdl.as_string() {
 					None => None,
 					Some(str) => Some(DamageType::from_str(str)?),
@@ -113,18 +115,21 @@ impl FromKDL<DnD5e> for AddDefense {
 #[cfg(test)]
 mod test {
 	use super::{AddDefense, Defense};
-	use crate::system::dnd5e::{
-		data::{
-			character::{Character, DefenseEntry, Persistent},
-			DamageType, Feature,
+	use crate::system::{
+		core::NodeRegistry,
+		dnd5e::{
+			data::{
+				character::{Character, DefenseEntry, Persistent},
+				DamageType, Feature,
+			},
+			BoxedMutator, Value,
 		},
-		BoxedMutator, DnD5e, Value,
 	};
 
 	fn from_doc(doc: &str) -> anyhow::Result<BoxedMutator> {
-		let mut system = DnD5e::default();
-		system.register_mutator::<AddDefense>();
-		system.parse_kdl_mutator(doc)
+		let mut node_reg = NodeRegistry::default();
+		node_reg.register_mutator::<AddDefense>();
+		node_reg.parse_kdl_mutator(doc)
 	}
 
 	mod from_kdl {

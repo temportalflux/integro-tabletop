@@ -50,11 +50,11 @@ impl KDLNode for Lineage {
 	}
 }
 
-impl FromKDL<DnD5e> for Lineage {
+impl FromKDL for Lineage {
 	fn from_kdl(
 		node: &kdl::KdlNode,
 		_value_idx: &mut ValueIdx,
-		system: &DnD5e,
+		node_reg: &crate::system::core::NodeRegistry,
 	) -> anyhow::Result<Self> {
 		let name = node.get_str("name")?.to_owned();
 		let description = node
@@ -66,14 +66,12 @@ impl FromKDL<DnD5e> for Lineage {
 		let mut features = Vec::new();
 		if let Some(children) = node.children() {
 			for entry_node in children.query_all("mutator")? {
-				let mut value_idx = ValueIdx::default();
-				let id = entry_node.get_str(value_idx.next())?;
-				let factory = system.get_mutator_factory(id)?;
-				mutators.push(factory.from_kdl(entry_node, &mut value_idx, system)?);
+				mutators.push(node_reg.parse_mutator(entry_node)?);
 			}
 			for entry_node in children.query_all("feature")? {
-				features
-					.push(Feature::from_kdl(entry_node, &mut ValueIdx::default(), system)?.into());
+				features.push(
+					Feature::from_kdl(entry_node, &mut ValueIdx::default(), node_reg)?.into(),
+				);
 			}
 		}
 		Ok(Lineage {

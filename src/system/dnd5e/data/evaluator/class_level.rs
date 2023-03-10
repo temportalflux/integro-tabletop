@@ -1,6 +1,9 @@
 use crate::{
 	kdl_ext::{NodeQueryExt, ValueIdx},
-	system::dnd5e::{data::character::Character, DnD5e, FromKDL, KDLNode},
+	system::{
+		core::NodeRegistry,
+		dnd5e::{data::character::Character, FromKDL, KDLNode},
+	},
 	utility::Evaluator,
 };
 use std::fmt::Debug;
@@ -40,11 +43,11 @@ impl KDLNode for GetLevel {
 	}
 }
 
-impl FromKDL<DnD5e> for GetLevel {
+impl FromKDL for GetLevel {
 	fn from_kdl(
 		node: &kdl::KdlNode,
 		value_idx: &mut ValueIdx,
-		_system: &DnD5e,
+		_node_reg: &NodeRegistry,
 	) -> anyhow::Result<Self> {
 		let class_name = node.get_str_opt(value_idx.next())?.map(ToString::to_string);
 		Ok(Self(class_name))
@@ -54,13 +57,10 @@ impl FromKDL<DnD5e> for GetLevel {
 #[cfg(test)]
 mod test {
 	use super::*;
-	use crate::{
-		system::dnd5e::{data::character::Persistent, DnD5e},
-		utility::GenericEvaluator,
-	};
+	use crate::{system::dnd5e::data::character::Persistent, utility::GenericEvaluator};
 
 	fn from_doc(doc: &str) -> anyhow::Result<GenericEvaluator<Character, i32>> {
-		DnD5e::defaulteval_parse_kdl::<GetLevel>(doc)
+		NodeRegistry::defaulteval_parse_kdl::<GetLevel>(doc)
 	}
 
 	mod from_kdl {

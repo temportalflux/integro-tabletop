@@ -1,7 +1,7 @@
 use super::RangeKind;
 use crate::{
 	kdl_ext::{NodeQueryExt, ValueIdx},
-	system::dnd5e::{DnD5e, FromKDL},
+	system::{core::NodeRegistry, dnd5e::FromKDL},
 	GeneralError,
 };
 use std::str::FromStr;
@@ -33,11 +33,11 @@ impl AttackKindValue {
 	}
 }
 
-impl FromKDL<DnD5e> for AttackKindValue {
+impl FromKDL for AttackKindValue {
 	fn from_kdl(
 		node: &kdl::KdlNode,
 		value_idx: &mut ValueIdx,
-		_system: &DnD5e,
+		_node_reg: &NodeRegistry,
 	) -> anyhow::Result<Self> {
 		match node.get_str(value_idx.next())? {
 			"Melee" => Ok(Self::Melee {
@@ -70,13 +70,14 @@ mod test {
 
 	mod from_kdl {
 		use super::*;
+		use crate::system::core::NodeRegistry;
 
 		fn from_doc(doc: &str) -> anyhow::Result<AttackKindValue> {
-			let system = DnD5e::default();
+			let node_reg = NodeRegistry::default();
 			let document = doc.parse::<kdl::KdlDocument>()?;
 			let node = document.query("kind")?.expect("missing kind node");
 			let mut idx = ValueIdx::default();
-			AttackKindValue::from_kdl(node, &mut idx, &system)
+			AttackKindValue::from_kdl(node, &mut idx, &node_reg)
 		}
 
 		#[test]

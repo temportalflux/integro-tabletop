@@ -1,8 +1,11 @@
 use crate::{
 	kdl_ext::{NodeQueryExt, ValueIdx},
-	system::dnd5e::{
-		data::{character::Character, Ability},
-		DnD5e, FromKDL, KDLNode,
+	system::{
+		core::NodeRegistry,
+		dnd5e::{
+			data::{character::Character, Ability},
+			FromKDL, KDLNode,
+		},
 	},
 	utility::Mutator,
 };
@@ -41,11 +44,11 @@ impl Mutator for AddSavingThrowModifier {
 	}
 }
 
-impl FromKDL<DnD5e> for AddSavingThrowModifier {
+impl FromKDL for AddSavingThrowModifier {
 	fn from_kdl(
 		node: &kdl::KdlNode,
 		_value_idx: &mut ValueIdx,
-		_system: &DnD5e,
+		_node_reg: &NodeRegistry,
 	) -> anyhow::Result<Self> {
 		let ability = match node.get_str_opt("ability")? {
 			Some(str) => Some(Ability::from_str(str)?),

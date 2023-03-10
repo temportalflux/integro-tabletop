@@ -1,5 +1,5 @@
 use super::{Evaluator, GenericEvaluator};
-use crate::{kdl_ext::ValueIdx, GeneralError};
+use crate::{kdl_ext::ValueIdx, system::dnd5e::data::character::Character, GeneralError};
 use std::{collections::HashSet, fmt::Debug, ops::Deref};
 
 #[derive(Clone)]
@@ -77,7 +77,7 @@ where
 }
 
 // TODO: Test Value::from_kdl
-impl<V> Value<crate::system::dnd5e::data::character::Character, V>
+impl<V> Value<Character, V>
 where
 	V: 'static,
 {
@@ -85,7 +85,7 @@ where
 		node: &kdl::KdlNode,
 		entry: &kdl::KdlEntry,
 		value_idx: &mut ValueIdx,
-		system: &crate::system::dnd5e::DnD5e,
+		node_reg: &crate::system::core::NodeRegistry,
 		map_value: impl Fn(&kdl::KdlValue) -> anyhow::Result<Option<V>>,
 	) -> anyhow::Result<Self> {
 		match entry.ty().map(|id| id.value()) {
@@ -93,9 +93,9 @@ where
 				let evaluator_name = entry.value().as_string().ok_or(GeneralError(format!(
 					"Evaluator-typed values must be associated with a string, {entry:?} is not."
 				)))?;
-				let factory = system.get_evaluator_factory(evaluator_name)?;
+				let factory = node_reg.get_evaluator_factory(evaluator_name)?;
 				Ok(Self::Evaluated(
-					factory.from_kdl::<V>(node, value_idx, system)?,
+					factory.from_kdl::<Character, V>(node, value_idx, node_reg)?,
 				))
 			}
 			_ => Ok(Self::Fixed(map_value(entry.value())?.ok_or(

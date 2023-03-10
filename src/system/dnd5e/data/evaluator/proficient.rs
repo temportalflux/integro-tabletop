@@ -1,18 +1,20 @@
-use std::str::FromStr;
-
 use crate::{
-	kdl_ext::NodeQueryExt,
-	system::dnd5e::{
-		data::{
-			character::Character,
-			item::{armor, weapon},
-			proficiency, Ability, Skill, WeaponProficiency,
+	kdl_ext::{NodeQueryExt, ValueIdx},
+	system::{
+		core::NodeRegistry,
+		dnd5e::{
+			data::{
+				character::Character,
+				item::{armor, weapon},
+				proficiency, Ability, Skill, WeaponProficiency,
+			},
+			FromKDL, KDLNode,
 		},
-		DnD5e, FromKDL, KDLNode,
 	},
 	utility::Evaluator,
 	GeneralError,
 };
+use std::str::FromStr;
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum IsProficientWith {
@@ -59,11 +61,11 @@ impl KDLNode for IsProficientWith {
 	}
 }
 
-impl FromKDL<DnD5e> for IsProficientWith {
+impl FromKDL for IsProficientWith {
 	fn from_kdl(
 		node: &kdl::KdlNode,
-		value_idx: &mut crate::kdl_ext::ValueIdx,
-		_system: &DnD5e,
+		value_idx: &mut ValueIdx,
+		_node_reg: &NodeRegistry,
 	) -> anyhow::Result<Self> {
 		let entry_idx = value_idx.next();
 		let entry = node.entry_req(entry_idx)?;
@@ -106,10 +108,10 @@ mod test {
 
 	mod from_kdl {
 		use super::*;
-		use crate::{system::dnd5e::DnD5e, utility::GenericEvaluator};
+		use crate::utility::GenericEvaluator;
 
 		fn from_doc(doc: &str) -> anyhow::Result<GenericEvaluator<Character, bool>> {
-			DnD5e::defaulteval_parse_kdl::<IsProficientWith>(doc)
+			NodeRegistry::defaulteval_parse_kdl::<IsProficientWith>(doc)
 		}
 
 		#[test]

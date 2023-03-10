@@ -1,11 +1,14 @@
 use crate::{
 	kdl_ext::{DocumentQueryExt, NodeQueryExt, ValueIdx},
-	system::dnd5e::{
-		data::{
-			character::Character,
-			item::{armor, EquipableEntry, ItemKind},
+	system::{
+		core::NodeRegistry,
+		dnd5e::{
+			data::{
+				character::Character,
+				item::{armor, EquipableEntry, ItemKind},
+			},
+			FromKDL, KDLNode,
 		},
-		DnD5e, FromKDL, KDLNode,
 	},
 };
 use std::{collections::HashSet, str::FromStr};
@@ -92,8 +95,12 @@ impl KDLNode for HasArmorEquipped {
 	}
 }
 
-impl FromKDL<DnD5e> for HasArmorEquipped {
-	fn from_kdl(node: &kdl::KdlNode, _: &mut ValueIdx, _system: &DnD5e) -> anyhow::Result<Self> {
+impl FromKDL for HasArmorEquipped {
+	fn from_kdl(
+		node: &kdl::KdlNode,
+		_: &mut ValueIdx,
+		_node_reg: &NodeRegistry,
+	) -> anyhow::Result<Self> {
 		let inverted = node.get_bool_opt("inverted")?.unwrap_or_default();
 		let mut kinds = HashSet::new();
 		if let Some(children) = node.children() {
@@ -117,7 +124,7 @@ mod test {
 	};
 
 	fn from_doc(doc: &str) -> anyhow::Result<GenericEvaluator<Character, Result<(), String>>> {
-		DnD5e::defaulteval_parse_kdl::<HasArmorEquipped>(doc)
+		NodeRegistry::defaulteval_parse_kdl::<HasArmorEquipped>(doc)
 	}
 
 	mod from_kdl {

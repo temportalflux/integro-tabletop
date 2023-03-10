@@ -1,6 +1,6 @@
 use crate::{
 	kdl_ext::{NodeQueryExt, ValueIdx},
-	system::dnd5e::{DnD5e, FromKDL},
+	system::dnd5e::FromKDL,
 	GeneralError,
 };
 
@@ -14,11 +14,11 @@ pub enum ActivationKind {
 	Hour(u32),
 }
 
-impl FromKDL<DnD5e> for ActivationKind {
+impl FromKDL for ActivationKind {
 	fn from_kdl(
 		node: &kdl::KdlNode,
 		value_idx: &mut ValueIdx,
-		_system: &DnD5e,
+		_node_reg: &crate::system::core::NodeRegistry,
 	) -> anyhow::Result<Self> {
 		match node.get_str(value_idx.next())? {
 			"Action" => Ok(Self::Action),

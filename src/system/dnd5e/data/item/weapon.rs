@@ -1,17 +1,20 @@
 use super::EquipableEntry;
 use crate::{
 	kdl_ext::{NodeQueryExt, ValueIdx},
-	system::dnd5e::{
-		data::{
-			action::{
-				Action, ActionSource, ActivationKind, Attack, AttackCheckKind, AttackKind,
-				AttackKindValue,
+	system::{
+		core::NodeRegistry,
+		dnd5e::{
+			data::{
+				action::{
+					Action, ActionSource, ActivationKind, Attack, AttackCheckKind, AttackKind,
+					AttackKindValue,
+				},
+				evaluator::{self, IsProficientWith},
+				roll::Roll,
+				Ability, DamageRoll, DamageType, WeaponProficiency,
 			},
-			evaluator::{self, IsProficientWith},
-			roll::Roll,
-			Ability, DamageRoll, DamageType, WeaponProficiency,
+			FromKDL, Value,
 		},
-		DnD5e, FromKDL, Value,
 	},
 	GeneralError,
 };
@@ -115,11 +118,11 @@ impl Weapon {
 	}
 }
 
-impl FromKDL<DnD5e> for Weapon {
+impl FromKDL for Weapon {
 	fn from_kdl(
 		node: &kdl::KdlNode,
 		value_idx: &mut ValueIdx,
-		system: &DnD5e,
+		node_reg: &NodeRegistry,
 	) -> anyhow::Result<Self> {
 		let kind = Kind::from_str(node.get_str(value_idx.next())?)?;
 		let classification = node.get_str("class")?.to_owned();
@@ -128,19 +131,23 @@ impl FromKDL<DnD5e> for Weapon {
 			Some(node) => Some(WeaponDamage::from_kdl(
 				node,
 				&mut ValueIdx::default(),
-				system,
+				node_reg,
 			)?),
 		};
 		let properties = {
 			let mut props = Vec::new();
 			for node in node.query_all("property")? {
-				props.push(Property::from_kdl(node, &mut ValueIdx::default(), system)?);
+				props.push(Property::from_kdl(
+					node,
+					&mut ValueIdx::default(),
+					node_reg,
+				)?);
 			}
 			props
 		};
 		let range = match node.query("range")? {
 			None => None,
-			Some(node) => Some(Range::from_kdl(node, &mut ValueIdx::default(), system)?),
+			Some(node) => Some(Range::from_kdl(node, &mut ValueIdx::default(), node_reg)?),
 		};
 		Ok(Self {
 			kind,
@@ -159,11 +166,11 @@ pub struct WeaponDamage {
 	pub damage_type: DamageType,
 }
 
-impl FromKDL<DnD5e> for WeaponDamage {
+impl FromKDL for WeaponDamage {
 	fn from_kdl(
 		node: &kdl::KdlNode,
 		value_idx: &mut ValueIdx,
-		_system: &DnD5e,
+		_node_reg: &NodeRegistry,
 	) -> anyhow::Result<Self> {
 		let roll = match node.get_str_opt("roll")? {
 			Some(roll_str) => Some(Roll::from_str(roll_str)?),
@@ -189,11 +196,11 @@ pub enum Property {
 	Thrown(u32, u32),
 	Versatile(Roll),
 }
-impl FromKDL<DnD5e> for Property {
+impl FromKDL for Property {
 	fn from_kdl(
 		node: &kdl::KdlNode,
 		value_idx: &mut ValueIdx,
-		_system: &DnD5e,
+		_node_reg: &NodeRegistry,
 	) -> anyhow::Result<Self> {
 		match node.get_str(value_idx.next())? {
 			"Light" => Ok(Self::Light),
@@ -223,11 +230,11 @@ pub struct Range {
 	pub requires_loading: bool,
 }
 
-impl FromKDL<DnD5e> for Range {
+impl FromKDL for Range {
 	fn from_kdl(
 		node: &kdl::KdlNode,
 		value_idx: &mut ValueIdx,
-		_system: &DnD5e,
+		_node_reg: &NodeRegistry,
 	) -> anyhow::Result<Self> {
 		let short_range = node.get_i64(value_idx.next())? as u32;
 		let long_range = node.get_i64(value_idx.next())? as u32;

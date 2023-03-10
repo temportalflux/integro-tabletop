@@ -1,7 +1,7 @@
 use super::condition::BoxedCondition;
 use crate::{
 	kdl_ext::{DocumentQueryExt, NodeQueryExt, ValueIdx},
-	system::dnd5e::{DnD5e, FromKDL},
+	system::{core::NodeRegistry, dnd5e::FromKDL},
 };
 use std::path::PathBuf;
 use uuid::Uuid;
@@ -26,11 +26,11 @@ pub struct Action {
 	// generated
 	pub source: Option<ActionSource>,
 }
-impl FromKDL<DnD5e> for Action {
+impl FromKDL for Action {
 	fn from_kdl(
 		node: &kdl::KdlNode,
 		_value_idx: &mut ValueIdx,
-		system: &DnD5e,
+		node_reg: &NodeRegistry,
 	) -> anyhow::Result<Self> {
 		let name = node.get_str("name")?.to_owned();
 		let description = node
@@ -40,18 +40,18 @@ impl FromKDL<DnD5e> for Action {
 		let activation_kind = ActivationKind::from_kdl(
 			node.query_req("activation")?,
 			&mut ValueIdx::default(),
-			system,
+			node_reg,
 		)?;
 		let attack = match node.query("attack")? {
 			None => None,
-			Some(node) => Some(Attack::from_kdl(node, &mut ValueIdx::default(), system)?),
+			Some(node) => Some(Attack::from_kdl(node, &mut ValueIdx::default(), node_reg)?),
 		};
 		let limited_uses = match node.query("limited_uses")? {
 			None => None,
 			Some(node) => Some(LimitedUses::from_kdl(
 				node,
 				&mut ValueIdx::default(),
-				system,
+				node_reg,
 			)?),
 		};
 		// TODO: conditions applied on use

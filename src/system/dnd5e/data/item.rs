@@ -62,11 +62,11 @@ impl SystemComponent for Item {
 	}
 }
 
-impl FromKDL<DnD5e> for Item {
+impl FromKDL for Item {
 	fn from_kdl(
 		node: &kdl::KdlNode,
 		_value_idx: &mut crate::kdl_ext::ValueIdx,
-		system: &DnD5e,
+		node_reg: &crate::system::core::NodeRegistry,
 	) -> anyhow::Result<Self> {
 		let name = node.get_str("name")?.to_owned();
 		let weight = node.get_f64_opt("weight")?.unwrap_or(0.0) as f32;
@@ -90,7 +90,7 @@ impl FromKDL<DnD5e> for Item {
 			tags
 		};
 		let kind = match node.query("kind")? {
-			Some(node) => ItemKind::from_kdl(node, &mut ValueIdx::default(), system)?,
+			Some(node) => ItemKind::from_kdl(node, &mut ValueIdx::default(), node_reg)?,
 			None => ItemKind::default(),
 		};
 
@@ -118,11 +118,11 @@ impl Default for ItemKind {
 	}
 }
 
-impl FromKDL<DnD5e> for ItemKind {
+impl FromKDL for ItemKind {
 	fn from_kdl(
 		node: &kdl::KdlNode,
 		value_idx: &mut ValueIdx,
-		system: &DnD5e,
+		node_reg: &crate::system::core::NodeRegistry,
 	) -> anyhow::Result<Self> {
 		match node.get_str(value_idx.next())? {
 			"Simple" => {
@@ -130,7 +130,7 @@ impl FromKDL<DnD5e> for ItemKind {
 				Ok(Self::Simple { count })
 			}
 			"Equipment" => {
-				let equipment = equipment::Equipment::from_kdl(node, value_idx, system)?;
+				let equipment = equipment::Equipment::from_kdl(node, value_idx, node_reg)?;
 				Ok(Self::Equipment(equipment))
 			}
 			value => Err(GeneralError(format!(

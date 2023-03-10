@@ -2,7 +2,10 @@ use std::str::FromStr;
 
 use crate::{
 	kdl_ext::{DocumentQueryExt, NodeQueryExt, ValueIdx},
-	system::dnd5e::{data::Rest, DnD5e, FromKDL, Value},
+	system::{
+		core::NodeRegistry,
+		dnd5e::{data::Rest, FromKDL, Value},
+	},
 };
 
 #[derive(Default, Clone, PartialEq, Debug)]
@@ -15,11 +18,11 @@ pub struct LimitedUses {
 	pub reset_on: Option<Rest>,
 }
 
-impl FromKDL<DnD5e> for LimitedUses {
+impl FromKDL for LimitedUses {
 	fn from_kdl(
 		node: &kdl::KdlNode,
 		_value_idx: &mut ValueIdx,
-		_system: &DnD5e,
+		_node_reg: &NodeRegistry,
 	) -> anyhow::Result<Self> {
 		let max_uses = {
 			// Temporary code, until I can implement scaling uses
