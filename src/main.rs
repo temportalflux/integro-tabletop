@@ -218,19 +218,32 @@ fn main() {
 
 #[cfg(target_family = "windows")]
 fn main() -> anyhow::Result<()> {
+	use system::core::ModuleId;
+
 	let _ = logging::console::init("tabletop-tools", &[]);
 
 	let mut system_reg = system::core::SystemRegistry::default();
 	system_reg.register(system::dnd5e::DnD5e::new());
 
-	for item in WalkDir::new("./modules") {
-		let Some(ext) = item.extension() else { continue; };
-		if ext.to_str() != Some("kdl") {
-			continue;
+	let mut modules = Vec::new();
+	for modules_entry in std::fs::read_dir("./modules")? {
+		let dir_entry = modules_entry?;
+		if dir_entry.metadata()?.is_dir() {
+			modules.push(ModuleId::File(dir_entry.path().to_owned()));
 		}
-		let Ok(content) = std::fs::read_to_string(&item) else { continue; };
-		if let Err(err) = insert_system_document(&system_reg, &content) {
-			log::error!("Failed to parse module document {item:?}: {err:?}");
+	}
+	for module_id in modules {
+		log::info!("Loading module {module_id:?}");
+		let ModuleId::File(module_path) = &module_id else {continue; };
+		for item in WalkDir::new(&module_path) {
+			let Some(ext) = item.extension() else { continue; };
+			if ext.to_str() != Some("kdl") {
+				continue;
+			}
+			let Ok(content) = std::fs::read_to_string(&item) else { continue; };
+			if let Err(err) = insert_system_document(&system_reg, &content) {
+				log::error!("Failed to parse module document {item:?}: {err:?}");
+			}
 		}
 	}
 
