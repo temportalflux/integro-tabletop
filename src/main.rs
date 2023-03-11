@@ -1,7 +1,8 @@
 use std::path::{Path, PathBuf};
 use yew::prelude::*;
+use yew_hooks::{use_mount, use_is_first_mount};
 
-use crate::system::dnd5e::data::bounded::BoundValue;
+use crate::system::dnd5e::{data::bounded::BoundValue, DnD5e};
 
 pub mod bootstrap;
 pub mod components;
@@ -186,6 +187,42 @@ fn create_character() -> system::dnd5e::data::character::Persistent {
 #[function_component]
 fn App() -> Html {
 	let character = create_character();
+	let show_browser = use_state_eq(|| false);
+	let content = use_state(|| DnD5e::default());
+
+	let content_loader = yew_hooks::use_async({
+		let content = content.clone();
+		async move {
+			/*
+			for entry in std::fs::read_dir("./modules")? {
+				let entry = entry?;
+				
+			}
+			*/
+			Ok(()) as Result<(), std::sync::Arc<anyhow::Error> >
+		}
+	});
+	if use_is_first_mount() {
+		content_loader.run();
+	}
+
+	let open_character = Callback::from({
+		let show_browser = show_browser.clone();
+		move |_| {
+			show_browser.set(false);
+		}
+	});
+	let open_content = Callback::from({
+		let show_browser = show_browser.clone();
+		move |_| {
+			show_browser.set(true);
+		}
+	});
+
+	let content = match *show_browser {
+		false => html! {<system::dnd5e::components::CharacterSheetPage {character} />},
+		true => html! {},
+	};
 
 	return html! {<>
 		<header>
@@ -197,7 +234,12 @@ fn App() -> Html {
 					</button>
 					<div class="collapse navbar-collapse" id="navContent">
 						<ul class="navbar-nav">
-							<li class="nav-item">{"My Characters"}</li>
+							<li class="nav-item">
+								<a class="nav-link" onclick={open_character}>{"My Characters"}</a>
+							</li>
+							<li class="nav-item">
+								<a class="nav-link" onclick={open_content}>{"Content Browser"}</a>
+							</li>
 						</ul>
 						<ul class="navbar-nav flex-row flex-wrap ms-md-auto">
 							<theme::Dropdown />
@@ -206,7 +248,7 @@ fn App() -> Html {
 				</div>
 			</nav>
 		</header>
-		<system::dnd5e::components::CharacterSheetPage {character} />
+		{content}
 	</>};
 }
 
