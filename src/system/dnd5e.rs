@@ -169,7 +169,7 @@ pub fn node_registry() -> NodeRegistry {
 	registry
 }
 
-#[derive(Default)]
+#[derive(Clone, PartialEq, Default)]
 pub struct DnD5e {
 	pub lineages: HashMap<SourceId, data::Lineage>,
 	pub items: HashMap<SourceId, data::item::Item>,

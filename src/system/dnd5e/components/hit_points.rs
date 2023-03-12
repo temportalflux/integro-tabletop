@@ -719,7 +719,6 @@ fn DeathSaveBoxes(DeathSaveBoxesProps { class_name }: &DeathSaveBoxesProps) -> H
 			let Some(node) = evt.target() else { return None; };
 			let Some(input) = node.dyn_ref::<HtmlInputElement>() else { return None; };
 			let checked = input.checked();
-			log::debug!("[{class_name}] checked={checked}");
 			let save_count = match class_name.as_str() {
 				"failure" => &mut persistent.hit_points_mut().failure_saves,
 				"success" => &mut persistent.hit_points_mut().success_saves,

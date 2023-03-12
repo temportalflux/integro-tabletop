@@ -82,6 +82,8 @@ pub struct NavProps {
 	pub default_tab_id: AttrValue,
 	#[prop_or_default]
 	pub children: ChildrenWithProps<TabContent>,
+	#[prop_or_default]
+	pub extra: Option<Html>,
 }
 
 #[function_component]
@@ -95,6 +97,7 @@ pub fn Nav(
 		width,
 		default_tab_id,
 		children,
+		extra,
 	}: &NavProps,
 ) -> Html {
 	let default_tab_id = default_tab_id.as_str().to_owned();
@@ -143,6 +146,7 @@ pub fn Nav(
 		<div class={root_classes.clone()}>
 			<ul class={nav_classes} role="tablist">
 				{nav_items}
+				{extra.clone().unwrap_or_default()}
 			</ul>
 			<div class="tab-content">
 				{tab_children}

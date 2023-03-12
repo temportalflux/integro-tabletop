@@ -47,7 +47,7 @@ fn create_character() -> system::dnd5e::data::character::Persistent {
 	Persistent {
 		description: Description {
 			name: "Fauxpaul".into(),
-			pronouns: "".into(),
+			..Default::default()
 		},
 		ability_scores: enum_map! {
 			Ability::Strength => Score(12),
@@ -225,10 +225,6 @@ fn App() -> Html {
 		content_loader.run();
 	}
 
-	for (_id, lineage) in &system.lineages {
-		log::info!("{:?}", lineage.name);
-	}
-
 	let open_character = Callback::from({
 		let show_browser = show_browser.clone();
 		move |_| {
@@ -271,7 +267,9 @@ fn App() -> Html {
 				</div>
 			</nav>
 		</header>
-		{content}
+		<ContextProvider<UseStateHandle<DnD5e>> context={system.clone()}>
+			{content}
+		</ContextProvider<UseStateHandle<DnD5e>>>
 	</>};
 }
 
