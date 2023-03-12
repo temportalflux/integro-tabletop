@@ -44,3 +44,7 @@ num-traits = "0.2"
 simplelog = "0.12"
 time = "0.3"
 downcast-rs = "1.2"
+async-channel = "1.8"
+
+[target.'cfg(windows)'.dependencies]
+tokio = { version="1.26", features=["full"] }

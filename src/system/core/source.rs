@@ -1,18 +1,21 @@
 use std::path::PathBuf;
 use std::str::FromStr;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ModuleId {
-	File(PathBuf),
+	Local {
+		name: String,
+	},
 	Github {
 		user_org: String,
 		repository: String,
 	},
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct SourceId {
 	pub module: ModuleId,
+	pub system: String,
 	pub path: PathBuf,
 	pub version: Option<String>,
 	pub node_idx: usize,
@@ -20,21 +23,19 @@ pub struct SourceId {
 
 impl ToString for SourceId {
 	fn to_string(&self) -> String {
-		let mut url_str = match &self.module {
-			ModuleId::File(base_path) => {
-				format!("file://{}", base_path.join(&self.path).display())
+		let url_str = match &self.module {
+			ModuleId::Local { name } => {
+				format!("local://{name}")
 			}
 			ModuleId::Github {
 				user_org,
 				repository,
 			} => {
-				format!(
-					"url://{user_org}:{repository}@github/{}",
-					self.path.display()
-				)
+				format!("github://{user_org}:{repository}")
 			}
-		}
-		.replace("\\", "/");
+		};
+		let mut url_str =
+			format!("{url_str}@{}/{}", self.system, self.path.display()).replace("\\", "/");
 		if let Some(query) = self.version.as_ref().map(|v| format!("?version={v}")) {
 			url_str.push_str(&query);
 		}
@@ -50,21 +51,26 @@ impl FromStr for SourceId {
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		let url = url::Url::from_str(s)?;
-		let module = match (url.scheme(), url.host_str()) {
-			("file", _) => ModuleId::File(PathBuf::new()),
-			("url", Some("github")) => ModuleId::Github {
-				user_org: url.username().to_owned(),
+
+		let module_name = url.username().to_owned();
+		let system = url
+			.host_str()
+			.ok_or(SourceIdParseError::MissingSystemId)?
+			.to_owned();
+
+		let module = match url.scheme() {
+			"local" => ModuleId::Local { name: module_name },
+			"github" => ModuleId::Github {
+				user_org: module_name,
 				repository: url
 					.password()
 					.ok_or(SourceIdParseError::MissingRepository)?
 					.to_string(),
 			},
-			(scheme, host) => {
-				return Err(SourceIdParseError::UnrecognizedModule(
-					scheme.to_owned(),
-					host.map(str::to_owned),
-				)
-				.into());
+			scheme => {
+				return Err(
+					SourceIdParseError::UnrecognizedModuleService(scheme.to_owned()).into(),
+				);
 			}
 		};
 		let mut path = PathBuf::from_str(url.path())?;
@@ -81,6 +87,7 @@ impl FromStr for SourceId {
 		}
 		.unwrap_or_default();
 		Ok(Self {
+			system,
 			module,
 			path,
 			version,
@@ -89,25 +96,14 @@ impl FromStr for SourceId {
 	}
 }
 
-impl SourceId {
-	pub fn relative_to(mut self, module: &ModuleId) -> anyhow::Result<Self> {
-		match (module, &mut self.module, &mut self.path) {
-			(ModuleId::File(base), ModuleId::File(derived), path) => {
-				*path = derived.join(&path).strip_prefix(&base)?.to_owned();
-				*derived = base.clone();
-			}
-			_ => {}
-		}
-		Ok(self)
-	}
-}
-
 #[derive(thiserror::Error, Debug)]
 enum SourceIdParseError {
+	#[error("Missing system id in host field of url")]
+	MissingSystemId,
 	#[error("Missing repository name in password field of url")]
 	MissingRepository,
-	#[error("Unrecognized module service {0}:{1:?}")]
-	UnrecognizedModule(String, Option<String>),
+	#[error("Unrecognized module service {0}")]
+	UnrecognizedModuleService(String),
 }
 
 #[cfg(test)]
@@ -116,13 +112,16 @@ mod test {
 
 	#[test]
 	fn file_no_module() -> anyhow::Result<()> {
-		let src = "file:///c/Users/thisuser/Desktop/homebrew/items/trinket.kdl#32";
+		let src = "local://homebrew@dnd5e/items/trinket.kdl#32";
 		let source_id = SourceId::from_str(src)?;
 		assert_eq!(
 			source_id,
 			SourceId {
-				module: ModuleId::File(PathBuf::new()),
-				path: "/c/Users/thisuser/Desktop/homebrew/items/trinket.kdl".into(),
+				module: ModuleId::Local {
+					name: "homebrew".into()
+				},
+				system: "dnd5e".into(),
+				path: "items/trinket.kdl".into(),
 				version: None,
 				node_idx: 32,
 			}
@@ -131,43 +130,25 @@ mod test {
 	}
 
 	#[test]
-	fn file_relative_to() -> anyhow::Result<()> {
-		let module = ModuleId::File("/c/Users/thisuser/Desktop/homebrew".into());
-		let source = SourceId {
-			module: ModuleId::File(PathBuf::new()),
-			path: "/c/Users/thisuser/Desktop/homebrew/items/trinket.kdl".into(),
-			version: None,
-			node_idx: 0,
-		};
-		assert_eq!(
-			source.relative_to(&module)?,
-			SourceId {
-				module,
-				path: "items/trinket.kdl".into(),
-				version: None,
-				node_idx: 0,
-			}
-		);
-		Ok(())
-	}
-
-	#[test]
 	fn file_to_str() {
 		let source = SourceId {
-			module: ModuleId::File("/c/Users/thisuser/Desktop/homebrew".into()),
+			module: ModuleId::Local {
+				name: "homebrew".into(),
+			},
+			system: "dnd5e".into(),
 			path: "items/trinket.kdl".into(),
 			version: None,
 			node_idx: 0,
 		};
 		assert_eq!(
 			source.to_string(),
-			"file:///c/Users/thisuser/Desktop/homebrew/items/trinket.kdl"
+			"local://homebrew@dnd5e/items/trinket.kdl"
 		);
 	}
 
 	#[test]
 	fn github() -> anyhow::Result<()> {
-		let src = "url://ghuser:homebrew@github/items/trinket.kdl?version=4b37d0e2a#5";
+		let src = "github://ghuser:homebrew@dnd5e/items/trinket.kdl?version=4b37d0e2a#5";
 		let source_id = SourceId::from_str(src)?;
 		assert_eq!(
 			source_id,
@@ -176,6 +157,7 @@ mod test {
 					user_org: "ghuser".into(),
 					repository: "homebrew".into()
 				},
+				system: "dnd5e".into(),
 				path: "items/trinket.kdl".into(),
 				version: Some("4b37d0e2a".into()),
 				node_idx: 5,
@@ -191,13 +173,14 @@ mod test {
 				user_org: "ghuser".into(),
 				repository: "homebrew".into(),
 			},
+			system: "dnd5e".into(),
 			path: "items/trinket.kdl".into(),
 			version: Some("4b37d0e2a".into()),
 			node_idx: 7,
 		};
 		assert_eq!(
 			source.to_string(),
-			"url://ghuser:homebrew@github/items/trinket.kdl?version=4b37d0e2a#7"
+			"github://ghuser:homebrew@dnd5e/items/trinket.kdl?version=4b37d0e2a#7"
 		);
 	}
 }

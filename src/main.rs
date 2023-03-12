@@ -1,6 +1,9 @@
-use std::path::{Path, PathBuf};
+use std::{
+	collections::BTreeMap,
+	path::{Path, PathBuf},
+};
 use yew::prelude::*;
-use yew_hooks::{use_mount, use_is_first_mount};
+use yew_hooks::use_is_first_mount;
 
 use crate::system::dnd5e::{data::bounded::BoundValue, DnD5e};
 
@@ -186,24 +189,44 @@ fn create_character() -> system::dnd5e::data::character::Persistent {
 
 #[function_component]
 fn App() -> Html {
+	use system::dnd5e;
 	let character = create_character();
 	let show_browser = use_state_eq(|| false);
-	let content = use_state(|| DnD5e::default());
+	let comp_reg = use_memo(|_| dnd5e::component_registry(), ());
+	let node_reg = use_memo(|_| dnd5e::node_registry(), ());
+	let modules = use_memo(|_| vec!["basic-rules", "elf-and-orc"], ());
+	let system = use_state(|| DnD5e::default());
 
 	let content_loader = yew_hooks::use_async({
-		let content = content.clone();
+		let comp_reg = comp_reg.clone();
+		let node_reg = node_reg.clone();
+		let modules = modules.clone();
+		let system_state = system.clone();
 		async move {
-			/*
-			for entry in std::fs::read_dir("./modules")? {
-				let entry = entry?;
-				
+			let mut system = DnD5e::default();
+			for module in &*modules {
+				log::info!("Loading content module {module:?}");
+				let sources = fetch_local_module(*module, &["dnd5e"]).await?;
+				for (mut source_id, content) in sources {
+					let Ok(document) = content.parse::<kdl::KdlDocument>() else { continue; };
+					for (idx, node) in document.nodes().iter().enumerate() {
+						source_id.node_idx = idx;
+						let Some(comp_factory) = comp_reg.get_factory(node.name().value()).cloned() else { continue; };
+						let Ok(insert_callback) = comp_factory.add_from_kdl(node, source_id.clone(), &node_reg) else { continue; };
+						(insert_callback)(&mut system);
+					}
+				}
 			}
-			*/
-			Ok(()) as Result<(), std::sync::Arc<anyhow::Error> >
+			system_state.set(system);
+			Ok(()) as Result<(), std::sync::Arc<anyhow::Error>>
 		}
 	});
 	if use_is_first_mount() {
 		content_loader.run();
+	}
+
+	for (_id, lineage) in &system.lineages {
+		log::info!("{:?}", lineage.name);
 	}
 
 	let open_character = Callback::from({
@@ -259,65 +282,147 @@ fn main() {
 }
 
 #[cfg(target_family = "windows")]
-fn main() -> anyhow::Result<()> {
-	use system::core::ModuleId;
-
-	use crate::system::core::SourceId;
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+	use crate::system::{
+		core::{ModuleId, SourceId},
+		dnd5e,
+	};
+	use anyhow::Context;
+	use std::collections::BTreeMap;
 
 	let _ = logging::console::init("tabletop-tools", &[]);
 
-	let mut system_reg = system::core::SystemRegistry::default();
-	system_reg.register(system::dnd5e::DnD5e::new());
+	let comp_reg = dnd5e::component_registry();
+	let node_reg = dnd5e::node_registry();
+	let mut system = dnd5e::DnD5e::default();
 
 	let mut modules = Vec::new();
-	for modules_entry in std::fs::read_dir("./modules")? {
-		let dir_entry = modules_entry?;
-		if dir_entry.metadata()?.is_dir() {
-			modules.push(ModuleId::File(dir_entry.path().to_owned()));
+	for entry in std::fs::read_dir("./modules")? {
+		let entry = entry?;
+		if !entry.metadata()?.is_dir() {
+			continue;
 		}
-	}
-	for module_id in modules {
-		log::info!("Loading module {module_id:?}");
-		let ModuleId::File(module_path) = &module_id else {continue; };
-		for item in WalkDir::new(&module_path) {
-			let Some(ext) = item.extension() else { continue; };
-			if ext.to_str() != Some("kdl") {
+		let module_id = entry.file_name().to_str().unwrap().to_owned();
+		let mut system_ids = Vec::new();
+		for entry in std::fs::read_dir(entry.path())? {
+			let entry = entry?;
+			if !entry.metadata()?.is_dir() {
 				continue;
 			}
-			let Ok(content) = std::fs::read_to_string(&item) else { continue; };
+			let system_id = entry.file_name().to_str().unwrap().to_owned();
+			system_ids.push(system_id);
+		}
+		log::debug!("Found module {module_id:?} with systems {system_ids:?}.");
+		modules.push((entry.path(), module_id, system_ids));
+	}
+
+	let mut sources = BTreeMap::new();
+	for (module_path, module_id, system_ids) in modules {
+		for system_id in system_ids {
+			log::info!("Loading module \"{module_id}/{system_id}\"");
+			let system_path = module_path.join(&system_id);
+			let mut item_paths = Vec::new();
+			for item in WalkDir::new(&system_path) {
+				let Some(ext) = item.extension() else { continue; };
+				if ext.to_str() != Some("kdl") {
+					continue;
+				}
+				let Ok(content) = std::fs::read_to_string(&item) else { continue; };
+				let item_relative_path = item.strip_prefix(&system_path)?;
+				item_paths.push(item_relative_path.to_owned());
+				let source_id = SourceId {
+					module: ModuleId::Local {
+						name: module_id.clone(),
+					},
+					system: system_id.clone(),
+					path: item_relative_path.to_owned(),
+					version: None,
+					node_idx: 0,
+				};
+				sources.insert(source_id, content);
+			}
+			// Update the index file
+			tokio::fs::write(system_path.join("index"), {
+				item_paths
+					.into_iter()
+					.map(|path| path.display().to_string().replace("\\", "/"))
+					.collect::<Vec<_>>()
+					.join("\n")
+			})
+			.await?;
+		}
+	}
+
+	for (mut source_id, content) in sources {
+		log::debug!("Parsing {:?}", source_id.to_string());
+		let document = content
+			.parse::<kdl::KdlDocument>()
+			.context("Invalid KDL format")?;
+		for (idx, node) in document.nodes().iter().enumerate() {
+			source_id.node_idx = idx;
+			let node_name = node.name().value();
+			let Some(comp_factory) = comp_reg.get_factory(node_name).cloned() else {
+				log::error!("Failed to find factory to deserialize node \"{node_name}\".");
+				continue;
+			};
+			match comp_factory.add_from_kdl(node, source_id.clone(), &node_reg) {
+				Ok(insert_callback) => (insert_callback)(&mut system),
+				Err(err) => {
+					log::error!("Failed to deserialize entry: {err:?}");
+				}
+			}
+		}
+	}
+
+	Ok(())
+}
+
+async fn fetch_local_module(
+	name: &'static str,
+	systems: &[&'static str],
+) -> anyhow::Result<BTreeMap<system::core::SourceId, String>> {
+	use crate::system::core::{ModuleId, SourceId};
+	// This is a temporary flow until github oauth is up and running.
+	// Expects:
+	// - a provided module with the folder-name `name` is at `./modules/{name}`.
+	// - a module has system directories as root folders.
+	//   e.g. all files for `dnd5e` live at `./modules/{name}/dnd5e/..`
+	// - each system has an index file at `./modules/{name}/{system}/index`,
+	//   where each line in the file is a relative path from the system folder to the resource.
+	//   (This will not be needed when github fetching is up and running.)
+	static ROOT_URL: &'static str = "http://localhost:8080/modules";
+	let mut content = BTreeMap::new();
+	for system in systems {
+		let index_uri = format!("{ROOT_URL}/{name}/{system}/index");
+		let Ok(resp) = reqwest::get(index_uri).await
+		else {
+			return Err(MissingResource(name, system, "index".into()).into());
+		};
+		let index_content = resp.text().await?;
+		for line in index_content.lines() {
+			let uri = format!("{ROOT_URL}/{name}/{system}/{line}");
+			let Ok(resp) = reqwest::get(uri).await else {
+				return Err(MissingResource(name, system, line.into()).into());
+			};
 			let source_id = SourceId {
-				module: module_id.clone(),
-				path: item.strip_prefix(&module_path)?.to_owned(),
+				module: ModuleId::Local {
+					name: name.to_owned(),
+				},
+				system: (*system).to_owned(),
+				path: PathBuf::from(line),
 				version: None,
 				node_idx: 0,
 			};
-			if let Err(err) = insert_system_document(&system_reg, source_id, &content) {
-				log::error!("Failed to parse module document {item:?}: {err:?}");
-			}
+			content.insert(source_id, resp.text().await?);
 		}
 	}
-
-	Ok(())
+	Ok(content)
 }
 
-#[cfg(target_family = "windows")]
-fn insert_system_document(
-	system_reg: &system::core::SystemRegistry,
-	source_id: system::core::SourceId,
-	content: &str,
-) -> anyhow::Result<()> {
-	use anyhow::Context;
-	use kdl_ext::DocumentQueryExt;
-	let document = content
-		.parse::<kdl::KdlDocument>()
-		.context("Invalid KDL format")?;
-	let system_id = document.query_str("system", 0)?;
-	let mut system = system_reg
-		.get(system_id)
-		.ok_or(GeneralError(format!("System {system_id:?} not found")))?;
-	system.insert_document(source_id, document);
-	Ok(())
-}
+#[derive(thiserror::Error, Debug)]
+#[error("Missing resource in module {0} for system {1} at path {2}.")]
+struct MissingResource(&'static str, &'static str, String);
 
 #[derive(thiserror::Error, Debug)]
 pub struct GeneralError(pub String);

@@ -6,7 +6,6 @@ use std::{
 /// A system which can parse a kdl document into its internal structures.
 pub trait System {
 	fn id(&self) -> &'static str;
-	fn insert_document(&mut self, _source_id: super::SourceId, _document: kdl::KdlDocument) {}
 }
 
 /// Registry of supported tabletop systems, referencable by their system id (e.g. `dnd5e`).
