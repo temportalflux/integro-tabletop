@@ -2,7 +2,7 @@ use crate::system::{
 	core::SourceId,
 	dnd5e::{
 		components::SharedCharacter,
-		data::{character::{Persistent, ActionEffect}, Lineage},
+		data::character::{ActionEffect, Persistent},
 		DnD5e,
 	},
 };
@@ -29,29 +29,6 @@ pub fn OriginTab() -> Html {
 		}
 	});
 
-	let lineage_slots_for_items = state
-		.persistent()
-		.lineages
-		.iter()
-		.map(|slot| slot.as_ref().map(|lineage| lineage.name.clone().into()))
-		.collect::<Vec<_>>();
-	let lineage_slot_cols = state
-		.persistent()
-		.lineages
-		.iter()
-		.enumerate()
-		.map(|(idx, slot)| {
-			html! {
-				<div class="col">
-					<div><strong>{"Slot "}{idx + 1}</strong></div>
-					<div>{match slot.as_ref() {
-						Some(item) => item.name.as_str(),
-						None => "Empty",
-					}}</div>
-				</div>
-			}
-		})
-		.collect::<Vec<_>>();
 	let on_select_lineage = Callback::from({
 		let system = system.clone();
 		let state = state.clone();
@@ -64,11 +41,44 @@ pub fn OriginTab() -> Html {
 					return None;
 				}
 				*slot = new_lineage.cloned();
-				Some(ActionEffect::Recompile)
+				Some(ActionEffect::Recompile) // TODO: only recompile when leaving the editor, not on every action
 			}));
 		}
 	});
+	let lineage_slots_for_items = state
+		.persistent()
+		.lineages
+		.iter()
+		.map(|slot| slot.as_ref().map(|lineage| lineage.name.clone().into()))
+		.collect::<Vec<_>>();
+	let lineage_slot_cols = state
+		.persistent()
+		.lineages
+		.iter()
+		.enumerate()
+		.map({
+			let on_select = on_select_lineage.clone();
+			move |(idx, slot)| {
+				let onclick = on_select.reform(move |_| (idx, None));
+				html! {
+					<div class="col">
+						<div><strong>{"Slot "}{idx + 1}</strong></div>
+						<div>{match slot.as_ref() {
+							Some(item) => item.name.as_str(),
+							None => "Empty",
+						}}</div>
+						<button role="button" class="btn btn-outline-danger btn-sm" {onclick}>{"Remove"}</button>
+					</div>
+				}
+			}
+		})
+		.collect::<Vec<_>>();
 
+	let lineage_order = {
+		let mut vec = system.lineages.iter().collect::<Vec<_>>();
+		vec.sort_by(|(_, a), (_, b)| a.name.partial_cmp(&b.name).unwrap());
+		vec
+	};
 	html! {<>
 		<div class="form-check form-switch m-2">
 			<label for="useLineages" class="form-check-label">{"Use Lineages & Upbringings"}</label>
@@ -87,7 +97,7 @@ pub fn OriginTab() -> Html {
 					{lineage_slot_cols}
 				</div>
 				<div class="accordion m-2" id="all-lineages">
-					{system.lineages.iter().map(|(source_id, lineage)| html! {
+					{lineage_order.into_iter().map(|(source_id, lineage)| html! {
 						<LineageItem
 							parent_collapse={"#all-lineages"}
 							name={lineage.name.clone()}
@@ -145,11 +155,11 @@ fn LineageItem(
 			</button>
 		}
 	};
-	let remove_btn = |target_slot_idx: usize| {
+	let remove_btn = |target_slot_idx: usize, bonus_text: Html| {
 		let onclick = on_select.reform(move |_| (target_slot_idx, false));
 		html! {
 			<button type="button" class="btn btn-outline-danger mx-2" {onclick}>
-				{"Remove"}
+				{"Remove"}{bonus_text}
 			</button>
 		}
 	};
@@ -174,7 +184,7 @@ fn LineageItem(
 		.filter_map(|(idx, item)| (item == name).then_some(idx))
 		.collect::<Vec<_>>();
 
-	let slot_buttons = match (selected_slots[..], *can_select_twice) {
+	let slot_buttons = match (&selected_slots[..], *can_select_twice) {
 		// Not selected
 		([], _) => match first_empty_slot {
 			// there is an empty slot; show select action
@@ -191,28 +201,33 @@ fn LineageItem(
 			}
 		},
 		// Already selected & can only select once; show remove action
-		([slot_idx], false) => remove_btn(slot_idx),
+		([slot_idx], false) => remove_btn(*slot_idx, html! {}),
 		(_, false) => html! {}, // unimplemented, should never have multiple selections for a only-once item
 		// Already selected & can be selected twice; show relevant action for each slot
-		/*
 		([selected_slot_idx], true) => {
-			let btns = slots
+			let other_slot = slots
 				.iter()
 				.enumerate()
-				.filter(|(slot_idx, item)| slot_idx != selected_slot_idx)
-				.map(|(slot_idx, item)| match item {
-					// The slot is empty, show action to select again
-					None => select_btn(slot_idx, html! {{" Again"}}),
-					// The slot is the selected one, show remove action
-					Some(item) if item == name => remove_btn(slot_idx),
-					// The slot is some other item, show the replace action
-					Some(item) => replace_btn(slot_idx, item),
+				.filter_map(|(slot_idx, slot)| {
+					(slot_idx != *selected_slot_idx).then_some((slot_idx, slot.as_ref()))
 				})
+				.next()
+				.unwrap();
+			html! {<>
+				{remove_btn(*selected_slot_idx, html! {})}
+				{match other_slot {
+					(slot_idx, None) => select_btn(slot_idx, html! {{" Again"}}),
+					(slot_idx, Some(item)) => replace_btn(slot_idx, item),
+				}}
+			</>}
+		}
+		(selected_slots, true) => {
+			let btns = selected_slots
+				.iter()
+				.map(|idx| remove_btn(*idx, html! {<>{" slot "}{*idx}</>}))
 				.collect::<Vec<_>>();
 			html! {<>{btns}</>}
 		}
-		*/
-		(_, true) => html! {},
 	};
 
 	let id = name.as_str().to_case(Case::Kebab);
