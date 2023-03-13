@@ -51,7 +51,7 @@ pub fn OriginTab() -> Html {
 		.iter()
 		.map(|slot| slot.as_ref().map(|lineage| lineage.name.clone().into()))
 		.collect::<Vec<_>>();
-	let lineage_slot_cols = state
+	let lineage_slots = state
 		.persistent()
 		.lineages
 		.iter()
@@ -61,18 +61,35 @@ pub fn OriginTab() -> Html {
 			move |(idx, slot)| {
 				let onclick = on_select.reform(move |_| (idx, None));
 				html! {
-					<div class="col">
-						<div><strong>{"Slot "}{idx + 1}</strong></div>
-						<div>{match slot.as_ref() {
-							Some(item) => item.name.as_str(),
-							None => "Empty",
-						}}</div>
-						<button role="button" class="btn btn-outline-danger btn-sm" {onclick}>{"Remove"}</button>
+					<div class="row my-1">
+						<div class="col-auto my-auto">
+							<strong>{"Slot "}{idx + 1}</strong>
+						</div>
+						<div class="col my-auto">
+							{match slot.as_ref() {
+								Some(item) => item.name.as_str(),
+								None => "Empty",
+							}}
+						</div>
+						<div class="col-2 my-auto">
+							<button
+								role="button" class="btn btn-outline-danger btn-sm"
+								{onclick}
+								style={match slot.is_some() {
+									true => "",
+									false => "visibility: hidden;",
+								}}
+							>{"Remove"}</button>
+						</div>
 					</div>
 				}
 			}
 		})
 		.collect::<Vec<_>>();
+
+	// TODO: Next steps
+	// - collapse lineage accordion with button to show
+	// - figure out how to present selected information (mainly for picking selections)
 
 	let lineage_order = {
 		let mut vec = system.lineages.iter().collect::<Vec<_>>();
@@ -93,10 +110,8 @@ pub fn OriginTab() -> Html {
 			<div class="col">
 				<h4>{"Lineages"}</h4>
 				<p>{"Select two (2) from the list below"}</p>
-				<div class="row text-center" style="margin-left: 60px; margin-right: 60px;">
-					{lineage_slot_cols}
-				</div>
-				<div class="accordion m-2" id="all-lineages">
+				{lineage_slots}
+				<div class="accordion my-2" id="all-lineages">
 					{lineage_order.into_iter().map(|(source_id, lineage)| html! {
 						<LineageItem
 							parent_collapse={"#all-lineages"}
@@ -150,7 +165,7 @@ fn LineageItem(
 	let select_btn = |target_slot_idx: usize, bonus_text: Html| {
 		let onclick = on_select.reform(move |_| (target_slot_idx, true));
 		html! {
-			<button type="button" class="btn btn-outline-success mx-2" {onclick}>
+			<button type="button" class="btn btn-outline-success my-1 w-100" {onclick}>
 				{"Select"}{bonus_text}
 			</button>
 		}
@@ -158,7 +173,7 @@ fn LineageItem(
 	let remove_btn = |target_slot_idx: usize, bonus_text: Html| {
 		let onclick = on_select.reform(move |_| (target_slot_idx, false));
 		html! {
-			<button type="button" class="btn btn-outline-danger mx-2" {onclick}>
+			<button type="button" class="btn btn-outline-danger my-1 w-100" {onclick}>
 				{"Remove"}{bonus_text}
 			</button>
 		}
@@ -166,7 +181,7 @@ fn LineageItem(
 	let replace_btn = |target_slot_idx: usize, name: &AttrValue| {
 		let onclick = on_select.reform(move |_| (target_slot_idx, true));
 		html! {
-			<button type="button" class="btn btn-outline-warning mx-2" {onclick}>
+			<button type="button" class="btn btn-outline-warning my-1 w-100" {onclick}>
 				{"Replace "}{name.clone()}
 			</button>
 		}
@@ -240,7 +255,7 @@ fn LineageItem(
 			</h2>
 			<div {id} class="accordion-collapse collapse" data-bs-parent={parent_collapse.clone()}>
 				<div class="accordion-body">
-					<div class="d-flex my-2">{slot_buttons}</div>
+					<div>{slot_buttons}</div>
 					{children.clone()}
 				</div>
 			</div>
