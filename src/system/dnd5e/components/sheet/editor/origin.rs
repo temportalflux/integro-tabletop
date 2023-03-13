@@ -161,7 +161,12 @@ pub fn OriginTab() -> Html {
 				.filter(|idx| idx != selected_slot)
 				.collect::<Vec<_>>();
 			let get_slot_value = |slot_idx: usize| {
-				state.persistent().lineages.get(slot_idx).map(Option::as_ref).flatten()
+				state
+					.persistent()
+					.lineages
+					.get(slot_idx)
+					.map(Option::as_ref)
+					.flatten()
 			};
 			let current_slot_name = get_slot_value(*selected_slot).map(|value| &value.name);
 			let is_lineage_in = |id: &String, list: &[usize]| {
@@ -179,7 +184,7 @@ pub fn OriginTab() -> Html {
 					{lineage_order.into_iter().map(move |(source_id, lineage)| {
 						let is_current_selection = is_lineage_in(&lineage.name, &[*selected_slot]);
 						let is_otherwise_selected = is_lineage_in(&lineage.name, &other_slots[..]);
-						
+
 						let on_select = on_lineage_selected.reform({
 							let target_slot = *selected_slot;
 							let source_id = source_id.clone();
@@ -203,10 +208,10 @@ pub fn OriginTab() -> Html {
 					}).collect::<Vec<_>>()}
 				</div>
 			}
-		},
+		}
 		SelectedSlot::EditContents(slot_idx) => html! {{format!("{slot_idx}")}},
 	};
-	
+
 	html! {<>
 		<div class="form-check form-switch m-2">
 			<label for="useLineages" class="form-check-label">{"Use Lineages & Upbringings"}</label>
@@ -282,7 +287,12 @@ fn LineageItem(
 		}
 	};
 
-	let slot_buttons = match (*is_current_selection, current_slot_name, *is_otherwise_selected, *can_select_again) {
+	let slot_buttons = match (
+		*is_current_selection,
+		current_slot_name,
+		*is_otherwise_selected,
+		*can_select_again,
+	) {
 		// is in this slot
 		(true, _, _, _) => disabled_btn(html! {{"Currently Selected"}}),
 		// option already selected for another slot, and cannot be selected again

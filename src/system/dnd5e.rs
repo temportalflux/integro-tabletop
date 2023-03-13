@@ -145,6 +145,7 @@ pub trait SystemComponent {
 pub fn component_registry() -> ComponentRegistry<DnD5e> {
 	let mut registry = ComponentRegistry::default();
 	registry.register::<data::Lineage>();
+	registry.register::<data::Upbringing>();
 	registry.register::<data::item::Item>();
 	registry
 }
@@ -172,6 +173,7 @@ pub fn node_registry() -> NodeRegistry {
 #[derive(Clone, PartialEq, Default)]
 pub struct DnD5e {
 	pub lineages: HashMap<SourceId, data::Lineage>,
+	pub upbringings: HashMap<SourceId, data::Upbringing>,
 	pub items: HashMap<SourceId, data::item::Item>,
 }
 
