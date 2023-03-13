@@ -3,6 +3,8 @@ use yew::prelude::*;
 
 mod home;
 pub use home::*;
+mod origin;
+pub use origin::*;
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct SheetEditorProps {
@@ -20,10 +22,10 @@ pub fn SheetEditor(SheetEditorProps { open_viewer }: &SheetEditorProps) -> Html 
 		<div class="container overflow-hidden">
 			<Nav root_classes={""} disp={NavDisplay::Tabs} default_tab_id={"home"} extra={floating_exit_btn}>
 				<TabContent id="home" title={html! {{"Home"}}}>
-					<Home />
+					<HomeTab />
 				</TabContent>
 				<TabContent id="origin" title={html! {{"Origin"}}}>
-					{"Origin"}
+					<OriginTab />
 				</TabContent>
 				<TabContent id="class" title={html! {{"Class"}}}>
 					{"Class"}

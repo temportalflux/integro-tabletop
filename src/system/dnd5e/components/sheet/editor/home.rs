@@ -1,11 +1,14 @@
+use crate::system::dnd5e::{components::SharedCharacter, data::character::Persistent};
 use wasm_bindgen::JsCast;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
-use crate::system::dnd5e::{components::SharedCharacter, data::character::Persistent};
-
 #[function_component]
-pub fn Home() -> Html {
+pub fn HomeTab() -> Html {
+	// TODO: In here is where module selection will go.
+	// Modules enabled for the character is a subset of the modules the user has access to.
+	// Only modules enabled for the character are available in the editor/viewer.
+
 	// More robust pronoun selection? https://twitter.com/Patch_Games/status/1423706763841347586
 	html! {<div class="mx-4">
 		<div class="my-2">
@@ -19,11 +22,6 @@ pub fn Home() -> Html {
 					<PronounEditor />
 				</div>
 			</div>
-		</div>
-
-		<div class="form-check form-switch">
-			<input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault" />
-			<label class="form-check-label" for="flexSwitchCheckDefault">{""}</label>
 		</div>
 	</div>}
 }
@@ -84,7 +82,6 @@ fn PronounEditor() -> Html {
 			}));
 		}
 	});
-	log::debug!("{:?}", state.persistent().description);
 	html! {
 		<div class="pronouns-group">
 			<label for="pronouns" class="form-label">{"Pronouns"}</label>
