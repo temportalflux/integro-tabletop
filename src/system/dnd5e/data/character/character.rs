@@ -130,12 +130,14 @@ impl Character {
 	fn apply_cached_mutators(&mut self) {
 		let mutators = self.mutators.drain(..).collect::<Vec<_>>();
 		for entry in mutators.into_iter() {
+			/*
 			log::debug!(
 				target: "character",
 				"applying mutator: {:?} deps:{:?}",
 				entry.node_id,
 				entry.dependencies
 			);
+			*/
 			self.source_path = entry.source;
 			entry.mutator.apply(self);
 		}
