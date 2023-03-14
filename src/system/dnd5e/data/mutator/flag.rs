@@ -4,7 +4,7 @@ use crate::{
 		core::NodeRegistry,
 		dnd5e::{
 			data::{bounded::BoundValue, character::Character, Ability},
-			FromKDL, KDLNode,
+			FromKDL,
 		},
 	},
 	utility::Mutator,
@@ -37,24 +37,11 @@ pub struct SetFlag {
 	pub value: bool,
 }
 
-impl crate::utility::TraitEq for SetFlag {
-	fn equals_trait(&self, other: &dyn crate::utility::TraitEq) -> bool {
-		crate::utility::downcast_trait_eq(self, other)
-	}
-}
-
-impl KDLNode for SetFlag {
-	fn id() -> &'static str {
-		"flag"
-	}
-}
+crate::impl_trait_eq!(SetFlag);
+crate::impl_kdl_node!(SetFlag, "flag");
 
 impl Mutator for SetFlag {
 	type Target = Character;
-
-	fn get_node_name(&self) -> &'static str {
-		Self::id()
-	}
 
 	fn apply<'c>(&self, stats: &mut Character) {
 		stats.flags_mut()[self.flag] = self.value;
@@ -79,18 +66,11 @@ pub struct ArmorStrengthRequirement {
 	pub source_path: PathBuf,
 }
 
-impl crate::utility::TraitEq for ArmorStrengthRequirement {
-	fn equals_trait(&self, other: &dyn crate::utility::TraitEq) -> bool {
-		crate::utility::downcast_trait_eq(self, other)
-	}
-}
+crate::impl_trait_eq!(ArmorStrengthRequirement);
+crate::impl_kdl_node!(ArmorStrengthRequirement, "armor_strength_requirement");
 
 impl Mutator for ArmorStrengthRequirement {
 	type Target = Character;
-
-	fn get_node_name(&self) -> &'static str {
-		"armor_strength_requirement"
-	}
 
 	fn dependencies(&self) -> crate::utility::Dependencies {
 		["add_ability_score", "flag", "speed"].into()

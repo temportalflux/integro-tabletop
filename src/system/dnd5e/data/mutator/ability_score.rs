@@ -1,8 +1,5 @@
 use crate::{
-	system::dnd5e::{
-		data::{character::Character, Ability},
-		KDLNode,
-	},
+	system::dnd5e::data::{character::Character, Ability},
 	utility::{Mutator, Selector},
 };
 
@@ -12,23 +9,11 @@ pub struct AddAbilityScore {
 	pub value: i32,
 }
 
-impl crate::utility::TraitEq for AddAbilityScore {
-	fn equals_trait(&self, other: &dyn crate::utility::TraitEq) -> bool {
-		crate::utility::downcast_trait_eq(self, other)
-	}
-}
+crate::impl_trait_eq!(AddAbilityScore);
+crate::impl_kdl_node!(AddAbilityScore, "add_ability_score");
 
-impl KDLNode for AddAbilityScore {
-	fn id() -> &'static str {
-		"add_ability_score"
-	}
-}
 impl Mutator for AddAbilityScore {
 	type Target = Character;
-
-	fn get_node_name(&self) -> &'static str {
-		Self::id()
-	}
 
 	fn apply<'c>(&self, stats: &mut Character) {
 		if let Some(ability) = stats.resolve_selector(&self.ability) {

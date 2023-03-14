@@ -5,7 +5,7 @@ use crate::{
 		core::{NodeRegistry, SourceId},
 		dnd5e::{
 			data::{character::Character, BoxedFeature},
-			BoxedMutator, DnD5e, FromKDL, KDLNode, SystemComponent,
+			BoxedMutator, DnD5e, FromKDL, SystemComponent,
 		},
 	},
 	utility::MutatorGroup,
@@ -38,11 +38,7 @@ impl MutatorGroup for Upbringing {
 	}
 }
 
-impl KDLNode for Upbringing {
-	fn id() -> &'static str {
-		"upbringing"
-	}
-}
+crate::impl_kdl_node!(Upbringing, "upbringing");
 
 impl SystemComponent for Upbringing {
 	type System = DnD5e;

@@ -1,29 +1,17 @@
 use crate::{
 	system::dnd5e::{
 		data::{action::Action, character::Character, item::weapon},
-		KDLNode, Value,
+		Value,
 	},
 	utility::{Dependencies, Evaluator, Mutator},
 };
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct AddAction(pub Action);
-impl crate::utility::TraitEq for AddAction {
-	fn equals_trait(&self, other: &dyn crate::utility::TraitEq) -> bool {
-		crate::utility::downcast_trait_eq(self, other)
-	}
-}
-impl KDLNode for AddAction {
-	fn id() -> &'static str {
-		"add_action"
-	}
-}
+crate::impl_trait_eq!(AddAction);
+crate::impl_kdl_node!(AddAction, "add_action");
 impl Mutator for AddAction {
 	type Target = Character;
-
-	fn get_node_name(&self) -> &'static str {
-		Self::id()
-	}
 
 	fn apply<'c>(&self, stats: &mut Character) {
 		stats.actions_mut().push(self.0.clone());
@@ -35,22 +23,10 @@ pub struct BonusDamage {
 	pub amount: Value<i32>,
 	pub restriction: Option<weapon::Restriction>,
 }
-impl crate::utility::TraitEq for BonusDamage {
-	fn equals_trait(&self, other: &dyn crate::utility::TraitEq) -> bool {
-		crate::utility::downcast_trait_eq(self, other)
-	}
-}
-impl KDLNode for BonusDamage {
-	fn id() -> &'static str {
-		"bonus_damage"
-	}
-}
+crate::impl_trait_eq!(BonusDamage);
+crate::impl_kdl_node!(BonusDamage, "bonus_damage");
 impl Mutator for BonusDamage {
 	type Target = Character;
-
-	fn get_node_name(&self) -> &'static str {
-		Self::id()
-	}
 
 	fn dependencies(&self) -> Dependencies {
 		Dependencies::from(["add_action"]).join(self.amount.dependencies())

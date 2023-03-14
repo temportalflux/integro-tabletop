@@ -1,32 +1,16 @@
 use crate::{
-	system::dnd5e::{
-		data::{character::Character, ArmorClassFormula},
-		KDLNode,
-	},
+	system::dnd5e::data::{character::Character, ArmorClassFormula},
 	utility::Mutator,
 };
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct AddArmorClassFormula(pub ArmorClassFormula);
 
-impl crate::utility::TraitEq for AddArmorClassFormula {
-	fn equals_trait(&self, other: &dyn crate::utility::TraitEq) -> bool {
-		crate::utility::downcast_trait_eq(self, other)
-	}
-}
-
-impl KDLNode for AddArmorClassFormula {
-	fn id() -> &'static str {
-		"add_armor_class_formula"
-	}
-}
+crate::impl_trait_eq!(AddArmorClassFormula);
+crate::impl_kdl_node!(AddArmorClassFormula, "add_armor_class_formula");
 
 impl Mutator for AddArmorClassFormula {
 	type Target = Character;
-
-	fn get_node_name(&self) -> &'static str {
-		Self::id()
-	}
 
 	fn apply<'c>(&self, stats: &mut Character) {
 		let source = stats.source_path();

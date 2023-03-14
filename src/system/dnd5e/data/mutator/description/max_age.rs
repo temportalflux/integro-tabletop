@@ -2,7 +2,7 @@ use crate::{
 	kdl_ext::{NodeQueryExt, ValueIdx},
 	system::{
 		core::NodeRegistry,
-		dnd5e::{data::character::Character, FromKDL, KDLNode},
+		dnd5e::{data::character::Character, FromKDL},
 	},
 	utility::Mutator,
 };
@@ -10,24 +10,11 @@ use crate::{
 #[derive(Clone, Debug, PartialEq)]
 pub struct AddLifeExpectancy(pub i32);
 
-impl crate::utility::TraitEq for AddLifeExpectancy {
-	fn equals_trait(&self, other: &dyn crate::utility::TraitEq) -> bool {
-		crate::utility::downcast_trait_eq(self, other)
-	}
-}
-
-impl KDLNode for AddLifeExpectancy {
-	fn id() -> &'static str {
-		"extend_life_expectancy"
-	}
-}
+crate::impl_trait_eq!(AddLifeExpectancy);
+crate::impl_kdl_node!(AddLifeExpectancy, "extend_life_expectancy");
 
 impl Mutator for AddLifeExpectancy {
 	type Target = Character;
-
-	fn get_node_name(&self) -> &'static str {
-		Self::id()
-	}
 
 	fn apply<'c>(&self, stats: &mut Character) {
 		stats.derived_description_mut().life_expectancy += self.0;

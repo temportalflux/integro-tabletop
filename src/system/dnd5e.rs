@@ -69,6 +69,23 @@ pub trait KDLNode {
 	fn id() -> &'static str
 	where
 		Self: Sized;
+
+	fn get_id(&self) -> &'static str;
+}
+
+#[macro_export]
+macro_rules! impl_kdl_node {
+	($target:ty, $id:expr) => {
+		impl crate::system::dnd5e::KDLNode for $target {
+			fn id() -> &'static str {
+				$id
+			}
+
+			fn get_id(&self) -> &'static str {
+				$id
+			}
+		}
+	};
 }
 
 pub trait FromKDL {

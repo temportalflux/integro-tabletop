@@ -4,7 +4,7 @@ use crate::{
 		core::NodeRegistry,
 		dnd5e::{
 			data::{character::Character, DamageType},
-			FromKDL, KDLNode, Value,
+			FromKDL, Value,
 		},
 	},
 	utility::Mutator,
@@ -59,22 +59,10 @@ impl Default for AddDefense {
 		}
 	}
 }
-impl crate::utility::TraitEq for AddDefense {
-	fn equals_trait(&self, other: &dyn crate::utility::TraitEq) -> bool {
-		crate::utility::downcast_trait_eq(self, other)
-	}
-}
-impl KDLNode for AddDefense {
-	fn id() -> &'static str {
-		"add_defense"
-	}
-}
+crate::impl_trait_eq!(AddDefense);
+crate::impl_kdl_node!(AddDefense, "add_defense");
 impl Mutator for AddDefense {
 	type Target = Character;
-
-	fn get_node_name(&self) -> &'static str {
-		Self::id()
-	}
 
 	fn apply<'c>(&self, stats: &mut Character) {
 		let source = stats.source_path();

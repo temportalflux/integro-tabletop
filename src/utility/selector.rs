@@ -2,15 +2,19 @@ use crate::{
 	kdl_ext::{NodeQueryExt, ValueIdx},
 	GeneralError,
 };
+use std::str::FromStr;
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum Selector<T> {
+pub enum Selector<T: ToString + FromStr> {
 	Specific(T),
 	AnyOf { id: Option<String>, options: Vec<T> },
 	Any { id: Option<String> },
 }
 
-impl<T> Selector<T> {
+impl<T> Selector<T>
+where
+	T: ToString + FromStr,
+{
 	pub fn id(&self) -> Option<&str> {
 		match self {
 			Self::Specific(_) => None,

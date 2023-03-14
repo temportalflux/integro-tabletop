@@ -96,7 +96,7 @@ impl Character {
 	pub fn apply(&mut self, mutator: &BoxedMutator) {
 		let scope = self.source_path.push(mutator.data_id(), true);
 		self.insert_mutator(MutatorEntry {
-			node_id: mutator.get_node_name(),
+			node_id: mutator.get_id(),
 			dependencies: mutator.dependencies(),
 			mutator: mutator.clone(),
 			source: self.source_path.clone(),
@@ -167,7 +167,7 @@ impl Character {
 
 	pub fn resolve_selector<T>(&mut self, selector: &Selector<T>) -> Option<T>
 	where
-		T: Clone + 'static + FromStr,
+		T: Clone + 'static + ToString + FromStr,
 	{
 		if let Selector::Specific(value) = selector {
 			return Some(value.clone());

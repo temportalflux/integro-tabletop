@@ -18,12 +18,7 @@ pub enum AddMaxHeight {
 	Roll(Roll),
 }
 
-impl crate::utility::TraitEq for AddMaxHeight {
-	fn equals_trait(&self, other: &dyn crate::utility::TraitEq) -> bool {
-		crate::utility::downcast_trait_eq(self, other)
-	}
-}
-
+crate::impl_trait_eq!(AddMaxHeight);
 impl std::fmt::Debug for AddMaxHeight {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
@@ -33,18 +28,10 @@ impl std::fmt::Debug for AddMaxHeight {
 	}
 }
 
-impl KDLNode for AddMaxHeight {
-	fn id() -> &'static str {
-		"add_max_height"
-	}
-}
+crate::impl_kdl_node!(AddMaxHeight, "add_max_height");
 
 impl Mutator for AddMaxHeight {
 	type Target = Character;
-
-	fn get_node_name(&self) -> &'static str {
-		Self::id()
-	}
 
 	fn apply<'c>(&self, stats: &mut Character) {
 		match self {

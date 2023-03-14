@@ -4,7 +4,7 @@ use crate::{
 		core::NodeRegistry,
 		dnd5e::{
 			data::{character::Character, Ability},
-			FromKDL, KDLNode,
+			FromKDL,
 		},
 	},
 	utility::{Dependencies, Evaluator},
@@ -14,12 +14,7 @@ use std::str::FromStr;
 #[derive(Clone, PartialEq, Debug)]
 pub struct GetAbilityModifier(pub Ability);
 
-impl crate::utility::TraitEq for GetAbilityModifier {
-	fn equals_trait(&self, other: &dyn crate::utility::TraitEq) -> bool {
-		crate::utility::downcast_trait_eq(self, other)
-	}
-}
-
+crate::impl_trait_eq!(GetAbilityModifier);
 impl Evaluator for GetAbilityModifier {
 	type Context = Character;
 	type Item = i32;
@@ -34,11 +29,7 @@ impl Evaluator for GetAbilityModifier {
 	}
 }
 
-impl KDLNode for GetAbilityModifier {
-	fn id() -> &'static str {
-		"get_ability_modifier"
-	}
-}
+crate::impl_kdl_node!(GetAbilityModifier, "get_ability_modifier");
 
 impl FromKDL for GetAbilityModifier {
 	fn from_kdl(

@@ -194,6 +194,12 @@ impl Skill {
 	}
 }
 
+impl ToString for Skill {
+	fn to_string(&self) -> String {
+		self.display_name().replace(" ", "")
+	}
+}
+
 impl FromStr for Skill {
 	type Err = GeneralError;
 

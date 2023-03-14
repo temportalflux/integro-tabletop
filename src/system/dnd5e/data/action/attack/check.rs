@@ -23,12 +23,7 @@ pub enum AttackCheckKind {
 	},
 }
 
-impl crate::utility::TraitEq for AttackCheckKind {
-	fn equals_trait(&self, other: &dyn crate::utility::TraitEq) -> bool {
-		crate::utility::downcast_trait_eq(self, other)
-	}
-}
-
+crate::impl_trait_eq!(AttackCheckKind);
 impl Evaluator for AttackCheckKind {
 	type Context = Character;
 	type Item = i32;

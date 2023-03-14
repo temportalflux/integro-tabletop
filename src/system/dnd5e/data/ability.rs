@@ -253,6 +253,12 @@ impl Ability {
 	}
 }
 
+impl ToString for Ability {
+	fn to_string(&self) -> String {
+		self.long_name().to_owned()
+	}
+}
+
 impl FromStr for Ability {
 	type Err = GeneralError;
 

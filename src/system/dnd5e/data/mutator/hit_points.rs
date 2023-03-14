@@ -2,7 +2,7 @@ use crate::{
 	kdl_ext::{NodeQueryExt, ValueIdx},
 	system::{
 		core::NodeRegistry,
-		dnd5e::{data::character::Character, FromKDL, KDLNode, Value},
+		dnd5e::{data::character::Character, FromKDL, Value},
 	},
 	utility::{Dependencies, Evaluator, Mutator},
 };
@@ -13,24 +13,11 @@ pub struct AddMaxHitPoints {
 	pub value: Value<i32>,
 }
 
-impl crate::utility::TraitEq for AddMaxHitPoints {
-	fn equals_trait(&self, other: &dyn crate::utility::TraitEq) -> bool {
-		crate::utility::downcast_trait_eq(self, other)
-	}
-}
-
-impl KDLNode for AddMaxHitPoints {
-	fn id() -> &'static str {
-		"add_max_hit_points"
-	}
-}
+crate::impl_trait_eq!(AddMaxHitPoints);
+crate::impl_kdl_node!(AddMaxHitPoints, "add_max_hit_points");
 
 impl Mutator for AddMaxHitPoints {
 	type Target = Character;
-
-	fn get_node_name(&self) -> &'static str {
-		Self::id()
-	}
 
 	fn dependencies(&self) -> Dependencies {
 		self.value.dependencies()

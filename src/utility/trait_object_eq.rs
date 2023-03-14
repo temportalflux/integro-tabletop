@@ -26,3 +26,14 @@ impl<'a, T: 'a + TraitEq> AsTraitEq<dyn TraitEq + 'a> for T {
 		self
 	}
 }
+
+#[macro_export]
+macro_rules! impl_trait_eq {
+	($target:ty) => {
+		impl crate::utility::TraitEq for $target {
+			fn equals_trait(&self, other: &dyn crate::utility::TraitEq) -> bool {
+				crate::utility::downcast_trait_eq(self, other)
+			}
+		}
+	};
+}

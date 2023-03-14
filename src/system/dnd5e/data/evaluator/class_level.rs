@@ -2,7 +2,7 @@ use crate::{
 	kdl_ext::{NodeQueryExt, ValueIdx},
 	system::{
 		core::NodeRegistry,
-		dnd5e::{data::character::Character, FromKDL, KDLNode},
+		dnd5e::{data::character::Character, FromKDL},
 	},
 	utility::Evaluator,
 };
@@ -21,12 +21,7 @@ where
 	}
 }
 
-impl crate::utility::TraitEq for GetLevel {
-	fn equals_trait(&self, other: &dyn crate::utility::TraitEq) -> bool {
-		crate::utility::downcast_trait_eq(self, other)
-	}
-}
-
+crate::impl_trait_eq!(GetLevel);
 impl Evaluator for GetLevel {
 	type Context = Character;
 	type Item = i32;
@@ -37,11 +32,7 @@ impl Evaluator for GetLevel {
 	}
 }
 
-impl KDLNode for GetLevel {
-	fn id() -> &'static str {
-		"get_level"
-	}
-}
+crate::impl_kdl_node!(GetLevel, "get_level");
 
 impl FromKDL for GetLevel {
 	fn from_kdl(

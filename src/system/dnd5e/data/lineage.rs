@@ -5,7 +5,7 @@ use crate::{
 		core::SourceId,
 		dnd5e::{
 			data::{character::Character, BoxedFeature},
-			BoxedMutator, DnD5e, FromKDL, KDLNode, SystemComponent,
+			BoxedMutator, DnD5e, FromKDL, SystemComponent,
 		},
 	},
 	utility::MutatorGroup,
@@ -48,11 +48,7 @@ impl SystemComponent for Lineage {
 	}
 }
 
-impl KDLNode for Lineage {
-	fn id() -> &'static str {
-		"lineage"
-	}
-}
+crate::impl_kdl_node!(Lineage, "lineage");
 
 impl FromKDL for Lineage {
 	fn from_kdl(

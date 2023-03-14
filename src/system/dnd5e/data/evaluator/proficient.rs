@@ -8,7 +8,7 @@ use crate::{
 				item::{armor, weapon},
 				proficiency, Ability, Skill, WeaponProficiency,
 			},
-			FromKDL, KDLNode,
+			FromKDL,
 		},
 	},
 	utility::Evaluator,
@@ -26,12 +26,7 @@ pub enum IsProficientWith {
 	Tool(String),
 }
 
-impl crate::utility::TraitEq for IsProficientWith {
-	fn equals_trait(&self, other: &dyn crate::utility::TraitEq) -> bool {
-		crate::utility::downcast_trait_eq(self, other)
-	}
-}
-
+crate::impl_trait_eq!(IsProficientWith);
 impl Evaluator for IsProficientWith {
 	type Context = Character;
 	type Item = bool;
@@ -55,11 +50,7 @@ impl Evaluator for IsProficientWith {
 	}
 }
 
-impl KDLNode for IsProficientWith {
-	fn id() -> &'static str {
-		"is_proficient_with"
-	}
-}
+crate::impl_kdl_node!(IsProficientWith, "is_proficient_with");
 
 impl FromKDL for IsProficientWith {
 	fn from_kdl(

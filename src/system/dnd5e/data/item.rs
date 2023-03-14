@@ -3,7 +3,7 @@ use crate::{
 	kdl_ext::{DocumentQueryExt, NodeQueryExt, ValueIdx},
 	system::{
 		core::SourceId,
-		dnd5e::{data::character::Character, DnD5e, FromKDL, KDLNode, SystemComponent},
+		dnd5e::{data::character::Character, DnD5e, FromKDL, SystemComponent},
 	},
 	utility::MutatorGroup,
 	GeneralError,
@@ -51,11 +51,7 @@ impl Item {
 	}
 }
 
-impl KDLNode for Item {
-	fn id() -> &'static str {
-		"item"
-	}
-}
+crate::impl_kdl_node!(Item, "item");
 
 impl SystemComponent for Item {
 	type System = DnD5e;

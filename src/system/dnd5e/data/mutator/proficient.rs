@@ -8,7 +8,7 @@ use crate::{
 				item::{armor, weapon},
 				proficiency, Ability, Skill, WeaponProficiency,
 			},
-			FromKDL, KDLNode,
+			FromKDL,
 		},
 	},
 	utility::{Mutator, Selector},
@@ -26,24 +26,11 @@ pub enum AddProficiency {
 	Tool(String),
 }
 
-impl crate::utility::TraitEq for AddProficiency {
-	fn equals_trait(&self, other: &dyn crate::utility::TraitEq) -> bool {
-		crate::utility::downcast_trait_eq(self, other)
-	}
-}
-
-impl KDLNode for AddProficiency {
-	fn id() -> &'static str {
-		"add_proficiency"
-	}
-}
+crate::impl_trait_eq!(AddProficiency);
+crate::impl_kdl_node!(AddProficiency, "add_proficiency");
 
 impl Mutator for AddProficiency {
 	type Target = Character;
-
-	fn get_node_name(&self) -> &'static str {
-		Self::id()
-	}
 
 	fn apply<'c>(&self, stats: &mut Character) {
 		let source = stats.source_path();

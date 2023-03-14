@@ -7,7 +7,7 @@ use crate::{
 				character::Character,
 				item::{armor, EquipableEntry, ItemKind},
 			},
-			FromKDL, KDLNode,
+			FromKDL,
 		},
 	},
 };
@@ -47,12 +47,7 @@ impl HasArmorEquipped {
 	}
 }
 
-impl crate::utility::TraitEq for HasArmorEquipped {
-	fn equals_trait(&self, other: &dyn crate::utility::TraitEq) -> bool {
-		crate::utility::downcast_trait_eq(self, other)
-	}
-}
-
+crate::impl_trait_eq!(HasArmorEquipped);
 impl crate::utility::Evaluator for HasArmorEquipped {
 	type Context = Character;
 	type Item = Result<(), String>;
@@ -89,11 +84,7 @@ impl crate::utility::Evaluator for HasArmorEquipped {
 	}
 }
 
-impl KDLNode for HasArmorEquipped {
-	fn id() -> &'static str {
-		"has_armor_equipped"
-	}
-}
+crate::impl_kdl_node!(HasArmorEquipped, "has_armor_equipped");
 
 impl FromKDL for HasArmorEquipped {
 	fn from_kdl(

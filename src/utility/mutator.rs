@@ -1,10 +1,9 @@
 use super::{AsTraitEq, Dependencies, TraitEq};
+use crate::system::dnd5e::KDLNode;
 use std::{fmt::Debug, sync::Arc};
 
-pub trait Mutator: Debug + TraitEq + AsTraitEq<dyn TraitEq> {
+pub trait Mutator: Debug + TraitEq + AsTraitEq<dyn TraitEq> + KDLNode {
 	type Target;
-
-	fn get_node_name(&self) -> &'static str;
 
 	fn dependencies(&self) -> Dependencies {
 		Dependencies::default()

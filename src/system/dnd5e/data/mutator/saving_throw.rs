@@ -4,7 +4,7 @@ use crate::{
 		core::NodeRegistry,
 		dnd5e::{
 			data::{character::Character, Ability},
-			FromKDL, KDLNode,
+			FromKDL,
 		},
 	},
 	utility::Mutator,
@@ -17,24 +17,11 @@ pub struct AddSavingThrowModifier {
 	pub target: Option<String>,
 }
 
-impl crate::utility::TraitEq for AddSavingThrowModifier {
-	fn equals_trait(&self, other: &dyn crate::utility::TraitEq) -> bool {
-		crate::utility::downcast_trait_eq(self, other)
-	}
-}
-
-impl KDLNode for AddSavingThrowModifier {
-	fn id() -> &'static str {
-		"add_saving_throw_modifier"
-	}
-}
+crate::impl_trait_eq!(AddSavingThrowModifier);
+crate::impl_kdl_node!(AddSavingThrowModifier, "add_saving_throw_modifier");
 
 impl Mutator for AddSavingThrowModifier {
 	type Target = Character;
-
-	fn get_node_name(&self) -> &'static str {
-		Self::id()
-	}
 
 	fn apply<'c>(&self, stats: &mut Character) {
 		let source = stats.source_path();

@@ -4,7 +4,7 @@ use crate::{
 		core::NodeRegistry,
 		dnd5e::{
 			data::{bounded::BoundValue, character::Character},
-			FromKDL, KDLNode,
+			FromKDL,
 		},
 	},
 	utility::Mutator,
@@ -16,24 +16,11 @@ pub struct Speed {
 	pub argument: BoundValue,
 }
 
-impl crate::utility::TraitEq for Speed {
-	fn equals_trait(&self, other: &dyn crate::utility::TraitEq) -> bool {
-		crate::utility::downcast_trait_eq(self, other)
-	}
-}
-
-impl KDLNode for Speed {
-	fn id() -> &'static str {
-		"speed"
-	}
-}
+crate::impl_trait_eq!(Speed);
+crate::impl_kdl_node!(Speed, "speed");
 
 impl Mutator for Speed {
 	type Target = Character;
-
-	fn get_node_name(&self) -> &'static str {
-		Self::id()
-	}
 
 	fn apply<'c>(&self, stats: &mut Character) {
 		let source = stats.source_path();
