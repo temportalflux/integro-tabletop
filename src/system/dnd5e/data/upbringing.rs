@@ -13,6 +13,7 @@ use crate::{
 
 #[derive(Default, Clone, PartialEq, Debug)]
 pub struct Upbringing {
+	pub source_id: SourceId,
 	pub name: String,
 	pub description: String,
 	pub mutators: Vec<BoxedMutator>,
@@ -46,7 +47,8 @@ impl KDLNode for Upbringing {
 impl SystemComponent for Upbringing {
 	type System = DnD5e;
 
-	fn add_component(self, source_id: SourceId, system: &mut Self::System) {
+	fn add_component(mut self, source_id: SourceId, system: &mut Self::System) {
+		self.source_id = source_id.clone();
 		system.upbringings.insert(source_id, self);
 	}
 }
@@ -75,6 +77,7 @@ impl FromKDL for Upbringing {
 			}
 		}
 		Ok(Upbringing {
+			source_id: SourceId::default(),
 			name,
 			description,
 			mutators,

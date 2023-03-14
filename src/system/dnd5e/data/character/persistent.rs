@@ -15,13 +15,18 @@ use crate::{
 };
 use enum_map::EnumMap;
 
+#[derive(Clone, PartialEq, Default, Debug)]
+pub struct NamedGroups {
+	pub lineage: Vec<Lineage>,
+	pub upbringing: Vec<Upbringing>,
+	pub background: Vec<Background>,
+}
+
 /// Core character data which is (de)serializable and
 /// from which the derived data can be compiled.
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct Persistent {
-	pub lineages: [Option<Lineage>; 2],
-	pub upbringing: Option<Upbringing>,
-	pub background: Option<Background>,
+	pub named_groups: NamedGroups,
 	pub classes: Vec<Class>,
 	pub feats: Vec<BoxedFeature>,
 	pub description: Description,
@@ -50,16 +55,14 @@ impl MutatorGroup for Persistent {
 			.into(),
 		);
 
-		for lineage in &self.lineages {
-			if let Some(lineage) = lineage {
-				stats.apply_from(lineage);
-			}
+		for group in &self.named_groups.lineage {
+			stats.apply_from(group);
 		}
-		if let Some(upbringing) = &self.upbringing {
-			stats.apply_from(upbringing);
+		for group in &self.named_groups.upbringing {
+			stats.apply_from(group);
 		}
-		if let Some(background) = &self.background {
-			stats.apply_from(background);
+		for group in &self.named_groups.background {
+			stats.apply_from(group);
 		}
 		for class in &self.classes {
 			stats.apply_from(class);

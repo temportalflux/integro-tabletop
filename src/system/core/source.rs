@@ -11,8 +11,15 @@ pub enum ModuleId {
 		repository: String,
 	},
 }
+impl Default for ModuleId {
+	fn default() -> Self {
+		Self::Local {
+			name: Default::default(),
+		}
+	}
+}
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct SourceId {
 	pub module: ModuleId,
 	pub system: String,

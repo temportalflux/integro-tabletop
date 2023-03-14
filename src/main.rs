@@ -40,7 +40,10 @@ fn create_character() -> system::dnd5e::data::character::Persistent {
 	use path_map::PathMap;
 	use system::dnd5e::{
 		content::*,
-		data::{character::Persistent, mutator, Description, *},
+		data::{
+			character::{NamedGroups, Persistent},
+			mutator, Description, *,
+		},
 		Value,
 	};
 	use utility::Selector;
@@ -57,12 +60,14 @@ fn create_character() -> system::dnd5e::data::character::Persistent {
 			Ability::Wisdom => Score(9),
 			Ability::Charisma => Score(11),
 		},
-		lineages: [
-			Some(lineage::changeling::shapechanger()),
-			Some(lineage::changeling::voice_changer()),
-		],
-		upbringing: Some(upbringing::incognito()),
-		background: Some(background::anthropologist()),
+		named_groups: NamedGroups {
+			lineage: vec![
+				lineage::changeling::shapechanger(),
+				lineage::changeling::voice_changer(),
+			],
+			upbringing: vec![upbringing::incognito()],
+			background: vec![background::anthropologist()],
+		},
 		classes: vec![class::barbarian::barbarian(10, None)],
 		feats: vec![Feature {
 			name: "Custom Feat".into(),

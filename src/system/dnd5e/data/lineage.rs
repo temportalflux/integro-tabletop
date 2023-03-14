@@ -1,3 +1,4 @@
+use super::Feature;
 use crate::{
 	kdl_ext::{DocumentQueryExt, NodeQueryExt, ValueIdx},
 	system::{
@@ -10,13 +11,12 @@ use crate::{
 	utility::MutatorGroup,
 };
 
-use super::Feature;
-
 #[derive(Default, Clone, PartialEq, Debug)]
 pub struct Lineage {
+	pub source_id: SourceId,
 	pub name: String,
 	pub description: String,
-	pub can_select_twice: bool,
+	pub limit: u32,
 	pub mutators: Vec<BoxedMutator>,
 	pub features: Vec<BoxedFeature>,
 }
@@ -42,7 +42,8 @@ impl MutatorGroup for Lineage {
 impl SystemComponent for Lineage {
 	type System = DnD5e;
 
-	fn add_component(self, source_id: SourceId, system: &mut Self::System) {
+	fn add_component(mut self, source_id: SourceId, system: &mut Self::System) {
+		self.source_id = source_id.clone();
 		system.lineages.insert(source_id, self);
 	}
 }
@@ -64,7 +65,7 @@ impl FromKDL for Lineage {
 			.query_str_opt("description", 0)?
 			.unwrap_or_default()
 			.to_owned();
-		let can_select_twice = node.get_bool_opt("can_select_twice")?.unwrap_or_default();
+		let limit = node.get_i64_opt("limit")?.unwrap_or(1) as u32;
 		let mut mutators = Vec::new();
 		let mut features = Vec::new();
 		if let Some(children) = node.children() {
@@ -78,9 +79,10 @@ impl FromKDL for Lineage {
 			}
 		}
 		Ok(Lineage {
+			source_id: SourceId::default(),
 			name,
 			description,
-			can_select_twice,
+			limit,
 			mutators,
 			features,
 		})

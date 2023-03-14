@@ -1,17 +1,13 @@
-use crate::system::{
-	core::SourceId,
-	dnd5e::{
-		components::SharedCharacter,
-		data::{
-			character::{ActionEffect, Persistent},
-			Lineage,
-		},
-		DnD5e,
+use crate::system::dnd5e::{
+	components::SharedCharacter,
+	data::{
+		character::{ActionEffect, Persistent},
+		Lineage, Upbringing,
 	},
+	DnD5e,
 };
-use std::collections::HashSet;
 use wasm_bindgen::JsCast;
-use web_sys::HtmlInputElement;
+use web_sys::{HtmlInputElement, HtmlSelectElement};
 use yew::prelude::*;
 
 static HELP_TEXT: &'static str = "Lineages and Upbingings are a replacement for races. \
@@ -20,8 +16,6 @@ the parents and community your character comes from.";
 
 #[function_component]
 pub fn OriginTab() -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
-	let system = use_context::<UseStateHandle<DnD5e>>().unwrap();
 	let use_lineages = use_state_eq(|| true);
 
 	let toggle_lineages = Callback::from({
@@ -44,424 +38,355 @@ pub fn OriginTab() -> Html {
 		</div>
 	};
 
-	let view = use_state_eq(|| SlotView::None);
-	let set_slot_value = Callback::from({
-		let system = system.clone();
-		let state = state.clone();
-		let view = view.clone();
-		move |(slot, source_id): (Slot, Option<SourceId>)| {
-			let system = system.clone();
-			let view = view.clone();
-			state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
-				match slot {
-					Slot::Lineage1 => {
-						let library_value = source_id.map(|id| system.lineages.get(&id)).flatten();
-						let slot = &mut persistent.lineages[0];
-						if slot.as_ref() == library_value {
-							return None;
-						}
-						*slot = library_value.cloned();
-					}
-					Slot::Lineage2 => {
-						let library_value = source_id.map(|id| system.lineages.get(&id)).flatten();
-						let slot = &mut persistent.lineages[1];
-						if slot.as_ref() == library_value {
-							return None;
-						}
-						*slot = library_value.cloned();
-					}
-					Slot::Upbringing => {
-						let library_value =
-							source_id.map(|id| system.upbringings.get(&id)).flatten();
-						let slot = &mut persistent.upbringing;
-						if slot.as_ref() == library_value {
-							return None;
-						}
-						*slot = library_value.cloned();
-					}
-				}
-				view.set(SlotView::None);
-				Some(ActionEffect::Recompile) // TODO: only recompile when leaving the editor, not on every action
-			}));
-		}
-	});
-	let on_slot_action = Callback::from({
-		let view = view.clone();
-		let set_slot_value = set_slot_value.clone();
-		move |(slot, action)| match action {
-			SlotAction::Remove => {
-				set_slot_value.emit((slot, None));
-			}
-			SlotAction::Cancel => {
-				view.set(SlotView::None);
-			}
-			SlotAction::Edit => {
-				view.set(SlotView::EditContents(slot));
-			}
-			SlotAction::Select => {
-				view.set(SlotView::SelectValue(slot));
-			}
-		}
-	});
-
-	let slot_lineage_1 = html! {<SlotControl
-		label={"Lineage"}
-		name={Slot::Lineage1.get_value_name(state.persistent())}
-		is_selected={view.slot() == Some(Slot::Lineage1)}
-		on_click={on_slot_action.reform(|action| (Slot::Lineage1, action))}
-	/>};
-	let slot_lineage_2 = html! {<SlotControl
-		label={"Lineage"}
-		name={Slot::Lineage2.get_value_name(state.persistent())}
-		is_selected={view.slot() == Some(Slot::Lineage2)}
-		on_click={on_slot_action.reform(|action| (Slot::Lineage2, action))}
-	/>};
-	let slot_upbringing = html! {<SlotControl
-		label={"Upbringing"}
-		name={Slot::Upbringing.get_value_name(state.persistent())}
-		is_selected={view.slot() == Some(Slot::Upbringing)}
-		on_click={on_slot_action.reform(|action| (Slot::Upbringing, action))}
-	/>};
-	let slots = html! {
-		<div class="row g-2">
-			<div class="col">
-				{slot_lineage_1}
-			</div>
-			<div class="col-auto"><div class="vr" style="min-height: 100%;" /></div>
-			<div class="col">
-				{slot_lineage_2}
-			</div>
-			<div class="col-auto"><div class="vr" style="min-height: 100%;" /></div>
-			<div class="col">
-				{slot_upbringing}
-			</div>
-		</div>
-	};
-
-	// TODO: Next steps
-	// - collapse lineage accordion with button to show
-	// - figure out how to present selected information (mainly for picking selections)
-	let panel_content = match &*view {
-		SlotView::None => html! {},
-		SlotView::EditContents(slot) => html! { {format!("{slot:?}")} },
-		SlotView::SelectValue(slot) => match slot {
-			Slot::Lineage1 | Slot::Lineage2 => html! {
-				<LineageList
-					selected_slot={*slot}
-					relevant_slots={HashSet::from([Slot::Lineage1, Slot::Lineage2])}
-					on_select={set_slot_value.clone()}
-				/>
-			},
-			Slot::Upbringing => html! {
-				<UpbringingList on_select={set_slot_value.clone()} />
-			},
-		},
-	};
-
 	html! {<>
 		{lineages_switch}
-		{slots}
-		{panel_content}
+		<CharacterContent />
+		<CategoryBrowser />
 	</>}
 }
 
-#[derive(Clone, Copy, PartialEq)]
-enum SlotView {
-	None,
-	SelectValue(Slot),
-	EditContents(Slot),
-}
-impl SlotView {
-	fn slot(&self) -> Option<Slot> {
-		match self {
-			Self::None => None,
-			Self::SelectValue(slot) => Some(*slot),
-			Self::EditContents(slot) => Some(*slot),
-		}
-	}
-}
+#[function_component]
+fn CharacterContent() -> Html {
+	let state = use_context::<SharedCharacter>().unwrap();
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-enum Slot {
-	Lineage1,
-	Lineage2,
-	Upbringing,
-}
-impl Slot {
-	fn get_value_name(&self, persistent: &Persistent) -> Option<AttrValue> {
-		match self {
-			Self::Lineage1 => persistent.lineages[0].as_ref().map(|v| &v.name),
-			Self::Lineage2 => persistent.lineages[1].as_ref().map(|v| &v.name),
-			Self::Upbringing => persistent.upbringing.as_ref().map(|v| &v.name),
-		}
-		.cloned()
-		.map(AttrValue::from)
+	let mut entries = Vec::new();
+	for idx in 0..state.persistent().named_groups.lineage.len() {
+		entries.push(html! { <LineageState {idx} /> });
 	}
+	for idx in 0..state.persistent().named_groups.upbringing.len() {
+		entries.push(html! { <UpbringingState {idx} /> });
+	}
+
+	if entries.is_empty() {
+		return html! {};
+	}
+
+	html! {<>
+		<div class="accordion mt-2 mb-4" id="selected-content">
+			{entries}
+		</div>
+	</>}
 }
 
 #[derive(Clone, PartialEq, Properties)]
-struct SlotProps {
-	label: AttrValue,
-	name: Option<AttrValue>,
-	is_selected: bool,
-	on_click: Callback<SlotAction>,
-}
-#[derive(Clone, Copy, PartialEq)]
-enum SlotAction {
-	/// Close the current view for the slot
-	Cancel,
-	/// Open the edit view for the slot
-	Edit,
-	/// Clear the slot's value
-	Remove,
-	/// Open the select view for the slot
-	Select,
+struct StateProps {
+	idx: usize,
 }
 #[function_component]
-fn SlotControl(
-	SlotProps {
-		label,
-		name,
-		is_selected,
-		on_click,
-	}: &SlotProps,
-) -> Html {
+fn LineageState(StateProps { idx }: &StateProps) -> Html {
+	let state = use_context::<SharedCharacter>().unwrap();
+	let Some(value) = state.persistent().named_groups.lineage.get(*idx) else { return html! {}; };
 	html! {
-		<div class="d-flex h-100 align-items-center">
-			<div class="flex-grow-1">
-				<div class="text-center">
-					<strong>{label.clone()}</strong>
-				</div>
-				<div>
-					{match name.as_ref() {
-						Some(name) => name.as_str(),
-						None => "Empty",
-					}}
-				</div>
-			</div>
-			<div>
-				{match (*is_selected, name.is_some()) {
-					(true, _) => html! {
-						<button
-							role="button" class="btn btn-outline-warning btn-sm my-1 mx-auto d-block"
-							onclick={on_click.reform(|_| SlotAction::Cancel)}
-						>
-							{"Cancel"}
-						</button>
-					},
-					(_, true) => html! {<div>
-						<button
-							role="button" class="btn btn-outline-primary btn-sm my-1 mx-auto d-block"
-							onclick={on_click.reform(|_| SlotAction::Edit)}
-						>
-							{"Edit"}
-						</button>
-						<button
-							role="button" class="btn btn-outline-danger btn-sm my-1 mx-auto d-block"
-							onclick={on_click.reform(|_| SlotAction::Remove)}
-						>
-							{"Remove"}
-						</button>
-					</div>},
-					(_, false) => html! {
-						<button
-						role="button" class="btn btn-outline-success btn-sm my-1 mx-auto d-block"
-							onclick={on_click.reform(|_| SlotAction::Select)}
-						>
-							{"Select"}
-						</button>
-					},
+		<ContentItem
+			//parent_collapse={"#selected-content"}
+			id_prefix={format!("item{}", *idx)}
+			name={format!("Lineage: {}", value.name)}
+			kind={ContentItemKind::Remove}
+			on_click={Callback::from({
+				let state = state.clone();
+				let idx = *idx;
+				move |_| {
+					state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
+						persistent.named_groups.lineage.remove(idx);
+						Some(ActionEffect::Recompile) // TODO: Only do this when returning to sheet view
+					}));
+				}
+			})}
+		>
+			<LineageBody value={value.clone()} />
+		</ContentItem>
+	}
+}
+#[function_component]
+fn UpbringingState(StateProps { idx }: &StateProps) -> Html {
+	let state = use_context::<SharedCharacter>().unwrap();
+	let Some(value) = state.persistent().named_groups.upbringing.get(*idx) else { return html! {}; };
+	html! {
+		<ContentItem
+			//parent_collapse={"#selected-content"}
+			id_prefix={format!("item{}", *idx)}
+			name={format!("Upbringing: {}", value.name)}
+			kind={ContentItemKind::Remove}
+			on_click={Callback::from({
+				let state = state.clone();
+				let idx = *idx;
+				move |_| {
+					state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
+						persistent.named_groups.upbringing.remove(idx);
+						Some(ActionEffect::Recompile) // TODO: Only do this when returning to sheet view
+					}));
+				}
+			})}
+		>
+			<UpbringingBody value={value.clone()} />
+		</ContentItem>
+	}
+}
+
+#[function_component]
+fn CategoryBrowser() -> Html {
+	let selected_category = use_state(|| None::<AttrValue>);
+	let content_list = match &*selected_category {
+		None => html! {},
+		Some(category) => html! {
+			<div class="accordion my-2" id="all-entries">
+				{match category.as_str() {
+					"Lineage" => html! {<ContentListLineage />},
+					"Upbringing" => html! {<ContentListUpbringing />},
+					"Background" => html! {},
+					_ => html! {},
 				}}
 			</div>
+		},
+	};
+	html! {<>
+		<CategoryPicker
+			value={(*selected_category).clone()}
+			options={vec!["Lineage".into(), "Upbringing".into(), "Background".into()]}
+			on_change={Callback::from({
+				let selected_category = selected_category.clone();
+				move |value| selected_category.set(value)
+			})}
+		/>
+		{content_list}
+	</>}
+}
+
+#[derive(Clone, PartialEq, Properties)]
+struct CategoryPickerProps {
+	options: Vec<AttrValue>,
+	value: Option<AttrValue>,
+	on_change: Callback<Option<AttrValue>>,
+}
+#[function_component]
+fn CategoryPicker(
+	CategoryPickerProps {
+		options,
+		value,
+		on_change,
+	}: &CategoryPickerProps,
+) -> Html {
+	let on_selection_changed = Callback::from({
+		let on_change = on_change.clone();
+		move |evt: web_sys::Event| {
+			let Some(target) = evt.target() else { return; };
+			let Some(element) = target.dyn_ref::<HtmlSelectElement>() else { return; };
+			let value = element.value();
+			on_change.emit((!value.is_empty()).then_some(value.into()));
+		}
+	});
+	let close_btn = match value.is_some() {
+		true => html! {
+			<button type="button"
+				class="btn btn-outline-warning"
+				onclick={on_change.reform(|_| None)}
+			>
+				{"Close"}
+			</button>
+		},
+		false => html! {},
+	};
+	html! {
+		<div class="input-group">
+			<span class="input-group-text">{"Browse Categories"}</span>
+			<select class="form-select" onchange={on_selection_changed} disabled={value.is_some()}>
+				<option
+					value=""
+					selected={value.is_none()}
+				>{"Select a category..."}</option>
+				{options.iter().map(|item| html! {
+					<option
+						value={item.clone()}
+						selected={value.as_ref() == Some(item)}
+					>{item.clone()}</option>
+				}).collect::<Vec<_>>()}
+			</select>
+			{close_btn}
 		</div>
 	}
 }
 
-#[derive(Clone, PartialEq, Properties)]
-struct LineageListProps {
-	selected_slot: Slot,
-	relevant_slots: HashSet<Slot>,
-	on_select: Callback<(Slot, Option<SourceId>)>,
-}
 #[function_component]
-fn LineageList(
-	LineageListProps {
-		selected_slot,
-		relevant_slots,
-		on_select,
-	}: &LineageListProps,
-) -> Html {
+fn ContentListLineage() -> Html {
 	let system = use_context::<UseStateHandle<DnD5e>>().unwrap();
 	let state = use_context::<SharedCharacter>().unwrap();
 
-	let current_value_name = selected_slot.get_value_name(state.persistent());
-	let lineage_order = {
+	let on_select = Callback::from({
+		let system = system.clone();
+		let state = state.clone();
+		move |source_id| {
+			let Some(source) = system.lineages.get(&source_id) else { return; };
+			let new_value = source.clone();
+			state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
+				persistent.named_groups.lineage.push(new_value);
+				Some(ActionEffect::Recompile) // TODO: Only do this when returning to sheet view
+			}));
+		}
+	});
+
+	let ordered_items = {
 		let mut vec = system.lineages.iter().collect::<Vec<_>>();
 		vec.sort_by(|(_, a), (_, b)| a.name.partial_cmp(&b.name).unwrap());
 		vec
 	};
-	let other_slots = {
-		let mut slots = relevant_slots.clone();
-		slots.remove(selected_slot);
-		slots
-	};
-	let is_value_in_slots = |value: &Lineage, slots: &HashSet<Slot>| {
-		for slot in slots {
-			let slot_value = match slot {
-				Slot::Lineage1 => state.persistent().lineages[0].as_ref(),
-				Slot::Lineage2 => state.persistent().lineages[1].as_ref(),
-				Slot::Upbringing => None,
-			};
-			if let Some(slot_value) = slot_value {
-				if slot_value.name == value.name {
-					return true;
-				}
+
+	html! {<>
+		{ordered_items.into_iter().map(move |(source_id, value)| {
+			let amount_selected = state.persistent().named_groups.lineage.iter().filter(|selected| {
+				&selected.source_id == source_id
+			}).count();
+			html! {
+				<ContentItem
+					parent_collapse={"#all-entries"}
+					name={value.name.clone()}
+					kind={ContentItemKind::Add {
+						amount_selected,
+						selection_limit: value.limit as usize,
+					}}
+					on_click={on_select.reform({
+						let source_id = source_id.clone();
+						move |_| source_id.clone()
+					})}
+				>
+					<LineageBody value={value.clone()} />
+				</ContentItem>
 			}
-		}
-		false
-	};
-	html! {
-		<div class="accordion my-2" id="all-entries">
-			{lineage_order.into_iter().map(move |(source_id, value)| {
-				let is_current_selection = is_value_in_slots(value, &[*selected_slot].into());
-				let is_otherwise_selected = is_value_in_slots(value, &other_slots);
-				html! {
-					<ItemEntry
-						parent_collapse={"#all-entries"}
-						name={value.name.clone()}
-						current_slot_name={current_value_name.clone()}
-						{is_current_selection}
-						{is_otherwise_selected}
-						can_select_again={value.can_select_twice}
-						on_select={on_select.reform({
-							let target_slot = *selected_slot;
-							let source_id = source_id.clone();
-							move |_| (target_slot, Some(source_id.clone()))
-						})}
-					>
-						<LineageBody lineage={value.clone()} />
-					</ItemEntry>
-				}
-			}).collect::<Vec<_>>()}
-		</div>
-	}
+		}).collect::<Vec<_>>()}
+	</>}
 }
 
-#[derive(Clone, PartialEq, Properties)]
-struct UpbringingListProps {
-	on_select: Callback<(Slot, Option<SourceId>)>,
-}
 #[function_component]
-fn UpbringingList(UpbringingListProps { on_select }: &UpbringingListProps) -> Html {
+fn ContentListUpbringing() -> Html {
 	let system = use_context::<UseStateHandle<DnD5e>>().unwrap();
 	let state = use_context::<SharedCharacter>().unwrap();
 
-	let current_value_name = Slot::Upbringing.get_value_name(state.persistent());
-	let item_order = {
+	let on_select = Callback::from({
+		let system = system.clone();
+		let state = state.clone();
+		move |source_id| {
+			let Some(source) = system.upbringings.get(&source_id) else { return; };
+			let new_value = source.clone();
+			state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
+				persistent.named_groups.upbringing.push(new_value);
+				Some(ActionEffect::Recompile) // TODO: Only do this when returning to sheet view
+			}));
+		}
+	});
+
+	let ordered_items = {
 		let mut vec = system.upbringings.iter().collect::<Vec<_>>();
 		vec.sort_by(|(_, a), (_, b)| a.name.partial_cmp(&b.name).unwrap());
 		vec
 	};
-	html! {
-		<div class="accordion my-2" id="all-entries">
-			{item_order.into_iter().map(move |(source_id, value)| {
-				let is_current_selection = match &state.persistent().upbringing {
-					Some(upbringing) => upbringing.name == value.name,
-					None => false,
-				};
-				html! {
-					<ItemEntry
-						parent_collapse={"#all-entries"}
-						name={value.name.clone()}
-						current_slot_name={current_value_name.clone()}
-						{is_current_selection}
-						is_otherwise_selected={false}
-						can_select_again={false}
-						on_select={on_select.reform({
-							let source_id = source_id.clone();
-							move |_| (Slot::Upbringing, Some(source_id.clone()))
-						})}
-					>
-						<div style="white-space: pre-line;">
-							{value.description.clone()}
-						</div>
-					</ItemEntry>
-				}
-			}).collect::<Vec<_>>()}
-		</div>
-	}
+
+	html! {<>
+		{ordered_items.into_iter().map(move |(source_id, value)| {
+			let amount_selected = state.persistent().named_groups.upbringing.iter().filter(|selected| {
+				&selected.source_id == source_id
+			}).count();
+			html! {
+				<ContentItem
+					parent_collapse={"#all-entries"}
+					name={value.name.clone()}
+					kind={ContentItemKind::Add {
+						amount_selected,
+						selection_limit: 1,
+					}}
+					on_click={on_select.reform({
+						let source_id = source_id.clone();
+						move |_| source_id.clone()
+					})}
+				>
+					<UpbringingBody value={value.clone()} />
+				</ContentItem>
+			}
+		}).collect::<Vec<_>>()}
+	</>}
 }
 
 #[derive(Clone, PartialEq, Properties)]
-struct ItemEntryProps {
-	parent_collapse: AttrValue,
+struct ContentItemProps {
+	#[prop_or_default]
+	parent_collapse: Option<AttrValue>,
+	#[prop_or_default]
+	id_prefix: Option<AttrValue>,
 	name: AttrValue,
-	current_slot_name: Option<AttrValue>,
-	is_current_selection: bool,
-	is_otherwise_selected: bool,
-	can_select_again: bool,
+	kind: ContentItemKind,
 	children: Children,
-	on_select: Callback<()>,
+	on_click: Callback<()>,
 }
-
+#[derive(Clone, PartialEq)]
+enum ContentItemKind {
+	Add {
+		amount_selected: usize,
+		selection_limit: usize,
+	},
+	Remove,
+}
 #[function_component]
-fn ItemEntry(
-	ItemEntryProps {
+fn ContentItem(
+	ContentItemProps {
 		parent_collapse,
+		id_prefix,
 		name,
-		current_slot_name,
-		is_current_selection,
-		is_otherwise_selected,
-		can_select_again,
+		kind,
 		children,
-		on_select,
-	}: &ItemEntryProps,
+		on_click,
+	}: &ContentItemProps,
 ) -> Html {
 	use convert_case::{Case, Casing};
 
-	let disabled_btn = |text: Html| {
-		html! {
-			<button type="button" class="btn btn-outline-secondary my-1 w-100" disabled={true}>
-				{text}
-			</button>
+	let slot_buttons = match kind {
+		ContentItemKind::Add {
+			amount_selected,
+			selection_limit,
+		} => {
+			let disabled_btn = |text: Html| {
+				html! {
+					<button type="button" class="btn btn-outline-secondary my-1 w-100" disabled={true}>
+						{text}
+					</button>
+				}
+			};
+			let select_btn = |text: Html| {
+				html! {
+					<button type="button" class="btn btn-outline-success my-1 w-100" onclick={on_click.reform(|_| ())}>
+						{text}
+					</button>
+				}
+			};
+
+			match (*amount_selected, *selection_limit) {
+				// Slot is empty, and this option is not-yet used
+				(0, _) => select_btn(html! {{"Add"}}),
+				// Slot is empty, this option is in another slot, but it can be used again
+				(count, limit) if count < limit => {
+					select_btn(html! {{format!("Add Again ({} / {})", count, limit)}})
+				}
+				// option already selected for another slot, and cannot be selected again
+				(count, limit) if count >= limit => {
+					disabled_btn(html! {{format!("Cannot Add Again ({} / {})", count, limit)}})
+				}
+				_ => html! {},
+			}
 		}
-	};
-	let select_btn = |bonus_text: Html| {
-		let onclick = on_select.reform(|_| ());
-		html! {
-			<button type="button" class="btn btn-outline-success my-1 w-100" {onclick}>
-				{"Select"}{bonus_text}
-			</button>
-		}
-	};
-	let replace_btn = |name: &AttrValue| {
-		let onclick = on_select.reform(|_| ());
-		html! {
-			<button type="button" class="btn btn-outline-warning my-1 w-100" {onclick}>
-				{"Replace "}{name.clone()}
-			</button>
+		ContentItemKind::Remove => {
+			html! {
+				<button type="button" class="btn btn-outline-danger my-1 w-100" onclick={on_click.reform(|_| ())}>
+					{"Remove"}
+				</button>
+			}
 		}
 	};
 
-	let slot_buttons = match (
-		*is_current_selection,
-		current_slot_name,
-		*is_otherwise_selected,
-		*can_select_again,
-	) {
-		// is in this slot
-		(true, _, _, _) => disabled_btn(html! {{"Currently Selected"}}),
-		// option already selected for another slot, and cannot be selected again
-		(_, _, true, false) => disabled_btn(html! {{"Cannot Select Again"}}),
-		// Slot is empty, and this option is not-yet used
-		(_, None, false, _) => select_btn(html! {}),
-		// Slot is empty, this option is in another slot, but it can be used again
-		(_, None, true, true) => select_btn(html! {{" Again"}}),
-		// Slot has a value & it is not this option
-		(_, Some(name), _, _) => replace_btn(name),
-	};
-
-	let id = name.as_str().to_case(Case::Kebab);
+	let id = format!(
+		"{}{}",
+		id_prefix
+			.as_ref()
+			.map(AttrValue::as_str)
+			.unwrap_or_default(),
+		name.as_str().to_case(Case::Kebab),
+	);
 	html! {
 		<div class="accordion-item">
 			<h2 class="accordion-header">
@@ -481,13 +406,26 @@ fn ItemEntry(
 
 #[derive(Clone, PartialEq, Properties)]
 struct LineageBodyProps {
-	lineage: Lineage,
+	value: Lineage,
 }
 #[function_component]
-fn LineageBody(LineageBodyProps { lineage }: &LineageBodyProps) -> Html {
+fn LineageBody(LineageBodyProps { value }: &LineageBodyProps) -> Html {
 	html! {<>
 		<div style="white-space: pre-line;">
-			{lineage.description.clone()}
+			{value.description.clone()}
+		</div>
+	</>}
+}
+
+#[derive(Clone, PartialEq, Properties)]
+struct UpbringingBodyProps {
+	value: Upbringing,
+}
+#[function_component]
+fn UpbringingBody(UpbringingBodyProps { value }: &UpbringingBodyProps) -> Html {
+	html! {<>
+		<div style="white-space: pre-line;">
+			{value.description.clone()}
 		</div>
 	</>}
 }
