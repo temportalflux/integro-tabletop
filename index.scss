@@ -5,6 +5,10 @@
 @import "src/components/tag.scss";
 @import "src/system/dnd5e/components/ability/score.scss";
 
+.text-block {
+	white-space: pre-line;
+}
+
 .table-compact > :not(caption) > * > * {
 	padding: 3px 3px;
 }
@@ -204,4 +208,14 @@ input[type="checkbox"].success:checked {
 	background-size: 30px;
 	height: 30px;
 	width: 30px;
+}
+
+.selector.missing-value {
+	--bs-border-color: var(--bs-warning);
+}
+.selector.missing-value {
+	input:focus,select:focus {
+		border-color: var(--bs-border-color);
+		box-shadow: 0 0 0 0.25rem rgba(var(--bs-warning-rgb), 0.25);
+	}
 }

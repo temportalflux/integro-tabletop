@@ -577,7 +577,7 @@ pub fn ModalSectionInfo() -> Html {
 					>{"Max HP Breakdown"}</button>
 				</h2>
 				<div id="collapseMaxHP" class="accordion-collapse collapse" data-bs-parent="#hitPointsInformation">
-					<div class="accordion-body" style="white-space: pre-line;">
+					<div class="accordion-body text-block">
 						<MaxHitPointsTable />
 					</div>
 				</div>
@@ -590,7 +590,7 @@ pub fn ModalSectionInfo() -> Html {
 					>{"Hit Points"}</button>
 				</h2>
 				<div id="collapseHitPoints" class="accordion-collapse collapse" data-bs-parent="#hitPointsInformation">
-					<div class="accordion-body" style="white-space: pre-line;">
+					<div class="accordion-body text-block">
 						{TEXT_HIT_POINTS}
 					</div>
 				</div>
@@ -603,7 +603,7 @@ pub fn ModalSectionInfo() -> Html {
 					>{"Temporary Hit Points"}</button>
 				</h2>
 				<div id="collapseTempHP" class="accordion-collapse collapse" data-bs-parent="#hitPointsInformation">
-					<div class="accordion-body" style="white-space: pre-line;">
+					<div class="accordion-body text-block">
 						{TEXT_TEMP_HP}
 					</div>
 				</div>
@@ -616,7 +616,7 @@ pub fn ModalSectionInfo() -> Html {
 					>{"Healing"}</button>
 				</h2>
 				<div id="collapseHealing" class="accordion-collapse collapse" data-bs-parent="#hitPointsInformation">
-					<div class="accordion-body" style="white-space: pre-line;">
+					<div class="accordion-body text-block">
 						{TEXT_HEALING}
 					</div>
 				</div>
@@ -629,7 +629,7 @@ pub fn ModalSectionInfo() -> Html {
 					>{"Dropping to 0 Hit Points"}</button>
 				</h2>
 				<div id="collapseDTZ" class="accordion-collapse collapse" data-bs-parent="#hitPointsInformation">
-					<div class="accordion-body" style="white-space: pre-line;">
+					<div class="accordion-body text-block">
 						{TEXT_DROP_TO_ZERO}
 						<span class="d-block my-2" />
 						<div class="accordion" id="drop-to-zero">
@@ -641,7 +641,7 @@ pub fn ModalSectionInfo() -> Html {
 									>{"Instant Death"}</button>
 								</h2>
 								<div id="collapseDTZInstantDeath" class="accordion-collapse collapse" data-bs-parent="#drop-to-zero">
-									<div class="accordion-body" style="white-space: pre-line;">
+									<div class="accordion-body text-block">
 										{TEXT_DTZ_INSTANT_DEATH}
 									</div>
 								</div>
@@ -654,7 +654,7 @@ pub fn ModalSectionInfo() -> Html {
 									>{"Falling Unconscious"}</button>
 								</h2>
 								<div id="collapseDTZUnconscious" class="accordion-collapse collapse" data-bs-parent="#drop-to-zero">
-									<div class="accordion-body" style="white-space: pre-line;">
+									<div class="accordion-body text-block">
 										{TEXT_DTZ_FALLING_UNCONSCIOUS}
 									</div>
 								</div>
@@ -667,7 +667,7 @@ pub fn ModalSectionInfo() -> Html {
 									>{"Death Saving Throws"}</button>
 								</h2>
 								<div id="collapseDTZSavingThrows" class="accordion-collapse collapse" data-bs-parent="#drop-to-zero">
-									<div class="accordion-body" style="white-space: pre-line;">
+									<div class="accordion-body text-block">
 										{TEXT_DTZ_SAVING_THROWS}
 										<br /><br />
 										<strong>{"Roll a d20. "}</strong>
@@ -689,7 +689,7 @@ pub fn ModalSectionInfo() -> Html {
 									>{"Stabilizing a Creature"}</button>
 								</h2>
 								<div id="collapseDTZStabilizing" class="accordion-collapse collapse" data-bs-parent="#drop-to-zero">
-									<div class="accordion-body" style="white-space: pre-line;">
+									<div class="accordion-body text-block">
 										{TEXT_DTZ_STABILIZING}
 									</div>
 								</div>

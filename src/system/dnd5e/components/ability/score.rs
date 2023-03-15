@@ -129,16 +129,16 @@ fn Modal(ModalProps { ability }: &ModalProps) -> Html {
 			</div>
 
 			<h6>{ability.long_name()}{" Checks"}</h6>
-			<div style="white-space: pre-line; margin-bottom: 10px;">{ability.checks_description()}</div>
+			<div class="text-block" style="margin-bottom: 10px;">{ability.checks_description()}</div>
 
 			{skills.map(|skill| html! {<>
 				<h6>{skill.display_name()}</h6>
-				<div style="white-space: pre-line; margin-bottom: 10px;">{skill.description()}</div>
+				<div class="text-block" style="margin-bottom: 10px;">{skill.description()}</div>
 			</>}).collect::<Vec<_>>()}
 
 			{ability.addendum_description().into_iter().map(|(title, content)| html! {<>
 				<h6>{title}</h6>
-				<div style="white-space: pre-line; margin-bottom: 10px;">{content}</div>
+				<div class="text-block" style="margin-bottom: 10px;">{content}</div>
 			</>}).collect::<Vec<_>>()}
 
 		</div>

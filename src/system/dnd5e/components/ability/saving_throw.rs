@@ -210,7 +210,7 @@ fn Modal() -> Html {
 				</tbody>
 			</table>
 			{modifiers_section}
-			<div style="margin-top: 15px; white-space: pre-line;">
+			<div class="text-block" style="margin-top: 15px;">
 				{TEXT}
 			</div>
 		</div>

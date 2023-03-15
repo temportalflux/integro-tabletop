@@ -38,7 +38,7 @@ pub fn InitiativeBonus() -> Html {
 							<span>{Ability::Dexterity.long_name()}{":"}</span>
 							<span style="margin-left: 5px;">{match value >= 0 { true => "+", false => "-", }}{value.abs()}</span>
 						</div>
-						<div style="white-space: pre-line;">
+						<div class="text-block">
 							{TEXT}
 						</div>
 					</div>

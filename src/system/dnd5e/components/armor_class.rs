@@ -119,7 +119,7 @@ fn Modal() -> Html {
 		<div class="modal-body">
 			{formula_table}
 			{bonuses_table}
-			<div style="white-space: pre-line;">
+			<div class="text-block">
 				{TEXT}
 			</div>
 		</div>

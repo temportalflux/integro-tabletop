@@ -1,10 +1,13 @@
-use crate::system::dnd5e::{
-	components::SharedCharacter,
-	data::{
-		character::{ActionEffect, Persistent},
-		Lineage, Upbringing,
+use crate::{
+	system::dnd5e::{
+		components::SharedCharacter,
+		data::{
+			character::{ActionEffect, Persistent},
+			Feature, Lineage, Upbringing,
+		},
+		DnD5e,
 	},
-	DnD5e,
+	utility::{GenericMutator, SelectorMeta, SelectorOptions},
 };
 use wasm_bindgen::JsCast;
 use web_sys::{HtmlInputElement, HtmlSelectElement};
@@ -93,7 +96,7 @@ fn LineageState(StateProps { idx }: &StateProps) -> Html {
 				}
 			})}
 		>
-			<LineageBody value={value.clone()} />
+			{lineage(value, true)}
 		</ContentItem>
 	}
 }
@@ -118,7 +121,7 @@ fn UpbringingState(StateProps { idx }: &StateProps) -> Html {
 				}
 			})}
 		>
-			<UpbringingBody value={value.clone()} />
+		{upbringing(value, true)}
 		</ContentItem>
 	}
 }
@@ -248,7 +251,7 @@ fn ContentListLineage() -> Html {
 						move |_| source_id.clone()
 					})}
 				>
-					<LineageBody value={value.clone()} />
+					{lineage(value, false)}
 				</ContentItem>
 			}
 		}).collect::<Vec<_>>()}
@@ -297,7 +300,7 @@ fn ContentListUpbringing() -> Html {
 						move |_| source_id.clone()
 					})}
 				>
-					<UpbringingBody value={value.clone()} />
+					{upbringing(value, false)}
 				</ContentItem>
 			}
 		}).collect::<Vec<_>>()}
@@ -404,49 +407,158 @@ fn ContentItem(
 	}
 }
 
-#[derive(Clone, PartialEq, Properties)]
-struct LineageBodyProps {
-	value: Lineage,
-}
-#[function_component]
-fn LineageBody(LineageBodyProps { value }: &LineageBodyProps) -> Html {
-	let mutator_descs = value
-		.mutators
-		.iter()
-		.filter_map(|v| v.description())
-		.map(|desc| {
-			html! {
-				<li>{desc}</li>
-			}
-		})
-		.collect::<Vec<_>>();
-	for mutator in &value.mutators {
-		if let Some(_meta) = mutator.selector_meta() {
-			// TODO: We need to know what the key of the selector is,
-			// which requires not only the selector's id (which we have),
-			// but the full path to the mutator from the character root.
-			// for lineages this is just `<lineage name>/<mutator name>/<selector id>`,
-			// but this is going to be an ongoing issue for all mutator groups.
-			// Unfortunately, we only have that path when we iterate over the entire tree during a `Character::apply`.
-		}
-	}
+fn lineage(value: &Lineage, show_selectors: bool) -> Html {
 	html! {<>
-		<div style="white-space: pre-line;">
+		<div class="text-block">
 			{value.description.clone()}
 		</div>
-		{mutator_descs}
+		{mutator_list(&value.mutators)}
+		{show_selectors.then(|| selectors_in(&value.mutators)).unwrap_or_default()}
+		{value.features.iter().map(|f| feature(f.inner(), show_selectors)).collect::<Vec<_>>()}
 	</>}
 }
 
-#[derive(Clone, PartialEq, Properties)]
-struct UpbringingBodyProps {
-	value: Upbringing,
-}
-#[function_component]
-fn UpbringingBody(UpbringingBodyProps { value }: &UpbringingBodyProps) -> Html {
+fn upbringing(value: &Upbringing, show_selectors: bool) -> Html {
 	html! {<>
-		<div style="white-space: pre-line;">
+		<div class="text-block">
 			{value.description.clone()}
 		</div>
+		{mutator_list(&value.mutators)}
+		{show_selectors.then(|| selectors_in(&value.mutators)).unwrap_or_default()}
+		{value.features.iter().map(|f| feature(f.inner(), show_selectors)).collect::<Vec<_>>()}
 	</>}
+}
+
+fn feature(value: &Feature, show_selectors: bool) -> Html {
+	// TODO: display criteria evaluator
+	html! {
+		<div class="my-2">
+			<h5>{value.name.clone()}</h5>
+			<div class="text-block">
+				{value.description.clone()}
+			</div>
+			{mutator_list(&value.mutators)}
+			{show_selectors.then(|| selectors_in(&value.mutators)).unwrap_or_default()}
+		</div>
+	}
+}
+
+fn mutator_list<T: 'static>(list: &Vec<GenericMutator<T>>) -> Html {
+	let descs = list.iter().filter_map(mutator).collect::<Vec<_>>();
+	match descs.is_empty() {
+		true => html! {},
+		false => html! {<ul>{descs}</ul>},
+	}
+}
+
+fn mutator<T: 'static>(value: &GenericMutator<T>) -> Option<Html> {
+	match value.description() {
+		Some(desc) => Some(html! {<li>{desc}</li>}),
+		None => None,
+	}
+}
+
+fn selectors_in<T: 'static>(mutators: &Vec<GenericMutator<T>>) -> Vec<Html> {
+	mutators
+		.iter()
+		.filter_map(|m| m.selector_meta())
+		.map(Vec::into_iter)
+		.flatten()
+		.map(|meta| html! { <SelectorField {meta} /> })
+		.collect()
+}
+
+#[derive(Clone, PartialEq, Properties)]
+struct SelectorFieldProps {
+	meta: SelectorMeta,
+}
+#[function_component]
+fn SelectorField(
+	SelectorFieldProps {
+		meta: SelectorMeta {
+			name,
+			data_path,
+			options,
+		},
+	}: &SelectorFieldProps,
+) -> Html {
+	let state = use_context::<SharedCharacter>().unwrap();
+	let value = state.get_first_selection(data_path);
+
+	let save_value = Callback::from({
+		let data_path = data_path.clone();
+		let state = state.clone();
+		move |value| {
+			let data_path = data_path.clone();
+			state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
+				match value {
+					None => {
+						persistent.selected_values.remove(&data_path);
+					}
+					Some(value) => {
+						persistent.selected_values.set(&data_path, value);
+					}
+				}
+				Some(ActionEffect::Recompile) // TODO: Only do this when returning to sheet view
+			}));
+		}
+	});
+
+	let mut classes = classes!("input-group", "mx-3", "my-2", "selector");
+	if value.is_none() {
+		classes.push("missing-value");
+	}
+	let inner = match options {
+		SelectorOptions::Any => {
+			let onchange = Callback::from({
+				let save_value = save_value.clone();
+				move |evt: web_sys::Event| {
+					let Some(target) = evt.target() else { return; };
+					let Some(element) = target.dyn_ref::<HtmlInputElement>() else { return; };
+					let value = element.value();
+					save_value.emit((!value.is_empty()).then_some(value.into()));
+				}
+			});
+			html! {<input
+				class="form-control" type="text"
+				value={value.cloned().unwrap_or_default()}
+				{onchange}
+			/>}
+		}
+		SelectorOptions::AnyOf(valid_values) => {
+			let onchange = Callback::from({
+				let save_value = save_value.clone();
+				move |evt: web_sys::Event| {
+					let Some(target) = evt.target() else { return; };
+					let Some(element) = target.dyn_ref::<HtmlSelectElement>() else { return; };
+					let value = element.value();
+					save_value.emit((!value.is_empty()).then_some(value.into()));
+				}
+			});
+			html! {
+				<select class="form-select" {onchange}>
+					<option
+						value=""
+						selected={value.is_none()}
+					>{"Select a value..."}</option>
+					{valid_values.iter().map(|item| {
+						html! {
+							<option
+								value={item.clone()}
+								selected={value == Some(item)}
+							>
+								{item.clone()}
+							</option>
+						}
+					}).collect::<Vec<_>>()}
+				</select>
+			}
+		}
+	};
+	html! {
+		<div class={classes} style="max-width: 300px;">
+			<span class="input-group-text">{name.clone()}</span>
+			{inner}
+		</div>
+	}
 }

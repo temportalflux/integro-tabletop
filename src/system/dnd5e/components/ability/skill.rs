@@ -332,7 +332,7 @@ fn SkillModal(SkillModalProps { skill }: &SkillModalProps) -> Html {
 			</div>
 			{prof_table}
 			{roll_modifiers_table}
-			<div style="white-space: pre-line;">{skill.description()}</div>
+			<div class="text-block">{skill.description()}</div>
 		</div>
 	</>}
 }

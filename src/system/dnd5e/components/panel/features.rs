@@ -196,7 +196,7 @@ fn FeatureBlock(
 					_ => html! {},
 				}}
 			</span>
-			<div style="white-space: pre-line;">
+			<div class="text-block">
 				{description}
 			</div>
 			{match selected_values.len() {

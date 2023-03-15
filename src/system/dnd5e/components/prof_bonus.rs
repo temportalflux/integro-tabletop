@@ -62,7 +62,7 @@ pub fn ProfBonus() -> Html {
 								</tbody>
 							</table>
 						</div>
-						<div style="white-space: pre-line;">
+						<div class="text-block">
 							{TEXT}
 						</div>
 					</div>

@@ -139,6 +139,12 @@ impl Character {
 		self.character.selected_values.get(path.as_ref())
 	}
 
+	pub fn get_first_selection(&self, path: impl AsRef<Path>) -> Option<&String> {
+		self.get_selections_at(path)
+			.map(|all| all.first())
+			.flatten()
+	}
+
 	pub fn get_first_selection_at<T>(
 		&self,
 		data_path: impl AsRef<Path>,
