@@ -40,12 +40,13 @@ impl MutatorGroup for Class {
 		}
 	}
 
-	fn apply_mutators(&self, stats: &mut Character) {
+	fn apply_mutators(&self, stats: &mut Character, parent: &Path) {
+		let path_to_self = parent.join(&self.name);
 		for level in self.iter_levels() {
-			stats.apply_from(&level);
+			stats.apply_from(&level, &path_to_self);
 		}
 		if let Some(subclass) = &self.subclass {
-			stats.apply_from(subclass);
+			stats.apply_from(subclass, &path_to_self);
 		}
 	}
 }
@@ -89,21 +90,20 @@ impl<'a> MutatorGroup for LevelWithIndex<'a> {
 		}
 	}
 
-	fn apply_mutators(&self, stats: &mut Character) {
+	fn apply_mutators(&self, stats: &mut Character, parent: &Path) {
+		let path_to_self = parent.join(self.level_name());
 		if let Some(hit_points) = stats.resolve_selector(&self.1.hit_points) {
-			stats.apply(
-				&AddMaxHitPoints {
-					id: Some(format!("Level {:02}", self.0 + 1)),
-					value: Value::Fixed(hit_points as i32),
-				}
-				.into(),
-			);
+			let mutator = AddMaxHitPoints {
+				id: Some(format!("Level {:02}", self.0 + 1)),
+				value: Value::Fixed(hit_points as i32),
+			};
+			stats.apply(&mutator.into(), &path_to_self);
 		}
 		for mutator in &self.1.mutators {
-			stats.apply(mutator);
+			stats.apply(mutator, &path_to_self);
 		}
 		for feature in &self.1.features {
-			stats.add_feature(feature);
+			stats.add_feature(feature, &path_to_self);
 		}
 	}
 }
@@ -131,9 +131,10 @@ impl MutatorGroup for Subclass {
 		}
 	}
 
-	fn apply_mutators(&self, stats: &mut Character) {
+	fn apply_mutators(&self, stats: &mut Character, parent: &Path) {
+		let path_to_self = parent.join(&self.name);
 		for level in self.iter_levels() {
-			stats.apply_from(&level);
+			stats.apply_from(&level, &path_to_self);
 		}
 	}
 }

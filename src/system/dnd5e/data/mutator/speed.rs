@@ -22,11 +22,10 @@ crate::impl_kdl_node!(Speed, "speed");
 impl Mutator for Speed {
 	type Target = Character;
 
-	fn apply<'c>(&self, stats: &mut Character) {
-		let source = stats.source_path();
+	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
 		stats
 			.speeds_mut()
-			.insert(self.name.clone(), self.argument.clone(), source);
+			.insert(self.name.clone(), self.argument.clone(), parent.to_owned());
 	}
 }
 

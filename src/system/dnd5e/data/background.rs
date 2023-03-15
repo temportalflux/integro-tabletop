@@ -3,6 +3,7 @@ use crate::{
 	system::dnd5e::{data::BoxedFeature, BoxedMutator},
 	utility::MutatorGroup,
 };
+use std::path::Path;
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Background {
@@ -25,12 +26,13 @@ impl MutatorGroup for Background {
 		}
 	}
 
-	fn apply_mutators(&self, stats: &mut Character) {
+	fn apply_mutators(&self, stats: &mut Character, parent: &Path) {
+		let path_to_self = parent.join(&self.name);
 		for mutator in &self.mutators {
-			stats.apply(mutator);
+			stats.apply(mutator, &path_to_self);
 		}
 		for feat in &self.features {
-			stats.add_feature(feat);
+			stats.add_feature(feat, &path_to_self);
 		}
 	}
 }

@@ -12,9 +12,10 @@ crate::impl_kdl_node!(AddArmorClassFormula, "add_armor_class_formula");
 impl Mutator for AddArmorClassFormula {
 	type Target = Character;
 
-	fn apply<'c>(&self, stats: &mut Character) {
-		let source = stats.source_path();
-		stats.armor_class_mut().push_formula(self.0.clone(), source);
+	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
+		stats
+			.armor_class_mut()
+			.push_formula(self.0.clone(), parent.to_owned());
 	}
 }
 

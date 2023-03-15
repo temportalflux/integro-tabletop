@@ -23,11 +23,12 @@ crate::impl_kdl_node!(AddSavingThrowModifier, "add_saving_throw_modifier");
 impl Mutator for AddSavingThrowModifier {
 	type Target = Character;
 
-	fn apply<'c>(&self, stats: &mut Character) {
-		let source = stats.source_path();
-		stats
-			.saving_throws_mut()
-			.add_modifier(self.ability, self.target.clone(), source);
+	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
+		stats.saving_throws_mut().add_modifier(
+			self.ability,
+			self.target.clone(),
+			parent.to_owned(),
+		);
 	}
 }
 

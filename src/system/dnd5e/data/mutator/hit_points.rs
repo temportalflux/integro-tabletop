@@ -23,10 +23,9 @@ impl Mutator for AddMaxHitPoints {
 		self.value.dependencies()
 	}
 
-	fn apply<'c>(&self, stats: &mut Character) {
-		let source = stats.source_path();
+	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
 		let value = self.value.evaluate(stats);
-		stats.max_hit_points_mut().push(value, source);
+		stats.max_hit_points_mut().push(value, parent.to_owned());
 	}
 }
 

@@ -14,6 +14,7 @@ use crate::{
 	utility::MutatorGroup,
 };
 use enum_map::EnumMap;
+use std::path::Path;
 
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct NamedGroups {
@@ -59,7 +60,7 @@ impl MutatorGroup for Persistent {
 		self.inventory.set_data_path(parent);
 	}
 
-	fn apply_mutators(&self, stats: &mut Character) {
+	fn apply_mutators(&self, stats: &mut Character, parent: &Path) {
 		stats.apply(
 			&AddMaxHitPoints {
 				id: Some("Constitution x Levels".into()),
@@ -72,24 +73,25 @@ impl MutatorGroup for Persistent {
 				),
 			}
 			.into(),
+			parent,
 		);
 
 		for group in &self.named_groups.lineage {
-			stats.apply_from(group);
+			stats.apply_from(group, parent);
 		}
 		for group in &self.named_groups.upbringing {
-			stats.apply_from(group);
+			stats.apply_from(group, parent);
 		}
 		for group in &self.named_groups.background {
-			stats.apply_from(group);
+			stats.apply_from(group, parent);
 		}
 		for class in &self.classes {
-			stats.apply_from(class);
+			stats.apply_from(class, parent);
 		}
 		for feat in &self.feats {
-			stats.add_feature(feat);
+			stats.add_feature(feat, parent);
 		}
-		stats.apply_from(&self.inventory);
+		stats.apply_from(&self.inventory, parent);
 	}
 }
 

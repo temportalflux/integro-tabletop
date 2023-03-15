@@ -11,7 +11,7 @@ use crate::{
 	GeneralError,
 };
 use enum_map::Enum;
-use std::{path::PathBuf, str::FromStr};
+use std::str::FromStr;
 
 #[derive(Clone, Copy, PartialEq, Debug, Enum)]
 pub enum Flag {
@@ -43,7 +43,7 @@ crate::impl_kdl_node!(SetFlag, "flag");
 impl Mutator for SetFlag {
 	type Target = Character;
 
-	fn apply<'c>(&self, stats: &mut Character) {
+	fn apply(&self, stats: &mut Character, _parent: &std::path::Path) {
 		stats.flags_mut()[self.flag] = self.value;
 	}
 }
@@ -63,7 +63,6 @@ impl FromKDL for SetFlag {
 #[derive(Clone, PartialEq, Debug)]
 pub struct ArmorStrengthRequirement {
 	pub score: u32,
-	pub source_path: PathBuf,
 }
 
 crate::impl_trait_eq!(ArmorStrengthRequirement);
@@ -76,7 +75,7 @@ impl Mutator for ArmorStrengthRequirement {
 		["add_ability_score", "flag", "speed"].into()
 	}
 
-	fn apply<'c>(&self, stats: &mut Character) {
+	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
 		if !stats.flags()[Flag::ArmorStrengthRequirement] {
 			return;
 		}
@@ -94,7 +93,7 @@ impl Mutator for ArmorStrengthRequirement {
 		for speed in speed_names {
 			stats
 				.speeds_mut()
-				.insert(speed, BoundValue::Subtract(10), self.source_path.clone());
+				.insert(speed, BoundValue::Subtract(10), parent.to_owned());
 		}
 	}
 }

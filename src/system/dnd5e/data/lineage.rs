@@ -10,6 +10,7 @@ use crate::{
 	},
 	utility::MutatorGroup,
 };
+use std::path::Path;
 
 #[derive(Default, Clone, PartialEq, Debug)]
 pub struct Lineage {
@@ -34,12 +35,13 @@ impl MutatorGroup for Lineage {
 		}
 	}
 
-	fn apply_mutators(&self, stats: &mut Self::Target) {
+	fn apply_mutators(&self, stats: &mut Self::Target, parent: &Path) {
+		let path_to_self = parent.join(&self.name);
 		for mutator in &self.mutators {
-			stats.apply(mutator);
+			stats.apply(mutator, &path_to_self);
 		}
 		for feat in &self.features {
-			stats.add_feature(feat);
+			stats.add_feature(feat, &path_to_self);
 		}
 	}
 }

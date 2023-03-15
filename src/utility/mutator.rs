@@ -9,13 +9,13 @@ pub trait Mutator: Debug + TraitEq + AsTraitEq<dyn TraitEq> + KDLNode {
 		Dependencies::default()
 	}
 
-	fn set_data_path(&self, parent: &Path) {}
+	fn set_data_path(&self, _parent: &Path) {}
 
 	fn description(&self) -> Option<String> {
 		None
 	}
 
-	fn apply<'c>(&self, _: &mut Self::Target) {}
+	fn apply(&self, _: &mut Self::Target, _parent: &std::path::Path) {}
 
 	fn selector_meta(&self) -> Option<Vec<SelectorMeta>> {
 		None
@@ -73,5 +73,5 @@ pub trait MutatorGroup {
 
 	fn set_data_path(&self, parent: &Path);
 
-	fn apply_mutators(&self, target: &mut Self::Target);
+	fn apply_mutators(&self, target: &mut Self::Target, parent: &Path);
 }

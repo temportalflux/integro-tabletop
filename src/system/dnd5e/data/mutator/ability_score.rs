@@ -19,12 +19,11 @@ impl Mutator for AddAbilityScore {
 		self.ability.set_data_path(parent);
 	}
 
-	fn apply<'c>(&self, stats: &mut Character) {
+	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
 		if let Some(ability) = stats.resolve_selector(&self.ability) {
-			let source = stats.source_path();
 			stats
 				.ability_scores_mut()
-				.push_bonus(ability, self.value, source);
+				.push_bonus(ability, self.value, parent.to_owned());
 		}
 	}
 }

@@ -40,15 +40,18 @@ impl Mutator for AddProficiency {
 		}
 	}
 
-	fn apply<'c>(&self, stats: &mut Character) {
-		let source = stats.source_path();
+	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
 		match &self {
 			Self::SavingThrow(ability) => {
-				stats.saving_throws_mut().add_proficiency(*ability, source);
+				stats
+					.saving_throws_mut()
+					.add_proficiency(*ability, parent.to_owned());
 			}
 			Self::Skill(skill, level) => {
 				if let Some(skill) = stats.resolve_selector(skill) {
-					stats.skills_mut().add_proficiency(skill, *level, source);
+					stats
+						.skills_mut()
+						.add_proficiency(skill, *level, parent.to_owned());
 				}
 			}
 			Self::Language(value) => {
@@ -56,26 +59,26 @@ impl Mutator for AddProficiency {
 					stats
 						.other_proficiencies_mut()
 						.languages
-						.insert(value, source);
+						.insert(value, parent.to_owned());
 				}
 			}
 			Self::Armor(value) => {
 				stats
 					.other_proficiencies_mut()
 					.armor
-					.insert(value.clone(), source);
+					.insert(value.clone(), parent.to_owned());
 			}
 			Self::Weapon(value) => {
 				stats
 					.other_proficiencies_mut()
 					.weapons
-					.insert(value.clone(), source);
+					.insert(value.clone(), parent.to_owned());
 			}
 			Self::Tool(value) => {
 				stats
 					.other_proficiencies_mut()
 					.tools
-					.insert(value.clone(), source);
+					.insert(value.clone(), parent.to_owned());
 			}
 		}
 	}
@@ -345,14 +348,19 @@ mod test {
 	}
 
 	mod mutate {
+		use std::path::PathBuf;
+
 		use super::*;
-		use crate::system::dnd5e::data::{
-			character::{Character, Persistent},
-			item::weapon,
-			Feature,
+		use crate::{
+			path_map::PathMap,
+			system::dnd5e::data::{
+				character::{Character, Persistent},
+				item::weapon,
+				Feature,
+			},
 		};
 
-		fn character(mutator: AddProficiency) -> Character {
+		fn character(mutator: AddProficiency, selections: Option<PathMap<String>>) -> Character {
 			Character::from(Persistent {
 				feats: vec![Feature {
 					name: "AddProficiency".into(),
@@ -360,13 +368,14 @@ mod test {
 					..Default::default()
 				}
 				.into()],
+				selected_values: selections.unwrap_or_default(),
 				..Default::default()
 			})
 		}
 
 		#[test]
 		fn saving_throw() {
-			let character = character(AddProficiency::SavingThrow(Ability::Dexterity));
+			let character = character(AddProficiency::SavingThrow(Ability::Dexterity), None);
 			assert_eq!(
 				*character
 					.saving_throws()
@@ -378,10 +387,13 @@ mod test {
 
 		#[test]
 		fn skill() {
-			let character = character(AddProficiency::Skill(
-				Selector::Specific(Skill::Arcana),
-				proficiency::Level::Double,
-			));
+			let character = character(
+				AddProficiency::Skill(
+					Selector::Specific(Skill::Arcana),
+					proficiency::Level::Double,
+				),
+				None,
+			);
 			assert_eq!(
 				character.skills()[Skill::Arcana].0,
 				(
@@ -394,9 +406,10 @@ mod test {
 
 		#[test]
 		fn language() {
-			let character = character(AddProficiency::Language(Selector::Specific(
-				"Common".into(),
-			)));
+			let character = character(
+				AddProficiency::Language(Selector::Specific("Common".into())),
+				None,
+			);
 			assert_eq!(
 				*character.other_proficiencies().languages,
 				[("Common".into(), ["AddProficiency".into()].into())].into()
@@ -404,8 +417,26 @@ mod test {
 		}
 
 		#[test]
+		fn language_any() {
+			let character = character(
+				AddProficiency::Language(Selector::Any {
+					id: Some("langTest").into(),
+				}),
+				Some([("AddProficiency/langTest", "Gibberish".into())].into()),
+			);
+			assert_eq!(
+				character.missing_selections_in(PathBuf::new()),
+				Vec::<&std::path::Path>::new()
+			);
+			assert_eq!(
+				*character.other_proficiencies().languages,
+				[("Gibberish".into(), ["AddProficiency".into()].into())].into()
+			);
+		}
+
+		#[test]
 		fn armor() {
-			let character = character(AddProficiency::Armor(armor::Kind::Heavy));
+			let character = character(AddProficiency::Armor(armor::Kind::Heavy), None);
 			assert_eq!(
 				*character.other_proficiencies().armor,
 				[(armor::Kind::Heavy, ["AddProficiency".into()].into())].into()
@@ -414,9 +445,10 @@ mod test {
 
 		#[test]
 		fn weapon_kind() {
-			let character = character(AddProficiency::Weapon(WeaponProficiency::Kind(
-				weapon::Kind::Martial,
-			)));
+			let character = character(
+				AddProficiency::Weapon(WeaponProficiency::Kind(weapon::Kind::Martial)),
+				None,
+			);
 			assert_eq!(
 				*character.other_proficiencies().weapons,
 				[(
@@ -429,9 +461,10 @@ mod test {
 
 		#[test]
 		fn weapon_class() {
-			let character = character(AddProficiency::Weapon(WeaponProficiency::Classification(
-				"Quarterstaff".into(),
-			)));
+			let character = character(
+				AddProficiency::Weapon(WeaponProficiency::Classification("Quarterstaff".into())),
+				None,
+			);
 			assert_eq!(
 				*character.other_proficiencies().weapons,
 				[(
@@ -444,7 +477,7 @@ mod test {
 
 		#[test]
 		fn tool() {
-			let character = character(AddProficiency::Tool("Thieves' Tools".into()));
+			let character = character(AddProficiency::Tool("Thieves' Tools".into()), None);
 			assert_eq!(
 				*character.other_proficiencies().tools,
 				[("Thieves' Tools".into(), ["AddProficiency".into()].into())].into()

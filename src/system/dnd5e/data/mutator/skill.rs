@@ -24,11 +24,13 @@ crate::impl_kdl_node!(AddSkillModifier, "add_skill_modifier");
 impl Mutator for AddSkillModifier {
 	type Target = Character;
 
-	fn apply<'c>(&self, stats: &mut Character) {
-		let source = stats.source_path();
-		stats
-			.skills_mut()
-			.add_modifier(self.skill, self.modifier, self.criteria.clone(), source);
+	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
+		stats.skills_mut().add_modifier(
+			self.skill,
+			self.modifier,
+			self.criteria.clone(),
+			parent.to_owned(),
+		);
 	}
 }
 

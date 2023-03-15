@@ -54,12 +54,14 @@ impl MutatorGroup for Feature {
 
 	fn set_data_path(&self, parent: &Path) {
 		let path_to_self = parent.join(&self.name);
+		println!("Feature data path: {path_to_self:?}");
 		for mutator in &self.mutators {
 			mutator.set_data_path(&path_to_self);
 		}
 	}
 
-	fn apply_mutators(&self, stats: &mut Character) {
+	fn apply_mutators(&self, stats: &mut Character, parent: &Path) {
+		let path_to_self = parent.join(&self.name);
 		if let Some(criteria) = &self.criteria {
 			// TODO: Somehow save the error text for display in feature UI
 			if stats.evaluate(criteria).is_err() {
@@ -67,14 +69,14 @@ impl MutatorGroup for Feature {
 			}
 		}
 		for mutator in &self.mutators {
-			stats.apply(mutator);
+			stats.apply(mutator, &path_to_self);
 		}
 		for action in &self.actions {
 			let mut action = action.clone();
-			action.source = Some(ActionSource::Feature(stats.source_path()));
+			action.source = Some(ActionSource::Feature(path_to_self.clone()));
 			stats.actions_mut().push(action);
 		}
-		//*self.absolute_path.write().unwrap() = path_to_self;
+		*self.absolute_path.write().unwrap() = path_to_self;
 	}
 }
 
@@ -149,7 +151,7 @@ impl MutatorGroup for BoxedFeature {
 		self.0.set_data_path(parent);
 	}
 
-	fn apply_mutators(&self, target: &mut Self::Target) {
-		self.0.apply_mutators(target);
+	fn apply_mutators(&self, target: &mut Self::Target, parent: &Path) {
+		self.0.apply_mutators(target, parent);
 	}
 }

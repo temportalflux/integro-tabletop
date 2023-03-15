@@ -64,13 +64,12 @@ crate::impl_kdl_node!(AddDefense, "add_defense");
 impl Mutator for AddDefense {
 	type Target = Character;
 
-	fn apply<'c>(&self, stats: &mut Character) {
-		let source = stats.source_path();
+	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
 		stats.defenses_mut().push(
 			self.defense,
 			self.damage_type.clone(),
 			self.context.clone(),
-			source,
+			parent.to_owned(),
 		);
 	}
 }

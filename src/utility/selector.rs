@@ -10,7 +10,7 @@ use std::{
 	sync::{Arc, RwLock},
 };
 
-#[derive(Clone, Debug, Default, Derivative)]
+#[derive(Clone, Default, Derivative)]
 #[derivative(PartialEq)]
 pub struct IdPath {
 	id: Option<String>,
@@ -27,11 +27,22 @@ impl<T: Into<String>> From<Option<T>> for IdPath {
 }
 impl IdPath {
 	fn set_path(&self, path: PathBuf) {
+		let path = PathBuf::from(path.to_str().unwrap().replace("\\", "/"));
 		*self.absolute_path.write().unwrap() = path;
 	}
 
 	fn as_path(&self) -> PathBuf {
 		self.absolute_path.read().unwrap().clone()
+	}
+}
+impl std::fmt::Debug for IdPath {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(
+			f,
+			"IdPath(id={:?}, path={:?})",
+			self.id,
+			*self.absolute_path.read().unwrap()
+		)
 	}
 }
 

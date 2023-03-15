@@ -7,6 +7,7 @@ use crate::{
 	},
 	utility::MutatorGroup,
 };
+use std::path::Path;
 
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct Equipment {
@@ -36,16 +37,17 @@ impl MutatorGroup for Equipment {
 		}
 	}
 
-	fn apply_mutators(&self, stats: &mut Character) {
+	fn apply_mutators(&self, stats: &mut Character, path_to_item: &Path) {
 		for modifier in &self.modifiers {
-			stats.apply(modifier);
+			stats.apply(modifier, path_to_item);
 		}
 		if let Some(armor) = &self.armor {
-			stats.apply_from(armor);
+			stats.apply_from(armor, path_to_item);
 		}
 		if let Some(shield) = &self.shield {
-			let source = stats.source_path();
-			stats.armor_class_mut().push_bonus(*shield, source);
+			stats
+				.armor_class_mut()
+				.push_bonus(*shield, path_to_item.to_owned());
 		}
 	}
 }

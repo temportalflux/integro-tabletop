@@ -22,11 +22,10 @@ crate::impl_kdl_node!(Sense, "sense");
 impl Mutator for Sense {
 	type Target = Character;
 
-	fn apply<'c>(&self, stats: &mut Character) {
-		let source = stats.source_path();
+	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
 		stats
 			.senses_mut()
-			.insert(self.name.clone(), self.argument.clone(), source);
+			.insert(self.name.clone(), self.argument.clone(), parent.to_owned());
 	}
 }
 

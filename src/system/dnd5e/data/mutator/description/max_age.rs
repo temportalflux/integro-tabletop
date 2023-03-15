@@ -16,7 +16,7 @@ crate::impl_kdl_node!(AddLifeExpectancy, "extend_life_expectancy");
 impl Mutator for AddLifeExpectancy {
 	type Target = Character;
 
-	fn apply<'c>(&self, stats: &mut Character) {
+	fn apply(&self, stats: &mut Character, _parent: &std::path::Path) {
 		stats.derived_description_mut().life_expectancy += self.0;
 	}
 

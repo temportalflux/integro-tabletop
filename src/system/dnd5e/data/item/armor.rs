@@ -8,7 +8,7 @@ use crate::{
 	GeneralError,
 };
 use enumset::EnumSetType;
-use std::str::FromStr;
+use std::{path::Path, str::FromStr};
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Armor {
@@ -71,23 +71,18 @@ impl FromStr for Kind {
 impl MutatorGroup for Armor {
 	type Target = Character;
 
-	fn set_data_path(&self, parent: &std::path::Path) {
-		// TODO: Should this be no-op?
-	}
+	fn set_data_path(&self, _path_to_item: &std::path::Path) {}
 
-	fn apply_mutators(&self, stats: &mut Character) {
-		let source = stats.source_path();
-
+	fn apply_mutators(&self, stats: &mut Character, path_to_item: &Path) {
 		stats
 			.armor_class_mut()
-			.push_formula(self.formula.clone(), source.clone());
+			.push_formula(self.formula.clone(), path_to_item.to_owned());
 
 		if let Some(min_strength_score) = &self.min_strength_score {
 			let mutator = ArmorStrengthRequirement {
 				score: *min_strength_score,
-				source_path: source.clone(),
 			};
-			stats.apply(&mutator.into());
+			stats.apply(&mutator.into(), path_to_item);
 		}
 	}
 }

@@ -8,7 +8,7 @@ use crate::{
 	utility::MutatorGroup,
 	GeneralError,
 };
-use std::collections::HashMap;
+use std::{collections::HashMap, path::Path};
 use uuid::Uuid;
 
 pub mod armor;
@@ -150,20 +150,23 @@ impl MutatorGroup for EquipableEntry {
 	type Target = Character;
 
 	fn set_data_path(&self, parent: &std::path::Path) {
-		let path_to_self = parent.join(&self.item.name);
+		let path_to_item = parent.join(&self.item.name);
 		if let ItemKind::Equipment(equipment) = &self.item.kind {
-			equipment.set_data_path(&path_to_self);
+			equipment.set_data_path(&path_to_item);
 		}
 	}
 
-	fn apply_mutators(&self, stats: &mut Character) {
-		if let ItemKind::Equipment(equipment) = &self.item.kind {
-			if self.is_equipped {
-				stats.apply_from(equipment);
-				if let Some(weapon) = &equipment.weapon {
-					stats.apply(&AddAction(weapon.attack_action(self)).into());
-				}
-			}
+	fn apply_mutators(&self, stats: &mut Character, parent: &Path) {
+		let ItemKind::Equipment(equipment) = &self.item.kind else { return; };
+		if !self.is_equipped {
+			return;
+		}
+
+		let path_to_item = parent.join(&self.item.name);
+		stats.apply_from(equipment, &path_to_item);
+		if let Some(weapon) = &equipment.weapon {
+			let mutator = AddAction(weapon.attack_action(self));
+			stats.apply(&mutator.into(), &path_to_item);
 		}
 	}
 }
@@ -246,9 +249,9 @@ impl MutatorGroup for Inventory {
 		}
 	}
 
-	fn apply_mutators(&self, stats: &mut Character) {
+	fn apply_mutators(&self, stats: &mut Character, parent: &Path) {
 		for entry in self.items_by_name() {
-			stats.apply_from(entry);
+			stats.apply_from(entry, parent);
 		}
 	}
 }

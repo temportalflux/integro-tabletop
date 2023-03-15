@@ -33,7 +33,7 @@ crate::impl_kdl_node!(AddMaxHeight, "add_max_height");
 impl Mutator for AddMaxHeight {
 	type Target = Character;
 
-	fn apply<'c>(&self, stats: &mut Character) {
+	fn apply(&self, stats: &mut Character, _parent: &std::path::Path) {
 		match self {
 			Self::Value(value) => {
 				stats.derived_description_mut().max_height.0 += *value;

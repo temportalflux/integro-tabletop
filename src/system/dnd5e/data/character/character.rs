@@ -41,17 +41,19 @@ pub struct Character {
 #[derive(Clone, PartialEq, Debug)]
 struct MutatorEntry {
 	node_id: &'static str,
+	parent_path: PathBuf,
 	dependencies: Dependencies,
 	mutator: BoxedMutator,
 }
 impl From<Persistent> for Character {
 	fn from(character: Persistent) -> Self {
+		character.set_data_path(&PathBuf::new());
 		let mut full = Self {
 			character,
 			derived: Derived::default(),
 			mutators: Vec::new(),
 		};
-		full.apply_from(&full.character.clone());
+		full.apply_from(&full.character.clone(), &PathBuf::new());
 		full.apply_cached_mutators();
 		full
 	}
@@ -65,7 +67,7 @@ impl yew::Reducible for Character {
 			None => full,
 			Some(ActionEffect::Recompile) => {
 				let mut updated = Self::new(full.character.clone());
-				updated.apply_from(&full.character);
+				updated.apply_from(&full.character, &PathBuf::new());
 				updated.apply_cached_mutators();
 				updated
 			}
@@ -74,6 +76,7 @@ impl yew::Reducible for Character {
 }
 impl Character {
 	pub fn new(character: Persistent) -> Self {
+		character.set_data_path(&PathBuf::new());
 		Self {
 			character,
 			derived: Derived::default(),
@@ -81,13 +84,14 @@ impl Character {
 		}
 	}
 
-	pub fn apply_from(&mut self, container: &impl MutatorGroup<Target = Self>) {
-		container.apply_mutators(self);
+	pub fn apply_from(&mut self, container: &impl MutatorGroup<Target = Self>, parent: &Path) {
+		container.apply_mutators(self, parent);
 	}
 
-	pub fn apply(&mut self, mutator: &BoxedMutator) {
+	pub fn apply(&mut self, mutator: &BoxedMutator, parent: &Path) {
 		self.insert_mutator(MutatorEntry {
 			node_id: mutator.get_id(),
+			parent_path: parent.to_owned(),
 			dependencies: mutator.dependencies(),
 			mutator: mutator.clone(),
 		});
@@ -127,13 +131,8 @@ impl Character {
 				entry.dependencies
 			);
 			*/
-			entry.mutator.apply(self);
+			entry.mutator.apply(self, &entry.parent_path);
 		}
-	}
-
-	pub fn source_path(&self) -> PathBuf {
-		log::warn!("source_path call");
-		PathBuf::new()
 	}
 
 	fn get_selections_at(&self, path: impl AsRef<Path>) -> Option<&Vec<String>> {
@@ -164,6 +163,10 @@ impl Character {
 		let path_to_data = selector
 			.get_data_path()
 			.expect("non-specific selectors must have a data path");
+		if path_to_data.to_str() == Some("") {
+			log::error!(target: "dnd5e", "Selector data path is empty, <MutatorGroup/Mutator/Selector>::set_data_path was not called somewhere.");
+			return None;
+		}
 		let value = match self.get_first_selection_at::<T>(&path_to_data) {
 			Some(Ok(value)) => Some(value),
 			Some(Err(_)) => None,
@@ -338,11 +341,9 @@ impl Character {
 		&mut self.derived.other_proficiencies
 	}
 
-	pub fn add_feature(&mut self, feature: &BoxedFeature) {
-		log::warn!("Need to get path to feature");
-		let feature_path = PathBuf::new();
-		self.derived.features.insert(&feature_path, feature.clone());
-		self.apply_from(feature.inner());
+	pub fn add_feature(&mut self, feature: &BoxedFeature, parent_path: &Path) {
+		self.derived.features.insert(parent_path, feature.clone());
+		self.apply_from(feature.inner(), parent_path);
 	}
 
 	pub fn features(&self) -> &PathMap<BoxedFeature> {
@@ -420,60 +421,4 @@ pub enum HitPoint {
 	Current,
 	Max,
 	Temp,
-}
-
-#[derive(Clone, PartialEq, Default, Debug)]
-pub struct SourcePath {
-	display: PathBuf,
-	data: PathBuf,
-}
-
-impl SourcePath {
-	fn push<P: AsRef<Path>>(&mut self, path: Option<P>, include_display: bool) -> Scope {
-		let Some(path) = path else { return Scope::NoChange; };
-		self.data.push(&path);
-		if !include_display {
-			return Scope::DataOnly;
-		}
-		self.display.push(&path);
-		Scope::All
-	}
-
-	fn pop(&mut self, scope: Scope) {
-		if scope == Scope::NoChange {
-			return;
-		}
-		self.data.pop();
-		if scope == Scope::DataOnly {
-			return;
-		}
-		self.display.pop();
-	}
-
-	fn adjusted_path(&self, path: &PathBuf) -> PathBuf {
-		match std::path::MAIN_SEPARATOR {
-			'/' => path.clone(),
-			_ => PathBuf::from(
-				path.iter()
-					.map(|s| s.to_str().unwrap())
-					.collect::<Vec<_>>()
-					.join("/"),
-			),
-		}
-	}
-
-	pub fn to_display(&self) -> PathBuf {
-		self.adjusted_path(&self.display)
-	}
-
-	fn to_data(&self) -> PathBuf {
-		self.adjusted_path(&self.data)
-	}
-}
-
-#[derive(PartialEq, Eq)]
-enum Scope {
-	NoChange,
-	DataOnly,
-	All,
 }
