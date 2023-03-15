@@ -64,21 +64,20 @@ impl FromKDL for Upbringing {
 	) -> anyhow::Result<Self> {
 		let name = node.get_str("name")?.to_owned();
 		let description = node
-			.query_str_opt("description", 0)?
+			.query_str_opt("scope() > description", 0)?
 			.unwrap_or_default()
 			.to_owned();
 		let mut mutators = Vec::new();
-		let mut features = Vec::new();
-		if let Some(children) = node.children() {
-			for entry_node in children.query_all("mutator")? {
-				mutators.push(node_reg.parse_mutator(entry_node)?);
-			}
-			for entry_node in children.query_all("feature")? {
-				features.push(
-					Feature::from_kdl(entry_node, &mut ValueIdx::default(), node_reg)?.into(),
-				);
-			}
+		for entry_node in node.query_all("scope() > mutator")? {
+			mutators.push(node_reg.parse_mutator(entry_node)?);
 		}
+
+		let mut features = Vec::new();
+		for entry_node in node.query_all("scope() > feature")? {
+			features
+				.push(Feature::from_kdl(entry_node, &mut ValueIdx::default(), node_reg)?.into());
+		}
+
 		Ok(Upbringing {
 			source_id: SourceId::default(),
 			name,

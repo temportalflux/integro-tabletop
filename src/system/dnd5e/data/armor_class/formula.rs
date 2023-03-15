@@ -58,7 +58,7 @@ impl FromKDL for ArmorClassFormula {
 	) -> anyhow::Result<Self> {
 		let base = node.get_i64("base")? as u32;
 		let mut bonuses = Vec::new();
-		for node in node.query_all("bonus")? {
+		for node in node.query_all("scope() > bonus")? {
 			let mut value_idx = ValueIdx::default();
 			let ability = Ability::from_str(node.get_str(value_idx.next())?)?;
 			let min = node.get_i64_opt("min")?.map(|v| v as i32);
@@ -95,7 +95,9 @@ mod test {
 		fn from_doc(doc: &str) -> anyhow::Result<ArmorClassFormula> {
 			let node_reg = NodeRegistry::default();
 			let document = doc.parse::<kdl::KdlDocument>()?;
-			let node = document.query("formula")?.expect("missing formula node");
+			let node = document
+				.query("scope() > formula")?
+				.expect("missing formula node");
 			let mut idx = ValueIdx::default();
 			ArmorClassFormula::from_kdl(node, &mut idx, &node_reg)
 		}

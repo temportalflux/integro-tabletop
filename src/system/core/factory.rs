@@ -244,7 +244,7 @@ impl NodeRegistry {
 	{
 		let document = doc.parse::<kdl::KdlDocument>()?;
 		let node = document
-			.query("evaluator")?
+			.query("scope() > evaluator")?
 			.expect("missing evaluator node");
 		let mut idx = ValueIdx::default();
 		let factory = self.get_evaluator_factory(node.get_str(idx.next())?)?;
@@ -256,7 +256,9 @@ impl NodeRegistry {
 		T: 'static,
 	{
 		let document = doc.parse::<kdl::KdlDocument>()?;
-		let node = document.query("mutator")?.expect("missing mutator node");
+		let node = document
+			.query("scope() > mutator")?
+			.expect("missing mutator node");
 		self.parse_mutator(node)
 	}
 

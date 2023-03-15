@@ -126,7 +126,7 @@ impl FromKDL for Weapon {
 	) -> anyhow::Result<Self> {
 		let kind = Kind::from_str(node.get_str(value_idx.next())?)?;
 		let classification = node.get_str("class")?.to_owned();
-		let damage = match node.query("damage")? {
+		let damage = match node.query("scope() > damage")? {
 			None => None,
 			Some(node) => Some(WeaponDamage::from_kdl(
 				node,
@@ -136,7 +136,7 @@ impl FromKDL for Weapon {
 		};
 		let properties = {
 			let mut props = Vec::new();
-			for node in node.query_all("property")? {
+			for node in node.query_all("scope() > property")? {
 				props.push(Property::from_kdl(
 					node,
 					&mut ValueIdx::default(),
@@ -145,7 +145,7 @@ impl FromKDL for Weapon {
 			}
 			props
 		};
-		let range = match node.query("range")? {
+		let range = match node.query("scope() > range")? {
 			None => None,
 			Some(node) => Some(Range::from_kdl(node, &mut ValueIdx::default(), node_reg)?),
 		};
@@ -238,8 +238,8 @@ impl FromKDL for Range {
 	) -> anyhow::Result<Self> {
 		let short_range = node.get_i64(value_idx.next())? as u32;
 		let long_range = node.get_i64(value_idx.next())? as u32;
-		let requires_ammunition = node.query("ammunition")?.is_some();
-		let requires_loading = node.query("loading")?.is_some();
+		let requires_ammunition = node.query("scope() > ammunition")?.is_some();
+		let requires_loading = node.query("scope() > loading")?.is_some();
 		Ok(Self {
 			short_range,
 			long_range,

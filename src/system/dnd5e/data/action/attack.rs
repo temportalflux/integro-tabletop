@@ -25,14 +25,17 @@ impl FromKDL for Attack {
 		_value_idx: &mut ValueIdx,
 		node_reg: &NodeRegistry,
 	) -> anyhow::Result<Self> {
-		let kind =
-			AttackKindValue::from_kdl(node.query_req("kind")?, &mut ValueIdx::default(), node_reg)?;
-		let check = AttackCheckKind::from_kdl(
-			node.query_req("check")?,
+		let kind = AttackKindValue::from_kdl(
+			node.query_req("scope() > kind")?,
 			&mut ValueIdx::default(),
 			node_reg,
 		)?;
-		let area_of_effect = match node.query("area_of_effect")? {
+		let check = AttackCheckKind::from_kdl(
+			node.query_req("scope() > check")?,
+			&mut ValueIdx::default(),
+			node_reg,
+		)?;
+		let area_of_effect = match node.query("scope() > area_of_effect")? {
 			None => None,
 			Some(node) => Some(AreaOfEffect::from_kdl(
 				node,
@@ -40,7 +43,7 @@ impl FromKDL for Attack {
 				node_reg,
 			)?),
 		};
-		let damage = match node.query("damage")? {
+		let damage = match node.query("scope() > damage")? {
 			None => None,
 			Some(node) => Some(DamageRoll::from_kdl(
 				node,

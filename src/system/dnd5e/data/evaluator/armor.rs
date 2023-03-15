@@ -95,7 +95,7 @@ impl FromKDL for HasArmorEquipped {
 		let inverted = node.get_bool_opt("inverted")?.unwrap_or_default();
 		let mut kinds = HashSet::new();
 		if let Some(children) = node.children() {
-			for kind_str_result in children.query_str_all("kind", 0)? {
+			for kind_str_result in children.query_str_all("scope() > kind", 0)? {
 				kinds.insert(armor::Kind::from_str(kind_str_result?)?);
 			}
 		}

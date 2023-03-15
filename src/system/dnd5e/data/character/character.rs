@@ -163,10 +163,6 @@ impl Character {
 		let path_to_data = selector
 			.get_data_path()
 			.expect("non-specific selectors must have a data path");
-		if path_to_data.to_str() == Some("") {
-			log::error!(target: "dnd5e", "Selector data path is empty, <MutatorGroup/Mutator/Selector>::set_data_path was not called somewhere.");
-			return None;
-		}
 		let value = match self.get_first_selection_at::<T>(&path_to_data) {
 			Some(Ok(value)) => Some(value),
 			Some(Err(_)) => None,

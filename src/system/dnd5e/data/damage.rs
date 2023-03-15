@@ -22,12 +22,12 @@ impl FromKDL for DamageRoll {
 		_value_idx: &mut ValueIdx,
 		_node_reg: &NodeRegistry,
 	) -> anyhow::Result<Self> {
-		let roll = match node.query_str_opt("roll", 0)? {
+		let roll = match node.query_str_opt("scope() > roll", 0)? {
 			None => None,
 			Some(str) => Some(Roll::from_str(str)?),
 		};
 		let base_bonus = node.get_i64_opt("base")?.unwrap_or(0) as i32;
-		let damage_type = DamageType::from_str(node.query_str("damage_type", 0)?)?;
+		let damage_type = DamageType::from_str(node.query_str("scope() > damage_type", 0)?)?;
 		Ok(Self {
 			roll,
 			base_bonus,
@@ -134,7 +134,9 @@ mod test {
 		fn from_doc(doc: &str) -> anyhow::Result<DamageRoll> {
 			let node_reg = NodeRegistry::default();
 			let document = doc.parse::<kdl::KdlDocument>()?;
-			let node = document.query("damage")?.expect("missing damage node");
+			let node = document
+				.query("scope() > damage")?
+				.expect("missing damage node");
 			let mut idx = ValueIdx::default();
 			DamageRoll::from_kdl(node, &mut idx, &node_reg)
 		}

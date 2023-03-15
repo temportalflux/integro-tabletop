@@ -75,7 +75,9 @@ mod test {
 		fn from_doc(doc: &str) -> anyhow::Result<AttackKindValue> {
 			let node_reg = NodeRegistry::default();
 			let document = doc.parse::<kdl::KdlDocument>()?;
-			let node = document.query("kind")?.expect("missing kind node");
+			let node = document
+				.query("scope() > kind")?
+				.expect("missing kind node");
 			let mut idx = ValueIdx::default();
 			AttackKindValue::from_kdl(node, &mut idx, &node_reg)
 		}

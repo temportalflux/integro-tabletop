@@ -68,7 +68,7 @@ impl FromKDL for Equipment {
 		_value_idx: &mut ValueIdx,
 		node_reg: &NodeRegistry,
 	) -> anyhow::Result<Self> {
-		let criteria = match node.query("criteria")? {
+		let criteria = match node.query("scope() > criteria")? {
 			None => None,
 			Some(entry_node) => {
 				Some(node_reg.parse_evaluator::<Character, Result<(), String>>(entry_node)?)
@@ -76,27 +76,24 @@ impl FromKDL for Equipment {
 		};
 
 		// TODO: Item kdls current list these as `modifier`
-		let mutators = {
-			let mut mutators = Vec::new();
-			for entry_node in node.query_all("mutator")? {
-				mutators.push(node_reg.parse_mutator(entry_node)?);
-			}
-			mutators
-		};
+		let mut mutators = Vec::new();
+		for entry_node in node.query_all("scope() > mutator")? {
+			mutators.push(node_reg.parse_mutator(entry_node)?);
+		}
 
-		let armor = match node.query("armor")? {
+		let armor = match node.query("scope() > armor")? {
 			None => None,
 			Some(node) => Some(Armor::from_kdl(node, &mut ValueIdx::default(), node_reg)?),
 		};
-		let shield = match node.query("shield")? {
+		let shield = match node.query("scope() > shield")? {
 			None => None,
 			Some(node) => Some(node.get_i64("bonus")? as i32),
 		};
-		let weapon = match node.query("weapon")? {
+		let weapon = match node.query("scope() > weapon")? {
 			None => None,
 			Some(node) => Some(Weapon::from_kdl(node, &mut ValueIdx::default(), node_reg)?),
 		};
-		let attunement = match node.query("attunement")? {
+		let attunement = match node.query("scope() > attunement")? {
 			None => None,
 			Some(_node) => {
 				None // TODO: Some(Attunement::from_kdl(node, &mut ValueIdx::default(), system)?)

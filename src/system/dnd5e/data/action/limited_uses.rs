@@ -26,11 +26,11 @@ impl FromKDL for LimitedUses {
 	) -> anyhow::Result<Self> {
 		let max_uses = {
 			// Temporary code, until I can implement scaling uses
-			let node = node.query_req("max_uses")?;
+			let node = node.query_req("scope() > max_uses")?;
 			let max_uses = node.get_i64(0)? as usize;
 			Value::Fixed(Some(max_uses))
 		};
-		let reset_on = match node.query_str_opt("reset_on", 0)? {
+		let reset_on = match node.query_str_opt("scope() > reset_on", 0)? {
 			None => None,
 			Some(str) => Some(Rest::from_str(str)?),
 		};

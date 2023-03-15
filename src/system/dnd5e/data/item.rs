@@ -69,8 +69,10 @@ impl FromKDL for Item {
 	) -> anyhow::Result<Self> {
 		let name = node.get_str("name")?.to_owned();
 		let weight = node.get_f64_opt("weight")?.unwrap_or(0.0) as f32;
-		let description = node.query_str_opt("description", 0)?.map(str::to_owned);
-		let worth = match node.query("worth")? {
+		let description = node
+			.query_str_opt("scope() > description", 0)?
+			.map(str::to_owned);
+		let worth = match node.query("scope() > worth")? {
 			Some(node) => {
 				// TODO: Support currency type
 				let amount = node.get_i64(0)?;
@@ -80,15 +82,15 @@ impl FromKDL for Item {
 			None => None,
 		}
 		.unwrap_or(0);
-		let notes = node.query_str_opt("notes", 0)?.map(str::to_owned);
+		let notes = node.query_str_opt("scope() > notes", 0)?.map(str::to_owned);
 		let tags = {
 			let mut tags = Vec::new();
-			for tag_result in node.query_str_all("tag", 0)? {
+			for tag_result in node.query_str_all("scope() > tag", 0)? {
 				tags.push(tag_result?.to_owned());
 			}
 			tags
 		};
-		let kind = match node.query("kind")? {
+		let kind = match node.query("scope() > kind")? {
 			Some(node) => ItemKind::from_kdl(node, &mut ValueIdx::default(), node_reg)?,
 			None => ItemKind::default(),
 		};

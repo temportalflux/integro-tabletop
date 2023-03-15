@@ -26,11 +26,15 @@ impl FromKDL for Armor {
 		node_reg: &crate::system::core::NodeRegistry,
 	) -> anyhow::Result<Self> {
 		let kind = Kind::from_str(node.get_str(value_idx.next())?)?;
-		let formula = node.query("formula")?.ok_or(GeneralError(format!(
-			"Node {node:?} must have a child node named \"formula\"."
-		)))?;
+		let formula = node
+			.query("scope() > formula")?
+			.ok_or(GeneralError(format!(
+				"Node {node:?} must have a child node named \"formula\"."
+			)))?;
 		let formula = ArmorClassFormula::from_kdl(formula, &mut ValueIdx::default(), node_reg)?;
-		let min_strength_score = node.query_i64_opt("min-strength", 0)?.map(|v| v as u32);
+		let min_strength_score = node
+			.query_i64_opt("scope() > min-strength", 0)?
+			.map(|v| v as u32);
 		Ok(Self {
 			kind,
 			formula,

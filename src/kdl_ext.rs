@@ -183,7 +183,7 @@ fn query_type<'doc, T>(
 		Some(value) => Ok(value),
 		None => Err(GeneralError(format!(
 			"Node {:?} is missing value at {key_str:?}",
-			doc.query(query).unwrap().unwrap()
+			doc.query(query)?
 		))
 		.into()),
 	}
@@ -196,7 +196,7 @@ fn query_type_opt<'doc, T>(
 	map: impl FnOnce(&'doc kdl::KdlValue) -> Result<T, &'static str>,
 ) -> anyhow::Result<Option<T>> {
 	let key_str = format!("{:?}", key.clone().into());
-	let Ok(Some(value)) = doc.query_get(query.clone(), key) else { return Ok(None); };
+	let Some(value) = doc.query_get(query.clone(), key)? else { return Ok(None); };
 	let value = map(value).map_err(|type_name| {
 		GeneralError(format!(
 			"Value at {key_str:?} of node {:?} is not a {type_name}",
@@ -321,7 +321,7 @@ mod test {
 			nodebool true
 			nodeint 42
 			nodefloat prop=10.5
-			a {
+			parentnode {
 				nodestr "some string"
 			}
 		"#
@@ -334,28 +334,28 @@ mod test {
 	#[test]
 	fn query_bool() -> anyhow::Result<()> {
 		let doc = document()?;
-		assert_eq!(doc.query_bool("nodebool", 0)?, true);
+		assert_eq!(doc.query_bool("scope() > nodebool", 0)?, true);
 		Ok(())
 	}
 
 	#[test]
 	fn query_i64() -> anyhow::Result<()> {
 		let doc = document()?;
-		assert_eq!(doc.query_i64("nodeint", 0)?, 42i64);
+		assert_eq!(doc.query_i64("scope() > nodeint", 0)?, 42i64);
 		Ok(())
 	}
 
 	#[test]
 	fn query_float() -> anyhow::Result<()> {
 		let doc = document()?;
-		assert_eq!(doc.query_f64("nodefloat", "prop")?, 10.5f64);
+		assert_eq!(doc.query_f64("scope() > nodefloat", "prop")?, 10.5f64);
 		Ok(())
 	}
 
 	#[test]
 	fn query_str() -> anyhow::Result<()> {
 		let doc = document()?;
-		assert_eq!(doc.query_str("a > nodestr", 0)?, "some string");
+		assert_eq!(doc.query_str("parentnode > nodestr", 0)?, "some string");
 		Ok(())
 	}
 }

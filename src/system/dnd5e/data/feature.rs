@@ -96,7 +96,7 @@ impl FromKDL for Feature {
 		// TODO: Unimplemented
 		let _is_unique = node.get_bool_opt("unique")?.unwrap_or_default();
 
-		let criteria = match node.query("criteria")? {
+		let criteria = match node.query("scope() > criteria")? {
 			None => None,
 			Some(entry_node) => {
 				Some(node_reg.parse_evaluator::<Character, Result<(), String>>(entry_node)?)
@@ -104,13 +104,13 @@ impl FromKDL for Feature {
 		};
 
 		let mut actions = Vec::new();
-		for entry_node in node.query_all("action")? {
+		for entry_node in node.query_all("scope() > action")? {
 			let mut value_idx = ValueIdx::default();
 			actions.push(Action::from_kdl(entry_node, &mut value_idx, node_reg)?);
 		}
 
 		let mut mutators = Vec::new();
-		for entry_node in node.query_all("mutator")? {
+		for entry_node in node.query_all("scope() > mutator")? {
 			mutators.push(node_reg.parse_mutator(entry_node)?);
 		}
 

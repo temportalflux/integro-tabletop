@@ -34,19 +34,19 @@ impl FromKDL for Action {
 	) -> anyhow::Result<Self> {
 		let name = node.get_str("name")?.to_owned();
 		let description = node
-			.query_str_opt("description", 0)?
+			.query_str_opt("scope() > description", 0)?
 			.map(str::to_owned)
 			.unwrap_or_default();
 		let activation_kind = ActivationKind::from_kdl(
-			node.query_req("activation")?,
+			node.query_req("scope() > activation")?,
 			&mut ValueIdx::default(),
 			node_reg,
 		)?;
-		let attack = match node.query("attack")? {
+		let attack = match node.query("scope() > attack")? {
 			None => None,
 			Some(node) => Some(Attack::from_kdl(node, &mut ValueIdx::default(), node_reg)?),
 		};
-		let limited_uses = match node.query("limited_uses")? {
+		let limited_uses = match node.query("scope() > limited_uses")? {
 			None => None,
 			Some(node) => Some(LimitedUses::from_kdl(
 				node,

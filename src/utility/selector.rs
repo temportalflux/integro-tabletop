@@ -74,7 +74,13 @@ where
 	}
 
 	pub fn get_data_path(&self) -> Option<PathBuf> {
-		self.id_path().map(|id_path| id_path.as_path())
+		let path = self.id_path().map(|id_path| id_path.as_path());
+		if let Some(path) = &path {
+			if path.to_str() == Some("") {
+				log::warn!(target: "utility", "Selector data path is empty, <MutatorGroup/Mutator/Selector>::set_data_path was not called somewhere.");
+			}
+		}
+		path
 	}
 
 	pub fn from_kdl(
@@ -97,7 +103,7 @@ where
 			"AnyOf" => {
 				let id = node.get_str_opt("id")?.into();
 				let mut options = Vec::new();
-				for kdl_value in node.query_get_all("option", 0)? {
+				for kdl_value in node.query_get_all("scope() > option", 0)? {
 					options.push(map_value(kdl_value)?);
 				}
 				Ok(Self::AnyOf { id, options })
@@ -115,8 +121,8 @@ where
 }
 
 impl Selector<String> {
-	pub fn as_meta_str(&self) -> Option<SelectorMeta> {
-		SelectorMeta::from_string(&self)
+	pub fn as_meta_str(&self, name: impl Into<String>) -> Option<SelectorMeta> {
+		SelectorMeta::from_string(name, &self)
 	}
 }
 
@@ -124,34 +130,43 @@ impl<T> Selector<T>
 where
 	T: 'static + ToString + FromStr + EnumSetType,
 {
-	pub fn as_meta_enum(&self) -> Option<SelectorMeta> {
-		SelectorMeta::from_enum(&self)
+	pub fn as_meta_enum(&self, name: impl Into<String>) -> Option<SelectorMeta> {
+		SelectorMeta::from_enum(name, &self)
 	}
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct SelectorMeta {
 	pub data_path: PathBuf,
+	pub name: String,
 	pub options: SelectorOptions,
 }
 impl SelectorMeta {
-	fn from_string(selector: &Selector<String>) -> Option<Self> {
+	fn from_string(name: impl Into<String>, selector: &Selector<String>) -> Option<Self> {
 		let Some(data_path) = selector.get_data_path() else { return None; };
 		let Some(options) = SelectorOptions::from_string(selector) else { return None; };
-		Some(Self { data_path, options })
+		Some(Self {
+			name: name.into(),
+			data_path,
+			options,
+		})
 	}
 
-	fn from_enum<T>(selector: &Selector<T>) -> Option<Self>
+	fn from_enum<T>(name: impl Into<String>, selector: &Selector<T>) -> Option<Self>
 	where
 		T: 'static + ToString + FromStr + EnumSetType,
 	{
 		let Some(data_path) = selector.get_data_path() else { return None; };
 		let Some(options) = SelectorOptions::from_enum(selector) else { return None; };
-		Some(Self { data_path, options })
+		Some(Self {
+			name: name.into(),
+			data_path,
+			options,
+		})
 	}
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum SelectorOptions {
 	/// User can provide any string value
 	Any,
@@ -193,32 +208,27 @@ impl SelectorOptions {
 	}
 }
 
-/*
-pub struct SelectorMetaVec(PathBuf, Vec<SelectorMeta>);
+#[derive(Default)]
+pub struct SelectorMetaVec(Vec<SelectorMeta>);
 impl SelectorMetaVec {
-	pub fn new(source: PathBuf) -> Self {
-		Self(source, Vec::new())
-	}
-
-	pub fn with_str(mut self, selector: &Selector<String>, name: impl Into<String>) -> Self {
-		if let Some(meta) = SelectorMeta::from_string(name.into(), selector, &self.0) {
-			self.1.push(meta);
+	pub fn with_str(mut self, name: impl Into<String>, selector: &Selector<String>) -> Self {
+		if let Some(meta) = SelectorMeta::from_string(name, selector) {
+			self.0.push(meta);
 		}
 		self
 	}
 
-	pub fn with_enum<T>(mut self, selector: &Selector<T>, name: impl Into<String>) -> Self
+	pub fn with_enum<T>(mut self, name: impl Into<String>, selector: &Selector<T>) -> Self
 	where
 		T: 'static + ToString + FromStr + EnumSetType,
 	{
-		if let Some(meta) = SelectorMeta::from_enum(name.into(), selector, &self.0) {
-			self.1.push(meta);
+		if let Some(meta) = SelectorMeta::from_enum(name, selector) {
+			self.0.push(meta);
 		}
 		self
 	}
 
 	pub fn to_vec(self) -> Option<Vec<SelectorMeta>> {
-		(!self.1.is_empty()).then_some(self.1)
+		(!self.0.is_empty()).then_some(self.0)
 	}
 }
-*/

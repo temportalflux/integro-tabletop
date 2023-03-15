@@ -65,8 +65,10 @@ impl FromKDL for AttackCheckKind {
 		match node.get_str(value_idx.next())? {
 			"AttackRoll" => {
 				let ability = Ability::from_str(node.get_str(value_idx.next())?)?;
-				let proficient = match (node.get_bool_opt("proficient")?, node.query("proficient")?)
-				{
+				let proficient = match (
+					node.get_bool_opt("proficient")?,
+					node.query("scope() > proficient")?,
+				) {
 					(None, None) => Value::Fixed(false),
 					(Some(prof), None) => Value::Fixed(prof),
 					(_, Some(node)) => {
@@ -88,19 +90,19 @@ impl FromKDL for AttackCheckKind {
 			"SavingThrow" => {
 				// TODO: The difficulty class should be its own struct (which impls evaluator)
 				let (base, dc_ability, proficient) = {
-					let node = node.query_req("difficulty_class")?;
+					let node = node.query_req("scope() > difficulty_class")?;
 					let mut value_idx = ValueIdx::default();
 					let base = node.get_i64(value_idx.next())? as i32;
-					let ability = match node.query_str_opt("ability_bonus", 0)? {
+					let ability = match node.query_str_opt("scope() > ability_bonus", 0)? {
 						None => None,
 						Some(str) => Some(Ability::from_str(str)?),
 					};
 					let proficient = node
-						.query_bool_opt("proficiency_bonus", 0)?
+						.query_bool_opt("scope() > proficiency_bonus", 0)?
 						.unwrap_or(false);
 					(base, ability, proficient)
 				};
-				let save_ability = Ability::from_str(node.query_str("save_ability", 0)?)?;
+				let save_ability = Ability::from_str(node.query_str("scope() > save_ability", 0)?)?;
 				Ok(Self::SavingThrow {
 					base,
 					dc_ability,
@@ -130,7 +132,9 @@ mod test {
 		fn from_doc(doc: &str) -> anyhow::Result<AttackCheckKind> {
 			let node_reg = NodeRegistry::default_with_eval::<IsProficientWith>();
 			let document = doc.parse::<kdl::KdlDocument>()?;
-			let node = document.query("check")?.expect("missing check node");
+			let node = document
+				.query("scope() > check")?
+				.expect("missing check node");
 			let mut idx = ValueIdx::default();
 			AttackCheckKind::from_kdl(node, &mut idx, &node_reg)
 		}
