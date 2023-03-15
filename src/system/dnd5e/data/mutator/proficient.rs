@@ -11,7 +11,7 @@ use crate::{
 			FromKDL,
 		},
 	},
-	utility::{Mutator, Selector},
+	utility::{Mutator, Selector, SelectorMeta},
 	GeneralError,
 };
 use std::str::FromStr;
@@ -69,6 +69,20 @@ impl Mutator for AddProficiency {
 					.tools
 					.insert(value.clone(), source);
 			}
+		}
+	}
+
+	fn selector_meta(&self) -> Option<Vec<SelectorMeta>> {
+		match self {
+			Self::Skill(selector, _) => {
+				//Some(vec![selector.as_meta_enum()])
+				None
+			}
+			Self::Language(selector) => {
+				//Some(vec![selector.as_meta_str()])
+				None
+			}
+			_ => None,
 		}
 	}
 }

@@ -1,4 +1,4 @@
-use super::{AsTraitEq, Dependencies, TraitEq};
+use super::{AsTraitEq, Dependencies, SelectorMeta, TraitEq};
 use crate::system::dnd5e::KDLNode;
 use std::{fmt::Debug, sync::Arc};
 
@@ -14,6 +14,14 @@ pub trait Mutator: Debug + TraitEq + AsTraitEq<dyn TraitEq> + KDLNode {
 	}
 
 	fn apply<'c>(&self, _: &mut Self::Target) {}
+
+	fn description(&self) -> Option<String> {
+		None
+	}
+
+	fn selector_meta(&self) -> Option<Vec<SelectorMeta>> {
+		None
+	}
 }
 
 pub type ArcMutator<T> = Arc<dyn Mutator<Target = T> + 'static + Send + Sync>;

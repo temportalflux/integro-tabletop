@@ -19,6 +19,13 @@ impl Mutator for AddLifeExpectancy {
 	fn apply<'c>(&self, stats: &mut Character) {
 		stats.derived_description_mut().life_expectancy += self.0;
 	}
+
+	fn description(&self) -> Option<String> {
+		Some(format!(
+			"Your life expectancy increases by {} years.",
+			self.0
+		))
+	}
 }
 
 impl FromKDL for AddLifeExpectancy {

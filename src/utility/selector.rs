@@ -2,7 +2,11 @@ use crate::{
 	kdl_ext::{NodeQueryExt, ValueIdx},
 	GeneralError,
 };
-use std::str::FromStr;
+use enumset::{EnumSet, EnumSetType};
+use std::{
+	path::{Path, PathBuf},
+	str::FromStr,
+};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Selector<T: ToString + FromStr> {
@@ -60,3 +64,110 @@ where
 		}
 	}
 }
+
+impl Selector<String> {
+	pub fn as_meta_str(&self) -> Option<SelectorMeta> {
+		SelectorMeta::from_string(&self)
+	}
+}
+
+impl<T> Selector<T>
+where
+	T: 'static + ToString + FromStr + EnumSetType,
+{
+	pub fn as_meta_enum(&self) -> Option<SelectorMeta> {
+		SelectorMeta::from_enum(&self)
+	}
+}
+
+#[derive(Clone, PartialEq)]
+pub struct SelectorMeta {
+	pub id: Option<String>,
+	pub options: SelectorOptions,
+}
+impl SelectorMeta {
+	fn from_string(selector: &Selector<String>) -> Option<Self> {
+		let Some(options) = SelectorOptions::from_string(selector) else { return None; };
+		Some(Self { id: selector.id().map(str::to_owned), options })
+	}
+
+	fn from_enum<T>(selector: &Selector<T>) -> Option<Self>
+	where
+		T: 'static + ToString + FromStr + EnumSetType,
+	{
+		let Some(options) = SelectorOptions::from_enum(selector) else { return None; };
+		Some(Self { id: selector.id().map(str::to_owned), options })
+	}
+}
+
+#[derive(Clone, PartialEq)]
+pub enum SelectorOptions {
+	/// User can provide any string value
+	Any,
+	/// User must select one of these string values
+	AnyOf(Vec<String>),
+}
+
+impl SelectorOptions {
+	pub fn from_string(selector: &Selector<String>) -> Option<Self> {
+		match selector {
+			Selector::Specific(_) => None,
+			Selector::AnyOf { id: _, options } => Some(Self::AnyOf(options.clone())),
+			Selector::Any { id: _ } => Some(Self::Any),
+		}
+	}
+
+	fn iter_to_str<U>(iter: impl Iterator<Item = U>) -> Vec<String>
+	where
+		U: ToString,
+	{
+		iter.map(|v| v.to_string()).collect::<Vec<_>>()
+	}
+
+	pub fn from_enum<T>(selector: &Selector<T>) -> Option<Self>
+	where
+		T: 'static + ToString + FromStr + EnumSetType,
+	{
+		match selector {
+			Selector::Specific(_) => None,
+			Selector::AnyOf { id: _, options } => {
+				let options = options.iter().map(|t| *t);
+				Some(Self::AnyOf(Self::iter_to_str(options)))
+			}
+			Selector::Any { id: _ } => {
+				let options = EnumSet::<T>::all().into_iter();
+				Some(Self::AnyOf(Self::iter_to_str(options)))
+			}
+		}
+	}
+}
+
+/*
+pub struct SelectorMetaVec(PathBuf, Vec<SelectorMeta>);
+impl SelectorMetaVec {
+	pub fn new(source: PathBuf) -> Self {
+		Self(source, Vec::new())
+	}
+
+	pub fn with_str(mut self, selector: &Selector<String>, name: impl Into<String>) -> Self {
+		if let Some(meta) = SelectorMeta::from_string(name.into(), selector, &self.0) {
+			self.1.push(meta);
+		}
+		self
+	}
+
+	pub fn with_enum<T>(mut self, selector: &Selector<T>, name: impl Into<String>) -> Self
+	where
+		T: 'static + ToString + FromStr + EnumSetType,
+	{
+		if let Some(meta) = SelectorMeta::from_enum(name.into(), selector, &self.0) {
+			self.1.push(meta);
+		}
+		self
+	}
+
+	pub fn to_vec(self) -> Option<Vec<SelectorMeta>> {
+		(!self.1.is_empty()).then_some(self.1)
+	}
+}
+*/

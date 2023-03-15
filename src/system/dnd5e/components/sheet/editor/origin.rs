@@ -410,10 +410,31 @@ struct LineageBodyProps {
 }
 #[function_component]
 fn LineageBody(LineageBodyProps { value }: &LineageBodyProps) -> Html {
+	let mutator_descs = value
+		.mutators
+		.iter()
+		.filter_map(|v| v.description())
+		.map(|desc| {
+			html! {
+				<li>{desc}</li>
+			}
+		})
+		.collect::<Vec<_>>();
+	for mutator in &value.mutators {
+		if let Some(_meta) = mutator.selector_meta() {
+			// TODO: We need to know what the key of the selector is,
+			// which requires not only the selector's id (which we have),
+			// but the full path to the mutator from the character root.
+			// for lineages this is just `<lineage name>/<mutator name>/<selector id>`,
+			// but this is going to be an ongoing issue for all mutator groups.
+			// Unfortunately, we only have that path when we iterate over the entire tree during a `Character::apply`.
+		}
+	}
 	html! {<>
 		<div style="white-space: pre-line;">
 			{value.description.clone()}
 		</div>
+		{mutator_descs}
 	</>}
 }
 
