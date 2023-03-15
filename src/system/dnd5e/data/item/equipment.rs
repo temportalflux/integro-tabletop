@@ -27,7 +27,16 @@ pub struct Equipment {
 impl MutatorGroup for Equipment {
 	type Target = Character;
 
-	fn apply_mutators<'c>(&self, stats: &mut Character) {
+	fn set_data_path(&self, path_to_item: &std::path::Path) {
+		for mutator in &self.modifiers {
+			mutator.set_data_path(path_to_item);
+		}
+		if let Some(armor) = &self.armor {
+			armor.set_data_path(path_to_item);
+		}
+	}
+
+	fn apply_mutators(&self, stats: &mut Character) {
 		for modifier in &self.modifiers {
 			stats.apply(modifier);
 		}

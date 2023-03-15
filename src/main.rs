@@ -60,14 +60,7 @@ fn create_character() -> system::dnd5e::data::character::Persistent {
 			Ability::Wisdom => Score(9),
 			Ability::Charisma => Score(11),
 		},
-		named_groups: NamedGroups {
-			lineage: vec![
-				lineage::changeling::shapechanger(),
-				lineage::changeling::voice_changer(),
-			],
-			upbringing: vec![upbringing::incognito()],
-			background: vec![background::anthropologist()],
-		},
+		named_groups: NamedGroups::default(),
 		classes: vec![class::barbarian::barbarian(10, None)],
 		feats: vec![Feature {
 			name: "Custom Feat".into(),
@@ -153,9 +146,6 @@ fn create_character() -> system::dnd5e::data::character::Persistent {
 		]),
 		inventory: {
 			let mut inv = item::Inventory::new();
-			inv.insert(items::weapon::dagger());
-			inv.insert(items::travelers_clothes());
-			inv.insert(items::goggles_of_night());
 			inv.insert(item::Item {
 				name: "Wings of the Owl".into(),
 				kind: item::ItemKind::Equipment(item::equipment::Equipment {
@@ -181,9 +171,6 @@ fn create_character() -> system::dnd5e::data::character::Persistent {
 				}),
 				..Default::default()
 			});
-			inv.insert(items::armor::leather());
-			inv.insert(items::armor::splint());
-			inv.insert(items::armor::shield());
 			inv
 		},
 		conditions: Vec::new(),

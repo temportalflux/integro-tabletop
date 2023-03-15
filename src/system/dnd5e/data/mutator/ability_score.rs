@@ -15,6 +15,10 @@ crate::impl_kdl_node!(AddAbilityScore, "add_ability_score");
 impl Mutator for AddAbilityScore {
 	type Target = Character;
 
+	fn set_data_path(&self, parent: &std::path::Path) {
+		self.ability.set_data_path(parent);
+	}
+
 	fn apply<'c>(&self, stats: &mut Character) {
 		if let Some(ability) = stats.resolve_selector(&self.ability) {
 			let source = stats.source_path();
@@ -67,7 +71,9 @@ mod test {
 			feats: vec![Feature {
 				name: "AddAbilityScore".into(),
 				mutators: vec![AddAbilityScore {
-					ability: Selector::Any { id: None },
+					ability: Selector::Any {
+						id: Default::default(),
+					},
 					value: 5,
 				}
 				.into()],

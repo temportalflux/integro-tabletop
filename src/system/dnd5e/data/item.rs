@@ -149,11 +149,14 @@ pub struct EquipableEntry {
 impl MutatorGroup for EquipableEntry {
 	type Target = Character;
 
-	fn id(&self) -> Option<String> {
-		Some(self.item.name.clone())
+	fn set_data_path(&self, parent: &std::path::Path) {
+		let path_to_self = parent.join(&self.item.name);
+		if let ItemKind::Equipment(equipment) = &self.item.kind {
+			equipment.set_data_path(&path_to_self);
+		}
 	}
 
-	fn apply_mutators<'c>(&self, stats: &mut Character) {
+	fn apply_mutators(&self, stats: &mut Character) {
 		if let ItemKind::Equipment(equipment) = &self.item.kind {
 			if self.is_equipped {
 				stats.apply_from(equipment);
@@ -236,11 +239,14 @@ impl Inventory {
 impl MutatorGroup for Inventory {
 	type Target = Character;
 
-	fn id(&self) -> Option<String> {
-		Some("Inventory".into())
+	fn set_data_path(&self, parent: &std::path::Path) {
+		let path_to_self = parent.join("Inventory");
+		for entry in self.items_by_name() {
+			entry.set_data_path(&path_to_self);
+		}
 	}
 
-	fn apply_mutators<'c>(&self, stats: &mut Character) {
+	fn apply_mutators(&self, stats: &mut Character) {
 		for entry in self.items_by_name() {
 			stats.apply_from(entry);
 		}

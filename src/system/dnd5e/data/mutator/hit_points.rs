@@ -9,7 +9,7 @@ use crate::{
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AddMaxHitPoints {
-	pub id: Option<String>,
+	pub id: Option<String>, // TODO: Unused, should display this in the name of the mutation source
 	pub value: Value<i32>,
 }
 
@@ -21,10 +21,6 @@ impl Mutator for AddMaxHitPoints {
 
 	fn dependencies(&self) -> Dependencies {
 		self.value.dependencies()
-	}
-
-	fn data_id(&self) -> Option<&str> {
-		self.id.as_ref().map(String::as_str)
 	}
 
 	fn apply<'c>(&self, stats: &mut Character) {

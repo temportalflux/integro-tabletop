@@ -3,6 +3,7 @@ use crate::{
 	system::dnd5e::{BoxedMutator, Value},
 	utility::{MutatorGroup, Selector},
 };
+use std::path::Path;
 
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct Class {
@@ -17,23 +18,30 @@ impl Class {
 	pub fn level_count(&self) -> usize {
 		self.levels.len()
 	}
+
+	fn iter_levels<'a>(&'a self) -> impl Iterator<Item = LevelWithIndex<'a>> + 'a {
+		self.levels
+			.iter()
+			.enumerate()
+			.map(|(idx, lvl)| LevelWithIndex(idx, lvl))
+	}
 }
 
 impl MutatorGroup for Class {
 	type Target = Character;
 
-	fn id(&self) -> Option<String> {
-		use convert_case::Casing;
-		Some(self.name.to_case(convert_case::Case::Pascal))
+	fn set_data_path(&self, parent: &std::path::Path) {
+		let path_to_self = parent.join(&self.name);
+		for level in self.iter_levels() {
+			level.set_data_path(&path_to_self);
+		}
+		if let Some(subclass) = &self.subclass {
+			subclass.set_data_path(&path_to_self);
+		}
 	}
 
-	fn apply_mutators<'c>(&self, stats: &mut Character) {
-		let iter = self
-			.levels
-			.iter()
-			.enumerate()
-			.map(|(idx, lvl)| LevelWithIndex(idx, lvl));
-		for level in iter {
+	fn apply_mutators(&self, stats: &mut Character) {
+		for level in self.iter_levels() {
 			stats.apply_from(&level);
 		}
 		if let Some(subclass) = &self.subclass {
@@ -41,29 +49,48 @@ impl MutatorGroup for Class {
 		}
 	}
 }
-#[derive(Clone, PartialEq, Default, Debug)]
+
+#[derive(Clone, PartialEq, Debug)]
 pub struct Level {
+	pub hit_points: Selector<u32>,
 	pub mutators: Vec<BoxedMutator>,
 	pub features: Vec<BoxedFeature>,
 }
 
-struct LevelWithIndex<'a>(usize, &'a Level);
+impl Default for Level {
+	fn default() -> Self {
+		Self {
+			hit_points: Selector::Any {
+				id: Some("hit_points").into(),
+			},
+			mutators: Default::default(),
+			features: Default::default(),
+		}
+	}
+}
 
+struct LevelWithIndex<'a>(usize, &'a Level);
+impl<'a> LevelWithIndex<'a> {
+	fn level_name(&self) -> String {
+		format!("level{:02}", self.0 + 1)
+	}
+}
 impl<'a> MutatorGroup for LevelWithIndex<'a> {
 	type Target = Character;
 
-	fn display_id(&self) -> bool {
-		false
+	fn set_data_path(&self, parent: &Path) {
+		let path_to_self = parent.join(self.level_name());
+		self.1.hit_points.set_data_path(&path_to_self);
+		for mutator in &self.1.mutators {
+			mutator.set_data_path(&path_to_self);
+		}
+		for feature in &self.1.features {
+			feature.set_data_path(&path_to_self);
+		}
 	}
 
-	fn id(&self) -> Option<String> {
-		Some(format!("level{:02}", self.0 + 1))
-	}
-
-	fn apply_mutators<'c>(&self, stats: &mut Character) {
-		if let Some(hit_points) = stats.resolve_selector(&Selector::<u32>::Any {
-			id: Some("hit_points".into()),
-		}) {
+	fn apply_mutators(&self, stats: &mut Character) {
+		if let Some(hit_points) = stats.resolve_selector(&self.1.hit_points) {
 			stats.apply(
 				&AddMaxHitPoints {
 					id: Some(format!("Level {:02}", self.0 + 1)),
@@ -86,21 +113,26 @@ pub struct Subclass {
 	pub name: String,
 	pub levels: Vec<Level>,
 }
+impl Subclass {
+	fn iter_levels<'a>(&'a self) -> impl Iterator<Item = LevelWithIndex<'a>> + 'a {
+		self.levels
+			.iter()
+			.enumerate()
+			.map(|(idx, lvl)| LevelWithIndex(idx, lvl))
+	}
+}
 impl MutatorGroup for Subclass {
 	type Target = Character;
 
-	fn id(&self) -> Option<String> {
-		use convert_case::Casing;
-		Some(self.name.to_case(convert_case::Case::Pascal))
+	fn set_data_path(&self, parent: &Path) {
+		let path_to_self = parent.join(&self.name);
+		for level in self.iter_levels() {
+			level.set_data_path(&path_to_self);
+		}
 	}
 
-	fn apply_mutators<'c>(&self, stats: &mut Character) {
-		let iter = self
-			.levels
-			.iter()
-			.enumerate()
-			.map(|(idx, lvl)| LevelWithIndex(idx, lvl));
-		for level in iter {
+	fn apply_mutators(&self, stats: &mut Character) {
+		for level in self.iter_levels() {
 			stats.apply_from(&level);
 		}
 	}

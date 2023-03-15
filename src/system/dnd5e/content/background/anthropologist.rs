@@ -27,8 +27,8 @@ pub fn anthropologist() -> Background {
 				name: "Languages".into(),
 				description: "You can speak, read, and write two languages of your choice.".into(),
 				mutators: vec![
-					AddProficiency::Language(Selector::Any { id: Some("langA".into()) }).into(),
-					AddProficiency::Language(Selector::Any { id: Some("langB".into()) }).into(),
+					AddProficiency::Language(Selector::Any { id: Some("langA").into() }).into(),
+					AddProficiency::Language(Selector::Any { id: Some("langB").into() }).into(),
 				],
 				..Default::default()
 			}.into(),

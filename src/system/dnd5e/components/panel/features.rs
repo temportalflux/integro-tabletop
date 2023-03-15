@@ -2,7 +2,6 @@ use crate::{
 	components::{Tag, Tags},
 	path_map::PathMap,
 	system::dnd5e::{components::SharedCharacter, data::BoxedFeature},
-	utility::MutatorGroup,
 };
 use std::path::{Path, PathBuf};
 use yew::prelude::*;
@@ -106,10 +105,7 @@ fn FeatureBlock(
 ) -> Html {
 	use convert_case::{Case, Casing};
 	let state = use_context::<SharedCharacter>().unwrap();
-	let feat_data_path = match feature.inner().id() {
-		Some(id) => parent.join(&id),
-		None => parent.clone(),
-	};
+	let feat_data_path = feature.inner().get_display_path();
 	let selected_value_map = state.selected_values_in(&feat_data_path);
 	let missing_selections = state.missing_selections_in(&feat_data_path);
 

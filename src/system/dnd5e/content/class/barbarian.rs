@@ -131,7 +131,7 @@ pub fn barbarian(levels: usize, subclass: Option<Subclass>) -> Class {
 				AddProficiency::SavingThrow(Ability::Constitution).into(),
 				AddProficiency::Skill(
 					Selector::AnyOf {
-						id: Some("skillA".into()),
+						id: Some("skillA").into(),
 						options: vec![
 							Skill::AnimalHandling,
 							Skill::Athletics,
@@ -145,7 +145,7 @@ pub fn barbarian(levels: usize, subclass: Option<Subclass>) -> Class {
 				).into(),
 				AddProficiency::Skill(
 					Selector::AnyOf {
-						id: Some("skillB".into()),
+						id: Some("skillB").into(),
 						options: vec![
 							Skill::AnimalHandling,
 							Skill::Athletics,

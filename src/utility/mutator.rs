@@ -1,6 +1,6 @@
 use super::{AsTraitEq, Dependencies, SelectorMeta, TraitEq};
 use crate::system::dnd5e::KDLNode;
-use std::{fmt::Debug, sync::Arc};
+use std::{fmt::Debug, path::Path, sync::Arc};
 
 pub trait Mutator: Debug + TraitEq + AsTraitEq<dyn TraitEq> + KDLNode {
 	type Target;
@@ -9,15 +9,13 @@ pub trait Mutator: Debug + TraitEq + AsTraitEq<dyn TraitEq> + KDLNode {
 		Dependencies::default()
 	}
 
-	fn data_id(&self) -> Option<&str> {
-		None
-	}
-
-	fn apply<'c>(&self, _: &mut Self::Target) {}
+	fn set_data_path(&self, parent: &Path) {}
 
 	fn description(&self) -> Option<String> {
 		None
 	}
+
+	fn apply<'c>(&self, _: &mut Self::Target) {}
 
 	fn selector_meta(&self) -> Option<Vec<SelectorMeta>> {
 		None
@@ -73,13 +71,7 @@ impl<T> std::fmt::Debug for GenericMutator<T> {
 pub trait MutatorGroup {
 	type Target;
 
-	fn display_id(&self) -> bool {
-		true
-	}
+	fn set_data_path(&self, parent: &Path);
 
-	fn id(&self) -> Option<String> {
-		None
-	}
-
-	fn apply_mutators<'c>(&self, target: &mut Self::Target);
+	fn apply_mutators(&self, target: &mut Self::Target);
 }

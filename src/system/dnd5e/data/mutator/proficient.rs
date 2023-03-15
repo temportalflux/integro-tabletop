@@ -32,6 +32,14 @@ crate::impl_kdl_node!(AddProficiency, "add_proficiency");
 impl Mutator for AddProficiency {
 	type Target = Character;
 
+	fn set_data_path(&self, parent: &std::path::Path) {
+		match self {
+			Self::Skill(selector, _) => selector.set_data_path(parent),
+			Self::Language(selector) => selector.set_data_path(parent),
+			_ => {}
+		}
+	}
+
 	fn apply<'c>(&self, stats: &mut Character) {
 		let source = stats.source_path();
 		match &self {
@@ -194,7 +202,7 @@ mod test {
 			let doc = "mutator \"add_proficiency\" (Skill)\"Any\" id=\"MutatorSelect\"";
 			let expected = AddProficiency::Skill(
 				Selector::Any {
-					id: Some("MutatorSelect".into()),
+					id: Some("MutatorSelect").into(),
 				},
 				proficiency::Level::Full,
 			);
@@ -205,8 +213,12 @@ mod test {
 		#[test]
 		fn skill_any_nolevel_noid() -> anyhow::Result<()> {
 			let doc = "mutator \"add_proficiency\" (Skill)\"Any\"";
-			let expected =
-				AddProficiency::Skill(Selector::Any { id: None }, proficiency::Level::Full);
+			let expected = AddProficiency::Skill(
+				Selector::Any {
+					id: Default::default(),
+				},
+				proficiency::Level::Full,
+			);
 			assert_eq!(from_doc(doc)?, expected.into());
 			Ok(())
 		}
@@ -217,7 +229,7 @@ mod test {
 				"mutator \"add_proficiency\" (Skill)\"Any\" id=\"MutatorSelect\" level=\"Half\"";
 			let expected = AddProficiency::Skill(
 				Selector::Any {
-					id: Some("MutatorSelect".into()),
+					id: Some("MutatorSelect").into(),
 				},
 				proficiency::Level::Half,
 			);
@@ -233,7 +245,7 @@ mod test {
 			}";
 			let expected = AddProficiency::Skill(
 				Selector::AnyOf {
-					id: Some("MutatorSelect".into()),
+					id: Some("MutatorSelect").into(),
 					options: vec![Skill::Insight, Skill::AnimalHandling],
 				},
 				proficiency::Level::Full,
@@ -250,7 +262,7 @@ mod test {
 			}";
 			let expected = AddProficiency::Skill(
 				Selector::AnyOf {
-					id: None,
+					id: Default::default(),
 					options: vec![Skill::Insight, Skill::AnimalHandling],
 				},
 				proficiency::Level::Double,
@@ -270,7 +282,9 @@ mod test {
 		#[test]
 		fn language_any() -> anyhow::Result<()> {
 			let doc = "mutator \"add_proficiency\" (Language)\"Any\"";
-			let expected = AddProficiency::Language(Selector::Any { id: None });
+			let expected = AddProficiency::Language(Selector::Any {
+				id: Default::default(),
+			});
 			assert_eq!(from_doc(doc)?, expected.into());
 			Ok(())
 		}
@@ -282,7 +296,7 @@ mod test {
 				option \"Giant\"
 			}";
 			let expected = AddProficiency::Language(Selector::AnyOf {
-				id: None,
+				id: Default::default(),
 				options: vec!["Dwarven".into(), "Giant".into()],
 			});
 			assert_eq!(from_doc(doc)?, expected.into());

@@ -15,12 +15,17 @@ pub struct Background {
 impl MutatorGroup for Background {
 	type Target = Character;
 
-	fn id(&self) -> Option<String> {
-		use convert_case::Casing;
-		Some(self.name.to_case(convert_case::Case::Pascal))
+	fn set_data_path(&self, parent: &std::path::Path) {
+		let path_to_self = parent.join(&self.name);
+		for mutator in &self.mutators {
+			mutator.set_data_path(&path_to_self);
+		}
+		for feature in &self.features {
+			feature.set_data_path(&path_to_self);
+		}
 	}
 
-	fn apply_mutators<'c>(&self, stats: &mut Character) {
+	fn apply_mutators(&self, stats: &mut Character) {
 		for mutator in &self.mutators {
 			stats.apply(mutator);
 		}

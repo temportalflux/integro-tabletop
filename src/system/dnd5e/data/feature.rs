@@ -1,3 +1,5 @@
+use derivative::Derivative;
+
 use super::{
 	action::{Action, ActionSource},
 	character::Character,
@@ -10,9 +12,14 @@ use crate::{
 	},
 	utility::MutatorGroup,
 };
-use std::{collections::HashMap, sync::Arc};
+use std::{
+	collections::HashMap,
+	path::{Path, PathBuf},
+	sync::{Arc, RwLock},
+};
 
-#[derive(Default, Clone, PartialEq, Debug)]
+#[derive(Default, Clone, Debug, Derivative)]
+#[derivative(PartialEq)]
 pub struct Feature {
 	pub name: String,
 	pub description: String,
@@ -22,10 +29,17 @@ pub struct Feature {
 	pub mutators: Vec<BoxedMutator>,
 	pub criteria: Option<BoxedCriteria>,
 
+	#[derivative(PartialEq = "ignore")]
+	pub absolute_path: Arc<RwLock<PathBuf>>,
+	#[derivative(PartialEq = "ignore")]
 	pub missing_selection_text: Option<(String, HashMap<String, String>)>,
 }
 
 impl Feature {
+	pub fn get_display_path(&self) -> PathBuf {
+		self.absolute_path.read().unwrap().clone()
+	}
+
 	pub fn get_missing_selection_text_for(&self, key: &str) -> Option<&String> {
 		let Some((default_text, specialized)) = &self.missing_selection_text else { return None; };
 		if let Some(key_specific) = specialized.get(key) {
@@ -38,12 +52,14 @@ impl Feature {
 impl MutatorGroup for Feature {
 	type Target = Character;
 
-	fn id(&self) -> Option<String> {
-		use convert_case::Casing;
-		Some(self.name.to_case(convert_case::Case::Pascal))
+	fn set_data_path(&self, parent: &Path) {
+		let path_to_self = parent.join(&self.name);
+		for mutator in &self.mutators {
+			mutator.set_data_path(&path_to_self);
+		}
 	}
 
-	fn apply_mutators<'c>(&self, stats: &mut Character) {
+	fn apply_mutators(&self, stats: &mut Character) {
 		if let Some(criteria) = &self.criteria {
 			// TODO: Somehow save the error text for display in feature UI
 			if stats.evaluate(criteria).is_err() {
@@ -58,6 +74,7 @@ impl MutatorGroup for Feature {
 			action.source = Some(ActionSource::Feature(stats.source_path()));
 			stats.actions_mut().push(action);
 		}
+		//*self.absolute_path.write().unwrap() = path_to_self;
 	}
 }
 
@@ -102,6 +119,7 @@ impl FromKDL for Feature {
 			actions,
 			criteria,
 			// Generated data
+			absolute_path: Arc::new(RwLock::new(PathBuf::new())),
 			missing_selection_text: None,
 		})
 	}
@@ -122,5 +140,16 @@ impl BoxedFeature {
 impl std::fmt::Debug for BoxedFeature {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		self.0.fmt(f)
+	}
+}
+impl MutatorGroup for BoxedFeature {
+	type Target = <Feature as MutatorGroup>::Target;
+
+	fn set_data_path(&self, parent: &std::path::Path) {
+		self.0.set_data_path(parent);
+	}
+
+	fn apply_mutators(&self, target: &mut Self::Target) {
+		self.0.apply_mutators(target);
 	}
 }

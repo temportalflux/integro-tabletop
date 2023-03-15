@@ -71,7 +71,11 @@ impl FromStr for Kind {
 impl MutatorGroup for Armor {
 	type Target = Character;
 
-	fn apply_mutators<'c>(&self, stats: &mut Character) {
+	fn set_data_path(&self, parent: &std::path::Path) {
+		// TODO: Should this be no-op?
+	}
+
+	fn apply_mutators(&self, stats: &mut Character) {
 		let source = stats.source_path();
 
 		stats

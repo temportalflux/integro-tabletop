@@ -37,14 +37,12 @@ pub struct Character {
 	character: Persistent,
 	derived: Derived,
 	mutators: Vec<MutatorEntry>,
-	source_path: SourcePath,
 }
 #[derive(Clone, PartialEq, Debug)]
 struct MutatorEntry {
 	node_id: &'static str,
 	dependencies: Dependencies,
 	mutator: BoxedMutator,
-	source: SourcePath,
 }
 impl From<Persistent> for Character {
 	fn from(character: Persistent) -> Self {
@@ -52,7 +50,6 @@ impl From<Persistent> for Character {
 			character,
 			derived: Derived::default(),
 			mutators: Vec::new(),
-			source_path: SourcePath::default(),
 		};
 		full.apply_from(&full.character.clone());
 		full.apply_cached_mutators();
@@ -81,27 +78,19 @@ impl Character {
 			character,
 			derived: Derived::default(),
 			mutators: Vec::new(),
-			source_path: SourcePath::default(),
 		}
 	}
 
 	pub fn apply_from(&mut self, container: &impl MutatorGroup<Target = Self>) {
-		let scope = self
-			.source_path
-			.push(container.id(), container.display_id());
 		container.apply_mutators(self);
-		self.source_path.pop(scope);
 	}
 
 	pub fn apply(&mut self, mutator: &BoxedMutator) {
-		let scope = self.source_path.push(mutator.data_id(), true);
 		self.insert_mutator(MutatorEntry {
 			node_id: mutator.get_id(),
 			dependencies: mutator.dependencies(),
 			mutator: mutator.clone(),
-			source: self.source_path.clone(),
 		});
-		self.source_path.pop(scope);
 	}
 
 	fn insert_mutator(&mut self, entry: MutatorEntry) {
@@ -138,13 +127,13 @@ impl Character {
 				entry.dependencies
 			);
 			*/
-			self.source_path = entry.source;
 			entry.mutator.apply(self);
 		}
 	}
 
 	pub fn source_path(&self) -> PathBuf {
-		self.source_path.to_display()
+		log::warn!("source_path call");
+		PathBuf::new()
 	}
 
 	fn get_selections_at(&self, path: impl AsRef<Path>) -> Option<&Vec<String>> {
@@ -172,18 +161,17 @@ impl Character {
 		if let Selector::Specific(value) = selector {
 			return Some(value.clone());
 		}
-		let scope = self.source_path.push(selector.id(), false);
-		let value = match self.get_first_selection_at::<T>(&self.source_path.to_data()) {
+		let path_to_data = selector
+			.get_data_path()
+			.expect("non-specific selectors must have a data path");
+		let value = match self.get_first_selection_at::<T>(&path_to_data) {
 			Some(Ok(value)) => Some(value),
 			Some(Err(_)) => None,
 			None => {
-				self.derived
-					.missing_selections
-					.push(self.source_path.to_data());
+				self.derived.missing_selections.push(path_to_data);
 				None
 			}
 		};
-		self.source_path.pop(scope);
 		value
 	}
 }
@@ -351,9 +339,9 @@ impl Character {
 	}
 
 	pub fn add_feature(&mut self, feature: &BoxedFeature) {
-		self.derived
-			.features
-			.insert(&self.source_path.to_display(), feature.clone());
+		log::warn!("Need to get path to feature");
+		let feature_path = PathBuf::new();
+		self.derived.features.insert(&feature_path, feature.clone());
 		self.apply_from(feature.inner());
 	}
 

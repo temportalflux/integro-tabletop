@@ -2,30 +2,68 @@ use crate::{
 	kdl_ext::{NodeQueryExt, ValueIdx},
 	GeneralError,
 };
+use derivative::Derivative;
 use enumset::{EnumSet, EnumSetType};
 use std::{
 	path::{Path, PathBuf},
 	str::FromStr,
+	sync::{Arc, RwLock},
 };
+
+#[derive(Clone, Debug, Default, Derivative)]
+#[derivative(PartialEq)]
+pub struct IdPath {
+	id: Option<String>,
+	#[derivative(PartialEq = "ignore")]
+	absolute_path: Arc<RwLock<PathBuf>>,
+}
+impl<T: Into<String>> From<Option<T>> for IdPath {
+	fn from(value: Option<T>) -> Self {
+		Self {
+			id: value.map(|t| t.into()),
+			absolute_path: Arc::new(RwLock::new(PathBuf::new())),
+		}
+	}
+}
+impl IdPath {
+	fn set_path(&self, path: PathBuf) {
+		*self.absolute_path.write().unwrap() = path;
+	}
+
+	fn as_path(&self) -> PathBuf {
+		self.absolute_path.read().unwrap().clone()
+	}
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Selector<T: ToString + FromStr> {
 	Specific(T),
-	AnyOf { id: Option<String>, options: Vec<T> },
-	Any { id: Option<String> },
+	AnyOf { id: IdPath, options: Vec<T> },
+	Any { id: IdPath },
 }
 
 impl<T> Selector<T>
 where
 	T: ToString + FromStr,
 {
-	pub fn id(&self) -> Option<&str> {
+	fn id_path(&self) -> Option<&IdPath> {
 		match self {
 			Self::Specific(_) => None,
-			Self::AnyOf { id, options: _ } => id.as_ref(),
-			Self::Any { id } => id.as_ref(),
+			Self::AnyOf { id, options: _ } => Some(id),
+			Self::Any { id } => Some(id),
 		}
-		.map(String::as_str)
+	}
+
+	pub fn set_data_path(&self, parent: &Path) {
+		let Some(id_path) = self.id_path() else { return; };
+		id_path.set_path(match &id_path.id {
+			Some(id) => parent.join(id),
+			None => parent.to_owned(),
+		});
+	}
+
+	pub fn get_data_path(&self) -> Option<PathBuf> {
+		self.id_path().map(|id_path| id_path.as_path())
 	}
 
 	pub fn from_kdl(
@@ -46,7 +84,7 @@ where
 				Ok(Self::Specific(map_value(value)?))
 			}
 			"AnyOf" => {
-				let id = node.get_str_opt("id")?.map(str::to_owned);
+				let id = node.get_str_opt("id")?.into();
 				let mut options = Vec::new();
 				for kdl_value in node.query_get_all("option", 0)? {
 					options.push(map_value(kdl_value)?);
@@ -54,7 +92,7 @@ where
 				Ok(Self::AnyOf { id, options })
 			}
 			"Any" => {
-				let id = node.get_str_opt("id")?.map(str::to_owned);
+				let id = node.get_str_opt("id")?.into();
 				Ok(Self::Any { id })
 			}
 			_ => Err(GeneralError(format!(
@@ -82,21 +120,23 @@ where
 
 #[derive(Clone, PartialEq)]
 pub struct SelectorMeta {
-	pub id: Option<String>,
+	pub data_path: PathBuf,
 	pub options: SelectorOptions,
 }
 impl SelectorMeta {
 	fn from_string(selector: &Selector<String>) -> Option<Self> {
+		let Some(data_path) = selector.get_data_path() else { return None; };
 		let Some(options) = SelectorOptions::from_string(selector) else { return None; };
-		Some(Self { id: selector.id().map(str::to_owned), options })
+		Some(Self { data_path, options })
 	}
 
 	fn from_enum<T>(selector: &Selector<T>) -> Option<Self>
 	where
 		T: 'static + ToString + FromStr + EnumSetType,
 	{
+		let Some(data_path) = selector.get_data_path() else { return None; };
 		let Some(options) = SelectorOptions::from_enum(selector) else { return None; };
-		Some(Self { id: selector.id().map(str::to_owned), options })
+		Some(Self { data_path, options })
 	}
 }
 

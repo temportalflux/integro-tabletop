@@ -40,7 +40,26 @@ pub struct Persistent {
 impl MutatorGroup for Persistent {
 	type Target = Character;
 
-	fn apply_mutators<'c>(&self, stats: &mut Character) {
+	fn set_data_path(&self, parent: &std::path::Path) {
+		for group in &self.named_groups.lineage {
+			group.set_data_path(parent);
+		}
+		for group in &self.named_groups.upbringing {
+			group.set_data_path(parent);
+		}
+		for group in &self.named_groups.background {
+			group.set_data_path(parent);
+		}
+		for class in &self.classes {
+			class.set_data_path(parent);
+		}
+		for feat in &self.feats {
+			feat.set_data_path(parent);
+		}
+		self.inventory.set_data_path(parent);
+	}
+
+	fn apply_mutators(&self, stats: &mut Character) {
 		stats.apply(
 			&AddMaxHitPoints {
 				id: Some("Constitution x Levels".into()),
