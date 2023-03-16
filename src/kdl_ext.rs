@@ -1,5 +1,278 @@
 use crate::GeneralError;
 
+#[derive(thiserror::Error, Debug)]
+#[error("Entry \"{0}\" is missing a type identifier.")]
+struct EntryMissingType(kdl::KdlEntry);
+
+/// The kdl value did not match the expected type.
+#[derive(thiserror::Error, Debug)]
+#[error("Invalid value {0:?}, was expecting a {1}.")]
+struct InvalidValueType(kdl::KdlValue, &'static str);
+
+/// The node is missing an entry that was required.
+#[derive(thiserror::Error, Debug)]
+struct EntryMissing(kdl::KdlNode, kdl::NodeKey);
+impl std::fmt::Display for EntryMissing {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match &self.1 {
+			kdl::NodeKey::Index(v) => write!(f, "Node {} is missing an entry at index {v}", self.0),
+			kdl::NodeKey::Key(v) => {
+				write!(
+					f,
+					"Node {} is missing an entry at property {}",
+					self.0,
+					v.value()
+				)
+			}
+		}
+	}
+}
+
+#[derive(thiserror::Error, Debug)]
+enum RequiredValue {
+	#[error(transparent)]
+	InvalidValueType(#[from] InvalidValueType),
+	#[error(transparent)]
+	EntryMissing(#[from] EntryMissing),
+}
+
+trait EntryExt {
+	/// Returns the type of the entry.
+	/// If the entry does not have a type, None is returned.
+	fn type_opt(&self) -> Option<&str>;
+	/// Returns the type of the entry.
+	/// If the entry does not have a type, an error is returned.
+	fn type_req(&self) -> Result<&str, EntryMissingType>;
+
+	/// Returns the value of the entry.
+	/// If the value is not a bool, an error is returned.
+	fn as_bool(&self) -> Result<bool, InvalidValueType>;
+	/// Returns the value of the entry.
+	/// If the value is not a i64, an error is returned.
+	fn as_i64(&self) -> Result<i64, InvalidValueType>;
+	/// Returns the value of the entry.
+	/// If the value is not a f64, an error is returned.
+	fn as_f64(&self) -> Result<f64, InvalidValueType>;
+	/// Returns the value of the entry.
+	/// If the value is not a string, an error is returned.
+	fn as_str(&self) -> Result<&str, InvalidValueType>;
+}
+impl EntryExt for kdl::KdlEntry {
+	fn type_opt(&self) -> Option<&str> {
+		self.ty().map(|id| id.value())
+	}
+
+	fn type_req(&self) -> Result<&str, EntryMissingType> {
+		Ok(self.type_opt().ok_or(EntryMissingType(self.clone()))?)
+	}
+
+	fn as_bool(&self) -> Result<bool, InvalidValueType> {
+		Ok(self
+			.value()
+			.as_bool()
+			.ok_or(InvalidValueType(self.value().clone(), "bool"))?)
+	}
+
+	fn as_i64(&self) -> Result<i64, InvalidValueType> {
+		Ok(self
+			.value()
+			.as_i64()
+			.ok_or(InvalidValueType(self.value().clone(), "i64"))?)
+	}
+
+	fn as_f64(&self) -> Result<f64, InvalidValueType> {
+		Ok(self
+			.value()
+			.as_f64()
+			.ok_or(InvalidValueType(self.value().clone(), "f64"))?)
+	}
+
+	fn as_str(&self) -> Result<&str, InvalidValueType> {
+		Ok(self
+			.value()
+			.as_string()
+			.ok_or(InvalidValueType(self.value().clone(), "string"))?)
+	}
+}
+
+trait NodeExt {
+	/// The node is searched for an entry which matches the given key. If no entry is found, None is returned.
+	fn entry_opt(&self, key: impl Into<kdl::NodeKey>) -> Option<&kdl::KdlEntry>;
+	/// The node is searched for an entry which matches the given key. If no entry is found, an error is returned.
+	fn entry_req(&self, key: impl Into<kdl::NodeKey>) -> Result<&kdl::KdlEntry, EntryMissing>;
+
+	/// The node is searched for an entry which matches the given key. If no entry is found, None is returned.
+	/// If the entry is not a bool, an error is returned.
+	fn get_bool_opt_2(
+		&self,
+		key: impl Into<kdl::NodeKey>,
+	) -> Result<Option<bool>, InvalidValueType>;
+	/// The node is searched for an entry which matches the given key. If no entry is found, None is returned.
+	/// If the entry is not a i64, an error is returned.
+	fn get_i64_opt_2(&self, key: impl Into<kdl::NodeKey>) -> Result<Option<i64>, InvalidValueType>;
+	/// The node is searched for an entry which matches the given key. If no entry is found, None is returned.
+	/// If the entry is not a f64, an error is returned.
+	fn get_f64_opt_2(&self, key: impl Into<kdl::NodeKey>) -> Result<Option<f64>, InvalidValueType>;
+	/// The node is searched for an entry which matches the given key. If no entry is found, None is returned.
+	/// If the entry is not a string, an error is returned.
+	fn get_str_opt_2(&self, key: impl Into<kdl::NodeKey>)
+		-> Result<Option<&str>, InvalidValueType>;
+
+	/// The node is searched for an entry which matches the given key. If no entry is found, an error is returned.
+	/// If the entry is not a bool, an error is returned.
+	fn get_bool_req(&self, key: impl Into<kdl::NodeKey>) -> Result<bool, RequiredValue>;
+	/// The node is searched for an entry which matches the given key. If no entry is found, an error is returned.
+	/// If the entry is not a i64, an error is returned.
+	fn get_i64_req(&self, key: impl Into<kdl::NodeKey>) -> Result<i64, RequiredValue>;
+	/// The node is searched for an entry which matches the given key. If no entry is found, an error is returned.
+	/// If the entry is not a f64, an error is returned.
+	fn get_f64_req(&self, key: impl Into<kdl::NodeKey>) -> Result<f64, RequiredValue>;
+	/// The node is searched for an entry which matches the given key. If no entry is found, an error is returned.
+	/// If the entry is not a string, an error is returned.
+	fn get_str_req(&self, key: impl Into<kdl::NodeKey>) -> Result<&str, RequiredValue>;
+}
+
+impl NodeExt for kdl::KdlNode {
+	fn entry_req(&self, key: impl Into<kdl::NodeKey>) -> Result<&kdl::KdlEntry, EntryMissing> {
+		let key = key.into();
+		self.entry_opt(key.clone())
+			.ok_or(EntryMissing(self.clone(), key))
+	}
+
+	fn entry_opt(&self, key: impl Into<kdl::NodeKey>) -> Option<&kdl::KdlEntry> {
+		self.entry(key)
+	}
+
+	fn get_bool_opt_2(
+		&self,
+		key: impl Into<kdl::NodeKey>,
+	) -> Result<Option<bool>, InvalidValueType> {
+		let Some(entry) = self.entry_opt(key) else { return Ok(None); };
+		Ok(Some(entry.as_bool()?))
+	}
+
+	fn get_i64_opt_2(&self, key: impl Into<kdl::NodeKey>) -> Result<Option<i64>, InvalidValueType> {
+		let Some(entry) = self.entry_opt(key) else { return Ok(None); };
+		Ok(Some(entry.as_i64()?))
+	}
+
+	fn get_f64_opt_2(&self, key: impl Into<kdl::NodeKey>) -> Result<Option<f64>, InvalidValueType> {
+		let Some(entry) = self.entry_opt(key) else { return Ok(None); };
+		Ok(Some(entry.as_f64()?))
+	}
+
+	fn get_str_opt_2(
+		&self,
+		key: impl Into<kdl::NodeKey>,
+	) -> Result<Option<&str>, InvalidValueType> {
+		let Some(entry) = self.entry_opt(key) else { return Ok(None); };
+		Ok(Some(entry.as_str()?))
+	}
+
+	fn get_bool_req(&self, key: impl Into<kdl::NodeKey>) -> Result<bool, RequiredValue> {
+		let key = key.into();
+		Ok(self
+			.get_bool_opt_2(key.clone())?
+			.ok_or(EntryMissing(self.clone(), key))?)
+	}
+
+	fn get_i64_req(&self, key: impl Into<kdl::NodeKey>) -> Result<i64, RequiredValue> {
+		let key = key.into();
+		Ok(self
+			.get_i64_opt_2(key.clone())?
+			.ok_or(EntryMissing(self.clone(), key))?)
+	}
+
+	fn get_f64_req(&self, key: impl Into<kdl::NodeKey>) -> Result<f64, RequiredValue> {
+		let key = key.into();
+		Ok(self
+			.get_f64_opt_2(key.clone())?
+			.ok_or(EntryMissing(self.clone(), key))?)
+	}
+
+	fn get_str_req(&self, key: impl Into<kdl::NodeKey>) -> Result<&str, RequiredValue> {
+		let key = key.into();
+		Ok(self
+			.get_str_opt_2(key.clone())?
+			.ok_or(EntryMissing(self.clone(), key))?)
+	}
+}
+
+trait DocumentExt {
+	/// Queries the document for a descendent that matches the given query.
+	/// Returns None if no descendent is found.
+	fn query_opt(&self, query: impl AsRef<str>) -> anyhow::Result<Option<&kdl::KdlNode>>;
+	/// Queries the document for a descendent that matches the given query.
+	/// Returns an error if no descendent is found.
+	fn query_req(&self, query: impl AsRef<str>) -> anyhow::Result<&kdl::KdlNode>;
+	
+	/// Queries the document for a descendent that matches the given query. If no descendent is found, None is returned.
+	/// The descedent is then searched for an entry which matches the given key. If no entry is found, None is returned.
+	/// If the entry is not a bool, an error is returned.
+	fn get_bool_opt(
+		&self,
+		query: impl AsRef<str>,
+		key: impl Into<kdl::NodeKey> + Clone,
+	) -> anyhow::Result<Option<bool>>;
+	/// Queries the document for a descendent that matches the given query. If no descendent is found, None is returned.
+	/// The descedent is then searched for an entry which matches the given key. If no entry is found, None is returned.
+	/// If the entry is not a i64, an error is returned.
+	fn get_i64_opt(
+		&self,
+		query: impl AsRef<str>,
+		key: impl Into<kdl::NodeKey> + Clone,
+	) -> anyhow::Result<Option<i64>>;
+	/// Queries the document for a descendent that matches the given query. If no descendent is found, None is returned.
+	/// The descedent is then searched for an entry which matches the given key. If no entry is found, None is returned.
+	/// If the entry is not a f64, an error is returned.
+	fn get_f64_opt(
+		&self,
+		query: impl AsRef<str>,
+		key: impl Into<kdl::NodeKey> + Clone,
+	) -> anyhow::Result<Option<f64>>;
+	/// Queries the document for a descendent that matches the given query. If no descendent is found, None is returned.
+	/// The descedent is then searched for an entry which matches the given key. If no entry is found, None is returned.
+	/// If the entry is not a string, an error is returned.
+	fn get_str_opt(
+		&self,
+		query: impl AsRef<str>,
+		key: impl Into<kdl::NodeKey> + Clone,
+	) -> anyhow::Result<Option<&str>>;
+
+	/// Queries the document for a descendent that matches the given query. If no descendent is found, an error is returned.
+	/// The descedent is then searched for an entry which matches the given key. If no entry is found, and error is returned.
+	/// If the entry is not a bool, an error is returned.
+	fn get_bool_req(
+		&self,
+		query: impl AsRef<str>,
+		key: impl Into<kdl::NodeKey> + Clone,
+	) -> anyhow::Result<bool>;
+	/// Queries the document for a descendent that matches the given query. If no descendent is found, an error is returned.
+	/// The descedent is then searched for an entry which matches the given key. If no entry is found, an error is returned.
+	/// If the entry is not a i64, an error is returned.
+	fn get_i64_req(
+		&self,
+		query: impl AsRef<str>,
+		key: impl Into<kdl::NodeKey> + Clone,
+	) -> anyhow::Result<i64>;
+	/// Queries the document for a descendent that matches the given query. If no descendent is found, an error is returned.
+	/// The descedent is then searched for an entry which matches the given key. If no entry is found, an error is returned.
+	/// If the entry is not a f64, an error is returned.
+	fn get_f64_req(
+		&self,
+		query: impl AsRef<str>,
+		key: impl Into<kdl::NodeKey> + Clone,
+	) -> anyhow::Result<f64>;
+	/// Queries the document for a descendent that matches the given query. If no descendent is found, an error is returned.
+	/// The descedent is then searched for an entry which matches the given key. If no entry is found, an error is returned.
+	/// If the entry is not a string, an error is returned.
+	fn get_str_req(
+		&self,
+		query: impl AsRef<str>,
+		key: impl Into<kdl::NodeKey> + Clone,
+	) -> anyhow::Result<&str>;
+}
+
 pub trait DocumentQueryExt {
 	fn as_document(&self) -> Option<&kdl::KdlDocument>;
 
