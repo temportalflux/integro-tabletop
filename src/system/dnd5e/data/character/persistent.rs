@@ -2,12 +2,13 @@ use crate::{
 	path_map::PathMap,
 	system::dnd5e::{
 		data::{
+			bundle::{Background, Lineage, Race, RaceVariant, Upbringing},
 			character::Character,
 			condition::BoxedCondition,
 			evaluator::{operator::Product, GetAbilityModifier, GetLevel},
 			item,
 			mutator::AddMaxHitPoints,
-			Ability, Background, BoxedFeature, Class, Description, Lineage, Score, Upbringing,
+			Ability, BoxedFeature, Class, Description, Score,
 		},
 		Value,
 	},
@@ -18,6 +19,8 @@ use std::path::Path;
 
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct NamedGroups {
+	pub race: Vec<Race>,
+	pub race_variant: Vec<RaceVariant>,
 	pub lineage: Vec<Lineage>,
 	pub upbringing: Vec<Upbringing>,
 	pub background: Vec<Background>,

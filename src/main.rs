@@ -1,3 +1,4 @@
+use anyhow::Context;
 use std::{
 	collections::BTreeMap,
 	path::{Path, PathBuf},
@@ -186,7 +187,7 @@ fn App() -> Html {
 	let show_browser = use_state_eq(|| false);
 	let comp_reg = use_memo(|_| dnd5e::component_registry(), ());
 	let node_reg = use_memo(|_| dnd5e::node_registry(), ());
-	let modules = use_memo(|_| vec!["basic-rules", "elf-and-orc"], ());
+	let modules = use_memo(|_| vec!["basic-rules", "elf-and-orc", "wotc-toa"], ());
 	let system = use_state(|| DnD5e::default());
 
 	let content_loader = yew_hooks::use_async({
@@ -204,8 +205,17 @@ fn App() -> Html {
 					for (idx, node) in document.nodes().iter().enumerate() {
 						source_id.node_idx = idx;
 						let Some(comp_factory) = comp_reg.get_factory(node.name().value()).cloned() else { continue; };
-						let Ok(insert_callback) = comp_factory.add_from_kdl(node, source_id.clone(), &node_reg) else { continue; };
-						(insert_callback)(&mut system);
+						match comp_factory
+							.add_from_kdl(node, source_id.clone(), &node_reg)
+							.with_context(|| format!("Failed to parse {:?}", source_id.to_string()))
+						{
+							Ok(insert_callback) => {
+								(insert_callback)(&mut system);
+							}
+							Err(err) => {
+								log::error!(target: *module, "{err:?}");
+							}
+						}
 					}
 				}
 			}
@@ -392,7 +402,7 @@ async fn fetch_local_module(
 		let index_content = resp.text().await?;
 		for line in index_content.lines() {
 			let uri = format!("{ROOT_URL}/{name}/{system}/{line}");
-			let Ok(resp) = reqwest::get(uri).await else {
+			let Ok(resp) = reqwest::get(uri.clone()).await else {
 				return Err(MissingResource(name, system, line.into()).into());
 			};
 			let source_id = SourceId {

@@ -1,14 +1,21 @@
+use std::collections::HashMap;
+
 use crate::{
-	system::dnd5e::{
-		components::SharedCharacter,
-		data::{
-			character::{ActionEffect, Persistent},
-			Feature, Lineage, Upbringing,
+	system::{
+		core::SourceId,
+		dnd5e::{
+			components::SharedCharacter,
+			data::{
+				bundle::{Background, Lineage, Race, RaceVariant, Upbringing},
+				character::{ActionEffect, Persistent},
+				Feature,
+			},
+			DnD5e,
 		},
-		DnD5e,
 	},
 	utility::{GenericMutator, SelectorMeta, SelectorOptions},
 };
+use multimap::MultiMap;
 use wasm_bindgen::JsCast;
 use web_sys::{HtmlInputElement, HtmlSelectElement};
 use yew::prelude::*;
@@ -44,7 +51,7 @@ pub fn OriginTab() -> Html {
 	html! {<>
 		{lineages_switch}
 		<CharacterContent />
-		<CategoryBrowser />
+		<CategoryBrowser use_lineages={*use_lineages} />
 	</>}
 }
 
@@ -52,12 +59,95 @@ pub fn OriginTab() -> Html {
 fn CharacterContent() -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
 
+	// TODO: temporarily hard-coded until all bundles are the same type
+	let requirements = {
+		let mut map = MultiMap::new();
+		for variant in &state.persistent().named_groups.race_variant {
+			for req in &variant.requirements {
+				map.insert(
+					req.clone(),
+					("Race Variant".to_owned(), variant.name.clone()),
+				);
+			}
+		}
+		map
+	};
+
 	let mut entries = Vec::new();
+	for idx in 0..state.persistent().named_groups.race.len() {
+		entries.push(bundle_state::<Race>(
+			&state,
+			idx,
+			"Race",
+			&requirements,
+			|persistent, idx| persistent.named_groups.race.get(idx),
+			|value| &value.name,
+			|_| None,
+			race,
+			|persistent, idx| {
+				persistent.named_groups.race.remove(idx);
+			},
+		));
+	}
+	for idx in 0..state.persistent().named_groups.race_variant.len() {
+		entries.push(bundle_state::<RaceVariant>(
+			&state,
+			idx,
+			"Race Variant",
+			&requirements,
+			|persistent, idx| persistent.named_groups.race_variant.get(idx),
+			|value| &value.name,
+			|value| Some(&value.requirements),
+			race_variant,
+			|persistent, idx| {
+				persistent.named_groups.race_variant.remove(idx);
+			},
+		));
+	}
 	for idx in 0..state.persistent().named_groups.lineage.len() {
-		entries.push(html! { <LineageState {idx} /> });
+		entries.push(bundle_state::<Lineage>(
+			&state,
+			idx,
+			"Lineage",
+			&requirements,
+			|persistent, idx| persistent.named_groups.lineage.get(idx),
+			|value| &value.name,
+			|_| None,
+			lineage,
+			|persistent, idx| {
+				persistent.named_groups.lineage.remove(idx);
+			},
+		));
 	}
 	for idx in 0..state.persistent().named_groups.upbringing.len() {
-		entries.push(html! { <UpbringingState {idx} /> });
+		entries.push(bundle_state::<Upbringing>(
+			&state,
+			idx,
+			"Upbringing",
+			&requirements,
+			|persistent, idx| persistent.named_groups.upbringing.get(idx),
+			|value| &value.name,
+			|_| None,
+			upbringing,
+			|persistent, idx| {
+				persistent.named_groups.upbringing.remove(idx);
+			},
+		));
+	}
+	for idx in 0..state.persistent().named_groups.background.len() {
+		entries.push(bundle_state::<Background>(
+			&state,
+			idx,
+			"Background",
+			&requirements,
+			|persistent, idx| persistent.named_groups.background.get(idx),
+			|value| &value.name,
+			|_| None,
+			background,
+			|persistent, idx| {
+				persistent.named_groups.background.remove(idx);
+			},
+		));
 	}
 
 	if entries.is_empty() {
@@ -72,80 +162,113 @@ fn CharacterContent() -> Html {
 }
 
 #[derive(Clone, PartialEq, Properties)]
-struct StateProps {
-	idx: usize,
-}
-#[function_component]
-fn LineageState(StateProps { idx }: &StateProps) -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
-	let Some(value) = state.persistent().named_groups.lineage.get(*idx) else { return html! {}; };
-	html! {
-		<ContentItem
-			//parent_collapse={"#selected-content"}
-			id_prefix={format!("item{}", *idx)}
-			name={format!("Lineage: {}", value.name)}
-			kind={ContentItemKind::Remove}
-			on_click={Callback::from({
-				let state = state.clone();
-				let idx = *idx;
-				move |_| {
-					state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
-						persistent.named_groups.lineage.remove(idx);
-						Some(ActionEffect::Recompile) // TODO: Only do this when returning to sheet view
-					}));
-				}
-			})}
-		>
-			{lineage(value, true)}
-		</ContentItem>
-	}
-}
-#[function_component]
-fn UpbringingState(StateProps { idx }: &StateProps) -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
-	let Some(value) = state.persistent().named_groups.upbringing.get(*idx) else { return html! {}; };
-	html! {
-		<ContentItem
-			//parent_collapse={"#selected-content"}
-			id_prefix={format!("item{}", *idx)}
-			name={format!("Upbringing: {}", value.name)}
-			kind={ContentItemKind::Remove}
-			on_click={Callback::from({
-				let state = state.clone();
-				let idx = *idx;
-				move |_| {
-					state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
-						persistent.named_groups.upbringing.remove(idx);
-						Some(ActionEffect::Recompile) // TODO: Only do this when returning to sheet view
-					}));
-				}
-			})}
-		>
-		{upbringing(value, true)}
-		</ContentItem>
-	}
+struct CategoryBrowserProps {
+	use_lineages: bool,
 }
 
 #[function_component]
-fn CategoryBrowser() -> Html {
+fn CategoryBrowser(CategoryBrowserProps { use_lineages }: &CategoryBrowserProps) -> Html {
+	let system = use_context::<UseStateHandle<DnD5e>>().unwrap();
+	let state = use_context::<SharedCharacter>().unwrap();
 	let selected_category = use_state(|| None::<AttrValue>);
 	let content_list = match &*selected_category {
 		None => html! {},
 		Some(category) => html! {
 			<div class="accordion my-2" id="all-entries">
 				{match category.as_str() {
-					"Lineage" => html! {<ContentListLineage />},
-					"Upbringing" => html! {<ContentListUpbringing />},
-					"Background" => html! {},
+					"Race" => {
+						content_list::<Race>(
+							&system,
+							&state,
+							|system| &system.races,
+							|value| &value.source_id,
+							|value| &value.name,
+							|_| 1,
+							|_| None,
+							race,
+							|persistent| &persistent.named_groups.race,
+							|persistent, item| persistent.named_groups.race.push(item),
+						)
+					}
+					"Race Variant" => {
+						content_list::<RaceVariant>(
+							&system,
+							&state,
+							|system| &system.race_variants,
+							|value| &value.source_id,
+							|value| &value.name,
+							|_| 1,
+							|value| Some(&value.requirements),
+							race_variant,
+							|persistent| &persistent.named_groups.race_variant,
+							|persistent, item| persistent.named_groups.race_variant.push(item),
+						)
+					}
+					"Lineage" => {
+						content_list::<Lineage>(
+							&system,
+							&state,
+							|system| &system.lineages,
+							|value| &value.source_id,
+							|value| &value.name,
+							|value| value.limit as usize,
+							|_| None,
+							lineage,
+							|persistent| &persistent.named_groups.lineage,
+							|persistent, item| persistent.named_groups.lineage.push(item),
+						)
+					}
+					"Upbringing" => {
+						content_list::<Upbringing>(
+							&system,
+							&state,
+							|system| &system.upbringings,
+							|value| &value.source_id,
+							|value| &value.name,
+							|_| 1,
+							|_| None,
+							upbringing,
+							|persistent| &persistent.named_groups.upbringing,
+							|persistent, item| persistent.named_groups.upbringing.push(item),
+						)
+					}
+					"Background" => {
+						content_list::<Background>(
+							&system,
+							&state,
+							|system| &system.backgrounds,
+							|value| &value.source_id,
+							|value| &value.name,
+							|_| 1,
+							|_| None,
+							background,
+							|persistent| &persistent.named_groups.background,
+							|persistent, item| persistent.named_groups.background.push(item),
+						)
+					}
 					_ => html! {},
 				}}
 			</div>
 		},
 	};
+
+	let mut options = vec!["Background"];
+	match *use_lineages {
+		true => {
+			options.push("Lineage");
+			options.push("Upbringing");
+		}
+		false => {
+			options.push("Race");
+			options.push("Race Variant");
+		}
+	}
+	options.sort();
+
 	html! {<>
 		<CategoryPicker
 			value={(*selected_category).clone()}
-			options={vec!["Lineage".into(), "Upbringing".into(), "Background".into()]}
+			options={options}
 			on_change={Callback::from({
 				let selected_category = selected_category.clone();
 				move |value| selected_category.set(value)
@@ -157,7 +280,7 @@ fn CategoryBrowser() -> Html {
 
 #[derive(Clone, PartialEq, Properties)]
 struct CategoryPickerProps {
-	options: Vec<AttrValue>,
+	options: Vec<&'static str>,
 	value: Option<AttrValue>,
 	on_change: Callback<Option<AttrValue>>,
 }
@@ -200,7 +323,7 @@ fn CategoryPicker(
 				{options.iter().map(|item| html! {
 					<option
 						value={item.clone()}
-						selected={value.as_ref() == Some(item)}
+						selected={value.as_ref().map(AttrValue::as_str) == Some(*item)}
 					>{item.clone()}</option>
 				}).collect::<Vec<_>>()}
 			</select>
@@ -209,98 +332,152 @@ fn CategoryPicker(
 	}
 }
 
-#[function_component]
-fn ContentListLineage() -> Html {
-	let system = use_context::<UseStateHandle<DnD5e>>().unwrap();
-	let state = use_context::<SharedCharacter>().unwrap();
-
-	let on_select = Callback::from({
-		let system = system.clone();
-		let state = state.clone();
-		move |source_id| {
-			let Some(source) = system.lineages.get(&source_id) else { return; };
-			let new_value = source.clone();
-			state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
-				persistent.named_groups.lineage.push(new_value);
-				Some(ActionEffect::Recompile) // TODO: Only do this when returning to sheet view
-			}));
-		}
-	});
-
-	let ordered_items = {
-		let mut vec = system.lineages.iter().collect::<Vec<_>>();
-		vec.sort_by(|(_, a), (_, b)| a.name.partial_cmp(&b.name).unwrap());
-		vec
+fn bundle_state<T>(
+	state: &SharedCharacter,
+	idx: usize,
+	category: &'static str,
+	dependencies: &MultiMap<(String, String), (String, String)>,
+	get_item: impl Fn(&Persistent, usize) -> Option<&T> + 'static,
+	item_name: impl Fn(&T) -> &String + 'static,
+	item_reqs: impl Fn(&T) -> Option<&Vec<(String, String)>> + 'static,
+	item_body: impl Fn(&T, bool) -> Html + 'static,
+	remove_item: impl Fn(&mut Persistent, usize) + 'static,
+) -> Html {
+	let Some(value) = get_item(state.persistent(), idx) else { return html! {}; };
+	let value_name = item_name(value);
+	let dependents = match dependencies.get_vec(&(category.to_owned(), value_name.clone())) {
+		None => None,
+		Some(reqs) => Some(
+			reqs.iter()
+				.map(|(category, name)| format!("{category}: {name}"))
+				.collect::<Vec<_>>()
+				.join(", "),
+		),
 	};
 
-	html! {<>
-		{ordered_items.into_iter().map(move |(source_id, value)| {
-			let amount_selected = state.persistent().named_groups.lineage.iter().filter(|selected| {
-				&selected.source_id == source_id
-			}).count();
-			html! {
-				<ContentItem
-					parent_collapse={"#all-entries"}
-					name={value.name.clone()}
-					kind={ContentItemKind::Add {
-						amount_selected,
-						selection_limit: value.limit as usize,
-					}}
-					on_click={on_select.reform({
-						let source_id = source_id.clone();
-						move |_| source_id.clone()
-					})}
-				>
-					{lineage(value, false)}
-				</ContentItem>
-			}
-		}).collect::<Vec<_>>()}
-	</>}
+	let mut title = value_name.clone();
+	if let Some(reqs) = item_reqs(value) {
+		let reqs_as_str = reqs
+			.iter()
+			.map(|(category, name)| format!("{category}: {name}"))
+			.collect::<Vec<_>>()
+			.join(", ");
+		title = format!("{title} (requires: [{}])", reqs_as_str);
+	}
+	html! {
+		<ContentItem
+			id_prefix={format!("item{}", idx)}
+			name={format!("{}: {}", category, title)}
+			kind={ContentItemKind::Remove {
+				disable_selection: dependents.map(|desc| format!("Cannot remove, depended on by: {desc}").into()),
+			}}
+			on_click={Callback::from({
+				let state = state.clone();
+				let remove_item = std::sync::Arc::new(remove_item);
+				move |_| {
+					let remove_item = remove_item.clone();
+					state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
+						(*remove_item)(persistent, idx);
+						Some(ActionEffect::Recompile) // TODO: Only do this when returning to sheet view
+					}));
+				}
+			})}
+		>
+			{item_body(value, true)}
+		</ContentItem>
+	}
 }
 
-#[function_component]
-fn ContentListUpbringing() -> Html {
-	let system = use_context::<UseStateHandle<DnD5e>>().unwrap();
-	let state = use_context::<SharedCharacter>().unwrap();
-
+fn content_list<T>(
+	system: &UseStateHandle<DnD5e>,
+	state: &SharedCharacter,
+	get_items: impl Fn(&DnD5e) -> &HashMap<SourceId, T> + 'static,
+	get_item_id: impl Fn(&T) -> &SourceId + 'static,
+	get_item_name: impl Fn(&T) -> &String + 'static,
+	get_item_limit: impl Fn(&T) -> usize + 'static,
+	item_reqs: impl Fn(&T) -> Option<&Vec<(String, String)>> + 'static,
+	item_body: impl Fn(&T, bool) -> Html + 'static,
+	get_state_items: impl Fn(&Persistent) -> &Vec<T> + 'static,
+	add_item: impl Fn(&mut Persistent, T) + 'static,
+) -> Html
+where
+	T: 'static + Clone,
+{
+	let get_items = std::sync::Arc::new(get_items);
 	let on_select = Callback::from({
 		let system = system.clone();
 		let state = state.clone();
+		let get_items = get_items.clone();
+		let add_item = std::sync::Arc::new(add_item);
 		move |source_id| {
-			let Some(source) = system.upbringings.get(&source_id) else { return; };
+			let Some(source) = (*get_items)(&system).get(&source_id) else { return; };
 			let new_value = source.clone();
+			let add_item = add_item.clone();
 			state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
-				persistent.named_groups.upbringing.push(new_value);
+				(*add_item)(persistent, new_value);
 				Some(ActionEffect::Recompile) // TODO: Only do this when returning to sheet view
 			}));
 		}
 	});
 
 	let ordered_items = {
-		let mut vec = system.upbringings.iter().collect::<Vec<_>>();
-		vec.sort_by(|(_, a), (_, b)| a.name.partial_cmp(&b.name).unwrap());
+		let mut vec = get_items(&system).iter().collect::<Vec<_>>();
+		vec.sort_by(|(_, a), (_, b)| get_item_name(a).partial_cmp(get_item_name(b)).unwrap());
 		vec
 	};
 
+	/* TODO: Disabled content item if requirements are not met
+	{
+		if let Some(variant) = bundles.race_variant.get(idx) {
+			for (category, name) in &variant.requirements {
+
+			}
+		}
+	}
+	*/
+
 	html! {<>
 		{ordered_items.into_iter().map(move |(source_id, value)| {
-			let amount_selected = state.persistent().named_groups.upbringing.iter().filter(|selected| {
-				&selected.source_id == source_id
+			let amount_selected = get_state_items(state.persistent()).iter().filter(|selected| {
+				get_item_id(selected) == source_id
 			}).count();
+			let mut title = get_item_name(value).clone();
+			let mut disable_selection = None;
+			if let Some(reqs) = item_reqs(value) {
+				let reqs_as_str = reqs.iter().map(|(category, name)| format!("{category}: {name}")).collect::<Vec<_>>().join(", ");
+				title = format!("{title} (requires: [{}])", reqs_as_str);
+
+				for (category, name) in reqs {
+					let bundles = &state.persistent().named_groups;
+					let names = match category.as_str() {
+						"Race" => bundles.race.iter().map(|value| &value.name).collect::<Vec<_>>(),
+						"RaceVariant" => bundles.race_variant.iter().map(|value| &value.name).collect::<Vec<_>>(),
+						"Lineage" => bundles.lineage.iter().map(|value| &value.name).collect::<Vec<_>>(),
+						"Upbringing" => bundles.upbringing.iter().map(|value| &value.name).collect::<Vec<_>>(),
+						"Background" => bundles.background.iter().map(|value| &value.name).collect::<Vec<_>>(),
+						_ => Vec::new(),
+					};
+					if names.into_iter().filter(|entry| *entry == name).count() == 0 {
+						disable_selection = Some(format!("Requires {category}: {name}").into());
+						break;
+					}
+				}
+			}
 			html! {
 				<ContentItem
 					parent_collapse={"#all-entries"}
-					name={value.name.clone()}
+					name={title}
 					kind={ContentItemKind::Add {
 						amount_selected,
-						selection_limit: 1,
+						selection_limit: get_item_limit(value),
+						disable_selection,
 					}}
 					on_click={on_select.reform({
 						let source_id = source_id.clone();
 						move |_| source_id.clone()
 					})}
 				>
-					{upbringing(value, false)}
+					{item_body(value, false)}
 				</ContentItem>
 			}
 		}).collect::<Vec<_>>()}
@@ -323,8 +500,11 @@ enum ContentItemKind {
 	Add {
 		amount_selected: usize,
 		selection_limit: usize,
+		disable_selection: Option<AttrValue>,
 	},
-	Remove,
+	Remove {
+		disable_selection: Option<AttrValue>,
+	},
 }
 #[function_component]
 fn ContentItem(
@@ -339,18 +519,19 @@ fn ContentItem(
 ) -> Html {
 	use convert_case::{Case, Casing};
 
+	let disabled_btn = |text: Html| {
+		html! {
+			<button type="button" class="btn btn-outline-secondary my-1 w-100" disabled={true}>
+				{text}
+			</button>
+		}
+	};
 	let slot_buttons = match kind {
 		ContentItemKind::Add {
 			amount_selected,
 			selection_limit,
+			disable_selection,
 		} => {
-			let disabled_btn = |text: Html| {
-				html! {
-					<button type="button" class="btn btn-outline-secondary my-1 w-100" disabled={true}>
-						{text}
-					</button>
-				}
-			};
 			let select_btn = |text: Html| {
 				html! {
 					<button type="button" class="btn btn-outline-success my-1 w-100" onclick={on_click.reform(|_| ())}>
@@ -359,27 +540,29 @@ fn ContentItem(
 				}
 			};
 
-			match (*amount_selected, *selection_limit) {
+			match (disable_selection, *amount_selected, *selection_limit) {
+				(Some(reason), _, _) => disabled_btn(html! {{reason.clone()}}),
 				// Slot is empty, and this option is not-yet used
-				(0, _) => select_btn(html! {{"Add"}}),
+				(_, 0, _) => select_btn(html! {{"Add"}}),
 				// Slot is empty, this option is in another slot, but it can be used again
-				(count, limit) if count < limit => {
+				(_, count, limit) if count < limit => {
 					select_btn(html! {{format!("Add Again ({} / {})", count, limit)}})
 				}
 				// option already selected for another slot, and cannot be selected again
-				(count, limit) if count >= limit => {
+				(_, count, limit) if count >= limit => {
 					disabled_btn(html! {{format!("Cannot Add Again ({} / {})", count, limit)}})
 				}
 				_ => html! {},
 			}
 		}
-		ContentItemKind::Remove => {
-			html! {
+		ContentItemKind::Remove { disable_selection } => match disable_selection {
+			Some(reason) => disabled_btn(html! {{reason.clone()}}),
+			None => html! {
 				<button type="button" class="btn btn-outline-danger my-1 w-100" onclick={on_click.reform(|_| ())}>
 					{"Remove"}
 				</button>
-			}
-		}
+			},
+		},
 	};
 
 	let id = format!(
@@ -407,6 +590,28 @@ fn ContentItem(
 	}
 }
 
+fn race(value: &Race, show_selectors: bool) -> Html {
+	html! {<>
+		<div class="text-block">
+			{value.description.clone()}
+		</div>
+		{mutator_list(&value.mutators)}
+		{show_selectors.then(|| selectors_in(&value.mutators)).unwrap_or_default()}
+		{value.features.iter().map(|f| feature(f.inner(), show_selectors)).collect::<Vec<_>>()}
+	</>}
+}
+
+fn race_variant(value: &RaceVariant, show_selectors: bool) -> Html {
+	html! {<>
+		<div class="text-block">
+			{value.description.clone()}
+		</div>
+		{mutator_list(&value.mutators)}
+		{show_selectors.then(|| selectors_in(&value.mutators)).unwrap_or_default()}
+		{value.features.iter().map(|f| feature(f.inner(), show_selectors)).collect::<Vec<_>>()}
+	</>}
+}
+
 fn lineage(value: &Lineage, show_selectors: bool) -> Html {
 	html! {<>
 		<div class="text-block">
@@ -419,6 +624,17 @@ fn lineage(value: &Lineage, show_selectors: bool) -> Html {
 }
 
 fn upbringing(value: &Upbringing, show_selectors: bool) -> Html {
+	html! {<>
+		<div class="text-block">
+			{value.description.clone()}
+		</div>
+		{mutator_list(&value.mutators)}
+		{show_selectors.then(|| selectors_in(&value.mutators)).unwrap_or_default()}
+		{value.features.iter().map(|f| feature(f.inner(), show_selectors)).collect::<Vec<_>>()}
+	</>}
+}
+
+fn background(value: &Background, show_selectors: bool) -> Html {
 	html! {<>
 		<div class="text-block">
 			{value.description.clone()}

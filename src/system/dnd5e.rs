@@ -161,8 +161,11 @@ pub trait SystemComponent {
 
 pub fn component_registry() -> ComponentRegistry<DnD5e> {
 	let mut registry = ComponentRegistry::default();
-	registry.register::<data::Lineage>();
-	registry.register::<data::Upbringing>();
+	registry.register::<data::bundle::Race>();
+	registry.register::<data::bundle::RaceVariant>();
+	registry.register::<data::bundle::Lineage>();
+	registry.register::<data::bundle::Upbringing>();
+	registry.register::<data::bundle::Background>();
 	registry.register::<data::item::Item>();
 	registry
 }
@@ -170,6 +173,7 @@ pub fn component_registry() -> ComponentRegistry<DnD5e> {
 pub fn node_registry() -> NodeRegistry {
 	use data::{evaluator::*, mutator::*};
 	let mut registry = NodeRegistry::default();
+	registry.register_mutator::<AddAbilityScore>();
 	registry.register_mutator::<AddDefense>();
 	registry.register_mutator::<AddLifeExpectancy>();
 	registry.register_mutator::<AddMaxHeight>();
@@ -189,8 +193,12 @@ pub fn node_registry() -> NodeRegistry {
 
 #[derive(Clone, PartialEq, Default)]
 pub struct DnD5e {
-	pub lineages: HashMap<SourceId, data::Lineage>,
-	pub upbringings: HashMap<SourceId, data::Upbringing>,
+	pub races: HashMap<SourceId, data::bundle::Race>,
+	pub race_variants: HashMap<SourceId, data::bundle::RaceVariant>,
+	pub lineages: HashMap<SourceId, data::bundle::Lineage>,
+	pub upbringings: HashMap<SourceId, data::bundle::Upbringing>,
+	pub backgrounds: HashMap<SourceId, data::bundle::Background>,
+
 	pub items: HashMap<SourceId, data::item::Item>,
 }
 

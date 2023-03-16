@@ -1,4 +1,3 @@
-use super::{Lineage, Upbringing};
 use std::path::PathBuf;
 
 mod persistent;
@@ -44,10 +43,4 @@ where
 	pub fn sources(&self) -> &Vec<(PathBuf, T)> {
 		&self.sources
 	}
-}
-
-#[derive(Clone, PartialEq)]
-pub struct Culture {
-	pub lineages: [Lineage; 2],
-	pub upbringing: Upbringing,
 }

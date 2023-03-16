@@ -1,12 +1,24 @@
+use std::str::FromStr;
+
 use crate::{
-	system::dnd5e::data::{character::Character, Ability},
+	kdl_ext::{DocumentQueryExt, NodeQueryExt, ValueIdx},
+	system::{
+		core::NodeRegistry,
+		dnd5e::{
+			data::{character::Character, Ability},
+			FromKDL,
+		},
+	},
 	utility::{Mutator, Selector},
+	GeneralError,
 };
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AddAbilityScore {
 	pub ability: Selector<Ability>,
 	pub value: i32,
+	// TODO: This is unimplemented, the bonus/value should not be applied if the result will be more than this score.
+	pub max_total_score: Option<u32>,
 }
 
 crate::impl_trait_eq!(AddAbilityScore);
@@ -25,6 +37,35 @@ impl Mutator for AddAbilityScore {
 				.ability_scores_mut()
 				.push_bonus(ability, self.value, parent.to_owned());
 		}
+	}
+}
+
+impl FromKDL for AddAbilityScore {
+	fn from_kdl(
+		node: &kdl::KdlNode,
+		_value_idx: &mut ValueIdx,
+		_node_reg: &NodeRegistry,
+	) -> anyhow::Result<Self> {
+		let ability = {
+			let mut value_idx = ValueIdx::default();
+			let node = node.query_req("scope() > ability")?;
+			let entry_idx = value_idx.next();
+			let entry = node.entry_req(entry_idx)?;
+			Selector::from_kdl(node, entry, &mut value_idx, |kdl| {
+				Ok(Ability::from_str(kdl.as_string().ok_or(GeneralError(
+					format!("Ability selector value {kdl:?} must be a string."),
+				))?)?)
+			})?
+		};
+		let bonus = node.query_i64("scope() > bonus", 0)? as i32;
+		let max_total_score = node
+			.query_i64_opt("scope() > max_total_score", 0)?
+			.map(|v| v as u32);
+		Ok(Self {
+			ability,
+			value: bonus,
+			max_total_score,
+		})
 	}
 }
 
@@ -48,6 +89,7 @@ mod test {
 				mutators: vec![AddAbilityScore {
 					ability: Selector::Specific(Ability::Strength),
 					value: 1,
+					max_total_score: None,
 				}
 				.into()],
 				..Default::default()
@@ -74,6 +116,7 @@ mod test {
 						id: Default::default(),
 					},
 					value: 5,
+					max_total_score: None,
 				}
 				.into()],
 				..Default::default()
@@ -107,6 +150,7 @@ mod test {
 				mutators: vec![AddAbilityScore {
 					ability: Selector::Specific(Ability::Intelligence),
 					value: 3,
+					max_total_score: None,
 				}
 				.into()],
 				..Default::default()

@@ -18,19 +18,14 @@ pub use rest::*;
 pub mod roll;
 mod skill;
 pub use skill::*;
-pub mod bounded;
-
 mod armor_class;
+pub mod bounded;
 pub use armor_class::*;
-mod background;
-pub use background::*;
 mod class;
 pub use class::*;
 mod description;
 pub use description::*;
-mod lineage;
-pub use lineage::*;
 mod proficiencies;
 pub use proficiencies::*;
-mod upbringing;
-pub use upbringing::*;
+
+pub mod bundle;

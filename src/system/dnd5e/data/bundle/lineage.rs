@@ -1,10 +1,9 @@
-use super::Feature;
 use crate::{
 	kdl_ext::{DocumentQueryExt, NodeQueryExt, ValueIdx},
 	system::{
-		core::{NodeRegistry, SourceId},
+		core::SourceId,
 		dnd5e::{
-			data::{character::Character, BoxedFeature},
+			data::{character::Character, BoxedFeature, Feature},
 			BoxedMutator, DnD5e, FromKDL, SystemComponent,
 		},
 	},
@@ -13,15 +12,16 @@ use crate::{
 use std::path::Path;
 
 #[derive(Default, Clone, PartialEq, Debug)]
-pub struct Upbringing {
+pub struct Lineage {
 	pub source_id: SourceId,
 	pub name: String,
 	pub description: String,
+	pub limit: u32,
 	pub mutators: Vec<BoxedMutator>,
 	pub features: Vec<BoxedFeature>,
 }
 
-impl MutatorGroup for Upbringing {
+impl MutatorGroup for Lineage {
 	type Target = Character;
 
 	fn set_data_path(&self, parent: &std::path::Path) {
@@ -34,7 +34,7 @@ impl MutatorGroup for Upbringing {
 		}
 	}
 
-	fn apply_mutators(&self, stats: &mut Character, parent: &Path) {
+	fn apply_mutators(&self, stats: &mut Self::Target, parent: &Path) {
 		let path_to_self = parent.join(&self.name);
 		for mutator in &self.mutators {
 			stats.apply(mutator, &path_to_self);
@@ -45,28 +45,30 @@ impl MutatorGroup for Upbringing {
 	}
 }
 
-crate::impl_kdl_node!(Upbringing, "upbringing");
-
-impl SystemComponent for Upbringing {
+impl SystemComponent for Lineage {
 	type System = DnD5e;
 
 	fn add_component(mut self, source_id: SourceId, system: &mut Self::System) {
 		self.source_id = source_id.clone();
-		system.upbringings.insert(source_id, self);
+		system.lineages.insert(source_id, self);
 	}
 }
 
-impl FromKDL for Upbringing {
+crate::impl_kdl_node!(Lineage, "lineage");
+
+impl FromKDL for Lineage {
 	fn from_kdl(
 		node: &kdl::KdlNode,
 		_value_idx: &mut ValueIdx,
-		node_reg: &NodeRegistry,
+		node_reg: &crate::system::core::NodeRegistry,
 	) -> anyhow::Result<Self> {
 		let name = node.get_str("name")?.to_owned();
 		let description = node
 			.query_str_opt("scope() > description", 0)?
 			.unwrap_or_default()
 			.to_owned();
+		let limit = node.get_i64_opt("limit")?.unwrap_or(1) as u32;
+
 		let mut mutators = Vec::new();
 		for entry_node in node.query_all("scope() > mutator")? {
 			mutators.push(node_reg.parse_mutator(entry_node)?);
@@ -78,10 +80,11 @@ impl FromKDL for Upbringing {
 				.push(Feature::from_kdl(entry_node, &mut ValueIdx::default(), node_reg)?.into());
 		}
 
-		Ok(Upbringing {
+		Ok(Lineage {
 			source_id: SourceId::default(),
 			name,
 			description,
+			limit,
 			mutators,
 			features,
 		})
