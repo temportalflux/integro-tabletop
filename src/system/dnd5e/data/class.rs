@@ -79,6 +79,8 @@ impl<'a> LevelWithIndex<'a> {
 impl<'a> MutatorGroup for LevelWithIndex<'a> {
 	type Target = Character;
 
+	// TODO: Selector meta for integer field
+
 	fn set_data_path(&self, parent: &Path) {
 		let path_to_self = parent.join(self.level_name());
 		self.1.hit_points.set_data_path(&path_to_self);

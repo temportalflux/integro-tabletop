@@ -22,6 +22,19 @@ crate::impl_kdl_node!(Sense, "sense");
 impl Mutator for Sense {
 	type Target = Character;
 
+	fn description(&self) -> Option<String> {
+		let name = &self.name;
+		Some(match &self.argument {
+			BoundValue::Minimum(value) => format!("You have {name} for at least {value} feet."),
+			BoundValue::Additive(value) => format!(
+				"If you have {name} from another source, your {name} increases by {value} feet."
+			),
+			BoundValue::Subtract(value) => {
+				format!("If you have {name}, it decreases by {value} feet.")
+			}
+		})
+	}
+
 	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
 		stats
 			.senses_mut()

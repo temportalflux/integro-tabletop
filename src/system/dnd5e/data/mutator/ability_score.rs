@@ -9,7 +9,7 @@ use crate::{
 			FromKDL,
 		},
 	},
-	utility::{Mutator, Selector},
+	utility::{Mutator, Selector, SelectorMeta, SelectorMetaVec},
 	GeneralError,
 };
 
@@ -37,6 +37,12 @@ impl Mutator for AddAbilityScore {
 				.ability_scores_mut()
 				.push_bonus(ability, self.value, parent.to_owned());
 		}
+	}
+
+	fn selector_meta(&self) -> Option<Vec<SelectorMeta>> {
+		SelectorMetaVec::default()
+			.with_enum("Ability", &self.ability)
+			.to_vec()
 	}
 }
 

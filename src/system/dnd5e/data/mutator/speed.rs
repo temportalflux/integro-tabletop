@@ -22,6 +22,18 @@ crate::impl_kdl_node!(Speed, "speed");
 impl Mutator for Speed {
 	type Target = Character;
 
+	fn description(&self) -> Option<String> {
+		Some(format!(
+			"Your {} speed {}.",
+			self.name,
+			match &self.argument {
+				BoundValue::Minimum(value) => format!("is at least {value} feet"),
+				BoundValue::Additive(value) => format!("increases by {value} feet"),
+				BoundValue::Subtract(value) => format!("decreases by {value} feet"),
+			}
+		))
+	}
+
 	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
 		stats
 			.speeds_mut()
