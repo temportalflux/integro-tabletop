@@ -74,120 +74,222 @@ impl FromKDL for AddAbilityScore {
 
 #[cfg(test)]
 mod test {
-	use super::AddAbilityScore;
-	use crate::{
-		path_map::PathMap,
-		system::dnd5e::data::{
-			character::{Character, Persistent},
-			Ability, Feature, Score,
-		},
-		utility::Selector,
-	};
+	use super::*;
 
-	#[test]
-	fn specific_ability() {
-		let character = Character::from(Persistent {
-			feats: vec![Feature {
-				name: "AddAbilityScore".into(),
-				mutators: vec![AddAbilityScore {
+	mod from_kdl {
+		use super::*;
+		use crate::system::dnd5e::BoxedMutator;
+
+		fn from_doc(doc: &str) -> anyhow::Result<BoxedMutator> {
+			NodeRegistry::defaultmut_parse_kdl::<AddAbilityScore>(doc)
+		}
+
+		#[test]
+		fn specific() -> anyhow::Result<()> {
+			let doc = "mutator \"add_ability_score\" {
+				ability \"Specific\" \"Dex\"
+				bonus 2
+			}";
+			let expected = AddAbilityScore {
+				ability: Selector::Specific(Ability::Dexterity),
+				value: 2,
+				max_total_score: None,
+			};
+			assert_eq!(from_doc(doc)?, expected.into());
+			Ok(())
+		}
+
+		#[test]
+		fn any() -> anyhow::Result<()> {
+			let doc = "mutator \"add_ability_score\" {
+				ability \"Any\" id=\"skillA\"
+				bonus 1
+			}";
+			let expected = AddAbilityScore {
+				ability: Selector::Any {
+					id: Some("skillA").into(),
+					cannot_match: Default::default(),
+				},
+				value: 1,
+				max_total_score: None,
+			};
+			assert_eq!(from_doc(doc)?, expected.into());
+			Ok(())
+		}
+
+		#[test]
+		fn cannot_match() -> anyhow::Result<()> {
+			let doc = "mutator \"add_ability_score\" {
+				ability \"Any\" id=\"skillA\" {
+					cannot-match \"skillB\"
+				}
+				bonus 3
+			}";
+			let expected = AddAbilityScore {
+				ability: Selector::Any {
+					id: Some("skillA").into(),
+					cannot_match: vec!["skillB".into()],
+				},
+				value: 3,
+				max_total_score: None,
+			};
+			assert_eq!(from_doc(doc)?, expected.into());
+			Ok(())
+		}
+
+		#[test]
+		fn max_total_score() -> anyhow::Result<()> {
+			let doc = "mutator \"add_ability_score\" {
+				ability \"Specific\" \"Con\"
+				bonus 3
+				max_total_score 12
+			}";
+			let expected = AddAbilityScore {
+				ability: Selector::Specific(Ability::Constitution),
+				value: 3,
+				max_total_score: Some(12),
+			};
+			assert_eq!(from_doc(doc)?, expected.into());
+			Ok(())
+		}
+	}
+
+	mod mutate {
+		use super::*;
+		use crate::{
+			path_map::PathMap,
+			system::dnd5e::data::{
+				character::{Character, Persistent},
+				Ability, Feature, Score,
+			},
+			utility::Selector,
+		};
+
+		fn character(mutators: Vec<AddAbilityScore>, selections: PathMap<String>) -> Character {
+			let mut persistent = Persistent::default();
+			persistent.feats.push(
+				Feature {
+					name: "AddAbilityScore".into(),
+					mutators: mutators.into_iter().map(|m| m.into()).collect(),
+					..Default::default()
+				}
+				.into(),
+			);
+			persistent.selected_values = selections;
+			Character::from(persistent)
+		}
+
+		#[test]
+		fn specific_ability() {
+			let character = character(
+				vec![AddAbilityScore {
 					ability: Selector::Specific(Ability::Strength),
 					value: 1,
 					max_total_score: None,
-				}
-				.into()],
-				..Default::default()
-			}
-			.into()],
-			..Default::default()
-		});
-		assert_eq!(
-			character.ability_score(Ability::Strength),
-			(
-				Score(11),
-				vec![("".into(), 10), ("AddAbilityScore".into(), 1)]
-			)
-		);
-	}
+				}],
+				Default::default(),
+			);
+			assert_eq!(
+				character.ability_score(Ability::Strength),
+				(
+					Score(11),
+					vec![("".into(), 10), ("AddAbilityScore".into(), 1)]
+				)
+			);
+		}
 
-	#[test]
-	fn selected_ability() {
-		let character = Character::from(Persistent {
-			feats: vec![Feature {
-				name: "AddAbilityScore".into(),
-				mutators: vec![AddAbilityScore {
+		#[test]
+		fn selected_ability() {
+			let character = character(
+				vec![AddAbilityScore {
 					ability: Selector::Any {
 						id: Default::default(),
 						cannot_match: Default::default(),
 					},
 					value: 5,
 					max_total_score: None,
-				}
-				.into()],
-				..Default::default()
-			}
-			.into()],
-			selected_values: PathMap::from([("AddAbilityScore", "dexterity".into())]),
-			..Default::default()
-		});
-		assert_eq!(
-			character.ability_score(Ability::Dexterity),
-			(
-				Score(15),
-				vec![("".into(), 10), ("AddAbilityScore".into(), 5)]
-			)
-		);
-	}
+				}],
+				[("AddAbilityScore", "dexterity".into())].into(),
+			);
+			assert_eq!(
+				character.ability_score(Ability::Dexterity),
+				(
+					Score(15),
+					vec![("".into(), 10), ("AddAbilityScore".into(), 5)]
+				)
+			);
+		}
 
-	#[test]
-	fn specific_ability_with_base() {
-		let character = Character::from(Persistent {
-			ability_scores: enum_map::enum_map! {
-				Ability::Strength => Score(10),
-				Ability::Dexterity => Score(15),
-				Ability::Constitution => Score(7),
-				Ability::Intelligence => Score(11),
-				Ability::Wisdom => Score(12),
-				Ability::Charisma => Score(18),
-			},
-			feats: vec![Feature {
-				name: "AddAbilityScore".into(),
-				mutators: vec![AddAbilityScore {
-					ability: Selector::Specific(Ability::Intelligence),
-					value: 3,
-					max_total_score: None,
+		#[test]
+		fn specific_ability_with_base() {
+			let character = Character::from(Persistent {
+				ability_scores: enum_map::enum_map! {
+					Ability::Strength => Score(10),
+					Ability::Dexterity => Score(15),
+					Ability::Constitution => Score(7),
+					Ability::Intelligence => Score(11),
+					Ability::Wisdom => Score(12),
+					Ability::Charisma => Score(18),
+				},
+				feats: vec![Feature {
+					name: "AddAbilityScore".into(),
+					mutators: vec![AddAbilityScore {
+						ability: Selector::Specific(Ability::Intelligence),
+						value: 3,
+						max_total_score: None,
+					}
+					.into()],
+					..Default::default()
 				}
 				.into()],
 				..Default::default()
-			}
-			.into()],
-			..Default::default()
-		});
-		assert_eq!(
-			character.ability_score(Ability::Strength),
-			(Score(10), vec![("".into(), 10)])
-		);
-		assert_eq!(
-			character.ability_score(Ability::Dexterity),
-			(Score(15), vec![("".into(), 15)])
-		);
-		assert_eq!(
-			character.ability_score(Ability::Constitution),
-			(Score(7), vec![("".into(), 7)])
-		);
-		assert_eq!(
-			character.ability_score(Ability::Intelligence),
-			(
-				Score(14),
-				vec![("".into(), 11), ("AddAbilityScore".into(), 3)]
-			)
-		);
-		assert_eq!(
-			character.ability_score(Ability::Wisdom),
-			(Score(12), vec![("".into(), 12)])
-		);
-		assert_eq!(
-			character.ability_score(Ability::Charisma),
-			(Score(18), vec![("".into(), 18)])
-		);
+			});
+			assert_eq!(
+				character.ability_score(Ability::Strength),
+				(Score(10), vec![("".into(), 10)])
+			);
+			assert_eq!(
+				character.ability_score(Ability::Dexterity),
+				(Score(15), vec![("".into(), 15)])
+			);
+			assert_eq!(
+				character.ability_score(Ability::Constitution),
+				(Score(7), vec![("".into(), 7)])
+			);
+			assert_eq!(
+				character.ability_score(Ability::Intelligence),
+				(
+					Score(14),
+					vec![("".into(), 11), ("AddAbilityScore".into(), 3)]
+				)
+			);
+			assert_eq!(
+				character.ability_score(Ability::Wisdom),
+				(Score(12), vec![("".into(), 12)])
+			);
+			assert_eq!(
+				character.ability_score(Ability::Charisma),
+				(Score(18), vec![("".into(), 18)])
+			);
+		}
+
+		#[test]
+		fn max_total_score() {
+			let character = character(
+				vec![AddAbilityScore {
+					ability: Selector::Specific(Ability::Strength),
+					value: 5,
+					max_total_score: Some(13),
+				}],
+				Default::default(),
+			);
+			assert_eq!(
+				character.ability_score(Ability::Strength),
+				(
+					Score(10),
+					vec![("".into(), 10), ("AddAbilityScore".into(), 1)]
+				)
+			);
+		}
 	}
 }

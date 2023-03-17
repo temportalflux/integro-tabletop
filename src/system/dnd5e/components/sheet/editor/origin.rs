@@ -741,7 +741,10 @@ fn SelectorField(
 				{onchange}
 			/>}
 		}
-		SelectorOptions::AnyOf { options: valid_values, cannot_match } => {
+		SelectorOptions::AnyOf {
+			options: valid_values,
+			cannot_match,
+		} => {
 			let onchange = Callback::from({
 				let save_value = save_value.clone();
 				move |evt: web_sys::Event| {

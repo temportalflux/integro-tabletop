@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{NodeExt, ValueExt, ValueIdx, DocumentExt},
+	kdl_ext::{DocumentExt, NodeExt, ValueExt, ValueIdx},
 	GeneralError,
 };
 use anyhow::Context;
@@ -59,8 +59,14 @@ impl std::fmt::Debug for IdPath {
 #[derive(Clone, Debug, PartialEq)]
 pub enum Selector<T: ToString + FromStr> {
 	Specific(T),
-	AnyOf { id: IdPath, options: Vec<T> },
-	Any { id: IdPath, cannot_match: Vec<IdPath>, },
+	AnyOf {
+		id: IdPath,
+		options: Vec<T>,
+	},
+	Any {
+		id: IdPath,
+		cannot_match: Vec<IdPath>,
+	},
 }
 
 impl<T> Selector<T>
@@ -71,7 +77,10 @@ where
 		match self {
 			Self::Specific(_) => None,
 			Self::AnyOf { id, options: _ } => Some(id),
-			Self::Any { id, cannot_match: _ } => Some(id),
+			Self::Any {
+				id,
+				cannot_match: _,
+			} => Some(id),
 		}
 	}
 
@@ -79,7 +88,11 @@ where
 		if let Some(id_path) = self.id_path() {
 			id_path.set_path(parent);
 		}
-		if let Self::Any { id: _, cannot_match } = &self {
+		if let Self::Any {
+			id: _,
+			cannot_match,
+		} = &self
+		{
 			for id_path in cannot_match {
 				id_path.set_path(parent);
 			}
@@ -202,7 +215,10 @@ impl SelectorOptions {
 				options: options.clone(),
 				cannot_match: None,
 			}),
-			Selector::Any { id: _, cannot_match: _ } => Some(Self::Any),
+			Selector::Any {
+				id: _,
+				cannot_match: _,
+			} => Some(Self::Any),
 		}
 	}
 
@@ -226,9 +242,13 @@ impl SelectorOptions {
 					cannot_match: None,
 				})
 			}
-			Selector::Any { id: _, cannot_match } => {
+			Selector::Any {
+				id: _,
+				cannot_match,
+			} => {
 				let options = EnumSet::<T>::all().into_iter();
-				let cannot_match = (!cannot_match.is_empty()).then(|| cannot_match.iter().map(IdPath::as_path).collect());
+				let cannot_match = (!cannot_match.is_empty())
+					.then(|| cannot_match.iter().map(IdPath::as_path).collect());
 				Some(Self::AnyOf {
 					options: Self::iter_to_str(options),
 					cannot_match,
