@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{NodeQueryExt, ValueIdx},
+	kdl_ext::{NodeExt, ValueIdx},
 	system::{
 		core::NodeRegistry,
 		dnd5e::{
@@ -54,8 +54,8 @@ impl FromKDL for SetFlag {
 		value_idx: &mut ValueIdx,
 		_node_reg: &NodeRegistry,
 	) -> anyhow::Result<Self> {
-		let flag = Flag::from_str(node.get_str(value_idx.next())?)?;
-		let value = node.get_bool(value_idx.next())?;
+		let flag = Flag::from_str(node.get_str_req(value_idx.next())?)?;
+		let value = node.get_bool_req(value_idx.next())?;
 		Ok(Self { flag, value })
 	}
 }

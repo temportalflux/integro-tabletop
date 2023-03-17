@@ -5,7 +5,7 @@ use super::{
 	character::Character,
 };
 use crate::{
-	kdl_ext::{DocumentQueryExt, NodeQueryExt, ValueIdx},
+	kdl_ext::{DocumentExt, NodeExt, ValueIdx},
 	system::{
 		core::NodeRegistry,
 		dnd5e::{BoxedCriteria, BoxedMutator, FromKDL},
@@ -86,7 +86,7 @@ impl FromKDL for Feature {
 		_value_idx: &mut ValueIdx,
 		node_reg: &NodeRegistry,
 	) -> anyhow::Result<Self> {
-		let name = node.get_str("name")?.to_owned();
+		let name = node.get_str_req("name")?.to_owned();
 		let description = node
 			.query_str_opt("description", 0)?
 			.unwrap_or_default()

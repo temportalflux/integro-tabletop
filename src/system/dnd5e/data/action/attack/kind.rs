@@ -1,6 +1,6 @@
 use super::RangeKind;
 use crate::{
-	kdl_ext::{NodeQueryExt, ValueIdx},
+	kdl_ext::{NodeExt, ValueIdx},
 	system::{core::NodeRegistry, dnd5e::FromKDL},
 	GeneralError,
 };
@@ -39,13 +39,13 @@ impl FromKDL for AttackKindValue {
 		value_idx: &mut ValueIdx,
 		_node_reg: &NodeRegistry,
 	) -> anyhow::Result<Self> {
-		match node.get_str(value_idx.next())? {
+		match node.get_str_req(value_idx.next())? {
 			"Melee" => Ok(Self::Melee {
 				reach: node.get_i64_opt("reach")?.unwrap_or(5) as u32,
 			}),
 			"Ranged" => {
-				let short_dist = node.get_i64(value_idx.next())? as u32;
-				let long_dist = node.get_i64(value_idx.next())? as u32;
+				let short_dist = node.get_i64_req(value_idx.next())? as u32;
+				let long_dist = node.get_i64_req(value_idx.next())? as u32;
 				let kind = match node.get_str_opt("kind")? {
 					None => None,
 					Some(str) => Some(RangeKind::from_str(str)?),

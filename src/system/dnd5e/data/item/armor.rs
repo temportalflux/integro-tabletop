@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{DocumentQueryExt, NodeQueryExt, ValueIdx},
+	kdl_ext::{DocumentExt, NodeExt, ValueIdx},
 	system::dnd5e::{
 		data::{character::Character, mutator::ArmorStrengthRequirement, ArmorClassFormula},
 		FromKDL,
@@ -25,7 +25,7 @@ impl FromKDL for Armor {
 		value_idx: &mut ValueIdx,
 		node_reg: &crate::system::core::NodeRegistry,
 	) -> anyhow::Result<Self> {
-		let kind = Kind::from_str(node.get_str(value_idx.next())?)?;
+		let kind = Kind::from_str(node.get_str_req(value_idx.next())?)?;
 		let formula = node
 			.query("scope() > formula")?
 			.ok_or(GeneralError(format!(

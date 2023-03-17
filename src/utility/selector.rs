@@ -1,7 +1,8 @@
 use crate::{
-	kdl_ext::{NodeQueryExt, ValueIdx},
+	kdl_ext::{NodeExt, ValueExt, ValueIdx},
 	GeneralError,
 };
+use anyhow::Context;
 use derivative::Derivative;
 use enumset::{EnumSet, EnumSetType};
 use std::{
@@ -89,15 +90,15 @@ where
 		value_idx: &mut ValueIdx,
 		map_value: impl Fn(&kdl::KdlValue) -> anyhow::Result<T>,
 	) -> anyhow::Result<Self> {
-		let key = entry.value().as_string().ok_or(GeneralError(format!(
-			"Selector key must be a string, but {entry:?} of {node:?} is not."
-		)))?;
+		let key = entry
+			.as_str_req()
+			.context("Selector keys must be a string with the selector name")?;
 		match key {
 			"Specific" => {
 				let idx = value_idx.next();
-				let value = node.get(idx).ok_or(GeneralError(format!(
-					"Missing specific selector value at index {idx} of {node:?}"
-				)))?;
+				let value = node
+					.get(idx)
+					.ok_or(crate::kdl_ext::EntryMissing(node.clone(), idx.into()))?;
 				Ok(Self::Specific(map_value(value)?))
 			}
 			"AnyOf" => {

@@ -1,5 +1,9 @@
 use super::{Evaluator, GenericEvaluator};
-use crate::{kdl_ext::ValueIdx, system::dnd5e::data::character::Character, GeneralError};
+use crate::{
+	kdl_ext::{EntryExt, ValueExt, ValueIdx},
+	system::dnd5e::data::character::Character,
+};
+use anyhow::Context;
 use std::{collections::HashSet, fmt::Debug, ops::Deref};
 
 #[derive(Clone)]
@@ -86,25 +90,19 @@ where
 		entry: &kdl::KdlEntry,
 		value_idx: &mut ValueIdx,
 		node_reg: &crate::system::core::NodeRegistry,
-		map_value: impl Fn(&kdl::KdlValue) -> anyhow::Result<Option<V>>,
+		map_value: impl Fn(&kdl::KdlValue) -> anyhow::Result<V>,
 	) -> anyhow::Result<Self> {
-		match entry.ty().map(|id| id.value()) {
+		match entry.type_opt() {
 			Some("Evaluator") => {
-				let evaluator_name = entry.value().as_string().ok_or(GeneralError(format!(
-					"Evaluator-typed values must be associated with a string, {entry:?} is not."
-				)))?;
-				let factory = node_reg.get_evaluator_factory(evaluator_name)?;
+				let factory =
+					node_reg.get_evaluator_factory(entry.as_str_req().context(
+						"Evaluator values must be a string containing the evaluator id",
+					)?)?;
 				Ok(Self::Evaluated(
 					factory.from_kdl::<Character, V>(node, value_idx, node_reg)?,
 				))
 			}
-			_ => Ok(Self::Fixed(map_value(entry.value())?.ok_or(
-				GeneralError(format!(
-					"Failed to parse value from {:?}, expected {:?}",
-					entry.value(),
-					std::any::type_name::<V>()
-				)),
-			)?)),
+			_ => Ok(Self::Fixed(map_value(entry.value())?)),
 		}
 	}
 }

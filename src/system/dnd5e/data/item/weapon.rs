@@ -1,6 +1,6 @@
 use super::EquipableEntry;
 use crate::{
-	kdl_ext::{NodeQueryExt, ValueIdx},
+	kdl_ext::{NodeExt, ValueIdx},
 	system::{
 		core::NodeRegistry,
 		dnd5e::{
@@ -124,8 +124,8 @@ impl FromKDL for Weapon {
 		value_idx: &mut ValueIdx,
 		node_reg: &NodeRegistry,
 	) -> anyhow::Result<Self> {
-		let kind = Kind::from_str(node.get_str(value_idx.next())?)?;
-		let classification = node.get_str("class")?.to_owned();
+		let kind = Kind::from_str(node.get_str_req(value_idx.next())?)?;
+		let classification = node.get_str_req("class")?.to_owned();
 		let damage = match node.query("scope() > damage")? {
 			None => None,
 			Some(node) => Some(WeaponDamage::from_kdl(
@@ -177,7 +177,7 @@ impl FromKDL for WeaponDamage {
 			None => None,
 		};
 		let base = node.get_i64_opt("base")?.unwrap_or(0) as i32;
-		let damage_type = DamageType::from_str(node.get_str(value_idx.next())?)?;
+		let damage_type = DamageType::from_str(node.get_str_req(value_idx.next())?)?;
 		Ok(Self {
 			roll,
 			bonus: base,
@@ -202,19 +202,19 @@ impl FromKDL for Property {
 		value_idx: &mut ValueIdx,
 		_node_reg: &NodeRegistry,
 	) -> anyhow::Result<Self> {
-		match node.get_str(value_idx.next())? {
+		match node.get_str_req(value_idx.next())? {
 			"Light" => Ok(Self::Light),
 			"Finesse" => Ok(Self::Finesse),
 			"Heavy" => Ok(Self::Heavy),
 			"Reach" => Ok(Self::Reach),
 			"TwoHanded" => Ok(Self::TwoHanded),
 			"Thrown" => {
-				let short = node.get_i64(value_idx.next())? as u32;
-				let long = node.get_i64(value_idx.next())? as u32;
+				let short = node.get_i64_req(value_idx.next())? as u32;
+				let long = node.get_i64_req(value_idx.next())? as u32;
 				Ok(Self::Thrown(short, long))
 			}
 			"Versatile" => {
-				let roll = Roll::from_str(node.get_str(value_idx.next())?)?;
+				let roll = Roll::from_str(node.get_str_req(value_idx.next())?)?;
 				Ok(Self::Versatile(roll))
 			}
 			name => Err(GeneralError(format!("Unrecognized weapon property {name:?}")).into()),
@@ -236,8 +236,8 @@ impl FromKDL for Range {
 		value_idx: &mut ValueIdx,
 		_node_reg: &NodeRegistry,
 	) -> anyhow::Result<Self> {
-		let short_range = node.get_i64(value_idx.next())? as u32;
-		let long_range = node.get_i64(value_idx.next())? as u32;
+		let short_range = node.get_i64_req(value_idx.next())? as u32;
+		let long_range = node.get_i64_req(value_idx.next())? as u32;
 		let requires_ammunition = node.query("scope() > ammunition")?.is_some();
 		let requires_loading = node.query("scope() > loading")?.is_some();
 		Ok(Self {

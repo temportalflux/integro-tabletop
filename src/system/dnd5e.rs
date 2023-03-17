@@ -1,7 +1,7 @@
 use self::data::character::Character;
 use super::core::SourceId;
 use crate::{
-	kdl_ext::{NodeQueryExt, ValueIdx},
+	kdl_ext::{NodeExt, ValueIdx},
 	system::core::NodeRegistry,
 };
 use std::{collections::HashMap, sync::Arc};
@@ -110,28 +110,28 @@ macro_rules! impl_fromkdl {
 		}
 	};
 }
-impl_fromkdl!(bool, get_bool, |v| v);
-impl_fromkdl!(u8, get_i64, |v| v as u8);
-impl_fromkdl!(i8, get_i64, |v| v as i8);
-impl_fromkdl!(u16, get_i64, |v| v as u16);
-impl_fromkdl!(i16, get_i64, |v| v as i16);
-impl_fromkdl!(u32, get_i64, |v| v as u32);
-impl_fromkdl!(i32, get_i64, |v| v as i32);
-impl_fromkdl!(u64, get_i64, |v| v as u64);
-impl_fromkdl!(i64, get_i64, |v| v);
-impl_fromkdl!(u128, get_i64, |v| v as u128);
-impl_fromkdl!(i128, get_i64, |v| v as i128);
-impl_fromkdl!(usize, get_i64, |v| v as usize);
-impl_fromkdl!(isize, get_i64, |v| v as isize);
-impl_fromkdl!(f32, get_f64, |v| v as f32);
-impl_fromkdl!(f64, get_f64, |v| v);
+impl_fromkdl!(bool, get_bool_req, |v| v);
+impl_fromkdl!(u8, get_i64_req, |v| v as u8);
+impl_fromkdl!(i8, get_i64_req, |v| v as i8);
+impl_fromkdl!(u16, get_i64_req, |v| v as u16);
+impl_fromkdl!(i16, get_i64_req, |v| v as i16);
+impl_fromkdl!(u32, get_i64_req, |v| v as u32);
+impl_fromkdl!(i32, get_i64_req, |v| v as i32);
+impl_fromkdl!(u64, get_i64_req, |v| v as u64);
+impl_fromkdl!(i64, get_i64_req, |v| v);
+impl_fromkdl!(u128, get_i64_req, |v| v as u128);
+impl_fromkdl!(i128, get_i64_req, |v| v as i128);
+impl_fromkdl!(usize, get_i64_req, |v| v as usize);
+impl_fromkdl!(isize, get_i64_req, |v| v as isize);
+impl_fromkdl!(f32, get_f64_req, |v| v as f32);
+impl_fromkdl!(f64, get_f64_req, |v| v);
 impl FromKDL for String {
 	fn from_kdl(
 		node: &kdl::KdlNode,
 		value_idx: &mut ValueIdx,
 		_: &NodeRegistry,
 	) -> anyhow::Result<Self> {
-		Ok(node.get_str(value_idx.next())?.to_string())
+		Ok(node.get_str_req(value_idx.next())?.to_string())
 	}
 }
 impl<T> FromKDL for Option<T>

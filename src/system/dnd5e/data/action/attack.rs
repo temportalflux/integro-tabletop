@@ -1,6 +1,6 @@
 use super::super::{AreaOfEffect, DamageRoll};
 use crate::{
-	kdl_ext::{NodeQueryExt, ValueIdx},
+	kdl_ext::{DocumentExt, ValueIdx},
 	system::{core::NodeRegistry, dnd5e::FromKDL},
 };
 

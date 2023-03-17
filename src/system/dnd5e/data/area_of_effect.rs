@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{NodeQueryExt, ValueIdx},
+	kdl_ext::{NodeExt, ValueIdx},
 	system::{core::NodeRegistry, dnd5e::FromKDL},
 	GeneralError,
 };
@@ -19,23 +19,23 @@ impl FromKDL for AreaOfEffect {
 		value_idx: &mut ValueIdx,
 		_node_reg: &NodeRegistry,
 	) -> anyhow::Result<Self> {
-		match node.get_str(value_idx.next())? {
+		match node.get_str_req(value_idx.next())? {
 			"Cone" => Ok(Self::Cone {
-				length: node.get_i64("length")? as u32,
+				length: node.get_i64_req("length")? as u32,
 			}),
 			"Cube" => Ok(Self::Cube {
-				size: node.get_i64("size")? as u32,
+				size: node.get_i64_req("size")? as u32,
 			}),
 			"Cylinder" => Ok(Self::Cylinder {
-				radius: node.get_i64("radius")? as u32,
-				height: node.get_i64("height")? as u32,
+				radius: node.get_i64_req("radius")? as u32,
+				height: node.get_i64_req("height")? as u32,
 			}),
 			"Line" => Ok(Self::Line {
-				width: node.get_i64("width")? as u32,
-				length: node.get_i64("length")? as u32,
+				width: node.get_i64_req("width")? as u32,
+				length: node.get_i64_req("length")? as u32,
 			}),
 			"Sphere" => Ok(Self::Sphere {
-				radius: node.get_i64("radius")? as u32,
+				radius: node.get_i64_req("radius")? as u32,
 			}),
 			name => Err(GeneralError(format!(
 				"Invalid area of effect {name:?}, \

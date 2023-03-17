@@ -1,6 +1,6 @@
 use super::{armor::Armor, weapon::Weapon};
 use crate::{
-	kdl_ext::{NodeQueryExt, ValueIdx},
+	kdl_ext::{NodeExt, ValueIdx},
 	system::{
 		core::NodeRegistry,
 		dnd5e::{data::character::Character, BoxedCriteria, BoxedMutator, FromKDL},
@@ -87,7 +87,7 @@ impl FromKDL for Equipment {
 		};
 		let shield = match node.query("scope() > shield")? {
 			None => None,
-			Some(node) => Some(node.get_i64("bonus")? as i32),
+			Some(node) => Some(node.get_i64_req("bonus")? as i32),
 		};
 		let weapon = match node.query("scope() > weapon")? {
 			None => None,

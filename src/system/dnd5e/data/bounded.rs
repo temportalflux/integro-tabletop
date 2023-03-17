@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{NodeQueryExt, ValueIdx},
+	kdl_ext::{EntryExt, NodeExt, ValueExt, ValueIdx},
 	system::{core::NodeRegistry, dnd5e::FromKDL},
 	GeneralError,
 };
@@ -105,18 +105,11 @@ impl FromKDL for BoundValue {
 		value_idx: &mut ValueIdx,
 		_node_reg: &NodeRegistry,
 	) -> anyhow::Result<Self> {
-		let entry_idx = value_idx.next();
-		match node
-			.entry_req(entry_idx)?
-			.ty()
-			.ok_or(GeneralError(format!(
-				"Type id missing on value at index {entry_idx} of node {node:?}"
-			)))?
-			.value()
-		{
-			"Minimum" => Ok(Self::Minimum(node.get_i64(entry_idx)? as i32)),
-			"Additive" => Ok(Self::Additive(node.get_i64(entry_idx)? as i32)),
-			"Subtract" => Ok(Self::Subtract(node.get_i64(entry_idx)? as i32)),
+		let entry = node.entry_req(value_idx.next())?;
+		match entry.type_req()? {
+			"Minimum" => Ok(Self::Minimum(entry.as_i64_req()? as i32)),
+			"Additive" => Ok(Self::Additive(entry.as_i64_req()? as i32)),
+			"Subtract" => Ok(Self::Subtract(entry.as_i64_req()? as i32)),
 			type_name => Err(GeneralError(format!(
 				"Invalid bound value id {type_name:?}, \
 				expected Minimum, Additive, or Subtract"

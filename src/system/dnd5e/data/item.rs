@@ -1,6 +1,6 @@
 use super::mutator::AddAction;
 use crate::{
-	kdl_ext::{DocumentQueryExt, NodeQueryExt, ValueIdx},
+	kdl_ext::{DocumentExt, NodeExt, ValueIdx},
 	system::{
 		core::SourceId,
 		dnd5e::{data::character::Character, DnD5e, FromKDL, SystemComponent},
@@ -67,7 +67,7 @@ impl FromKDL for Item {
 		_value_idx: &mut crate::kdl_ext::ValueIdx,
 		node_reg: &crate::system::core::NodeRegistry,
 	) -> anyhow::Result<Self> {
-		let name = node.get_str("name")?.to_owned();
+		let name = node.get_str_req("name")?.to_owned();
 		let weight = node.get_f64_opt("weight")?.unwrap_or(0.0) as f32;
 		let description = node
 			.query_str_opt("scope() > description", 0)?
@@ -75,8 +75,8 @@ impl FromKDL for Item {
 		let worth = match node.query("scope() > worth")? {
 			Some(node) => {
 				// TODO: Support currency type
-				let amount = node.get_i64(0)?;
-				let _currency = node.get_str(1)?;
+				let amount = node.get_i64_req(0)?;
+				let _currency = node.get_str_req(1)?;
 				Some(amount as u32)
 			}
 			None => None,
@@ -85,8 +85,8 @@ impl FromKDL for Item {
 		let notes = node.query_str_opt("scope() > notes", 0)?.map(str::to_owned);
 		let tags = {
 			let mut tags = Vec::new();
-			for tag_result in node.query_str_all("scope() > tag", 0)? {
-				tags.push(tag_result?.to_owned());
+			for tag in node.query_str_all("scope() > tag", 0)? {
+				tags.push(tag.to_owned());
 			}
 			tags
 		};
@@ -125,7 +125,7 @@ impl FromKDL for ItemKind {
 		value_idx: &mut ValueIdx,
 		node_reg: &crate::system::core::NodeRegistry,
 	) -> anyhow::Result<Self> {
-		match node.get_str(value_idx.next())? {
+		match node.get_str_req(value_idx.next())? {
 			"Simple" => {
 				let count = node.get_i64_opt("count")?.unwrap_or(1) as u32;
 				Ok(Self::Simple { count })

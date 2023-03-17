@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{NodeQueryExt, ValueIdx},
+	kdl_ext::{NodeExt, ValueIdx},
 	system::dnd5e::FromKDL,
 	GeneralError,
 };
@@ -20,12 +20,12 @@ impl FromKDL for ActivationKind {
 		value_idx: &mut ValueIdx,
 		_node_reg: &crate::system::core::NodeRegistry,
 	) -> anyhow::Result<Self> {
-		match node.get_str(value_idx.next())? {
+		match node.get_str_req(value_idx.next())? {
 			"Action" => Ok(Self::Action),
 			"Bonus" => Ok(Self::Bonus),
 			"Reaction" => Ok(Self::Reaction),
-			"Minute" => Ok(Self::Minute(node.get_i64(value_idx.next())? as u32)),
-			"Hour" => Ok(Self::Hour(node.get_i64(value_idx.next())? as u32)),
+			"Minute" => Ok(Self::Minute(node.get_i64_req(value_idx.next())? as u32)),
+			"Hour" => Ok(Self::Hour(node.get_i64_req(value_idx.next())? as u32)),
 			name => Err(GeneralError(format!(
 				"Invalid action activation type {name:?}, expected \
 				Action, Bonus, Reaction, Minute, or Hour."

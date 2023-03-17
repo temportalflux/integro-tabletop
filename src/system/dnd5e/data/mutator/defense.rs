@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{NodeQueryExt, ValueIdx},
+	kdl_ext::{NodeExt, ValueExt, ValueIdx},
 	system::{
 		core::NodeRegistry,
 		dnd5e::{
@@ -80,13 +80,10 @@ impl FromKDL for AddDefense {
 		value_idx: &mut ValueIdx,
 		node_reg: &NodeRegistry,
 	) -> anyhow::Result<Self> {
-		let defense = Defense::from_str(node.get_str(value_idx.next())?)?;
+		let defense = Defense::from_str(node.get_str_req(value_idx.next())?)?;
 		let damage_type = match node.entry("damage_type") {
 			Some(entry) => Some(Value::from_kdl(node, entry, value_idx, node_reg, |kdl| {
-				Ok(match kdl.as_string() {
-					None => None,
-					Some(str) => Some(DamageType::from_str(str)?),
-				})
+				Ok(DamageType::from_str(kdl.as_str_req()?)?)
 			})?),
 			None => None,
 		};

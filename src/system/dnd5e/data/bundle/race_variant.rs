@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{DocumentQueryExt, NodeQueryExt, ValueIdx},
+	kdl_ext::{DocumentExt, NodeExt, ValueIdx},
 	system::{
 		core::{NodeRegistry, SourceId},
 		dnd5e::{
@@ -63,7 +63,7 @@ impl FromKDL for RaceVariant {
 		_value_idx: &mut ValueIdx,
 		node_reg: &NodeRegistry,
 	) -> anyhow::Result<Self> {
-		let name = node.get_str("name")?.to_owned();
+		let name = node.get_str_req("name")?.to_owned();
 		let description = node
 			.query_str_opt("scope() > description", 0)?
 			.unwrap_or_default()
@@ -72,8 +72,8 @@ impl FromKDL for RaceVariant {
 		let mut requirements = Vec::new();
 		for entry in node.query_all("scope() > requirement")? {
 			let mut value_idx = ValueIdx::default();
-			let category = entry.get_str(value_idx.next())?.to_owned();
-			let name = entry.get_str(value_idx.next())?.to_owned();
+			let category = entry.get_str_req(value_idx.next())?.to_owned();
+			let name = entry.get_str_req(value_idx.next())?.to_owned();
 			requirements.push((category, name));
 		}
 

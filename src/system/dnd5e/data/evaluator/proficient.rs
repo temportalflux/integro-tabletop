@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{NodeQueryExt, ValueIdx},
+	kdl_ext::{EntryExt, NodeExt, ValueExt, ValueIdx},
 	system::{
 		core::NodeRegistry,
 		dnd5e::{
@@ -58,31 +58,19 @@ impl FromKDL for IsProficientWith {
 		value_idx: &mut ValueIdx,
 		_node_reg: &NodeRegistry,
 	) -> anyhow::Result<Self> {
-		let entry_idx = value_idx.next();
-		let entry = node.entry_req(entry_idx)?;
-		let type_id = entry
-			.ty()
-			.ok_or(GeneralError(format!(
-				"Missing proficiency type at value {entry_idx} of {node:?}. \
-				Type is required to know what kind of proficiency to check."
-			)))?
-			.value();
-		match type_id {
-			"SavingThrow" => Ok(Self::SavingThrow(Ability::from_str(
-				node.get_str(entry_idx)?,
-			)?)),
-			"Skill" => Ok(Self::Skill(Skill::from_str(node.get_str(entry_idx)?)?)),
-			"Language" => Ok(Self::Language(node.get_str(entry_idx)?.to_owned())),
-			"Armor" => Ok(Self::Armor(armor::Kind::from_str(
-				node.get_str(entry_idx)?,
-			)?)),
-			"Weapon" => Ok(Self::Weapon(match node.get_str(entry_idx)? {
+		let entry = node.entry_req(value_idx.next())?;
+		match entry.type_req()? {
+			"SavingThrow" => Ok(Self::SavingThrow(Ability::from_str(entry.as_str_req()?)?)),
+			"Skill" => Ok(Self::Skill(Skill::from_str(entry.as_str_req()?)?)),
+			"Language" => Ok(Self::Language(entry.as_str_req()?.to_owned())),
+			"Armor" => Ok(Self::Armor(armor::Kind::from_str(entry.as_str_req()?)?)),
+			"Weapon" => Ok(Self::Weapon(match entry.as_str_req()? {
 				kind if kind == "Simple" || kind == "Martial" => {
 					WeaponProficiency::Kind(weapon::Kind::from_str(kind)?)
 				}
 				classification => WeaponProficiency::Classification(classification.to_owned()),
 			})),
-			"Tool" => Ok(Self::Tool(node.get_str(entry_idx)?.to_owned())),
+			"Tool" => Ok(Self::Tool(entry.as_str_req()?.to_owned())),
 			name => Err(GeneralError(format!(
 				"Invalid proficiency type {name:?}, expected \
 				SavingThrow, Skill, Language, Armor, Weapon, or Tool"

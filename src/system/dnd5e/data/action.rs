@@ -1,6 +1,6 @@
 use super::condition::BoxedCondition;
 use crate::{
-	kdl_ext::{DocumentQueryExt, NodeQueryExt, ValueIdx},
+	kdl_ext::{DocumentExt, NodeExt, ValueIdx},
 	system::{core::NodeRegistry, dnd5e::FromKDL},
 };
 use std::path::PathBuf;
@@ -32,7 +32,7 @@ impl FromKDL for Action {
 		_value_idx: &mut ValueIdx,
 		node_reg: &NodeRegistry,
 	) -> anyhow::Result<Self> {
-		let name = node.get_str("name")?.to_owned();
+		let name = node.get_str_req("name")?.to_owned();
 		let description = node
 			.query_str_opt("scope() > description", 0)?
 			.map(str::to_owned)

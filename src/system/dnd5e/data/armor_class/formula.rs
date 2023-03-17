@@ -1,6 +1,6 @@
 use super::BoundedAbility;
 use crate::{
-	kdl_ext::{NodeQueryExt, ValueIdx},
+	kdl_ext::{NodeExt, ValueIdx},
 	system::{
 		core::NodeRegistry,
 		dnd5e::{
@@ -56,11 +56,11 @@ impl FromKDL for ArmorClassFormula {
 		_value_idx: &mut ValueIdx,
 		_node_reg: &NodeRegistry,
 	) -> anyhow::Result<Self> {
-		let base = node.get_i64("base")? as u32;
+		let base = node.get_i64_req("base")? as u32;
 		let mut bonuses = Vec::new();
 		for node in node.query_all("scope() > bonus")? {
 			let mut value_idx = ValueIdx::default();
-			let ability = Ability::from_str(node.get_str(value_idx.next())?)?;
+			let ability = Ability::from_str(node.get_str_req(value_idx.next())?)?;
 			let min = node.get_i64_opt("min")?.map(|v| v as i32);
 			let max = node.get_i64_opt("max")?.map(|v| v as i32);
 			bonuses.push(BoundedAbility { ability, min, max });

@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{NodeQueryExt, ValueIdx},
+	kdl_ext::{NodeExt, ValueIdx},
 	system::{
 		core::NodeRegistry,
 		dnd5e::{
@@ -48,7 +48,7 @@ impl FromKDL for Sense {
 		value_idx: &mut ValueIdx,
 		node_reg: &NodeRegistry,
 	) -> anyhow::Result<Self> {
-		let name = node.get_str(value_idx.next())?.to_owned();
+		let name = node.get_str_req(value_idx.next())?.to_owned();
 		let argument = BoundValue::from_kdl(node, value_idx, node_reg)?;
 		Ok(Self { name, argument })
 	}

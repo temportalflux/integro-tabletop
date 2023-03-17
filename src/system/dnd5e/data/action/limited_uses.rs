@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use crate::{
-	kdl_ext::{DocumentQueryExt, NodeQueryExt, ValueIdx},
+	kdl_ext::{DocumentExt, NodeExt, ValueIdx},
 	system::{
 		core::NodeRegistry,
 		dnd5e::{data::Rest, FromKDL, Value},
@@ -27,7 +27,7 @@ impl FromKDL for LimitedUses {
 		let max_uses = {
 			// Temporary code, until I can implement scaling uses
 			let node = node.query_req("scope() > max_uses")?;
-			let max_uses = node.get_i64(0)? as usize;
+			let max_uses = node.get_i64_req(0)? as usize;
 			Value::Fixed(Some(max_uses))
 		};
 		let reset_on = match node.query_str_opt("scope() > reset_on", 0)? {

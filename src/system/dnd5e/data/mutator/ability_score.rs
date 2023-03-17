@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use crate::{
-	kdl_ext::{DocumentQueryExt, NodeQueryExt, ValueIdx},
+	kdl_ext::{DocumentExt, NodeExt, ValueExt, ValueIdx},
 	system::{
 		core::NodeRegistry,
 		dnd5e::{
@@ -10,7 +10,6 @@ use crate::{
 		},
 	},
 	utility::{Mutator, Selector, SelectorMeta, SelectorMetaVec},
-	GeneralError,
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -58,12 +57,10 @@ impl FromKDL for AddAbilityScore {
 			let entry_idx = value_idx.next();
 			let entry = node.entry_req(entry_idx)?;
 			Selector::from_kdl(node, entry, &mut value_idx, |kdl| {
-				Ok(Ability::from_str(kdl.as_string().ok_or(GeneralError(
-					format!("Ability selector value {kdl:?} must be a string."),
-				))?)?)
+				Ok(Ability::from_str(kdl.as_str_req()?)?)
 			})?
 		};
-		let bonus = node.query_i64("scope() > bonus", 0)? as i32;
+		let bonus = node.query_i64_req("scope() > bonus", 0)? as i32;
 		let max_total_score = node
 			.query_i64_opt("scope() > max_total_score", 0)?
 			.map(|v| v as u32);

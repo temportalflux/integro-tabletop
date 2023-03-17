@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{NodeQueryExt, ValueIdx},
+	kdl_ext::{NodeExt, ValueIdx},
 	system::dnd5e::{FromKDL, KDLNode},
 	utility::{ArcEvaluator, ArcMutator, Evaluator, GenericEvaluator, GenericMutator, Mutator},
 };
@@ -46,7 +46,7 @@ impl NodeRegistry {
 		T: 'static,
 	{
 		let mut value_idx = ValueIdx::default();
-		let id = node.get_str(value_idx.next())?;
+		let id = node.get_str_req(value_idx.next())?;
 		let factory = self
 			.mutators
 			.get(id)
@@ -63,7 +63,7 @@ impl NodeRegistry {
 		V: 'static,
 	{
 		let mut value_idx = ValueIdx::default();
-		let id = node.get_str(value_idx.next())?;
+		let id = node.get_str_req(value_idx.next())?;
 		let factory = self.get_evaluator_factory(id)?;
 		factory.from_kdl::<C, V>(node, &mut value_idx, self)
 	}
@@ -247,7 +247,7 @@ impl NodeRegistry {
 			.query("scope() > evaluator")?
 			.expect("missing evaluator node");
 		let mut idx = ValueIdx::default();
-		let factory = self.get_evaluator_factory(node.get_str(idx.next())?)?;
+		let factory = self.get_evaluator_factory(node.get_str_req(idx.next())?)?;
 		factory.from_kdl::<C, T>(node, &mut idx, &self)
 	}
 

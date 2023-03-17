@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::NodeQueryExt,
+	kdl_ext::NodeExt,
 	system::{
 		core::NodeRegistry,
 		dnd5e::{
@@ -47,7 +47,7 @@ impl FromKDL for Speed {
 		value_idx: &mut crate::kdl_ext::ValueIdx,
 		node_reg: &NodeRegistry,
 	) -> anyhow::Result<Self> {
-		let name = node.get_str(value_idx.next())?.to_owned();
+		let name = node.get_str_req(value_idx.next())?.to_owned();
 		let argument = BoundValue::from_kdl(node, value_idx, node_reg)?;
 		Ok(Self { name, argument })
 	}

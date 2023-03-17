@@ -1,6 +1,6 @@
 use super::roll::Roll;
 use crate::{
-	kdl_ext::{DocumentQueryExt, NodeQueryExt, ValueIdx},
+	kdl_ext::{DocumentExt, NodeExt, ValueIdx},
 	system::{core::NodeRegistry, dnd5e::FromKDL},
 	GeneralError,
 };
@@ -27,7 +27,7 @@ impl FromKDL for DamageRoll {
 			Some(str) => Some(Roll::from_str(str)?),
 		};
 		let base_bonus = node.get_i64_opt("base")?.unwrap_or(0) as i32;
-		let damage_type = DamageType::from_str(node.query_str("scope() > damage_type", 0)?)?;
+		let damage_type = DamageType::from_str(node.query_str_req("scope() > damage_type", 0)?)?;
 		Ok(Self {
 			roll,
 			base_bonus,

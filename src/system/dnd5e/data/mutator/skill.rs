@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{NodeQueryExt, ValueIdx},
+	kdl_ext::{NodeExt, ValueIdx},
 	system::{
 		core::NodeRegistry,
 		dnd5e::{
@@ -40,8 +40,8 @@ impl FromKDL for AddSkillModifier {
 		value_idx: &mut ValueIdx,
 		_node_reg: &NodeRegistry,
 	) -> anyhow::Result<Self> {
-		let skill = Skill::from_str(node.get_str(value_idx.next())?)?;
-		let modifier = roll::Modifier::from_str(node.get_str(value_idx.next())?)?;
+		let skill = Skill::from_str(node.get_str_req(value_idx.next())?)?;
+		let modifier = roll::Modifier::from_str(node.get_str_req(value_idx.next())?)?;
 		let criteria = node.get_str_opt(value_idx.next())?.map(str::to_owned);
 		Ok(Self {
 			skill,

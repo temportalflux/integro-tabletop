@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{NodeQueryExt, ValueIdx},
+	kdl_ext::{NodeExt, ValueExt, ValueIdx},
 	system::{
 		core::NodeRegistry,
 		dnd5e::{data::character::Character, FromKDL, Value},
@@ -40,7 +40,7 @@ impl FromKDL for AddMaxHitPoints {
 			node.entry_req(value_idx.next())?,
 			value_idx,
 			node_reg,
-			|value| Ok(value.as_i64().map(|v| v as i32)),
+			|value| Ok(value.as_i64_req()? as i32),
 		)?;
 		Ok(Self { id: None, value })
 	}

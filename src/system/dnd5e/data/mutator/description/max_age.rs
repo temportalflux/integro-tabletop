@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{NodeQueryExt, ValueIdx},
+	kdl_ext::{NodeExt, ValueIdx},
 	system::{
 		core::NodeRegistry,
 		dnd5e::{data::character::Character, FromKDL},
@@ -34,7 +34,7 @@ impl FromKDL for AddLifeExpectancy {
 		value_idx: &mut ValueIdx,
 		_node_reg: &NodeRegistry,
 	) -> anyhow::Result<Self> {
-		Ok(Self(node.get_i64(value_idx.next())? as i32))
+		Ok(Self(node.get_i64_req(value_idx.next())? as i32))
 	}
 }
 

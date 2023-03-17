@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{NodeQueryExt, ValueIdx},
+	kdl_ext::{NodeExt, ValueIdx},
 	system::{
 		core::NodeRegistry,
 		dnd5e::{
@@ -37,7 +37,9 @@ impl FromKDL for GetAbilityModifier {
 		value_idx: &mut ValueIdx,
 		_node_reg: &NodeRegistry,
 	) -> anyhow::Result<Self> {
-		Ok(Self(Ability::from_str(node.get_str(value_idx.next())?)?))
+		Ok(Self(Ability::from_str(
+			node.get_str_req(value_idx.next())?,
+		)?))
 	}
 }
 

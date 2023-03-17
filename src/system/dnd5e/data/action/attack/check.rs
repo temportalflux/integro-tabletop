@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{DocumentQueryExt, NodeQueryExt, ValueIdx},
+	kdl_ext::{DocumentExt, NodeExt, ValueExt, ValueIdx},
 	system::dnd5e::{
 		data::{character::Character, Ability},
 		FromKDL, Value,
@@ -62,9 +62,9 @@ impl FromKDL for AttackCheckKind {
 		value_idx: &mut ValueIdx,
 		node_reg: &crate::system::core::NodeRegistry,
 	) -> anyhow::Result<Self> {
-		match node.get_str(value_idx.next())? {
+		match node.get_str_req(value_idx.next())? {
 			"AttackRoll" => {
-				let ability = Ability::from_str(node.get_str(value_idx.next())?)?;
+				let ability = Ability::from_str(node.get_str_req(value_idx.next())?)?;
 				let proficient = match (
 					node.get_bool_opt("proficient")?,
 					node.query("scope() > proficient")?,
@@ -78,7 +78,7 @@ impl FromKDL for AttackCheckKind {
 							node.entry_req(value_idx.next())?,
 							&mut value_idx,
 							node_reg,
-							|value| Ok(value.as_bool()),
+							|value| Ok(value.as_bool_req()?),
 						)?
 					}
 				};
@@ -92,7 +92,7 @@ impl FromKDL for AttackCheckKind {
 				let (base, dc_ability, proficient) = {
 					let node = node.query_req("scope() > difficulty_class")?;
 					let mut value_idx = ValueIdx::default();
-					let base = node.get_i64(value_idx.next())? as i32;
+					let base = node.get_i64_req(value_idx.next())? as i32;
 					let ability = match node.query_str_opt("scope() > ability_bonus", 0)? {
 						None => None,
 						Some(str) => Some(Ability::from_str(str)?),
@@ -102,7 +102,8 @@ impl FromKDL for AttackCheckKind {
 						.unwrap_or(false);
 					(base, ability, proficient)
 				};
-				let save_ability = Ability::from_str(node.query_str("scope() > save_ability", 0)?)?;
+				let save_ability =
+					Ability::from_str(node.query_str_req("scope() > save_ability", 0)?)?;
 				Ok(Self::SavingThrow {
 					base,
 					dc_ability,

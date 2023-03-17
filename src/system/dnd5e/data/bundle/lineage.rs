@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{DocumentQueryExt, NodeQueryExt, ValueIdx},
+	kdl_ext::{DocumentExt, NodeExt, ValueIdx},
 	system::{
 		core::SourceId,
 		dnd5e::{
@@ -62,7 +62,7 @@ impl FromKDL for Lineage {
 		_value_idx: &mut ValueIdx,
 		node_reg: &crate::system::core::NodeRegistry,
 	) -> anyhow::Result<Self> {
-		let name = node.get_str("name")?.to_owned();
+		let name = node.get_str_req("name")?.to_owned();
 		let description = node
 			.query_str_opt("scope() > description", 0)?
 			.unwrap_or_default()
