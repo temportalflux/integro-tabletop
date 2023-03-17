@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::{
 	system::{
@@ -741,7 +741,7 @@ fn SelectorField(
 				{onchange}
 			/>}
 		}
-		SelectorOptions::AnyOf(valid_values) => {
+		SelectorOptions::AnyOf { options: valid_values, cannot_match } => {
 			let onchange = Callback::from({
 				let save_value = save_value.clone();
 				move |evt: web_sys::Event| {
@@ -751,6 +751,18 @@ fn SelectorField(
 					save_value.emit((!value.is_empty()).then_some(value.into()));
 				}
 			});
+			let invalid_values = match cannot_match {
+				None => HashSet::new(),
+				Some(selection_paths) => {
+					let mut values = HashSet::new();
+					for path in selection_paths {
+						if let Some(value) = state.get_first_selection(path) {
+							values.insert(value);
+						}
+					}
+					values
+				}
+			};
 			html! {
 				<select class="form-select" {onchange}>
 					<option
@@ -762,6 +774,7 @@ fn SelectorField(
 							<option
 								value={item.clone()}
 								selected={value == Some(item)}
+								disabled={invalid_values.contains(item)}
 							>
 								{item.clone()}
 							</option>

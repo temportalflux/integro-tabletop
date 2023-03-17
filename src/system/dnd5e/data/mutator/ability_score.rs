@@ -117,6 +117,7 @@ mod test {
 				mutators: vec![AddAbilityScore {
 					ability: Selector::Any {
 						id: Default::default(),
+						cannot_match: Default::default(),
 					},
 					value: 5,
 					max_total_score: None,

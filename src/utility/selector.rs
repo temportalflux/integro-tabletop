@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{NodeExt, ValueExt, ValueIdx},
+	kdl_ext::{NodeExt, ValueExt, ValueIdx, DocumentExt},
 	GeneralError,
 };
 use anyhow::Context;
@@ -26,8 +26,17 @@ impl<T: Into<String>> From<Option<T>> for IdPath {
 		}
 	}
 }
+impl From<&str> for IdPath {
+	fn from(value: &str) -> Self {
+		Self::from(Some(value))
+	}
+}
 impl IdPath {
-	fn set_path(&self, path: PathBuf) {
+	fn set_path(&self, path: &Path) {
+		let path = match &self.id {
+			Some(id) => path.join(id),
+			None => path.to_owned(),
+		};
 		let path = PathBuf::from(path.to_str().unwrap().replace("\\", "/"));
 		*self.absolute_path.write().unwrap() = path;
 	}
@@ -51,7 +60,7 @@ impl std::fmt::Debug for IdPath {
 pub enum Selector<T: ToString + FromStr> {
 	Specific(T),
 	AnyOf { id: IdPath, options: Vec<T> },
-	Any { id: IdPath },
+	Any { id: IdPath, cannot_match: Vec<IdPath>, },
 }
 
 impl<T> Selector<T>
@@ -62,16 +71,19 @@ where
 		match self {
 			Self::Specific(_) => None,
 			Self::AnyOf { id, options: _ } => Some(id),
-			Self::Any { id } => Some(id),
+			Self::Any { id, cannot_match: _ } => Some(id),
 		}
 	}
 
 	pub fn set_data_path(&self, parent: &Path) {
-		let Some(id_path) = self.id_path() else { return; };
-		id_path.set_path(match &id_path.id {
-			Some(id) => parent.join(id),
-			None => parent.to_owned(),
-		});
+		if let Some(id_path) = self.id_path() {
+			id_path.set_path(parent);
+		}
+		if let Self::Any { id: _, cannot_match } = &self {
+			for id_path in cannot_match {
+				id_path.set_path(parent);
+			}
+		}
 	}
 
 	pub fn get_data_path(&self) -> Option<PathBuf> {
@@ -111,7 +123,9 @@ where
 			}
 			"Any" => {
 				let id = node.get_str_opt("id")?.into();
-				Ok(Self::Any { id })
+				let cannot_match = node.query_str_all("scope() > cannot-match", 0)?;
+				let cannot_match = cannot_match.into_iter().map(IdPath::from).collect();
+				Ok(Self::Any { id, cannot_match })
 			}
 			_ => Err(GeneralError(format!(
 				"Invalid selector key {key:?}, expected Specific, Any, or AnyOf."
@@ -172,15 +186,23 @@ pub enum SelectorOptions {
 	/// User can provide any string value
 	Any,
 	/// User must select one of these string values
-	AnyOf(Vec<String>),
+	AnyOf {
+		/// The valid string values.
+		options: Vec<String>,
+		/// A list of other selectors that this selector cannot have the same value as.
+		cannot_match: Option<Vec<PathBuf>>,
+	},
 }
 
 impl SelectorOptions {
 	pub fn from_string(selector: &Selector<String>) -> Option<Self> {
 		match selector {
 			Selector::Specific(_) => None,
-			Selector::AnyOf { id: _, options } => Some(Self::AnyOf(options.clone())),
-			Selector::Any { id: _ } => Some(Self::Any),
+			Selector::AnyOf { id: _, options } => Some(Self::AnyOf {
+				options: options.clone(),
+				cannot_match: None,
+			}),
+			Selector::Any { id: _, cannot_match: _ } => Some(Self::Any),
 		}
 	}
 
@@ -199,11 +221,18 @@ impl SelectorOptions {
 			Selector::Specific(_) => None,
 			Selector::AnyOf { id: _, options } => {
 				let options = options.iter().map(|t| *t);
-				Some(Self::AnyOf(Self::iter_to_str(options)))
+				Some(Self::AnyOf {
+					options: Self::iter_to_str(options),
+					cannot_match: None,
+				})
 			}
-			Selector::Any { id: _ } => {
+			Selector::Any { id: _, cannot_match } => {
 				let options = EnumSet::<T>::all().into_iter();
-				Some(Self::AnyOf(Self::iter_to_str(options)))
+				let cannot_match = (!cannot_match.is_empty()).then(|| cannot_match.iter().map(IdPath::as_path).collect());
+				Some(Self::AnyOf {
+					options: Self::iter_to_str(options),
+					cannot_match,
+				})
 			}
 		}
 	}

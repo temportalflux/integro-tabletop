@@ -63,6 +63,7 @@ impl Default for Level {
 		Self {
 			hit_points: Selector::Any {
 				id: Some("hit_points").into(),
+				cannot_match: Default::default(),
 			},
 			mutators: Default::default(),
 			features: Default::default(),

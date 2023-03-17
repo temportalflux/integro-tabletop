@@ -185,6 +185,7 @@ mod test {
 			let expected = AddProficiency::Skill(
 				Selector::Any {
 					id: Some("MutatorSelect").into(),
+					cannot_match: Default::default(),
 				},
 				proficiency::Level::Full,
 			);
@@ -198,6 +199,7 @@ mod test {
 			let expected = AddProficiency::Skill(
 				Selector::Any {
 					id: Default::default(),
+					cannot_match: Default::default(),
 				},
 				proficiency::Level::Full,
 			);
@@ -212,6 +214,7 @@ mod test {
 			let expected = AddProficiency::Skill(
 				Selector::Any {
 					id: Some("MutatorSelect").into(),
+					cannot_match: Default::default(),
 				},
 				proficiency::Level::Half,
 			);
@@ -266,6 +269,7 @@ mod test {
 			let doc = "mutator \"add_proficiency\" (Language)\"Any\"";
 			let expected = AddProficiency::Language(Selector::Any {
 				id: Default::default(),
+				cannot_match: Default::default(),
 			});
 			assert_eq!(from_doc(doc)?, expected.into());
 			Ok(())
@@ -400,6 +404,7 @@ mod test {
 			let character = character(
 				AddProficiency::Language(Selector::Any {
 					id: Some("langTest").into(),
+					cannot_match: Default::default(),
 				}),
 				Some([("AddProficiency/langTest", "Gibberish".into())].into()),
 			);
