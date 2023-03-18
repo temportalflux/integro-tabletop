@@ -54,12 +54,12 @@ fn create_character() -> system::dnd5e::data::character::Persistent {
 			..Default::default()
 		},
 		ability_scores: enum_map! {
-			Ability::Strength => Score(12),
-			Ability::Dexterity => Score(15),
-			Ability::Constitution => Score(13),
-			Ability::Intelligence => Score(17),
-			Ability::Wisdom => Score(9),
-			Ability::Charisma => Score(11),
+			Ability::Strength => 12,
+			Ability::Dexterity => 15,
+			Ability::Constitution => 13,
+			Ability::Intelligence => 17,
+			Ability::Wisdom => 9,
+			Ability::Charisma => 11,
 		},
 		named_groups: NamedGroups::default(),
 		classes: vec![class::barbarian::barbarian(10, None)],

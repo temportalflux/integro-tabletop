@@ -1,8 +1,7 @@
+use crate::GeneralError;
 use enum_map::Enum;
 use enumset::EnumSetType;
 use std::str::FromStr;
-
-use crate::GeneralError;
 
 #[derive(Debug, EnumSetType, Enum, PartialOrd, Ord, Hash)]
 pub enum Ability {

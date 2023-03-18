@@ -79,7 +79,7 @@ impl Mutator for ArmorStrengthRequirement {
 		if !stats.flags()[Flag::ArmorStrengthRequirement] {
 			return;
 		}
-		if *stats.ability_score(Ability::Strength).0 >= self.score {
+		if *stats.ability_scores().get(Ability::Strength).score() >= self.score {
 			return;
 		}
 		// If the rule is on and the ability score is not met,

@@ -175,12 +175,12 @@ mod test {
 
 	mod evaluate {
 		use super::*;
-		use crate::system::dnd5e::data::{character::Persistent, Score};
+		use crate::system::dnd5e::data::character::Persistent;
 
 		fn character(scores: &[(Ability, u32)]) -> Character {
 			let mut persistent = Persistent::default();
 			for (ability, score) in scores {
-				persistent.ability_scores[*ability] = Score(*score)
+				persistent.ability_scores[*ability] = *score;
 			}
 			Character::from(persistent)
 		}

@@ -5,7 +5,10 @@ use crate::{
 	system::{
 		core::NodeRegistry,
 		dnd5e::{
-			data::{character::Character, Ability},
+			data::{
+				character::{AbilityScoreBonus, Character},
+				Ability,
+			},
 			FromKDL,
 		},
 	},
@@ -15,8 +18,7 @@ use crate::{
 #[derive(Clone, Debug, PartialEq)]
 pub struct AddAbilityScore {
 	pub ability: Selector<Ability>,
-	pub value: i32,
-	// TODO: This is unimplemented, the bonus/value should not be applied if the result will be more than this score.
+	pub value: u32,
 	pub max_total_score: Option<u32>,
 }
 
@@ -32,9 +34,14 @@ impl Mutator for AddAbilityScore {
 
 	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
 		if let Some(ability) = stats.resolve_selector(&self.ability) {
-			stats
-				.ability_scores_mut()
-				.push_bonus(ability, self.value, parent.to_owned());
+			stats.ability_scores_mut().push_bonus(
+				ability,
+				AbilityScoreBonus {
+					value: self.value,
+					max_total: self.max_total_score,
+				},
+				parent.to_owned(),
+			);
 		}
 	}
 
@@ -60,7 +67,7 @@ impl FromKDL for AddAbilityScore {
 				Ok(Ability::from_str(kdl.as_str_req()?)?)
 			})?
 		};
-		let bonus = node.query_i64_req("scope() > bonus", 0)? as i32;
+		let bonus = node.query_i64_req("scope() > bonus", 0)? as u32;
 		let max_total_score = node
 			.query_i64_opt("scope() > max_total_score", 0)?
 			.map(|v| v as u32);
@@ -159,14 +166,21 @@ mod test {
 		use crate::{
 			path_map::PathMap,
 			system::dnd5e::data::{
-				character::{Character, Persistent},
-				Ability, Feature, Score,
+				character::{AbilityScore, Character, Persistent},
+				Ability, Feature,
 			},
 			utility::Selector,
 		};
 
-		fn character(mutators: Vec<AddAbilityScore>, selections: PathMap<String>) -> Character {
+		fn character(
+			base_scores: Vec<(Ability, u32)>,
+			mutators: Vec<AddAbilityScore>,
+			selections: PathMap<String>,
+		) -> Character {
 			let mut persistent = Persistent::default();
+			for (ability, score) in base_scores {
+				persistent.ability_scores[ability] = score;
+			}
 			persistent.feats.push(
 				Feature {
 					name: "AddAbilityScore".into(),
@@ -182,6 +196,7 @@ mod test {
 		#[test]
 		fn specific_ability() {
 			let character = character(
+				vec![(Ability::Strength, 10)],
 				vec![AddAbilityScore {
 					ability: Selector::Specific(Ability::Strength),
 					value: 1,
@@ -190,17 +205,18 @@ mod test {
 				Default::default(),
 			);
 			assert_eq!(
-				character.ability_score(Ability::Strength),
-				(
-					Score(11),
-					vec![("".into(), 10), ("AddAbilityScore".into(), 1)]
-				)
+				*character.ability_scores().get(Ability::Strength),
+				AbilityScore::default()
+					.with_total(11)
+					.with_bonus((10, None, "Base Score".into(), true))
+					.with_bonus((1, None, "AddAbilityScore".into(), true))
 			);
 		}
 
 		#[test]
 		fn selected_ability() {
 			let character = character(
+				vec![(Ability::Dexterity, 10)],
 				vec![AddAbilityScore {
 					ability: Selector::Any {
 						id: Default::default(),
@@ -212,11 +228,11 @@ mod test {
 				[("AddAbilityScore", "dexterity".into())].into(),
 			);
 			assert_eq!(
-				character.ability_score(Ability::Dexterity),
-				(
-					Score(15),
-					vec![("".into(), 10), ("AddAbilityScore".into(), 5)]
-				)
+				*character.ability_scores().get(Ability::Dexterity),
+				AbilityScore::default()
+					.with_total(15)
+					.with_bonus((10, None, "Base Score".into(), true))
+					.with_bonus((5, None, "AddAbilityScore".into(), true))
 			);
 		}
 
@@ -224,12 +240,12 @@ mod test {
 		fn specific_ability_with_base() {
 			let character = Character::from(Persistent {
 				ability_scores: enum_map::enum_map! {
-					Ability::Strength => Score(10),
-					Ability::Dexterity => Score(15),
-					Ability::Constitution => Score(7),
-					Ability::Intelligence => Score(11),
-					Ability::Wisdom => Score(12),
-					Ability::Charisma => Score(18),
+					Ability::Strength => 10,
+					Ability::Dexterity => 15,
+					Ability::Constitution => 7,
+					Ability::Intelligence => 11,
+					Ability::Wisdom => 12,
+					Ability::Charisma => 18,
 				},
 				feats: vec![Feature {
 					name: "AddAbilityScore".into(),
@@ -245,37 +261,63 @@ mod test {
 				..Default::default()
 			});
 			assert_eq!(
-				character.ability_score(Ability::Strength),
-				(Score(10), vec![("".into(), 10)])
+				*character.ability_scores().get(Ability::Strength),
+				AbilityScore::default().with_total(10).with_bonus((
+					10,
+					None,
+					"Base Score".into(),
+					true
+				))
 			);
 			assert_eq!(
-				character.ability_score(Ability::Dexterity),
-				(Score(15), vec![("".into(), 15)])
+				*character.ability_scores().get(Ability::Dexterity),
+				AbilityScore::default().with_total(15).with_bonus((
+					15,
+					None,
+					"Base Score".into(),
+					true
+				))
 			);
 			assert_eq!(
-				character.ability_score(Ability::Constitution),
-				(Score(7), vec![("".into(), 7)])
+				*character.ability_scores().get(Ability::Constitution),
+				AbilityScore::default().with_total(7).with_bonus((
+					7,
+					None,
+					"Base Score".into(),
+					true
+				))
 			);
 			assert_eq!(
-				character.ability_score(Ability::Intelligence),
-				(
-					Score(14),
-					vec![("".into(), 11), ("AddAbilityScore".into(), 3)]
-				)
+				*character.ability_scores().get(Ability::Intelligence),
+				AbilityScore::default()
+					.with_total(14)
+					.with_bonus((11, None, "Base Score".into(), true))
+					.with_bonus((3, None, "AddAbilityScore".into(), true))
 			);
 			assert_eq!(
-				character.ability_score(Ability::Wisdom),
-				(Score(12), vec![("".into(), 12)])
+				*character.ability_scores().get(Ability::Wisdom),
+				AbilityScore::default().with_total(12).with_bonus((
+					12,
+					None,
+					"Base Score".into(),
+					true
+				))
 			);
 			assert_eq!(
-				character.ability_score(Ability::Charisma),
-				(Score(18), vec![("".into(), 18)])
+				*character.ability_scores().get(Ability::Charisma),
+				AbilityScore::default().with_total(18).with_bonus((
+					18,
+					None,
+					"Base Score".into(),
+					true
+				))
 			);
 		}
 
 		#[test]
 		fn max_total_score() {
 			let character = character(
+				vec![(Ability::Strength, 10)],
 				vec![AddAbilityScore {
 					ability: Selector::Specific(Ability::Strength),
 					value: 5,
@@ -284,11 +326,11 @@ mod test {
 				Default::default(),
 			);
 			assert_eq!(
-				character.ability_score(Ability::Strength),
-				(
-					Score(10),
-					vec![("".into(), 10), ("AddAbilityScore".into(), 1)]
-				)
+				*character.ability_scores().get(Ability::Strength),
+				AbilityScore::default()
+					.with_total(10)
+					.with_bonus((10, None, "Base Score".into(), true))
+					.with_bonus((5, Some(13), "AddAbilityScore".into(), false))
 			);
 		}
 	}
