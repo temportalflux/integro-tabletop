@@ -54,7 +54,6 @@ impl MutatorGroup for Feature {
 
 	fn set_data_path(&self, parent: &Path) {
 		let path_to_self = parent.join(&self.name);
-		println!("Feature data path: {path_to_self:?}");
 		for mutator in &self.mutators {
 			mutator.set_data_path(&path_to_self);
 		}

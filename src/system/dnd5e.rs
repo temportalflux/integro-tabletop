@@ -165,6 +165,8 @@ pub fn component_registry() -> ComponentRegistry<DnD5e> {
 	registry.register::<data::bundle::Lineage>();
 	registry.register::<data::bundle::Upbringing>();
 	registry.register::<data::bundle::Background>();
+	registry.register::<data::Class>();
+	registry.register::<data::Subclass>();
 	registry.register::<data::item::Item>();
 	registry
 }
@@ -196,7 +198,8 @@ pub struct DnD5e {
 	pub lineages: HashMap<SourceId, data::bundle::Lineage>,
 	pub upbringings: HashMap<SourceId, data::bundle::Upbringing>,
 	pub backgrounds: HashMap<SourceId, data::bundle::Background>,
-
+	pub classes: HashMap<SourceId, data::Class>,
+	pub subclasses: HashMap<SourceId, data::Subclass>,
 	pub items: HashMap<SourceId, data::item::Item>,
 }
 

@@ -90,6 +90,36 @@ impl TryFrom<u32> for Die {
 		}
 	}
 }
+impl FromStr for Die {
+	type Err = GeneralError;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		match s {
+			"d4" => Ok(Self::D4),
+			"d6" => Ok(Self::D6),
+			"d8" => Ok(Self::D8),
+			"d10" => Ok(Self::D10),
+			"d12" => Ok(Self::D12),
+			"d20" => Ok(Self::D20),
+			_ => Err(GeneralError(format!(
+				"Invalid die type {s:?}, expected d4, d6, d8, d10, d12, or d20"
+			))),
+		}
+	}
+}
+impl ToString for Die {
+	fn to_string(&self) -> String {
+		match self {
+			Self::D4 => "d4",
+			Self::D6 => "d6",
+			Self::D8 => "d8",
+			Self::D10 => "d10",
+			Self::D12 => "d12",
+			Self::D20 => "d20",
+		}
+		.to_owned()
+	}
+}
 
 #[derive(Debug, Enum, EnumSetType, PartialOrd, Ord)]
 pub enum Modifier {

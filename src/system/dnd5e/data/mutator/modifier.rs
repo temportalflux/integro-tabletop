@@ -210,6 +210,5 @@ mod test {
 
 	mod mutate {
 		use super::*;
-		
 	}
 }
