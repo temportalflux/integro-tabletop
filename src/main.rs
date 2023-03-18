@@ -1,3 +1,4 @@
+use crate::system::dnd5e::DnD5e;
 use anyhow::Context;
 use std::{
 	collections::BTreeMap,
@@ -5,8 +6,6 @@ use std::{
 };
 use yew::prelude::*;
 use yew_hooks::use_is_first_mount;
-
-use crate::system::dnd5e::{data::bounded::BoundValue, DnD5e};
 
 pub mod bootstrap;
 pub mod components;
@@ -37,146 +36,13 @@ impl<T> Compiled<T> {
 }
 
 fn create_character() -> system::dnd5e::data::character::Persistent {
-	use enum_map::enum_map;
-	use path_map::PathMap;
-	use system::dnd5e::{
-		content::*,
-		data::{
-			character::{NamedGroups, Persistent},
-			mutator, Description, *,
-		},
-		Value,
-	};
-	use utility::Selector;
+	use system::dnd5e::data::{character::Persistent, Description};
 	Persistent {
 		description: Description {
-			name: "Fauxpaul".into(),
+			name: "Sid the Squid".into(),
 			..Default::default()
 		},
-		ability_scores: enum_map! {
-			Ability::Strength => 12,
-			Ability::Dexterity => 15,
-			Ability::Constitution => 13,
-			Ability::Intelligence => 17,
-			Ability::Wisdom => 9,
-			Ability::Charisma => 11,
-		},
-		named_groups: NamedGroups::default(),
-		classes: vec![class::barbarian::barbarian(10, None)],
-		feats: vec![Feature {
-			name: "Custom Feat".into(),
-			mutators: vec![
-				mutator::AddProficiency::SavingThrow(Ability::Charisma).into(),
-				mutator::AddSavingThrowModifier {
-					ability: Some(Ability::Charisma),
-					target: Some("Magic".into()),
-				}
-				.into(),
-				//mutator::Speed("Flying".into(), 10).into(),
-				//mutator::Sense { name: "Darkvision".into(), operation: BoundValue::Minimum(30) }.into(),
-				mutator::Sense {
-					name: "Tremorsense".into(),
-					argument: BoundValue::Minimum(60),
-				}
-				.into(),
-				mutator::AddDefense {
-					defense: mutator::Defense::Resistance,
-					damage_type: Some(Value::Fixed(DamageType::Cold)),
-					..Default::default()
-				}
-				.into(),
-				mutator::AddDefense {
-					defense: mutator::Defense::Immunity,
-					damage_type: Some(Value::Fixed(DamageType::Acid)),
-					..Default::default()
-				}
-				.into(),
-				mutator::AddDefense {
-					defense: mutator::Defense::Vulnerability,
-					damage_type: Some(Value::Fixed(DamageType::Fire)),
-					..Default::default()
-				}
-				.into(),
-				mutator::AddProficiency::Skill(
-					Selector::Specific(Skill::Stealth),
-					proficiency::Level::Double,
-				)
-				.into(),
-			],
-			..Default::default()
-		}
-		.into()],
-		selected_values: PathMap::from([
-			(
-				PathBuf::from("Incognito/AbilityScoreIncrease"),
-				"CON".into(),
-			),
-			(
-				PathBuf::from("Incognito/GoodWithPeople"),
-				"Deception".into(),
-			),
-			(
-				PathBuf::from("Incognito/Languages/langA"),
-				"Draconic".into(),
-			),
-			(
-				PathBuf::from("Incognito/Languages/langB"),
-				"Undercommon".into(),
-			),
-			(
-				PathBuf::from("Anthropologist/Languages/langA"),
-				"Sylvan".into(),
-			),
-			(
-				PathBuf::from("Anthropologist/Languages/langB"),
-				"Elvish".into(),
-			),
-			(
-				PathBuf::from("Barbarian/level01/skillA"),
-				"Intimidation".into(),
-			),
-			(
-				PathBuf::from("Barbarian/level01/skillB"),
-				"Athletics".into(),
-			),
-			(PathBuf::from("Barbarian/level01/hit_points"), "12".into()),
-			(PathBuf::from("Barbarian/level02/hit_points"), "7".into()),
-			(PathBuf::from("Barbarian/level03/hit_points"), "3".into()),
-			(PathBuf::from("Barbarian/level04/hit_points"), "11".into()),
-			(PathBuf::from("Barbarian/level05/hit_points"), "8".into()),
-		]),
-		inventory: {
-			let mut inv = item::Inventory::new();
-			inv.insert(item::Item {
-				name: "Wings of the Owl".into(),
-				kind: item::ItemKind::Equipment(item::equipment::Equipment {
-					modifiers: vec![
-						mutator::Speed {
-							name: "Flying".into(),
-							argument: BoundValue::Minimum(40),
-						}
-						.into(),
-						mutator::AddProficiency::Skill(
-							Selector::Specific(Skill::Perception),
-							proficiency::Level::Half,
-						)
-						.into(),
-						mutator::AddSkillModifier {
-							skill: Skill::Perception,
-							modifier: roll::Modifier::Advantage,
-							criteria: Some("when using sight".into()),
-						}
-						.into(),
-					],
-					..Default::default()
-				}),
-				..Default::default()
-			});
-			inv
-		},
-		conditions: Vec::new(),
-		hit_points: Default::default(),
-		inspiration: false,
+		..Default::default()
 	}
 }
 
@@ -250,7 +116,11 @@ fn App() -> Html {
 			<nav class="navbar navbar-expand-lg sticky-top bg-body-tertiary">
 				<div class="container-fluid">
 					<a class="navbar-brand" href="/">{"Tabletop Tools"}</a>
-					<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navContent" aria-controls="navContent" aria-expanded="false" aria-label="Toggle navigation">
+					<button
+						class="navbar-toggler" type="button"
+						data-bs-toggle="collapse" data-bs-target="#navContent"
+						aria-controls="navContent" aria-expanded="false" aria-label="Toggle navigation"
+					>
 						<span class="navbar-toggler-icon"></span>
 					</button>
 					<div class="collapse navbar-collapse" id="navContent">

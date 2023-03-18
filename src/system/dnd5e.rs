@@ -7,7 +7,6 @@ use crate::{
 use std::{collections::HashMap, sync::Arc};
 
 pub mod components;
-pub mod content;
 pub mod data;
 
 pub type BoxedCriteria = crate::utility::GenericEvaluator<Character, Result<(), String>>;
@@ -179,8 +178,7 @@ pub fn node_registry() -> NodeRegistry {
 	registry.register_mutator::<AddMaxHeight>();
 	registry.register_mutator::<AddMaxHitPoints>();
 	registry.register_mutator::<AddProficiency>();
-	registry.register_mutator::<AddSavingThrowModifier>();
-	registry.register_mutator::<AddSkillModifier>();
+	registry.register_mutator::<AddModifier>();
 	registry.register_mutator::<Speed>();
 	registry.register_mutator::<Sense>();
 	registry.register_mutator::<SetFlag>();

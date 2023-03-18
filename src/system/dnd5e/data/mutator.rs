@@ -19,17 +19,14 @@ pub use flag::*;
 mod hit_points;
 pub use hit_points::*;
 
+mod modifier;
+pub use modifier::*;
+
 mod proficient;
 pub use proficient::*;
 
-mod saving_throw;
-pub use saving_throw::*;
-
 mod sense;
 pub use sense::*;
-
-mod skill;
-pub use skill::*;
 
 mod speed;
 pub use speed::*;
