@@ -40,8 +40,10 @@ pub fn Score(ScoreProps { ability }: &ScoreProps) -> Html {
 				String::new(),
 				|mut content, (bonus, path, included_in_total)| {
 					if *included_in_total {
-						let source_text = crate::data::as_feature_path_text(&path).unwrap_or_default();
-						content += format!("<span>+{} ({source_text})</span>", bonus.value).as_str();
+						let source_text =
+							crate::data::as_feature_path_text(&path).unwrap_or_default();
+						content +=
+							format!("<span>+{} ({source_text})</span>", bonus.value).as_str();
 					}
 					content
 				}

@@ -72,7 +72,7 @@ impl Mutator for ArmorStrengthRequirement {
 	type Target = Character;
 
 	fn dependencies(&self) -> crate::utility::Dependencies {
-		["add_ability_score", "flag", "speed"].into()
+		["ability_score", "flag", "speed"].into()
 	}
 
 	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {

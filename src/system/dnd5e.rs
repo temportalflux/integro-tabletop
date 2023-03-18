@@ -173,7 +173,7 @@ pub fn component_registry() -> ComponentRegistry<DnD5e> {
 pub fn node_registry() -> NodeRegistry {
 	use data::{evaluator::*, mutator::*};
 	let mut registry = NodeRegistry::default();
-	registry.register_mutator::<AddAbilityScore>();
+	registry.register_mutator::<AbilityScoreChange>();
 	registry.register_mutator::<AddDefense>();
 	registry.register_mutator::<AddLifeExpectancy>();
 	registry.register_mutator::<AddMaxHeight>();
