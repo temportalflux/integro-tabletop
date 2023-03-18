@@ -15,6 +15,8 @@ use crate::{
 use enum_map::{enum_map, EnumMap};
 use std::{collections::BTreeMap, path::PathBuf};
 
+mod ability_score;
+pub use ability_score::*;
 mod sense;
 pub use sense::*;
 mod speed;
@@ -88,15 +90,9 @@ impl Default for Derived {
 	}
 }
 
-#[derive(Clone, Default, PartialEq, Debug)]
-pub struct AbilityScores(EnumMap<Ability, AttributedValue<i32>>);
-impl AbilityScores {
-	pub fn push_bonus(&mut self, ability: Ability, bonus: i32, source: PathBuf) {
-		self.0[ability].push(bonus, source);
-	}
-
-	pub fn get(&self, ability: Ability) -> &AttributedValue<i32> {
-		&self.0[ability]
+impl Derived {
+	pub fn finalize(&mut self) {
+		self.ability_scores.finalize();
 	}
 }
 

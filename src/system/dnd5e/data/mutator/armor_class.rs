@@ -24,19 +24,19 @@ mod test {
 	use super::AddArmorClassFormula;
 	use crate::system::dnd5e::data::{
 		character::{Character, Persistent},
-		Ability, ArmorClassFormula, Feature, Score,
+		Ability, ArmorClassFormula, Feature,
 	};
 
 	#[test]
 	fn no_formula() {
 		let character = Character::from(Persistent {
 			ability_scores: enum_map::enum_map! {
-				Ability::Strength => Score(10),
-				Ability::Dexterity => Score(12),
-				Ability::Constitution => Score(15),
-				Ability::Intelligence => Score(10),
-				Ability::Wisdom => Score(10),
-				Ability::Charisma => Score(10),
+				Ability::Strength => 10,
+				Ability::Dexterity => 12,
+				Ability::Constitution => 15,
+				Ability::Intelligence => 10,
+				Ability::Wisdom => 10,
+				Ability::Charisma => 10,
 			},
 			..Default::default()
 		});
@@ -47,12 +47,12 @@ mod test {
 	fn with_modifier() {
 		let character = Character::from(Persistent {
 			ability_scores: enum_map::enum_map! {
-				Ability::Strength => Score(10),
-				Ability::Dexterity => Score(12),
-				Ability::Constitution => Score(15),
-				Ability::Intelligence => Score(10),
-				Ability::Wisdom => Score(10),
-				Ability::Charisma => Score(10),
+				Ability::Strength => 10,
+				Ability::Dexterity => 12,
+				Ability::Constitution => 15,
+				Ability::Intelligence => 10,
+				Ability::Wisdom => 10,
+				Ability::Charisma => 10,
 			},
 			feats: vec![Feature {
 				mutators: vec![AddArmorClassFormula(ArmorClassFormula {

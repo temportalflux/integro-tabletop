@@ -111,14 +111,21 @@ mod test {
 		fn character(scores: &[(Ability, u32)]) -> Character {
 			let mut persistent = Persistent::default();
 			for (ability, score) in scores {
-				*persistent.ability_scores[*ability] = *score;
+				persistent.ability_scores[*ability] = *score;
 			}
 			Character::from(persistent)
 		}
 
 		#[test]
 		fn base_score_default() {
-			let character = character(&[]);
+			let character = character(&[
+				(Ability::Strength, 10),
+				(Ability::Dexterity, 10),
+				(Ability::Constitution, 10),
+				(Ability::Intelligence, 10),
+				(Ability::Wisdom, 10),
+				(Ability::Charisma, 10),
+			]);
 			let str = GetAbilityModifier(Ability::Strength);
 			let dex = GetAbilityModifier(Ability::Dexterity);
 			let con = GetAbilityModifier(Ability::Constitution);

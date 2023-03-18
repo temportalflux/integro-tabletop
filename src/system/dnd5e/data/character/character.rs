@@ -9,7 +9,7 @@ use crate::{
 			},
 			item::{self, weapon, ItemKind},
 			mutator::Flag,
-			proficiency, Ability, ArmorClass, BoxedFeature, OtherProficiencies, Score,
+			proficiency, Ability, ArmorClass, BoxedFeature, OtherProficiencies,
 		},
 		BoxedCriteria, BoxedMutator,
 	},
@@ -46,16 +46,16 @@ struct MutatorEntry {
 	mutator: BoxedMutator,
 }
 impl From<Persistent> for Character {
-	fn from(character: Persistent) -> Self {
-		character.set_data_path(&PathBuf::new());
-		let mut full = Self {
-			character,
+	fn from(persistent: Persistent) -> Self {
+		persistent.set_data_path(&PathBuf::new());
+		let mut character = Self {
+			character: persistent.clone(),
 			derived: Derived::default(),
 			mutators: Vec::new(),
 		};
-		full.apply_from(&full.character.clone(), &PathBuf::new());
-		full.apply_cached_mutators();
-		full
+		character.apply_from(&persistent, &PathBuf::new());
+		character.apply_cached_mutators();
+		character
 	}
 }
 impl yew::Reducible for Character {
@@ -65,25 +65,11 @@ impl yew::Reducible for Character {
 		let mut full = (*self).clone();
 		Rc::new(match action(&mut full.character, &self) {
 			None => full,
-			Some(ActionEffect::Recompile) => {
-				let mut updated = Self::new(full.character.clone());
-				updated.apply_from(&full.character, &PathBuf::new());
-				updated.apply_cached_mutators();
-				updated
-			}
+			Some(ActionEffect::Recompile) => Self::from(full.character.clone()),
 		})
 	}
 }
 impl Character {
-	pub fn new(character: Persistent) -> Self {
-		character.set_data_path(&PathBuf::new());
-		Self {
-			character,
-			derived: Derived::default(),
-			mutators: Vec::new(),
-		}
-	}
-
 	pub fn apply_from(&mut self, container: &impl MutatorGroup<Target = Self>, parent: &Path) {
 		container.apply_mutators(self, parent);
 	}
@@ -133,6 +119,7 @@ impl Character {
 			*/
 			entry.mutator.apply(self, &entry.parent_path);
 		}
+		self.derived.finalize();
 	}
 
 	fn get_selections_at(&self, path: impl AsRef<Path>) -> Option<&Vec<String>> {
@@ -210,16 +197,12 @@ impl Character {
 		&mut self.derived.flags
 	}
 
-	/// Returns the score/value for a given ability. Any bonuses beyond the character's base scores
-	/// are provided with a path to the feature which provided that bonus.
-	pub fn ability_score(&self, ability: Ability) -> (Score, Vec<(PathBuf, i32)>) {
-		let mut score = self.character.ability_scores[ability];
-		let original_score = *score as i32;
-		let attributed = self.derived.ability_scores.get(ability);
-		*score = original_score.saturating_add(attributed.value) as u32;
-		let mut sources = attributed.sources.clone();
-		sources.insert(0, ("".into(), original_score));
-		(score, sources)
+	pub fn ability_scores(&self) -> &AbilityScores {
+		&self.derived.ability_scores
+	}
+
+	pub fn ability_scores_mut(&mut self) -> &mut AbilityScores {
+		&mut self.derived.ability_scores
 	}
 
 	pub fn ability_modifier(
@@ -227,7 +210,7 @@ impl Character {
 		ability: Ability,
 		proficiency: Option<proficiency::Level>,
 	) -> i32 {
-		let modifier = self.ability_score(ability).0.modifier();
+		let modifier = self.ability_scores().get(ability).score().modifier();
 		let bonus = match proficiency {
 			Some(proficiency) => {
 				let prof_bonus_multiplier = match proficiency {
@@ -241,10 +224,6 @@ impl Character {
 			None => 0,
 		};
 		modifier + bonus
-	}
-
-	pub fn ability_scores_mut(&mut self) -> &mut AbilityScores {
-		&mut self.derived.ability_scores
 	}
 
 	pub fn saving_throws(&self) -> &SavingThrows {

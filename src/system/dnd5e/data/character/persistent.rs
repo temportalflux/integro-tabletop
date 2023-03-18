@@ -8,7 +8,7 @@ use crate::{
 			evaluator::{operator::Product, GetAbilityModifier, GetLevel},
 			item,
 			mutator::AddMaxHitPoints,
-			Ability, BoxedFeature, Class, Description, Score,
+			Ability, BoxedFeature, Class, Description,
 		},
 		Value,
 	},
@@ -34,7 +34,7 @@ pub struct Persistent {
 	pub classes: Vec<Class>,
 	pub feats: Vec<BoxedFeature>,
 	pub description: Description,
-	pub ability_scores: EnumMap<Ability, Score>,
+	pub ability_scores: EnumMap<Ability, u32>,
 	pub selected_values: PathMap<String>,
 	pub inventory: item::Inventory,
 	pub conditions: Vec<BoxedCondition>,
@@ -64,6 +64,12 @@ impl MutatorGroup for Persistent {
 	}
 
 	fn apply_mutators(&self, stats: &mut Character, parent: &Path) {
+		for (ability, score) in &self.ability_scores {
+			stats
+				.ability_scores_mut()
+				.push_bonus(ability, (*score).into(), "Base Score".into());
+		}
+
 		stats.apply(
 			&AddMaxHitPoints {
 				id: Some("Constitution x Levels".into()),

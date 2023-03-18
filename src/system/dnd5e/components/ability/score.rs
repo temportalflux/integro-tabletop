@@ -19,7 +19,7 @@ pub fn Score(ScoreProps { ability }: &ScoreProps) -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 
-	let (score, attributed_to) = state.ability_score(*ability);
+	let ability_score = state.ability_scores().get(*ability);
 	let onclick = modal_dispatcher.callback({
 		let ability = *ability;
 		move |_| {
@@ -33,25 +33,19 @@ pub fn Score(ScoreProps { ability }: &ScoreProps) -> Html {
 		}
 	});
 
-	let tooltip = (!attributed_to.is_empty()).then(|| {
+	let tooltip = (ability_score.iter_bonuses().count() > 0).then(|| {
 		format!(
 			"<div class=\"attributed-tooltip\">{}</div>",
-			attributed_to
-				.iter()
-				.fold(String::new(), |mut content, (path, value)| {
-					let source_text = crate::data::as_feature_path_text(&path);
-					let sign = source_text
-						.is_some()
-						.then(|| match *value >= 0 {
-							true => "+",
-							false => "-",
-						})
-						.unwrap_or_default();
-					let path_name = source_text.unwrap_or("Base Score".into());
-					let value = value.abs();
-					content += format!("<span>{sign}{value} ({path_name})</span>").as_str();
+			ability_score.iter_bonuses().fold(
+				String::new(),
+				|mut content, (bonus, path, included_in_total)| {
+					if *included_in_total {
+						let source_text = crate::data::as_feature_path_text(&path).unwrap_or_default();
+						content += format!("<span>+{} ({source_text})</span>", bonus.value).as_str();
+					}
 					content
-				})
+				}
+			)
 		)
 	});
 	html! {
@@ -59,9 +53,9 @@ pub fn Score(ScoreProps { ability }: &ScoreProps) -> Html {
 			<div class="card-body text-center" {onclick}>
 				<h6 class="card-title">{ability.long_name()}</h6>
 				<div class="primary-stat">
-					<AnnotatedNumber value={score.modifier()} show_sign={true} />
+					<AnnotatedNumber value={ability_score.score().modifier()} show_sign={true} />
 				</div>
-				<Tooltip classes={"secondary-stat"} content={tooltip} use_html={true}>{*score}</Tooltip>
+				<Tooltip classes={"secondary-stat"} content={tooltip} use_html={true}>{*ability_score.score()}</Tooltip>
 			</div>
 		</div>
 	}
@@ -74,8 +68,8 @@ struct ModalProps {
 #[function_component]
 fn Modal(ModalProps { ability }: &ModalProps) -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
-	let (score, attributed_to) = state.ability_score(*ability);
-	let modifier = score.modifier();
+	let ability_score = state.ability_scores().get(*ability);
+	let modifier = ability_score.score().modifier();
 	let skills = EnumSet::<Skill>::all()
 		.into_iter()
 		.filter(|skill| skill.ability() == *ability);
@@ -91,35 +85,57 @@ fn Modal(ModalProps { ability }: &ModalProps) -> Html {
 
 			<div class="text-center fs-5" style="width: 100%; margin-bottom: 10px;">
 				<span>{"Total Score:"}</span>
-				<span style="margin-left: 5px;">{*score}</span>
+				<span style="margin-left: 5px;">{*ability_score.score()}</span>
 			</div>
 			<div class="text-center fs-5" style="width: 100%; margin-bottom: 10px;">
 				<span>{"Modifier:"}</span>
 				<span style="margin-left: 5px;">{match modifier >= 0 { true => "+", false => "-", }}{modifier.abs()}</span>
 			</div>
 
+			<h6>{"Bonuses"}</h6>
 			<table class="table table-compact table-striped m-0">
 				<thead>
 					<tr class="text-center" style="color: var(--bs-heading-color);">
-						<th scope="col">{"Source"}</th>
 						<th scope="col">{"Value"}</th>
+						<th scope="col">{"Max Total"}</th>
+						<th scope="col">{"Source"}</th>
 					</tr>
 				</thead>
 				<tbody>
-					{attributed_to.into_iter().map(|(path, value)| {
-						let source_text = crate::data::as_feature_path_text(&path);
-						let is_base = source_text.is_none();
-						let source_text = source_text.unwrap_or("Base Score".into());
-						let value_sign = match is_base {
-							true => "",
-							false => match value >= 0 { true => "+", false => "-", },
-						};
-						html! {
-							<tr>
-								<td>{source_text}</td>
-								<td class="text-center">{value_sign}{value.abs()}</td>
-							</tr>
-						}
+					{ability_score.iter_bonuses().map(|(bonus, path, was_included)| {
+						html! {<tr>
+							<td class="text-center">{bonus.value}</td>
+							<td class="text-center">{match &bonus.max_total {
+								None => html! {{"None" }},
+								Some(max) => html! {<span>
+									{max}
+									{match was_included {
+										true => "✅",
+										false => "❌",
+									}}
+								</span>},
+							}}</td>
+							<td>{crate::data::as_feature_path_text(&path).unwrap_or_default()}</td>
+						</tr>}
+					}).collect::<Vec<_>>()}
+				</tbody>
+			</table>
+
+			<h6>{"Maximum Value"}</h6>
+			<table class="table table-compact table-striped m-0">
+				<caption>{"The largest value of these is used as the maximum bound for the score above."}</caption>
+				<thead>
+					<tr class="text-center" style="color: var(--bs-heading-color);">
+						<th scope="col">{"Value"}</th>
+						<th scope="col">{"Source"}</th>
+					</tr>
+				</thead>
+				<tbody>
+					{ability_score.iter_max_increases().map(|(value, path)| {
+						html! {<tr>
+							<td class="text-center">{value}</td>
+							<td>{crate::data::as_feature_path_text(&path).unwrap_or_default()}</td>
+						</tr>}
 					}).collect::<Vec<_>>()}
 				</tbody>
 			</table>

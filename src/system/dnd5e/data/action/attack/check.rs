@@ -45,7 +45,7 @@ impl Evaluator for AttackCheckKind {
 			} => {
 				let ability_bonus = dc_ability
 					.as_ref()
-					.map(|ability| state.ability_score(*ability).0.modifier())
+					.map(|ability| state.ability_scores().get(*ability).score().modifier())
 					.unwrap_or_default();
 				let prof_bonus = proficient
 					.then(|| state.proficiency_bonus())
