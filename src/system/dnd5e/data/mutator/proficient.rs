@@ -331,8 +331,6 @@ mod test {
 	}
 
 	mod mutate {
-		use std::path::PathBuf;
-
 		use super::*;
 		use crate::{
 			path_map::PathMap,
@@ -342,6 +340,7 @@ mod test {
 				Feature,
 			},
 		};
+		use std::path::PathBuf;
 
 		fn character(mutator: AddProficiency, selections: Option<PathMap<String>>) -> Character {
 			Character::from(Persistent {

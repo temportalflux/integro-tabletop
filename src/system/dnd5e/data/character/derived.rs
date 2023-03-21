@@ -126,6 +126,14 @@ impl SavingThrows {
 		&self.by_ability[ability].proficiency
 	}
 
+	pub fn general_modifiers(&self) -> &ModifierMap {
+		&self.general_modifiers
+	}
+
+	pub fn ability_modifiers(&self, ability: Ability) -> &ModifierMap {
+		&self.by_ability[ability].modifiers
+	}
+
 	pub fn iter_modifiers(
 		&self,
 	) -> impl Iterator<Item = (Option<Ability>, Modifier, &ModifierMapItem)> {
@@ -180,6 +188,10 @@ impl ModifierMap {
 		self.modifiers.iter()
 	}
 
+	pub fn get(&self, modifier: Modifier) -> &Vec<ModifierMapItem> {
+		&self.modifiers[modifier]
+	}
+
 	pub fn iter_all(&self) -> impl Iterator<Item = (Modifier, &ModifierMapItem)> {
 		self.modifiers
 			.iter()
@@ -232,6 +244,14 @@ impl Skills {
 
 	pub fn proficiency(&self, skill: Skill) -> &AttributedValue<proficiency::Level> {
 		self.skills[skill].proficiency()
+	}
+
+	pub fn ability_modifiers(&self, ability: Ability) -> &ModifierMap {
+		&self.ability_modifiers[ability]
+	}
+
+	pub fn skill_modifiers(&self, skill: Skill) -> &ModifierMap {
+		&self.skills[skill].modifiers
 	}
 
 	pub fn iter_ability_modifiers(

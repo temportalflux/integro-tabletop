@@ -30,7 +30,6 @@ pub enum ModifierKind {
 crate::impl_trait_eq!(AddModifier);
 crate::impl_kdl_node!(AddModifier, "add_modifier");
 
-// TODO: Tests for AddModifier::mutate/apply
 impl Mutator for AddModifier {
 	type Target = Character;
 
@@ -200,7 +199,7 @@ mod test {
 
 		#[test]
 		fn skill() -> anyhow::Result<()> {
-			let doc = "mutator \"add_modifier\" \"Advantage\" (Skill)\"Perception\" context=\"using smell\"";
+			let doc = "mutator \"add_modifier\" \"Advantage\" (Skill)\"Specific\" \"Perception\" context=\"using smell\"";
 			assert_eq!(
 				from_doc(doc)?,
 				AddModifier {
@@ -216,5 +215,87 @@ mod test {
 
 	mod mutate {
 		use super::*;
+		use crate::system::dnd5e::data::{character::Persistent, Feature};
+		use std::path::PathBuf;
+
+		fn character(mutator: AddModifier) -> Character {
+			Character::from(Persistent {
+				feats: vec![Feature {
+					name: "TestMutator".into(),
+					mutators: vec![mutator.into()],
+					..Default::default()
+				}
+				.into()],
+				..Default::default()
+			})
+		}
+
+		#[test]
+		fn ability_specific() {
+			let character = character(AddModifier {
+				modifier: roll::Modifier::Advantage,
+				context: None,
+				kind: ModifierKind::Ability(Selector::Specific(Ability::Dexterity)),
+			});
+			let modifiers = character
+				.skills()
+				.ability_modifiers(Ability::Dexterity)
+				.get(roll::Modifier::Advantage);
+			assert_eq!(
+				*modifiers,
+				vec![(None, PathBuf::from("TestMutator")).into()]
+			);
+		}
+
+		#[test]
+		fn skill_specific() {
+			let character = character(AddModifier {
+				modifier: roll::Modifier::Disadvantage,
+				context: None,
+				kind: ModifierKind::Skill(Selector::Specific(Skill::Deception)),
+			});
+			let modifiers = character
+				.skills()
+				.skill_modifiers(Skill::Deception)
+				.get(roll::Modifier::Disadvantage);
+			assert_eq!(
+				*modifiers,
+				vec![(None, PathBuf::from("TestMutator")).into()]
+			);
+		}
+
+		#[test]
+		fn saving_throw_all() {
+			let character = character(AddModifier {
+				modifier: roll::Modifier::Advantage,
+				context: Some("Poison".into()),
+				kind: ModifierKind::SavingThrow(None),
+			});
+			let modifiers = character
+				.saving_throws()
+				.general_modifiers()
+				.get(roll::Modifier::Advantage);
+			assert_eq!(
+				*modifiers,
+				vec![(Some("Poison".into()), PathBuf::from("TestMutator")).into()]
+			);
+		}
+
+		#[test]
+		fn saving_throw_specific() {
+			let character = character(AddModifier {
+				modifier: roll::Modifier::Advantage,
+				context: Some("Poison".into()),
+				kind: ModifierKind::SavingThrow(Some(Selector::Specific(Ability::Constitution))),
+			});
+			let modifiers = character
+				.saving_throws()
+				.ability_modifiers(Ability::Constitution)
+				.get(roll::Modifier::Advantage);
+			assert_eq!(
+				*modifiers,
+				vec![(Some("Poison".into()), PathBuf::from("TestMutator")).into()]
+			);
+		}
 	}
 }
