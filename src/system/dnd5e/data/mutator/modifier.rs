@@ -37,23 +37,29 @@ impl Mutator for AddModifier {
 	fn apply(&self, stats: &mut Character, parent: &Path) {
 		match &self.kind {
 			ModifierKind::Ability(ability) => {
-				// TODO: adv/dis on all ability checks for this type
+				let Some(ability) = stats.resolve_selector(ability) else { return; };
+				stats.skills_mut().add_ability_modifier(
+					ability,
+					self.modifier,
+					self.context.clone(),
+					parent.to_owned(),
+				);
 			}
 			ModifierKind::SavingThrow(ability) => {
 				let ability = match ability {
 					None => None,
 					Some(ability) => stats.resolve_selector(ability),
 				};
-				// TODO: Pass the actual modifier Adv/Dis along
 				stats.saving_throws_mut().add_modifier(
 					ability,
+					self.modifier,
 					self.context.clone(),
 					parent.to_owned(),
 				);
 			}
 			ModifierKind::Skill(skill) => {
 				let Some(skill) = stats.resolve_selector(skill) else { return; };
-				stats.skills_mut().add_modifier(
+				stats.skills_mut().add_skill_modifier(
 					skill,
 					self.modifier,
 					self.context.clone(),

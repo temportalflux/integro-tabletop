@@ -378,7 +378,7 @@ mod test {
 				None,
 			);
 			assert_eq!(
-				character.skills()[Skill::Arcana].0,
+				*character.skills().proficiency(Skill::Arcana),
 				(
 					proficiency::Level::Double,
 					vec![("AddProficiency".into(), proficiency::Level::Double)]

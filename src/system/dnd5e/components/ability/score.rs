@@ -19,6 +19,9 @@ pub fn Score(ScoreProps { ability }: &ScoreProps) -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 
+	// TODO: Display roll modifiers for ability checks.
+	// Data is stored in `state.skills().iter_ability_modifiers()`
+
 	let ability_score = state.ability_scores().get(*ability);
 	let onclick = modal_dispatcher.callback({
 		let ability = *ability;

@@ -98,102 +98,156 @@ impl Derived {
 
 #[derive(Clone, Default, PartialEq, Debug)]
 pub struct SavingThrows {
-	by_ability: EnumMap<
-		Ability,
-		(
-			/*is proficient*/ AttributedValue<proficiency::Level>,
-			/*adv modifiers*/ Vec<(Option<String>, PathBuf)>,
-		),
-	>,
-	general_modifiers: Vec<(Option<String>, PathBuf)>,
+	by_ability: EnumMap<Ability, ProficiencyModifiers>,
+	general_modifiers: ModifierMap,
 }
 impl SavingThrows {
 	pub fn add_proficiency(&mut self, ability: Ability, source: PathBuf) {
 		self.by_ability[ability]
-			.0
+			.proficiency
 			.push(proficiency::Level::Full, source);
 	}
 
 	pub fn add_modifier(
 		&mut self,
 		ability: Option<Ability>,
+		modifier: Modifier,
 		target: Option<String>,
 		source: PathBuf,
 	) {
 		match ability {
-			Some(ability) => &mut self.by_ability[ability].1,
+			Some(ability) => &mut self.by_ability[ability].modifiers,
 			None => &mut self.general_modifiers,
 		}
-		.push((target, source));
+		.insert(modifier, (target, source).into());
 	}
 
 	pub fn get_prof(&self, ability: Ability) -> &AttributedValue<proficiency::Level> {
-		&self.by_ability[ability].0
+		&self.by_ability[ability].proficiency
 	}
 
 	pub fn iter_modifiers(
 		&self,
-	) -> impl Iterator<Item = (Option<Ability>, &Option<String>, &PathBuf)> {
+	) -> impl Iterator<Item = (Option<Ability>, Modifier, &ModifierMapItem)> {
 		self.by_ability
 			.iter()
-			.map(|(ability, (_, modifiers))| {
-				modifiers
-					.iter()
-					.map(move |(target, path)| (Some(ability), target, path))
+			.map(|(ability, saving_throw)| {
+				saving_throw
+					.modifiers
+					.iter_all()
+					.map(move |(modifier, item)| (Some(ability), modifier, item))
 			})
 			.flatten()
 			.chain(
 				self.general_modifiers
-					.iter()
-					.map(|(target, path)| (None, target, path)),
+					.iter_all()
+					.map(|(modifier, item)| (None, modifier, item)),
 			)
 	}
 }
 impl std::ops::Index<Ability> for SavingThrows {
-	type Output = (
-		AttributedValue<proficiency::Level>,
-		Vec<(Option<String>, PathBuf)>,
-	);
+	type Output = ProficiencyModifiers;
 	fn index(&self, index: Ability) -> &Self::Output {
 		&self.by_ability[index]
 	}
 }
 
 #[derive(Clone, Default, PartialEq, Debug)]
-pub struct Skills(
-	EnumMap<
-		Skill,
-		(
-			/*proficiency*/ AttributedValue<proficiency::Level>,
-			/*modifiers*/
-			EnumMap<Modifier, Vec<(/*context*/ Option<String>, /*source*/ PathBuf)>>,
-		),
-	>,
-);
-impl Skills {
-	pub fn add_proficiency(&mut self, skill: Skill, level: proficiency::Level, source: PathBuf) {
-		self.0[skill].0.push(level, source);
+pub struct ProficiencyModifiers {
+	proficiency: AttributedValue<proficiency::Level>,
+	modifiers: ModifierMap,
+}
+impl ProficiencyModifiers {
+	pub fn proficiency(&self) -> &AttributedValue<proficiency::Level> {
+		&self.proficiency
 	}
 
-	pub fn add_modifier(
+	pub fn modifiers(&self) -> &ModifierMap {
+		&self.modifiers
+	}
+}
+
+#[derive(Clone, Default, PartialEq, Debug)]
+pub struct ModifierMap {
+	modifiers: EnumMap<Modifier, Vec<ModifierMapItem>>,
+}
+impl ModifierMap {
+	pub fn insert(&mut self, modifier: Modifier, item: ModifierMapItem) {
+		self.modifiers[modifier].push(item);
+	}
+
+	pub fn iter(&self) -> impl Iterator<Item = (Modifier, &Vec<ModifierMapItem>)> {
+		self.modifiers.iter()
+	}
+
+	pub fn iter_all(&self) -> impl Iterator<Item = (Modifier, &ModifierMapItem)> {
+		self.modifiers
+			.iter()
+			.map(|(modifier, items)| items.iter().map(move |item| (modifier, item)))
+			.flatten()
+	}
+}
+#[derive(Clone, Default, PartialEq, Debug)]
+pub struct ModifierMapItem {
+	pub context: Option<String>,
+	pub source: PathBuf,
+}
+impl From<(Option<String>, PathBuf)> for ModifierMapItem {
+	fn from((context, source): (Option<String>, PathBuf)) -> Self {
+		Self { context, source }
+	}
+}
+
+#[derive(Clone, Default, PartialEq, Debug)]
+pub struct Skills {
+	ability_modifiers: EnumMap<Ability, ModifierMap>,
+	skills: EnumMap<Skill, ProficiencyModifiers>,
+}
+impl Skills {
+	pub fn add_proficiency(&mut self, skill: Skill, level: proficiency::Level, source: PathBuf) {
+		self.skills[skill].proficiency.push(level, source);
+	}
+
+	pub fn add_ability_modifier(
+		&mut self,
+		ability: Ability,
+		modifier: Modifier,
+		context: Option<String>,
+		source: PathBuf,
+	) {
+		self.ability_modifiers[ability].insert(modifier, (context, source).into());
+	}
+
+	pub fn add_skill_modifier(
 		&mut self,
 		skill: Skill,
 		modifier: Modifier,
 		context: Option<String>,
 		source: PathBuf,
 	) {
-		self.0[skill].1[modifier].push((context, source));
+		self.skills[skill]
+			.modifiers
+			.insert(modifier, (context, source).into());
 	}
-}
-impl std::ops::Index<Skill> for Skills {
-	type Output = (
-		/*proficiency*/ AttributedValue<proficiency::Level>,
-		/*modifiers*/
-		EnumMap<Modifier, Vec<(/*context*/ Option<String>, /*source*/ PathBuf)>>,
-	);
 
-	fn index(&self, index: Skill) -> &Self::Output {
-		&self.0[index]
+	pub fn proficiency(&self, skill: Skill) -> &AttributedValue<proficiency::Level> {
+		self.skills[skill].proficiency()
+	}
+
+	pub fn iter_ability_modifiers(
+		&self,
+		ability: Ability,
+	) -> impl Iterator<Item = (Modifier, &Vec<ModifierMapItem>)> {
+		self.ability_modifiers[ability].iter()
+	}
+
+	pub fn iter_skill_modifiers(
+		&self,
+		skill: Skill,
+	) -> impl Iterator<Item = (Modifier, &Vec<ModifierMapItem>)> {
+		self.ability_modifiers[skill.ability()]
+			.iter()
+			.chain(self.skills[skill].modifiers().iter())
 	}
 }
 

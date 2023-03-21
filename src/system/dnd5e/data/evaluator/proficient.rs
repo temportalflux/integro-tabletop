@@ -36,7 +36,9 @@ impl Evaluator for IsProficientWith {
 			Self::SavingThrow(ability) => {
 				*state.saving_throws().get_prof(*ability).value() != proficiency::Level::None
 			}
-			Self::Skill(skill) => *state.skills()[*skill].0.value() != proficiency::Level::None,
+			Self::Skill(skill) => {
+				*state.skills().proficiency(*skill).value() != proficiency::Level::None
+			}
 			Self::Language(language) => {
 				state.other_proficiencies().languages.contains_key(language)
 			}

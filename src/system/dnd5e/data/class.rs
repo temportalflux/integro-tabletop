@@ -277,7 +277,7 @@ impl FromKDL for Subclass {
 			.query_str_opt("scope() > description", 0)?
 			.unwrap_or_default()
 			.to_owned();
-		
+
 		let mut levels = Vec::with_capacity(20);
 		levels.resize_with(20, Default::default);
 		for node in node.query_all("scope() > level")? {

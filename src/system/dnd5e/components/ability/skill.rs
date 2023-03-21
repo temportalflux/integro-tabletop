@@ -3,7 +3,7 @@ use crate::{
 	components::modal,
 	system::dnd5e::{
 		components::SharedCharacter,
-		data::{roll, Ability, Skill},
+		data::{Ability, Skill},
 	},
 };
 use enumset::{EnumSet, EnumSetType};
@@ -154,7 +154,7 @@ fn Row(
 	let state = use_context::<SharedCharacter>().unwrap();
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 
-	let (proficiency, roll_modifiers) = &state.skills()[*skill];
+	let proficiency = state.skills().proficiency(*skill);
 
 	let modifier = state.ability_modifier(skill.ability(), Some(*proficiency.value()));
 	let passive = 10 + modifier;
@@ -166,29 +166,25 @@ fn Row(
 	);
 
 	let roll_modifiers = {
-		let mut modifier_kinds = enumset::EnumSet::<roll::Modifier>::all().into_iter().collect::<Vec<_>>();
-		modifier_kinds.sort();
-		modifier_kinds
-	}.into_iter().filter_map(|modifier| {
-		let content = &roll_modifiers[modifier];
-		if content.is_empty() {
-			return None;
-		}
+		let mut entries = state.skills().iter_skill_modifiers(*skill).collect::<Vec<_>>();
+		entries.sort_by_key(|(modifier, _)| *modifier);
+		entries
+	}.into_iter().map(|(modifier, items)| {
 		let tooltip = crate::data::as_feature_paths_html_custom(
-			content.iter(),
-			|(criteria, path)| (criteria.clone(), path.as_path()),
+			items.iter(),
+			|item| (item.context.clone(), item.source.as_path()),
 			|criteria, path_str| match criteria {
 				Some(criteria) => format!("<div>{} ({})</div>", criteria, path_str),
 				None => format!("<div>{}</div>", path_str),
 			},
 		);
-		Some(html! {
+		html! {
 			<Tooltip tag={"span"} content={tooltip} use_html={true}>
 				<span aria-label={format!("{modifier:?}")} style="margin-left: 2px; display: block; height: 16px; width: 16px; vertical-align: middle; margin-top: -2px;">
 					<crate::system::dnd5e::components::roll::Modifier value={modifier} />
 				</span>
 			</Tooltip>
-		})
+		}
 	}).collect::<Vec<_>>();
 
 	let mut table_data = vec![
@@ -241,7 +237,7 @@ struct SkillModalProps {
 fn SkillModal(SkillModalProps { skill }: &SkillModalProps) -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
 
-	let (proficiency, roll_modifiers) = &state.skills()[*skill];
+	let proficiency = state.skills().proficiency(*skill);
 	let bonus = state.ability_modifier(skill.ability(), Some(*proficiency.value()));
 
 	let prof_table = match proficiency.sources().is_empty() {
@@ -273,19 +269,14 @@ fn SkillModal(SkillModalProps { skill }: &SkillModalProps) -> Html {
 	};
 
 	let roll_modifiers = {
-		let mut modifier_kinds = enumset::EnumSet::<roll::Modifier>::all()
-			.into_iter()
-			.collect::<Vec<_>>();
-		modifier_kinds.sort();
-		modifier_kinds
-			.into_iter()
-			.map(|modifier| {
-				roll_modifiers[modifier]
-					.iter()
-					.map(move |(target, path)| (modifier, target, path))
-			})
+		let mut entries = state
+			.skills()
+			.iter_skill_modifiers(*skill)
+			.map(|(modifier, items)| items.iter().map(move |item| (modifier, item)))
 			.flatten()
-			.collect::<Vec<_>>()
+			.collect::<Vec<_>>();
+		entries.sort_by_key(|(modifier, _)| *modifier);
+		entries
 	};
 
 	let roll_modifiers_table = match roll_modifiers.is_empty() {
@@ -300,7 +291,7 @@ fn SkillModal(SkillModalProps { skill }: &SkillModalProps) -> Html {
 					</tr>
 				</thead>
 				<tbody>
-					{roll_modifiers.into_iter().map(|(modifier, target, path)| html! {
+					{roll_modifiers.into_iter().map(|(modifier, item)| html! {
 						<tr>
 							<td class="d-flex">
 								<span aria-label={format!("{modifier:?}")} style="margin-left: 2px; display: block; height: 16px; width: 16px; vertical-align: middle; margin-top: -2px;">
@@ -308,8 +299,8 @@ fn SkillModal(SkillModalProps { skill }: &SkillModalProps) -> Html {
 								</span>
 								<span class="flex-grow-1 text-center" style="margin-left: 5px;">{modifier.display_name()}</span>
 							</td>
-							<td class="text-center">{target.clone().unwrap_or_else(|| "--".into())}</td>
-							<td>{crate::data::as_feature_path_text(path).unwrap_or_default()}</td>
+							<td class="text-center">{item.context.clone().unwrap_or_else(|| "--".into())}</td>
+							<td>{crate::data::as_feature_path_text(&item.source).unwrap_or_default()}</td>
 						</tr>
 					}).collect::<Vec<_>>()}
 				</tbody>

@@ -2,7 +2,7 @@ use crate::{
 	bootstrap::components::Tooltip,
 	components::modal,
 	system::dnd5e::components::{roll::Modifier, SharedCharacter},
-	system::dnd5e::data::{roll, Ability},
+	system::dnd5e::data::Ability,
 };
 use enumset::EnumSet;
 use yew::prelude::*;
@@ -116,18 +116,18 @@ pub fn SavingThrowContainer() -> Html {
 					</div>
 				</div>
 				<div style="font-size: 11px;">
-					{state.saving_throws().iter_modifiers().map(|(ability, target, source_path)| {
+					{state.saving_throws().iter_modifiers().map(|(ability, modifier, item)| {
 						let style="height: 14px; margin-right: 2px; margin-top: -2px; width: 14px; vertical-align: middle;";
 						html! {
-							<Tooltip content={crate::data::as_feature_path_text(&source_path)}>
+							<Tooltip content={crate::data::as_feature_path_text(&item.source)}>
 								<span class="d-inline-flex" aria-label="Advantage" {style}>
-									<Modifier value={roll::Modifier::Advantage} />
+									<Modifier value={modifier} />
 								</span>
 								{ability.map(|ability| html! {
 									<span>{"on "}{ability.abbreviated_name().to_uppercase()}</span>
 								}).unwrap_or_default()}
 								<span>
-									{target.as_ref().map(|target| format!(" against {target}")).unwrap_or_default()}
+									{item.context.as_ref().map(|target| format!(" against {target}")).unwrap_or_default()}
 								</span>
 							</Tooltip>
 						}
@@ -150,18 +150,18 @@ fn Modal() -> Html {
 		let modifier_rows = state
 			.saving_throws()
 			.iter_modifiers()
-			.map(|(ability, target, source_path)| {
+			.map(|(ability, modifier, item)| {
 				let style="height: 14px; margin-right: 2px; margin-top: -2px; width: 14px; vertical-align: middle;";
 				html! {
 					<tr>
 						<td class="text-center">
 							<span class="d-inline-flex" aria-label="Advantage" {style}>
-								<Modifier value={roll::Modifier::Advantage} />
+								<Modifier value={modifier} />
 							</span>
 						</td>
 						<td class="text-center">{ability.map(|ability| ability.long_name()).unwrap_or_default()}</td>
-						<td class="text-center">{target.clone().unwrap_or_default()}</td>
-						<td>{crate::data::as_feature_path_text(&source_path)}</td>
+						<td class="text-center">{item.context.clone().unwrap_or_default()}</td>
+						<td>{crate::data::as_feature_path_text(&item.source)}</td>
 					</tr>
 				}
 			})
