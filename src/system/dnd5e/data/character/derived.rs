@@ -90,12 +90,6 @@ impl Default for Derived {
 	}
 }
 
-impl Derived {
-	pub fn finalize(&mut self) {
-		self.ability_scores.finalize();
-	}
-}
-
 #[derive(Clone, Default, PartialEq, Debug)]
 pub struct SavingThrows {
 	by_ability: EnumMap<Ability, ProficiencyModifiers>,

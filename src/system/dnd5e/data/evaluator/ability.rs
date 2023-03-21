@@ -20,7 +20,7 @@ impl Evaluator for GetAbilityModifier {
 	type Item = i32;
 
 	fn dependencies(&self) -> Dependencies {
-		["ability_score"].into()
+		["ability_score_finalize"].into()
 	}
 
 	fn evaluate(&self, state: &Self::Context) -> Self::Item {

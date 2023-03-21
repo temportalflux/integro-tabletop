@@ -131,7 +131,6 @@ impl Character {
 			*/
 			entry.mutator.apply(self, &entry.parent_path);
 		}
-		self.derived.finalize();
 	}
 
 	fn get_selections_at(&self, path: impl AsRef<Path>) -> Option<&Vec<String>> {

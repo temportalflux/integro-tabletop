@@ -69,6 +69,7 @@ impl MutatorGroup for Persistent {
 				.ability_scores_mut()
 				.push_bonus(ability, (*score).into(), "Base Score".into());
 		}
+		stats.apply(&super::FinalizeAbilityScores.into(), parent);
 
 		stats.apply(
 			&AddMaxHitPoints {

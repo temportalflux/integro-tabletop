@@ -26,6 +26,22 @@ impl AbilityScores {
 }
 
 #[derive(Clone, PartialEq, Debug)]
+pub struct FinalizeAbilityScores;
+crate::impl_trait_eq!(FinalizeAbilityScores);
+crate::impl_kdl_node!(FinalizeAbilityScores, "ability_score_finalize");
+impl crate::utility::Mutator for FinalizeAbilityScores {
+	type Target = crate::system::dnd5e::data::character::Character;
+
+	fn dependencies(&self) -> crate::utility::Dependencies {
+		["ability_score"].into()
+	}
+
+	fn apply(&self, stats: &mut Self::Target, _parent: &std::path::Path) {
+		stats.ability_scores_mut().finalize();
+	}
+}
+
+#[derive(Clone, PartialEq, Debug)]
 pub struct AbilityScore {
 	bonuses: Vec<(AbilityScoreBonus, PathBuf, /*was included*/ bool)>,
 	max_score_incs: Vec<(u32, PathBuf)>,
