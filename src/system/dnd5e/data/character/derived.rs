@@ -311,7 +311,7 @@ impl MaxHitPoints {
 	}
 
 	pub fn value(&self) -> u32 {
-		self.0 as u32
+		self.0.max(0) as u32
 	}
 
 	pub fn sources(&self) -> &BTreeMap<PathBuf, i32> {

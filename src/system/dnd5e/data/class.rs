@@ -187,7 +187,7 @@ impl<'a> LevelWithIndex<'a> {
 impl<'a> MutatorGroup for LevelWithIndex<'a> {
 	type Target = Character;
 
-	// TODO: Selector meta for integer field
+	// TODO: SelectorMeta for `Level::hit_points` integer field
 
 	fn set_data_path(&self, parent: &Path) {
 		let path_to_self = parent.join(self.level_name());
