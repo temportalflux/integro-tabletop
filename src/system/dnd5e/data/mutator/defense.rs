@@ -134,15 +134,11 @@ mod test {
 		#[test]
 		fn eval_damage_type() -> anyhow::Result<()> {
 			/* TODO
-			let doc = "mutator \"add_defense\" (Defense)\"Resistance\" damage_type=(Evaluator)\"map_level\"";
+			let doc = "mutator \"add_defense\" (Defense)\"Resistance\" (Evaluator)\"map_level\"";
 			let expected = AddDefense {
 				defense: Defense::Resistance,
 				damage_type: Some(Value::Evaluated(
-					ByLevel {
-						class_name: None,
-						map: [].into(),
-					}
-					.into(),
+					// MISSING; No evaluator exists which outputs a string
 				)),
 				context: None,
 			};
