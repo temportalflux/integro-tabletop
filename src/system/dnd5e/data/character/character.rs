@@ -83,27 +83,39 @@ impl Character {
 		});
 	}
 
-	fn insert_mutator(&mut self, entry: MutatorEntry) {
-		let idx = self.mutators.binary_search_by(|value| {
-			match (&*value.dependencies, &*entry.dependencies) {
+	fn insert_mutator(&mut self, incoming: MutatorEntry) {
+		let idx = self.mutators.binary_search_by(|existing| {
+			match (&*existing.dependencies, &*incoming.dependencies) {
 				// neither have dependencies, so they are considered equal, might as well order by node_id.
-				(None, None) => value.node_id.cmp(&entry.node_id),
-				// existing element has dependencies, but the new one doesn't. New one goes before existing.
+				(None, None) => existing.node_id.cmp(&incoming.node_id),
+				// existing has deps, and incoming does not. incoming must come first
 				(Some(_), None) => std::cmp::Ordering::Greater,
-				// new entry has dependencies, all deps in new must come before it
-				(_, Some(deps)) => match deps.contains(&value.node_id) {
-					// existing is not required for new, might as well sort by node_id.
-					false => value.node_id.cmp(&entry.node_id),
-					// existing is required, it must come before the new entry
-					true => std::cmp::Ordering::Greater,
-				},
+				// incoming has deps, and existing does not. existing must come first
+				(None, Some(_)) => std::cmp::Ordering::Less,
+				// both have deps, determine if either requires the other
+				(Some(existing_deps), Some(incoming_deps)) => {
+					let existing_reqs_incoming = existing_deps.contains(&incoming.node_id);
+					let incoming_reqs_existing = incoming_deps.contains(&existing.node_id);
+					match (existing_reqs_incoming, incoming_reqs_existing) {
+						// existing requires incoming, incoming must come first
+						(true, false) => std::cmp::Ordering::Greater,
+						// incoming requires existing, existing must come first
+						(false, true) => std::cmp::Ordering::Less,
+						// existing is not required for new, might as well sort by node_id.
+						(false, false) => existing.node_id.cmp(&incoming.node_id),
+						(true, true) => panic!(
+							"circular mutator dependency between {:?} and {:?}",
+							existing.node_id, incoming.node_id
+						),
+					}
+				}
 			}
 		});
 		let idx = match idx {
 			Ok(idx) => idx,
 			Err(idx) => idx,
 		};
-		self.mutators.insert(idx, entry);
+		self.mutators.insert(idx, incoming);
 	}
 
 	fn apply_cached_mutators(&mut self) {
