@@ -8,6 +8,15 @@
 .text-block {
 	white-space: pre-line;
 }
+.v-visible {
+	visibility: visible!important;
+}
+.v-collapse {
+	visibility: collapse!important;
+}
+.v-hidden {
+	visibility: hidden!important;
+}
 
 .table-compact > :not(caption) > * > * {
 	padding: 3px 3px;

@@ -120,7 +120,7 @@ fn SettingsEditor() -> Html {
 }
 
 #[function_component]
-fn AutoExchangeSwitch() -> Html {
+pub fn AutoExchangeSwitch() -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
 	let onchange = Callback::from({
 		let state = state.clone();

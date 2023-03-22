@@ -16,6 +16,7 @@ pub fn Inventory() -> Html {
 
 	html! {<>
 		<div class="d-flex">
+			<h5 class="my-auto">{"Equipment"}</h5>
 			<WalletInline />
 		</div>
 		<span class="hr" />

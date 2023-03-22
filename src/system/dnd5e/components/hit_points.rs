@@ -274,7 +274,7 @@ fn DeathSavesBody(BodyProps { on_open_modal }: &BodyProps) -> Html {
 	}
 }
 
-fn validate_uint_only() -> Callback<KeyboardEvent> {
+pub fn validate_uint_only() -> Callback<KeyboardEvent> {
 	Callback::from(|evt: KeyboardEvent| {
 		if !evt.cancelable() {
 			log::error!("Cannot cancel input::onkeydown event");

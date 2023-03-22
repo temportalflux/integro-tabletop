@@ -1,14 +1,21 @@
-use crate::system::dnd5e::{components::SharedCharacter, data::CurrencyKind};
+use crate::{
+	components::modal,
+	system::dnd5e::{components::{SharedCharacter, validate_uint_only, editor::AutoExchangeSwitch}, data::{CurrencyKind, Wallet, character::Persistent}},
+};
 use itertools::Itertools;
+use wasm_bindgen::JsCast;
+use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct CoinIconProps {
 	pub kind: CurrencyKind,
+	#[prop_or(16)]
+	pub size: usize,
 }
 
 #[function_component]
-pub fn CoinIcon(CoinIconProps { kind }: &CoinIconProps) -> Html {
+pub fn CoinIcon(CoinIconProps { kind, size }: &CoinIconProps) -> Html {
 	let inner = match kind {
 		CurrencyKind::Platinum => html! {<>
 			<path d="m9.95662 3.30735c.16878-.19532.41258-.30735.66898-.30735h2.7488c.2564 0 .5002.11203.669.30735l5.7367 6.63816c.1418.16409.2199.37469.2199.59269v2.9236c0 .218-.0781.4286-.2199.5927l-5.7367 6.6382c-.1688.1953-.4126.3073-.669.3073h-2.7488c-.2564 0-.5002-.112-.66899-.3073l-5.73668-6.6382c-.14178-.1641-.21993-.3747-.21993-.5927v-2.9236c0-.218.07815-.4286.21993-.59269z" fill="#b5b5b5"></path>
@@ -64,8 +71,9 @@ pub fn CoinIcon(CoinIconProps { kind }: &CoinIconProps) -> Html {
 			<circle cx="8.375" cy="4.47501" fill="#e5a48c" r=".875"></circle>
 		</>},
 	};
+	let style = format!("width: {size}px; height: {size}px;");
 	html! {
-		<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="mb-1" style="width: 16px; height: 16px;">
+		<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="mb-1" style={style}>
 			{inner}
 		</svg>
 	}
@@ -74,6 +82,7 @@ pub fn CoinIcon(CoinIconProps { kind }: &CoinIconProps) -> Html {
 #[function_component]
 pub fn WalletInline() -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
+	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 
 	let entries = CurrencyKind::all()
 		.sorted()
@@ -89,13 +98,223 @@ pub fn WalletInline() -> Html {
 		})
 		.collect::<Vec<_>>();
 
-	let onclick = Callback::from(|_| {
-		log::debug!("open currency modal");
+	let onclick = modal_dispatcher.callback(|_| {
+		modal::Action::Open(modal::Props {
+			centered: true,
+			scrollable: true,
+			root_classes: classes!("wallet"),
+			content: html! {<Modal />},
+			..Default::default()
+		})
 	});
 
 	html! {
-		<span class="wallet-inline ms-auto" {onclick}>
-			{entries}
+		<span class="wallet-inline ms-auto py-2" {onclick}>
+			{match entries.is_empty() {
+				true => html! { "Empty Coin Pouch" },
+				false => html! {<>{entries}</>},
+			}}
 		</span>
 	}
+}
+
+#[function_component]
+fn Modal() -> Html {
+	let state = use_context::<SharedCharacter>().unwrap();
+	let adjustment_wallet = use_state(|| Wallet::default());
+	let balance_display = {
+		let total_value_gold = state.persistent().inventory.wallet().total_value() / CurrencyKind::Gold.multiplier();
+		html! {
+			<div>
+				<div class="d-flex">
+					<h6>{"My Coins"}</h6>
+					<span class="ms-2" style="font-size: 0.8rem;">
+						{"(est. "}
+						{total_value_gold}
+						{" GP"}
+						<span class="ms-1"><CoinIcon kind={CurrencyKind::Gold}/></span>
+						{")"}
+					</span>
+				</div>
+				{CurrencyKind::all().sorted().rev().map(|coin| {
+					let amount = state.persistent().inventory.wallet()[coin];
+					html! {<>
+						<div class="d-flex py-1" style="font-size: 1.25rem;">
+							<div class="me-2"><CoinIcon kind={coin} size={24} /></div>
+							<div class="my-auto">{coin.to_string()}{" ("}{coin.abbreviation()}{")"}</div>
+							<div class="my-auto ms-auto me-3">{amount}</div>
+						</div>
+						<span class="hr my-1" />
+					</>}
+				}).collect::<Vec<_>>()}
+			</div>
+		}
+	};
+	let adjustment_form = {
+		let auto_exchange = state.persistent().settings.currency_auto_exchange;
+		let is_empty = adjustment_wallet.is_empty();
+		let contains_enough = state.persistent().inventory.wallet().contains(&*adjustment_wallet, auto_exchange);
+		let on_change_adj_coin = Callback::from({
+			let wallet = adjustment_wallet.clone();
+			move |(evt, coin): (web_sys::Event, CurrencyKind)| {
+				let Some(target) = evt.target() else { return; };
+				let Some(input) = target.dyn_ref::<HtmlInputElement>() else { return; };
+				let Ok(value) = input.value().parse::<u64>() else { return; };
+				wallet.set({
+					let mut wallet = (*wallet).clone();
+					wallet[coin] = value;
+					wallet
+				});
+			}
+		});
+		let onclick_add = Callback::from({
+			let adjustments = adjustment_wallet.clone();
+			let state = state.clone();
+			move |_| {
+				let adjustments = {
+					let wallet = *adjustments;
+					adjustments.set(Wallet::default());
+					wallet
+				};
+				state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
+					*persistent.inventory.wallet_mut() += adjustments;
+					None
+				}));
+			}
+		});
+		let onclick_remove = Callback::from({
+			let adjustments = adjustment_wallet.clone();
+			let state = state.clone();
+			move |_| {
+				if !contains_enough {
+					return;
+				}
+				let adjustments = {
+					let wallet = *adjustments;
+					adjustments.set(Wallet::default());
+					wallet
+				};
+				state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
+					let target = persistent.inventory.wallet_mut();
+					assert!(target.contains(&adjustments, auto_exchange));
+					target.remove(adjustments, auto_exchange);
+					None
+				}));
+			}
+		});
+		let onclick_clear = Callback::from({
+			let wallet = adjustment_wallet.clone();
+			move |_| {
+				wallet.set(Wallet::default());
+			}
+		});
+		let mut exchange_div_classes = classes!("ms-auto");
+		if !auto_exchange {
+			exchange_div_classes.push("v-hidden");
+		}
+		let onclick_exchange = Callback::from({
+			let state = state.clone();
+			move |_| {
+				if !auto_exchange {
+					return;
+				}
+				state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
+					persistent.inventory.wallet_mut().normalize();
+					None
+				}));
+			}
+		});
+		html! {
+			<div>
+				<div class="d-flex">
+					<h6 class="my-auto">{"Adjust Coins"}</h6>
+					<div class={exchange_div_classes}>
+						<button
+							type="button"
+							class="btn btn-outline-secondary btn-sm my-1"
+							onclick={onclick_exchange}
+						>{"Exchange Coins"}</button>
+					</div>
+				</div>
+				<div class="row mb-2 gx-2">
+					{CurrencyKind::all().sorted().rev().map(|coin| {
+						html! {<>
+							<div class="col">
+								<div class="d-flex justify-content-center">
+									<div class="me-1"><CoinIcon kind={coin} /></div>
+									{coin.abbreviation().to_uppercase()}
+								</div>
+								<input
+									type="number" class="form-control text-center p-0"
+									min="0"
+									value={format!("{}", adjustment_wallet[coin])}
+									onkeydown={validate_uint_only()}
+									onchange={on_change_adj_coin.reform(move |evt| (evt, coin))}
+								/>
+							</div>
+						</>}
+					}).collect::<Vec<_>>()}
+				</div>
+				<div class="d-flex justify-content-center">
+					<button
+						type="button" class="btn btn-success btn-sm mx-2"
+						disabled={is_empty}
+						onclick={onclick_add}
+					>{"Add"}</button>
+					<button
+						type="button" class="btn btn-danger btn-sm mx-2"
+						disabled={is_empty || !contains_enough}
+						onclick={onclick_remove}
+					>{"Remove"}</button>
+					<button
+						type="button" class="btn btn-secondary btn-sm mx-2"
+						disabled={is_empty}
+						onclick={onclick_clear}
+					>{"Clear"}</button>
+				</div>
+				<div
+					class={contains_enough.then_some("d-none").unwrap_or_default()}
+					style="font-size: 0.8rem; font-weight: 650; color: #dc3545;"
+				>
+					{"Not enough in pouch to remove this amount "}
+					{format!("(auto-exchange is {})", match auto_exchange { true => "ON", false => "OFF" })}
+				</div>
+			</div>
+		}
+	};
+	let settings = {
+		html! {
+			<div class="collapse" id="settingsCollapse">
+				<div class="card card-body mb-3">
+					<div class="d-flex">
+						<h6>{"Settings"}</h6>
+						<button
+							type="button"
+							class="btn-close ms-auto" aria-label="Close"
+							data-bs-toggle="collapse" data-bs-target="#settingsCollapse"
+						/>
+					</div>
+					<AutoExchangeSwitch />
+				</div>
+			</div>
+		}
+	};
+	html! {<>
+		<div class="modal-header">
+			<h1 class="modal-title fs-4">{"Coin Pouch"}</h1>
+			<button
+				type="button" class="btn btn-secondary btn-sm px-1 py-0 ms-2"
+				data-bs-toggle="collapse" data-bs-target="#settingsCollapse"
+			>
+				<i class="bi bi-gear-fill me-2" />
+				{"Settings"}
+			</button>
+			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
+		</div>
+		<div class="modal-body">
+			{settings}
+			{balance_display}
+			{adjustment_form}
+		</div>
+	</>}
 }

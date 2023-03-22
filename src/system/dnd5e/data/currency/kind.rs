@@ -26,6 +26,16 @@ impl CurrencyKind {
 			Self::Platinum => 1000,
 		}
 	}
+
+	pub fn abbreviation(&self) -> &'static str {
+		match self {
+			Self::Copper => "cp",
+			Self::Silver => "sp",
+			Self::Electrum => "ep",
+			Self::Gold => "gp",
+			Self::Platinum => "pp",
+		}
+	}
 }
 
 impl ToString for CurrencyKind {
