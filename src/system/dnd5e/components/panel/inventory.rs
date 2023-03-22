@@ -14,7 +14,17 @@ use yew::prelude::*;
 pub fn Inventory() -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
 
+	// TODO: Implement search-inventory functionality
+	// TODO: tag buttons to browse item containers
 	html! {<>
+		<div class="input-group mt-2">
+			<span class="input-group-text"><i class="bi bi-search"/></span>
+			<input
+				type="text" class="form-control"
+				placeholder="Search item names, types, rarities, or tags"
+			/>
+			<button class="btn btn-outline-theme" type="button">{"Browse Items"}</button>
+		</div>
 		<div class="d-flex">
 			<h5 class="my-auto">{"Equipment"}</h5>
 			<WalletInline />
