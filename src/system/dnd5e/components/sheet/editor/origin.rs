@@ -635,7 +635,7 @@ fn background(value: &Background, show_selectors: bool) -> Html {
 	</>}
 }
 
-fn feature(value: &Feature, show_selectors: bool) -> Html {
+pub fn feature(value: &Feature, show_selectors: bool) -> Html {
 	// TODO: display criteria evaluator
 	html! {
 		<div class="my-2">
@@ -649,7 +649,7 @@ fn feature(value: &Feature, show_selectors: bool) -> Html {
 	}
 }
 
-fn mutator_list<T: 'static>(list: &Vec<GenericMutator<T>>) -> Html {
+pub fn mutator_list<T: 'static>(list: &Vec<GenericMutator<T>>) -> Html {
 	let descs = list.iter().filter_map(mutator).collect::<Vec<_>>();
 	match descs.is_empty() {
 		true => html! {},
@@ -664,7 +664,7 @@ fn mutator<T: 'static>(value: &GenericMutator<T>) -> Option<Html> {
 	}
 }
 
-fn selectors_in<T: 'static>(mutators: &Vec<GenericMutator<T>>) -> Vec<Html> {
+pub fn selectors_in<T: 'static>(mutators: &Vec<GenericMutator<T>>) -> Vec<Html> {
 	mutators
 		.iter()
 		.filter_map(|m| m.selector_meta())

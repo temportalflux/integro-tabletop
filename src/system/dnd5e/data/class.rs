@@ -148,6 +148,12 @@ impl Default for Level {
 	}
 }
 
+impl Level {
+	pub fn is_empty(&self) -> bool {
+		self.mutators.is_empty() && self.features.is_empty()
+	}
+}
+
 impl FromKDL for Level {
 	fn from_kdl(
 		node: &kdl::KdlNode,

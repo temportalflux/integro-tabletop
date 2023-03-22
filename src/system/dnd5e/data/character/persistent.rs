@@ -116,6 +116,11 @@ impl MutatorGroup for Persistent {
 }
 
 impl Persistent {
+	pub fn add_class(&mut self, mut class: Class) {
+		class.levels.truncate(1);
+		self.classes.push(class);
+	}
+
 	pub fn level(&self, class_name: Option<&str>) -> usize {
 		match class_name {
 			Some(class_name) => {

@@ -3,6 +3,8 @@ use yew::prelude::*;
 
 mod abilities;
 pub use abilities::*;
+mod class;
+pub use class::*;
 mod home;
 pub use home::*;
 mod origin;
@@ -30,7 +32,7 @@ pub fn SheetEditor(SheetEditorProps { open_viewer }: &SheetEditorProps) -> Html 
 					<OriginTab />
 				</TabContent>
 				<TabContent id="class" title={html! {{"Class"}}}>
-					{"Class"}
+					<ClassTab />
 				</TabContent>
 				<TabContent id="abilities" title={html! {{"Abilities"}}}>
 					<AbilitiesTab />
