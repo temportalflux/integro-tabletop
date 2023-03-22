@@ -46,6 +46,12 @@ impl MutatorGroup for Persistent {
 	type Target = Character;
 
 	fn set_data_path(&self, parent: &std::path::Path) {
+		for group in &self.named_groups.race {
+			group.set_data_path(parent);
+		}
+		for group in &self.named_groups.race_variant {
+			group.set_data_path(parent);
+		}
 		for group in &self.named_groups.lineage {
 			group.set_data_path(parent);
 		}
@@ -87,7 +93,10 @@ impl MutatorGroup for Persistent {
 			parent,
 		);
 
-		for group in &self.named_groups.lineage {
+		for group in &self.named_groups.race {
+			stats.apply_from(group, parent);
+		}
+		for group in &self.named_groups.race_variant {
 			stats.apply_from(group, parent);
 		}
 		for group in &self.named_groups.upbringing {

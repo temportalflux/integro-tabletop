@@ -426,16 +426,6 @@ where
 		vec
 	};
 
-	/* TODO: Disabled content item if requirements are not met
-	{
-		if let Some(variant) = bundles.race_variant.get(idx) {
-			for (category, name) in &variant.requirements {
-
-			}
-		}
-	}
-	*/
-
 	html! {<>
 		{ordered_items.into_iter().map(move |(source_id, value)| {
 			let amount_selected = get_state_items(state.persistent()).iter().filter(|selected| {

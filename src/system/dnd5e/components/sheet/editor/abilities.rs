@@ -1,5 +1,5 @@
 use crate::system::dnd5e::{
-	components::{validate_uint_only, SharedCharacter},
+	components::{validate_uint_only, SharedCharacter, ability},
 	data::{
 		character::{ActionEffect, Persistent},
 		Ability,
@@ -369,7 +369,28 @@ fn StandardArray(GeneratorMethodProps { ability_scores }: &GeneratorMethodProps)
 
 #[function_component]
 fn AllStatBreakdown() -> Html {
-	html! {
-		{"TODO all stats similar to ability modal"}
-	}
+	let col_card = |ability: Ability| {
+		html! {
+			<div class="col">
+				<div class="card">
+					<div class="card-header">{ability.long_name()}</div>
+					<div class="card-body">
+						<ability::ScoreBreakdown ability={ability} />
+					</div>
+				</div>
+			</div>
+		}
+	};
+	html! {<>
+		<div class="row gx-2 mb-2">
+			{col_card(Ability::Strength)}
+			{col_card(Ability::Dexterity)}
+			{col_card(Ability::Constitution)}
+		</div>
+		<div class="row gx-2">
+			{col_card(Ability::Intelligence)}
+			{col_card(Ability::Wisdom)}
+			{col_card(Ability::Charisma)}
+		</div>
+	</>}
 }
