@@ -209,6 +209,11 @@ input[type="checkbox"].success:checked {
 	height: 30px;
 	width: 30px;
 }
+.forge-icon {
+	display: block;
+	height: 40px;
+	width: 40px;
+}
 
 .selector.missing-value {
 	--bs-border-color: var(--bs-warning);
@@ -218,4 +223,8 @@ input[type="checkbox"].success:checked {
 		border-color: var(--bs-border-color);
 		box-shadow: 0 0 0 0.25rem rgba(var(--bs-warning-rgb), 0.25);
 	}
+}
+
+.wallet-inline > span:not(:last-child) {
+	padding-right: 4px;
 }

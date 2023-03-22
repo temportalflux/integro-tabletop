@@ -1,7 +1,7 @@
 use crate::{
 	bootstrap::components::Tooltip,
 	system::dnd5e::{
-		components::SharedCharacter,
+		components::{SharedCharacter, WalletInline},
 		data::{character::ActionEffect, item::Item},
 	},
 };
@@ -15,7 +15,10 @@ pub fn Inventory() -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
 
 	html! {<>
-
+		<div class="d-flex">
+			<WalletInline />
+		</div>
+		<span class="hr" />
 		<table class="table table-compact m-0">
 			<thead>
 				<tr class="text-center" style="font-size: 0.7rem;">

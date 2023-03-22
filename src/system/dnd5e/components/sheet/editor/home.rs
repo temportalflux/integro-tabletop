@@ -11,7 +11,7 @@ pub fn HomeTab() -> Html {
 
 	// More robust pronoun selection? https://twitter.com/Patch_Games/status/1423706763841347586
 	html! {<div class="mx-4">
-		<div class="my-2">
+		<div class="my-3">
 			<h4>{"Character Info"}</h4>
 			<p>{"Who is your character? These options are also available in the Description tab."}</p>
 			<div class="row">
@@ -22,6 +22,9 @@ pub fn HomeTab() -> Html {
 					<PronounEditor />
 				</div>
 			</div>
+		</div>
+		<div class="my-3">
+			<SettingsEditor />
 		</div>
 	</div>}
 }
@@ -103,6 +106,51 @@ fn PronounEditor() -> Html {
 					onchange={onchange.clone()}
 					value={state.persistent().description.custom_pronouns.clone()}
 				/>
+			</div>
+		</div>
+	}
+}
+
+#[function_component]
+fn SettingsEditor() -> Html {
+	html! {<>
+		<h4>{"Settings"}</h4>
+		<AutoExchangeSwitch />
+	</>}
+}
+
+#[function_component]
+fn AutoExchangeSwitch() -> Html {
+	let state = use_context::<SharedCharacter>().unwrap();
+	let onchange = Callback::from({
+		let state = state.clone();
+		move |evt: web_sys::Event| {
+			let Some(target) = evt.target() else { return; };
+			let Some(input) = target.dyn_ref::<HtmlInputElement>() else { return; };
+			let value = input.checked();
+			state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
+				persistent.settings.currency_auto_exchange = value;
+				None
+			}));
+		}
+	});
+	html! {
+		<div class="form-check form-switch">
+			<input
+				class="form-check-input"
+				type="checkbox" role="switch" id="auto_exchange"
+				aria-describedby="auto_exchange-help"
+				onchange={onchange}
+				checked={state.persistent().settings.currency_auto_exchange}
+			/>
+			<label class="form-check-label" for="auto_exchange">
+				<strong>{"Currency: "}</strong>
+				{"Auto-Exchange"}
+			</label>
+			<div id="auto_exchange-help" class="form-text text-block">
+				{"If enabled, coinage will be automatically exchanged for smaller kinds when removing coinage.
+				The exchange button also becomes available, which allows you to convert smaller coinage \
+				into the largest possible coins."}
 			</div>
 		</div>
 	}

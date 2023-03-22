@@ -166,12 +166,22 @@ fn Row(
 	);
 
 	let roll_modifiers = {
-		let mut entries = state.skills().iter_skill_modifiers(*skill).collect::<Vec<_>>();
+		use crate::system::dnd5e::data::{
+			roll::Modifier,
+			character::ModifierMapItem,
+		};
+		let mut entries = enum_map::EnumMap::<Modifier, Vec<&ModifierMapItem>>::default();
+		for (modifier, items) in state.skills().iter_skill_modifiers(*skill) {
+			if !items.is_empty() {
+				entries[modifier].extend(items.iter());
+			}
+		}
+		let mut entries = entries.into_iter().filter(|(_, items)| !items.is_empty()).collect::<Vec<_>>();
 		entries.sort_by_key(|(modifier, _)| *modifier);
 		entries
 	}.into_iter().map(|(modifier, items)| {
 		let tooltip = crate::data::as_feature_paths_html_custom(
-			items.iter(),
+			items.into_iter(),
 			|item| (item.context.clone(), item.source.as_path()),
 			|criteria, path_str| match criteria {
 				Some(criteria) => format!("<div>{} ({})</div>", criteria, path_str),

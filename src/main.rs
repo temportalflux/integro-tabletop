@@ -36,14 +36,22 @@ impl<T> Compiled<T> {
 }
 
 fn create_character() -> system::dnd5e::data::character::Persistent {
-	use system::dnd5e::data::{character::Persistent, Description};
-	Persistent {
+	use system::dnd5e::data::{character::Persistent, CurrencyKind, Description, Wallet};
+	let mut persistent = Persistent {
 		description: Description {
 			name: "Sid the Squid".into(),
 			..Default::default()
 		},
 		..Default::default()
-	}
+	};
+	*persistent.inventory.wallet_mut() = Wallet::from([
+		(3, CurrencyKind::Platinum),
+		(16, CurrencyKind::Gold),
+		(4, CurrencyKind::Electrum),
+		(30, CurrencyKind::Silver),
+		(152, CurrencyKind::Copper),
+	]);
+	persistent
 }
 
 #[function_component]

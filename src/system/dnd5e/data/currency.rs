@@ -265,17 +265,14 @@ mod test {
 			(86, CurrencyKind::Gold),
 			(2, CurrencyKind::Platinum),
 		]);
-		let other = Wallet::from([
-			(5, CurrencyKind::Copper),
-			(20, CurrencyKind::Silver),
-		]);
+		let other = Wallet::from([(5, CurrencyKind::Copper), (20, CurrencyKind::Silver)]);
 		// auto-exchange shouldnt matter here
 		assert!(wallet.contains(&other, false));
 		assert!(wallet.contains(&other, true));
 		assert!(wallet.contains(&wallet, false));
 		assert!(wallet.contains(&wallet, true));
 	}
-	
+
 	#[test]
 	fn contains_larger_discrete() {
 		let wallet = Wallet::from([
@@ -285,15 +282,12 @@ mod test {
 			(86, CurrencyKind::Gold),
 			(2, CurrencyKind::Platinum),
 		]);
-		let other = Wallet::from([
-			(60, CurrencyKind::Copper),
-			(2, CurrencyKind::Electrum),
-		]);
+		let other = Wallet::from([(60, CurrencyKind::Copper), (2, CurrencyKind::Electrum)]);
 		// only contains if exchange is enabled
 		assert!(!wallet.contains(&other, false));
 		assert!(wallet.contains(&other, true));
 	}
-	
+
 	#[test]
 	fn remove_no_exchange() {
 		let mut wallet = Wallet::from([
@@ -303,10 +297,7 @@ mod test {
 			(86, CurrencyKind::Gold),
 			(2, CurrencyKind::Platinum),
 		]);
-		let other = Wallet::from([
-			(50, CurrencyKind::Copper),
-			(30, CurrencyKind::Gold),
-		]);
+		let other = Wallet::from([(50, CurrencyKind::Copper), (30, CurrencyKind::Gold)]);
 		wallet.remove(other, false);
 		assert_eq!(wallet.total_value(), 10123);
 		assert_eq!(wallet[CurrencyKind::Copper], 3);

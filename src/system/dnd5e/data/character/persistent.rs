@@ -40,6 +40,7 @@ pub struct Persistent {
 	pub conditions: Vec<BoxedCondition>,
 	pub hit_points: HitPoints,
 	pub inspiration: bool,
+	pub settings: Settings,
 }
 impl MutatorGroup for Persistent {
 	type Target = Character;
@@ -176,4 +177,9 @@ impl std::ops::AddAssign<(i32, u32)> for HitPoints {
 	fn add_assign(&mut self, rhs: (i32, u32)) {
 		*self = *self + rhs;
 	}
+}
+
+#[derive(Clone, PartialEq, Default, Debug)]
+pub struct Settings {
+	pub currency_auto_exchange: bool,
 }

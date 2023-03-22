@@ -49,6 +49,10 @@ pub fn CharacterSheetPage(CharacterSheetPageProps { character }: &CharacterSheet
 		let show_editor = show_editor.clone();
 		move |_| show_editor.set(false)
 	});
+	let open_editor = Callback::from({
+		let show_editor = show_editor.clone();
+		move |_| show_editor.set(true)
+	});
 
 	html! {
 		<ContextProvider<SharedCharacter> context={character.clone()}>
@@ -57,7 +61,7 @@ pub fn CharacterSheetPage(CharacterSheetPageProps { character }: &CharacterSheet
 					<modal::GeneralPurpose />
 					{match *show_editor {
 						true => html! { <editor::SheetEditor {open_viewer} /> },
-						false => html! { <SheetDisplay /> },
+						false => html! { <SheetDisplay {open_editor} /> },
 					}}
 				</div>
 			</ContextProvider<modal::Context>>

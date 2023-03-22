@@ -1,4 +1,4 @@
-use super::mutator::AddAction;
+use super::{mutator::AddAction, Wallet};
 use crate::{
 	kdl_ext::{DocumentExt, NodeExt, ValueIdx},
 	system::{
@@ -177,6 +177,7 @@ impl MutatorGroup for EquipableEntry {
 pub struct Inventory {
 	items_by_id: HashMap<Uuid, EquipableEntry>,
 	itemids_by_name: Vec<Uuid>,
+	wallet: Wallet,
 }
 
 impl Inventory {
@@ -184,7 +185,16 @@ impl Inventory {
 		Self {
 			items_by_id: HashMap::new(),
 			itemids_by_name: Vec::new(),
+			wallet: Wallet::default(),
 		}
+	}
+
+	pub fn wallet(&self) -> &Wallet {
+		&self.wallet
+	}
+
+	pub fn wallet_mut(&mut self) -> &mut Wallet {
+		&mut self.wallet
 	}
 
 	pub fn get_item(&self, id: &Uuid) -> Option<&Item> {
