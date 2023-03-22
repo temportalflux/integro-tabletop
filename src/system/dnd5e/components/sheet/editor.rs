@@ -1,6 +1,8 @@
 use crate::components::{Nav, NavDisplay, TabContent};
 use yew::prelude::*;
 
+mod abilities;
+pub use abilities::*;
 mod home;
 pub use home::*;
 mod origin;
@@ -31,7 +33,7 @@ pub fn SheetEditor(SheetEditorProps { open_viewer }: &SheetEditorProps) -> Html 
 					{"Class"}
 				</TabContent>
 				<TabContent id="abilities" title={html! {{"Abilities"}}}>
-					{"Abilities"}
+					<AbilitiesTab />
 				</TabContent>
 				<TabContent id="background" title={html! {{"Background"}}}>
 					{"Background"}

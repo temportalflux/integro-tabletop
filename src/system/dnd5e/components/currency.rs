@@ -1,6 +1,9 @@
 use crate::{
 	components::modal,
-	system::dnd5e::{components::{SharedCharacter, validate_uint_only, editor::AutoExchangeSwitch}, data::{CurrencyKind, Wallet, character::Persistent}},
+	system::dnd5e::{
+		components::{editor::AutoExchangeSwitch, validate_uint_only, SharedCharacter},
+		data::{character::Persistent, CurrencyKind, Wallet},
+	},
 };
 use itertools::Itertools;
 use wasm_bindgen::JsCast;
@@ -123,7 +126,8 @@ fn Modal() -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
 	let adjustment_wallet = use_state(|| Wallet::default());
 	let balance_display = {
-		let total_value_gold = state.persistent().inventory.wallet().total_value() / CurrencyKind::Gold.multiplier();
+		let total_value_gold =
+			state.persistent().inventory.wallet().total_value() / CurrencyKind::Gold.multiplier();
 		html! {
 			<div>
 				<div class="d-flex">
@@ -153,7 +157,11 @@ fn Modal() -> Html {
 	let adjustment_form = {
 		let auto_exchange = state.persistent().settings.currency_auto_exchange;
 		let is_empty = adjustment_wallet.is_empty();
-		let contains_enough = state.persistent().inventory.wallet().contains(&*adjustment_wallet, auto_exchange);
+		let contains_enough = state
+			.persistent()
+			.inventory
+			.wallet()
+			.contains(&*adjustment_wallet, auto_exchange);
 		let on_change_adj_coin = Callback::from({
 			let wallet = adjustment_wallet.clone();
 			move |(evt, coin): (web_sys::Event, CurrencyKind)| {
