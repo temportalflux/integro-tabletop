@@ -237,3 +237,17 @@ input[type="checkbox"].success:checked {
 .wallet-inline > span:not(:last-child) {
 	padding-right: 4px;
 }
+
+.accordion-item:not(:has(.accordion-body)) .accordion-button::after {
+	visibility: hidden;
+}
+[data-bs-theme=light] .accordion-button:disabled {
+	//background-color: rgba(239, 239, 239, 0.3);
+	color: rgba(16, 16, 16, 0.3);
+	//border-color: rgba(118, 118, 118, 0.3);
+}
+[data-bs-theme=dark] .accordion-button:disabled {
+	//background-color: rgba(19, 1, 1, 0.3);
+	color: rgba(255, 255, 255, 0.3);
+	//border-color: rgba(195, 195, 195, 0.3);
+}
