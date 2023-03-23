@@ -32,6 +32,55 @@ crate::impl_kdl_node!(AddProficiency, "add_proficiency");
 impl Mutator for AddProficiency {
 	type Target = Character;
 
+	fn description(&self) -> Option<String> {
+		match self {
+			Self::SavingThrow(ability) => Some(format!(
+				"You are proficient with {} saving throws.",
+				ability.long_name()
+			)),
+			Self::Skill(Selector::Specific(skill), level) => Some(format!(
+				"You are {} with {} checks.",
+				level.as_display_name().to_lowercase(),
+				skill.display_name()
+			)),
+			Self::Skill(Selector::Any { .. }, level) => Some(format!(
+				"You are {} with one skill of your choice.",
+				level.as_display_name().to_lowercase()
+			)),
+			Self::Skill(Selector::AnyOf { options, .. }, level) => Some(format!(
+				"You are {} with one skill of: {}.",
+				level.as_display_name().to_lowercase(),
+				options
+					.iter()
+					.map(Skill::display_name)
+					.collect::<Vec<_>>()
+					.join(", ")
+			)),
+			Self::Language(Selector::Specific(lang)) => {
+				Some(format!("You can speak, read, and write {lang}."))
+			}
+			Self::Language(Selector::Any { .. }) => Some(format!(
+				"You can speak, read, and write one language of your choice."
+			)),
+			Self::Language(Selector::AnyOf { options, .. }) => Some(format!(
+				"You can speak, read, and write one language of: {}.",
+				options.join(", ")
+			)),
+			Self::Armor(kind) => Some(format!(
+				"You are proficient with {} armor.",
+				kind.to_string().to_lowercase()
+			)),
+			Self::Weapon(WeaponProficiency::Kind(kind)) => Some(format!(
+				"You are proficient with {} weapons.",
+				kind.to_string().to_lowercase()
+			)),
+			Self::Weapon(WeaponProficiency::Classification(kind)) => {
+				Some(format!("You are proficient with {kind} weapon-types."))
+			}
+			Self::Tool(tool) => Some(format!("You are proficient with {tool}.")),
+		}
+	}
+
 	fn set_data_path(&self, parent: &std::path::Path) {
 		match self {
 			Self::Skill(selector, _) => selector.set_data_path(parent),
