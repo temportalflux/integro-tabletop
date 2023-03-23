@@ -281,6 +281,7 @@ mod test {
 				Selector::AnyOf {
 					id: Some("MutatorSelect").into(),
 					options: vec![Skill::Insight, Skill::AnimalHandling],
+					cannot_match: Default::default(),
 				},
 				proficiency::Level::Full,
 			);
@@ -298,6 +299,7 @@ mod test {
 				Selector::AnyOf {
 					id: Default::default(),
 					options: vec![Skill::Insight, Skill::AnimalHandling],
+					cannot_match: Default::default(),
 				},
 				proficiency::Level::Double,
 			);
@@ -333,6 +335,7 @@ mod test {
 			let expected = AddProficiency::Language(Selector::AnyOf {
 				id: Default::default(),
 				options: vec!["Dwarven".into(), "Giant".into()],
+				cannot_match: Default::default(),
 			});
 			assert_eq!(from_doc(doc)?, expected.into());
 			Ok(())

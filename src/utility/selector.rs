@@ -61,6 +61,7 @@ pub enum Selector<T: ToString + FromStr> {
 	Specific(T),
 	AnyOf {
 		id: IdPath,
+		cannot_match: Vec<IdPath>,
 		options: Vec<T>,
 	},
 	Any {
@@ -76,11 +77,8 @@ where
 	fn id_path(&self) -> Option<&IdPath> {
 		match self {
 			Self::Specific(_) => None,
-			Self::AnyOf { id, options: _ } => Some(id),
-			Self::Any {
-				id,
-				cannot_match: _,
-			} => Some(id),
+			Self::AnyOf { id, .. } => Some(id),
+			Self::Any { id, .. } => Some(id),
 		}
 	}
 
@@ -88,14 +86,13 @@ where
 		if let Some(id_path) = self.id_path() {
 			id_path.set_path(parent);
 		}
-		if let Self::Any {
-			id: _,
-			cannot_match,
-		} = &self
-		{
-			for id_path in cannot_match {
-				id_path.set_path(parent);
+		match &self {
+			Self::Any { cannot_match, .. } | Self::AnyOf { cannot_match, .. } => {
+				for id_path in cannot_match {
+					id_path.set_path(parent);
+				}
 			}
+			Self::Specific(_) => {}
 		}
 	}
 
@@ -128,11 +125,19 @@ where
 			}
 			"AnyOf" => {
 				let id = node.get_str_opt("id")?.into();
+
+				let cannot_match = node.query_str_all("scope() > cannot-match", 0)?;
+				let cannot_match = cannot_match.into_iter().map(IdPath::from).collect();
+
 				let mut options = Vec::new();
 				for kdl_value in node.query_get_all("scope() > option", 0)? {
 					options.push(map_value(kdl_value)?);
 				}
-				Ok(Self::AnyOf { id, options })
+				Ok(Self::AnyOf {
+					id,
+					options,
+					cannot_match,
+				})
 			}
 			"Any" => {
 				let id = node.get_str_opt("id")?.into();
@@ -211,14 +216,19 @@ impl SelectorOptions {
 	pub fn from_string(selector: &Selector<String>) -> Option<Self> {
 		match selector {
 			Selector::Specific(_) => None,
-			Selector::AnyOf { id: _, options } => Some(Self::AnyOf {
-				options: options.clone(),
-				cannot_match: None,
-			}),
-			Selector::Any {
-				id: _,
-				cannot_match: _,
-			} => Some(Self::Any),
+			Selector::AnyOf {
+				cannot_match,
+				options,
+				..
+			} => {
+				let cannot_match = (!cannot_match.is_empty())
+					.then(|| cannot_match.iter().map(IdPath::as_path).collect());
+				Some(Self::AnyOf {
+					options: options.clone(),
+					cannot_match,
+				})
+			}
+			Selector::Any { .. } => Some(Self::Any),
 		}
 	}
 
@@ -235,17 +245,20 @@ impl SelectorOptions {
 	{
 		match selector {
 			Selector::Specific(_) => None,
-			Selector::AnyOf { id: _, options } => {
+			Selector::AnyOf {
+				options,
+				cannot_match,
+				..
+			} => {
 				let options = options.iter().map(|t| *t);
+				let cannot_match = (!cannot_match.is_empty())
+					.then(|| cannot_match.iter().map(IdPath::as_path).collect());
 				Some(Self::AnyOf {
 					options: Self::iter_to_str(options),
-					cannot_match: None,
+					cannot_match,
 				})
 			}
-			Selector::Any {
-				id: _,
-				cannot_match,
-			} => {
+			Selector::Any { cannot_match, .. } => {
 				let options = EnumSet::<T>::all().into_iter();
 				let cannot_match = (!cannot_match.is_empty())
 					.then(|| cannot_match.iter().map(IdPath::as_path).collect());

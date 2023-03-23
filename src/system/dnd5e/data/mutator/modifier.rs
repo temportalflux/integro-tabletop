@@ -9,7 +9,7 @@ use crate::{
 			FromKDL,
 		},
 	},
-	utility::{Mutator, Selector},
+	utility::{Mutator, Selector, SelectorMeta, SelectorMetaVec},
 	GeneralError,
 };
 
@@ -33,7 +33,92 @@ crate::impl_kdl_node!(AddModifier, "add_modifier");
 impl Mutator for AddModifier {
 	type Target = Character;
 
-	// TODO: mutator description add_modifier
+	fn description(&self) -> Option<String> {
+		let mut desc = format!("You have {} on ", self.modifier.display_name());
+		let kind_desc = match &self.kind {
+			ModifierKind::Ability(Selector::Specific(ability)) => {
+				format!("{} checks", ability.long_name())
+			}
+			ModifierKind::Ability(Selector::AnyOf { options, .. }) => format!(
+				"any single ability check (of: {})",
+				options
+					.iter()
+					.map(Ability::long_name)
+					.collect::<Vec<_>>()
+					.join(", ")
+			),
+			ModifierKind::Ability(Selector::Any { .. }) => {
+				format!("any single ability check")
+			}
+			ModifierKind::SavingThrow(Some(Selector::Specific(ability))) => {
+				format!("{} saving throws", ability.long_name(),)
+			}
+			ModifierKind::SavingThrow(Some(Selector::AnyOf { options, .. })) => format!(
+				"any single ability saving throw (of: {})",
+				options
+					.iter()
+					.map(Ability::long_name)
+					.collect::<Vec<_>>()
+					.join(", ")
+			),
+			ModifierKind::SavingThrow(Some(Selector::Any { .. })) => {
+				format!("any single ability saving throw")
+			}
+			ModifierKind::SavingThrow(None) => format!("saving throws"),
+			ModifierKind::Skill(Selector::Specific(skill)) => format!(
+				"{} ({}) checks",
+				skill.ability().long_name(),
+				skill.display_name()
+			),
+			ModifierKind::Skill(Selector::AnyOf { options, .. }) => format!(
+				"any single ability skill check (of: {})",
+				options
+					.iter()
+					.map(Skill::display_name)
+					.collect::<Vec<_>>()
+					.join(", ")
+			),
+			ModifierKind::Skill(Selector::Any { .. }) => {
+				format!("any single ability skill check")
+			}
+		};
+		desc.push_str(&kind_desc);
+		if let Some(ctx) = &self.context {
+			desc.push_str(match &self.kind {
+				ModifierKind::Ability(_) => "",
+				ModifierKind::SavingThrow(_) => " against",
+				ModifierKind::Skill(_) => "",
+			});
+			desc.push(' ');
+			desc.push_str(ctx.as_str());
+		}
+		desc.push('.');
+		Some(desc)
+	}
+
+	fn set_data_path(&self, parent: &std::path::Path) {
+		match &self.kind {
+			ModifierKind::Ability(selector) => selector.set_data_path(parent),
+			ModifierKind::SavingThrow(Some(selector)) => selector.set_data_path(parent),
+			ModifierKind::SavingThrow(None) => {}
+			ModifierKind::Skill(selector) => selector.set_data_path(parent),
+		}
+	}
+
+	fn selector_meta(&self) -> Option<Vec<SelectorMeta>> {
+		match &self.kind {
+			ModifierKind::Ability(selector) => SelectorMetaVec::default()
+				.with_enum("Ability", selector)
+				.to_vec(),
+			ModifierKind::SavingThrow(Some(selector)) => SelectorMetaVec::default()
+				.with_enum("Ability", selector)
+				.to_vec(),
+			ModifierKind::SavingThrow(None) => None,
+			ModifierKind::Skill(selector) => SelectorMetaVec::default()
+				.with_enum("Skill", selector)
+				.to_vec(),
+		}
+	}
 
 	fn apply(&self, stats: &mut Character, parent: &Path) {
 		match &self.kind {
@@ -157,7 +242,8 @@ mod test {
 					context: Some("which use smell".into()),
 					kind: ModifierKind::Ability(Selector::AnyOf {
 						id: Default::default(),
-						options: vec![Ability::Strength, Ability::Wisdom]
+						options: vec![Ability::Strength, Ability::Wisdom],
+						cannot_match: Default::default(),
 					}),
 				}
 				.into()
