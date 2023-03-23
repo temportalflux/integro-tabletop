@@ -28,17 +28,14 @@ pub fn SheetEditor(SheetEditorProps { open_viewer }: &SheetEditorProps) -> Html 
 				<TabContent id="home" title={html! {{"Home"}}}>
 					<HomeTab />
 				</TabContent>
-				<TabContent id="origin" title={html! {{"Origin"}}}>
-					<OriginTab />
-				</TabContent>
 				<TabContent id="class" title={html! {{"Class"}}}>
 					<ClassTab />
 				</TabContent>
+				<TabContent id="origin" title={html! {{"Origin"}}}>
+					<OriginTab />
+				</TabContent>
 				<TabContent id="abilities" title={html! {{"Abilities"}}}>
 					<AbilitiesTab />
-				</TabContent>
-				<TabContent id="background" title={html! {{"Background"}}}>
-					{"Background"}
 				</TabContent>
 				<TabContent id="description" title={html! {{"Description"}}}>
 					{"Description"}
