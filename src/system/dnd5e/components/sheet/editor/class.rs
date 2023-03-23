@@ -1,6 +1,6 @@
 use crate::system::dnd5e::{
 	components::{
-		editor::{feature, mutator_list, selectors_in},
+		editor::{feature, mutator_list},
 		SharedCharacter,
 	},
 	data::{
@@ -225,8 +225,7 @@ fn class_body(value: &Class, show_selectors: bool) -> Html {
 			{"Hit Die: "}
 			{hit_die.to_string()}
 		</span>
-		{mutator_list(&value.mutators)}
-		{show_selectors.then(|| selectors_in(&value.mutators)).unwrap_or_default()}
+		{mutator_list(&value.mutators, show_selectors)}
 
 		<div class="my-2">
 			{value.levels.iter().enumerate()
@@ -331,7 +330,7 @@ fn CollapsableCard(props: &CollapsableCardProps) -> Html {
 
 fn level_body(value: &Level, show_selectors: bool) -> Html {
 	html! {<>
-		{mutator_list(&value.mutators)}
+		{mutator_list(&value.mutators, show_selectors)}
 		{value.features.iter().map(|f| feature(f.inner(), show_selectors)).collect::<Vec<_>>()}
 	</>}
 }

@@ -585,8 +585,7 @@ fn race(value: &Race, show_selectors: bool) -> Html {
 		<div class="text-block">
 			{value.description.clone()}
 		</div>
-		{mutator_list(&value.mutators)}
-		{show_selectors.then(|| selectors_in(&value.mutators)).unwrap_or_default()}
+		{mutator_list(&value.mutators, show_selectors)}
 		{value.features.iter().map(|f| feature(f.inner(), show_selectors)).collect::<Vec<_>>()}
 	</>}
 }
@@ -596,8 +595,7 @@ fn race_variant(value: &RaceVariant, show_selectors: bool) -> Html {
 		<div class="text-block">
 			{value.description.clone()}
 		</div>
-		{mutator_list(&value.mutators)}
-		{show_selectors.then(|| selectors_in(&value.mutators)).unwrap_or_default()}
+		{mutator_list(&value.mutators, show_selectors)}
 		{value.features.iter().map(|f| feature(f.inner(), show_selectors)).collect::<Vec<_>>()}
 	</>}
 }
@@ -607,8 +605,7 @@ fn lineage(value: &Lineage, show_selectors: bool) -> Html {
 		<div class="text-block">
 			{value.description.clone()}
 		</div>
-		{mutator_list(&value.mutators)}
-		{show_selectors.then(|| selectors_in(&value.mutators)).unwrap_or_default()}
+		{mutator_list(&value.mutators, show_selectors)}
 		{value.features.iter().map(|f| feature(f.inner(), show_selectors)).collect::<Vec<_>>()}
 	</>}
 }
@@ -618,8 +615,7 @@ fn upbringing(value: &Upbringing, show_selectors: bool) -> Html {
 		<div class="text-block">
 			{value.description.clone()}
 		</div>
-		{mutator_list(&value.mutators)}
-		{show_selectors.then(|| selectors_in(&value.mutators)).unwrap_or_default()}
+		{mutator_list(&value.mutators, show_selectors)}
 		{value.features.iter().map(|f| feature(f.inner(), show_selectors)).collect::<Vec<_>>()}
 	</>}
 }
@@ -629,8 +625,7 @@ fn background(value: &Background, show_selectors: bool) -> Html {
 		<div class="text-block">
 			{value.description.clone()}
 		</div>
-		{mutator_list(&value.mutators)}
-		{show_selectors.then(|| selectors_in(&value.mutators)).unwrap_or_default()}
+		{mutator_list(&value.mutators, show_selectors)}
 		{value.features.iter().map(|f| feature(f.inner(), show_selectors)).collect::<Vec<_>>()}
 	</>}
 }
@@ -643,35 +638,37 @@ pub fn feature(value: &Feature, show_selectors: bool) -> Html {
 			<div class="text-block">
 				{value.description.clone()}
 			</div>
-			{mutator_list(&value.mutators)}
-			{show_selectors.then(|| selectors_in(&value.mutators)).unwrap_or_default()}
+			{mutator_list(&value.mutators, show_selectors)}
 		</div>
 	}
 }
 
-pub fn mutator_list<T: 'static>(list: &Vec<GenericMutator<T>>) -> Html {
-	let descs = list.iter().filter_map(mutator).collect::<Vec<_>>();
-	match descs.is_empty() {
-		true => html! {},
-		false => html! {<ul>{descs}</ul>},
-	}
-}
-
-fn mutator<T: 'static>(value: &GenericMutator<T>) -> Option<Html> {
-	match value.description() {
-		Some(desc) => Some(html! {<li>{desc}</li>}),
-		None => None,
-	}
-}
-
-pub fn selectors_in<T: 'static>(mutators: &Vec<GenericMutator<T>>) -> Vec<Html> {
-	mutators
+pub fn mutator_list<T: 'static>(list: &Vec<GenericMutator<T>>, show_selectors: bool) -> Html {
+	let mutators = list
 		.iter()
-		.filter_map(|m| m.selector_meta())
-		.map(Vec::into_iter)
+		.filter_map(|value| mutator(value, show_selectors))
+		.collect::<Vec<_>>();
+	match mutators.is_empty() {
+		true => html! {},
+		false => html! {<ul>{mutators}</ul>},
+	}
+}
+
+fn mutator<T: 'static>(value: &GenericMutator<T>, show_selectors: bool) -> Option<Html> {
+	let selectors = show_selectors
+		.then(|| value.selector_meta())
 		.flatten()
-		.map(|meta| html! { <SelectorField {meta} /> })
-		.collect()
+		.map(|metas| {
+			metas
+				.into_iter()
+				.map(|meta| html! { <SelectorField {meta} /> })
+				.collect::<Vec<_>>()
+		})
+		.unwrap_or_default();
+	Some(html! {<li>
+		{value.description().unwrap_or_default()}
+		{selectors}
+	</li>})
 }
 
 #[derive(Clone, PartialEq, Properties)]
@@ -710,7 +707,7 @@ fn SelectorField(
 		}
 	});
 
-	let mut classes = classes!("input-group", "mx-3", "my-2", "selector");
+	let mut classes = classes!("input-group", "my-2", "selector");
 	if value.is_none() {
 		classes.push("missing-value");
 	}
