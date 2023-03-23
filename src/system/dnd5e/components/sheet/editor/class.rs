@@ -1,6 +1,6 @@
 use crate::system::dnd5e::{
 	components::{
-		editor::{mutator_list, selectors_in, feature},
+		editor::{feature, mutator_list, selectors_in},
 		SharedCharacter,
 	},
 	data::{
@@ -49,7 +49,9 @@ struct ClassBrowerToggleProps {
 }
 
 #[function_component]
-fn ClassBrowerToggle(ClassBrowerToggleProps { is_open, on_click }: &ClassBrowerToggleProps) -> Html {
+fn ClassBrowerToggle(
+	ClassBrowerToggleProps { is_open, on_click }: &ClassBrowerToggleProps,
+) -> Html {
 	let mut classes = classes!("btn");
 	classes.push(match *is_open {
 		false => "btn-outline-success",
@@ -213,53 +215,118 @@ fn ActiveClassList() -> Html {
 }
 
 fn class_body(value: &Class, show_selectors: bool) -> Html {
-	let level_accordion_id = format!("{}-level", value.name.to_case(Case::Snake));
+	let class_level_div_id = format!("{}-level", value.name.to_case(Case::Snake));
+	let hit_die = value.hit_die;
 	html! {<>
 		<div class="text-block">
 			{value.description.clone()}
 		</div>
 		<span>
 			{"Hit Die: "}
-			{value.hit_die.to_string()}
+			{hit_die.to_string()}
 		</span>
 		{mutator_list(&value.mutators)}
 		{show_selectors.then(|| selectors_in(&value.mutators)).unwrap_or_default()}
 
-		<div class="accordion my-2" id={level_accordion_id.clone()}>
-			{value.levels.iter().enumerate().filter_map(|(idx, level)| {
-				if !show_selectors && level.is_empty() {
-					return None;
+		<div class="my-2">
+			{value.levels.iter().enumerate()
+			.filter(|(_, level)| show_selectors || !level.is_empty())
+			.map(|(idx, level)| {
+				html! {
+					<CollapsableCard
+						id={format!("{}{}", class_level_div_id, idx)}
+						collapse_btn_classes={level.is_empty().then_some("v-hidden").unwrap_or_default()}
+						header_content={{
+							html! {<>
+								<span>{"Level "}{idx + 1}</span>
+								{show_selectors.then(move || html! {
+									<span class="ms-auto">
+										{"Hit Points: "}
+										{"TODO"}
+										{" / "}
+										{hit_die.value()}
+									</span>
+								}).unwrap_or_default()}
+							</>}
+						}}
+					>
+						{level_body(level, show_selectors)}
+					</CollapsableCard>
 				}
-				let id = format!("{}{}", level_accordion_id, idx);
-				let collapse_target = format!("#{id}");
-				let body = match level.is_empty() {
-					true => html! {},
-					false => html! {
-						<div {id} class="accordion-collapse collapse" data-bs-parent={format!("#{level_accordion_id}")}>
-							<div class="accordion-body">
-								{level_body(level, show_selectors)}
-							</div>
-						</div>
-					},
-				};
-				Some(html! {
-					<div class="accordion-item">
-						<h2 class="accordion-header">
-							<button
-								class="accordion-button collapsed" type="button"
-								data-bs-toggle="collapse" data-bs-target={collapse_target}
-								disabled={level.is_empty()}
-							>
-								{"Level "}{idx + 1}
-								{level.is_empty().then_some(" - Empty").unwrap_or_default()}
-							</button>
-						</h2>
-						{body}
-					</div>
-				})
 			}).collect::<Vec<_>>()}
 		</div>
+
 	</>}
+}
+
+#[derive(Clone, PartialEq, Properties)]
+struct CollapsableCardProps {
+	pub id: AttrValue,
+
+	#[prop_or_default]
+	pub root_classes: Classes,
+
+	#[prop_or_default]
+	pub header_classes: Classes,
+	#[prop_or_default]
+	pub header_content: Html,
+	#[prop_or_default]
+	pub collapse_btn_classes: Classes,
+
+	#[prop_or_default]
+	pub body_classes: Classes,
+
+	#[prop_or_default]
+	pub children: Children,
+}
+#[function_component]
+fn CollapsableCard(props: &CollapsableCardProps) -> Html {
+	let CollapsableCardProps {
+		id,
+		root_classes,
+		header_classes,
+		header_content,
+		collapse_btn_classes,
+		body_classes,
+		children,
+	} = props;
+	static START_SHOWN: bool = false;
+	let card_classes = classes!("card", "collapsable", root_classes.clone());
+	let header_classes = classes!(
+		"card-header",
+		"d-flex",
+		"align-items-center",
+		header_classes.clone()
+	);
+	let body_classes = classes!("card-body", body_classes.clone());
+	let mut collapse_btn_classes = classes!("arrow", "me-2", collapse_btn_classes.clone());
+	let mut collapse_div_classes = classes!("collapse");
+	match START_SHOWN {
+		true => {
+			collapse_div_classes.push("show");
+		}
+		false => {
+			collapse_btn_classes.push("collapsed");
+		}
+	}
+
+	html! {
+		<div class={card_classes}>
+			<div class={header_classes}>
+				<button
+					role="button" class={collapse_btn_classes}
+					data-bs-toggle="collapse"
+					data-bs-target={format!("#{}", id.as_str())}
+				/>
+				{header_content.clone()}
+			</div>
+			<div {id} class={collapse_div_classes}>
+				<div class={body_classes}>
+					{children.clone()}
+				</div>
+			</div>
+		</div>
+	}
 }
 
 fn level_body(value: &Level, show_selectors: bool) -> Html {

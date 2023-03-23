@@ -75,6 +75,18 @@ pub enum Die {
 	D12,
 	D20,
 }
+impl Die {
+	pub fn value(self) -> u32 {
+		match self {
+			Self::D4 => 4,
+			Self::D6 => 6,
+			Self::D8 => 8,
+			Self::D10 => 10,
+			Self::D12 => 12,
+			Self::D20 => 20,
+		}
+	}
+}
 impl TryFrom<u32> for Die {
 	type Error = GeneralError;
 
