@@ -19,6 +19,8 @@ crate::impl_kdl_node!(AddMaxHitPoints, "add_max_hit_points");
 impl Mutator for AddMaxHitPoints {
 	type Target = Character;
 
+	// TODO: mutator description add_max_hit_points
+
 	fn dependencies(&self) -> Dependencies {
 		self.value.dependencies()
 	}

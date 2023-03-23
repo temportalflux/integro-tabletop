@@ -33,6 +33,8 @@ crate::impl_kdl_node!(AddModifier, "add_modifier");
 impl Mutator for AddModifier {
 	type Target = Character;
 
+	// TODO: mutator description add_modifier
+
 	fn apply(&self, stats: &mut Character, parent: &Path) {
 		match &self.kind {
 			ModifierKind::Ability(ability) => {

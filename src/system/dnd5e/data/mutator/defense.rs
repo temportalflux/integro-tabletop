@@ -64,6 +64,8 @@ crate::impl_kdl_node!(AddDefense, "add_defense");
 impl Mutator for AddDefense {
 	type Target = Character;
 
+	// TODO: mutator description add_defense
+
 	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
 		stats.defenses_mut().push(
 			self.defense,
