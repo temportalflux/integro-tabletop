@@ -648,13 +648,12 @@ pub fn mutator_list<T: 'static>(list: &Vec<GenericMutator<T>>, show_selectors: b
 		.iter()
 		.filter_map(|value| mutator(value, show_selectors))
 		.collect::<Vec<_>>();
-	match mutators.is_empty() {
-		true => html! {},
-		false => html! {<ul>{mutators}</ul>},
-	}
+	html! {<>{mutators}</>}
 }
 
 fn mutator<T: 'static>(value: &GenericMutator<T>, show_selectors: bool) -> Option<Html> {
+	let name = value.name();
+	let desc = value.description();
 	let selectors = show_selectors
 		.then(|| value.selector_meta())
 		.flatten()
@@ -665,10 +664,18 @@ fn mutator<T: 'static>(value: &GenericMutator<T>, show_selectors: bool) -> Optio
 				.collect::<Vec<_>>()
 		})
 		.unwrap_or_default();
-	Some(html! {<li>
-		{value.description().unwrap_or_default()}
+
+	if name.is_none() && desc.is_none() && selectors.is_empty() {
+		return None;
+	}
+
+	Some(html! {<div>
+		<span>
+			{name.map(|name| html! {<strong>{name}{". "}</strong>}).unwrap_or_default()}
+			{desc.unwrap_or_default()}
+		</span>
 		{selectors}
-	</li>})
+	</div>})
 }
 
 #[derive(Clone, PartialEq, Properties)]

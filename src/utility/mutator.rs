@@ -11,6 +11,10 @@ pub trait Mutator: Debug + TraitEq + AsTraitEq<dyn TraitEq> + KDLNode {
 
 	fn set_data_path(&self, _parent: &Path) {}
 
+	fn name(&self) -> Option<String> {
+		None
+	}
+
 	fn description(&self) -> Option<String> {
 		None
 	}

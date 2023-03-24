@@ -33,6 +33,10 @@ crate::impl_kdl_node!(AddModifier, "add_modifier");
 impl Mutator for AddModifier {
 	type Target = Character;
 
+	fn name(&self) -> Option<String> {
+		Some("Roll Modifier".into())
+	}
+
 	fn description(&self) -> Option<String> {
 		let mut desc = format!("You have {} on ", self.modifier.display_name());
 		let kind_desc = match &self.kind {

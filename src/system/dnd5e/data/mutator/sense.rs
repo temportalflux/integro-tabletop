@@ -22,6 +22,10 @@ crate::impl_kdl_node!(Sense, "sense");
 impl Mutator for Sense {
 	type Target = Character;
 
+	fn name(&self) -> Option<String> {
+		Some("Sense".into())
+	}
+
 	fn description(&self) -> Option<String> {
 		let name = &self.name;
 		Some(match &self.argument {

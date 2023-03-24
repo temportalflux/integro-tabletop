@@ -22,6 +22,10 @@ crate::impl_kdl_node!(Speed, "speed");
 impl Mutator for Speed {
 	type Target = Character;
 
+	fn name(&self) -> Option<String> {
+		Some("Speed".into())
+	}
+
 	fn description(&self) -> Option<String> {
 		Some(format!(
 			"Your {} speed {}.",

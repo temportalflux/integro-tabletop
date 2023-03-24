@@ -31,6 +31,10 @@ crate::impl_kdl_node!(AddProficiency, "add_proficiency");
 impl Mutator for AddProficiency {
 	type Target = Character;
 
+	fn name(&self) -> Option<String> {
+		Some("Proficiency".into())
+	}
+
 	fn description(&self) -> Option<String> {
 		match self {
 			Self::SavingThrow(ability) => Some(format!(

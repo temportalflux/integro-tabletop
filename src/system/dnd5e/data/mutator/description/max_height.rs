@@ -33,6 +33,10 @@ crate::impl_kdl_node!(AddMaxHeight, "add_max_height");
 impl Mutator for AddMaxHeight {
 	type Target = Character;
 
+	fn name(&self) -> Option<String> {
+		Some("Size".into())
+	}
+
 	fn description(&self) -> Option<String> {
 		Some(format!(
 			"Your height increases by {} inches.",
