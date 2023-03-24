@@ -3,12 +3,17 @@ use std::str::FromStr;
 use enum_map::{Enum, EnumMap};
 use enumset::EnumSetType;
 
-use crate::GeneralError;
+use crate::{kdl_ext::NodeExt, system::dnd5e::FromKDL, GeneralError};
 
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
 pub struct Roll {
 	pub amount: i32,
 	pub die: Die,
+}
+impl From<(i32, Die)> for Roll {
+	fn from((amount, die): (i32, Die)) -> Self {
+		Self { amount, die }
+	}
 }
 impl ToString for Roll {
 	fn to_string(&self) -> String {
@@ -53,6 +58,15 @@ impl FromStr for Roll {
 		let amount = amount_str.parse::<u32>()? as i32;
 		let die = Die::try_from(die_str.parse::<u32>()?)?;
 		Ok(Self { amount, die })
+	}
+}
+impl FromKDL for Roll {
+	fn from_kdl(
+		node: &kdl::KdlNode,
+		value_idx: &mut crate::kdl_ext::ValueIdx,
+		_node_reg: &crate::system::core::NodeRegistry,
+	) -> anyhow::Result<Self> {
+		Ok(Self::from_str(node.get_str_req(value_idx.next())?)?)
 	}
 }
 
