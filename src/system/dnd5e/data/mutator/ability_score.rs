@@ -37,6 +37,45 @@ crate::impl_kdl_node!(AbilityScoreChange, "ability_score");
 impl Mutator for AbilityScoreChange {
 	type Target = Character;
 
+	fn name(&self) -> Option<String> {
+		Some("Ability Score Increase".into())
+	}
+
+	fn description(&self) -> Option<String> {
+		let ability = match &self.ability {
+			Selector::Specific(ability) => format!("Your {} score", ability.long_name()),
+			Selector::Any { .. } => "One ability score of your choice".to_owned(),
+			Selector::AnyOf { options, .. } => format!(
+				"One ability score of {}",
+				options
+					.iter()
+					.map(Ability::long_name)
+					.collect::<Vec<_>>()
+					.join(", ")
+			),
+		};
+		let op_descs = self
+			.operations
+			.iter()
+			.map(|op| match op {
+				AbilityScoreOp::Bonus {
+					value,
+					max_total_score,
+				} => {
+					let bonus_txt = format!("increases by {value}");
+					let max_txt = max_total_score
+						.as_ref()
+						.map(|value| format!(" if the total score is no more than {value}"));
+					format!("{bonus_txt}{}", max_txt.unwrap_or_default())
+				}
+				AbilityScoreOp::IncreaseMax { value } => {
+					format!("increases its maximum to at-least {value}")
+				}
+			})
+			.collect::<Vec<_>>();
+		Some(format!("{ability}; {}.", op_descs.join(", ")))
+	}
+
 	fn set_data_path(&self, parent: &std::path::Path) {
 		self.ability.set_data_path(parent);
 	}

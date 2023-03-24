@@ -19,6 +19,34 @@ crate::impl_kdl_node!(AddArmorClassFormula, "add_armor_class_formula");
 impl Mutator for AddArmorClassFormula {
 	type Target = Character;
 
+	fn name(&self) -> Option<String> {
+		Some("Armor Class".into())
+	}
+
+	fn description(&self) -> Option<String> {
+		let mut args = Vec::new();
+		if self.0.base > 0 {
+			args.push(format!("{}", self.0.base));
+		}
+		for bonus in &self.0.bonuses {
+			let bounds = match (bonus.min, bonus.max) {
+				(None, None) => String::new(),
+				(Some(min), None) => format!(" (min {min:+})"),
+				(None, Some(max)) => format!(" (max {max:+})"),
+				(Some(min), Some(max)) => format!(" (min {min:+}, max {max:+})"),
+			};
+			args.push(format!(
+				"your {} modifier{}",
+				bonus.ability.long_name(),
+				bounds
+			));
+		}
+		Some(format!(
+			"You can calculate your Armor Class using {}.",
+			args.join(" + ")
+		))
+	}
+
 	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
 		stats
 			.armor_class_mut()
