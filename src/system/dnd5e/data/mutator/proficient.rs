@@ -54,7 +54,6 @@ impl Mutator for AddProficiency {
 					.iter()
 					.map(Skill::display_name)
 					.collect::<Vec<_>>()
-					
 					.join(", ")
 			)),
 			Self::Language(Selector::Specific(lang)) => {
@@ -361,7 +360,7 @@ mod test {
 		#[test]
 		fn armor_shield() -> anyhow::Result<()> {
 			let doc = "mutator \"add_proficiency\" (Armor)\"Shield\"";
-			let expected = AddProficiency::Armor(ArmorProficiency::Kind(armor::Kind::Medium));
+			let expected = AddProficiency::Armor(ArmorProficiency::Shield);
 			assert_eq!(from_doc(doc)?, expected.into());
 			Ok(())
 		}

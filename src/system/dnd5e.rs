@@ -175,6 +175,7 @@ pub fn node_registry() -> NodeRegistry {
 	use data::{evaluator::*, mutator::*};
 	let mut registry = NodeRegistry::default();
 	registry.register_mutator::<AbilityScoreChange>();
+	registry.register_mutator::<AddArmorClassFormula>();
 	registry.register_mutator::<AddDefense>();
 	registry.register_mutator::<AddLifeExpectancy>();
 	registry.register_mutator::<AddMaxHeight>();

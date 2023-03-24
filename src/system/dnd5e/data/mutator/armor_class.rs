@@ -1,5 +1,12 @@
 use crate::{
-	system::dnd5e::data::{character::Character, ArmorClassFormula},
+	kdl_ext::ValueIdx,
+	system::{
+		core::NodeRegistry,
+		dnd5e::{
+			data::{character::Character, ArmorClassFormula},
+			FromKDL,
+		},
+	},
 	utility::Mutator,
 };
 
@@ -19,55 +26,151 @@ impl Mutator for AddArmorClassFormula {
 	}
 }
 
+impl FromKDL for AddArmorClassFormula {
+	fn from_kdl(
+		node: &kdl::KdlNode,
+		value_idx: &mut ValueIdx,
+		node_reg: &NodeRegistry,
+	) -> anyhow::Result<Self> {
+		Ok(Self(ArmorClassFormula::from_kdl(
+			node, value_idx, node_reg,
+		)?))
+	}
+}
+
 #[cfg(test)]
 mod test {
-	use super::AddArmorClassFormula;
-	use crate::system::dnd5e::data::{
-		character::{Character, Persistent},
-		Ability, ArmorClassFormula, Feature,
-	};
+	use super::*;
 
-	#[test]
-	fn no_formula() {
-		let character = Character::from(Persistent {
-			ability_scores: enum_map::enum_map! {
-				Ability::Strength => 10,
-				Ability::Dexterity => 12,
-				Ability::Constitution => 15,
-				Ability::Intelligence => 10,
-				Ability::Wisdom => 10,
-				Ability::Charisma => 10,
-			},
-			..Default::default()
-		});
-		assert_eq!(character.armor_class().evaluate(&character), 11);
+	mod from_kdl {
+		use super::*;
+		use crate::system::dnd5e::{BoxedMutator, data::{BoundedAbility, Ability}};
+
+		fn from_doc(doc: &str) -> anyhow::Result<BoxedMutator> {
+			NodeRegistry::defaultmut_parse_kdl::<AddArmorClassFormula>(doc)
+		}
+
+		#[test]
+		fn base_only() -> anyhow::Result<()> {
+			let doc = "mutator \"add_armor_class_formula\" base=12";
+			let expected = AddArmorClassFormula(ArmorClassFormula {
+				base: 12,
+				bonuses: vec![],
+			});
+			assert_eq!(from_doc(doc)?, expected.into());
+			Ok(())
+		}
+
+		#[test]
+		fn one_bonus_unbounded() -> anyhow::Result<()> {
+			let doc = "mutator \"add_armor_class_formula\" base=12 {
+				bonus \"Dexterity\"
+			}";
+			let expected = AddArmorClassFormula(ArmorClassFormula {
+				base: 12,
+				bonuses: vec![BoundedAbility {
+					ability: Ability::Dexterity,
+					min: None,
+					max: None,
+				}],
+			});
+			assert_eq!(from_doc(doc)?, expected.into());
+			Ok(())
+		}
+
+		#[test]
+		fn one_bonus_bounded() -> anyhow::Result<()> {
+			let doc = "mutator \"add_armor_class_formula\" base=15 {
+				bonus \"Dexterity\" max=2
+			}";
+			let expected = AddArmorClassFormula(ArmorClassFormula {
+				base: 15,
+				bonuses: vec![BoundedAbility {
+					ability: Ability::Dexterity,
+					min: None,
+					max: Some(2),
+				}],
+			});
+			assert_eq!(from_doc(doc)?, expected.into());
+			Ok(())
+		}
+
+		#[test]
+		fn multiple_bonus() -> anyhow::Result<()> {
+			let doc = "mutator \"add_armor_class_formula\" base=10 {
+				bonus \"Dexterity\"
+				bonus \"Wisdom\"
+			}";
+			let expected = AddArmorClassFormula(ArmorClassFormula {
+				base: 10,
+				bonuses: vec![
+					BoundedAbility {
+						ability: Ability::Dexterity,
+						min: None,
+						max: None,
+					},
+					BoundedAbility {
+						ability: Ability::Wisdom,
+						min: None,
+						max: None,
+					},
+				],
+			});
+			assert_eq!(from_doc(doc)?, expected.into());
+			Ok(())
+		}
+
 	}
 
-	#[test]
-	fn with_modifier() {
-		let character = Character::from(Persistent {
-			ability_scores: enum_map::enum_map! {
-				Ability::Strength => 10,
-				Ability::Dexterity => 12,
-				Ability::Constitution => 15,
-				Ability::Intelligence => 10,
-				Ability::Wisdom => 10,
-				Ability::Charisma => 10,
-			},
-			feats: vec![Feature {
-				mutators: vec![AddArmorClassFormula(ArmorClassFormula {
-					base: 11,
-					bonuses: vec![Ability::Dexterity.into(), Ability::Constitution.into()],
-				})
+	mod mutate {
+		use super::*;
+		use crate::system::dnd5e::data::{
+			character::{Character, Persistent},
+			Ability, ArmorClassFormula, Feature,
+		};
+
+		#[test]
+		fn no_formula() {
+			let character = Character::from(Persistent {
+				ability_scores: enum_map::enum_map! {
+					Ability::Strength => 10,
+					Ability::Dexterity => 12,
+					Ability::Constitution => 15,
+					Ability::Intelligence => 10,
+					Ability::Wisdom => 10,
+					Ability::Charisma => 10,
+				},
+				..Default::default()
+			});
+			assert_eq!(character.armor_class().evaluate(&character), 11);
+		}
+
+		#[test]
+		fn with_modifier() {
+			let character = Character::from(Persistent {
+				ability_scores: enum_map::enum_map! {
+					Ability::Strength => 10,
+					Ability::Dexterity => 12,
+					Ability::Constitution => 15,
+					Ability::Intelligence => 10,
+					Ability::Wisdom => 10,
+					Ability::Charisma => 10,
+				},
+				feats: vec![Feature {
+					mutators: vec![AddArmorClassFormula(ArmorClassFormula {
+						base: 11,
+						bonuses: vec![Ability::Dexterity.into(), Ability::Constitution.into()],
+					})
+					.into()],
+					..Default::default()
+				}
 				.into()],
 				..Default::default()
-			}
-			.into()],
-			..Default::default()
-		});
-		// Max of:
-		// 10 + Dex (ArmorClassFormula::default())
-		// 11 + Dex + Con
-		assert_eq!(character.armor_class().evaluate(&character), 14);
+			});
+			// Max of:
+			// 10 + Dex (ArmorClassFormula::default())
+			// 11 + Dex + Con
+			assert_eq!(character.armor_class().evaluate(&character), 14);
+		}
 	}
 }
