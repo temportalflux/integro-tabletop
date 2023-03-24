@@ -6,11 +6,11 @@ background name="Anthropologist" {
 	mutator "add_proficiency" (Language)"Any" id="langB"
 	/* TODO: add_starting_equipment
 	mutator "add_starting_equipment" {
-		item name="Leather-bound diary"
-		item name="Bottle of ink"
-		item name="Ink Pen"
-		item name="Traveler’s Clothes"
-		item name="one trinket of special significance"
+		item "Custom" name="Leather-bound diary"
+		item "Custom" name="Bottle of ink"
+		item "Custom" name="Ink Pen"
+		item "Custom" name="Traveler’s Clothes"
+		item "Custom" name="one trinket of special significance"
 		currency 10 (Currency)"Gold"
 	}
 	*/
