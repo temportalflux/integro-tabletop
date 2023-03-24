@@ -7,9 +7,23 @@ use std::{
 #[derive(Clone, Default, PartialEq, Debug)]
 pub struct OtherProficiencies {
 	pub languages: AttributedValueMap<String>,
-	pub armor: AttributedValueMap<armor::Kind>,
+	pub armor: AttributedValueMap<ArmorProficiency>,
 	pub weapons: AttributedValueMap<WeaponProficiency>,
 	pub tools: AttributedValueMap<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum ArmorProficiency {
+	Kind(armor::Kind),
+	Shield,
+}
+impl ToString for ArmorProficiency {
+	fn to_string(&self) -> String {
+		match self {
+			Self::Kind(kind) => kind.to_string(),
+			Self::Shield => "Shield".into(),
+		}
+	}
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
