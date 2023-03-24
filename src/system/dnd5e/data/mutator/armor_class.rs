@@ -44,7 +44,10 @@ mod test {
 
 	mod from_kdl {
 		use super::*;
-		use crate::system::dnd5e::{BoxedMutator, data::{BoundedAbility, Ability}};
+		use crate::system::dnd5e::{
+			data::{Ability, BoundedAbility},
+			BoxedMutator,
+		};
 
 		fn from_doc(doc: &str) -> anyhow::Result<BoxedMutator> {
 			NodeRegistry::defaultmut_parse_kdl::<AddArmorClassFormula>(doc)
@@ -119,7 +122,6 @@ mod test {
 			assert_eq!(from_doc(doc)?, expected.into());
 			Ok(())
 		}
-
 	}
 
 	mod mutate {

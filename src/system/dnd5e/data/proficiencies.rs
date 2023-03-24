@@ -2,26 +2,42 @@ use crate::system::dnd5e::data::item::{armor, weapon};
 use std::{
 	collections::{BTreeMap, BTreeSet},
 	path::PathBuf,
+	str::FromStr,
 };
 
 #[derive(Clone, Default, PartialEq, Debug)]
 pub struct OtherProficiencies {
 	pub languages: AttributedValueMap<String>,
-	pub armor: AttributedValueMap<ArmorProficiency>,
+	pub armor: AttributedValueMap<ArmorExtended>,
 	pub weapons: AttributedValueMap<WeaponProficiency>,
 	pub tools: AttributedValueMap<String>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum ArmorProficiency {
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum ArmorExtended {
 	Kind(armor::Kind),
 	Shield,
 }
-impl ToString for ArmorProficiency {
+impl From<armor::Kind> for ArmorExtended {
+	fn from(value: armor::Kind) -> Self {
+		Self::Kind(value)
+	}
+}
+impl ToString for ArmorExtended {
 	fn to_string(&self) -> String {
 		match self {
 			Self::Kind(kind) => kind.to_string(),
 			Self::Shield => "Shield".into(),
+		}
+	}
+}
+impl FromStr for ArmorExtended {
+	type Err = <armor::Kind as FromStr>::Err;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		match s {
+			"Shield" => Ok(Self::Shield),
+			_ => Ok(Self::Kind(armor::Kind::from_str(s)?)),
 		}
 	}
 }

@@ -4,9 +4,8 @@ use crate::{
 		core::NodeRegistry,
 		dnd5e::{
 			data::{
-				character::Character,
-				item::{armor, weapon},
-				proficiency, Ability, ArmorProficiency, Skill, WeaponProficiency,
+				character::Character, item::weapon, proficiency, Ability, ArmorExtended, Skill,
+				WeaponProficiency,
 			},
 			FromKDL,
 		},
@@ -21,7 +20,7 @@ pub enum IsProficientWith {
 	SavingThrow(Ability),
 	Skill(Skill),
 	Language(String),
-	Armor(ArmorProficiency),
+	Armor(ArmorExtended),
 	Weapon(WeaponProficiency),
 	Tool(String),
 }
@@ -65,12 +64,7 @@ impl FromKDL for IsProficientWith {
 			"SavingThrow" => Ok(Self::SavingThrow(Ability::from_str(entry.as_str_req()?)?)),
 			"Skill" => Ok(Self::Skill(Skill::from_str(entry.as_str_req()?)?)),
 			"Language" => Ok(Self::Language(entry.as_str_req()?.to_owned())),
-			"Armor" => match entry.as_str_req()? {
-				"Shield" => Ok(Self::Armor(ArmorProficiency::Shield)),
-				kind => Ok(Self::Armor(ArmorProficiency::Kind(armor::Kind::from_str(
-					kind,
-				)?))),
-			},
+			"Armor" => Ok(Self::Armor(ArmorExtended::from_str(entry.as_str_req()?)?)),
 			"Weapon" => Ok(Self::Weapon(match entry.as_str_req()? {
 				kind if kind == "Simple" || kind == "Martial" => {
 					WeaponProficiency::Kind(weapon::Kind::from_str(kind)?)
@@ -90,7 +84,10 @@ impl FromKDL for IsProficientWith {
 #[cfg(test)]
 mod test {
 	use super::*;
-	use crate::system::dnd5e::data::character::{Character, Persistent};
+	use crate::system::dnd5e::data::{
+		character::{Character, Persistent},
+		item::armor,
+	};
 
 	mod from_kdl {
 		use super::*;
@@ -127,7 +124,7 @@ mod test {
 		#[test]
 		fn armor_kind() -> anyhow::Result<()> {
 			let doc = "evaluator \"is_proficient_with\" (Armor)\"Light\"";
-			let expected = IsProficientWith::Armor(ArmorProficiency::Kind(armor::Kind::Light));
+			let expected = IsProficientWith::Armor(ArmorExtended::Kind(armor::Kind::Light));
 			assert_eq!(from_doc(doc)?, expected.into());
 			Ok(())
 		}
@@ -135,7 +132,7 @@ mod test {
 		#[test]
 		fn armor_shield() -> anyhow::Result<()> {
 			let doc = "evaluator \"is_proficient_with\" (Armor)\"Shield\"";
-			let expected = IsProficientWith::Armor(ArmorProficiency::Shield);
+			let expected = IsProficientWith::Armor(ArmorExtended::Shield);
 			assert_eq!(from_doc(doc)?, expected.into());
 			Ok(())
 		}
@@ -230,10 +227,10 @@ mod test {
 		#[test]
 		fn armor_kind() {
 			let empty = Character::from(Persistent::default());
-			let with_prof = character_with_profs(vec![AddProficiency::Armor(
-				ArmorProficiency::Kind(armor::Kind::Light),
-			)]);
-			let eval = IsProficientWith::Armor(ArmorProficiency::Kind(armor::Kind::Light));
+			let with_prof = character_with_profs(vec![AddProficiency::Armor(ArmorExtended::Kind(
+				armor::Kind::Light,
+			))]);
+			let eval = IsProficientWith::Armor(ArmorExtended::Kind(armor::Kind::Light));
 			assert_eq!(eval.evaluate(&empty), false);
 			assert_eq!(eval.evaluate(&with_prof), true);
 		}
@@ -242,8 +239,8 @@ mod test {
 		fn armor_shield() {
 			let empty = Character::from(Persistent::default());
 			let with_prof =
-				character_with_profs(vec![AddProficiency::Armor(ArmorProficiency::Shield)]);
-			let eval = IsProficientWith::Armor(ArmorProficiency::Shield);
+				character_with_profs(vec![AddProficiency::Armor(ArmorExtended::Shield)]);
+			let eval = IsProficientWith::Armor(ArmorExtended::Shield);
 			assert_eq!(eval.evaluate(&empty), false);
 			assert_eq!(eval.evaluate(&with_prof), true);
 		}

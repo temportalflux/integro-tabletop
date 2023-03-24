@@ -4,9 +4,8 @@ use crate::{
 		core::NodeRegistry,
 		dnd5e::{
 			data::{
-				character::Character,
-				item::{armor, weapon},
-				proficiency, Ability, ArmorProficiency, Skill, WeaponProficiency,
+				character::Character, item::weapon, proficiency, Ability, ArmorExtended, Skill,
+				WeaponProficiency,
 			},
 			FromKDL,
 		},
@@ -21,7 +20,7 @@ pub enum AddProficiency {
 	SavingThrow(Ability),
 	Skill(Selector<Skill>, proficiency::Level),
 	Language(Selector<String>),
-	Armor(ArmorProficiency),
+	Armor(ArmorExtended),
 	Weapon(WeaponProficiency),
 	Tool(String),
 }
@@ -66,13 +65,11 @@ impl Mutator for AddProficiency {
 				"You can speak, read, and write one language of: {}.",
 				options.join(", ")
 			)),
-			Self::Armor(ArmorProficiency::Kind(kind)) => Some(format!(
+			Self::Armor(ArmorExtended::Kind(kind)) => Some(format!(
 				"You are proficient with {} armor.",
 				kind.to_string().to_lowercase()
 			)),
-			Self::Armor(ArmorProficiency::Shield) => {
-				Some("You are proficient with shields.".into())
-			}
+			Self::Armor(ArmorExtended::Shield) => Some("You are proficient with shields.".into()),
 			Self::Weapon(WeaponProficiency::Kind(kind)) => Some(format!(
 				"You are proficient with {} weapons.",
 				kind.to_string().to_lowercase()
@@ -173,12 +170,7 @@ impl FromKDL for AddProficiency {
 				})?;
 				Ok(Self::Language(language))
 			}
-			"Armor" => match entry.as_str_req()? {
-				"Shield" => Ok(Self::Armor(ArmorProficiency::Shield)),
-				kind => Ok(Self::Armor(ArmorProficiency::Kind(armor::Kind::from_str(
-					kind,
-				)?))),
-			},
+			"Armor" => Ok(Self::Armor(ArmorExtended::from_str(entry.as_str_req()?)?)),
 			"Weapon" => Ok(Self::Weapon(match entry.as_str_req()? {
 				kind if kind == "Simple" || kind == "Martial" => {
 					WeaponProficiency::Kind(weapon::Kind::from_str(kind)?)
@@ -198,10 +190,11 @@ impl FromKDL for AddProficiency {
 #[cfg(test)]
 mod test {
 	use super::*;
+	use crate::system::dnd5e::data::item::{armor, weapon};
 
 	mod from_kdl {
 		use super::*;
-		use crate::system::dnd5e::{data::item::weapon, BoxedMutator};
+		use crate::system::dnd5e::BoxedMutator;
 
 		fn from_doc(doc: &str) -> anyhow::Result<BoxedMutator> {
 			NodeRegistry::defaultmut_parse_kdl::<AddProficiency>(doc)
@@ -352,7 +345,7 @@ mod test {
 		#[test]
 		fn armor_kind() -> anyhow::Result<()> {
 			let doc = "mutator \"add_proficiency\" (Armor)\"Medium\"";
-			let expected = AddProficiency::Armor(ArmorProficiency::Kind(armor::Kind::Medium));
+			let expected = AddProficiency::Armor(ArmorExtended::Kind(armor::Kind::Medium));
 			assert_eq!(from_doc(doc)?, expected.into());
 			Ok(())
 		}
@@ -360,7 +353,7 @@ mod test {
 		#[test]
 		fn armor_shield() -> anyhow::Result<()> {
 			let doc = "mutator \"add_proficiency\" (Armor)\"Shield\"";
-			let expected = AddProficiency::Armor(ArmorProficiency::Shield);
+			let expected = AddProficiency::Armor(ArmorExtended::Shield);
 			assert_eq!(from_doc(doc)?, expected.into());
 			Ok(())
 		}
@@ -404,7 +397,6 @@ mod test {
 			path_map::PathMap,
 			system::dnd5e::data::{
 				character::{Character, Persistent},
-				item::weapon,
 				Feature,
 			},
 		};
@@ -488,13 +480,13 @@ mod test {
 		#[test]
 		fn armor_kind() {
 			let character = character(
-				AddProficiency::Armor(ArmorProficiency::Kind(armor::Kind::Heavy)),
+				AddProficiency::Armor(ArmorExtended::Kind(armor::Kind::Heavy)),
 				None,
 			);
 			assert_eq!(
 				*character.other_proficiencies().armor,
 				[(
-					ArmorProficiency::Kind(armor::Kind::Heavy),
+					ArmorExtended::Kind(armor::Kind::Heavy),
 					["AddProficiency".into()].into()
 				)]
 				.into()
@@ -503,10 +495,10 @@ mod test {
 
 		#[test]
 		fn armor_shield() {
-			let character = character(AddProficiency::Armor(ArmorProficiency::Shield), None);
+			let character = character(AddProficiency::Armor(ArmorExtended::Shield), None);
 			assert_eq!(
 				*character.other_proficiencies().armor,
-				[(ArmorProficiency::Shield, ["AddProficiency".into()].into())].into()
+				[(ArmorExtended::Shield, ["AddProficiency".into()].into())].into()
 			);
 		}
 
