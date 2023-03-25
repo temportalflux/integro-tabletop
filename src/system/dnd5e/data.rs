@@ -18,6 +18,7 @@ pub mod proficiency;
 mod rest;
 pub use rest::*;
 pub mod roll;
+pub mod scaling;
 mod skill;
 pub use skill::*;
 mod armor_class;

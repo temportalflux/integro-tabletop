@@ -142,6 +142,10 @@ impl Persistent {
 	pub fn hit_points_mut(&mut self) -> &mut HitPoints {
 		&mut self.hit_points
 	}
+
+	pub fn set_selected_value(&mut self, key: impl AsRef<Path>, value: impl Into<String>) {
+		self.selected_values.set(key, value.into());
+	}
 }
 
 #[derive(Clone, Copy, PartialEq, Default, Debug)]

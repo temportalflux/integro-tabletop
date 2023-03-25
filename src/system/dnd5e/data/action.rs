@@ -16,7 +16,8 @@ pub use limited_uses::*;
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct Action {
 	pub name: String,
-	pub description: String,
+	pub description: Option<String>,
+	pub short_desc: Option<String>,
 	pub activation_kind: ActivationKind,
 	pub attack: Option<Attack>,
 	/// Dictates how many times this action can be used until it is reset.
@@ -26,6 +27,15 @@ pub struct Action {
 	// generated
 	pub source: Option<ActionSource>,
 }
+
+impl Action {
+	pub fn set_data_path(&self, parent: &std::path::Path) {
+		if let Some(uses) = &self.limited_uses {
+			uses.set_data_path(parent);
+		}
+	}
+}
+
 impl FromKDL for Action {
 	fn from_kdl(
 		node: &kdl::KdlNode,
@@ -35,8 +45,10 @@ impl FromKDL for Action {
 		let name = node.get_str_req("name")?.to_owned();
 		let description = node
 			.query_str_opt("scope() > description", 0)?
-			.map(str::to_owned)
-			.unwrap_or_default();
+			.map(str::to_owned);
+		let short_desc = node
+			.query_str_opt("scope() > description > short", 0)?
+			.map(str::to_owned);
 		let activation_kind = ActivationKind::from_kdl(
 			node.query_req("scope() > activation")?,
 			&mut ValueIdx::default(),
@@ -59,6 +71,7 @@ impl FromKDL for Action {
 		Ok(Self {
 			name,
 			description,
+			short_desc,
 			activation_kind,
 			attack,
 			limited_uses,

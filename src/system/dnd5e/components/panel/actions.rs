@@ -1,9 +1,9 @@
 use crate::{
 	components::*,
 	system::dnd5e::{
-		components::SharedCharacter,
+		components::{SharedCharacter, UsesCounter},
 		data::{
-			action::{AttackCheckKind, AttackKindValue},
+			action::{AttackCheckKind, AttackKindValue, ActivationKind},
 			DamageRoll,
 		},
 	},
@@ -135,9 +135,52 @@ pub fn Actions() -> Html {
 			</table>
 		});
 	}
+
+	let actions = {
+		let mut actions = state
+			.actions()
+			.iter()
+			.filter(|action| {
+				let mut passes_any = false;
+				if selected_tags.contains(ActionTag::Action) {
+					passes_any = passes_any || action.activation_kind == ActivationKind::Action;
+				}
+				if selected_tags.contains(ActionTag::BonusAction) {
+					passes_any = passes_any || action.activation_kind == ActivationKind::Bonus;
+				}
+				if selected_tags.contains(ActionTag::Reaction) {
+					passes_any = passes_any || action.activation_kind == ActivationKind::Reaction;
+				}
+				if selected_tags.contains(ActionTag::Other) {
+					let is_regular_action = matches!(action.activation_kind, ActivationKind::Action | ActivationKind::Bonus | ActivationKind::Reaction);
+					passes_any = passes_any || !is_regular_action;
+				}
+				if selected_tags.contains(ActionTag::LimitedUse) {
+					passes_any = passes_any || action.limited_uses.is_some();
+				}
+				passes_any
+			})
+			.collect::<Vec<_>>();
+		actions.sort_by(|a, b| a.name.cmp(&b.name));
+		actions
+	};
+	panes.push(html! {<>
+		{actions.into_iter().map(|action| {
+			html! {<div class="action short">
+				<strong>{action.name.clone()}</strong>
+				{action.short_desc.as_ref().or(action.description.as_ref()).map(|desc| {
+					html! { <div class="text-block">{desc.clone()}</div> }
+				}).unwrap_or_default()}
+				{action.limited_uses.as_ref().map(|limited_uses| {
+					UsesCounter { state: state.clone(), limited_uses }.to_html()
+				}).unwrap_or_default()}
+			</div>}
+		}).collect::<Vec<_>>()}
+	</>});
+
 	html! {<>
 		<Tags>{tag_htmls}</Tags>
-		<div style="overflow-y: scroll;">
+		<div style="overflow-y: scroll; height: 483px;">
 			{panes}
 		</div>
 	</>}

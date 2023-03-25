@@ -136,53 +136,6 @@ fn FeatureBlock(
 		)
 	});
 
-	/*
-	let consumed_uses = use_state(|| 0);
-	let uses = match &feature.inner().limited_uses {
-		Some(limited_uses) => match limited_uses.max_uses.evaluate(&*state) {
-			Some(max_uses) => {
-				let toggle_use = Callback::from({
-					let consumed_uses = consumed_uses.clone();
-					move |evt: web_sys::Event| {
-						let Some(target) = evt.target() else { return; };
-						let Some(input) = target.dyn_ref::<HtmlInputElement>() else { return; };
-						let consume_use = input.checked();
-						if consume_use {
-							consumed_uses.set(*consumed_uses + 1);
-						} else {
-							consumed_uses.set(*consumed_uses - 1);
-						}
-					}
-				});
-				let use_checkboxes = (0..max_uses)
-					.map(|idx| {
-						html! {
-							<input
-								class={"form-check-input"} type={"checkbox"}
-								checked={idx < *consumed_uses}
-								onclick={Callback::from(|evt: web_sys::MouseEvent| evt.stop_propagation())}
-								onchange={toggle_use.clone()}
-							/>
-						}
-					})
-					.collect::<Vec<_>>();
-				html! {
-					<span>
-						{use_checkboxes}
-						{match &limited_uses.reset_on {
-							Some(rest) => html! { <span>{"/"}{format!("{:?} Rest", rest)}</span> },
-							None => html! {},
-						}}
-					</span>
-				}
-			}
-			None => html! {},
-		},
-		None => html! {},
-	};
-	*/
-	let uses = html! {};
-
 	html! {
 		<div style="border-width: 0; border-bottom: 1px; border-style: solid; border-color: var(--theme-frame-color-muted);">
 			<span>
@@ -213,7 +166,6 @@ fn FeatureBlock(
 					}
 				}
 			}}
-			{uses}
 		</div>
 	}
 }

@@ -157,6 +157,21 @@ impl Character {
 			.map(|selected| T::from_str(&selected))
 	}
 
+	pub fn get_selector_value<T>(&self, selector: &Selector<T>) -> Option<T>
+	where
+		T: Clone + 'static + ToString + FromStr,
+	{
+		if let Selector::Specific(value) = selector {
+			return Some(value.clone());
+		}
+		let path_to_data = selector
+			.get_data_path()
+			.expect("non-specific selectors must have a data path");
+		self.get_first_selection_at::<T>(&path_to_data)
+			.map(|res| res.ok())
+			.flatten()
+	}
+
 	pub fn resolve_selector<T>(&mut self, selector: &Selector<T>) -> Option<T>
 	where
 		T: Clone + 'static + ToString + FromStr,

@@ -10,6 +10,7 @@ pub enum ActivationKind {
 	Action,
 	Bonus,
 	Reaction,
+	Special,
 	Minute(u32),
 	Hour(u32),
 }
@@ -24,11 +25,12 @@ impl FromKDL for ActivationKind {
 			"Action" => Ok(Self::Action),
 			"Bonus" => Ok(Self::Bonus),
 			"Reaction" => Ok(Self::Reaction),
+			"Special" => Ok(Self::Special),
 			"Minute" => Ok(Self::Minute(node.get_i64_req(value_idx.next())? as u32)),
 			"Hour" => Ok(Self::Hour(node.get_i64_req(value_idx.next())? as u32)),
 			name => Err(GeneralError(format!(
 				"Invalid action activation type {name:?}, expected \
-				Action, Bonus, Reaction, Minute, or Hour."
+				Action, Bonus, Reaction, Special, Minute, or Hour."
 			))
 			.into()),
 		}

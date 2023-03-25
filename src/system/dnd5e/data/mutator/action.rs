@@ -24,8 +24,11 @@ impl Mutator for AddAction {
 	}
 
 	fn description(&self) -> Option<String> {
-		let desc = &self.0.description;
-		(!desc.is_empty()).then(|| desc.clone())
+		self.0.description.clone()
+	}
+
+	fn set_data_path(&self, parent: &std::path::Path) {
+		self.0.set_data_path(parent);
 	}
 
 	fn apply(&self, stats: &mut Character, _parent: &std::path::Path) {
