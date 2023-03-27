@@ -255,7 +255,7 @@ fn DeathSavesBody(BodyProps { on_open_modal }: &BodyProps) -> Html {
 	html! {
 		<div class="death-saves" onclick={on_open_modal.clone()}>
 			<h5 class="text-center" style="font-size: 0.8rem; color: var(--bs-card-title-color); margin: 0 0 2px 0;">{"Death Saves"}</h5>
-			<div class="row my-0 mx-4">
+			<div class="row my-0 mx-2">
 				<div class="col-auto p-0">
 					<div style="height: 100%;" class="d-flex align-items-center">
 						<span class="death-save-icon" />

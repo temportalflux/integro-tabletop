@@ -3,7 +3,7 @@ use crate::{
 	system::dnd5e::{
 		components::{SharedCharacter, UsesCounter},
 		data::{
-			action::{AttackCheckKind, AttackKindValue, ActivationKind},
+			action::{ActivationKind, AttackCheckKind, AttackKindValue},
 			DamageRoll,
 		},
 	},
@@ -152,7 +152,10 @@ pub fn Actions() -> Html {
 					passes_any = passes_any || action.activation_kind == ActivationKind::Reaction;
 				}
 				if selected_tags.contains(ActionTag::Other) {
-					let is_regular_action = matches!(action.activation_kind, ActivationKind::Action | ActivationKind::Bonus | ActivationKind::Reaction);
+					let is_regular_action = matches!(
+						action.activation_kind,
+						ActivationKind::Action | ActivationKind::Bonus | ActivationKind::Reaction
+					);
 					passes_any = passes_any || !is_regular_action;
 				}
 				if selected_tags.contains(ActionTag::LimitedUse) {

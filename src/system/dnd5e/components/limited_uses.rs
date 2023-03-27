@@ -16,7 +16,6 @@ impl<'parent> UsesCounter<'parent> {
 		let consumed_uses = self.limited_uses.get_uses_consumed(&self.state);
 		let Some(max_uses) = self.limited_uses.max_uses.evaluate(&self.state) else { return html! {} };
 
-
 		let toggle_use = Callback::from({
 			let state = self.state.clone();
 			let uses_path = Arc::new(self.limited_uses.get_uses_path());

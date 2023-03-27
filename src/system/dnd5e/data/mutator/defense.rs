@@ -83,7 +83,7 @@ impl FromKDL for AddDefense {
 		node_reg: &NodeRegistry,
 	) -> anyhow::Result<Self> {
 		let defense = Defense::from_str(node.get_str_req(value_idx.next())?)?;
-		let damage_type = match node.entry("damage_type") {
+		let damage_type = match node.entry(value_idx.next()) {
 			Some(entry) => Some(Value::from_kdl(node, entry, value_idx, node_reg, |kdl| {
 				Ok(DamageType::from_str(kdl.as_str_req()?)?)
 			})?),
@@ -134,18 +134,14 @@ mod test {
 		}
 
 		#[test]
-		fn eval_damage_type() -> anyhow::Result<()> {
-			/* TODO
-			let doc = "mutator \"add_defense\" (Defense)\"Resistance\" (Evaluator)\"map_level\"";
+		fn damage_type() -> anyhow::Result<()> {
+			let doc = "mutator \"add_defense\" (Defense)\"Resistance\" (DamageType)\"Cold\"";
 			let expected = AddDefense {
 				defense: Defense::Resistance,
-				damage_type: Some(Value::Evaluated(
-					// MISSING; No evaluator exists which outputs a string
-				)),
+				damage_type: Some(Value::Fixed(DamageType::Cold)),
 				context: None,
 			};
 			assert_eq!(from_doc(doc)?, expected.into());
-			*/
 			Ok(())
 		}
 	}

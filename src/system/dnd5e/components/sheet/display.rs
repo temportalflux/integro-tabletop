@@ -36,7 +36,7 @@ pub fn SheetDisplay(SheetDisplayProps { open_editor }: &SheetDisplayProps) -> Ht
 				{floating_editor_btn}
 			</div>
 			<div class="row" style="--bs-gutter-x: 10px;">
-				<div class="col-md-auto">
+				<div class="col-md-auto" style="max-width: 210px;">
 
 					<div class="row m-0" style="--bs-gutter-x: 0;">
 						<div class="col">

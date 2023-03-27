@@ -1,11 +1,15 @@
-use crate::system::dnd5e::DnD5e;
+use crate::system::{
+	core::SourceId,
+	dnd5e::{data::{character::Persistent, Ability}, DnD5e},
+};
 use anyhow::Context;
 use std::{
 	collections::BTreeMap,
 	path::{Path, PathBuf},
+	str::FromStr, sync::Arc,
 };
 use yew::prelude::*;
-use yew_hooks::use_is_first_mount;
+use yew_hooks::{use_is_first_mount, UseAsyncHandle};
 
 pub mod bootstrap;
 pub mod components;
@@ -35,8 +39,8 @@ impl<T> Compiled<T> {
 	}
 }
 
-fn create_character() -> system::dnd5e::data::character::Persistent {
-	use system::dnd5e::data::{character::Persistent, CurrencyKind, Description, Wallet};
+fn create_character(system: &DnD5e) -> system::dnd5e::data::character::Persistent {
+	use system::dnd5e::data::{CurrencyKind, Description, Wallet};
 	let mut persistent = Persistent {
 		description: Description {
 			name: "Sid the Squid".into(),
@@ -44,6 +48,49 @@ fn create_character() -> system::dnd5e::data::character::Persistent {
 		},
 		..Default::default()
 	};
+	persistent.classes.push({
+		let mut class = system
+			.classes
+			.get(&SourceId::from_str("local://basic-rules@dnd5e/class/barbarian.kdl").unwrap())
+			.unwrap()
+			.clone();
+		class.levels.truncate(3); // level 3
+		class
+	});
+	persistent.named_groups.background.push(
+		system
+			.backgrounds
+			.get(&SourceId::from_str("local://basic-rules@dnd5e/background/folkHero.kdl").unwrap())
+			.unwrap()
+			.clone(),
+	);
+	persistent.named_groups.lineage.push(
+		system
+			.lineages
+			.get(&SourceId::from_str("local://elf-and-orc@dnd5e/lineage/dwarven/dwarven.kdl").unwrap())
+			.unwrap()
+			.clone(),
+	);
+	persistent.named_groups.lineage.push(
+		system
+			.lineages
+			.get(&SourceId::from_str("local://elf-and-orc@dnd5e/lineage/dwarven/gray.kdl").unwrap())
+			.unwrap()
+			.clone(),
+	);
+	persistent.named_groups.upbringing.push(
+		system
+			.upbringings
+			.get(&SourceId::from_str("local://elf-and-orc@dnd5e/upbringing/abjurer.kdl").unwrap())
+			.unwrap()
+			.clone(),
+	);
+	persistent.ability_scores[Ability::Strength] = 15;
+	persistent.ability_scores[Ability::Dexterity] = 10;
+	persistent.ability_scores[Ability::Constitution] = 14;
+	persistent.ability_scores[Ability::Intelligence] = 12;
+	persistent.ability_scores[Ability::Wisdom] = 8;
+	persistent.ability_scores[Ability::Charisma] = 13;
 	*persistent.inventory.wallet_mut() = Wallet::from([
 		(3, CurrencyKind::Platinum),
 		(16, CurrencyKind::Gold),
@@ -57,7 +104,6 @@ fn create_character() -> system::dnd5e::data::character::Persistent {
 #[function_component]
 fn App() -> Html {
 	use system::dnd5e;
-	let character = create_character();
 	let show_browser = use_state_eq(|| false);
 	let comp_reg = use_memo(|_| dnd5e::component_registry(), ());
 	let node_reg = use_memo(|_| dnd5e::node_registry(), ());
@@ -101,6 +147,19 @@ fn App() -> Html {
 		content_loader.run();
 	}
 
+	let initial_character = use_state(|| None);
+	use_effect_with_deps(
+		{
+			let initial_character = initial_character.clone();
+			move |(system, has_loaded): &(UseStateHandle<DnD5e>, bool)| {
+				if *has_loaded {
+					initial_character.set(Some(create_character(&**system)));
+				}
+			}
+		},
+		(system.clone(), content_loader.data.is_some()),
+	);
+
 	let open_character = Callback::from({
 		let show_browser = show_browser.clone();
 		move |_| {
@@ -115,7 +174,15 @@ fn App() -> Html {
 	});
 
 	let content = match *show_browser {
-		false => html! {<system::dnd5e::components::CharacterSheetPage {character} />},
+		false => {
+			match &*initial_character {
+				None => html! {},
+				Some(character) => {
+					let character = character.clone();
+					html! {<system::dnd5e::components::CharacterSheetPage {character} />}
+				}
+			}
+		}
 		true => html! {},
 	};
 

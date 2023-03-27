@@ -99,6 +99,9 @@ impl MutatorGroup for Persistent {
 		for group in &self.named_groups.race_variant {
 			stats.apply_from(group, parent);
 		}
+		for group in &self.named_groups.lineage {
+			stats.apply_from(group, parent);
+		}
 		for group in &self.named_groups.upbringing {
 			stats.apply_from(group, parent);
 		}

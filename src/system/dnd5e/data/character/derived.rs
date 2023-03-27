@@ -60,12 +60,14 @@ impl Default for Derived {
 			armor_class: Default::default(),
 			actions: vec![Action {
 				name: "Unarmed Strike".into(),
-				description: Some("Instead of using a weapon to make a melee weapon attack, \
+				description: Some(
+					"Instead of using a weapon to make a melee weapon attack, \
 				you can use an unarmed strike: a punch, kick, head-butt, or similar \
 				forceful blow (none of which count as weapons). On a hit, an unarmed \
 				strike deals bludgeoning damage equal to 1 + your Strength modifier. \
 				You are proficient with your unarmed strikes."
-					.into()),
+						.into(),
+				),
 				short_desc: None,
 				activation_kind: ActivationKind::Action,
 				attack: Some(Attack {

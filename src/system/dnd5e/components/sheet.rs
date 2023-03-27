@@ -43,7 +43,7 @@ pub fn CharacterSheetPage(CharacterSheetPageProps { character }: &CharacterSheet
 		move || Character::from(character)
 	}));
 	let modal_dispatcher = modal::Context::from(use_reducer(|| modal::State::default()));
-	let show_editor = use_state_eq(|| true);
+	let show_editor = use_state_eq(|| false);
 
 	let open_viewer = Callback::from({
 		let show_editor = show_editor.clone();

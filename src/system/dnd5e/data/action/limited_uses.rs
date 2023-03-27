@@ -9,7 +9,7 @@ use crate::{
 	},
 	utility::{IdPath, Selector},
 };
-use std::{str::FromStr, path::PathBuf};
+use std::{path::PathBuf, str::FromStr};
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct LimitedUses {
@@ -41,7 +41,9 @@ impl LimitedUses {
 	}
 
 	pub fn get_uses_path(&self) -> PathBuf {
-		self.uses_count.get_data_path().expect("LimitedUses::uses_count should have a path when interacted with")
+		self.uses_count
+			.get_data_path()
+			.expect("LimitedUses::uses_count should have a path when interacted with")
 	}
 
 	pub fn get_uses_consumed(&self, character: &Character) -> u32 {

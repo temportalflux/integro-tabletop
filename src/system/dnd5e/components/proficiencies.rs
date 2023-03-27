@@ -34,7 +34,7 @@ pub fn Proficiencies() -> Html {
 		}
 	});
 	html! {
-		<div id="proficiencies-container" class="card my-1 mx-auto" style="max-width: 200px; border-color: var(--theme-frame-color);" {onclick}>
+		<div id="proficiencies-container" class="card my-1 mx-auto" style="border-color: var(--theme-frame-color);" {onclick}>
 			<div class="card-body" style="padding: 5px;">
 				<h5 class="card-title text-center" style="font-size: 0.8rem;">{"Proficiencies"}</h5>
 				{make_proficiencies_section("Languages", &proficiencies.languages)}
@@ -70,7 +70,7 @@ where
 	html! {
 		<div class="proficiency-section">
 			<h6>{title}</h6>
-			<span>{match !items.is_empty() {
+			<span class="proficiencies">{match !items.is_empty() {
 				false => html! { {"None"} },
 				true => html! {<> {items} </>},
 			}}</span>
