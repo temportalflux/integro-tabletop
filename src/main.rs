@@ -1,12 +1,16 @@
 use crate::system::{
 	core::SourceId,
-	dnd5e::{data::{character::Persistent, Ability}, DnD5e},
+	dnd5e::{
+		data::{character::Persistent, Ability},
+		DnD5e,
+	},
 };
 use anyhow::Context;
 use std::{
 	collections::BTreeMap,
 	path::{Path, PathBuf},
-	str::FromStr, sync::Arc,
+	str::FromStr,
+	sync::Arc,
 };
 use yew::prelude::*;
 use yew_hooks::{use_is_first_mount, UseAsyncHandle};
@@ -67,7 +71,10 @@ fn create_character(system: &DnD5e) -> system::dnd5e::data::character::Persisten
 	persistent.named_groups.lineage.push(
 		system
 			.lineages
-			.get(&SourceId::from_str("local://elf-and-orc@dnd5e/lineage/dwarven/dwarven.kdl").unwrap())
+			.get(
+				&SourceId::from_str("local://elf-and-orc@dnd5e/lineage/dwarven/dwarven.kdl")
+					.unwrap(),
+			)
 			.unwrap()
 			.clone(),
 	);
@@ -174,15 +181,13 @@ fn App() -> Html {
 	});
 
 	let content = match *show_browser {
-		false => {
-			match &*initial_character {
-				None => html! {},
-				Some(character) => {
-					let character = character.clone();
-					html! {<system::dnd5e::components::CharacterSheetPage {character} />}
-				}
+		false => match &*initial_character {
+			None => html! {},
+			Some(character) => {
+				let character = character.clone();
+				html! {<system::dnd5e::components::CharacterSheetPage {character} />}
 			}
-		}
+		},
 		true => html! {},
 	};
 

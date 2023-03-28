@@ -1,4 +1,4 @@
-use crate::system::dnd5e::components::SharedCharacter;
+use crate::{components::modal, system::dnd5e::components::SharedCharacter};
 use yew::prelude::*;
 
 #[derive(Clone, PartialEq, Properties)]
@@ -23,6 +23,7 @@ fn SingleValue(SingleValueProps { title, amount }: &SingleValueProps) -> Html {
 #[function_component]
 pub fn SpeedAndSenses() -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
+	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 
 	let divider = (state.speeds().len() > 0 && state.senses().len() > 0)
 		.then(|| {
@@ -84,8 +85,19 @@ pub fn SpeedAndSenses() -> Html {
 		_ => "100%",
 	};
 
+	let onclick = modal_dispatcher.callback({
+		move |_| {
+			modal::Action::Open(modal::Props {
+				centered: true,
+				scrollable: true,
+				content: html! {<Modal />},
+				..Default::default()
+			})
+		}
+	});
+
 	html! {
-		<div class="card my-1" style={format!("width: {width};")}>
+		<div class="card my-1" style={format!("width: {width};")} {onclick}>
 			<div class="card-body" style="padding: 5px 5px;">
 				<div class="row" style="--bs-gutter-x: 0;">
 					{speed}
@@ -95,4 +107,44 @@ pub fn SpeedAndSenses() -> Html {
 			</div>
 		</div>
 	}
+}
+
+static SENSE_DESC: [(&'static str, &'static str); 3] = [
+	(
+		"Blindsight",
+		"A creature with blindsight can perceive its surroundings \
+		without relying on sight, within a specific radius.
+		Creatures without eyes, such as grimlocks and gray oozes, typically have this special sense, \
+		as do creatures with echolocation or heightened senses, such as bats and true dragons.
+		If a creature is naturally blind, it has a parenthetical note to this effect, indicating that \
+		the radius of its blindsight defines the maximum range of its perception."
+	),
+	(
+		"Darkvision",
+		"A creature with darkvision can see in the dark within a specific radius. \
+		The creature can see in dim light within the radius as if it were bright light, \
+		and in darkness as if it were dim light. The creature can't discern color in darkness, \
+		only shades of gray. Many creatures that live underground have this special sense."
+	),
+	(
+		"Tremorsense",
+		"A creature with tremorsense can detect and pinpoint the origin of vibrations \
+		within a specific radius, provided that the creature and the source of the \
+		vibrations are in contact with the same ground or substance.
+		Tremorsense can't be used to detect flying or incorporeal creatures. \
+		Many burrowing creatures, such as ankhegs, have this special sense."
+	)
+];
+
+#[function_component]
+fn Modal() -> Html {
+	html! {<>
+		<div class="modal-header">
+			<h1 class="modal-title fs-4">{"Speeds & Senses"}</h1>
+			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
+		</div>
+		<div class="modal-body">
+
+		</div>
+	</>}
 }
