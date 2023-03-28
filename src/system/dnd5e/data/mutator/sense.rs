@@ -30,6 +30,7 @@ impl Mutator for Sense {
 		let name = &self.name;
 		Some(match &self.argument {
 			BoundValue::Minimum(value) => format!("You have {name} for at least {value} feet."),
+			BoundValue::Base(value) => format!("You have {name} for at least {value} feet."),
 			BoundValue::Additive(value) => format!(
 				"If you have {name} from another source, your {name} increases by {value} feet."
 			),

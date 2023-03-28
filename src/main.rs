@@ -1,19 +1,11 @@
-use crate::system::{
-	core::SourceId,
-	dnd5e::{
-		data::{character::Persistent, Ability},
-		DnD5e,
-	},
-};
 use anyhow::Context;
 use std::{
 	collections::BTreeMap,
 	path::{Path, PathBuf},
 	str::FromStr,
-	sync::Arc,
 };
 use yew::prelude::*;
-use yew_hooks::{use_is_first_mount, UseAsyncHandle};
+use yew_hooks::use_is_first_mount;
 
 pub mod bootstrap;
 pub mod components;
@@ -43,8 +35,11 @@ impl<T> Compiled<T> {
 	}
 }
 
-fn create_character(system: &DnD5e) -> system::dnd5e::data::character::Persistent {
-	use system::dnd5e::data::{CurrencyKind, Description, Wallet};
+fn create_character(system: &system::dnd5e::DnD5e) -> system::dnd5e::data::character::Persistent {
+	use system::{
+		core::SourceId,
+		dnd5e::data::{character::Persistent, Ability, CurrencyKind, Description, Wallet},
+	};
 	let mut persistent = Persistent {
 		description: Description {
 			name: "Sid the Squid".into(),
@@ -110,7 +105,7 @@ fn create_character(system: &DnD5e) -> system::dnd5e::data::character::Persisten
 
 #[function_component]
 fn App() -> Html {
-	use system::dnd5e;
+	use system::dnd5e::{self, DnD5e};
 	let show_browser = use_state_eq(|| false);
 	let comp_reg = use_memo(|_| dnd5e::component_registry(), ());
 	let node_reg = use_memo(|_| dnd5e::node_registry(), ());
@@ -305,7 +300,6 @@ async fn main() -> anyhow::Result<()> {
 	}
 
 	for (mut source_id, content) in sources {
-		log::debug!("Parsing {:?}", source_id.to_string());
 		let document = content
 			.parse::<kdl::KdlDocument>()
 			.context("Invalid KDL format")?;
@@ -316,7 +310,10 @@ async fn main() -> anyhow::Result<()> {
 				log::error!("Failed to find factory to deserialize node \"{node_name}\".");
 				continue;
 			};
-			match comp_factory.add_from_kdl(node, source_id.clone(), &node_reg) {
+			let insert_parsed = comp_factory.add_from_kdl(node, source_id.clone(), &node_reg);
+			let insert_parsed =
+				insert_parsed.with_context(|| format!("while parsing {}", source_id.to_string()));
+			match insert_parsed {
 				Ok(insert_callback) => (insert_callback)(&mut system),
 				Err(err) => {
 					log::error!("Failed to deserialize entry: {err:?}");

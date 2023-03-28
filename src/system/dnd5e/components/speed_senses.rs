@@ -1,4 +1,7 @@
-use crate::{components::modal, system::dnd5e::components::SharedCharacter};
+use std::{collections::BTreeMap, path::PathBuf};
+
+use crate::{components::modal, system::dnd5e::{components::SharedCharacter, data::bounded::{BoundKind, BoundedValue}}};
+use enumset::EnumSet;
 use yew::prelude::*;
 
 #[derive(Clone, PartialEq, Properties)]
@@ -117,14 +120,14 @@ static SENSE_DESC: [(&'static str, &'static str); 3] = [
 		Creatures without eyes, such as grimlocks and gray oozes, typically have this special sense, \
 		as do creatures with echolocation or heightened senses, such as bats and true dragons.
 		If a creature is naturally blind, it has a parenthetical note to this effect, indicating that \
-		the radius of its blindsight defines the maximum range of its perception."
+		the radius of its blindsight defines the maximum range of its perception.",
 	),
 	(
 		"Darkvision",
 		"A creature with darkvision can see in the dark within a specific radius. \
 		The creature can see in dim light within the radius as if it were bright light, \
 		and in darkness as if it were dim light. The creature can't discern color in darkness, \
-		only shades of gray. Many creatures that live underground have this special sense."
+		only shades of gray. Many creatures that live underground have this special sense.",
 	),
 	(
 		"Tremorsense",
@@ -132,19 +135,83 @@ static SENSE_DESC: [(&'static str, &'static str); 3] = [
 		within a specific radius, provided that the creature and the source of the \
 		vibrations are in contact with the same ground or substance.
 		Tremorsense can't be used to detect flying or incorporeal creatures. \
-		Many burrowing creatures, such as ankhegs, have this special sense."
-	)
+		Many burrowing creatures, such as ankhegs, have this special sense.",
+	),
 ];
 
 #[function_component]
 fn Modal() -> Html {
+	let state = use_context::<SharedCharacter>().unwrap();
 	html! {<>
 		<div class="modal-header">
 			<h1 class="modal-title fs-4">{"Speeds & Senses"}</h1>
 			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
 		</div>
 		<div class="modal-body">
+			{state.speeds().iter().map(|(name, bounded)| {
+				bounded_value("Speed", &name, bounded)
+			}).collect::<Vec<_>>()}
+			{state.senses().iter().map(|(name, bounded)| {
+				bounded_value("Sense", &name, bounded)
+			}).collect::<Vec<_>>()}
+			
+			<div>
+				<h6>{"Additional Information"}</h6>
+				{SENSE_DESC.iter().map(|(title, desc)| html! {
+					<div>
+						<strong>{*title}{". "}</strong>
+						<span class="text-block" style="font-size: 14px;">
+							{*desc}
+						</span>
+					</div>
+				}).collect::<Vec<_>>()}
+			</div>
 
 		</div>
 	</>}
+}
+
+fn bounded_value(kind: &str, name: &str, bounded: &BoundedValue) -> Html {
+	let bound_kinds = {
+		let mut kinds = EnumSet::<BoundKind>::all().into_iter().collect::<Vec<_>>();
+		kinds.sort();
+		kinds
+	};
+	let bound_sources = bound_kinds.into_iter().filter_map(|kind| {
+		let sources = bounded.argument(kind);
+		(!sources.is_empty()).then_some((kind, sources))
+	}).collect::<Vec<_>>();
+	html! {
+		html! {<div class="mb-2">
+			<h4>{name}{" ("}{kind}{")"}</h4>
+			{bound_sources.into_iter().map(|(kind, sources)| bound_section(kind, sources)).collect::<Vec<_>>()}
+		</div>}
+	}
+}
+
+fn bound_section(kind: BoundKind, sources: &BTreeMap<PathBuf, i32>) -> Html {
+	html! {<div class="mx-2 mb-1">
+		<span>
+			<strong>{kind.display_name()}{". "}</strong>
+			<span style="font-size: 14px;">
+				{kind.description()}
+			</span>
+		</span>
+		<table class="table table-compact table-striped mx-auto" style="width: 90%;">
+			<thead>
+				<tr class="text-center" style="color: var(--bs-heading-color);">
+					<th scope="col" style="width: 50px;">{"Value"}</th>
+					<th scope="col">{"Source"}</th>
+				</tr>
+			</thead>
+			<tbody>
+				{sources.iter().map(|(path, value)| html! {
+					<tr>
+						<td class="text-center">{value.to_string()}</td>
+						<td>{crate::data::as_feature_path_text(path)}</td>
+					</tr>
+				}).collect::<Vec<_>>()}
+			</tbody>
+		</table>
+	</div>}
 }

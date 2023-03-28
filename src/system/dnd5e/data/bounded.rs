@@ -4,6 +4,7 @@ use crate::{
 	GeneralError,
 };
 use enum_map::{Enum, EnumMap};
+use enumset::EnumSetType;
 use std::{collections::BTreeMap, path::PathBuf};
 
 #[derive(Clone, PartialEq, Default, Debug)]
@@ -31,9 +32,10 @@ impl BoundedValue {
 
 	pub fn value(&self) -> i32 {
 		let minimum = self.args(BoundKind::Minimum).cloned().max();
+		let base = self.args(BoundKind::Base).cloned().max().unwrap_or(0);
 		let additive: i32 = self.args(BoundKind::Additive).cloned().sum();
 		let subtract: i32 = self.args(BoundKind::Subtract).cloned().sum();
-		let total = additive - subtract;
+		let total = base + additive - subtract;
 		match minimum {
 			None => total,
 			Some(min_value) => total.max(min_value),
@@ -56,16 +58,51 @@ impl BoundedValue {
 	}
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Enum)]
+#[derive(Debug, Enum, EnumSetType, PartialOrd, Ord)]
 pub enum BoundKind {
 	Minimum,
+	Base,
 	Additive,
 	Subtract,
+}
+impl BoundKind {
+	pub fn display_name(&self) -> &'static str {
+		match self {
+			Self::Minimum => "Minimum",
+			Self::Base => "Base",
+			Self::Additive => "Add",
+			Self::Subtract => "Subtract",
+		}
+	}
+
+	pub fn description(&self) -> &'static str {
+		match self {
+			Self::Minimum => {
+				"Minimum bounds are independent of all other bonuses. \
+				If the total of all the other bonuses is less than \
+				the largest minimum bound, the minimum bound is used instead."
+			}
+			Self::Base => {
+				"Base bounds provide the minimum value that can \
+				be added upon by bonuses. The maximum base value can be added \
+				to or subtracted from via other bonuses."
+			}
+			Self::Additive => {
+				"Additive bounds are summed together and \
+				added to the maximum base bound."
+			}
+			Self::Subtract => {
+				"Subtractive bounds are summed together \
+				and subtracted from the maximum base bound."
+			}
+		}
+	}
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum BoundValue {
 	Minimum(i32),
+	Base(i32),
 	Additive(i32),
 	Subtract(i32),
 }
@@ -73,6 +110,7 @@ impl BoundValue {
 	pub fn kind(&self) -> BoundKind {
 		match self {
 			Self::Minimum(_) => BoundKind::Minimum,
+			Self::Base(_) => BoundKind::Base,
 			Self::Additive(_) => BoundKind::Additive,
 			Self::Subtract(_) => BoundKind::Subtract,
 		}
@@ -81,6 +119,7 @@ impl BoundValue {
 	pub fn value(&self) -> &i32 {
 		match self {
 			Self::Minimum(v) => v,
+			Self::Base(v) => v,
 			Self::Additive(v) => v,
 			Self::Subtract(v) => v,
 		}
@@ -89,6 +128,7 @@ impl BoundValue {
 	pub fn into_value(self) -> i32 {
 		match self {
 			Self::Minimum(v) => v,
+			Self::Base(v) => v,
 			Self::Additive(v) => v,
 			Self::Subtract(v) => v,
 		}
@@ -108,11 +148,12 @@ impl FromKDL for BoundValue {
 		let entry = node.entry_req(value_idx.next())?;
 		match entry.type_req()? {
 			"Minimum" => Ok(Self::Minimum(entry.as_i64_req()? as i32)),
+			"Base" => Ok(Self::Base(entry.as_i64_req()? as i32)),
 			"Additive" => Ok(Self::Additive(entry.as_i64_req()? as i32)),
 			"Subtract" => Ok(Self::Subtract(entry.as_i64_req()? as i32)),
 			type_name => Err(GeneralError(format!(
 				"Invalid bound value id {type_name:?}, \
-				expected Minimum, Additive, or Subtract"
+				expected Minimum, Base, Additive, or Subtract"
 			))
 			.into()),
 		}
@@ -129,6 +170,13 @@ mod test {
 		let mut sense = BoundedValue::default();
 		sense.insert(BoundValue::Minimum(10), "FeatMin".into());
 		assert_eq!(sense.0[BoundKind::Minimum], [("FeatMin".into(), 10)].into());
+	}
+
+	#[test]
+	fn insert_base() {
+		let mut sense = BoundedValue::default();
+		sense.insert(BoundValue::Base(10), "FeatMin".into());
+		assert_eq!(sense.0[BoundKind::Base], [("FeatMin".into(), 10)].into());
 	}
 
 	#[test]
@@ -154,10 +202,25 @@ mod test {
 	}
 
 	#[test]
+	fn value_base_only() {
+		let mut sense = BoundedValue::default();
+		sense.insert(BoundValue::Base(10), "FeatMin".into());
+		assert_eq!(sense.value(), 10);
+	}
+
+	#[test]
 	fn value_add_only() {
 		let mut sense = BoundedValue::default();
 		sense.0[BoundKind::Additive] = [("FeatAdd".into(), 20)].into();
 		assert_eq!(sense.value(), 20);
+	}
+
+	#[test]
+	fn value_add_base() {
+		let mut sense = BoundedValue::default();
+		sense.0[BoundKind::Base] = [("FeatBaseA".into(), 10), ("FeatBaseB".into(), 15)].into();
+		sense.0[BoundKind::Additive] = [("FeatAdd".into(), 20)].into();
+		assert_eq!(sense.value(), 35);
 	}
 
 	#[test]
@@ -189,5 +252,14 @@ mod test {
 		sense.0[BoundKind::Minimum] = [("A".into(), 60)].into();
 		sense.0[BoundKind::Additive] = [("B".into(), 60), ("C".into(), 60)].into();
 		assert_eq!(sense.value(), 120);
+	}
+
+	#[test]
+	fn value_min_base_add() {
+		let mut sense = BoundedValue::default();
+		sense.0[BoundKind::Minimum] = [("A".into(), 60), ("B".into(), 40)].into();
+		sense.0[BoundKind::Base] = [("C".into(), 30)].into();
+		sense.0[BoundKind::Additive] = [("D".into(), 40), ("E".into(), 10)].into();
+		assert_eq!(sense.value(), 80);
 	}
 }

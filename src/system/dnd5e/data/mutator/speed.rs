@@ -32,6 +32,7 @@ impl Mutator for Speed {
 			self.name,
 			match &self.argument {
 				BoundValue::Minimum(value) => format!("is at least {value} feet"),
+				BoundValue::Base(value) => format!("is at least {value} feet"),
 				BoundValue::Additive(value) => format!("increases by {value} feet"),
 				BoundValue::Subtract(value) => format!("decreases by {value} feet"),
 			}
