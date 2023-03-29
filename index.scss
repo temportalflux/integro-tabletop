@@ -130,6 +130,17 @@
 	border-color: var(--theme-frame-color-muted);
 }
 
+.tag.defense .defense-icon {
+	width: 12px;
+	height: 12px;
+}
+.modal.defense .defense-section .defense-icon {
+	width: 20px;
+	height: 20px;
+	margin-right: 10px;
+	margin-bottom: 0.25rem;
+}
+
 .modal.hit-points button.hp-action {
 	margin-left: 0.8rem!important;
 	margin-right: 0.8rem!important;

@@ -5,6 +5,8 @@ pub struct TagProps {
 	#[prop_or_default]
 	pub active: bool,
 	#[prop_or_default]
+	pub classes: Classes,
+	#[prop_or_default]
 	pub children: Children,
 	/// Emitted when the span is clicked, with the argument
 	/// indicating if tag is currently active or not.
@@ -16,11 +18,12 @@ pub struct TagProps {
 pub fn Tag(
 	TagProps {
 		active,
+		classes,
 		children,
 		on_click,
 	}: &TagProps,
 ) -> Html {
-	let mut classes = classes!("tag");
+	let mut classes = classes!("tag", classes.clone());
 	if *active {
 		classes.push("active");
 	}
