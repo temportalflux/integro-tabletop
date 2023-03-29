@@ -41,7 +41,13 @@ impl Evaluator for IsProficientWith {
 			Self::Language(language) => {
 				state.other_proficiencies().languages.contains_key(language)
 			}
-			Self::Armor(kind) => state.other_proficiencies().armor.contains_key(kind),
+			Self::Armor(kind) => {
+				// TODO: This only checks if the context for the kind is None. It shouldn't care what the context is.
+				state
+					.other_proficiencies()
+					.armor
+					.contains_key(&(*kind, None))
+			}
 			Self::Weapon(proficiency) => state
 				.other_proficiencies()
 				.weapons
@@ -227,9 +233,10 @@ mod test {
 		#[test]
 		fn armor_kind() {
 			let empty = Character::from(Persistent::default());
-			let with_prof = character_with_profs(vec![AddProficiency::Armor(ArmorExtended::Kind(
-				armor::Kind::Light,
-			))]);
+			let with_prof = character_with_profs(vec![AddProficiency::Armor(
+				ArmorExtended::Kind(armor::Kind::Light),
+				None,
+			)]);
 			let eval = IsProficientWith::Armor(ArmorExtended::Kind(armor::Kind::Light));
 			assert_eq!(eval.evaluate(&empty), false);
 			assert_eq!(eval.evaluate(&with_prof), true);
@@ -239,7 +246,7 @@ mod test {
 		fn armor_shield() {
 			let empty = Character::from(Persistent::default());
 			let with_prof =
-				character_with_profs(vec![AddProficiency::Armor(ArmorExtended::Shield)]);
+				character_with_profs(vec![AddProficiency::Armor(ArmorExtended::Shield, None)]);
 			let eval = IsProficientWith::Armor(ArmorExtended::Shield);
 			assert_eq!(eval.evaluate(&empty), false);
 			assert_eq!(eval.evaluate(&with_prof), true);

@@ -8,12 +8,12 @@ use std::{
 #[derive(Clone, Default, PartialEq, Debug)]
 pub struct OtherProficiencies {
 	pub languages: AttributedValueMap<String>,
-	pub armor: AttributedValueMap<ArmorExtended>,
+	pub armor: AttributedValueMap<(ArmorExtended, Option<String>)>,
 	pub weapons: AttributedValueMap<WeaponProficiency>,
 	pub tools: AttributedValueMap<String>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ArmorExtended {
 	Kind(armor::Kind),
 	Shield,

@@ -1,7 +1,10 @@
 use crate::{
 	bootstrap::components::Tooltip,
 	components::modal,
-	system::dnd5e::{components::SharedCharacter, data::AttributedValueMap},
+	system::dnd5e::{
+		components::SharedCharacter,
+		data::{AttributedValueMap, WeaponProficiency},
+	},
 };
 use yew::prelude::*;
 
@@ -23,10 +26,12 @@ pub fn Proficiencies() -> Html {
 						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
 					</div>
 					<div class="modal-body">
-						{make_proficiencies_section_long("Languages", &proficiencies.languages)}
-						{make_proficiencies_section_long("Armor", &proficiencies.armor)}
-						{make_proficiencies_section_long("Weapons", &proficiencies.weapons)}
-						{make_proficiencies_section_long("Tools", &proficiencies.tools)}
+						{make_proficiencies_section_long("Languages", &proficiencies.languages, String::to_string)}
+						{make_proficiencies_section_long("Armor", &proficiencies.armor, |(value, context)| {
+							format!("{}{}", value.to_string(), context.as_ref().map(|s| format!(" ({s})")).unwrap_or_default())
+						})}
+						{make_proficiencies_section_long("Weapons", &proficiencies.weapons, WeaponProficiency::to_string)}
+						{make_proficiencies_section_long("Tools", &proficiencies.tools, String::to_string)}
 					</div>
 				</>},
 				..Default::default()
@@ -37,18 +42,24 @@ pub fn Proficiencies() -> Html {
 		<div id="proficiencies-container" class="card my-1 mx-auto" style="border-color: var(--theme-frame-color);" {onclick}>
 			<div class="card-body" style="padding: 5px;">
 				<h5 class="card-title text-center" style="font-size: 0.8rem;">{"Proficiencies"}</h5>
-				{make_proficiencies_section("Languages", &proficiencies.languages)}
-				{make_proficiencies_section("Armor", &proficiencies.armor)}
-				{make_proficiencies_section("Weapons", &proficiencies.weapons)}
-				{make_proficiencies_section("Tools", &proficiencies.tools)}
+				{make_proficiencies_section("Languages", &proficiencies.languages, String::to_string)}
+				{make_proficiencies_section("Armor", &proficiencies.armor, |(value, context)| {
+					format!("{}{}", value.to_string(), context.as_ref().map(|s| format!(" ({s})")).unwrap_or_default())
+				})}
+				{make_proficiencies_section("Weapons", &proficiencies.weapons, WeaponProficiency::to_string)}
+				{make_proficiencies_section("Tools", &proficiencies.tools, String::to_string)}
 			</div>
 		</div>
 	}
 }
 
-fn make_proficiencies_section<T>(title: &str, values: &AttributedValueMap<T>) -> Html
+fn make_proficiencies_section<T, F>(
+	title: &str,
+	values: &AttributedValueMap<T>,
+	to_string: F,
+) -> Html
 where
-	T: ToString,
+	F: Fn(&T) -> String,
 {
 	let count = values.len();
 	let mut items = Vec::with_capacity(count);
@@ -58,7 +69,7 @@ where
 		items.push(html! {
 			<span>
 				<Tooltip tag="span" content={tooltip} use_html={true}>
-					{value.to_string()}
+					{to_string(value)}
 				</Tooltip>
 				{match is_last {
 					false => ", ",
@@ -78,16 +89,20 @@ where
 	}
 }
 
-fn make_proficiencies_section_long<T>(title: &str, values: &AttributedValueMap<T>) -> Html
+fn make_proficiencies_section_long<T, F>(
+	title: &str,
+	values: &AttributedValueMap<T>,
+	to_string: F,
+) -> Html
 where
-	T: ToString,
+	F: Fn(&T) -> String,
 {
 	let count = values.len();
 	let mut items = Vec::with_capacity(count);
 	for (value, sources) in values.iter() {
 		items.push(html! {
 			<tr>
-				<td class="text-center">{value.to_string()}</td>
+				<td class="text-center">{to_string(value)}</td>
 				<td>
 					{sources.iter().map(|path| html! {
 						<div>

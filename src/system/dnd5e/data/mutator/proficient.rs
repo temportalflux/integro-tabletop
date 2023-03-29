@@ -20,7 +20,7 @@ pub enum AddProficiency {
 	SavingThrow(Ability),
 	Skill(Selector<Skill>, proficiency::Level),
 	Language(Selector<String>),
-	Armor(ArmorExtended),
+	Armor(ArmorExtended, Option<String>),
 	Weapon(WeaponProficiency),
 	Tool(String),
 }
@@ -69,11 +69,19 @@ impl Mutator for AddProficiency {
 				"You can speak, read, and write one language of: {}.",
 				options.join(", ")
 			)),
-			Self::Armor(ArmorExtended::Kind(kind)) => Some(format!(
-				"You are proficient with {} armor.",
-				kind.to_string().to_lowercase()
-			)),
-			Self::Armor(ArmorExtended::Shield) => Some("You are proficient with shields.".into()),
+			Self::Armor(kind, context) => {
+				let ctx = context
+					.as_ref()
+					.map(|s| format!(" ({s})"))
+					.unwrap_or_default();
+				Some(match kind {
+					ArmorExtended::Kind(kind) => format!(
+						"You are proficient with {} armor{ctx}.",
+						kind.to_string().to_lowercase()
+					),
+					ArmorExtended::Shield => format!("You are proficient with shields{ctx}."),
+				})
+			}
 			Self::Weapon(WeaponProficiency::Kind(kind)) => Some(format!(
 				"You are proficient with {} weapons.",
 				kind.to_string().to_lowercase()
@@ -115,11 +123,11 @@ impl Mutator for AddProficiency {
 						.insert(value, parent.to_owned());
 				}
 			}
-			Self::Armor(value) => {
+			Self::Armor(value, context) => {
 				stats
 					.other_proficiencies_mut()
 					.armor
-					.insert(value.clone(), parent.to_owned());
+					.insert((value.clone(), context.clone()), parent.to_owned());
 			}
 			Self::Weapon(value) => {
 				stats
@@ -174,7 +182,11 @@ impl FromKDL for AddProficiency {
 				})?;
 				Ok(Self::Language(language))
 			}
-			"Armor" => Ok(Self::Armor(ArmorExtended::from_str(entry.as_str_req()?)?)),
+			"Armor" => {
+				let kind = ArmorExtended::from_str(entry.as_str_req()?)?;
+				let context = node.get_str_opt(value_idx.next())?.map(str::to_owned);
+				Ok(Self::Armor(kind, context))
+			}
 			"Weapon" => Ok(Self::Weapon(match entry.as_str_req()? {
 				kind if kind == "Simple" || kind == "Martial" => {
 					WeaponProficiency::Kind(weapon::Kind::from_str(kind)?)
@@ -349,7 +361,18 @@ mod test {
 		#[test]
 		fn armor_kind() -> anyhow::Result<()> {
 			let doc = "mutator \"add_proficiency\" (Armor)\"Medium\"";
-			let expected = AddProficiency::Armor(ArmorExtended::Kind(armor::Kind::Medium));
+			let expected = AddProficiency::Armor(ArmorExtended::Kind(armor::Kind::Medium), None);
+			assert_eq!(from_doc(doc)?, expected.into());
+			Ok(())
+		}
+
+		#[test]
+		fn armor_kind_ctx() -> anyhow::Result<()> {
+			let doc = "mutator \"add_proficiency\" (Armor)\"Medium\" \"nonmetal\"";
+			let expected = AddProficiency::Armor(
+				ArmorExtended::Kind(armor::Kind::Medium),
+				Some("nonmetal".into()),
+			);
 			assert_eq!(from_doc(doc)?, expected.into());
 			Ok(())
 		}
@@ -357,7 +380,7 @@ mod test {
 		#[test]
 		fn armor_shield() -> anyhow::Result<()> {
 			let doc = "mutator \"add_proficiency\" (Armor)\"Shield\"";
-			let expected = AddProficiency::Armor(ArmorExtended::Shield);
+			let expected = AddProficiency::Armor(ArmorExtended::Shield, None);
 			assert_eq!(from_doc(doc)?, expected.into());
 			Ok(())
 		}
@@ -484,13 +507,35 @@ mod test {
 		#[test]
 		fn armor_kind() {
 			let character = character(
-				AddProficiency::Armor(ArmorExtended::Kind(armor::Kind::Heavy)),
+				AddProficiency::Armor(ArmorExtended::Kind(armor::Kind::Heavy), None),
 				None,
 			);
 			assert_eq!(
 				*character.other_proficiencies().armor,
 				[(
+					(ArmorExtended::Kind(armor::Kind::Heavy), None),
+					["AddProficiency".into()].into()
+				)]
+				.into()
+			);
+		}
+
+		#[test]
+		fn armor_kind_ctx() {
+			let character = character(
+				AddProficiency::Armor(
 					ArmorExtended::Kind(armor::Kind::Heavy),
+					Some("nonmetal".into()),
+				),
+				None,
+			);
+			assert_eq!(
+				*character.other_proficiencies().armor,
+				[(
+					(
+						ArmorExtended::Kind(armor::Kind::Heavy),
+						Some("nonmetal".into())
+					),
 					["AddProficiency".into()].into()
 				)]
 				.into()
@@ -499,10 +544,14 @@ mod test {
 
 		#[test]
 		fn armor_shield() {
-			let character = character(AddProficiency::Armor(ArmorExtended::Shield), None);
+			let character = character(AddProficiency::Armor(ArmorExtended::Shield, None), None);
 			assert_eq!(
 				*character.other_proficiencies().armor,
-				[(ArmorExtended::Shield, ["AddProficiency".into()].into())].into()
+				[(
+					(ArmorExtended::Shield, None),
+					["AddProficiency".into()].into()
+				)]
+				.into()
 			);
 		}
 

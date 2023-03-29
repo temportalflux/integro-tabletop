@@ -1,9 +1,19 @@
 use std::str::FromStr;
 
+use crate::{
+	components::{modal, Tag, Tags},
+	system::{
+		core::SourceId,
+		dnd5e::{
+			components::{editor::CollapsableCard, SharedCharacter},
+			data::character::{ActionEffect, Persistent},
+			DnD5e,
+		},
+	},
+};
 use wasm_bindgen::JsCast;
 use web_sys::HtmlSelectElement;
 use yew::prelude::*;
-use crate::{system::{dnd5e::{components::{SharedCharacter, editor::CollapsableCard}, DnD5e, data::character::{Persistent, ActionEffect}}, core::SourceId}, components::{Tag, Tags, modal}};
 
 #[function_component]
 pub fn ConditionsCard() -> Html {
@@ -18,18 +28,23 @@ pub fn ConditionsCard() -> Html {
 			..Default::default()
 		})
 	});
-	let conditions = state.persistent().conditions.iter().map(|(_, condition)| {
-		// TODO: Show which conditions are disabled in the card
-		let _disabled = match &condition.criteria {
-			None => false,
-			Some(criteria) => criteria.evaluate(&state).is_ok(),
-		};
-		html! {
-			<Tag>
-				{condition.name.clone()}
-			</Tag>
-		}
-	}).collect::<Vec<_>>();
+	let conditions = state
+		.persistent()
+		.conditions
+		.iter()
+		.map(|(_, condition)| {
+			// TODO: Show which conditions are disabled in the card
+			let _disabled = match &condition.criteria {
+				None => false,
+				Some(criteria) => criteria.evaluate(&state).is_ok(),
+			};
+			html! {
+				<Tag>
+					{condition.name.clone()}
+				</Tag>
+			}
+		})
+		.collect::<Vec<_>>();
 	html! {
 		<div class="card m-1" style="height: 85px;" {onclick}>
 			<div class="card-body text-center" style="padding: 5px 5px;">

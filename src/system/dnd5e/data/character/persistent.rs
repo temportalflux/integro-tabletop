@@ -1,20 +1,23 @@
 use crate::{
 	path_map::PathMap,
-	system::{dnd5e::{
-		data::{
-			bundle::{Background, Lineage, Race, RaceVariant, Upbringing},
-			character::Character,
-			evaluator::{operator::Product, GetAbilityModifier, GetLevel},
-			item,
-			mutator::AddMaxHitPoints,
-			Ability, BoxedFeature, Class, Condition, Description,
+	system::{
+		core::SourceId,
+		dnd5e::{
+			data::{
+				bundle::{Background, Lineage, Race, RaceVariant, Upbringing},
+				character::Character,
+				evaluator::{operator::Product, GetAbilityModifier, GetLevel},
+				item,
+				mutator::AddMaxHitPoints,
+				Ability, BoxedFeature, Class, Condition, Description,
+			},
+			Value,
 		},
-		Value,
-	}, core::SourceId},
+	},
 	utility::MutatorGroup,
 };
 use enum_map::EnumMap;
-use std::{path::Path, collections::BTreeMap};
+use std::{collections::BTreeMap, path::Path};
 
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct NamedGroups {
