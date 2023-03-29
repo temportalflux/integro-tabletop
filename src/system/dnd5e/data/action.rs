@@ -1,4 +1,4 @@
-use super::condition::BoxedCondition;
+use super::Condition;
 use crate::{
 	kdl_ext::{DocumentExt, NodeExt, ValueIdx},
 	system::{core::NodeRegistry, dnd5e::FromKDL},
@@ -23,7 +23,7 @@ pub struct Action {
 	/// Dictates how many times this action can be used until it is reset.
 	pub limited_uses: Option<LimitedUses>,
 	/// Conditions applied when the action is used.
-	pub apply_conditions: Vec<BoxedCondition>,
+	pub apply_conditions: Vec<Condition>,
 	// generated
 	pub source: Option<ActionSource>,
 }

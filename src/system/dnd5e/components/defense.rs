@@ -1,10 +1,10 @@
-use yew::prelude::*;
 use crate::{
 	bootstrap::components::Tooltip,
-	components::{Tag, Tags, modal},
+	components::{modal, Tag, Tags},
 	system::dnd5e::{components::SharedCharacter, data::mutator::Defense},
 	utility::Evaluator,
 };
+use yew::prelude::*;
 
 static RULES_DESC: &'static str = "Some creatures and objects are exceedingly difficult \
 or unusually easy to hurt with certain types of damage.

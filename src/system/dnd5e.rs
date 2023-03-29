@@ -167,6 +167,7 @@ pub fn component_registry() -> ComponentRegistry<DnD5e> {
 	registry.register::<data::bundle::Background>();
 	registry.register::<data::Class>();
 	registry.register::<data::Subclass>();
+	registry.register::<data::Condition>();
 	registry.register::<data::item::Item>();
 	registry
 }
@@ -208,6 +209,7 @@ pub struct DnD5e {
 	pub backgrounds: HashMap<SourceId, data::bundle::Background>,
 	pub classes: HashMap<SourceId, data::Class>,
 	pub subclasses: HashMap<SourceId, data::Subclass>,
+	pub conditions: HashMap<SourceId, data::Condition>,
 	pub items: HashMap<SourceId, data::item::Item>,
 }
 
