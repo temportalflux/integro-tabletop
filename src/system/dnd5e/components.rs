@@ -3,8 +3,14 @@ pub mod ability;
 mod armor_class;
 pub use armor_class::*;
 
+mod condition;
+pub use condition::*;
+
 mod currency;
 pub use currency::*;
+
+mod defense;
+pub use defense::*;
 
 mod hit_points;
 pub use hit_points::*;

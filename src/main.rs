@@ -93,6 +93,7 @@ fn create_character(system: &system::dnd5e::DnD5e) -> system::dnd5e::data::chara
 	persistent.ability_scores[Ability::Intelligence] = 12;
 	persistent.ability_scores[Ability::Wisdom] = 8;
 	persistent.ability_scores[Ability::Charisma] = 13;
+	persistent.hit_points.current = 6;
 	*persistent.inventory.wallet_mut() = Wallet::from([
 		(3, CurrencyKind::Platinum),
 		(16, CurrencyKind::Gold),

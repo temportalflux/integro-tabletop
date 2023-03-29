@@ -1,6 +1,12 @@
 use std::{collections::BTreeMap, path::PathBuf};
 
-use crate::{components::modal, system::dnd5e::{components::SharedCharacter, data::bounded::{BoundKind, BoundedValue}}};
+use crate::{
+	components::modal,
+	system::dnd5e::{
+		components::SharedCharacter,
+		data::bounded::{BoundKind, BoundedValue},
+	},
+};
 use enumset::EnumSet;
 use yew::prelude::*;
 
@@ -154,7 +160,7 @@ fn Modal() -> Html {
 			{state.senses().iter().map(|(name, bounded)| {
 				bounded_value("Sense", &name, bounded)
 			}).collect::<Vec<_>>()}
-			
+
 			<div>
 				<h6>{"Additional Information"}</h6>
 				{SENSE_DESC.iter().map(|(title, desc)| html! {
@@ -177,10 +183,13 @@ fn bounded_value(kind: &str, name: &str, bounded: &BoundedValue) -> Html {
 		kinds.sort();
 		kinds
 	};
-	let bound_sources = bound_kinds.into_iter().filter_map(|kind| {
-		let sources = bounded.argument(kind);
-		(!sources.is_empty()).then_some((kind, sources))
-	}).collect::<Vec<_>>();
+	let bound_sources = bound_kinds
+		.into_iter()
+		.filter_map(|kind| {
+			let sources = bounded.argument(kind);
+			(!sources.is_empty()).then_some((kind, sources))
+		})
+		.collect::<Vec<_>>();
 	html! {
 		html! {<div class="mb-2">
 			<h4>{name}{" ("}{kind}{")"}</h4>
