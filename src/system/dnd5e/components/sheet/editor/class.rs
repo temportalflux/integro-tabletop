@@ -259,7 +259,7 @@ fn class_body(value: &Class, show_selectors: bool) -> Html {
 }
 
 #[derive(Clone, PartialEq, Properties)]
-struct CollapsableCardProps {
+pub struct CollapsableCardProps {
 	pub id: AttrValue,
 
 	#[prop_or_default]
@@ -279,7 +279,7 @@ struct CollapsableCardProps {
 	pub children: Children,
 }
 #[function_component]
-fn CollapsableCard(props: &CollapsableCardProps) -> Html {
+pub fn CollapsableCard(props: &CollapsableCardProps) -> Html {
 	let CollapsableCardProps {
 		id,
 		root_classes,

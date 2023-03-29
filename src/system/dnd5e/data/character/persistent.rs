@@ -1,6 +1,6 @@
 use crate::{
 	path_map::PathMap,
-	system::dnd5e::{
+	system::{dnd5e::{
 		data::{
 			bundle::{Background, Lineage, Race, RaceVariant, Upbringing},
 			character::Character,
@@ -10,11 +10,11 @@ use crate::{
 			Ability, BoxedFeature, Class, Condition, Description,
 		},
 		Value,
-	},
+	}, core::SourceId},
 	utility::MutatorGroup,
 };
 use enum_map::EnumMap;
-use std::path::Path;
+use std::{path::Path, collections::BTreeMap};
 
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct NamedGroups {
@@ -36,7 +36,7 @@ pub struct Persistent {
 	pub ability_scores: EnumMap<Ability, u32>,
 	pub selected_values: PathMap<String>,
 	pub inventory: item::Inventory,
-	pub conditions: Vec<Condition>,
+	pub conditions: BTreeMap<SourceId, Condition>,
 	pub hit_points: HitPoints,
 	pub inspiration: bool,
 	pub settings: Settings,
@@ -60,11 +60,14 @@ impl MutatorGroup for Persistent {
 		for group in &self.named_groups.background {
 			group.set_data_path(parent);
 		}
-		for class in &self.classes {
-			class.set_data_path(parent);
+		for group in &self.classes {
+			group.set_data_path(parent);
 		}
-		for feat in &self.feats {
-			feat.set_data_path(parent);
+		for group in &self.feats {
+			group.set_data_path(parent);
+		}
+		for (_, group) in &self.conditions {
+			group.set_data_path(parent);
 		}
 		self.inventory.set_data_path(parent);
 	}
@@ -112,6 +115,9 @@ impl MutatorGroup for Persistent {
 		}
 		for feat in &self.feats {
 			stats.add_feature(feat, parent);
+		}
+		for (_, group) in &self.conditions {
+			stats.apply_from(group, parent);
 		}
 		stats.apply_from(&self.inventory, parent);
 	}
