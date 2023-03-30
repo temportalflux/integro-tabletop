@@ -243,18 +243,17 @@ mod test {
 			version: None,
 			node_idx: 0,
 		};
-		assert_eq!(
-			source.to_string(),
-			"items/trinket.kdl"
-		);
+		assert_eq!(source.to_string(), "items/trinket.kdl");
 	}
 
 	#[test]
 	fn rebased() -> anyhow::Result<()> {
-		let basis = SourceId::from_str("local://module-name@mysystem/item/gear.kdl?version=e812da2c")?;
+		let basis =
+			SourceId::from_str("local://module-name@mysystem/item/gear.kdl?version=e812da2c")?;
 		let mut relative = SourceId::from_str("feat/initiate.kdl")?;
 		relative.set_basis(&basis);
-		let expected = SourceId::from_str("local://module-name@mysystem/feat/initiate.kdl?version=e812da2c")?;
+		let expected =
+			SourceId::from_str("local://module-name@mysystem/feat/initiate.kdl?version=e812da2c")?;
 		assert_eq!(relative, expected);
 		Ok(())
 	}

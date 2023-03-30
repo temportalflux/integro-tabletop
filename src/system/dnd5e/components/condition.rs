@@ -32,7 +32,7 @@ pub fn ConditionsCard() -> Html {
 		.persistent()
 		.conditions
 		.iter()
-		.map(|(_, condition)| {
+		.map(|condition| {
 			// TODO: Show which conditions are disabled in the card
 			let _disabled = match &condition.criteria {
 				None => false,
@@ -77,7 +77,7 @@ fn Modal() -> Html {
 				let Some(condition) = system.conditions.get(&source_id) else { return; };
 				let condition = condition.clone();
 				state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
-					persistent.conditions.insert(source_id, condition);
+					persistent.conditions.insert(condition);
 					Some(ActionEffect::Recompile)
 				}));
 			}
@@ -90,7 +90,7 @@ fn Modal() -> Html {
 					{system.conditions.iter().map(|(source_id, condition)| html! {
 						<option
 							value={source_id.to_string()}
-							disabled={state.persistent().conditions.contains_key(source_id)}
+							disabled={state.persistent().conditions.contains_id(source_id)}
 						>
 							{condition.name.clone()}
 						</option>
@@ -101,9 +101,9 @@ fn Modal() -> Html {
 	};
 	let on_remove_condition = Callback::from({
 		let state = state.clone();
-		move |source_id| {
+		move |key| {
 			state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
-				persistent.conditions.remove(&source_id);
+				persistent.conditions.remove(&key);
 				Some(ActionEffect::Recompile)
 			}));
 		}
@@ -116,10 +116,10 @@ fn Modal() -> Html {
 		<div class="modal-body">
 			{add_condition_section}
 			<div>
-				{state.persistent().conditions.iter().map(|(source_id, condition)| {
+				{state.persistent().conditions.iter_keyed().map(|(key, condition)| {
 					let on_remove = on_remove_condition.reform({
-						let source_id = source_id.clone();
-						move |_| source_id.clone()
+						let key = key.clone();
+						move |_| key.clone()
 					});
 					// TODO: Show mutators, criteria, and degrees in body of collapsable card
 					html! {

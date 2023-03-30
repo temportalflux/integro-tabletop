@@ -1,10 +1,6 @@
-use super::Condition;
-use crate::{
-	kdl_ext::{DocumentExt, FromKDL, NodeExt},
-	system::core::SourceId,
-};
-use anyhow::Context;
-use std::{path::PathBuf, str::FromStr};
+use super::IndirectCondition;
+use crate::kdl_ext::{DocumentExt, FromKDL, NodeExt};
+use std::path::PathBuf;
 use uuid::Uuid;
 
 mod activation;
@@ -24,7 +20,7 @@ pub struct Action {
 	/// Dictates how many times this action can be used until it is reset.
 	pub limited_uses: Option<LimitedUses>,
 	/// Conditions applied when the action is used.
-	pub conditions_to_apply: Vec<Condition>,
+	pub conditions_to_apply: Vec<IndirectCondition>,
 	// generated
 	pub source: Option<ActionSource>,
 }
@@ -65,22 +61,7 @@ impl FromKDL for Action {
 
 		let mut conditions_to_apply = Vec::new();
 		for node in node.query_all("scope() > condition")? {
-			let mut ctx = ctx.next_node();
-			match node.get_str_req(ctx.consume_idx())? {
-				"Custom" => {
-					// this is a custom condition node, parse it as a condition struct
-					let condition = Condition::from_kdl(node, &mut ctx)?;
-					conditions_to_apply.push(condition);
-				}
-				source_id_str => {
-					let mut source_id = SourceId::from_str(source_id_str).with_context(|| {
-						format!("Expected {source_id_str:?} to either be the value \"Custom\" or a valid SourceId.")
-					})?;
-					source_id.set_basis(ctx.id());
-					// TODO: Resolve source ids after all modules have been loaded but before
-					// exiting the loading phase OR have the system on hand when applying the conditions (more likely).
-				}
-			}
+			conditions_to_apply.push(IndirectCondition::from_kdl(node, &mut ctx.next_node())?);
 		}
 
 		Ok(Self {

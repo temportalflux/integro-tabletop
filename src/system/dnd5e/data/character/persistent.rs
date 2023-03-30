@@ -17,7 +17,7 @@ use crate::{
 	utility::MutatorGroup,
 };
 use enum_map::EnumMap;
-use std::{collections::BTreeMap, path::Path};
+use std::{collections::BTreeMap, path::Path, sync::Arc};
 
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct NamedGroups {
@@ -39,7 +39,7 @@ pub struct Persistent {
 	pub ability_scores: EnumMap<Ability, u32>,
 	pub selected_values: PathMap<String>,
 	pub inventory: item::Inventory,
-	pub conditions: BTreeMap<SourceId, Condition>,
+	pub conditions: Conditions,
 	pub hit_points: HitPoints,
 	pub inspiration: bool,
 	pub settings: Settings,
@@ -69,10 +69,8 @@ impl MutatorGroup for Persistent {
 		for group in &self.feats {
 			group.set_data_path(parent);
 		}
-		for (_, group) in &self.conditions {
-			group.set_data_path(parent);
-		}
 		self.inventory.set_data_path(parent);
+		self.conditions.set_data_path(parent);
 	}
 
 	fn apply_mutators(&self, stats: &mut Character, parent: &Path) {
@@ -119,9 +117,7 @@ impl MutatorGroup for Persistent {
 		for feat in &self.feats {
 			stats.add_feature(feat, parent);
 		}
-		for (_, group) in &self.conditions {
-			stats.apply_from(group, parent);
-		}
+		stats.apply_from(&self.conditions, parent);
 		stats.apply_from(&self.inventory, parent);
 	}
 }
@@ -205,6 +201,78 @@ impl std::ops::Add<(i32, u32)> for HitPoints {
 impl std::ops::AddAssign<(i32, u32)> for HitPoints {
 	fn add_assign(&mut self, rhs: (i32, u32)) {
 		*self = *self + rhs;
+	}
+}
+
+#[derive(Clone)]
+pub enum IdOrIndex {
+	Id(Arc<SourceId>),
+	Index(usize),
+}
+
+#[derive(Clone, PartialEq, Default, Debug)]
+pub struct Conditions {
+	by_id: BTreeMap<SourceId, Condition>,
+	custom: Vec<Condition>,
+}
+impl Conditions {
+	pub fn insert(&mut self, condition: Condition) {
+		match &condition.source_id {
+			Some(id) => {
+				self.by_id.insert(id.clone(), condition);
+			}
+			None => {
+				self.custom.push(condition);
+				self.custom.sort_by(|a, b| a.name.cmp(&b.name));
+			}
+		}
+	}
+
+	pub fn remove(&mut self, key: &IdOrIndex) {
+		match key {
+			IdOrIndex::Id(id) => {
+				self.by_id.remove(&*id);
+			}
+			IdOrIndex::Index(idx) => {
+				self.custom.remove(*idx);
+			}
+		}
+	}
+
+	pub fn iter(&self) -> impl Iterator<Item = &Condition> {
+		self.by_id.values().chain(self.custom.iter())
+	}
+
+	pub fn iter_keyed(&self) -> impl Iterator<Item = (IdOrIndex, &Condition)> {
+		let ids = self
+			.by_id
+			.iter()
+			.map(|(id, value)| (IdOrIndex::Id(Arc::new(id.clone())), value));
+		let indices = self
+			.custom
+			.iter()
+			.enumerate()
+			.map(|(idx, value)| (IdOrIndex::Index(idx), value));
+		ids.chain(indices)
+	}
+
+	pub fn contains_id(&self, id: &SourceId) -> bool {
+		self.by_id.contains_key(id)
+	}
+}
+impl MutatorGroup for Conditions {
+	type Target = Character;
+
+	fn set_data_path(&self, parent: &Path) {
+		for condition in self.iter() {
+			condition.set_data_path(parent);
+		}
+	}
+
+	fn apply_mutators(&self, target: &mut Self::Target, parent: &Path) {
+		for condition in self.iter() {
+			target.apply_from(condition, parent);
+		}
 	}
 }
 

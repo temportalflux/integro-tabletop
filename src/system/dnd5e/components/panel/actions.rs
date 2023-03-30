@@ -1,11 +1,15 @@
+use std::sync::Arc;
+
 use crate::{
 	components::*,
 	system::dnd5e::{
 		components::{SharedCharacter, UsesCounter},
 		data::{
 			action::{ActivationKind, AttackCheckKind, AttackKindValue},
+			character::{ActionEffect, Persistent},
 			DamageRoll,
 		},
+		DnD5e,
 	},
 	utility::Evaluator,
 };
@@ -37,6 +41,7 @@ impl ActionTag {
 #[function_component]
 pub fn Actions() -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
+	let system = use_context::<UseStateHandle<DnD5e>>().unwrap();
 	let selected_tags = use_state(|| EnumSet::<ActionTag>::all());
 
 	let make_tag_html = {
@@ -176,6 +181,32 @@ pub fn Actions() -> Html {
 				}).unwrap_or_default()}
 				{action.limited_uses.as_ref().map(|limited_uses| {
 					UsesCounter { state: state.clone(), limited_uses }.to_html()
+				}).unwrap_or_default()}
+				{(!action.conditions_to_apply.is_empty()).then(|| {
+					let onclick = Callback::from({
+						let state = state.clone();
+						let conditions_to_apply = Arc::new(action.conditions_to_apply.iter().filter_map(|indirect| {
+							indirect.resolve(&system).cloned()
+						}).collect::<Vec<_>>());
+						move |_| {
+							let conditions_to_apply = conditions_to_apply.clone();
+							state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
+								log::debug!("{conditions_to_apply:?}");
+								for condition in &*conditions_to_apply {
+									persistent.conditions.insert(condition.clone());
+								}
+								Some(ActionEffect::Recompile)
+							}));
+						}
+					});
+					html! {
+						<button
+							type="button" class="btn btn-primary btn-sm"
+							{onclick}
+						>
+							{"Apply Conditions"}
+						</button>
+					}
 				}).unwrap_or_default()}
 			</div>}
 		}).collect::<Vec<_>>()}
