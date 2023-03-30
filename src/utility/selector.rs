@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{DocumentExt, NodeExt, ValueExt, ValueIdx},
+	kdl_ext::{DocumentExt, NodeContext, NodeExt, ValueExt},
 	GeneralError,
 };
 use anyhow::Context;
@@ -109,7 +109,7 @@ where
 	pub fn from_kdl(
 		node: &kdl::KdlNode,
 		entry: &kdl::KdlEntry,
-		value_idx: &mut ValueIdx,
+		ctx: &mut NodeContext,
 		map_value: impl Fn(&kdl::KdlValue) -> anyhow::Result<T>,
 	) -> anyhow::Result<Self> {
 		let key = entry
@@ -117,7 +117,7 @@ where
 			.context("Selector keys must be a string with the selector name")?;
 		match key {
 			"Specific" => {
-				let idx = value_idx.next();
+				let idx = ctx.consume_idx();
 				let value = node
 					.get(idx)
 					.ok_or(crate::kdl_ext::EntryMissing(node.clone(), idx.into()))?;

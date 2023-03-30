@@ -1,6 +1,5 @@
 use crate::{
-	kdl_ext::{EntryExt, NodeExt, ValueExt, ValueIdx},
-	system::{core::NodeRegistry, dnd5e::FromKDL},
+	kdl_ext::{EntryExt, FromKDL, NodeExt, ValueExt},
 	GeneralError,
 };
 use enum_map::{Enum, EnumMap};
@@ -142,10 +141,9 @@ impl BoundValue {
 impl FromKDL for BoundValue {
 	fn from_kdl(
 		node: &kdl::KdlNode,
-		value_idx: &mut ValueIdx,
-		_node_reg: &NodeRegistry,
+		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
-		let entry = node.entry_req(value_idx.next())?;
+		let entry = node.entry_req(ctx.consume_idx())?;
 		match entry.type_req()? {
 			"Minimum" => Ok(Self::Minimum(entry.as_i64_req()? as i32)),
 			"Base" => Ok(Self::Base(entry.as_i64_req()? as i32)),

@@ -1,20 +1,17 @@
 use super::EquipableEntry;
 use crate::{
-	kdl_ext::{NodeExt, ValueIdx},
-	system::{
-		core::NodeRegistry,
-		dnd5e::{
-			data::{
-				action::{
-					Action, ActionSource, ActivationKind, Attack, AttackCheckKind, AttackKind,
-					AttackKindValue,
-				},
-				evaluator::{self, IsProficientWith},
-				roll::Roll,
-				Ability, DamageRoll, DamageType, WeaponProficiency,
+	kdl_ext::{FromKDL, NodeExt},
+	system::dnd5e::{
+		data::{
+			action::{
+				Action, ActionSource, ActivationKind, Attack, AttackCheckKind, AttackKind,
+				AttackKindValue,
 			},
-			FromKDL, Value,
+			evaluator::{self, IsProficientWith},
+			roll::Roll,
+			Ability, DamageRoll, DamageType, WeaponProficiency,
 		},
+		Value,
 	},
 	GeneralError,
 };
@@ -121,33 +118,24 @@ impl Weapon {
 impl FromKDL for Weapon {
 	fn from_kdl(
 		node: &kdl::KdlNode,
-		value_idx: &mut ValueIdx,
-		node_reg: &NodeRegistry,
+		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
-		let kind = Kind::from_str(node.get_str_req(value_idx.next())?)?;
+		let kind = Kind::from_str(node.get_str_req(ctx.consume_idx())?)?;
 		let classification = node.get_str_req("class")?.to_owned();
 		let damage = match node.query("scope() > damage")? {
 			None => None,
-			Some(node) => Some(WeaponDamage::from_kdl(
-				node,
-				&mut ValueIdx::default(),
-				node_reg,
-			)?),
+			Some(node) => Some(WeaponDamage::from_kdl(node, &mut ctx.next_node())?),
 		};
 		let properties = {
 			let mut props = Vec::new();
 			for node in node.query_all("scope() > property")? {
-				props.push(Property::from_kdl(
-					node,
-					&mut ValueIdx::default(),
-					node_reg,
-				)?);
+				props.push(Property::from_kdl(node, &mut ctx.next_node())?);
 			}
 			props
 		};
 		let range = match node.query("scope() > range")? {
 			None => None,
-			Some(node) => Some(Range::from_kdl(node, &mut ValueIdx::default(), node_reg)?),
+			Some(node) => Some(Range::from_kdl(node, &mut ctx.next_node())?),
 		};
 		Ok(Self {
 			kind,
@@ -169,15 +157,14 @@ pub struct WeaponDamage {
 impl FromKDL for WeaponDamage {
 	fn from_kdl(
 		node: &kdl::KdlNode,
-		value_idx: &mut ValueIdx,
-		_node_reg: &NodeRegistry,
+		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
 		let roll = match node.get_str_opt("roll")? {
 			Some(roll_str) => Some(Roll::from_str(roll_str)?),
 			None => None,
 		};
 		let base = node.get_i64_opt("base")?.unwrap_or(0) as i32;
-		let damage_type = DamageType::from_str(node.get_str_req(value_idx.next())?)?;
+		let damage_type = DamageType::from_str(node.get_str_req(ctx.consume_idx())?)?;
 		Ok(Self {
 			roll,
 			bonus: base,
@@ -199,22 +186,21 @@ pub enum Property {
 impl FromKDL for Property {
 	fn from_kdl(
 		node: &kdl::KdlNode,
-		value_idx: &mut ValueIdx,
-		_node_reg: &NodeRegistry,
+		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
-		match node.get_str_req(value_idx.next())? {
+		match node.get_str_req(ctx.consume_idx())? {
 			"Light" => Ok(Self::Light),
 			"Finesse" => Ok(Self::Finesse),
 			"Heavy" => Ok(Self::Heavy),
 			"Reach" => Ok(Self::Reach),
 			"TwoHanded" => Ok(Self::TwoHanded),
 			"Thrown" => {
-				let short = node.get_i64_req(value_idx.next())? as u32;
-				let long = node.get_i64_req(value_idx.next())? as u32;
+				let short = node.get_i64_req(ctx.consume_idx())? as u32;
+				let long = node.get_i64_req(ctx.consume_idx())? as u32;
 				Ok(Self::Thrown(short, long))
 			}
 			"Versatile" => {
-				let roll = Roll::from_str(node.get_str_req(value_idx.next())?)?;
+				let roll = Roll::from_str(node.get_str_req(ctx.consume_idx())?)?;
 				Ok(Self::Versatile(roll))
 			}
 			name => Err(GeneralError(format!("Unrecognized weapon property {name:?}")).into()),
@@ -233,11 +219,10 @@ pub struct Range {
 impl FromKDL for Range {
 	fn from_kdl(
 		node: &kdl::KdlNode,
-		value_idx: &mut ValueIdx,
-		_node_reg: &NodeRegistry,
+		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
-		let short_range = node.get_i64_req(value_idx.next())? as u32;
-		let long_range = node.get_i64_req(value_idx.next())? as u32;
+		let short_range = node.get_i64_req(ctx.consume_idx())? as u32;
+		let long_range = node.get_i64_req(ctx.consume_idx())? as u32;
 		let requires_ammunition = node.query("scope() > ammunition")?.is_some();
 		let requires_loading = node.query("scope() > loading")?.is_some();
 		Ok(Self {

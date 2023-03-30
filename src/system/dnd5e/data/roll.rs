@@ -1,9 +1,10 @@
-use std::str::FromStr;
-
+use crate::{
+	kdl_ext::{FromKDL, NodeExt},
+	GeneralError,
+};
 use enum_map::{Enum, EnumMap};
 use enumset::EnumSetType;
-
-use crate::{kdl_ext::NodeExt, system::dnd5e::FromKDL, GeneralError};
+use std::str::FromStr;
 
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
 pub struct Roll {
@@ -63,10 +64,9 @@ impl FromStr for Roll {
 impl FromKDL for Roll {
 	fn from_kdl(
 		node: &kdl::KdlNode,
-		value_idx: &mut crate::kdl_ext::ValueIdx,
-		_node_reg: &crate::system::core::NodeRegistry,
+		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
-		Ok(Self::from_str(node.get_str_req(value_idx.next())?)?)
+		Ok(Self::from_str(node.get_str_req(ctx.consume_idx())?)?)
 	}
 }
 

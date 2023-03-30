@@ -1,5 +1,5 @@
 use super::{AsTraitEq, Dependencies, SelectorMeta, TraitEq};
-use crate::system::dnd5e::KDLNode;
+use crate::kdl_ext::KDLNode;
 use std::{fmt::Debug, path::Path, sync::Arc};
 
 pub trait Mutator: Debug + TraitEq + AsTraitEq<dyn TraitEq> + KDLNode {

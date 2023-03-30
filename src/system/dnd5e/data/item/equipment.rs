@@ -1,10 +1,7 @@
 use super::{armor::Armor, weapon::Weapon};
 use crate::{
-	kdl_ext::{NodeExt, ValueIdx},
-	system::{
-		core::NodeRegistry,
-		dnd5e::{data::character::Character, BoxedCriteria, BoxedMutator, FromKDL},
-	},
+	kdl_ext::{FromKDL, NodeExt},
+	system::dnd5e::{data::character::Character, BoxedCriteria, BoxedMutator},
 	utility::MutatorGroup,
 };
 use std::path::Path;
@@ -65,25 +62,24 @@ impl Equipment {
 impl FromKDL for Equipment {
 	fn from_kdl(
 		node: &kdl::KdlNode,
-		_value_idx: &mut ValueIdx,
-		node_reg: &NodeRegistry,
+		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
 		let criteria = match node.query("scope() > criteria")? {
 			None => None,
 			Some(entry_node) => {
-				Some(node_reg.parse_evaluator::<Character, Result<(), String>>(entry_node)?)
+				Some(ctx.parse_evaluator::<Character, Result<(), String>>(entry_node)?)
 			}
 		};
 
 		// TODO: Item kdls current list these as `modifier`
 		let mut mutators = Vec::new();
 		for entry_node in node.query_all("scope() > mutator")? {
-			mutators.push(node_reg.parse_mutator(entry_node)?);
+			mutators.push(ctx.parse_mutator(entry_node)?);
 		}
 
 		let armor = match node.query("scope() > armor")? {
 			None => None,
-			Some(node) => Some(Armor::from_kdl(node, &mut ValueIdx::default(), node_reg)?),
+			Some(node) => Some(Armor::from_kdl(node, &mut ctx.next_node())?),
 		};
 		let shield = match node.query("scope() > shield")? {
 			None => None,
@@ -91,12 +87,12 @@ impl FromKDL for Equipment {
 		};
 		let weapon = match node.query("scope() > weapon")? {
 			None => None,
-			Some(node) => Some(Weapon::from_kdl(node, &mut ValueIdx::default(), node_reg)?),
+			Some(node) => Some(Weapon::from_kdl(node, &mut ctx.next_node())?),
 		};
 		let attunement = match node.query("scope() > attunement")? {
 			None => None,
 			Some(_node) => {
-				None // TODO: Some(Attunement::from_kdl(node, &mut ValueIdx::default(), system)?)
+				None // TODO: Some(Attunement::from_kdl(node, &mut ctx.next_node())?)
 			}
 		};
 

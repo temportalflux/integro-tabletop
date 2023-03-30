@@ -1,11 +1,8 @@
 use crate::{
-	kdl_ext::{NodeExt, ValueExt, ValueIdx},
-	system::{
-		core::NodeRegistry,
-		dnd5e::{
-			data::{character::Character, DamageType},
-			FromKDL, Value,
-		},
+	kdl_ext::{FromKDL, NodeExt, ValueExt},
+	system::dnd5e::{
+		data::{character::Character, DamageType},
+		Value,
 	},
 	utility::Mutator,
 	GeneralError,
@@ -79,12 +76,11 @@ impl Mutator for AddDefense {
 impl FromKDL for AddDefense {
 	fn from_kdl(
 		node: &kdl::KdlNode,
-		value_idx: &mut ValueIdx,
-		node_reg: &NodeRegistry,
+		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
-		let defense = Defense::from_str(node.get_str_req(value_idx.next())?)?;
-		let damage_type = match node.entry(value_idx.next()) {
-			Some(entry) => Some(Value::from_kdl(node, entry, value_idx, node_reg, |kdl| {
+		let defense = Defense::from_str(node.get_str_req(ctx.consume_idx())?)?;
+		let damage_type = match node.entry(ctx.consume_idx()) {
+			Some(entry) => Some(Value::from_kdl(node, entry, ctx, |kdl| {
 				Ok(DamageType::from_str(kdl.as_str_req()?)?)
 			})?),
 			None => None,

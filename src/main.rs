@@ -1,8 +1,10 @@
+use crate::kdl_ext::NodeContext;
 use anyhow::Context;
 use std::{
 	collections::BTreeMap,
 	path::{Path, PathBuf},
 	str::FromStr,
+	sync::Arc,
 };
 use yew::prelude::*;
 use yew_hooks::use_is_first_mount;
@@ -109,7 +111,7 @@ fn App() -> Html {
 	use system::dnd5e::{self, DnD5e};
 	let show_browser = use_state_eq(|| false);
 	let comp_reg = use_memo(|_| dnd5e::component_registry(), ());
-	let node_reg = use_memo(|_| dnd5e::node_registry(), ());
+	let node_reg = Arc::new(dnd5e::node_registry());
 	let modules = use_memo(|_| vec!["basic-rules", "elf-and-orc", "wotc-toa"], ());
 	let system = use_state(|| DnD5e::default());
 
@@ -128,8 +130,9 @@ fn App() -> Html {
 					for (idx, node) in document.nodes().iter().enumerate() {
 						source_id.node_idx = idx;
 						let Some(comp_factory) = comp_reg.get_factory(node.name().value()).cloned() else { continue; };
+						let ctx = NodeContext::new(Arc::new(source_id.clone()), node_reg.clone());
 						match comp_factory
-							.add_from_kdl(node, source_id.clone(), &node_reg)
+							.add_from_kdl(node, &ctx)
 							.with_context(|| format!("Failed to parse {:?}", source_id.to_string()))
 						{
 							Ok(insert_callback) => {
@@ -235,12 +238,12 @@ async fn main() -> anyhow::Result<()> {
 		dnd5e,
 	};
 	use anyhow::Context;
-	use std::collections::BTreeMap;
+	use std::{collections::BTreeMap, sync::Arc};
 
 	let _ = logging::console::init("tabletop-tools", &[]);
 
 	let comp_reg = dnd5e::component_registry();
-	let node_reg = dnd5e::node_registry();
+	let node_reg = Arc::new(dnd5e::node_registry());
 	let mut system = dnd5e::DnD5e::default();
 
 	let mut modules = Vec::new();
@@ -278,10 +281,10 @@ async fn main() -> anyhow::Result<()> {
 				let item_relative_path = item.strip_prefix(&system_path)?;
 				item_paths.push(item_relative_path.to_owned());
 				let source_id = SourceId {
-					module: ModuleId::Local {
+					module: Some(ModuleId::Local {
 						name: module_id.clone(),
-					},
-					system: system_id.clone(),
+					}),
+					system: Some(system_id.clone()),
 					path: item_relative_path.to_owned(),
 					version: None,
 					node_idx: 0,
@@ -311,7 +314,8 @@ async fn main() -> anyhow::Result<()> {
 				log::error!("Failed to find factory to deserialize node \"{node_name}\".");
 				continue;
 			};
-			let insert_parsed = comp_factory.add_from_kdl(node, source_id.clone(), &node_reg);
+			let ctx = kdl_ext::NodeContext::new(Arc::new(source_id.clone()), node_reg.clone());
+			let insert_parsed = comp_factory.add_from_kdl(node, &ctx);
 			let insert_parsed =
 				insert_parsed.with_context(|| format!("while parsing {}", source_id.to_string()));
 			match insert_parsed {
@@ -354,10 +358,10 @@ async fn fetch_local_module(
 				return Err(MissingResource(name, system, line.into()).into());
 			};
 			let source_id = SourceId {
-				module: ModuleId::Local {
+				module: Some(ModuleId::Local {
 					name: name.to_owned(),
-				},
-				system: (*system).to_owned(),
+				}),
+				system: Some((*system).to_owned()),
 				path: PathBuf::from(line),
 				version: None,
 				node_idx: 0,

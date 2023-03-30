@@ -1,9 +1,10 @@
+use anyhow::Context;
+
 use super::{Evaluator, GenericEvaluator};
 use crate::{
-	kdl_ext::{EntryExt, ValueExt, ValueIdx},
+	kdl_ext::{EntryExt, ValueExt},
 	system::dnd5e::data::character::Character,
 };
-use anyhow::Context;
 use std::{collections::HashSet, fmt::Debug, ops::Deref};
 
 #[derive(Clone)]
@@ -88,18 +89,18 @@ where
 	pub fn from_kdl(
 		node: &kdl::KdlNode,
 		entry: &kdl::KdlEntry,
-		value_idx: &mut ValueIdx,
-		node_reg: &crate::system::core::NodeRegistry,
+		ctx: &mut crate::kdl_ext::NodeContext,
 		map_value: impl Fn(&kdl::KdlValue) -> anyhow::Result<V>,
 	) -> anyhow::Result<Self> {
 		match entry.type_opt() {
 			Some("Evaluator") => {
-				let factory =
-					node_reg.get_evaluator_factory(entry.as_str_req().context(
-						"Evaluator values must be a string containing the evaluator id",
-					)?)?;
+				let eval_id = entry
+					.as_str_req()
+					.context("Evaluator values must be a string containing the evaluator id")?;
+				let node_reg = ctx.node_reg().clone();
+				let factory = node_reg.get_evaluator_factory(eval_id)?;
 				Ok(Self::Evaluated(
-					factory.from_kdl::<Character, V>(node, value_idx, node_reg)?,
+					factory.from_kdl::<Character, V>(node, ctx)?,
 				))
 			}
 			_ => Ok(Self::Fixed(map_value(entry.value())?)),

@@ -1,8 +1,8 @@
 use crate::{
-	kdl_ext::{DocumentExt, NodeExt, ValueExt, ValueIdx},
+	kdl_ext::{DocumentExt, FromKDL, NodeExt, ValueExt},
 	system::dnd5e::{
 		data::{character::Character, Ability},
-		FromKDL, Value,
+		Value,
 	},
 	utility::Evaluator,
 	GeneralError,
@@ -59,12 +59,11 @@ impl Evaluator for AttackCheckKind {
 impl FromKDL for AttackCheckKind {
 	fn from_kdl(
 		node: &kdl::KdlNode,
-		value_idx: &mut ValueIdx,
-		node_reg: &crate::system::core::NodeRegistry,
+		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
-		match node.get_str_req(value_idx.next())? {
+		match node.get_str_req(ctx.consume_idx())? {
 			"AttackRoll" => {
-				let ability = Ability::from_str(node.get_str_req(value_idx.next())?)?;
+				let ability = Ability::from_str(node.get_str_req(ctx.consume_idx())?)?;
 				let proficient = match (
 					node.get_bool_opt("proficient")?,
 					node.query("scope() > proficient")?,
@@ -72,12 +71,11 @@ impl FromKDL for AttackCheckKind {
 					(None, None) => Value::Fixed(false),
 					(Some(prof), None) => Value::Fixed(prof),
 					(_, Some(node)) => {
-						let mut value_idx = ValueIdx::default();
+						let mut ctx = ctx.next_node();
 						Value::from_kdl(
 							node,
-							node.entry_req(value_idx.next())?,
-							&mut value_idx,
-							node_reg,
+							node.entry_req(ctx.consume_idx())?,
+							&mut ctx,
 							|value| Ok(value.as_bool_req()?),
 						)?
 					}
@@ -91,8 +89,8 @@ impl FromKDL for AttackCheckKind {
 				// TODO: The difficulty class should be its own struct (which impls evaluator)
 				let (base, dc_ability, proficient) = {
 					let node = node.query_req("scope() > difficulty_class")?;
-					let mut value_idx = ValueIdx::default();
-					let base = node.get_i64_req(value_idx.next())? as i32;
+					let mut ctx = ctx.next_node();
+					let base = node.get_i64_req(ctx.consume_idx())? as i32;
 					let ability = match node.query_str_opt("scope() > ability_bonus", 0)? {
 						None => None,
 						Some(str) => Some(Ability::from_str(str)?),
@@ -125,9 +123,12 @@ mod test {
 
 	mod from_kdl {
 		use super::*;
-		use crate::system::dnd5e::{
-			data::{evaluator::IsProficientWith, item::weapon, WeaponProficiency},
-			NodeRegistry,
+		use crate::{
+			kdl_ext::NodeContext,
+			system::dnd5e::{
+				data::{evaluator::IsProficientWith, item::weapon, WeaponProficiency},
+				NodeRegistry,
+			},
 		};
 
 		fn from_doc(doc: &str) -> anyhow::Result<AttackCheckKind> {
@@ -136,8 +137,7 @@ mod test {
 			let node = document
 				.query("scope() > check")?
 				.expect("missing check node");
-			let mut idx = ValueIdx::default();
-			AttackCheckKind::from_kdl(node, &mut idx, &node_reg)
+			AttackCheckKind::from_kdl(node, &mut NodeContext::registry(node_reg))
 		}
 
 		#[test]

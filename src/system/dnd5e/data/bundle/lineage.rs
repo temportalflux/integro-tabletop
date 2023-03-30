@@ -1,10 +1,10 @@
 use crate::{
-	kdl_ext::{DocumentExt, NodeExt, ValueIdx},
+	kdl_ext::{DocumentExt, FromKDL, NodeContext, NodeExt},
 	system::{
 		core::SourceId,
 		dnd5e::{
 			data::{character::Character, BoxedFeature, Feature},
-			BoxedMutator, DnD5e, FromKDL, SystemComponent,
+			BoxedMutator, DnD5e, SystemComponent,
 		},
 	},
 	utility::MutatorGroup,
@@ -57,11 +57,7 @@ impl SystemComponent for Lineage {
 crate::impl_kdl_node!(Lineage, "lineage");
 
 impl FromKDL for Lineage {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		_value_idx: &mut ValueIdx,
-		node_reg: &crate::system::core::NodeRegistry,
-	) -> anyhow::Result<Self> {
+	fn from_kdl(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
 		let name = node.get_str_req("name")?.to_owned();
 		let description = node
 			.query_str_opt("scope() > description", 0)?
@@ -71,13 +67,12 @@ impl FromKDL for Lineage {
 
 		let mut mutators = Vec::new();
 		for entry_node in node.query_all("scope() > mutator")? {
-			mutators.push(node_reg.parse_mutator(entry_node)?);
+			mutators.push(ctx.parse_mutator(entry_node)?);
 		}
 
 		let mut features = Vec::new();
 		for entry_node in node.query_all("scope() > feature")? {
-			features
-				.push(Feature::from_kdl(entry_node, &mut ValueIdx::default(), node_reg)?.into());
+			features.push(Feature::from_kdl(entry_node, &mut ctx.next_node())?.into());
 		}
 
 		Ok(Lineage {

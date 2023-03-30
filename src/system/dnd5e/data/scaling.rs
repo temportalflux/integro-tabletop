@@ -10,13 +10,10 @@ mod test {
 	mod from_kdl {
 		use super::*;
 		use crate::{
-			kdl_ext::ValueIdx,
-			system::{
-				core::NodeRegistry,
-				dnd5e::{
-					data::roll::{Die, Roll},
-					FromKDL,
-				},
+			kdl_ext::NodeContext,
+			system::dnd5e::{
+				data::roll::{Die, Roll},
+				FromKDL,
 			},
 		};
 
@@ -24,13 +21,11 @@ mod test {
 		where
 			T: Clone + DefaultLevelMap + FromKDL,
 		{
-			let node_reg = NodeRegistry::default();
 			let document = doc.parse::<kdl::KdlDocument>()?;
 			let node = document
 				.query("scope() > scaling")?
 				.expect("missing scaling node");
-			let mut idx = ValueIdx::default();
-			Value::<T>::from_kdl(node, &mut idx, &node_reg)
+			Value::<T>::from_kdl(node, &mut NodeContext::default())
 		}
 
 		#[test]

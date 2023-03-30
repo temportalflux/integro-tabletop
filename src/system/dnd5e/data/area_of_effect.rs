@@ -1,6 +1,5 @@
 use crate::{
-	kdl_ext::{NodeExt, ValueIdx},
-	system::{core::NodeRegistry, dnd5e::FromKDL},
+	kdl_ext::{FromKDL, NodeExt},
 	GeneralError,
 };
 
@@ -16,10 +15,9 @@ pub enum AreaOfEffect {
 impl FromKDL for AreaOfEffect {
 	fn from_kdl(
 		node: &kdl::KdlNode,
-		value_idx: &mut ValueIdx,
-		_node_reg: &NodeRegistry,
+		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
-		match node.get_str_req(value_idx.next())? {
+		match node.get_str_req(ctx.consume_idx())? {
 			"Cone" => Ok(Self::Cone {
 				length: node.get_i64_req("length")? as u32,
 			}),

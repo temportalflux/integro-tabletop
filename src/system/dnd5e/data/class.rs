@@ -1,9 +1,9 @@
 use super::{character::Character, mutator::AddMaxHitPoints, roll::Die, BoxedFeature, Feature};
 use crate::{
-	kdl_ext::{DocumentExt, NodeExt, ValueIdx},
+	kdl_ext::{DocumentExt, FromKDL, NodeContext, NodeExt},
 	system::{
-		core::{NodeRegistry, SourceId},
-		dnd5e::{BoxedMutator, DnD5e, FromKDL, SystemComponent, Value},
+		core::SourceId,
+		dnd5e::{BoxedMutator, DnD5e, SystemComponent, Value},
 	},
 	utility::{MutatorGroup, Selector},
 };
@@ -77,11 +77,7 @@ impl SystemComponent for Class {
 crate::impl_kdl_node!(Class, "class");
 
 impl FromKDL for Class {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		_value_idx: &mut ValueIdx,
-		node_reg: &NodeRegistry,
-	) -> anyhow::Result<Self> {
+	fn from_kdl(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
 		let name = node.get_str_req("name")?.to_owned();
 		let description = node
 			.query_str_opt("scope() > description", 0)?
@@ -91,7 +87,7 @@ impl FromKDL for Class {
 
 		let mut mutators = Vec::new();
 		for entry_node in node.query_all("scope() > mutator")? {
-			mutators.push(node_reg.parse_mutator(entry_node)?);
+			mutators.push(ctx.parse_mutator(entry_node)?);
 		}
 
 		let subclass_selection_level = node
@@ -99,20 +95,16 @@ impl FromKDL for Class {
 			.map(|v| v as usize);
 		let subclass = match node.query_opt("scope() > subclass")? {
 			None => None,
-			Some(node) => Some(Subclass::from_kdl(
-				node,
-				&mut ValueIdx::default(),
-				node_reg,
-			)?),
+			Some(node) => Some(Subclass::from_kdl(node, &mut ctx.next_node())?),
 		};
 
 		let mut levels = Vec::with_capacity(20);
 		levels.resize_with(20, Default::default);
 		for node in node.query_all("scope() > level")? {
-			let mut value_idx = ValueIdx::default();
-			let order = node.get_i64_req(value_idx.next())? as usize;
+			let mut ctx = ctx.next_node();
+			let order = node.get_i64_req(ctx.consume_idx())? as usize;
 			let idx = order - 1;
-			levels[idx] = Level::from_kdl(node, &mut value_idx, node_reg)?;
+			levels[idx] = Level::from_kdl(node, &mut ctx)?;
 		}
 
 		Ok(Self {
@@ -157,8 +149,7 @@ impl Level {
 impl FromKDL for Level {
 	fn from_kdl(
 		node: &kdl::KdlNode,
-		_value_idx: &mut ValueIdx,
-		node_reg: &NodeRegistry,
+		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
 		let hit_points = Selector::Any {
 			id: Some("hit_points").into(),
@@ -167,13 +158,12 @@ impl FromKDL for Level {
 
 		let mut mutators = Vec::new();
 		for entry_node in node.query_all("scope() > mutator")? {
-			mutators.push(node_reg.parse_mutator(entry_node)?);
+			mutators.push(ctx.parse_mutator(entry_node)?);
 		}
 
 		let mut features = Vec::new();
 		for entry_node in node.query_all("scope() > feature")? {
-			features
-				.push(Feature::from_kdl(entry_node, &mut ValueIdx::default(), node_reg)?.into());
+			features.push(Feature::from_kdl(entry_node, &mut ctx.next_node())?.into());
 		}
 
 		Ok(Self {
@@ -274,8 +264,7 @@ impl MutatorGroup for Subclass {
 impl FromKDL for Subclass {
 	fn from_kdl(
 		node: &kdl::KdlNode,
-		_value_idx: &mut ValueIdx,
-		node_reg: &NodeRegistry,
+		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
 		let name = node.get_str_req("name")?.to_owned();
 		let class_name = node.get_str_req("class")?.to_owned();
@@ -287,10 +276,10 @@ impl FromKDL for Subclass {
 		let mut levels = Vec::with_capacity(20);
 		levels.resize_with(20, Default::default);
 		for node in node.query_all("scope() > level")? {
-			let mut value_idx = ValueIdx::default();
-			let order = node.get_i64_req(value_idx.next())? as usize;
+			let mut ctx = ctx.next_node();
+			let order = node.get_i64_req(ctx.consume_idx())? as usize;
 			let idx = order - 1;
-			levels[idx] = Level::from_kdl(node, &mut value_idx, node_reg)?;
+			levels[idx] = Level::from_kdl(node, &mut ctx)?;
 		}
 
 		Ok(Self {

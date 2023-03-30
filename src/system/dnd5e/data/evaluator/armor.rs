@@ -1,15 +1,9 @@
 use crate::{
-	kdl_ext::{DocumentExt, NodeExt, ValueIdx},
-	system::{
-		core::NodeRegistry,
-		dnd5e::{
-			data::{
-				character::Character,
-				item::{EquipableEntry, ItemKind},
-				ArmorExtended,
-			},
-			FromKDL,
-		},
+	kdl_ext::{DocumentExt, FromKDL, NodeExt},
+	system::dnd5e::data::{
+		character::Character,
+		item::{EquipableEntry, ItemKind},
+		ArmorExtended,
 	},
 };
 use std::{collections::HashSet, str::FromStr};
@@ -101,8 +95,7 @@ crate::impl_kdl_node!(HasArmorEquipped, "has_armor_equipped");
 impl FromKDL for HasArmorEquipped {
 	fn from_kdl(
 		node: &kdl::KdlNode,
-		_: &mut ValueIdx,
-		_node_reg: &NodeRegistry,
+		_ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
 		let inverted = node.get_bool_opt("inverted")?.unwrap_or_default();
 		let mut kinds = HashSet::new();
@@ -117,12 +110,15 @@ impl FromKDL for HasArmorEquipped {
 mod test {
 	use super::*;
 	use crate::{
-		system::dnd5e::data::{
-			character::Persistent,
-			item::{
-				armor::{self, Armor},
-				equipment::Equipment,
-				Item,
+		system::{
+			core::NodeRegistry,
+			dnd5e::data::{
+				character::Persistent,
+				item::{
+					armor::{self, Armor},
+					equipment::Equipment,
+					Item,
+				},
 			},
 		},
 		utility::{Evaluator, GenericEvaluator},

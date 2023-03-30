@@ -1,3 +1,6 @@
+mod from_kdl;
+pub use from_kdl::*;
+
 #[derive(thiserror::Error, Debug)]
 #[error("Entry \"{0}\" is missing a type identifier")]
 pub struct EntryMissingType(pub kdl::KdlEntry);
@@ -585,29 +588,5 @@ impl DocumentExt for kdl::KdlNode {
 	) -> Result<Vec<&str>, QueryError> {
 		let Some(doc) = self.children() else { return Ok(Vec::new()); };
 		doc.query_str_all(query, key)
-	}
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-#[derive(Clone, Copy, PartialEq, Debug, Default)]
-pub struct ValueIdx(usize);
-impl std::ops::Deref for ValueIdx {
-	type Target = usize;
-
-	fn deref(&self) -> &Self::Target {
-		&self.0
-	}
-}
-impl std::ops::DerefMut for ValueIdx {
-	fn deref_mut(&mut self) -> &mut Self::Target {
-		&mut self.0
-	}
-}
-impl ValueIdx {
-	pub fn next(&mut self) -> usize {
-		let consumed = self.0;
-		self.0 += 1;
-		consumed
 	}
 }

@@ -1,17 +1,13 @@
-use derivative::Derivative;
-
 use super::{
 	action::{Action, ActionSource},
 	character::Character,
 };
 use crate::{
-	kdl_ext::{DocumentExt, NodeExt, ValueIdx},
-	system::{
-		core::NodeRegistry,
-		dnd5e::{BoxedCriteria, BoxedMutator, FromKDL},
-	},
+	kdl_ext::{DocumentExt, FromKDL, NodeExt},
+	system::dnd5e::{BoxedCriteria, BoxedMutator},
 	utility::MutatorGroup,
 };
+use derivative::Derivative;
 use std::{
 	collections::HashMap,
 	path::{Path, PathBuf},
@@ -82,8 +78,7 @@ impl MutatorGroup for Feature {
 impl FromKDL for Feature {
 	fn from_kdl(
 		node: &kdl::KdlNode,
-		_value_idx: &mut ValueIdx,
-		node_reg: &NodeRegistry,
+		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
 		let name = node.get_str_req("name")?.to_owned();
 		let description = node
@@ -98,19 +93,18 @@ impl FromKDL for Feature {
 		let criteria = match node.query("scope() > criteria")? {
 			None => None,
 			Some(entry_node) => {
-				Some(node_reg.parse_evaluator::<Character, Result<(), String>>(entry_node)?)
+				Some(ctx.parse_evaluator::<Character, Result<(), String>>(entry_node)?)
 			}
 		};
 
 		let mut actions = Vec::new();
 		for entry_node in node.query_all("scope() > action")? {
-			let mut value_idx = ValueIdx::default();
-			actions.push(Action::from_kdl(entry_node, &mut value_idx, node_reg)?);
+			actions.push(Action::from_kdl(entry_node, &mut ctx.next_node())?);
 		}
 
 		let mut mutators = Vec::new();
 		for entry_node in node.query_all("scope() > mutator")? {
-			mutators.push(node_reg.parse_mutator(entry_node)?);
+			mutators.push(ctx.parse_mutator(entry_node)?);
 		}
 
 		Ok(Self {

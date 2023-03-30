@@ -1,10 +1,7 @@
 use super::{Basis, DefaultLevelMap};
 use crate::{
-	kdl_ext::{EntryExt, NodeExt, ValueIdx},
-	system::{
-		core::NodeRegistry,
-		dnd5e::{data::character::Character, FromKDL},
-	},
+	kdl_ext::{EntryExt, NodeExt},
+	system::dnd5e::{data::character::Character, FromKDL},
 	GeneralError,
 };
 
@@ -41,12 +38,11 @@ where
 {
 	fn from_kdl(
 		node: &kdl::KdlNode,
-		value_idx: &mut ValueIdx,
-		node_reg: &NodeRegistry,
+		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
-		match node.entry_req(**value_idx)?.type_opt() {
-			None => Ok(Self::Fixed(T::from_kdl(node, value_idx, node_reg)?)),
-			Some("Scaled") => Ok(Self::Scaled(Basis::from_kdl(node, value_idx, node_reg)?)),
+		match node.entry_req(ctx.peak_idx())?.type_opt() {
+			None => Ok(Self::Fixed(T::from_kdl(node, ctx)?)),
+			Some("Scaled") => Ok(Self::Scaled(Basis::from_kdl(node, ctx)?)),
 			Some(type_name) => Err(GeneralError(format!(
 				"Invalid type name {type_name:?}, expected no type or Scaled."
 			))

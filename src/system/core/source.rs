@@ -19,37 +19,53 @@ impl Default for ModuleId {
 	}
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct SourceId {
-	pub module: ModuleId,
-	pub system: String,
+	pub module: Option<ModuleId>,
+	pub system: Option<String>,
 	pub path: PathBuf,
 	pub version: Option<String>,
 	pub node_idx: usize,
 }
 
+impl SourceId {
+	pub fn set_basis(&mut self, other: &Self) {
+		self.module = other.module.clone();
+		self.system = other.system.clone();
+		self.version = other.version.clone();
+	}
+}
+
 impl ToString for SourceId {
 	fn to_string(&self) -> String {
-		let url_str = match &self.module {
-			ModuleId::Local { name } => {
-				format!("local://{name}")
-			}
-			ModuleId::Github {
-				user_org,
-				repository,
-			} => {
-				format!("github://{user_org}:{repository}")
-			}
-		};
-		let mut url_str =
-			format!("{url_str}@{}/{}", self.system, self.path.display()).replace("\\", "/");
-		if let Some(query) = self.version.as_ref().map(|v| format!("?version={v}")) {
-			url_str.push_str(&query);
+		let mut comps = Vec::new();
+		if let Some(id) = &self.module {
+			comps.push(match id {
+				ModuleId::Local { name } => {
+					format!("local://{name}")
+				}
+				ModuleId::Github {
+					user_org,
+					repository,
+				} => {
+					format!("github://{user_org}:{repository}")
+				}
+			});
+		}
+		if let Some(system) = &self.system {
+			comps.push(format!("@{system}"));
+		}
+		if !comps.is_empty() {
+			comps.push("/".into());
+		}
+		comps.push(self.path.display().to_string().replace("\\", "/"));
+		if let Some(version) = &self.version {
+			comps.push(format!("?version={version}"));
 		}
 		if self.node_idx > 0 {
-			url_str.push_str(&format!("#{}", self.node_idx));
+			comps.push(format!("#{}", self.node_idx));
 		}
-		url_str
+		comps.join("")
 	}
 }
 
@@ -57,7 +73,17 @@ impl FromStr for SourceId {
 	type Err = anyhow::Error;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		let url = url::Url::from_str(s)?;
+		let url = match url::Url::from_str(s) {
+			Ok(url) => url,
+			Err(url::ParseError::RelativeUrlWithoutBase) => {
+				let path = PathBuf::from_str(s)?;
+				return Ok(Self {
+					path,
+					..Default::default()
+				});
+			}
+			Err(err) => return Err(err.into()),
+		};
 
 		let module_name = url.username().to_owned();
 		let system = url
@@ -94,8 +120,8 @@ impl FromStr for SourceId {
 		}
 		.unwrap_or_default();
 		Ok(Self {
-			system,
-			module,
+			system: Some(system),
+			module: Some(module),
 			path,
 			version,
 			node_idx,
@@ -118,16 +144,33 @@ mod test {
 	use super::*;
 
 	#[test]
+	fn relative_path() -> anyhow::Result<()> {
+		let src = "items/trinket.kdl";
+		let source_id = SourceId::from_str(src)?;
+		assert_eq!(
+			source_id,
+			SourceId {
+				module: None,
+				system: None,
+				path: "items/trinket.kdl".into(),
+				version: None,
+				node_idx: 0,
+			}
+		);
+		Ok(())
+	}
+
+	#[test]
 	fn file_no_module() -> anyhow::Result<()> {
 		let src = "local://homebrew@dnd5e/items/trinket.kdl#32";
 		let source_id = SourceId::from_str(src)?;
 		assert_eq!(
 			source_id,
 			SourceId {
-				module: ModuleId::Local {
+				module: Some(ModuleId::Local {
 					name: "homebrew".into()
-				},
-				system: "dnd5e".into(),
+				}),
+				system: Some("dnd5e".into()),
 				path: "items/trinket.kdl".into(),
 				version: None,
 				node_idx: 32,
@@ -139,10 +182,10 @@ mod test {
 	#[test]
 	fn file_to_str() {
 		let source = SourceId {
-			module: ModuleId::Local {
+			module: Some(ModuleId::Local {
 				name: "homebrew".into(),
-			},
-			system: "dnd5e".into(),
+			}),
+			system: Some("dnd5e".into()),
 			path: "items/trinket.kdl".into(),
 			version: None,
 			node_idx: 0,
@@ -160,11 +203,11 @@ mod test {
 		assert_eq!(
 			source_id,
 			SourceId {
-				module: ModuleId::Github {
+				module: Some(ModuleId::Github {
 					user_org: "ghuser".into(),
 					repository: "homebrew".into()
-				},
-				system: "dnd5e".into(),
+				}),
+				system: Some("dnd5e".into()),
 				path: "items/trinket.kdl".into(),
 				version: Some("4b37d0e2a".into()),
 				node_idx: 5,
@@ -176,11 +219,11 @@ mod test {
 	#[test]
 	fn github_to_str() {
 		let source = SourceId {
-			module: ModuleId::Github {
+			module: Some(ModuleId::Github {
 				user_org: "ghuser".into(),
 				repository: "homebrew".into(),
-			},
-			system: "dnd5e".into(),
+			}),
+			system: Some("dnd5e".into()),
 			path: "items/trinket.kdl".into(),
 			version: Some("4b37d0e2a".into()),
 			node_idx: 7,
@@ -189,5 +232,30 @@ mod test {
 			source.to_string(),
 			"github://ghuser:homebrew@dnd5e/items/trinket.kdl?version=4b37d0e2a#7"
 		);
+	}
+
+	#[test]
+	fn path_to_str() {
+		let source = SourceId {
+			module: None,
+			system: None,
+			path: "items/trinket.kdl".into(),
+			version: None,
+			node_idx: 0,
+		};
+		assert_eq!(
+			source.to_string(),
+			"items/trinket.kdl"
+		);
+	}
+
+	#[test]
+	fn rebased() -> anyhow::Result<()> {
+		let basis = SourceId::from_str("local://module-name@mysystem/item/gear.kdl?version=e812da2c")?;
+		let mut relative = SourceId::from_str("feat/initiate.kdl")?;
+		relative.set_basis(&basis);
+		let expected = SourceId::from_str("local://module-name@mysystem/feat/initiate.kdl?version=e812da2c")?;
+		assert_eq!(relative, expected);
+		Ok(())
 	}
 }

@@ -1,9 +1,6 @@
 use crate::{
-	kdl_ext::{NodeExt, ValueIdx},
-	system::{
-		core::NodeRegistry,
-		dnd5e::{data::character::Character, FromKDL},
-	},
+	kdl_ext::NodeExt,
+	system::dnd5e::{data::character::Character, FromKDL},
 	GeneralError,
 };
 use std::collections::BTreeMap;
@@ -50,19 +47,18 @@ where
 {
 	fn from_kdl(
 		node: &kdl::KdlNode,
-		value_idx: &mut ValueIdx,
-		node_reg: &NodeRegistry,
+		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
-		match node.get_str_req(value_idx.next())? {
+		match node.get_str_req(ctx.consume_idx())? {
 			"Level" => {
 				let class_name = node.get_str_opt("class")?.map(str::to_owned);
 				let mut level_map = BTreeMap::new();
 				for node in node.query_all("scope() > level")? {
-					let mut value_idx = ValueIdx::default();
-					let threshold = node.get_i64_req(value_idx.next())? as usize;
-					let value = match node.get(*value_idx).is_some() {
+					let mut ctx = ctx.next_node();
+					let threshold = node.get_i64_req(ctx.consume_idx())? as usize;
+					let value = match node.get(ctx.peak_idx()).is_some() {
 						false => None,
-						true => Some(T::from_kdl(node, &mut value_idx, node_reg)?),
+						true => Some(T::from_kdl(node, &mut ctx)?),
 					};
 					level_map.insert(threshold, value);
 				}

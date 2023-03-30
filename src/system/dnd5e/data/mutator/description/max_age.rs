@@ -1,9 +1,6 @@
 use crate::{
-	kdl_ext::{NodeExt, ValueIdx},
-	system::{
-		core::NodeRegistry,
-		dnd5e::{data::character::Character, FromKDL},
-	},
+	kdl_ext::{FromKDL, NodeExt},
+	system::dnd5e::data::character::Character,
 	utility::Mutator,
 };
 
@@ -35,10 +32,9 @@ impl Mutator for AddLifeExpectancy {
 impl FromKDL for AddLifeExpectancy {
 	fn from_kdl(
 		node: &kdl::KdlNode,
-		value_idx: &mut ValueIdx,
-		_node_reg: &NodeRegistry,
+		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
-		Ok(Self(node.get_i64_req(value_idx.next())? as i32))
+		Ok(Self(node.get_i64_req(ctx.consume_idx())? as i32))
 	}
 }
 

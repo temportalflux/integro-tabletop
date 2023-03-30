@@ -1,7 +1,7 @@
 use self::data::character::Character;
 use super::core::SourceId;
 use crate::{
-	kdl_ext::{NodeExt, ValueIdx},
+	kdl_ext::{FromKDL, KDLNode, NodeContext},
 	system::core::NodeRegistry,
 };
 use std::{collections::HashMap, sync::Arc};
@@ -15,10 +15,7 @@ pub type BoxedMutator = crate::utility::GenericMutator<Character>;
 pub type Value<T> = crate::utility::Value<Character, T>;
 
 type FnCompFromKdl<S> = Box<
-	dyn Fn(&kdl::KdlNode, SourceId, &NodeRegistry) -> anyhow::Result<FnInsertComp<S>>
-		+ 'static
-		+ Send
-		+ Sync,
+	dyn Fn(&kdl::KdlNode, &NodeContext) -> anyhow::Result<FnInsertComp<S>> + 'static + Send + Sync,
 >;
 type FnInsertComp<S> = Box<dyn FnOnce(&mut S) + 'static + Send + Sync>;
 pub struct ComponentFactory<S> {
@@ -30,8 +27,9 @@ impl<S> ComponentFactory<S> {
 		T: FromKDL + SystemComponent<System = S> + 'static + Send + Sync,
 	{
 		Self {
-			add_from_kdl: Box::new(|node, source_id, node_reg| {
-				let value = T::from_kdl(node, &mut ValueIdx::default(), node_reg)?;
+			add_from_kdl: Box::new(|node, context| {
+				let source_id = context.id().clone();
+				let value = T::from_kdl(node, &mut context.next_node())?;
 				Ok(Box::new(|system| {
 					T::add_component(value, source_id, system);
 				}))
@@ -42,10 +40,9 @@ impl<S> ComponentFactory<S> {
 	pub fn add_from_kdl(
 		&self,
 		node: &kdl::KdlNode,
-		source_id: SourceId,
-		node_reg: &NodeRegistry,
+		ctx: &NodeContext,
 	) -> anyhow::Result<FnInsertComp<S>> {
-		(*self.add_from_kdl)(node, source_id, node_reg)
+		(*self.add_from_kdl)(node, ctx)
 	}
 }
 #[derive(Default)]
@@ -61,92 +58,6 @@ impl<S> ComponentRegistry<S> {
 
 	pub fn get_factory(&self, id: &str) -> Option<&Arc<ComponentFactory<S>>> {
 		self.0.get(id)
-	}
-}
-
-pub trait KDLNode {
-	fn id() -> &'static str
-	where
-		Self: Sized;
-
-	fn get_id(&self) -> &'static str;
-}
-
-#[macro_export]
-macro_rules! impl_kdl_node {
-	($target:ty, $id:expr) => {
-		impl crate::system::dnd5e::KDLNode for $target {
-			fn id() -> &'static str {
-				$id
-			}
-
-			fn get_id(&self) -> &'static str {
-				$id
-			}
-		}
-	};
-}
-
-pub trait FromKDL {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		value_idx: &mut ValueIdx,
-		node_reg: &NodeRegistry,
-	) -> anyhow::Result<Self>
-	where
-		Self: Sized;
-}
-macro_rules! impl_fromkdl {
-	($target:ty, $method:ident, $map:expr) => {
-		impl FromKDL for $target {
-			fn from_kdl(
-				node: &kdl::KdlNode,
-				value_idx: &mut ValueIdx,
-				_: &NodeRegistry,
-			) -> anyhow::Result<Self> {
-				Ok(node.$method(value_idx.next()).map($map)?)
-			}
-		}
-	};
-}
-impl_fromkdl!(bool, get_bool_req, |v| v);
-impl_fromkdl!(u8, get_i64_req, |v| v as u8);
-impl_fromkdl!(i8, get_i64_req, |v| v as i8);
-impl_fromkdl!(u16, get_i64_req, |v| v as u16);
-impl_fromkdl!(i16, get_i64_req, |v| v as i16);
-impl_fromkdl!(u32, get_i64_req, |v| v as u32);
-impl_fromkdl!(i32, get_i64_req, |v| v as i32);
-impl_fromkdl!(u64, get_i64_req, |v| v as u64);
-impl_fromkdl!(i64, get_i64_req, |v| v);
-impl_fromkdl!(u128, get_i64_req, |v| v as u128);
-impl_fromkdl!(i128, get_i64_req, |v| v as i128);
-impl_fromkdl!(usize, get_i64_req, |v| v as usize);
-impl_fromkdl!(isize, get_i64_req, |v| v as isize);
-impl_fromkdl!(f32, get_f64_req, |v| v as f32);
-impl_fromkdl!(f64, get_f64_req, |v| v);
-impl FromKDL for String {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		value_idx: &mut ValueIdx,
-		_: &NodeRegistry,
-	) -> anyhow::Result<Self> {
-		Ok(node.get_str_req(value_idx.next())?.to_string())
-	}
-}
-impl<T> FromKDL for Option<T>
-where
-	T: FromKDL,
-{
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		value_idx: &mut ValueIdx,
-		node_reg: &NodeRegistry,
-	) -> anyhow::Result<Self> {
-		// Instead of consuming the next-idx, just peek to see if there is a value there or not.
-		match node.get(**value_idx) {
-			Some(_) => T::from_kdl(node, value_idx, node_reg).map(|v| Some(v)),
-			None => Ok(None),
-		}
 	}
 }
 

@@ -1,9 +1,9 @@
 use super::character::Character;
 use crate::{
-	kdl_ext::{DocumentExt, NodeExt, ValueIdx},
+	kdl_ext::{DocumentExt, FromKDL, NodeExt},
 	system::{
-		core::{NodeRegistry, SourceId},
-		dnd5e::{BoxedCriteria, BoxedMutator, DnD5e, FromKDL, SystemComponent},
+		core::SourceId,
+		dnd5e::{BoxedCriteria, BoxedMutator, DnD5e, SystemComponent},
 	},
 	utility::MutatorGroup,
 };
@@ -59,8 +59,7 @@ impl SystemComponent for Condition {
 impl FromKDL for Condition {
 	fn from_kdl(
 		node: &kdl::KdlNode,
-		_value_idx: &mut ValueIdx,
-		node_reg: &NodeRegistry,
+		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
 		let name = node.get_str_req("name")?.to_owned();
 		let description = node
@@ -69,13 +68,13 @@ impl FromKDL for Condition {
 			.to_owned();
 		let mut mutators = Vec::new();
 		for entry_node in node.query_all("scope() > mutator")? {
-			mutators.push(node_reg.parse_mutator(entry_node)?);
+			mutators.push(ctx.parse_mutator(entry_node)?);
 		}
 
 		let criteria = match node.query("scope() > criteria")? {
 			None => None,
 			Some(entry_node) => {
-				Some(node_reg.parse_evaluator::<Character, Result<(), String>>(entry_node)?)
+				Some(ctx.parse_evaluator::<Character, Result<(), String>>(entry_node)?)
 			}
 		};
 

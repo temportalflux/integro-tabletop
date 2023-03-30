@@ -1,8 +1,5 @@
 use super::super::{AreaOfEffect, DamageRoll};
-use crate::{
-	kdl_ext::{DocumentExt, ValueIdx},
-	system::{core::NodeRegistry, dnd5e::FromKDL},
-};
+use crate::kdl_ext::{DocumentExt, FromKDL};
 
 mod check;
 pub use check::*;
@@ -22,34 +19,19 @@ pub struct Attack {
 impl FromKDL for Attack {
 	fn from_kdl(
 		node: &kdl::KdlNode,
-		_value_idx: &mut ValueIdx,
-		node_reg: &NodeRegistry,
+		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
-		let kind = AttackKindValue::from_kdl(
-			node.query_req("scope() > kind")?,
-			&mut ValueIdx::default(),
-			node_reg,
-		)?;
-		let check = AttackCheckKind::from_kdl(
-			node.query_req("scope() > check")?,
-			&mut ValueIdx::default(),
-			node_reg,
-		)?;
+		let kind =
+			AttackKindValue::from_kdl(node.query_req("scope() > kind")?, &mut ctx.next_node())?;
+		let check =
+			AttackCheckKind::from_kdl(node.query_req("scope() > check")?, &mut ctx.next_node())?;
 		let area_of_effect = match node.query("scope() > area_of_effect")? {
 			None => None,
-			Some(node) => Some(AreaOfEffect::from_kdl(
-				node,
-				&mut ValueIdx::default(),
-				node_reg,
-			)?),
+			Some(node) => Some(AreaOfEffect::from_kdl(node, &mut ctx.next_node())?),
 		};
 		let damage = match node.query("scope() > damage")? {
 			None => None,
-			Some(node) => Some(DamageRoll::from_kdl(
-				node,
-				&mut ValueIdx::default(),
-				node_reg,
-			)?),
+			Some(node) => Some(DamageRoll::from_kdl(node, &mut ctx.next_node())?),
 		};
 		Ok(Self {
 			kind,

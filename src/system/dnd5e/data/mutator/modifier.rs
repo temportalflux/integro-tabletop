@@ -1,17 +1,10 @@
-use std::{path::Path, str::FromStr};
-
 use crate::{
-	kdl_ext::{EntryExt, NodeExt, ValueExt, ValueIdx},
-	system::{
-		core::NodeRegistry,
-		dnd5e::{
-			data::{character::Character, roll, Ability, Skill},
-			FromKDL,
-		},
-	},
+	kdl_ext::{EntryExt, FromKDL, NodeExt, ValueExt},
+	system::dnd5e::data::{character::Character, roll, Ability, Skill},
 	utility::{Mutator, Selector, SelectorMeta, SelectorMetaVec},
 	GeneralError,
 };
+use std::{path::Path, str::FromStr};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AddModifier {
@@ -163,15 +156,14 @@ impl Mutator for AddModifier {
 impl FromKDL for AddModifier {
 	fn from_kdl(
 		node: &kdl::KdlNode,
-		value_idx: &mut ValueIdx,
-		_node_reg: &NodeRegistry,
+		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
-		let modifier = roll::Modifier::from_str(node.get_str_req(value_idx.next())?)?;
+		let modifier = roll::Modifier::from_str(node.get_str_req(ctx.consume_idx())?)?;
 		let context = node.get_str_opt("context")?.map(str::to_owned);
-		let entry = node.entry_req(value_idx.next())?;
+		let entry = node.entry_req(ctx.consume_idx())?;
 		let kind = match entry.type_req()? {
 			"Ability" => {
-				let ability = Selector::from_kdl(node, entry, value_idx, |kdl| {
+				let ability = Selector::from_kdl(node, entry, ctx, |kdl| {
 					Ok(Ability::from_str(kdl.as_str_req()?)?)
 				})?;
 				ModifierKind::Ability(ability)
@@ -179,14 +171,14 @@ impl FromKDL for AddModifier {
 			"SavingThrow" => {
 				let ability = match entry.as_str_req()? {
 					"All" => None,
-					_ => Some(Selector::from_kdl(node, entry, value_idx, |kdl| {
+					_ => Some(Selector::from_kdl(node, entry, ctx, |kdl| {
 						Ok(Ability::from_str(kdl.as_str_req()?)?)
 					})?),
 				};
 				ModifierKind::SavingThrow(ability)
 			}
 			"Skill" => {
-				let skill = Selector::from_kdl(node, entry, value_idx, |kdl| {
+				let skill = Selector::from_kdl(node, entry, ctx, |kdl| {
 					Ok(Skill::from_str(kdl.as_str_req()?)?)
 				})?;
 				ModifierKind::Skill(skill)
@@ -212,7 +204,7 @@ mod test {
 
 	mod from_kdl {
 		use super::*;
-		use crate::system::dnd5e::BoxedMutator;
+		use crate::system::{core::NodeRegistry, dnd5e::BoxedMutator};
 
 		fn from_doc(doc: &str) -> anyhow::Result<BoxedMutator> {
 			NodeRegistry::defaultmut_parse_kdl::<AddModifier>(doc)

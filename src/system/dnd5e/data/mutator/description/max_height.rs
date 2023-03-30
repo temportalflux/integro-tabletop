@@ -1,12 +1,6 @@
 use crate::{
-	kdl_ext::ValueIdx,
-	system::{
-		core::NodeRegistry,
-		dnd5e::{
-			data::{character::Character, roll::Roll},
-			FromKDL, KDLNode,
-		},
-	},
+	kdl_ext::{FromKDL, KDLNode},
+	system::dnd5e::data::{character::Character, roll::Roll},
 	utility::Mutator,
 	GeneralError,
 };
@@ -62,10 +56,9 @@ impl Mutator for AddMaxHeight {
 impl FromKDL for AddMaxHeight {
 	fn from_kdl(
 		node: &kdl::KdlNode,
-		value_idx: &mut ValueIdx,
-		_node_reg: &NodeRegistry,
+		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
-		let idx_val = value_idx.next();
+		let idx_val = ctx.consume_idx();
 		let entry = node.entry(idx_val).ok_or(GeneralError(format!(
 			"Missing value at index {idx_val} for {:?}",
 			Self::id()

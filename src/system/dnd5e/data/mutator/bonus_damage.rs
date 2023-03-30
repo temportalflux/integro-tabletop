@@ -1,8 +1,9 @@
 use super::AddAction;
 use crate::{
+	kdl_ext::KDLNode,
 	system::dnd5e::{
 		data::{character::Character, item::weapon},
-		KDLNode, Value,
+		Value,
 	},
 	utility::{Dependencies, Evaluator, Mutator},
 };

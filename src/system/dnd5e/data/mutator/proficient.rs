@@ -1,14 +1,8 @@
 use crate::{
-	kdl_ext::{EntryExt, NodeExt, ValueExt, ValueIdx},
-	system::{
-		core::NodeRegistry,
-		dnd5e::{
-			data::{
-				character::Character, item::weapon, proficiency, Ability, ArmorExtended, Skill,
-				WeaponProficiency,
-			},
-			FromKDL,
-		},
+	kdl_ext::{EntryExt, FromKDL, NodeExt, ValueExt},
+	system::dnd5e::data::{
+		character::Character, item::weapon, proficiency, Ability, ArmorExtended, Skill,
+		WeaponProficiency,
 	},
 	utility::{Mutator, Selector, SelectorMeta, SelectorMetaVec},
 	GeneralError,
@@ -160,14 +154,13 @@ impl Mutator for AddProficiency {
 impl FromKDL for AddProficiency {
 	fn from_kdl(
 		node: &kdl::KdlNode,
-		value_idx: &mut ValueIdx,
-		_node_reg: &NodeRegistry,
+		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
-		let entry = node.entry_req(value_idx.next())?;
+		let entry = node.entry_req(ctx.consume_idx())?;
 		match entry.type_req()? {
 			"SavingThrow" => Ok(Self::SavingThrow(Ability::from_str(entry.as_str_req()?)?)),
 			"Skill" => {
-				let skill = Selector::from_kdl(node, entry, value_idx, |kdl| {
+				let skill = Selector::from_kdl(node, entry, ctx, |kdl| {
 					Ok(Skill::from_str(kdl.as_str_req()?)?)
 				})?;
 				let level = match node.get_str_opt("level")? {
@@ -177,14 +170,13 @@ impl FromKDL for AddProficiency {
 				Ok(Self::Skill(skill, level))
 			}
 			"Language" => {
-				let language = Selector::from_kdl(node, entry, value_idx, |kdl| {
-					Ok(kdl.as_str_req()?.to_owned())
-				})?;
+				let language =
+					Selector::from_kdl(node, entry, ctx, |kdl| Ok(kdl.as_str_req()?.to_owned()))?;
 				Ok(Self::Language(language))
 			}
 			"Armor" => {
 				let kind = ArmorExtended::from_str(entry.as_str_req()?)?;
-				let context = node.get_str_opt(value_idx.next())?.map(str::to_owned);
+				let context = node.get_str_opt(ctx.consume_idx())?.map(str::to_owned);
 				Ok(Self::Armor(kind, context))
 			}
 			"Weapon" => Ok(Self::Weapon(match entry.as_str_req()? {
@@ -210,7 +202,7 @@ mod test {
 
 	mod from_kdl {
 		use super::*;
-		use crate::system::dnd5e::BoxedMutator;
+		use crate::system::{core::NodeRegistry, dnd5e::BoxedMutator};
 
 		fn from_doc(doc: &str) -> anyhow::Result<BoxedMutator> {
 			NodeRegistry::defaultmut_parse_kdl::<AddProficiency>(doc)

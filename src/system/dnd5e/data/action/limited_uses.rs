@@ -1,12 +1,6 @@
 use crate::{
-	kdl_ext::{DocumentExt, ValueIdx},
-	system::{
-		core::NodeRegistry,
-		dnd5e::{
-			data::{character::Character, scaling, Rest},
-			FromKDL,
-		},
-	},
+	kdl_ext::{DocumentExt, FromKDL},
+	system::dnd5e::data::{character::Character, scaling, Rest},
 	utility::{IdPath, Selector},
 };
 use std::{path::PathBuf, str::FromStr};
@@ -56,12 +50,11 @@ impl LimitedUses {
 impl FromKDL for LimitedUses {
 	fn from_kdl(
 		node: &kdl::KdlNode,
-		_value_idx: &mut ValueIdx,
-		node_reg: &NodeRegistry,
+		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
 		let max_uses = {
 			let node = node.query_req("scope() > max_uses")?;
-			scaling::Value::from_kdl(node, &mut ValueIdx::default(), node_reg)?
+			scaling::Value::from_kdl(node, &mut ctx.next_node())?
 		};
 		let reset_on = match node.query_str_opt("scope() > reset_on", 0)? {
 			None => None,

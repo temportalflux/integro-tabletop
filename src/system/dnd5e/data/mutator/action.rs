@@ -1,12 +1,6 @@
 use crate::{
-	kdl_ext::ValueIdx,
-	system::{
-		core::NodeRegistry,
-		dnd5e::{
-			data::{action::Action, character::Character},
-			FromKDL,
-		},
-	},
+	kdl_ext::FromKDL,
+	system::dnd5e::data::{action::Action, character::Character},
 	utility::Mutator,
 };
 
@@ -39,9 +33,8 @@ impl Mutator for AddAction {
 impl FromKDL for AddAction {
 	fn from_kdl(
 		node: &kdl::KdlNode,
-		value_idx: &mut ValueIdx,
-		node_reg: &NodeRegistry,
+		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
-		Ok(Self(Action::from_kdl(node, value_idx, node_reg)?))
+		Ok(Self(Action::from_kdl(node, ctx)?))
 	}
 }

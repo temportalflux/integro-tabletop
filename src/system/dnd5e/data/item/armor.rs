@@ -1,8 +1,7 @@
 use crate::{
-	kdl_ext::{DocumentExt, NodeExt, ValueIdx},
-	system::dnd5e::{
-		data::{character::Character, mutator::ArmorStrengthRequirement, ArmorClassFormula},
-		FromKDL,
+	kdl_ext::{DocumentExt, FromKDL, NodeExt},
+	system::dnd5e::data::{
+		character::Character, mutator::ArmorStrengthRequirement, ArmorClassFormula,
 	},
 	utility::MutatorGroup,
 	GeneralError,
@@ -22,16 +21,15 @@ pub struct Armor {
 impl FromKDL for Armor {
 	fn from_kdl(
 		node: &kdl::KdlNode,
-		value_idx: &mut ValueIdx,
-		node_reg: &crate::system::core::NodeRegistry,
+		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
-		let kind = Kind::from_str(node.get_str_req(value_idx.next())?)?;
+		let kind = Kind::from_str(node.get_str_req(ctx.consume_idx())?)?;
 		let formula = node
 			.query("scope() > formula")?
 			.ok_or(GeneralError(format!(
 				"Node {node:?} must have a child node named \"formula\"."
 			)))?;
-		let formula = ArmorClassFormula::from_kdl(formula, &mut ValueIdx::default(), node_reg)?;
+		let formula = ArmorClassFormula::from_kdl(formula, &mut ctx.next_node())?;
 		let min_strength_score = node
 			.query_i64_opt("scope() > min-strength", 0)?
 			.map(|v| v as u32);

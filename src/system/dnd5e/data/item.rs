@@ -1,9 +1,9 @@
 use super::{mutator::AddAction, Wallet};
 use crate::{
-	kdl_ext::{DocumentExt, NodeExt, ValueIdx},
+	kdl_ext::{DocumentExt, FromKDL, NodeContext, NodeExt},
 	system::{
 		core::SourceId,
-		dnd5e::{data::character::Character, DnD5e, FromKDL, SystemComponent},
+		dnd5e::{data::character::Character, DnD5e, SystemComponent},
 	},
 	utility::MutatorGroup,
 	GeneralError,
@@ -64,8 +64,7 @@ impl SystemComponent for Item {
 impl FromKDL for Item {
 	fn from_kdl(
 		node: &kdl::KdlNode,
-		_value_idx: &mut crate::kdl_ext::ValueIdx,
-		node_reg: &crate::system::core::NodeRegistry,
+		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
 		let name = node.get_str_req("name")?.to_owned();
 		let weight = node.get_f64_opt("weight")?.unwrap_or(0.0) as f32;
@@ -91,7 +90,7 @@ impl FromKDL for Item {
 			tags
 		};
 		let kind = match node.query("scope() > kind")? {
-			Some(node) => ItemKind::from_kdl(node, &mut ValueIdx::default(), node_reg)?,
+			Some(node) => ItemKind::from_kdl(node, &mut ctx.next_node())?,
 			None => ItemKind::default(),
 		};
 
@@ -120,18 +119,14 @@ impl Default for ItemKind {
 }
 
 impl FromKDL for ItemKind {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		value_idx: &mut ValueIdx,
-		node_reg: &crate::system::core::NodeRegistry,
-	) -> anyhow::Result<Self> {
-		match node.get_str_req(value_idx.next())? {
+	fn from_kdl(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
+		match node.get_str_req(ctx.consume_idx())? {
 			"Simple" => {
 				let count = node.get_i64_opt("count")?.unwrap_or(1) as u32;
 				Ok(Self::Simple { count })
 			}
 			"Equipment" => {
-				let equipment = equipment::Equipment::from_kdl(node, value_idx, node_reg)?;
+				let equipment = equipment::Equipment::from_kdl(node, ctx)?;
 				Ok(Self::Equipment(equipment))
 			}
 			value => Err(GeneralError(format!(

@@ -1,13 +1,10 @@
 use super::Condition;
 use crate::{
-	kdl_ext::{DocumentExt, NodeExt, ValueIdx},
-	system::{
-		core::{NodeRegistry, SourceId},
-		dnd5e::FromKDL,
-	},
+	kdl_ext::{DocumentExt, FromKDL, NodeExt},
+	system::core::SourceId,
 };
-use std::{path::PathBuf, str::FromStr};
 use anyhow::Context;
+use std::{path::PathBuf, str::FromStr};
 use uuid::Uuid;
 
 mod activation;
@@ -43,8 +40,7 @@ impl Action {
 impl FromKDL for Action {
 	fn from_kdl(
 		node: &kdl::KdlNode,
-		_value_idx: &mut ValueIdx,
-		node_reg: &NodeRegistry,
+		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
 		let name = node.get_str_req("name")?.to_owned();
 		let description = node
@@ -55,38 +51,32 @@ impl FromKDL for Action {
 			.map(str::to_owned);
 		let activation_kind = ActivationKind::from_kdl(
 			node.query_req("scope() > activation")?,
-			&mut ValueIdx::default(),
-			node_reg,
+			&mut ctx.next_node(),
 		)?;
 
 		let attack = match node.query("scope() > attack")? {
 			None => None,
-			Some(node) => Some(Attack::from_kdl(node, &mut ValueIdx::default(), node_reg)?),
+			Some(node) => Some(Attack::from_kdl(node, &mut ctx.next_node())?),
 		};
 		let limited_uses = match node.query("scope() > limited_uses")? {
 			None => None,
-			Some(node) => Some(LimitedUses::from_kdl(
-				node,
-				&mut ValueIdx::default(),
-				node_reg,
-			)?),
+			Some(node) => Some(LimitedUses::from_kdl(node, &mut ctx.next_node())?),
 		};
 
 		let mut conditions_to_apply = Vec::new();
 		for node in node.query_all("scope() > condition")? {
-			let mut value_idx = ValueIdx::default();
-			match node.get_str_req(value_idx.next())? {
+			let mut ctx = ctx.next_node();
+			match node.get_str_req(ctx.consume_idx())? {
 				"Custom" => {
 					// this is a custom condition node, parse it as a condition struct
-					let condition = Condition::from_kdl(node, &mut value_idx, node_reg)?;
+					let condition = Condition::from_kdl(node, &mut ctx)?;
 					conditions_to_apply.push(condition);
 				}
 				source_id_str => {
-					let source_id = SourceId::from_str(source_id_str).with_context(|| {
+					let mut source_id = SourceId::from_str(source_id_str).with_context(|| {
 						format!("Expected {source_id_str:?} to either be the value \"Custom\" or a valid SourceId.")
 					})?;
-					// TODO: The source id may be partial (i.e. another item local to this module),
-					// need access to the ancestor's source id in order to convert to a full id.
+					source_id.set_basis(ctx.id());
 					// TODO: Resolve source ids after all modules have been loaded but before
 					// exiting the loading phase OR have the system on hand when applying the conditions (more likely).
 				}

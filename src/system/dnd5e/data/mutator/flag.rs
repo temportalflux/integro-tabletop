@@ -1,12 +1,6 @@
 use crate::{
-	kdl_ext::{NodeExt, ValueIdx},
-	system::{
-		core::NodeRegistry,
-		dnd5e::{
-			data::{bounded::BoundValue, character::Character, Ability},
-			FromKDL,
-		},
-	},
+	kdl_ext::{FromKDL, NodeExt},
+	system::dnd5e::data::{bounded::BoundValue, character::Character, Ability},
 	utility::Mutator,
 	GeneralError,
 };
@@ -53,11 +47,10 @@ impl Mutator for SetFlag {
 impl FromKDL for SetFlag {
 	fn from_kdl(
 		node: &kdl::KdlNode,
-		value_idx: &mut ValueIdx,
-		_node_reg: &NodeRegistry,
+		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
-		let flag = Flag::from_str(node.get_str_req(value_idx.next())?)?;
-		let value = node.get_bool_req(value_idx.next())?;
+		let flag = Flag::from_str(node.get_str_req(ctx.consume_idx())?)?;
+		let value = node.get_bool_req(ctx.consume_idx())?;
 		Ok(Self { flag, value })
 	}
 }

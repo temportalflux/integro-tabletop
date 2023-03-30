@@ -1,12 +1,6 @@
 use crate::{
-	kdl_ext::NodeExt,
-	system::{
-		core::NodeRegistry,
-		dnd5e::{
-			data::{bounded::BoundValue, character::Character},
-			FromKDL,
-		},
-	},
+	kdl_ext::{FromKDL, NodeExt},
+	system::dnd5e::data::{bounded::BoundValue, character::Character},
 	utility::Mutator,
 };
 
@@ -49,11 +43,10 @@ impl Mutator for Speed {
 impl FromKDL for Speed {
 	fn from_kdl(
 		node: &kdl::KdlNode,
-		value_idx: &mut crate::kdl_ext::ValueIdx,
-		node_reg: &NodeRegistry,
+		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
-		let name = node.get_str_req(value_idx.next())?.to_owned();
-		let argument = BoundValue::from_kdl(node, value_idx, node_reg)?;
+		let name = node.get_str_req(ctx.consume_idx())?.to_owned();
+		let argument = BoundValue::from_kdl(node, ctx)?;
 		Ok(Self { name, argument })
 	}
 }
@@ -64,7 +57,7 @@ mod test {
 
 	mod from_kdl {
 		use super::*;
-		use crate::system::dnd5e::BoxedMutator;
+		use crate::system::{core::NodeRegistry, dnd5e::BoxedMutator};
 
 		fn from_doc(doc: &str) -> anyhow::Result<BoxedMutator> {
 			NodeRegistry::defaultmut_parse_kdl::<Speed>(doc)

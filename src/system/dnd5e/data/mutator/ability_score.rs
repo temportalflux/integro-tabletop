@@ -1,19 +1,12 @@
-use std::str::FromStr;
-
 use crate::{
-	kdl_ext::{DocumentExt, NodeExt, ValueExt, ValueIdx},
-	system::{
-		core::NodeRegistry,
-		dnd5e::{
-			data::{
-				character::{AbilityScoreBonus, Character},
-				Ability,
-			},
-			FromKDL,
-		},
+	kdl_ext::{DocumentExt, FromKDL, NodeExt, ValueExt},
+	system::dnd5e::data::{
+		character::{AbilityScoreBonus, Character},
+		Ability,
 	},
 	utility::{Mutator, Selector, SelectorMeta, SelectorMetaVec},
 };
+use std::str::FromStr;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AbilityScoreChange {
@@ -119,22 +112,20 @@ impl Mutator for AbilityScoreChange {
 impl FromKDL for AbilityScoreChange {
 	fn from_kdl(
 		node: &kdl::KdlNode,
-		_value_idx: &mut ValueIdx,
-		_node_reg: &NodeRegistry,
+		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
 		let ability = {
-			let mut value_idx = ValueIdx::default();
+			let mut ctx = ctx.next_node();
 			let node = node.query_req("scope() > ability")?;
-			let entry_idx = value_idx.next();
-			let entry = node.entry_req(entry_idx)?;
-			Selector::from_kdl(node, entry, &mut value_idx, |kdl| {
+			let entry = node.entry_req(ctx.consume_idx())?;
+			Selector::from_kdl(node, entry, &mut ctx, |kdl| {
 				Ok(Ability::from_str(kdl.as_str_req()?)?)
 			})?
 		};
 		let mut operations = Vec::new();
 		for node in node.query_all("scope() > bonus")? {
-			let mut value_idx = ValueIdx::default();
-			let value = node.get_i64_req(value_idx.next())? as u32;
+			let mut ctx = ctx.next_node();
+			let value = node.get_i64_req(ctx.consume_idx())? as u32;
 			let max_total_score = node.get_i64_opt("max-total")?.map(|v| v as u32);
 			operations.push(AbilityScoreOp::Bonus {
 				value,
@@ -142,8 +133,8 @@ impl FromKDL for AbilityScoreChange {
 			});
 		}
 		for node in node.query_all("scope() > increase-max")? {
-			let mut value_idx = ValueIdx::default();
-			let value = node.get_i64_req(value_idx.next())? as u32;
+			let mut ctx = ctx.next_node();
+			let value = node.get_i64_req(ctx.consume_idx())? as u32;
 			operations.push(AbilityScoreOp::IncreaseMax { value });
 		}
 		Ok(Self {
@@ -159,7 +150,7 @@ mod test {
 
 	mod from_kdl {
 		use super::*;
-		use crate::system::dnd5e::BoxedMutator;
+		use crate::system::{core::NodeRegistry, dnd5e::BoxedMutator};
 
 		fn from_doc(doc: &str) -> anyhow::Result<BoxedMutator> {
 			NodeRegistry::defaultmut_parse_kdl::<AbilityScoreChange>(doc)

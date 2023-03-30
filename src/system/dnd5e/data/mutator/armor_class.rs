@@ -1,12 +1,6 @@
 use crate::{
-	kdl_ext::ValueIdx,
-	system::{
-		core::NodeRegistry,
-		dnd5e::{
-			data::{character::Character, ArmorClassFormula},
-			FromKDL,
-		},
-	},
+	kdl_ext::FromKDL,
+	system::dnd5e::data::{character::Character, ArmorClassFormula},
 	utility::Mutator,
 };
 
@@ -57,12 +51,9 @@ impl Mutator for AddArmorClassFormula {
 impl FromKDL for AddArmorClassFormula {
 	fn from_kdl(
 		node: &kdl::KdlNode,
-		value_idx: &mut ValueIdx,
-		node_reg: &NodeRegistry,
+		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
-		Ok(Self(ArmorClassFormula::from_kdl(
-			node, value_idx, node_reg,
-		)?))
+		Ok(Self(ArmorClassFormula::from_kdl(node, ctx)?))
 	}
 }
 
@@ -72,9 +63,12 @@ mod test {
 
 	mod from_kdl {
 		use super::*;
-		use crate::system::dnd5e::{
-			data::{Ability, BoundedAbility},
-			BoxedMutator,
+		use crate::system::{
+			core::NodeRegistry,
+			dnd5e::{
+				data::{Ability, BoundedAbility},
+				BoxedMutator,
+			},
 		};
 
 		fn from_doc(doc: &str) -> anyhow::Result<BoxedMutator> {

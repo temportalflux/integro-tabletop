@@ -1,14 +1,8 @@
 use crate::{
-	kdl_ext::{EntryExt, NodeExt, ValueExt, ValueIdx},
-	system::{
-		core::NodeRegistry,
-		dnd5e::{
-			data::{
-				character::Character, item::weapon, proficiency, Ability, ArmorExtended, Skill,
-				WeaponProficiency,
-			},
-			FromKDL,
-		},
+	kdl_ext::{EntryExt, FromKDL, NodeExt, ValueExt},
+	system::dnd5e::data::{
+		character::Character, item::weapon, proficiency, Ability, ArmorExtended, Skill,
+		WeaponProficiency,
 	},
 	utility::Evaluator,
 	GeneralError,
@@ -63,10 +57,9 @@ crate::impl_kdl_node!(IsProficientWith, "is_proficient_with");
 impl FromKDL for IsProficientWith {
 	fn from_kdl(
 		node: &kdl::KdlNode,
-		value_idx: &mut ValueIdx,
-		_node_reg: &NodeRegistry,
+		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
-		let entry = node.entry_req(value_idx.next())?;
+		let entry = node.entry_req(ctx.consume_idx())?;
 		match entry.type_req()? {
 			"SavingThrow" => Ok(Self::SavingThrow(Ability::from_str(entry.as_str_req()?)?)),
 			"Skill" => Ok(Self::Skill(Skill::from_str(entry.as_str_req()?)?)),
@@ -98,7 +91,7 @@ mod test {
 
 	mod from_kdl {
 		use super::*;
-		use crate::utility::GenericEvaluator;
+		use crate::{system::core::NodeRegistry, utility::GenericEvaluator};
 
 		fn from_doc(doc: &str) -> anyhow::Result<GenericEvaluator<Character, bool>> {
 			NodeRegistry::defaulteval_parse_kdl::<IsProficientWith>(doc)

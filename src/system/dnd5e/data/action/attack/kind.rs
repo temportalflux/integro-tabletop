@@ -1,7 +1,6 @@
 use super::RangeKind;
 use crate::{
-	kdl_ext::{NodeExt, ValueIdx},
-	system::{core::NodeRegistry, dnd5e::FromKDL},
+	kdl_ext::{FromKDL, NodeExt},
 	GeneralError,
 };
 use std::str::FromStr;
@@ -36,16 +35,15 @@ impl AttackKindValue {
 impl FromKDL for AttackKindValue {
 	fn from_kdl(
 		node: &kdl::KdlNode,
-		value_idx: &mut ValueIdx,
-		_node_reg: &NodeRegistry,
+		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
-		match node.get_str_req(value_idx.next())? {
+		match node.get_str_req(ctx.consume_idx())? {
 			"Melee" => Ok(Self::Melee {
 				reach: node.get_i64_opt("reach")?.unwrap_or(5) as u32,
 			}),
 			"Ranged" => {
-				let short_dist = node.get_i64_req(value_idx.next())? as u32;
-				let long_dist = node.get_i64_req(value_idx.next())? as u32;
+				let short_dist = node.get_i64_req(ctx.consume_idx())? as u32;
+				let long_dist = node.get_i64_req(ctx.consume_idx())? as u32;
 				let kind = match node.get_str_opt("kind")? {
 					None => None,
 					Some(str) => Some(RangeKind::from_str(str)?),
@@ -70,16 +68,14 @@ mod test {
 
 	mod from_kdl {
 		use super::*;
-		use crate::system::core::NodeRegistry;
+		use crate::kdl_ext::NodeContext;
 
 		fn from_doc(doc: &str) -> anyhow::Result<AttackKindValue> {
-			let node_reg = NodeRegistry::default();
 			let document = doc.parse::<kdl::KdlDocument>()?;
 			let node = document
 				.query("scope() > kind")?
 				.expect("missing kind node");
-			let mut idx = ValueIdx::default();
-			AttackKindValue::from_kdl(node, &mut idx, &node_reg)
+			AttackKindValue::from_kdl(node, &mut NodeContext::default())
 		}
 
 		#[test]
