@@ -42,11 +42,12 @@ impl Evaluator for IsProficientWith {
 				state.other_proficiencies().languages.contains_key(language)
 			}
 			Self::Armor(kind) => {
-				// TODO: This only checks if the context for the kind is None. It shouldn't care what the context is.
 				state
 					.other_proficiencies()
 					.armor
-					.contains_key(&(*kind, None))
+					.iter()
+					.filter(|((armor, _), _)| armor == kind)
+					.count() > 0
 			}
 			Self::Weapon(proficiency) => state
 				.other_proficiencies()
@@ -237,9 +238,14 @@ mod test {
 				ArmorExtended::Kind(armor::Kind::Light),
 				None,
 			)]);
+			let with_prof_ctx = character_with_profs(vec![AddProficiency::Armor(
+				ArmorExtended::Kind(armor::Kind::Light),
+				Some("nonmetal".into()),
+			)]);
 			let eval = IsProficientWith::Armor(ArmorExtended::Kind(armor::Kind::Light));
 			assert_eq!(eval.evaluate(&empty), false);
 			assert_eq!(eval.evaluate(&with_prof), true);
+			assert_eq!(eval.evaluate(&with_prof_ctx), true);
 		}
 
 		#[test]
