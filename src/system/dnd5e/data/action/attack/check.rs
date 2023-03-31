@@ -4,8 +4,7 @@ use crate::{
 		data::{character::Character, Ability},
 		Value,
 	},
-	utility::Evaluator,
-	GeneralError,
+	utility::{Evaluator, NotInList},
 };
 use std::str::FromStr;
 
@@ -109,10 +108,7 @@ impl FromKDL for AttackCheckKind {
 					save_ability,
 				})
 			}
-			name => Err(GeneralError(format!(
-				"Invalid attack check {name:?}, expected AttackRoll or SavingThrow"
-			))
-			.into()),
+			name => Err(NotInList(name.into(), vec!["AttackRoll", "SavingThrow"]).into()),
 		}
 	}
 }

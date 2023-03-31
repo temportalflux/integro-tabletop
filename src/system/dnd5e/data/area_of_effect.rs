@@ -1,6 +1,6 @@
 use crate::{
 	kdl_ext::{FromKDL, NodeExt},
-	GeneralError,
+	utility::NotInList,
 };
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -35,10 +35,10 @@ impl FromKDL for AreaOfEffect {
 			"Sphere" => Ok(Self::Sphere {
 				radius: node.get_i64_req("radius")? as u32,
 			}),
-			name => Err(GeneralError(format!(
-				"Invalid area of effect {name:?}, \
-				expected Cone, Cube, Cylinder, Line, or Sphere"
-			))
+			name => Err(NotInList(
+				name.into(),
+				vec!["Cone", "Cube", "Cylinder", "Line", "Sphere"],
+			)
 			.into()),
 		}
 	}

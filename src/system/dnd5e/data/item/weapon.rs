@@ -13,8 +13,10 @@ use crate::{
 		},
 		Value,
 	},
+	utility::InvalidEnumStr,
 	GeneralError,
 };
+use enumset::EnumSetType;
 use std::{collections::HashSet, str::FromStr};
 
 #[derive(Clone, PartialEq, Default, Debug)]
@@ -33,7 +35,7 @@ pub struct Weapon {
 	pub range: Option<Range>,
 }
 
-#[derive(Clone, Copy, Default, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Default, Debug, EnumSetType, PartialOrd, Ord, Hash)]
 pub enum Kind {
 	#[default]
 	Simple,
@@ -49,15 +51,13 @@ impl ToString for Kind {
 	}
 }
 impl FromStr for Kind {
-	type Err = GeneralError;
+	type Err = InvalidEnumStr<Self>;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		match s {
 			"Simple" => Ok(Self::Simple),
 			"Martial" => Ok(Self::Martial),
-			_ => Err(GeneralError(format!(
-				"Invalid weapon kind {s:?}, expected Simple or Martial."
-			))),
+			_ => Err(InvalidEnumStr::from(s)),
 		}
 	}
 }

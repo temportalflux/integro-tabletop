@@ -4,13 +4,13 @@ use crate::{
 		data::{character::Character, DamageType},
 		Value,
 	},
-	utility::Mutator,
-	GeneralError,
+	utility::{InvalidEnumStr, Mutator},
 };
 use enum_map::Enum;
+use enumset::EnumSetType;
 use std::str::FromStr;
 
-#[derive(Clone, Copy, PartialEq, Enum, Debug)]
+#[derive(EnumSetType, Enum, Debug)]
 pub enum Defense {
 	Resistance,
 	Immunity,
@@ -27,16 +27,14 @@ impl ToString for Defense {
 	}
 }
 impl FromStr for Defense {
-	type Err = GeneralError;
+	type Err = InvalidEnumStr<Self>;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		match s {
 			"Resistance" => Ok(Self::Resistance),
 			"Immunity" => Ok(Self::Immunity),
 			"Vulnerability" => Ok(Self::Vulnerability),
-			_ => Err(GeneralError(format!(
-				"Invalid Defense {s:?}. Expected: Resistance, Immunity, or Vulnerability"
-			))),
+			_ => Err(InvalidEnumStr::from(s)),
 		}
 	}
 }

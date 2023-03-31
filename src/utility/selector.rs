@@ -1,7 +1,5 @@
-use crate::{
-	kdl_ext::{DocumentExt, NodeContext, NodeExt, ValueExt},
-	GeneralError,
-};
+use super::NotInList;
+use crate::kdl_ext::{DocumentExt, NodeContext, NodeExt, ValueExt};
 use anyhow::Context;
 use derivative::Derivative;
 use enumset::{EnumSet, EnumSetType};
@@ -145,10 +143,7 @@ where
 				let cannot_match = cannot_match.into_iter().map(IdPath::from).collect();
 				Ok(Self::Any { id, cannot_match })
 			}
-			_ => Err(GeneralError(format!(
-				"Invalid selector key {key:?}, expected Specific, Any, or AnyOf."
-			))
-			.into()),
+			name => Err(NotInList(name.into(), vec!["Specific", "Any", "AnyOf"]).into()),
 		}
 	}
 }

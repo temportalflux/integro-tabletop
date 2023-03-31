@@ -1,7 +1,7 @@
 use crate::{
 	kdl_ext::NodeExt,
 	system::dnd5e::{data::character::Character, FromKDL},
-	GeneralError,
+	utility::NotInList,
 };
 use std::collections::BTreeMap;
 
@@ -67,9 +67,7 @@ where
 					level_map,
 				})
 			}
-			name => {
-				Err(GeneralError(format!("Invalid scaling name {name:?}, expected Level.")).into())
-			}
+			name => Err(NotInList(name.into(), vec!["Level"]).into()),
 		}
 	}
 }

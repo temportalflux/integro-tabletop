@@ -1,10 +1,10 @@
 use crate::{
 	kdl_ext::{EntryExt, FromKDL, NodeExt, ValueExt},
-	GeneralError,
+	utility::InvalidEnumStr,
 };
 use enum_map::{Enum, EnumMap};
 use enumset::EnumSetType;
-use std::{collections::BTreeMap, path::PathBuf};
+use std::{collections::BTreeMap, path::PathBuf, str::FromStr};
 
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct BoundedValue(EnumMap<BoundKind, BTreeMap<PathBuf, i32>>);
@@ -63,6 +63,24 @@ pub enum BoundKind {
 	Base,
 	Additive,
 	Subtract,
+}
+impl FromStr for BoundKind {
+	type Err = InvalidEnumStr<Self>;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		match s {
+			"Minimum" => Ok(Self::Minimum),
+			"Base" => Ok(Self::Base),
+			"Add" | "Additive" => Ok(Self::Additive),
+			"Subtract" => Ok(Self::Subtract),
+			_ => Err(InvalidEnumStr::from(s)),
+		}
+	}
+}
+impl ToString for BoundKind {
+	fn to_string(&self) -> String {
+		self.display_name().into()
+	}
 }
 impl BoundKind {
 	pub fn display_name(&self) -> &'static str {
@@ -144,17 +162,14 @@ impl FromKDL for BoundValue {
 		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
 		let entry = node.entry_req(ctx.consume_idx())?;
-		match entry.type_req()? {
-			"Minimum" => Ok(Self::Minimum(entry.as_i64_req()? as i32)),
-			"Base" => Ok(Self::Base(entry.as_i64_req()? as i32)),
-			"Additive" => Ok(Self::Additive(entry.as_i64_req()? as i32)),
-			"Subtract" => Ok(Self::Subtract(entry.as_i64_req()? as i32)),
-			type_name => Err(GeneralError(format!(
-				"Invalid bound value id {type_name:?}, \
-				expected Minimum, Base, Additive, or Subtract"
-			))
-			.into()),
-		}
+		let kind = BoundKind::from_str(entry.type_req()?)?;
+		let value = entry.as_i64_req()? as i32;
+		Ok(match kind {
+			BoundKind::Minimum => Self::Minimum(value),
+			BoundKind::Base => Self::Base(value),
+			BoundKind::Additive => Self::Additive(value),
+			BoundKind::Subtract => Self::Subtract(value),
+		})
 	}
 }
 

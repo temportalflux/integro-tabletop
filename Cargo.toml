@@ -47,6 +47,7 @@ downcast-rs = "1.2"
 async-channel = "1.8"
 derivative = "2.2"
 itertools = "0.10"
+phf = { version = "0.11", features = ["macros"] }
 
 [target.'cfg(windows)'.dependencies]
 tokio = { version="1.26", features=["full"] }

@@ -5,8 +5,7 @@ use crate::{
 		core::SourceId,
 		dnd5e::{data::character::Character, DnD5e, SystemComponent},
 	},
-	utility::MutatorGroup,
-	GeneralError,
+	utility::{MutatorGroup, NotInList},
 };
 use std::{collections::HashMap, path::Path};
 use uuid::Uuid;
@@ -129,10 +128,7 @@ impl FromKDL for ItemKind {
 				let equipment = equipment::Equipment::from_kdl(node, ctx)?;
 				Ok(Self::Equipment(equipment))
 			}
-			value => Err(GeneralError(format!(
-				"{value:?} is not a valid item kind, expected Simple or Equipment."
-			))
-			.into()),
+			value => Err(NotInList(value.into(), vec!["Simple", "Equipment"]).into()),
 		}
 	}
 }

@@ -1,7 +1,8 @@
-use crate::GeneralError;
+use crate::utility::InvalidEnumStr;
+use enumset::EnumSetType;
 use std::str::FromStr;
 
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Debug, EnumSetType)]
 pub enum Rest {
 	Short,
 	Long,
@@ -18,15 +19,13 @@ impl ToString for Rest {
 }
 
 impl FromStr for Rest {
-	type Err = GeneralError;
+	type Err = InvalidEnumStr<Self>;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		match s {
 			"Short" => Ok(Self::Short),
 			"Long" => Ok(Self::Long),
-			_ => Err(GeneralError(format!(
-				"Invalid rest {s:?}, expected Short or Long"
-			))),
+			_ => Err(InvalidEnumStr::from(s)),
 		}
 	}
 }

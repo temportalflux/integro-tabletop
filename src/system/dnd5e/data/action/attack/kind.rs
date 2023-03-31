@@ -1,7 +1,7 @@
 use super::RangeKind;
 use crate::{
 	kdl_ext::{FromKDL, NodeExt},
-	GeneralError,
+	utility::NotInList,
 };
 use std::str::FromStr;
 
@@ -54,10 +54,7 @@ impl FromKDL for AttackKindValue {
 					kind,
 				})
 			}
-			name => Err(GeneralError(format!(
-				"Invalid attack kind {name:?}, expected Melee or Ranged."
-			))
-			.into()),
+			name => Err(NotInList(name.into(), vec!["Melee", "Ranged"]).into()),
 		}
 	}
 }

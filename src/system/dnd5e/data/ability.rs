@@ -1,4 +1,4 @@
-use crate::GeneralError;
+use crate::utility::NotInList;
 use enum_map::Enum;
 use enumset::EnumSetType;
 use std::str::FromStr;
@@ -259,18 +259,27 @@ impl ToString for Ability {
 }
 
 impl FromStr for Ability {
-	type Err = GeneralError;
+	type Err = NotInList;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		match s.to_lowercase().as_str() {
-			"str" | "strength" => Ok(Self::Strength),
-			"dex" | "dexterity" => Ok(Self::Dexterity),
-			"con" | "constitution" => Ok(Self::Constitution),
-			"int" | "intelligence" => Ok(Self::Intelligence),
-			"wis" | "wisdom" => Ok(Self::Wisdom),
-			"cha" | "charisma" => Ok(Self::Charisma),
-			_ => Err(GeneralError(format!("Invalid Ability value {s:?}"))),
-		}
+		static LOOKUP: phf::Map<&'static str, Ability> = phf::phf_map! {
+			"str" => Ability::Strength,
+			"dex" => Ability::Dexterity,
+			"con" => Ability::Constitution,
+			"int" => Ability::Intelligence,
+			"wis" => Ability::Wisdom,
+			"cha" => Ability::Charisma,
+			"strength"		 => Ability::Strength,
+			"dexterity"		 => Ability::Dexterity,
+			"constitution" => Ability::Constitution,
+			"intelligence" => Ability::Intelligence,
+			"wisdom"			 => Ability::Wisdom,
+			"charisma"		 => Ability::Charisma,
+		};
+		LOOKUP
+			.get(s.to_lowercase().as_str())
+			.cloned()
+			.ok_or_else(|| NotInList(s.to_owned(), LOOKUP.keys().cloned().collect()))
 	}
 }
 

@@ -1,8 +1,8 @@
+use crate::utility::InvalidEnumStr;
+use enumset::EnumSetType;
 use std::str::FromStr;
 
-use crate::GeneralError;
-
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Debug, EnumSetType)]
 pub enum RangeKind {
 	OnlySelf,
 	Touch,
@@ -25,7 +25,7 @@ impl ToString for RangeKind {
 }
 
 impl FromStr for RangeKind {
-	type Err = GeneralError;
+	type Err = InvalidEnumStr<Self>;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		match s {
@@ -34,9 +34,7 @@ impl FromStr for RangeKind {
 			"Bounded" => Ok(Self::Bounded),
 			"Sight" => Ok(Self::Sight),
 			"Unlimited" => Ok(Self::Unlimited),
-			_ => Err(GeneralError(format!(
-				"Invalid kind of range {s:?}, expected Self, Touch, Bounded, Sight, or Unlimited."
-			))),
+			_ => Err(InvalidEnumStr::from(s)),
 		}
 	}
 }

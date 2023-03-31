@@ -1,25 +1,34 @@
 use crate::{
 	kdl_ext::{FromKDL, NodeExt},
 	system::dnd5e::data::{bounded::BoundValue, character::Character, Ability},
-	utility::Mutator,
-	GeneralError,
+	utility::{InvalidEnumStr, Mutator},
 };
 use enum_map::Enum;
+use enumset::EnumSetType;
 use std::str::FromStr;
 
-#[derive(Clone, Copy, PartialEq, Debug, Enum)]
+#[derive(Debug, EnumSetType, Enum)]
 pub enum Flag {
 	// TODO: Test the usage of ArmorStrengthRequirement, w/ & w/o armor that has a req
 	ArmorStrengthRequirement,
 }
 
+impl ToString for Flag {
+	fn to_string(&self) -> String {
+		match self {
+			Self::ArmorStrengthRequirement => "ArmorStrengthRequirement",
+		}
+		.into()
+	}
+}
+
 impl FromStr for Flag {
-	type Err = GeneralError;
+	type Err = InvalidEnumStr<Self>;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		match s {
 			"ArmorStrengthRequirement" => Ok(Self::ArmorStrengthRequirement),
-			_ => Err(GeneralError(format!("Invalid flag {s:?}"))),
+			_ => Err(InvalidEnumStr::from(s)),
 		}
 	}
 }

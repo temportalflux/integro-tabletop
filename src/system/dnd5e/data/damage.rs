@@ -1,8 +1,9 @@
 use super::roll::Roll;
 use crate::{
 	kdl_ext::{DocumentExt, FromKDL, NodeExt},
-	GeneralError,
+	utility::InvalidEnumStr,
 };
+use enumset::EnumSetType;
 use std::{path::PathBuf, str::FromStr};
 
 #[derive(Clone, PartialEq, Default, Debug)]
@@ -35,7 +36,7 @@ impl FromKDL for DamageRoll {
 	}
 }
 
-#[derive(Clone, Copy, PartialEq, Debug, Default)]
+#[derive(Debug, Default, EnumSetType)]
 pub enum DamageType {
 	Acid,
 	Bludgeoning,
@@ -54,7 +55,7 @@ pub enum DamageType {
 }
 
 impl FromStr for DamageType {
-	type Err = GeneralError;
+	type Err = InvalidEnumStr<Self>;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		match s {
@@ -71,8 +72,14 @@ impl FromStr for DamageType {
 			"Radiant" => Ok(Self::Radiant),
 			"Slashing" => Ok(Self::Slashing),
 			"Thunder" => Ok(Self::Thunder),
-			_ => Err(GeneralError(format!("Invalid damage type {s:?}")).into()),
+			_ => Err(InvalidEnumStr::from(s).into()),
 		}
+	}
+}
+
+impl ToString for DamageType {
+	fn to_string(&self) -> String {
+		self.display_name().into()
 	}
 }
 

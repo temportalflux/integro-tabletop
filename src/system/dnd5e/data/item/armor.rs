@@ -3,8 +3,7 @@ use crate::{
 	system::dnd5e::data::{
 		character::Character, mutator::ArmorStrengthRequirement, ArmorClassFormula,
 	},
-	utility::MutatorGroup,
-	GeneralError,
+	utility::{InvalidEnumStr, MutatorGroup},
 };
 use enumset::EnumSetType;
 use std::{path::Path, str::FromStr};
@@ -24,11 +23,7 @@ impl FromKDL for Armor {
 		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
 		let kind = Kind::from_str(node.get_str_req(ctx.consume_idx())?)?;
-		let formula = node
-			.query("scope() > formula")?
-			.ok_or(GeneralError(format!(
-				"Node {node:?} must have a child node named \"formula\"."
-			)))?;
+		let formula = node.query_req("scope() > formula")?;
 		let formula = ArmorClassFormula::from_kdl(formula, &mut ctx.next_node())?;
 		let min_strength_score = node
 			.query_i64_opt("scope() > min-strength", 0)?
@@ -53,19 +48,14 @@ impl ToString for Kind {
 	}
 }
 impl FromStr for Kind {
-	type Err = crate::GeneralError;
+	type Err = InvalidEnumStr<Self>;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		match s.to_lowercase().as_str() {
 			"light" => Ok(Self::Light),
 			"medium" => Ok(Self::Medium),
 			"heavy" => Ok(Self::Heavy),
-			_ => Err(crate::GeneralError(format!(
-				"{s:?} is not a valid armor kind: {:?}.",
-				enumset::EnumSet::<Kind>::all()
-					.into_iter()
-					.collect::<Vec<_>>(),
-			))),
+			_ => Err(InvalidEnumStr::from(s)),
 		}
 	}
 }

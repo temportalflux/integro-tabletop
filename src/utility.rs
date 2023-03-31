@@ -1,5 +1,7 @@
 mod evaluator;
 pub use evaluator::*;
+mod error;
+pub use error::*;
 mod mutator;
 pub use mutator::*;
 mod selector;

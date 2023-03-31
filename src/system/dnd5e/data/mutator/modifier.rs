@@ -1,8 +1,7 @@
 use crate::{
 	kdl_ext::{EntryExt, FromKDL, NodeExt, ValueExt},
 	system::dnd5e::data::{character::Character, roll, Ability, Skill},
-	utility::{Mutator, Selector, SelectorMeta, SelectorMetaVec},
-	GeneralError,
+	utility::{Mutator, NotInList, Selector, SelectorMeta, SelectorMetaVec},
 };
 use std::{path::Path, str::FromStr};
 
@@ -184,10 +183,7 @@ impl FromKDL for AddModifier {
 				ModifierKind::Skill(skill)
 			}
 			name => {
-				return Err(GeneralError(format!(
-					"Invalid modifier type {name:?}, expected Ability, SavingThrow, or Skill."
-				))
-				.into())
+				return Err(NotInList(name.into(), vec!["Ability", "SavingThrow", "Skill"]).into());
 			}
 		};
 		Ok(Self {
@@ -283,7 +279,8 @@ mod test {
 
 		#[test]
 		fn skill() -> anyhow::Result<()> {
-			let doc = "mutator \"add_modifier\" \"Advantage\" (Skill)\"Specific\" \"Perception\" context=\"using smell\"";
+			let doc = "mutator \"add_modifier\" \"Advantage\" \
+			(Skill)\"Specific\" \"Perception\" context=\"using smell\"";
 			assert_eq!(
 				from_doc(doc)?,
 				AddModifier {

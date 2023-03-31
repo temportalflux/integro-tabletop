@@ -4,8 +4,7 @@ use crate::{
 		character::Character, item::weapon, proficiency, Ability, ArmorExtended, Skill,
 		WeaponProficiency,
 	},
-	utility::Evaluator,
-	GeneralError,
+	utility::{Evaluator, NotInList},
 };
 use std::str::FromStr;
 
@@ -72,10 +71,17 @@ impl FromKDL for IsProficientWith {
 				classification => WeaponProficiency::Classification(classification.to_owned()),
 			})),
 			"Tool" => Ok(Self::Tool(entry.as_str_req()?.to_owned())),
-			name => Err(GeneralError(format!(
-				"Invalid proficiency type {name:?}, expected \
-				SavingThrow, Skill, Language, Armor, Weapon, or Tool"
-			))
+			name => Err(NotInList(
+				name.into(),
+				vec![
+					"SavingThrow",
+					"Skill",
+					"Language",
+					"Armor",
+					"Weapon",
+					"Tool",
+				],
+			)
 			.into()),
 		}
 	}

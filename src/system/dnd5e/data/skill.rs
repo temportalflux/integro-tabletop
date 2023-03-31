@@ -1,11 +1,9 @@
-use std::str::FromStr;
-
-use crate::GeneralError;
-
 use super::Ability;
+use crate::utility::InvalidEnumStr;
 use enum_map::Enum;
 use enumset::EnumSetType;
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 
 #[derive(EnumSetType, PartialOrd, Enum, Serialize, Deserialize, Debug)]
 pub enum Skill {
@@ -201,7 +199,7 @@ impl ToString for Skill {
 }
 
 impl FromStr for Skill {
-	type Err = GeneralError;
+	type Err = InvalidEnumStr<Self>;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		match s.to_lowercase().as_str() {
@@ -223,7 +221,7 @@ impl FromStr for Skill {
 			"sleightofhand" => Ok(Self::SleightOfHand),
 			"stealth" => Ok(Self::Stealth),
 			"survival" => Ok(Self::Survival),
-			_ => Err(GeneralError(format!("Invalid Skill name {s:?}"))),
+			_ => Err(InvalidEnumStr::from(s)),
 		}
 	}
 }

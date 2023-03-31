@@ -1,4 +1,4 @@
-use crate::GeneralError;
+use crate::utility::InvalidEnumStr;
 use enum_map::Enum;
 use enumset::{EnumSet, EnumSetType};
 use std::str::FromStr;
@@ -52,7 +52,7 @@ impl ToString for CurrencyKind {
 }
 
 impl FromStr for CurrencyKind {
-	type Err = GeneralError;
+	type Err = InvalidEnumStr<Self>;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		match s {
@@ -61,10 +61,7 @@ impl FromStr for CurrencyKind {
 			"Electrum" => Ok(Self::Electrum),
 			"Gold" => Ok(Self::Gold),
 			"Platinum" => Ok(Self::Platinum),
-			_ => Err(GeneralError(format!(
-				"Invalid currency {s:?}, expected \
-				Copper, Silver, Electrum, Gold, or Platinum"
-			))),
+			_ => Err(InvalidEnumStr::from(s)),
 		}
 	}
 }
