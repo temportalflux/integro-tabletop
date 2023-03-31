@@ -9,7 +9,7 @@ use crate::{
 				evaluator::{operator::Product, GetAbilityModifier, GetLevel},
 				item,
 				mutator::AddMaxHitPoints,
-				Ability, BoxedFeature, Class, Condition, Description,
+				Ability, BoxedFeature, Class, Condition,
 			},
 			Value,
 		},
@@ -18,6 +18,9 @@ use crate::{
 };
 use enum_map::EnumMap;
 use std::{collections::BTreeMap, path::Path, sync::Arc};
+
+mod description;
+pub use description::*;
 
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct NamedGroups {
