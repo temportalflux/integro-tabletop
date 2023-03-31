@@ -40,7 +40,10 @@ impl<T> Compiled<T> {
 fn create_character(system: &system::dnd5e::DnD5e) -> system::dnd5e::data::character::Persistent {
 	use system::{
 		core::SourceId,
-		dnd5e::data::{character::{Persistent, Description}, Ability, CurrencyKind, Wallet},
+		dnd5e::data::{
+			character::{Description, Persistent},
+			Ability, CurrencyKind, Wallet,
+		},
 	};
 	let mut persistent = Persistent {
 		description: Description {

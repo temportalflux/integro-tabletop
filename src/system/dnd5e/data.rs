@@ -27,8 +27,7 @@ pub mod bounded;
 pub use armor_class::*;
 mod class;
 pub use class::*;
-mod description;
-pub use description::*;
+pub mod description;
 mod proficiencies;
 pub use proficiencies::*;
 
