@@ -1,9 +1,10 @@
 use super::{
 	action::{Action, ActionSource},
 	character::Character,
+	description,
 };
 use crate::{
-	kdl_ext::{DocumentExt, FromKDL, NodeExt},
+	kdl_ext::{FromKDL, NodeExt},
 	system::dnd5e::{BoxedCriteria, BoxedMutator},
 	utility::MutatorGroup,
 };
@@ -18,7 +19,7 @@ use std::{
 #[derivative(PartialEq)]
 pub struct Feature {
 	pub name: String,
-	pub description: String,
+	pub description: description::Info,
 
 	pub actions: Vec<Action>,
 
@@ -81,10 +82,8 @@ impl FromKDL for Feature {
 		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
 		let name = node.get_str_req("name")?.to_owned();
-		let description = node
-			.query_str_opt("description", 0)?
-			.unwrap_or_default()
-			.to_owned();
+		let description = description::Info::from_kdl_all(node, ctx)?;
+
 		// Specifies if this feature can appear twice.
 		// If true, any other features with the same name are ignored/discarded.
 		// TODO: Unimplemented

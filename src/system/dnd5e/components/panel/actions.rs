@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crate::{
 	components::*,
 	system::dnd5e::{
-		components::{SharedCharacter, UsesCounter},
+		components::{SharedCharacter, UsesCounter, editor::description},
 		data::{
 			action::{ActivationKind, AttackCheckKind, AttackKindValue},
 			character::{ActionEffect, Persistent},
@@ -176,9 +176,7 @@ pub fn Actions() -> Html {
 		{actions.into_iter().map(|action| {
 			html! {<div class="action short">
 				<strong>{action.name.clone()}</strong>
-				{action.short_desc.as_ref().or(action.description.as_ref()).map(|desc| {
-					html! { <div class="text-block">{desc.clone()}</div> }
-				}).unwrap_or_default()}
+				{description(&action.description, true)}
 				{action.limited_uses.as_ref().map(|limited_uses| {
 					UsesCounter { state: state.clone(), limited_uses }.to_html()
 				}).unwrap_or_default()}

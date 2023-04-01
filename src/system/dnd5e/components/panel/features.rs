@@ -1,7 +1,10 @@
 use crate::{
 	components::{Tag, Tags},
 	path_map::PathMap,
-	system::dnd5e::{components::SharedCharacter, data::BoxedFeature},
+	system::dnd5e::{
+		components::{editor::description, SharedCharacter},
+		data::BoxedFeature,
+	},
 };
 use std::path::{Path, PathBuf};
 use yew::prelude::*;
@@ -107,34 +110,16 @@ fn FeatureBlock(
 	let state = use_context::<SharedCharacter>().unwrap();
 	let feat_data_path = feature.inner().get_display_path();
 	let selected_value_map = state.selected_values_in(&feat_data_path);
-	let missing_selections = state.missing_selections_in(&feat_data_path);
 
 	let name = feature.inner().name.to_case(Case::Title);
-	let mut description = feature.inner().description.clone();
 	let mut selected_values = Vec::new();
 	if let Some(value_map) = selected_value_map {
-		let values = value_map.as_vec();
-		selected_values = values.iter().map(|(_, value)| (*value).clone()).collect();
-		description =
-			values
-				.into_iter()
-				.fold(feature.inner().description.clone(), |desc, (key, value)| {
-					let key = key.to_str().unwrap();
-					let search_key = format!("{{{key}}}");
-					desc.replace(&search_key, value)
-				});
+		selected_values = value_map
+			.as_vec()
+			.iter()
+			.map(|(_, value)| (*value).clone())
+			.collect();
 	}
-	description = missing_selections.iter().fold(description, |desc, key| {
-		let key = key.to_str().unwrap();
-		let search_key = format!("{{{key}}}");
-		desc.replace(
-			&search_key,
-			match feature.inner().get_missing_selection_text_for(key) {
-				Some(text) => text.as_str(),
-				None => "MISSING_SELECTION",
-			},
-		)
-	});
 
 	html! {
 		<div style="border-width: 0; border-bottom: 1px; border-style: solid; border-color: var(--theme-frame-color-muted);">
@@ -149,9 +134,7 @@ fn FeatureBlock(
 					_ => html! {},
 				}}
 			</span>
-			<div class="text-block">
-				{description}
-			</div>
+			{description(&feature.inner().description, true)}
 			{match selected_values.len() {
 				0 => html! {},
 				_ => {

@@ -1,4 +1,4 @@
-use super::IndirectCondition;
+use super::{description, IndirectCondition};
 use crate::kdl_ext::{DocumentExt, FromKDL, NodeExt};
 use std::path::PathBuf;
 use uuid::Uuid;
@@ -13,7 +13,7 @@ pub use limited_uses::*;
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct Action {
 	pub name: String,
-	pub description: Option<String>,
+	pub description: description::Info,
 	pub short_desc: Option<String>,
 	pub activation_kind: ActivationKind,
 	pub attack: Option<Attack>,
@@ -39,9 +39,7 @@ impl FromKDL for Action {
 		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
 		let name = node.get_str_req("name")?.to_owned();
-		let description = node
-			.query_str_opt("scope() > description", 0)?
-			.map(str::to_owned);
+		let description = description::Info::from_kdl_all(node, ctx)?;
 		let short_desc = node
 			.query_str_opt("scope() > description > short", 0)?
 			.map(str::to_owned);

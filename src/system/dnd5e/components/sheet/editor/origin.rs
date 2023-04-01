@@ -8,7 +8,7 @@ use crate::{
 			data::{
 				bundle::{Background, Lineage, Race, RaceVariant, Upbringing},
 				character::{ActionEffect, Persistent},
-				Feature,
+				description, Feature,
 			},
 			DnD5e,
 		},
@@ -635,10 +635,33 @@ pub fn feature(value: &Feature, show_selectors: bool) -> Html {
 	html! {
 		<div class="my-2">
 			<h5>{value.name.clone()}</h5>
-			<div class="text-block">
-				{value.description.clone()}
-			</div>
+			{description(&value.description, false)}
 			{mutator_list(&value.mutators, show_selectors)}
+		</div>
+	}
+}
+
+pub fn description(info: &description::Info, prefer_short: bool) -> Html {
+	if prefer_short {
+		if let Some(desc) = info.short() {
+			return html! { <div class="text-block">{desc}</div> };
+		}
+	}
+	html! {
+		<div>
+			{info.long().map(|section| {
+				match section.title {
+					Some(title) => html! {
+						<div>
+							<strong>{title}{". "}</strong>
+							<span class="text-block">
+								{section.content}
+							</span>
+						</div>
+					},
+					None => html! { <div class="text-block">{section.content}</div> },
+				}
+			}).collect::<Vec<_>>()}
 		</div>
 	}
 }

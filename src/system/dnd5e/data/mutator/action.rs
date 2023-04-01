@@ -18,7 +18,17 @@ impl Mutator for AddAction {
 	}
 
 	fn description(&self) -> Option<String> {
-		self.0.description.clone()
+		let sections = self.0.description.long().collect::<Vec<_>>();
+		if sections.is_empty() {
+			return None;
+		}
+		let sections = sections.into_iter().map(|section| {
+			match section.title {
+				Some(title) => format!("{title}. {}", section.content),
+				None => section.content,
+			}
+		}).collect::<Vec<_>>();
+		Some(sections.join("\n"))
 	}
 
 	fn set_data_path(&self, parent: &std::path::Path) {

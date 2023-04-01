@@ -12,6 +12,55 @@ pub struct Section {
 	pub content: String,
 }
 
+impl<S> From<S> for Info
+where
+	S: Into<String>,
+{
+	fn from(value: S) -> Self {
+		Self {
+			short: None,
+			long: vec![Section {
+				title: None,
+				content: value.into(),
+			}],
+		}
+	}
+}
+
+impl Info {
+	/// Queries the children of `parent` for any nodes named `description`,
+	/// and extends the default `Info` with all identified children parsed as `Info`.
+	pub fn from_kdl_all(parent: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Info> {
+		let mut info = Info::default();
+		for node in parent.query_all("scope() > description")? {
+			info.extend(Info::from_kdl(node, &mut ctx.next_node())?);
+		}
+		Ok(info)
+	}
+
+	pub fn extend(&mut self, other: Self) {
+		if self.short.is_none() && other.short.is_some() {
+			self.short = other.short();
+		}
+		self.long.extend(other.long);
+	}
+
+	pub fn short(&self) -> Option<String> {
+		self.short.as_ref().map(|s| self.format_desc(s))
+	}
+
+	pub fn long(&self) -> impl Iterator<Item = Section> + '_ {
+		self.long.iter().map(|section| Section {
+			title: section.title.clone(),
+			content: self.format_desc(&section.content),
+		})
+	}
+
+	fn format_desc(&self, text: &String) -> String {
+		text.clone()
+	}
+}
+
 impl FromKDL for Info {
 	fn from_kdl(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
 		let short = node.query_str_opt("scope() > short", 0)?.map(str::to_owned);
