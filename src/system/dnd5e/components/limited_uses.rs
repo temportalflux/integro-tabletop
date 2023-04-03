@@ -48,7 +48,8 @@ impl<'parent> UsesCounter<'parent> {
 			.collect::<Vec<_>>();
 
 		html! {
-			<span>
+			<span class="uses">
+				<strong>{"Uses: "}</strong>
 				{use_checkboxes}
 				{match &self.limited_uses.reset_on {
 					Some(rest) => html! { <span>{"/"}{format!("{:?} Rest", rest)}</span> },

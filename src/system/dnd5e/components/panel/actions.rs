@@ -1,11 +1,10 @@
 use std::sync::Arc;
-
 use crate::{
 	components::*,
 	system::dnd5e::{
 		components::{SharedCharacter, UsesCounter, editor::description},
 		data::{
-			action::{ActivationKind, AttackCheckKind, AttackKindValue},
+			action::{ActivationKind, AttackCheckKind, AttackKindValue, Action},
 			character::{ActionEffect, Persistent},
 			DamageRoll,
 		},
@@ -173,41 +172,7 @@ pub fn Actions() -> Html {
 		actions
 	};
 	panes.push(html! {<>
-		{actions.into_iter().map(|action| {
-			html! {<div class="action short">
-				<strong>{action.name.clone()}</strong>
-				{description(&action.description, true)}
-				{action.limited_uses.as_ref().map(|limited_uses| {
-					UsesCounter { state: state.clone(), limited_uses }.to_html()
-				}).unwrap_or_default()}
-				{(!action.conditions_to_apply.is_empty()).then(|| {
-					let onclick = Callback::from({
-						let state = state.clone();
-						let conditions_to_apply = Arc::new(action.conditions_to_apply.iter().filter_map(|indirect| {
-							indirect.resolve(&system).cloned()
-						}).collect::<Vec<_>>());
-						move |_| {
-							let conditions_to_apply = conditions_to_apply.clone();
-							state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
-								log::debug!("{conditions_to_apply:?}");
-								for condition in &*conditions_to_apply {
-									persistent.conditions.insert(condition.clone());
-								}
-								Some(ActionEffect::Recompile)
-							}));
-						}
-					});
-					html! {
-						<button
-							type="button" class="btn btn-primary btn-sm"
-							{onclick}
-						>
-							{"Apply Conditions"}
-						</button>
-					}
-				}).unwrap_or_default()}
-			</div>}
-		}).collect::<Vec<_>>()}
+		{actions.into_iter().map(|action| action_html(action, &state, &system)).collect::<Vec<_>>()}
 	</>});
 
 	html! {<>
@@ -216,4 +181,76 @@ pub fn Actions() -> Html {
 			{panes}
 		</div>
 	</>}
+}
+
+fn action_html(action: &Action, state: &SharedCharacter, system: &UseStateHandle<DnD5e>) -> Html {
+	let source_path = match &action.source {
+		None => html! {},
+		Some(source) => {
+			let path = source.as_path(state.inventory());
+			crate::data::as_feature_path_text(&path).map(|path_text| html! {
+				<span style="color: var(--bs-gray-600);">{" ("}{path_text}{")"}</span>
+			}).unwrap_or_default()
+		}
+	};
+	html! {
+		<div class="action short">
+			<strong class="title">{action.name.clone()}</strong>
+			<span class="subtitle">
+				{action.activation_kind}
+				{source_path}
+			</span>
+			{description(&action.description, true)}
+			<div class="addendum mx-2">
+				{(!action.conditions_to_apply.is_empty()).then(|| {
+					let conditions_to_apply = Arc::new(action.conditions_to_apply.iter().filter_map(|indirect| {
+						indirect.resolve(&system).cloned()
+					}).collect::<Vec<_>>());
+					let name_section = {
+						let count = conditions_to_apply.len();
+						html! {
+							<div class="mx-2">
+								{conditions_to_apply.iter().enumerate().map(|(idx, condition)| html! {
+									<span>
+										{condition.name.clone()}
+										{match /*is_last*/ idx == count - 1 {
+											false => ", ",
+											true => "",
+										}}
+									</span>
+								}).collect::<Vec<_>>()}
+							</div>
+						}
+					};
+					let onclick = Callback::from({
+						let state = state.clone();
+						move |_| {
+							let conditions_to_apply = conditions_to_apply.clone();
+							state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
+								for condition in &*conditions_to_apply {
+									persistent.conditions.insert(condition.clone());
+								}
+								Some(ActionEffect::Recompile)
+							}));
+						}
+					});
+					html! {
+						<div class="conditions d-flex align-items-baseline">
+							<strong class="title">{"Applies Conditions:"}</strong>
+							{name_section}
+							<button
+								type="button" class="btn btn-primary btn-xs ms-auto"
+								{onclick}
+							>
+								{"Apply"}
+							</button>
+						</div>
+					}
+				}).unwrap_or_default()}
+				{action.limited_uses.as_ref().map(|limited_uses| {
+					UsesCounter { state: state.clone(), limited_uses }.to_html()
+				}).unwrap_or_default()}
+			</div>
+		</div>
+	}
 }

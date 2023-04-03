@@ -65,7 +65,6 @@ impl Default for Derived {
 				forceful blow (none of which count as weapons). On a hit, an unarmed \
 				strike deals bludgeoning damage equal to 1 + your Strength modifier. \
 				You are proficient with your unarmed strikes.".into(),
-				short_desc: None,
 				activation_kind: ActivationKind::Action,
 				attack: Some(Attack {
 					kind: AttackKindValue::Melee { reach: 5 },

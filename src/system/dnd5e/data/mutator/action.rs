@@ -1,6 +1,6 @@
 use crate::{
 	kdl_ext::FromKDL,
-	system::dnd5e::data::{action::Action, character::Character},
+	system::dnd5e::data::{action::{Action, ActionSource}, character::Character},
 	utility::Mutator,
 };
 
@@ -35,8 +35,10 @@ impl Mutator for AddAction {
 		self.0.set_data_path(parent);
 	}
 
-	fn apply(&self, stats: &mut Character, _parent: &std::path::Path) {
-		stats.actions_mut().push(self.0.clone());
+	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
+		let mut action = self.0.clone();
+		action.source = Some(ActionSource::Feature(parent.to_owned()));
+		stats.actions_mut().push(action);
 	}
 }
 

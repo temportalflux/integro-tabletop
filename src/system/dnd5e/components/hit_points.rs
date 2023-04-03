@@ -201,8 +201,8 @@ fn HitPointsBody(BodyProps { on_open_modal }: &BodyProps) -> Html {
 			</div>
 			<div style="width: 80px;">
 				<button
-					type="button" class="btn btn-success"
-					style="vertical-align: top; width: 100%; --bs-btn-padding-y: 0px; --bs-btn-font-size: .75rem;"
+					type="button" class="btn btn-success btn-xs"
+					style="vertical-align: top; width: 100%;"
 					onclick={onclick_heal}
 				>{"Heal"}</button>
 				<input ref={hp_input_node}
@@ -212,8 +212,8 @@ fn HitPointsBody(BodyProps { on_open_modal }: &BodyProps) -> Html {
 					onclick={onclick_amt} onkeydown={validate_uint_only()}
 				/>
 				<button
-					type="button" class="btn btn-danger"
-					style="vertical-align: top; width: 100%; --bs-btn-padding-y: 0px; --bs-btn-font-size: .75rem;"
+					type="button" class="btn btn-danger btn-xs"
+					style="vertical-align: top; width: 100%;"
 					onclick={onclick_dmg}
 				>{"Damage"}</button>
 			</div>

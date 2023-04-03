@@ -1,6 +1,6 @@
 use super::{description, IndirectCondition};
 use crate::kdl_ext::{DocumentExt, FromKDL, NodeExt};
-use std::path::PathBuf;
+use std::{path::{PathBuf, Path}, borrow::Cow};
 use uuid::Uuid;
 
 mod activation;
@@ -14,7 +14,6 @@ pub use limited_uses::*;
 pub struct Action {
 	pub name: String,
 	pub description: description::Info,
-	pub short_desc: Option<String>,
 	pub activation_kind: ActivationKind,
 	pub attack: Option<Attack>,
 	/// Dictates how many times this action can be used until it is reset.
@@ -40,9 +39,6 @@ impl FromKDL for Action {
 	) -> anyhow::Result<Self> {
 		let name = node.get_str_req("name")?.to_owned();
 		let description = description::Info::from_kdl_all(node, ctx)?;
-		let short_desc = node
-			.query_str_opt("scope() > description > short", 0)?
-			.map(str::to_owned);
 		let activation_kind = ActivationKind::from_kdl(
 			node.query_req("scope() > activation")?,
 			&mut ctx.next_node(),
@@ -65,7 +61,6 @@ impl FromKDL for Action {
 		Ok(Self {
 			name,
 			description,
-			short_desc,
 			activation_kind,
 			attack,
 			limited_uses,
@@ -79,4 +74,19 @@ impl FromKDL for Action {
 pub enum ActionSource {
 	Item(Uuid),
 	Feature(PathBuf),
+}
+impl ActionSource {
+	pub fn as_path<'this>(&'this self, inventory: &super::item::Inventory) -> Cow<'this, Path> {
+		match self {
+			Self::Feature(path) => Cow::Borrowed(path.as_path()),
+			Self::Item(id) => {
+				let base = PathBuf::new().join("Equipment");
+				let owned = match inventory.get_item(id) {
+					Some(item) => base.join(&item.name),
+					None => base.join("Unknown Item"),
+				};
+				Cow::Owned(owned)
+			}
+		}
+	}
 }

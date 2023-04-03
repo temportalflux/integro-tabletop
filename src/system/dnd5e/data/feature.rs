@@ -21,6 +21,7 @@ pub struct Feature {
 	pub name: String,
 	pub description: description::Info,
 
+	// TODO: DEPRECATED Replaced by the `add_action` mutator
 	pub actions: Vec<Action>,
 
 	pub mutators: Vec<BoxedMutator>,
