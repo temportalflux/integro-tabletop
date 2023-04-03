@@ -1,6 +1,9 @@
 use crate::{
 	kdl_ext::FromKDL,
-	system::dnd5e::data::{action::{Action, ActionSource}, character::Character},
+	system::dnd5e::data::{
+		action::{Action, ActionSource},
+		character::Character,
+	},
 	utility::Mutator,
 };
 
@@ -22,12 +25,13 @@ impl Mutator for AddAction {
 		if sections.is_empty() {
 			return None;
 		}
-		let sections = sections.into_iter().map(|section| {
-			match section.title {
+		let sections = sections
+			.into_iter()
+			.map(|section| match section.title {
 				Some(title) => format!("{title}. {}", section.content),
 				None => section.content,
-			}
-		}).collect::<Vec<_>>();
+			})
+			.collect::<Vec<_>>();
 		Some(sections.join("\n"))
 	}
 

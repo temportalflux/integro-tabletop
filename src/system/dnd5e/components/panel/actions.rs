@@ -1,10 +1,12 @@
-use std::sync::Arc;
 use crate::{
 	components::*,
 	system::dnd5e::{
-		components::{SharedCharacter, UsesCounter, editor::description},
+		components::{
+			editor::{description, mutator_list},
+			SharedCharacter, UsesCounter,
+		},
 		data::{
-			action::{ActivationKind, AttackCheckKind, AttackKindValue, Action},
+			action::{Action, ActionSource, ActivationKind, AttackCheckKind, AttackKindValue},
 			character::{ActionEffect, Persistent},
 			DamageRoll,
 		},
@@ -13,6 +15,7 @@ use crate::{
 	utility::Evaluator,
 };
 use enumset::{EnumSet, EnumSetType};
+use std::sync::Arc;
 use yew::prelude::*;
 
 #[derive(EnumSetType)]
@@ -40,7 +43,6 @@ impl ActionTag {
 #[function_component]
 pub fn Actions() -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
-	let system = use_context::<UseStateHandle<DnD5e>>().unwrap();
 	let selected_tags = use_state(|| EnumSet::<ActionTag>::all());
 
 	let make_tag_html = {
@@ -172,7 +174,7 @@ pub fn Actions() -> Html {
 		actions
 	};
 	panes.push(html! {<>
-		{actions.into_iter().map(|action| action_html(action, &state, &system)).collect::<Vec<_>>()}
+		{actions.into_iter().cloned().map(|action| html! { <ActionOverview {action} /> }).collect::<Vec<_>>()}
 	</>});
 
 	html! {<>
@@ -183,18 +185,47 @@ pub fn Actions() -> Html {
 	</>}
 }
 
-fn action_html(action: &Action, state: &SharedCharacter, system: &UseStateHandle<DnD5e>) -> Html {
-	let source_path = match &action.source {
-		None => html! {},
-		Some(source) => {
-			let path = source.as_path(state.inventory());
-			crate::data::as_feature_path_text(&path).map(|path_text| html! {
-				<span style="color: var(--bs-gray-600);">{" ("}{path_text}{")"}</span>
-			}).unwrap_or_default()
+fn action_source_text(
+	source: &Option<ActionSource>,
+	inventory: &crate::system::dnd5e::data::item::Inventory,
+) -> Option<String> {
+	source
+		.as_ref()
+		.map(|source| crate::data::as_feature_path_text(&source.as_path(inventory)))
+		.flatten()
+}
+
+#[derive(Clone, PartialEq, Properties)]
+struct ActionProps {
+	pub action: Action,
+}
+#[function_component]
+fn ActionOverview(ActionProps { action }: &ActionProps) -> Html {
+	let state = use_context::<SharedCharacter>().unwrap();
+	let system = use_context::<UseStateHandle<DnD5e>>().unwrap();
+	let modal_dispatcher = use_context::<modal::Context>().unwrap();
+
+	let onclick = modal_dispatcher.callback({
+		let action = action.clone();
+		move |_| {
+			modal::Action::Open(modal::Props {
+				centered: true,
+				scrollable: true,
+				root_classes: classes!("action"),
+				content: html! {<Modal action={action.clone()} />},
+				..Default::default()
+			})
 		}
-	};
+	});
+	let source_path = action_source_text(&action.source, state.inventory())
+		.map(|path_text| {
+			html! {
+				<span style="color: var(--bs-gray-600);">{" ("}{path_text}{")"}</span>
+			}
+		})
+		.unwrap_or_default();
 	html! {
-		<div class="action short mb-2 border-bottom-theme-muted">
+		<div class="action short mb-2 border-bottom-theme-muted" {onclick}>
 			<strong class="title">{action.name.clone()}</strong>
 			<span class="subtitle">
 				{action.activation_kind}
@@ -224,7 +255,8 @@ fn action_html(action: &Action, state: &SharedCharacter, system: &UseStateHandle
 					};
 					let onclick = Callback::from({
 						let state = state.clone();
-						move |_| {
+						move |evt: MouseEvent| {
+							evt.stop_propagation();
 							let conditions_to_apply = conditions_to_apply.clone();
 							state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
 								for condition in &*conditions_to_apply {
@@ -253,4 +285,67 @@ fn action_html(action: &Action, state: &SharedCharacter, system: &UseStateHandle
 			</div>
 		</div>
 	}
+}
+
+#[function_component]
+fn Modal(ActionProps { action }: &ActionProps) -> Html {
+	let state = use_context::<SharedCharacter>().unwrap();
+	let system = use_context::<UseStateHandle<DnD5e>>().unwrap();
+	html! {<>
+		<div class="modal-header">
+			<h1 class="modal-title fs-4">{action.name.clone()}</h1>
+			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
+		</div>
+		<div class="modal-body">
+
+			<div class="property">
+				<strong>{"Action Type:"}</strong>
+				<span>{action.activation_kind}</span>
+			</div>
+			{action_source_text(&action.source, state.inventory()).map(|path_text| html! {
+				<div class="property">
+					<strong>{"Source:"}</strong>
+					<span>{path_text}</span>
+				</div>
+			}).unwrap_or_default()}
+
+			{action.limited_uses.as_ref().map(|limited_uses| {
+				UsesCounter { state: state.clone(), limited_uses }.to_html()
+			}).unwrap_or_default()}
+
+			{description(&action.description, false)}
+
+			{(!action.conditions_to_apply.is_empty()).then(|| {
+				let conditions_to_apply = Arc::new(action.conditions_to_apply.iter().filter_map(|indirect| {
+					indirect.resolve(&system).cloned()
+				}).collect::<Vec<_>>());
+
+				html! {
+					<div class="conditions">
+						<h5>{"Conditions Applied on Use"}</h5>
+						{conditions_to_apply.iter().map(|condition| {
+							html! {<div>
+								<h6>{condition.name.clone()}</h6>
+								{condition.description.clone()}
+								<div>
+									<strong>{"Effects:"}</strong>
+									<div class="mx-2">
+										{mutator_list(&condition.mutators, true)}
+									</div>
+								</div>
+								{condition.criteria.as_ref().map(|evaluator| {
+									html! {
+										<div>
+											<strong class="me-2">{"Only If:"}</strong>
+											{format!("TODO: missing description for {:?}", evaluator)}
+										</div>
+									}
+								})}
+							</div>}
+						}).collect::<Vec<_>>()}
+					</div>
+				}
+			}).unwrap_or_default()}
+		</div>
+	</>}
 }

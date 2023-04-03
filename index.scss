@@ -365,3 +365,16 @@ input.slot[type="checkbox"]:checked:before {
 .action.short .conditions > button {
 	min-width: 60px;
 }
+.action.modal .modal-body {
+	font-size: 12px;
+
+	> .property {
+		> strong {
+			margin-right: 0.5rem;
+		}
+	}
+	> .description {
+		margin-top: 0.5rem;
+		margin-bottom: 0.5rem;
+	}
+}

@@ -2,8 +2,8 @@ use crate::kdl_ext::{DocumentExt, EntryExt, FromKDL, NodeContext, NodeExt, Value
 
 #[derive(Clone, PartialEq, Debug, Default)]
 pub struct Info {
-	short: Option<String>,
-	long: Vec<Section>,
+	pub short: Option<String>,
+	pub long: Vec<Section>,
 }
 
 #[derive(Clone, PartialEq, Debug)]

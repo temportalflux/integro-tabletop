@@ -1,7 +1,6 @@
-use std::sync::Arc;
-
 use super::SharedCharacter;
 use crate::system::dnd5e::data::{action::LimitedUses, character::Persistent};
+use std::sync::Arc;
 use wasm_bindgen::JsCast;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;

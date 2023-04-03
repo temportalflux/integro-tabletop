@@ -1,6 +1,9 @@
 use super::{description, IndirectCondition};
 use crate::kdl_ext::{DocumentExt, FromKDL, NodeExt};
-use std::{path::{PathBuf, Path}, borrow::Cow};
+use std::{
+	borrow::Cow,
+	path::{Path, PathBuf},
+};
 use uuid::Uuid;
 
 mod activation;

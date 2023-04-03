@@ -7,7 +7,7 @@ use crate::{
 			mutator::{Defense, Flag},
 			proficiency,
 			roll::{Modifier, RollSet},
-			Ability, ArmorClass, BoxedFeature, DamageRoll, DamageType, OtherProficiencies, Skill,
+			Ability, ArmorClass, BoxedFeature, DamageRoll, DamageType, OtherProficiencies, Skill, description,
 		},
 		Value,
 	},
@@ -60,11 +60,18 @@ impl Default for Derived {
 			armor_class: Default::default(),
 			actions: vec![Action {
 				name: "Unarmed Strike".into(),
-				description: "Instead of using a weapon to make a melee weapon attack, \
-				you can use an unarmed strike: a punch, kick, head-butt, or similar \
-				forceful blow (none of which count as weapons). On a hit, an unarmed \
-				strike deals bludgeoning damage equal to 1 + your Strength modifier. \
-				You are proficient with your unarmed strikes.".into(),
+				description: description::Info {
+					short: Some("You can punch, kick, head-butt, or use a similar forceful blow and deal \
+					bludgeoning damage equal to 1 + STR modifier".into()),
+					long: vec![description::Section {
+						title: None,
+						content: "Instead of using a weapon to make a melee weapon attack, \
+						you can use an unarmed strike: a punch, kick, head-butt, or similar \
+						forceful blow (none of which count as weapons). On a hit, an unarmed \
+						strike deals bludgeoning damage equal to 1 + your Strength modifier. \
+						You are proficient with your unarmed strikes.".into()
+					}]
+				},
 				activation_kind: ActivationKind::Action,
 				attack: Some(Attack {
 					kind: AttackKindValue::Melee { reach: 5 },

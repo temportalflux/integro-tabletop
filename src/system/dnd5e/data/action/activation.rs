@@ -15,16 +15,16 @@ pub enum ActivationKind {
 }
 
 impl ToString for ActivationKind {
-    fn to_string(&self) -> String {
-      match self {
-				Self::Action => "Action".to_owned(),
-				Self::Bonus => "Bonus Action".to_owned(),
-				Self::Reaction => "Reaction".to_owned(),
-				Self::Special => "Special".to_owned(),
-				Self::Minute(amt) => format!("{amt} Minutes"),
-				Self::Hour(amt) => format!("{amt} Hours"),
-			}
-    }
+	fn to_string(&self) -> String {
+		match self {
+			Self::Action => "Action".to_owned(),
+			Self::Bonus => "Bonus Action".to_owned(),
+			Self::Reaction => "Reaction".to_owned(),
+			Self::Special => "Special".to_owned(),
+			Self::Minute(amt) => format!("{amt} Minutes"),
+			Self::Hour(amt) => format!("{amt} Hours"),
+		}
+	}
 }
 
 impl FromKDL for ActivationKind {

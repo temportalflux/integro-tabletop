@@ -648,7 +648,7 @@ pub fn description(info: &description::Info, prefer_short: bool) -> Html {
 		}
 	}
 	html! {
-		<div>
+		<div class="description">
 			{info.long().map(|section| {
 				match section.title {
 					Some(title) => html! {
