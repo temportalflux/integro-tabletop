@@ -122,7 +122,7 @@ fn FeatureBlock(
 	}
 
 	html! {
-		<div style="border-width: 0; border-bottom: 1px; border-style: solid; border-color: var(--theme-frame-color-muted);">
+		<div class="border-bottom border-bottom-theme-muted">
 			<span>
 				<h5 class="d-inline" style="margin-right: 5px;">{name}</h5>
 				{match (*show_parent, crate::data::as_feature_path_text(parent)) {

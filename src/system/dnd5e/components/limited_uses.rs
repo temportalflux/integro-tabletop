@@ -38,7 +38,7 @@ impl<'parent> UsesCounter<'parent> {
 			.map(|idx| {
 				html! {
 					<input
-						class={"form-check-input"} type={"checkbox"}
+						class={"form-check-input slot"} type={"checkbox"}
 						checked={idx < consumed_uses}
 						onclick={Callback::from(|evt: web_sys::MouseEvent| evt.stop_propagation())}
 						onchange={toggle_use.clone()}
@@ -48,11 +48,11 @@ impl<'parent> UsesCounter<'parent> {
 			.collect::<Vec<_>>();
 
 		html! {
-			<span class="uses">
-				<strong>{"Uses: "}</strong>
+			<span class="uses d-flex align-items-center">
+				<strong class="me-2">{"Uses: "}</strong>
 				{use_checkboxes}
 				{match &self.limited_uses.reset_on {
-					Some(rest) => html! { <span>{"/"}{format!("{:?} Rest", rest)}</span> },
+					Some(rest) => html! { <span class="ms-2">{format!("(reset on {:?} Rest)", rest)}</span> },
 					None => html! {},
 				}}
 			</span>

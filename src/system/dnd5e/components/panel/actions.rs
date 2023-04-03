@@ -77,7 +77,7 @@ pub fn Actions() -> Html {
 		};
 
 		panes.push(html! {
-			<table class="table table-compact m-0">
+			<table class="table table-compact m-0 mb-3">
 				<thead>
 					<tr class="text-center" style="font-size: 0.7rem;">
 						<th scope="col">{"Attack"}</th>
@@ -194,14 +194,14 @@ fn action_html(action: &Action, state: &SharedCharacter, system: &UseStateHandle
 		}
 	};
 	html! {
-		<div class="action short">
+		<div class="action short mb-2 border-bottom-theme-muted">
 			<strong class="title">{action.name.clone()}</strong>
 			<span class="subtitle">
 				{action.activation_kind}
 				{source_path}
 			</span>
 			{description(&action.description, true)}
-			<div class="addendum mx-2">
+			<div class="addendum mx-2 mb-1">
 				{(!action.conditions_to_apply.is_empty()).then(|| {
 					let conditions_to_apply = Arc::new(action.conditions_to_apply.iter().filter_map(|indirect| {
 						indirect.resolve(&system).cloned()
