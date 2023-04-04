@@ -1,18 +1,29 @@
 use crate::{
-	bootstrap::components::Tooltip,
-	system::dnd5e::{
-		components::{SharedCharacter, WalletInline},
-		data::{character::ActionEffect, item::Item},
-	},
+	components::modal,
+	system::dnd5e::components::{SharedCharacter, WalletInline},
 };
-use uuid::Uuid;
-use wasm_bindgen::JsCast;
-use web_sys::HtmlInputElement;
 use yew::prelude::*;
+
+mod browse_content;
+pub use browse_content::*;
+mod equip_toggle;
+pub use equip_toggle::*;
+mod row;
+pub use row::*;
 
 #[function_component]
 pub fn Inventory() -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
+	let modal_dispatcher = use_context::<modal::Context>().unwrap();
+	let open_browser = modal_dispatcher.callback(|_| {
+		modal::Action::Open(modal::Props {
+			centered: true,
+			scrollable: true,
+			root_classes: classes!("inventory"),
+			content: html! {<BrowseModal />},
+			..Default::default()
+		})
+	});
 
 	// TODO: Implement search-inventory functionality
 	// TODO: tag buttons to browse item containers
@@ -23,7 +34,7 @@ pub fn Inventory() -> Html {
 				type="text" class="form-control"
 				placeholder="Search item names, types, rarities, or tags"
 			/>
-			<button class="btn btn-outline-theme" type="button">{"Browse Items"}</button>
+			<button type="button" class="btn btn-outline-theme" onclick={open_browser}>{"Browse Items"}</button>
 		</div>
 		<div class="d-flex">
 			<h5 class="my-auto">{"Equipment"}</h5>
@@ -48,90 +59,4 @@ pub fn Inventory() -> Html {
 		</table>
 
 	</>}
-}
-
-#[derive(Clone, PartialEq, Properties)]
-pub struct ItemRowProps {
-	id: Uuid,
-	item: Item,
-	is_equipped: bool,
-}
-
-#[function_component]
-pub fn ItemRow(
-	ItemRowProps {
-		id,
-		item,
-		is_equipped,
-	}: &ItemRowProps,
-) -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
-	let on_click_row = Callback::from(|_| log::debug!("TODO: open item interface modal"));
-	html! {
-		<tr class="align-middle" onclick={on_click_row}>
-			<td class="text-center">
-				<ItemRowEquipBox
-					id={id.clone()}
-					is_equipable={item.is_equipable()}
-					can_be_equipped={item.can_be_equipped(&*state)}
-					is_equipped={*is_equipped}
-				/>
-			</td>
-			<td>{item.name.clone()}</td>
-			<td class="text-center">{item.weight}{" lb."}</td>
-			<td class="text-center">{item.quantity()}</td>
-			<td style="width: 250px;">{item.notes.clone()}</td>
-		</tr>
-	}
-}
-
-#[derive(Clone, PartialEq, Properties)]
-struct EquipBoxProps {
-	id: Uuid,
-	is_equipable: bool,
-	can_be_equipped: Result<(), String>,
-	is_equipped: bool,
-}
-#[function_component]
-fn ItemRowEquipBox(
-	EquipBoxProps {
-		id,
-		is_equipable,
-		can_be_equipped,
-		is_equipped,
-	}: &EquipBoxProps,
-) -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
-	if !*is_equipable {
-		return html! { {"--"} };
-	}
-
-	let on_change = Callback::from({
-		let id = id.clone();
-		let state = state.clone();
-		move |evt: web_sys::Event| {
-			let Some(target) = evt.target() else { return; };
-			let Some(input) = target.dyn_ref::<HtmlInputElement>() else { return; };
-			let should_be_equipped = input.checked();
-			state.dispatch(Box::new(move |persistent, _| {
-				persistent.inventory.set_equipped(&id, should_be_equipped);
-				Some(ActionEffect::Recompile)
-			}));
-		}
-	});
-
-	html! {
-		<Tooltip content={match *is_equipped {
-			true => None,
-			false => can_be_equipped.clone().err(),
-		}}>
-			<input
-				class={"form-check-input"} type={"checkbox"}
-				checked={*is_equipped}
-				disabled={!*is_equipped && can_be_equipped.is_err()}
-				onclick={Callback::from(|evt: web_sys::MouseEvent| evt.stop_propagation())}
-				onchange={on_change}
-			/>
-		</Tooltip>
-	}
 }
