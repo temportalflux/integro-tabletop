@@ -15,7 +15,7 @@ pub enum AddProficiency {
 	Language(Selector<String>),
 	Armor(ArmorExtended, Option<String>),
 	Weapon(WeaponProficiency),
-	Tool(String),
+	Tool(Selector<String>),
 }
 
 crate::impl_trait_eq!(AddProficiency);
@@ -82,7 +82,16 @@ impl Mutator for AddProficiency {
 			Self::Weapon(WeaponProficiency::Classification(kind)) => {
 				Some(format!("You are proficient with {kind} weapon-types."))
 			}
-			Self::Tool(tool) => Some(format!("You are proficient with {tool}.")),
+			Self::Tool(Selector::Specific(tool)) => {
+				Some(format!("You are proficient with {tool}."))
+			}
+			Self::Tool(Selector::Any { .. }) => {
+				Some(format!("You are proficient with one tool of your choice."))
+			}
+			Self::Tool(Selector::AnyOf { options, .. }) => Some(format!(
+				"You are proficient with one tool of: {}.",
+				options.join(", ")
+			)),
 		}
 	}
 
@@ -90,6 +99,7 @@ impl Mutator for AddProficiency {
 		match self {
 			Self::Skill(selector, _) => selector.set_data_path(parent),
 			Self::Language(selector) => selector.set_data_path(parent),
+			Self::Tool(selector) => selector.set_data_path(parent),
 			_ => {}
 		}
 	}
@@ -129,10 +139,12 @@ impl Mutator for AddProficiency {
 					.insert(value.clone(), parent.to_owned());
 			}
 			Self::Tool(value) => {
-				stats
-					.other_proficiencies_mut()
-					.tools
-					.insert(value.clone(), parent.to_owned());
+				if let Some(value) = stats.resolve_selector(value) {
+					stats
+						.other_proficiencies_mut()
+						.tools
+						.insert(value, parent.to_owned());
+				}
 			}
 		}
 	}
@@ -144,6 +156,9 @@ impl Mutator for AddProficiency {
 				.to_vec(),
 			Self::Language(selector) => SelectorMetaVec::default()
 				.with_str("Language", selector)
+				.to_vec(),
+			Self::Tool(selector) => SelectorMetaVec::default()
+				.with_str("Tool", selector)
 				.to_vec(),
 			_ => None,
 		}
@@ -184,7 +199,11 @@ impl FromKDL for AddProficiency {
 				}
 				classification => WeaponProficiency::Classification(classification.to_owned()),
 			})),
-			"Tool" => Ok(Self::Tool(entry.as_str_req()?.to_owned())),
+			"Tool" => {
+				let tool =
+					Selector::from_kdl(node, entry, ctx, |kdl| Ok(kdl.as_str_req()?.to_owned()))?;
+				Ok(Self::Tool(tool))
+			}
 			name => Err(NotInList(
 				name.into(),
 				vec![
@@ -408,9 +427,36 @@ mod test {
 		}
 
 		#[test]
-		fn tool() -> anyhow::Result<()> {
-			let doc = "mutator \"add_proficiency\" (Tool)\"Dragonchess Set\"";
-			let expected = AddProficiency::Tool("Dragonchess Set".into());
+		fn tool_specific() -> anyhow::Result<()> {
+			let doc = "mutator \"add_proficiency\" (Tool)\"Specific\" \"Dragonchess Set\"";
+			let expected = AddProficiency::Tool(Selector::Specific("Dragonchess Set".into()));
+			assert_eq!(from_doc(doc)?, expected.into());
+			Ok(())
+		}
+
+		#[test]
+		fn tool_any() -> anyhow::Result<()> {
+			let doc = "mutator \"add_proficiency\" (Tool)\"Any\"";
+			let expected = AddProficiency::Tool(Selector::Any {
+				id: Default::default(),
+				cannot_match: Default::default(),
+			});
+			assert_eq!(from_doc(doc)?, expected.into());
+			Ok(())
+		}
+
+		#[test]
+		fn tool_anyof() -> anyhow::Result<()> {
+			let doc = "mutator \"add_proficiency\" (Tool)\"AnyOf\" {
+				option \"Dice set\"
+				option \"Playing card set\"
+				option \"Flute\"
+			}";
+			let expected = AddProficiency::Tool(Selector::AnyOf {
+				id: Default::default(),
+				options: vec!["Dice set".into(), "Playing card set".into(), "Flute".into()],
+				cannot_match: Default::default(),
+			});
 			assert_eq!(from_doc(doc)?, expected.into());
 			Ok(())
 		}
@@ -586,8 +632,11 @@ mod test {
 		}
 
 		#[test]
-		fn tool() {
-			let character = character(AddProficiency::Tool("Thieves' Tools".into()), None);
+		fn tool_specific() {
+			let character = character(
+				AddProficiency::Tool(Selector::Specific("Thieves' Tools".into())),
+				None,
+			);
 			assert_eq!(
 				*character.other_proficiencies().tools,
 				[("Thieves' Tools".into(), ["AddProficiency".into()].into())].into()

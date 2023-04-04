@@ -284,7 +284,7 @@ mod test {
 		fn tool() {
 			let empty = Character::from(Persistent::default());
 			let with_prof =
-				character_with_profs(vec![AddProficiency::Tool("Workworking Tools".into())]);
+				character_with_profs(vec![AddProficiency::Tool(Selector::Specific("Workworking Tools".into()))]);
 			let eval = IsProficientWith::Tool("Workworking Tools".into());
 			assert_eq!(eval.evaluate(&empty), false);
 			assert_eq!(eval.evaluate(&with_prof), true);
