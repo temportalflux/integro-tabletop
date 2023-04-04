@@ -4,7 +4,7 @@ use enumset::{EnumSet, EnumSetType};
 use std::str::FromStr;
 
 #[derive(Debug, EnumSetType, Enum, PartialOrd, Ord, Hash)]
-pub enum CurrencyKind {
+pub enum Kind {
 	Copper,
 	Silver,
 	Electrum,
@@ -12,7 +12,7 @@ pub enum CurrencyKind {
 	Platinum,
 }
 
-impl CurrencyKind {
+impl Kind {
 	pub fn all() -> impl Iterator<Item = Self> {
 		EnumSet::all().into_iter()
 	}
@@ -38,7 +38,7 @@ impl CurrencyKind {
 	}
 }
 
-impl ToString for CurrencyKind {
+impl ToString for Kind {
 	fn to_string(&self) -> String {
 		match self {
 			Self::Copper => "Copper",
@@ -51,7 +51,7 @@ impl ToString for CurrencyKind {
 	}
 }
 
-impl FromStr for CurrencyKind {
+impl FromStr for Kind {
 	type Err = InvalidEnumStr<Self>;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {

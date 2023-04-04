@@ -4,27 +4,26 @@ use crate::{
 	system::dnd5e::{
 		data::{
 			action::{
-				Action, ActionSource, ActivationKind, Attack, AttackCheckKind, AttackKind,
-				AttackKindValue,
+				Action, ActionSource, ActivationKind, Attack, AttackCheckKind, AttackKindValue,
 			},
 			evaluator::{self, IsProficientWith},
-			roll::Roll,
-			Ability, DamageRoll, DamageType, WeaponProficiency,
+			Ability, DamageRoll, WeaponProficiency,
 		},
 		Value,
 	},
-	utility::InvalidEnumStr,
-	GeneralError,
 };
-use enumset::EnumSetType;
-use std::{collections::HashSet, str::FromStr};
+use std::str::FromStr;
 
-#[derive(Clone, PartialEq, Default, Debug)]
-pub struct Restriction {
-	pub weapon_kind: HashSet<Kind>,
-	pub attack_kind: HashSet<AttackKind>,
-	pub ability: HashSet<Ability>,
-}
+mod damage;
+pub use damage::*;
+mod kind;
+pub use kind::*;
+mod property;
+pub use property::*;
+mod range;
+pub use range::*;
+mod restriction;
+pub use restriction::*;
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Weapon {
@@ -33,33 +32,6 @@ pub struct Weapon {
 	pub damage: Option<WeaponDamage>,
 	pub properties: Vec<Property>,
 	pub range: Option<Range>,
-}
-
-#[derive(Default, Debug, EnumSetType, PartialOrd, Ord, Hash)]
-pub enum Kind {
-	#[default]
-	Simple,
-	Martial,
-}
-impl ToString for Kind {
-	fn to_string(&self) -> String {
-		match self {
-			Self::Simple => "Simple",
-			Self::Martial => "Martial",
-		}
-		.to_owned()
-	}
-}
-impl FromStr for Kind {
-	type Err = InvalidEnumStr<Self>;
-
-	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		match s {
-			"Simple" => Ok(Self::Simple),
-			"Martial" => Ok(Self::Martial),
-			_ => Err(InvalidEnumStr::from(s)),
-		}
-	}
 }
 
 impl Weapon {
@@ -83,6 +55,7 @@ impl Weapon {
 			AttackKindValue::Melee { .. } => Ability::Strength,
 			AttackKindValue::Ranged { .. } => Ability::Dexterity,
 		};
+		// TODO: Handle weapon properties
 		Action {
 			name: entry.item.name.clone(),
 			activation_kind: ActivationKind::Action,
@@ -147,91 +120,110 @@ impl FromKDL for Weapon {
 	}
 }
 
-#[derive(Clone, PartialEq, Default, Debug)]
-pub struct WeaponDamage {
-	pub roll: Option<Roll>,
-	pub bonus: i32,
-	pub damage_type: DamageType,
-}
+#[cfg(test)]
+mod test {
+	use super::*;
 
-impl FromKDL for WeaponDamage {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		let roll = match node.get_str_opt("roll")? {
-			Some(roll_str) => Some(Roll::from_str(roll_str)?),
-			None => None,
+	// TODO: Tests for generating an attack from a weapon
+
+	mod from_kdl {
+		use super::*;
+		use crate::{
+			kdl_ext::NodeContext,
+			system::dnd5e::data::{
+				roll::{Die, Roll},
+				DamageType,
+			},
 		};
-		let base = node.get_i64_opt("base")?.unwrap_or(0) as i32;
-		let damage_type = DamageType::from_str(node.get_str_req(ctx.consume_idx())?)?;
-		Ok(Self {
-			roll,
-			bonus: base,
-			damage_type,
-		})
-	}
-}
 
-#[derive(Clone, PartialEq, Debug)]
-pub enum Property {
-	Light,   // used by two handed fighting feature
-	Finesse, // melee weapons use strength, ranged use dex, finesse take the better of either modifier
-	Heavy,   // small or tiny get disadvantage on attack rolls when using this weapon
-	Reach, // This weapon adds 5 feet to your reach when you attack with it, as well as when determining your reach for opportunity attacks with it.
-	TwoHanded,
-	Thrown(u32, u32),
-	Versatile(Roll),
-}
-impl FromKDL for Property {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		match node.get_str_req(ctx.consume_idx())? {
-			"Light" => Ok(Self::Light),
-			"Finesse" => Ok(Self::Finesse),
-			"Heavy" => Ok(Self::Heavy),
-			"Reach" => Ok(Self::Reach),
-			"TwoHanded" => Ok(Self::TwoHanded),
-			"Thrown" => {
-				let short = node.get_i64_req(ctx.consume_idx())? as u32;
-				let long = node.get_i64_req(ctx.consume_idx())? as u32;
-				Ok(Self::Thrown(short, long))
-			}
-			"Versatile" => {
-				let roll = Roll::from_str(node.get_str_req(ctx.consume_idx())?)?;
-				Ok(Self::Versatile(roll))
-			}
-			name => Err(GeneralError(format!("Unrecognized weapon property {name:?}")).into()),
+		fn from_doc(doc: &str) -> anyhow::Result<Weapon> {
+			let document = doc.parse::<kdl::KdlDocument>()?;
+			let node = document
+				.query("scope() > weapon")?
+				.expect("missing weapon node");
+			Weapon::from_kdl(node, &mut NodeContext::default())
+		}
+
+		#[test]
+		fn simple() -> anyhow::Result<()> {
+			let doc = "weapon \"Simple\" class=\"Handaxe\" {
+				damage \"Slashing\" roll=\"1d6\"
+				property \"Light\"
+				property \"Thrown\" 20 60
+			}";
+			let expected = Weapon {
+				kind: Kind::Simple,
+				classification: "Handaxe".into(),
+				damage: Some(WeaponDamage {
+					roll: Some(Roll {
+						amount: 1,
+						die: Die::D6,
+					}),
+					bonus: 0,
+					damage_type: DamageType::Slashing,
+				}),
+				properties: vec![Property::Light, Property::Thrown(20, 60)],
+				range: None,
+			};
+			assert_eq!(from_doc(doc)?, expected);
+			Ok(())
+		}
+
+		#[test]
+		fn martial() -> anyhow::Result<()> {
+			let doc = "weapon \"Martial\" class=\"Rapier\" {
+				damage \"Piercing\" roll=\"1d8\"
+				property \"Finesse\"
+			}";
+			let expected = Weapon {
+				kind: Kind::Martial,
+				classification: "Rapier".into(),
+				damage: Some(WeaponDamage {
+					roll: Some(Roll {
+						amount: 1,
+						die: Die::D8,
+					}),
+					bonus: 0,
+					damage_type: DamageType::Piercing,
+				}),
+				properties: vec![Property::Finesse],
+				range: None,
+			};
+			assert_eq!(from_doc(doc)?, expected);
+			Ok(())
+		}
+
+		#[test]
+		fn ranged() -> anyhow::Result<()> {
+			let doc = "weapon \"Martial\" class=\"CrossbowHand\" {
+				damage \"Piercing\" roll=\"1d6\"
+				property \"Light\"
+				range 30 120 {
+					ammunition
+					loading
+				}
+			}";
+			let expected = Weapon {
+				kind: Kind::Martial,
+				classification: "CrossbowHand".into(),
+				damage: Some(WeaponDamage {
+					roll: Some(Roll {
+						amount: 1,
+						die: Die::D6,
+					}),
+					bonus: 0,
+					damage_type: DamageType::Piercing,
+				}),
+				properties: vec![Property::Light],
+				range: Some(Range {
+					short_range: 30,
+					long_range: 120,
+					requires_ammunition: true,
+					requires_loading: true,
+				}),
+			};
+			assert_eq!(from_doc(doc)?, expected);
+			Ok(())
 		}
 	}
 }
-
-#[derive(Clone, PartialEq, Default, Debug)]
-pub struct Range {
-	pub short_range: u32,
-	pub long_range: u32,
-	pub requires_ammunition: bool,
-	pub requires_loading: bool,
-}
-
-impl FromKDL for Range {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		let short_range = node.get_i64_req(ctx.consume_idx())? as u32;
-		let long_range = node.get_i64_req(ctx.consume_idx())? as u32;
-		let requires_ammunition = node.query("scope() > ammunition")?.is_some();
-		let requires_loading = node.query("scope() > loading")?.is_some();
-		Ok(Self {
-			short_range,
-			long_range,
-			requires_ammunition,
-			requires_loading,
-		})
-	}
-}
-
-// TODO: Test just all of it

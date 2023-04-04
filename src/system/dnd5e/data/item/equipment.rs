@@ -111,3 +111,118 @@ impl FromKDL for Equipment {
 pub struct Attunement {
 	pub modifiers: Vec<BoxedMutator>,
 }
+
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	mod from_kdl {
+		use super::*;
+		use crate::{
+			kdl_ext::NodeContext,
+			system::{
+				core::NodeRegistry,
+				dnd5e::data::{
+					item::{armor, weapon},
+					mutator::{AddModifier, ModifierKind},
+					roll::{Die, Modifier, Roll},
+					ArmorClassFormula, DamageType, Skill,
+				},
+			},
+			utility::Selector,
+		};
+
+		fn from_doc(doc: &str) -> anyhow::Result<Equipment> {
+			let mut ctx = NodeContext::registry(NodeRegistry::default_with_mut::<AddModifier>());
+			let document = doc.parse::<kdl::KdlDocument>()?;
+			let node = document
+				.query("scope() > equipment")?
+				.expect("missing equipment node");
+			Equipment::from_kdl(node, &mut ctx)
+		}
+
+		#[test]
+		fn armor() -> anyhow::Result<()> {
+			let doc = "equipment {
+				armor \"Heavy\" {
+					formula base=18
+					min-strength 15
+				}
+				mutator \"add_modifier\" \"Disadvantage\" (Skill)\"Specific\" \"Stealth\"
+			}";
+			let expected = Equipment {
+				criteria: None,
+				modifiers: vec![AddModifier {
+					modifier: Modifier::Disadvantage,
+					context: None,
+					kind: ModifierKind::Skill(Selector::Specific(Skill::Stealth)),
+				}
+				.into()],
+				armor: Some(Armor {
+					kind: armor::Kind::Heavy,
+					formula: ArmorClassFormula {
+						base: 18,
+						bonuses: vec![],
+					},
+					min_strength_score: Some(15),
+				}),
+				shield: None,
+				weapon: None,
+				attunement: None,
+			};
+			assert_eq!(from_doc(doc)?, expected);
+			Ok(())
+		}
+
+		#[test]
+		fn weapon() -> anyhow::Result<()> {
+			let doc = "equipment {
+				weapon \"Martial\" class=\"Maul\" {
+					damage \"Bludgeoning\" roll=\"2d6\"
+					property \"Heavy\"
+					property \"TwoHanded\"
+				}
+			}";
+			let expected = Equipment {
+				criteria: None,
+				modifiers: vec![],
+				armor: None,
+				shield: None,
+				weapon: Some(Weapon {
+					kind: weapon::Kind::Martial,
+					classification: "Maul".into(),
+					damage: Some(weapon::WeaponDamage {
+						roll: Some(Roll {
+							amount: 2,
+							die: Die::D6,
+						}),
+						bonus: 0,
+						damage_type: DamageType::Bludgeoning,
+					}),
+					properties: vec![weapon::Property::Heavy, weapon::Property::TwoHanded],
+					range: None,
+				}),
+				attunement: None,
+			};
+			assert_eq!(from_doc(doc)?, expected);
+			Ok(())
+		}
+
+		#[test]
+		fn shield() -> anyhow::Result<()> {
+			let doc = "equipment {
+				shield bonus=2
+			}";
+			let expected = Equipment {
+				criteria: None,
+				modifiers: vec![],
+				armor: None,
+				shield: Some(2),
+				weapon: None,
+				attunement: None,
+			};
+			assert_eq!(from_doc(doc)?, expected);
+			Ok(())
+		}
+	}
+}

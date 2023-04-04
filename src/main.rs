@@ -42,7 +42,8 @@ fn create_character(system: &system::dnd5e::DnD5e) -> system::dnd5e::data::chara
 		core::SourceId,
 		dnd5e::data::{
 			character::{Description, Persistent},
-			Ability, CurrencyKind, Wallet,
+			currency::{self, Wallet},
+			Ability,
 		},
 	};
 	let mut persistent = Persistent {
@@ -100,11 +101,11 @@ fn create_character(system: &system::dnd5e::DnD5e) -> system::dnd5e::data::chara
 	persistent.ability_scores[Ability::Charisma] = 13;
 	persistent.hit_points.current = 6;
 	*persistent.inventory.wallet_mut() = Wallet::from([
-		(3, CurrencyKind::Platinum),
-		(16, CurrencyKind::Gold),
-		(4, CurrencyKind::Electrum),
-		(30, CurrencyKind::Silver),
-		(152, CurrencyKind::Copper),
+		(3, currency::Kind::Platinum),
+		(16, currency::Kind::Gold),
+		(4, currency::Kind::Electrum),
+		(30, currency::Kind::Silver),
+		(152, currency::Kind::Copper),
 	]);
 	persistent
 }

@@ -1,4 +1,4 @@
-use super::{mutator::AddAction, Wallet};
+use super::{currency::Wallet, mutator::AddAction};
 use crate::{
 	kdl_ext::{DocumentExt, FromKDL, NodeContext, NodeExt},
 	system::{
@@ -19,7 +19,9 @@ pub struct Item {
 	pub name: String,
 	pub description: Option<String>,
 	pub weight: f32,
-	pub worth: u32,
+	// TODO: When browsing items to add to inventory, there should be a PURCHASE option for buying
+	// some quantity of an item and immediately removing the total from the characters's wallet.
+	pub worth: Wallet,
 	pub notes: Option<String>,
 	pub kind: ItemKind,
 	pub tags: Vec<String>,
@@ -70,16 +72,12 @@ impl FromKDL for Item {
 		let description = node
 			.query_str_opt("scope() > description", 0)?
 			.map(str::to_owned);
+
 		let worth = match node.query("scope() > worth")? {
-			Some(node) => {
-				// TODO: Support currency type
-				let amount = node.get_i64_req(0)?;
-				let _currency = node.get_str_req(1)?;
-				Some(amount as u32)
-			}
-			None => None,
-		}
-		.unwrap_or(0);
+			Some(node) => Wallet::from_kdl(node, &mut ctx.next_node())?,
+			None => Wallet::default(),
+		};
+
 		let notes = node.query_str_opt("scope() > notes", 0)?.map(str::to_owned);
 		let tags = {
 			let mut tags = Vec::new();
@@ -255,6 +253,101 @@ impl MutatorGroup for Inventory {
 	fn apply_mutators(&self, stats: &mut Character, parent: &Path) {
 		for entry in self.items_by_name() {
 			stats.apply_from(entry, parent);
+		}
+	}
+}
+
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	mod item {
+		use super::*;
+		use crate::{
+			kdl_ext::NodeContext,
+			system::{
+				core::NodeRegistry,
+				dnd5e::data::{
+					currency,
+					item::{armor::Armor, equipment::Equipment},
+					mutator::{AddModifier, ModifierKind},
+					roll::Modifier,
+					ArmorClassFormula, Skill,
+				},
+			},
+			utility::Selector,
+		};
+
+		fn from_doc(doc: &str) -> anyhow::Result<Item> {
+			let mut ctx = NodeContext::registry(NodeRegistry::default_with_mut::<AddModifier>());
+			let document = doc.parse::<kdl::KdlDocument>()?;
+			let node = document
+				.query("scope() > item")?
+				.expect("missing item node");
+			Item::from_kdl(node, &mut ctx)
+		}
+
+		#[test]
+		fn simple() -> anyhow::Result<()> {
+			let doc = "item name=\"Torch\" weight=1.0 {
+				worth 1 (Currency)\"Copper\"
+				kind \"Simple\" count=5
+			}";
+			let expected = Item {
+				name: "Torch".into(),
+				description: None,
+				weight: 1.0,
+				worth: Wallet::from([(1, currency::Kind::Copper)]),
+				notes: None,
+				kind: ItemKind::Simple { count: 5 },
+				tags: vec![],
+			};
+			assert_eq!(from_doc(doc)?, expected);
+			Ok(())
+		}
+
+		#[test]
+		fn equipment() -> anyhow::Result<()> {
+			let doc = "item name=\"Plate Armor\" weight=65.0 {
+				worth 1500 (Currency)\"Gold\"
+				kind \"Equipment\" {
+					armor \"Heavy\" {
+						formula base=18
+						min-strength 15
+					}
+					mutator \"add_modifier\" \"Disadvantage\" (Skill)\"Specific\" \"Stealth\"
+				}
+			}";
+			let expected = Item {
+				name: "Plate Armor".into(),
+				description: None,
+				weight: 65.0,
+				worth: Wallet::from([(1500, currency::Kind::Gold)]),
+				notes: None,
+				kind: ItemKind::Equipment(Equipment {
+					criteria: None,
+					modifiers: vec![AddModifier {
+						modifier: Modifier::Disadvantage,
+						context: None,
+						kind: ModifierKind::Skill(Selector::Specific(Skill::Stealth)),
+					}
+					.into()],
+					armor: Some(Armor {
+						kind: armor::Kind::Heavy,
+						formula: ArmorClassFormula {
+							base: 18,
+							bonuses: vec![],
+						},
+						min_strength_score: Some(15),
+					}),
+					shield: None,
+					weapon: None,
+					attunement: None,
+				}),
+				tags: vec![],
+			};
+			assert_eq!(from_doc(doc)?, expected);
+			Ok(())
 		}
 	}
 }

@@ -79,4 +79,83 @@ impl MutatorGroup for Armor {
 	}
 }
 
-// TODO: Test Armor
+#[cfg(test)]
+mod test {
+	use super::*;
+	use crate::{
+		kdl_ext::NodeContext,
+		system::dnd5e::data::{Ability, BoundedAbility},
+	};
+
+	fn from_doc(doc: &str) -> anyhow::Result<Armor> {
+		let document = doc.parse::<kdl::KdlDocument>()?;
+		let node = document
+			.query("scope() > armor")?
+			.expect("missing armor node");
+		Armor::from_kdl(node, &mut NodeContext::default())
+	}
+
+	#[test]
+	fn light() -> anyhow::Result<()> {
+		let doc = "armor \"Light\" {
+			formula base=11 {
+				bonus (Ability)\"Dexterity\"
+			}
+		}";
+		let expected = Armor {
+			kind: Kind::Light,
+			formula: ArmorClassFormula {
+				base: 11,
+				bonuses: vec![BoundedAbility {
+					ability: Ability::Dexterity,
+					min: None,
+					max: None,
+				}],
+			},
+			min_strength_score: None,
+		};
+		assert_eq!(from_doc(doc)?, expected);
+		Ok(())
+	}
+
+	#[test]
+	fn medium() -> anyhow::Result<()> {
+		let doc = "armor \"Medium\" {
+			formula base=13 {
+				bonus (Ability)\"Dexterity\" max=2
+			}
+		}";
+		let expected = Armor {
+			kind: Kind::Medium,
+			formula: ArmorClassFormula {
+				base: 13,
+				bonuses: vec![BoundedAbility {
+					ability: Ability::Dexterity,
+					min: None,
+					max: Some(2),
+				}],
+			},
+			min_strength_score: None,
+		};
+		assert_eq!(from_doc(doc)?, expected);
+		Ok(())
+	}
+
+	#[test]
+	fn heavy() -> anyhow::Result<()> {
+		let doc = "armor \"Heavy\" {
+			formula base=18
+			min-strength 15
+		}";
+		let expected = Armor {
+			kind: Kind::Heavy,
+			formula: ArmorClassFormula {
+				base: 18,
+				bonuses: vec![],
+			},
+			min_strength_score: Some(15),
+		};
+		assert_eq!(from_doc(doc)?, expected);
+		Ok(())
+	}
+}
