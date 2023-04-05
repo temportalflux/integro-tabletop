@@ -310,7 +310,7 @@ async fn main() -> anyhow::Result<()> {
 	for (mut source_id, content) in sources {
 		let document = content
 			.parse::<kdl::KdlDocument>()
-			.context("Invalid KDL format")?;
+			.with_context(|| format!("Invalid KDL format in {:?}", source_id.to_string()))?;
 		for (idx, node) in document.nodes().iter().enumerate() {
 			source_id.node_idx = idx;
 			let node_name = node.name().value();
