@@ -1,48 +1,8 @@
 # Backlog
 -----
 
-## Descriptive Modals
-Modals for all elements with tooltips & more.
-
-### Death Saving Throws
-- in the hit points UI, shown when current hp is 0
-
-### Speeds & Senses
-- values & sources
-- description of speeds & senses
-
-### Defenses
-- Long-form description, split into sections (resistant, immune, vulnerable) with values and their sources
-
-### Conditions
-- Add/Remove conditions
-
-### Other
-- Each Item
-- Each Attack
-- Each Feature
-
 ## Attacks per Action
 Track Attacks per Action & display in attacks pane
-
-## Actions in Combat
-- section which lists all the actions that can be used in combat
-- Attack, Cast a Spell, Dash, Disengage, Dodge, Grapple, Help, Hide, Improvise, Ready, Search, Shove, Use an Object
-- each of these can be clicked on to open a modal with their description
-
-## Classes
-- Add hard-coded class content for each class (Barbarian, Bard, Cleric, Druid, Fighter, Monk, Paladin, Ranger, Rogue, Sorcerer, Warlock, Wizard)
-- Add 1 subclass for each class in content
-
-## Currency
-- Items can have the ability to hold currency
-- Main inventory has the primary currency container
-- can store as u64 where: PP: x1000, GP: x100, SP: x10, CP: x1
-
-## Item Containers
-- Only items in the characters main inventory can be equipped
-- Weight Capacity (optional)
-- Entries (list of items)
 
 ## Attunement UI
 - 3 slots to which attunable items can be "equipped"
@@ -84,12 +44,6 @@ Allow users to create new elements
 - Save persistent data to session storage while character is open
 - eventually have this all query against github repos where classes, subclasses, backgrounds, lineages, upbringings, items, & spells all have a `repo`+`path` tuple which describes from where to fetch data updates from
 - modules can be added to the user's profile to be loaded when the application starts up (by querying the repos)
-
-## Builder/Editor
-- select which modules are allowed
-- selecting lineage, upbringing, background, class
-- levels can be managed here
-- Special Level Up button / interface for adding 1 level; includes feature selections and subclass, and multiclassing eventually
 
 ## Mailbox
 - Pull requests are used to send items between characters
