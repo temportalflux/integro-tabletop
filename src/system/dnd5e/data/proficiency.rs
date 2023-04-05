@@ -95,7 +95,7 @@ impl std::ops::Mul<i32> for Level {
 
 	fn mul(self, prof_bonus: i32) -> Self::Output {
 		let modified = (prof_bonus as f32) * self.bonus_multiplier();
-		modified.floor() as i32
+		modified.ceil() as i32
 	}
 }
 

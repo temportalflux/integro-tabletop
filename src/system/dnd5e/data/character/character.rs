@@ -238,15 +238,7 @@ impl Character {
 	) -> i32 {
 		let modifier = self.ability_scores().get(ability).score().modifier();
 		let bonus = match proficiency {
-			Some(proficiency) => {
-				let prof_bonus_multiplier = match proficiency {
-					proficiency::Level::None => 0.0,
-					proficiency::Level::Half => 0.5,
-					proficiency::Level::Full => 1.0,
-					proficiency::Level::Double => 2.0,
-				};
-				((self.proficiency_bonus() as f32) * prof_bonus_multiplier).floor() as i32
-			}
+			Some(proficiency) => proficiency * self.proficiency_bonus(),
 			None => 0,
 		};
 		modifier + bonus
