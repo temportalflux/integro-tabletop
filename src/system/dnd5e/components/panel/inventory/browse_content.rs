@@ -1,7 +1,7 @@
+use crate::system::dnd5e::{data::item::Item, DnD5e};
 use wasm_bindgen::JsCast;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
-use crate::system::dnd5e::{DnD5e, data::item::Item};
 
 #[function_component]
 pub fn BrowseModal() -> Html {
@@ -17,9 +17,12 @@ pub fn BrowseModal() -> Html {
 				relevant_item_ids.set(Vec::new());
 				return;
 			}
-			let ids = system.items.iter().filter_map(|(id, item)| {
-				value.matches(item).then_some(id)
-			}).cloned().collect::<Vec<_>>();
+			let ids = system
+				.items
+				.iter()
+				.filter_map(|(id, item)| value.matches(item).then_some(id))
+				.cloned()
+				.collect::<Vec<_>>();
 			relevant_item_ids.set(ids);
 		}
 	});

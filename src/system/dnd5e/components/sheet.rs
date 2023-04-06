@@ -1,6 +1,9 @@
 use crate::{
 	components::modal,
-	system::dnd5e::data::character::{ActionEffect, Character, Persistent},
+	system::dnd5e::{
+		data::character::{ActionEffect, Character, Persistent},
+		DnD5e,
+	},
 };
 use yew::prelude::*;
 
@@ -38,9 +41,11 @@ pub struct CharacterSheetPageProps {
 
 #[function_component]
 pub fn CharacterSheetPage(CharacterSheetPageProps { character }: &CharacterSheetPageProps) -> Html {
+	let system = use_context::<UseStateHandle<DnD5e>>().unwrap();
 	let character = SharedCharacter(use_reducer({
+		let system = system.clone();
 		let character = character.clone();
-		move || Character::from(character)
+		move || Character::new(character, &*system)
 	}));
 	let modal_dispatcher = modal::Context::from(use_reducer(|| modal::State::default()));
 	let show_editor = use_state_eq(|| false);

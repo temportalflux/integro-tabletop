@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 
+mod defaults;
+pub use defaults::*;
 mod persistent;
 pub use persistent::*;
 mod derived;

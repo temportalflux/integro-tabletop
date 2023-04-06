@@ -11,7 +11,7 @@ use crate::{
 			mutator::Flag,
 			proficiency, Ability, ArmorClass, BoxedFeature, OtherProficiencies,
 		},
-		BoxedCriteria, BoxedMutator,
+		BoxedCriteria, BoxedMutator, DnD5e,
 	},
 	utility::{Dependencies, MutatorGroup, Selector},
 };
@@ -23,7 +23,7 @@ use std::{
 	str::FromStr,
 };
 
-use super::HitPoints;
+use super::{DefaultsBlock, HitPoints};
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum ActionEffect {
@@ -34,6 +34,7 @@ pub enum ActionEffect {
 /// structure for all character data.
 #[derive(Clone, PartialEq, Debug)]
 pub struct Character {
+	default_blocks: Vec<DefaultsBlock>,
 	character: Persistent,
 	derived: Derived,
 	mutators: Vec<MutatorEntry>,
@@ -47,14 +48,13 @@ struct MutatorEntry {
 }
 impl From<Persistent> for Character {
 	fn from(persistent: Persistent) -> Self {
-		persistent.set_data_path(&PathBuf::new());
 		let mut character = Self {
-			character: persistent.clone(),
+			default_blocks: Vec::new(),
+			character: persistent,
 			derived: Derived::default(),
 			mutators: Vec::new(),
 		};
-		character.apply_from(&persistent, &PathBuf::new());
-		character.apply_cached_mutators();
+		character.recompile();
 		character
 	}
 }
@@ -70,6 +70,29 @@ impl yew::Reducible for Character {
 	}
 }
 impl Character {
+	pub fn new(persistent: Persistent, system: &DnD5e) -> Self {
+		let default_blocks = system.default_blocks.values().cloned().collect();
+		let mut character = Self {
+			default_blocks,
+			character: persistent,
+			derived: Derived::default(),
+			mutators: Vec::new(),
+		};
+		character.recompile();
+		character
+	}
+
+	fn recompile(&mut self) {
+		self.character.set_data_path(&PathBuf::new());
+		self.derived = Derived::default();
+		self.mutators.clear();
+		for defaults in self.default_blocks.clone() {
+			self.apply_from(&defaults, &PathBuf::new());
+		}
+		self.apply_from(&self.character.clone(), &PathBuf::new());
+		self.apply_cached_mutators();
+	}
+
 	pub fn apply_from(&mut self, container: &impl MutatorGroup<Target = Self>, parent: &Path) {
 		container.apply_mutators(self, parent);
 	}

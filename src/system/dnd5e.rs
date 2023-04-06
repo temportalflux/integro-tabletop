@@ -71,6 +71,7 @@ pub trait SystemComponent {
 
 pub fn component_registry() -> ComponentRegistry<DnD5e> {
 	let mut registry = ComponentRegistry::default();
+	registry.register::<data::character::DefaultsBlock>();
 	registry.register::<data::bundle::Race>();
 	registry.register::<data::bundle::RaceVariant>();
 	registry.register::<data::bundle::Lineage>();
@@ -113,6 +114,7 @@ pub fn node_registry() -> NodeRegistry {
 
 #[derive(Clone, PartialEq, Default)]
 pub struct DnD5e {
+	pub default_blocks: HashMap<SourceId, data::character::DefaultsBlock>,
 	pub races: HashMap<SourceId, data::bundle::Race>,
 	pub race_variants: HashMap<SourceId, data::bundle::RaceVariant>,
 	pub lineages: HashMap<SourceId, data::bundle::Lineage>,

@@ -84,6 +84,7 @@ impl MutatorGroup for Persistent {
 		}
 		stats.apply(&super::FinalizeAbilityScores.into(), parent);
 
+		// TODO: Remove when the `basic_rules/dnd5e/defaults` mutator is working
 		stats.apply(
 			&AddMaxHitPoints {
 				id: Some("Constitution x Levels".into()),
