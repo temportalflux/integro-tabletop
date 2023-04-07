@@ -1,9 +1,6 @@
 use crate::{
 	kdl_ext::{FromKDL, NodeExt, ValueExt},
-	system::dnd5e::{
-		data::{character::Character, DamageType},
-		Value,
-	},
+	system::dnd5e::data::{character::Character, DamageType},
 	utility::{InvalidEnumStr, Mutator},
 };
 use enum_map::Enum;
@@ -42,7 +39,7 @@ impl FromStr for Defense {
 #[derive(Clone, Debug, PartialEq)]
 pub struct AddDefense {
 	pub defense: Defense,
-	pub damage_type: Option<Value<DamageType>>,
+	pub damage_type: Option<DamageType>,
 	pub context: Option<String>,
 }
 impl Default for AddDefense {
@@ -59,7 +56,24 @@ crate::impl_kdl_node!(AddDefense, "add_defense");
 impl Mutator for AddDefense {
 	type Target = Character;
 
-	// TODO: mutator description add_defense
+	fn description(&self) -> Option<String> {
+		Some(format!(
+			"You are {} to {} damage{}.",
+			match self.defense {
+				Defense::Resistance => "resistant",
+				Defense::Immunity => "immune",
+				Defense::Vulnerability => "vulnerable",
+			},
+			match &self.damage_type {
+				None => "all",
+				Some(damage_type) => damage_type.display_name(),
+			},
+			self.context
+				.as_ref()
+				.map(|ctx| format!(" from {ctx}"))
+				.unwrap_or_default(),
+		))
+	}
 
 	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
 		stats.defenses_mut().push(
@@ -78,9 +92,7 @@ impl FromKDL for AddDefense {
 	) -> anyhow::Result<Self> {
 		let defense = Defense::from_str(node.get_str_req(ctx.consume_idx())?)?;
 		let damage_type = match node.entry(ctx.consume_idx()) {
-			Some(entry) => Some(Value::from_kdl(node, entry, ctx, |kdl| {
-				Ok(DamageType::from_str(kdl.as_str_req()?)?)
-			})?),
+			Some(entry) => Some(DamageType::from_str(entry.as_str_req()?)?),
 			None => None,
 		};
 		let context = node.get_str_opt("context")?.map(str::to_owned);
@@ -102,7 +114,7 @@ mod test {
 				character::{Character, DefenseEntry, Persistent},
 				DamageType, Feature,
 			},
-			BoxedMutator, Value,
+			BoxedMutator,
 		},
 	};
 
@@ -117,11 +129,12 @@ mod test {
 
 		#[test]
 		fn no_args() -> anyhow::Result<()> {
-			let doc = "mutator \"add_defense\" (Defense)\"Resistance\"";
+			let doc =
+				"mutator \"add_defense\" (Defense)\"Resistance\" context=\"nonmagical attacks\"";
 			let expected = AddDefense {
 				defense: Defense::Resistance,
 				damage_type: None,
-				context: None,
+				context: Some("nonmagical attacks".into()),
 			};
 			assert_eq!(from_doc(doc)?, expected.into());
 			Ok(())
@@ -132,7 +145,7 @@ mod test {
 			let doc = "mutator \"add_defense\" (Defense)\"Resistance\" (DamageType)\"Cold\"";
 			let expected = AddDefense {
 				defense: Defense::Resistance,
-				damage_type: Some(Value::Fixed(DamageType::Cold)),
+				damage_type: Some(DamageType::Cold),
 				context: None,
 			};
 			assert_eq!(from_doc(doc)?, expected.into());
@@ -147,7 +160,7 @@ mod test {
 				name: "AddDefense".into(),
 				mutators: vec![AddDefense {
 					defense: Defense::Resistance,
-					damage_type: Some(Value::Fixed(DamageType::Fire)),
+					damage_type: Some(DamageType::Fire),
 					context: None,
 				}
 				.into()],
@@ -159,7 +172,7 @@ mod test {
 		assert_eq!(
 			character.defenses()[Defense::Resistance],
 			vec![DefenseEntry {
-				damage_type: Some(Value::Fixed(DamageType::Fire)),
+				damage_type: Some(DamageType::Fire),
 				context: None,
 				source: "AddDefense".into(),
 			}]
@@ -173,7 +186,7 @@ mod test {
 				name: "AddDefense".into(),
 				mutators: vec![AddDefense {
 					defense: Defense::Immunity,
-					damage_type: Some(Value::Fixed(DamageType::Cold)),
+					damage_type: Some(DamageType::Cold),
 					context: None,
 				}
 				.into()],
@@ -185,7 +198,7 @@ mod test {
 		assert_eq!(
 			character.defenses()[Defense::Immunity],
 			vec![DefenseEntry {
-				damage_type: Some(Value::Fixed(DamageType::Cold)),
+				damage_type: Some(DamageType::Cold),
 				context: None,
 				source: "AddDefense".into(),
 			}]
@@ -199,7 +212,7 @@ mod test {
 				name: "AddDefense".into(),
 				mutators: vec![AddDefense {
 					defense: Defense::Vulnerability,
-					damage_type: Some(Value::Fixed(DamageType::Psychic)),
+					damage_type: Some(DamageType::Psychic),
 					context: None,
 				}
 				.into()],
@@ -211,7 +224,7 @@ mod test {
 		assert_eq!(
 			character.defenses()[Defense::Vulnerability],
 			vec![DefenseEntry {
-				damage_type: Some(Value::Fixed(DamageType::Psychic)),
+				damage_type: Some(DamageType::Psychic),
 				context: None,
 				source: "AddDefense".into(),
 			}]

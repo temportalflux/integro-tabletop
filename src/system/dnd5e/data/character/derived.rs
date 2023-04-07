@@ -1,15 +1,12 @@
 use super::AttributedValue;
 use crate::{
 	path_map::PathMap,
-	system::dnd5e::{
-		data::{
-			action::Action,
-			mutator::{Defense, Flag},
-			proficiency,
-			roll::{Modifier, RollSet},
-			Ability, ArmorClass, BoxedFeature, DamageType, OtherProficiencies, Skill,
-		},
-		Value,
+	system::dnd5e::data::{
+		action::Action,
+		mutator::{Defense, Flag},
+		proficiency,
+		roll::{Modifier, RollSet},
+		Ability, ArmorClass, BoxedFeature, DamageType, OtherProficiencies, Skill,
 	},
 };
 use enum_map::{enum_map, EnumMap};
@@ -246,7 +243,7 @@ impl Skills {
 pub struct Defenses(EnumMap<Defense, Vec<DefenseEntry>>);
 #[derive(Clone, PartialEq, Debug)]
 pub struct DefenseEntry {
-	pub damage_type: Option<Value<DamageType>>,
+	pub damage_type: Option<DamageType>,
 	pub context: Option<String>,
 	pub source: PathBuf,
 }
@@ -254,7 +251,7 @@ impl Defenses {
 	pub fn push(
 		&mut self,
 		kind: Defense,
-		damage_type: Option<Value<DamageType>>,
+		damage_type: Option<DamageType>,
 		context: Option<String>,
 		source: PathBuf,
 	) {

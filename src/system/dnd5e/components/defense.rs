@@ -2,7 +2,6 @@ use crate::{
 	bootstrap::components::Tooltip,
 	components::{modal, Tag, Tags},
 	system::dnd5e::{components::SharedCharacter, data::mutator::Defense},
-	utility::Evaluator,
 };
 use yew::prelude::*;
 
@@ -43,8 +42,7 @@ pub fn DefensesCard() -> Html {
 			targets.iter().fold(all, |mut all, entry| {
 				let tooltip = crate::data::as_feature_path_text(&entry.source);
 				let damage_type = match &entry.damage_type {
-					Some(value) => {
-						let damage_type = value.evaluate(&state);
+					Some(damage_type) => {
 						html! {
 							<span style="margin-left: 5px;">{damage_type.display_name()}</span>
 						}
@@ -128,7 +126,7 @@ fn Modal() -> Html {
 						{entries.iter().map(|entry| {
 							let damage_type = match &entry.damage_type {
 								None => "All",
-								Some(value) => value.evaluate(&*state).display_name(),
+								Some(damage_type) => damage_type.display_name(),
 							};
 							html! {
 								<tr>
