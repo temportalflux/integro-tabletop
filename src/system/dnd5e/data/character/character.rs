@@ -15,15 +15,14 @@ use crate::{
 	},
 	utility::{Dependencies, MutatorGroup, Selector},
 };
-use enum_map::{Enum, EnumMap};
-use enumset::EnumSetType;
+use enum_map::EnumMap;
 use std::{
 	path::{Path, PathBuf},
 	rc::Rc,
 	str::FromStr,
 };
 
-use super::{DefaultsBlock, HitPoints};
+use super::{DefaultsBlock, HitPoint, HitPoints};
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum ActionEffect {
@@ -436,11 +435,4 @@ impl Character {
 	pub fn derived_description_mut(&mut self) -> &mut DerivedDescription {
 		&mut self.derived.description
 	}
-}
-
-#[derive(Debug, EnumSetType, Enum)]
-pub enum HitPoint {
-	Current,
-	Max,
-	Temp,
 }

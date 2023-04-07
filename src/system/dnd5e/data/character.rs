@@ -8,6 +8,8 @@ mod derived;
 pub use derived::*;
 mod character;
 pub use character::*;
+mod hit_point;
+pub use hit_point::*;
 
 #[derive(Clone, Default, PartialEq, Debug)]
 pub struct AttributedValue<T> {

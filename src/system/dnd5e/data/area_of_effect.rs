@@ -78,7 +78,10 @@ mod test {
 		#[test]
 		fn cylinder() -> anyhow::Result<()> {
 			let doc = "area_of_effect \"Cylinder\" radius=10 height=40";
-			let expected = AreaOfEffect::Cylinder { radius: 10, height: 40 };
+			let expected = AreaOfEffect::Cylinder {
+				radius: 10,
+				height: 40,
+			};
 			assert_eq!(from_doc(doc)?, expected);
 			Ok(())
 		}
@@ -86,7 +89,10 @@ mod test {
 		#[test]
 		fn line() -> anyhow::Result<()> {
 			let doc = "area_of_effect \"Line\" width=5 length=60";
-			let expected = AreaOfEffect::Line { width: 5, length: 60 };
+			let expected = AreaOfEffect::Line {
+				width: 5,
+				length: 60,
+			};
 			assert_eq!(from_doc(doc)?, expected);
 			Ok(())
 		}

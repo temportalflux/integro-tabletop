@@ -104,10 +104,12 @@ pub fn node_registry() -> NodeRegistry {
 	registry.register_mutator::<Speed>();
 	registry.register_mutator::<SetFlag>();
 
-	registry.register_evaluator::<HasArmorEquipped>();
 	registry.register_evaluator::<GetAbilityModifier>();
+	registry.register_evaluator::<GetHitPoints>();
 	registry.register_evaluator::<GetLevel>();
+	registry.register_evaluator::<HasArmorEquipped>();
 	registry.register_evaluator::<IsProficientWith>();
+	registry.register_evaluator::<Math>();
 
 	registry
 }
