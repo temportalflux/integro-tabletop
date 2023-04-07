@@ -16,10 +16,16 @@ crate::impl_kdl_node!(AddMaxHitPoints, "add_max_hit_points");
 impl Mutator for AddMaxHitPoints {
 	type Target = Character;
 
-	// TODO: mutator description add_max_hit_points
-
 	fn dependencies(&self) -> Dependencies {
 		self.value.dependencies()
+	}
+
+	fn description(&self) -> Option<String> {
+		static PREFIX: &'static str = "Your hit point maximum increases by";
+		match &self.value {
+			Value::Fixed(amount) => Some(format!("{PREFIX} {amount}.")),
+			Value::Evaluated(_evaluator) => Some(format!("{PREFIX} TODO-Evaluator-Description.")),
+		}
 	}
 
 	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {

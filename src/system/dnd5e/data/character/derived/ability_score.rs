@@ -36,6 +36,10 @@ impl crate::utility::Mutator for FinalizeAbilityScores {
 		["ability_score"].into()
 	}
 
+	fn description(&self) -> Option<String> {
+		None
+	}
+
 	fn apply(&self, stats: &mut Self::Target, _parent: &std::path::Path) {
 		stats.ability_scores_mut().finalize();
 	}

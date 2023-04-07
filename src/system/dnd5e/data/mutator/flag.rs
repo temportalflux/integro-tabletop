@@ -46,7 +46,9 @@ crate::impl_kdl_node!(SetFlag, "flag");
 impl Mutator for SetFlag {
 	type Target = Character;
 
-	// TODO: mutator description flag
+	fn description(&self) -> Option<String> {
+		None
+	}
 
 	fn apply(&self, stats: &mut Character, _parent: &std::path::Path) {
 		stats.flags_mut()[self.flag] = self.value;
@@ -75,10 +77,12 @@ crate::impl_kdl_node!(ArmorStrengthRequirement, "armor_strength_requirement");
 impl Mutator for ArmorStrengthRequirement {
 	type Target = Character;
 
-	// TODO: mutator description armor_strength_requirement
-
 	fn dependencies(&self) -> crate::utility::Dependencies {
 		["ability_score_finalize", "flag", "speed"].into()
+	}
+
+	fn description(&self) -> Option<String> {
+		None
 	}
 
 	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {

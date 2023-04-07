@@ -15,9 +15,7 @@ pub trait Mutator: Debug + TraitEq + AsTraitEq<dyn TraitEq> + KDLNode {
 		None
 	}
 
-	fn description(&self) -> Option<String> {
-		None
-	}
+	fn description(&self) -> Option<String>;
 
 	fn apply(&self, _: &mut Self::Target, _parent: &std::path::Path) {}
 

@@ -20,10 +20,12 @@ crate::impl_kdl_node!(BonusDamage, "bonus_damage");
 impl Mutator for BonusDamage {
 	type Target = Character;
 
-	// TODO: mutator description bonus_damage
-
 	fn dependencies(&self) -> Dependencies {
 		Dependencies::from([AddAction::id()]).join(self.amount.dependencies())
+	}
+
+	fn description(&self) -> Option<String> {
+		None
 	}
 
 	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
