@@ -23,6 +23,10 @@ impl Evaluator for IsProficientWith {
 	type Context = Character;
 	type Item = bool;
 
+	fn description(&self) -> Option<String> {
+		None
+	}
+
 	fn evaluate(&self, state: &Self::Context) -> Self::Item {
 		match self {
 			Self::SavingThrow(ability) => {

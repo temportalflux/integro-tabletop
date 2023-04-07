@@ -12,7 +12,6 @@ use crate::{
 		},
 		DnD5e,
 	},
-	utility::Evaluator,
 };
 use enumset::{EnumSet, EnumSetType};
 use std::sync::Arc;

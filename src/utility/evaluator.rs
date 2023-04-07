@@ -11,6 +11,8 @@ pub trait Evaluator: DowncastSync + Debug + TraitEq + AsTraitEq<dyn TraitEq> {
 		Dependencies::default()
 	}
 
+	fn description(&self) -> Option<String>;
+
 	fn evaluate(&self, context: &Self::Context) -> Self::Item;
 }
 impl_downcast!(Evaluator assoc Context, Item);

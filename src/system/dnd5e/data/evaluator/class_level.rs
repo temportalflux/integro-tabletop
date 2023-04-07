@@ -23,6 +23,16 @@ impl Evaluator for GetLevel {
 	type Context = Character;
 	type Item = i32;
 
+	fn description(&self) -> Option<String> {
+		Some(format!(
+			"your {} level",
+			match &self.0 {
+				None => "character",
+				Some(class_name) => class_name.as_str(),
+			}
+		))
+	}
+
 	fn evaluate(&self, state: &Self::Context) -> Self::Item {
 		let class_name = self.0.as_ref().map(String::as_str);
 		state.level(class_name) as i32

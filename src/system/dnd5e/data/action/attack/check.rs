@@ -23,11 +23,8 @@ pub enum AttackCheckKind {
 }
 
 crate::impl_trait_eq!(AttackCheckKind);
-impl Evaluator for AttackCheckKind {
-	type Context = Character;
-	type Item = i32;
-
-	fn evaluate(&self, state: &Self::Context) -> Self::Item {
+impl AttackCheckKind {
+	pub fn evaluate(&self, state: &Character) -> i32 {
 		match self {
 			Self::AttackRoll {
 				ability,

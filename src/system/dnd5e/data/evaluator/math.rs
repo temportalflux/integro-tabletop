@@ -98,6 +98,39 @@ impl Evaluator for Math {
 	type Context = Character;
 	type Item = i32;
 
+	fn description(&self) -> Option<String> {
+		let value_descriptions = self
+			.values
+			.iter()
+			.filter_map(|value| value.description())
+			.collect::<Vec<_>>();
+		let description = match &self.operation {
+			MathOp::Add => value_descriptions.join(" + "),
+			MathOp::Subtract => value_descriptions.join(" - "),
+			MathOp::Multiply => value_descriptions.join(" * "),
+			MathOp::Divide { round } => format!(
+				"{} {}",
+				value_descriptions.join(" / "),
+				match round {
+					Rounding::Floor => "rounded down",
+					Rounding::HalfUp => "rounded to the nearest whole number",
+					Rounding::Ceiling => "rounded up",
+				}
+			),
+		};
+		let bounds = {
+			let mut bounds = Vec::with_capacity(2);
+			if let Some(min) = &self.minimum {
+				bounds.push(format!("minimum {min}"));
+			}
+			if let Some(max) = &self.maximum {
+				bounds.push(format!("maximum {max}"));
+			}
+			(!bounds.is_empty()).then(move || format!(" ({})", bounds.join(", ")))
+		};
+		Some(format!("{description}{}", bounds.unwrap_or_default()))
+	}
+
 	fn dependencies(&self) -> Dependencies {
 		self.values
 			.iter()

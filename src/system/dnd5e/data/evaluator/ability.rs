@@ -13,6 +13,10 @@ impl Evaluator for GetAbilityModifier {
 	type Context = Character;
 	type Item = i32;
 
+	fn description(&self) -> Option<String> {
+		Some(format!("your {} modifier", self.0.long_name()))
+	}
+
 	fn dependencies(&self) -> Dependencies {
 		["ability_score_finalize"].into()
 	}

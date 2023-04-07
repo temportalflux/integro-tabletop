@@ -29,6 +29,17 @@ impl Evaluator for GetHitPoints {
 	type Context = Character;
 	type Item = i32;
 
+	fn description(&self) -> Option<String> {
+		Some(
+			match self.0 {
+				HitPoint::Current => "your current hit points",
+				HitPoint::Temp => "your temporary hit points",
+				HitPoint::Max => "your hit point maximum",
+			}
+			.into(),
+		)
+	}
+
 	fn dependencies(&self) -> Dependencies {
 		match self.0 {
 			HitPoint::Max => [AddMaxHitPoints::id()].into(),

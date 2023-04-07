@@ -24,7 +24,13 @@ impl Mutator for AddMaxHitPoints {
 		static PREFIX: &'static str = "Your hit point maximum increases by";
 		match &self.value {
 			Value::Fixed(amount) => Some(format!("{PREFIX} {amount}.")),
-			Value::Evaluated(_evaluator) => Some(format!("{PREFIX} TODO-Evaluator-Description.")),
+			Value::Evaluated(evaluator) => Some(format!(
+				"{PREFIX} {}.",
+				match evaluator.description() {
+					Some(desc) => desc,
+					None => "some amount".into(),
+				}
+			)),
 		}
 	}
 

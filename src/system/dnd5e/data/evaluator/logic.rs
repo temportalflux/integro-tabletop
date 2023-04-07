@@ -11,6 +11,10 @@ impl Evaluator for Any {
 	type Context = Character;
 	type Item = bool;
 
+	fn description(&self) -> Option<String> {
+		None
+	}
+
 	fn dependencies(&self) -> Dependencies {
 		self.0.iter().fold(Dependencies::default(), |deps, eval| {
 			deps.join(eval.dependencies())

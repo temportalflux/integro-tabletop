@@ -50,6 +50,14 @@ impl crate::utility::Evaluator for HasArmorEquipped {
 	type Context = Character;
 	type Item = Result<(), String>;
 
+	fn description(&self) -> Option<String> {
+		Some(match (self.inverted, self.kind_list("or")) {
+			(true, None) => format!("you have no armor equipped"),
+			(true, Some(kind_desc)) => format!("you don't have {kind_desc} armor equipped"),
+			(false, desc) => format!("you have {} armor equipped", desc.unwrap_or("any".into())),
+		})
+	}
+
 	fn evaluate(&self, character: &Self::Context) -> Result<(), String> {
 		for EquipableEntry {
 			id: _,

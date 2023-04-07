@@ -61,7 +61,7 @@ where
 impl<C, V> Evaluator for Value<C, V>
 where
 	C: 'static + Send + Sync,
-	V: 'static + Clone + Send + Sync + Debug + PartialEq,
+	V: 'static + Clone + Send + Sync + Debug + PartialEq + ToString,
 {
 	type Context = C;
 	type Item = V;
@@ -70,6 +70,13 @@ where
 		match self {
 			Self::Fixed(_) => Dependencies::default(),
 			Self::Evaluated(evaluator) => evaluator.dependencies(),
+		}
+	}
+
+	fn description(&self) -> Option<String> {
+		match self {
+			Value::Fixed(value) => Some(value.to_string()),
+			Value::Evaluated(eval) => eval.description(),
 		}
 	}
 
