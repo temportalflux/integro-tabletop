@@ -13,7 +13,7 @@ pub struct LimitedUses {
 	/// (a reset on a short rest will also reset on long rest).
 	pub reset_on: Option<Rest>,
 
-	uses_count: Selector<u32>,
+	pub uses_count: Selector<u32>,
 }
 
 impl Default for LimitedUses {
@@ -65,5 +65,84 @@ impl FromKDL for LimitedUses {
 			reset_on,
 			..Default::default()
 		})
+	}
+}
+
+#[cfg(test)]
+mod test {
+	use super::*;
+	mod from_kdl {
+		use super::*;
+		use crate::{
+			kdl_ext::NodeContext,
+			system::dnd5e::data::{scaling, Rest},
+		};
+
+		fn from_doc(doc: &str) -> anyhow::Result<LimitedUses> {
+			let document = doc.parse::<kdl::KdlDocument>()?;
+			let node = document
+				.query("scope() > limited_uses")?
+				.expect("missing limited_uses node");
+			LimitedUses::from_kdl(node, &mut NodeContext::default())
+		}
+
+		#[test]
+		fn fixed_uses_permanent() -> anyhow::Result<()> {
+			let doc = "limited_uses {
+				max_uses 2
+			}";
+			let expected = LimitedUses {
+				max_uses: scaling::Value::Fixed(2),
+				..Default::default()
+			};
+			assert_eq!(from_doc(doc)?, expected);
+			Ok(())
+		}
+
+		#[test]
+		fn fixed_uses_reset() -> anyhow::Result<()> {
+			let doc = "limited_uses {
+				max_uses 2
+				reset_on \"Short\"
+			}";
+			let expected = LimitedUses {
+				max_uses: scaling::Value::Fixed(2),
+				reset_on: Some(Rest::Short),
+				..Default::default()
+			};
+			assert_eq!(from_doc(doc)?, expected);
+			Ok(())
+		}
+
+		#[test]
+		fn scaling_uses_reset() -> anyhow::Result<()> {
+			let doc = "limited_uses {
+				max_uses (Scaled)\"Level\" class=\"SpecificClass\" {
+					level 2 1
+					level 5 2
+					level 10 4
+					level 14 5
+					level 20
+				}
+				reset_on \"Long\"
+			}";
+			let expected = LimitedUses {
+				max_uses: scaling::Value::Scaled(scaling::Basis::Level {
+					class_name: Some("SpecificClass".into()),
+					level_map: [
+						(2, Some(1)),
+						(5, Some(2)),
+						(10, Some(4)),
+						(14, Some(5)),
+						(20, None),
+					]
+					.into(),
+				}),
+				reset_on: Some(Rest::Long),
+				..Default::default()
+			};
+			assert_eq!(from_doc(doc)?, expected);
+			Ok(())
+		}
 	}
 }

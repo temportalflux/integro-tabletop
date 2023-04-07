@@ -41,3 +41,99 @@ impl FromKDL for Attack {
 		})
 	}
 }
+
+#[cfg(test)]
+mod test {
+	use super::*;
+	mod from_kdl {
+		use super::*;
+		use crate::{
+			kdl_ext::NodeContext,
+			system::dnd5e::data::{
+				roll::{Die, Roll},
+				Ability, DamageType,
+			},
+			utility,
+		};
+
+		fn from_doc(doc: &str) -> anyhow::Result<Attack> {
+			let document = doc.parse::<kdl::KdlDocument>()?;
+			let node = document
+				.query("scope() > attack")?
+				.expect("missing attack node");
+			Attack::from_kdl(node, &mut NodeContext::default())
+		}
+
+		#[test]
+		fn melee_attackroll_damage() -> anyhow::Result<()> {
+			let doc = "attack {
+				kind \"Melee\"
+				check \"AttackRoll\" (Ability)\"Dexterity\" proficient=true
+				damage base=1 {
+					roll (Roll)\"2d6\"
+					damage_type (DamageType)\"Fire\"
+				}
+			}";
+			let expected = Attack {
+				kind: AttackKindValue::Melee { reach: 5 },
+				check: AttackCheckKind::AttackRoll {
+					ability: Ability::Dexterity,
+					proficient: utility::Value::Fixed(true),
+				},
+				area_of_effect: None,
+				damage: Some(DamageRoll {
+					roll: Some(Roll {
+						amount: 2,
+						die: Die::D6,
+					}),
+					base_bonus: 1,
+					damage_type: DamageType::Fire,
+					additional_bonuses: Vec::new(),
+				}),
+			};
+			assert_eq!(from_doc(doc)?, expected);
+			Ok(())
+		}
+
+		#[test]
+		fn ranged_savingthrow_aoe_damage() -> anyhow::Result<()> {
+			let doc = "attack {
+				kind \"Ranged\" 20 60
+				check \"SavingThrow\" {
+					difficulty_class 8
+					save_ability \"CON\"
+				}
+				area_of_effect \"Sphere\" radius=10
+				damage base=1 {
+					roll (Roll)\"2d6\"
+					damage_type (DamageType)\"Fire\"
+				}
+			}";
+			let expected = Attack {
+				kind: AttackKindValue::Ranged {
+					short_dist: 20,
+					long_dist: 60,
+					kind: None,
+				},
+				check: AttackCheckKind::SavingThrow {
+					base: 8,
+					dc_ability: None,
+					proficient: false,
+					save_ability: Ability::Constitution,
+				},
+				area_of_effect: Some(AreaOfEffect::Sphere { radius: 10 }),
+				damage: Some(DamageRoll {
+					roll: Some(Roll {
+						amount: 2,
+						die: Die::D6,
+					}),
+					base_bonus: 1,
+					damage_type: DamageType::Fire,
+					additional_bonuses: Vec::new(),
+				}),
+			};
+			assert_eq!(from_doc(doc)?, expected);
+			Ok(())
+		}
+	}
+}

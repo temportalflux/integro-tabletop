@@ -7,13 +7,15 @@ use crate::{
 	},
 	utility::MutatorGroup,
 };
-use anyhow::Context;
-use std::{path::Path, str::FromStr};
+use std::path::Path;
+
+mod indirect;
+pub use indirect::*;
 
 /// A state a character may be subject to until it is removed.
 /// Some conditions are automatically cleared on the next long rest, and any conditions may be manually cleared.
 /// Conditions contain a set of mutators and an optional criteria that, if met, applies those mutators.
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug, Default)]
 pub struct Condition {
 	pub source_id: Option<SourceId>,
 	pub name: String,
@@ -89,41 +91,95 @@ impl FromKDL for Condition {
 	}
 }
 
-#[derive(Clone, PartialEq, Debug)]
-pub enum IndirectCondition {
-	Id(SourceId),
-	Custom(Condition),
-}
+#[cfg(test)]
+mod test {
+	use super::*;
+	mod from_kdl {
+		use super::*;
+		use crate::{
+			kdl_ext::NodeContext,
+			system::{
+				core::NodeRegistry,
+				dnd5e::data::{
+					bounded::BoundValue, evaluator::armor::HasArmorEquipped, mutator::Speed,
+				},
+			},
+		};
 
-impl IndirectCondition {
-	/// Returns a reference to the underlying condition.
-	/// If self is an Id, the value returned is retrieved from the system (if it exists).
-	pub fn resolve<'a>(&'a self, system: &'a DnD5e) -> Option<&'a Condition> {
-		match self {
-			Self::Custom(value) => Some(value),
-			Self::Id(id) => system.conditions.get(id),
+		fn from_doc(doc: &str) -> anyhow::Result<Condition> {
+			let mut ctx = NodeContext::registry({
+				let mut reg = NodeRegistry::default();
+				reg.register_mutator::<Speed>();
+				reg.register_evaluator::<HasArmorEquipped>();
+				reg
+			});
+			let document = doc.parse::<kdl::KdlDocument>()?;
+			let node = document
+				.query("scope() > condition")?
+				.expect("missing condition node");
+			Condition::from_kdl(node, &mut ctx)
 		}
-	}
-}
 
-impl FromKDL for IndirectCondition {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		match node.get_str_req(ctx.consume_idx())? {
-			"Custom" => {
-				// this is a custom condition node, parse it as a condition struct
-				let condition = Condition::from_kdl(node, ctx)?;
-				Ok(Self::Custom(condition))
-			}
-			source_id_str => {
-				let mut source_id = SourceId::from_str(source_id_str).with_context(|| {
-					format!("Expected {source_id_str:?} to either be the value \"Custom\" or a valid SourceId.")
-				})?;
-				source_id.set_basis(ctx.id());
-				Ok(Self::Id(source_id))
-			}
+		#[test]
+		fn basic() -> anyhow::Result<()> {
+			let doc = "condition name=\"Expedient\" {
+			description \"You are particularly quick.\"
+		}";
+			let expected = Condition {
+				name: "Expedient".into(),
+				description: "You are particularly quick.".into(),
+				..Default::default()
+			};
+			assert_eq!(from_doc(doc)?, expected);
+			Ok(())
+		}
+
+		#[test]
+		fn mutators() -> anyhow::Result<()> {
+			let doc = "condition name=\"Expedient\" {
+			description \"You are particularly quick.\"
+			mutator \"speed\" \"Walking\" (Additive)15
+		}";
+			let expected = Condition {
+				name: "Expedient".into(),
+				description: "You are particularly quick.".into(),
+				mutators: vec![Speed {
+					name: "Walking".into(),
+					argument: BoundValue::Additive(15),
+				}
+				.into()],
+				..Default::default()
+			};
+			assert_eq!(from_doc(doc)?, expected);
+			Ok(())
+		}
+
+		#[test]
+		fn criteria() -> anyhow::Result<()> {
+			let doc = "condition name=\"Expedient\" {
+			description \"You are particularly quick, when not wearing armor.\"
+			mutator \"speed\" \"Walking\" (Additive)15
+			criteria (Evaluator)\"has_armor_equipped\" inverted=true
+		}";
+			let expected = Condition {
+				name: "Expedient".into(),
+				description: "You are particularly quick, when not wearing armor.".into(),
+				mutators: vec![Speed {
+					name: "Walking".into(),
+					argument: BoundValue::Additive(15),
+				}
+				.into()],
+				criteria: Some(
+					HasArmorEquipped {
+						inverted: true,
+						..Default::default()
+					}
+					.into(),
+				),
+				..Default::default()
+			};
+			assert_eq!(from_doc(doc)?, expected);
+			Ok(())
 		}
 	}
 }
