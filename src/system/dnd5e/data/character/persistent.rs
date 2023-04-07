@@ -2,16 +2,10 @@ use crate::{
 	path_map::PathMap,
 	system::{
 		core::SourceId,
-		dnd5e::{
-			data::{
-				bundle::{Background, Lineage, Race, RaceVariant, Upbringing},
-				character::Character,
-				evaluator::{operator::Product, GetAbilityModifier, GetLevel},
-				item,
-				mutator::AddMaxHitPoints,
-				Ability, BoxedFeature, Class, Condition,
-			},
-			Value,
+		dnd5e::data::{
+			bundle::{Background, Lineage, Race, RaceVariant, Upbringing},
+			character::Character,
+			item, Ability, BoxedFeature, Class, Condition,
 		},
 	},
 	utility::MutatorGroup,
@@ -83,22 +77,6 @@ impl MutatorGroup for Persistent {
 				.push_bonus(ability, (*score).into(), "Base Score".into());
 		}
 		stats.apply(&super::FinalizeAbilityScores.into(), parent);
-
-		// TODO: Remove when the `basic_rules/dnd5e/defaults` mutator is working
-		stats.apply(
-			&AddMaxHitPoints {
-				id: Some("Constitution x Levels".into()),
-				value: Value::Evaluated(
-					Product(vec![
-						Value::Evaluated(GetLevel::default().into()),
-						Value::Evaluated(GetAbilityModifier(Ability::Constitution).into()),
-					])
-					.into(),
-				),
-			}
-			.into(),
-			parent,
-		);
 
 		for group in &self.named_groups.race {
 			stats.apply_from(group, parent);

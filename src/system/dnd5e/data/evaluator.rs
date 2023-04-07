@@ -15,7 +15,5 @@ pub use logic::*;
 mod math;
 pub use math::*;
 
-pub mod operator;
-
 mod proficient;
 pub use proficient::*;

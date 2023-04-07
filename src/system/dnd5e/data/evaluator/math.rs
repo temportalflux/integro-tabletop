@@ -10,14 +10,14 @@ pub struct DivideTooManyOps(usize);
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Math {
-	pub operation: Operation,
+	pub operation: MathOp,
 	pub minimum: Option<i32>,
 	pub maximum: Option<i32>,
 	pub values: Vec<Value<i32>>,
 }
 
 #[derive(Clone, PartialEq, Debug)]
-pub enum Operation {
+pub enum MathOp {
 	Add,
 	Subtract,
 	Multiply,
@@ -41,9 +41,9 @@ impl FromKDL for Math {
 		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
 		let operation = match node.get_str_req(ctx.consume_idx())? {
-			"Add" => Operation::Add,
-			"Subtract" => Operation::Subtract,
-			"Multiply" => Operation::Multiply,
+			"Add" => MathOp::Add,
+			"Subtract" => MathOp::Subtract,
+			"Multiply" => MathOp::Multiply,
 			"Divide" => {
 				let round = match node.get_str_opt("round")? {
 					None => Rounding::default(),
@@ -56,7 +56,7 @@ impl FromKDL for Math {
 						)
 					}
 				};
-				Operation::Divide { round }
+				MathOp::Divide { round }
 			}
 			name => {
 				return Err(
@@ -79,7 +79,7 @@ impl FromKDL for Math {
 			)?);
 		}
 		match (&operation, values.len()) {
-			(Operation::Divide { .. }, len) if len > 2 => {
+			(MathOp::Divide { .. }, len) if len > 2 => {
 				return Err(DivideTooManyOps(len).into());
 			}
 			_ => {}
@@ -109,16 +109,16 @@ impl Evaluator for Math {
 	fn evaluate(&self, state: &Self::Context) -> Self::Item {
 		let mut iter_outputs = self.values.iter().map(|val| val.evaluate(state));
 		let mut value = match &self.operation {
-			Operation::Add => iter_outputs.sum::<i32>(),
-			Operation::Subtract => {
+			MathOp::Add => iter_outputs.sum::<i32>(),
+			MathOp::Subtract => {
 				let mut value = iter_outputs.next().unwrap_or_default();
 				for next in iter_outputs {
 					value -= next;
 				}
 				value
 			}
-			Operation::Multiply => iter_outputs.product::<i32>(),
-			Operation::Divide { round } => {
+			MathOp::Multiply => iter_outputs.product::<i32>(),
+			MathOp::Divide { round } => {
 				let mut value = iter_outputs.next().unwrap_or_default() as f64;
 				let next = iter_outputs.next().unwrap_or_default();
 				if next != 0 {
@@ -173,7 +173,7 @@ mod test {
 				value (Evaluator)\"get_ability_modifier\" (Ability)\"Strength\"
 			}";
 			let expected = Math {
-				operation: Operation::Add,
+				operation: MathOp::Add,
 				minimum: None,
 				maximum: Some(15),
 				values: vec![
@@ -192,7 +192,7 @@ mod test {
 				value 10
 			}";
 			let expected = Math {
-				operation: Operation::Subtract,
+				operation: MathOp::Subtract,
 				minimum: Some(0),
 				maximum: None,
 				values: vec![Value::Evaluated(GetLevel(None).into()), Value::Fixed(10)],
@@ -208,7 +208,7 @@ mod test {
 				value (Evaluator)\"get_level\"
 			}";
 			let expected = Math {
-				operation: Operation::Multiply,
+				operation: MathOp::Multiply,
 				minimum: None,
 				maximum: None,
 				values: vec![
@@ -227,7 +227,7 @@ mod test {
 				value 2
 			}";
 			let expected = Math {
-				operation: Operation::Divide {
+				operation: MathOp::Divide {
 					round: Rounding::Floor,
 				},
 				minimum: Some(1),
@@ -269,7 +269,7 @@ mod test {
 		#[test]
 		fn add() {
 			let math = Math {
-				operation: Operation::Add,
+				operation: MathOp::Add,
 				minimum: None,
 				maximum: Some(15),
 				values: vec![
@@ -288,7 +288,7 @@ mod test {
 		#[test]
 		fn subtract() {
 			let math = Math {
-				operation: Operation::Subtract,
+				operation: MathOp::Subtract,
 				minimum: Some(0),
 				maximum: None,
 				values: vec![Value::Evaluated(GetLevel(None).into()), Value::Fixed(10)],
@@ -304,7 +304,7 @@ mod test {
 		#[test]
 		fn multiply() {
 			let math = Math {
-				operation: Operation::Multiply,
+				operation: MathOp::Multiply,
 				minimum: None,
 				maximum: None,
 				values: vec![
@@ -319,7 +319,7 @@ mod test {
 		#[test]
 		fn divide_floor() {
 			let math = Math {
-				operation: Operation::Divide {
+				operation: MathOp::Divide {
 					round: Rounding::Floor,
 				},
 				minimum: None,
@@ -334,7 +334,7 @@ mod test {
 		#[test]
 		fn divide_halfup() {
 			let math = Math {
-				operation: Operation::Divide {
+				operation: MathOp::Divide {
 					round: Rounding::HalfUp,
 				},
 				minimum: None,
@@ -349,7 +349,7 @@ mod test {
 		#[test]
 		fn divide_ceiling() {
 			let math = Math {
-				operation: Operation::Divide {
+				operation: MathOp::Divide {
 					round: Rounding::Ceiling,
 				},
 				minimum: None,
