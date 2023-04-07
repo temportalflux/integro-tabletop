@@ -7,7 +7,7 @@ use crate::{
 		},
 		data::{
 			action::{Action, ActionSource, ActivationKind, AttackCheckKind, AttackKindValue},
-			character::{ActionEffect, Persistent},
+			character::{ActionEffect, Persistent, ActionBudgetKind},
 			DamageRoll,
 		},
 		DnD5e,
@@ -62,11 +62,44 @@ pub fn Actions() -> Html {
 			EnumSet::from(tag),
 		));
 	}
+
+	let budget = {
+		// TODO: Modal for action budget
+		let mut budget_items = Vec::new();
+		if selected_tags.contains(ActionTag::Action) || selected_tags.contains(ActionTag::Attack) {
+			let (amount, _) = state.actions().action_budget.get(ActionBudgetKind::Action);
+			budget_items.push((ActionBudgetKind::Action, amount));
+		}
+		if selected_tags.contains(ActionTag::Attack) {
+			let (amount, _) = state.actions().action_budget.get(ActionBudgetKind::Attack);
+			budget_items.push((ActionBudgetKind::Attack, amount));
+		}
+		if selected_tags.contains(ActionTag::BonusAction) {
+			let (amount, _) = state.actions().action_budget.get(ActionBudgetKind::Bonus);
+			budget_items.push((ActionBudgetKind::Bonus, amount));
+		}
+		if selected_tags.contains(ActionTag::Reaction) {
+			let (amount, _) = state.actions().action_budget.get(ActionBudgetKind::Reaction);
+			budget_items.push((ActionBudgetKind::Reaction, amount));
+		}
+		html! {
+			<div class="action-budget">
+				{budget_items.into_iter().map(|(kind, amount)| match kind {
+					ActionBudgetKind::Action => format!("Actions: {amount}"),
+					ActionBudgetKind::Attack => format!("Attacks per Action: {amount}"),
+					ActionBudgetKind::Bonus => format!("Bonus Actions: {amount}"),
+					ActionBudgetKind::Reaction => format!("Reactions: {amount}"),
+				}).collect::<Vec<_>>().join(", ")}
+			</div>
+		}
+	};
+
 	let mut panes = Vec::new();
 	if selected_tags.contains(ActionTag::Attack) {
 		let attacks = {
 			let mut attacks = state
 				.actions()
+				.list
 				.iter()
 				.filter_map(|action| match action.attack.as_ref() {
 					Some(attack) => Some((action.name.clone(), attack)),
@@ -144,6 +177,7 @@ pub fn Actions() -> Html {
 	let actions = {
 		let mut actions = state
 			.actions()
+			.list
 			.iter()
 			.filter(|action| {
 				let mut passes_any = false;
@@ -178,6 +212,7 @@ pub fn Actions() -> Html {
 
 	html! {<>
 		<Tags>{tag_htmls}</Tags>
+		{budget}
 		<div style="overflow-y: scroll; height: 483px;">
 			{panes}
 		</div>

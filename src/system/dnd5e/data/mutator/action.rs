@@ -42,7 +42,7 @@ impl Mutator for AddAction {
 	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
 		let mut action = self.0.clone();
 		action.source = Some(ActionSource::Feature(parent.to_owned()));
-		stats.actions_mut().push(action);
+		stats.actions_mut().list.push(action);
 	}
 }
 

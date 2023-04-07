@@ -71,7 +71,7 @@ impl MutatorGroup for Feature {
 		for action in &self.actions {
 			let mut action = action.clone();
 			action.source = Some(ActionSource::Feature(path_to_self.clone()));
-			stats.actions_mut().push(action);
+			stats.actions_mut().list.push(action);
 		}
 		*self.absolute_path.write().unwrap() = path_to_self;
 	}

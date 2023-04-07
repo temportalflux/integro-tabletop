@@ -96,6 +96,7 @@ pub fn node_registry() -> NodeRegistry {
 	registry.register_mutator::<AddArmorClassFormula>();
 	registry.register_mutator::<AddDefense>();
 	registry.register_mutator::<AddLifeExpectancy>();
+	registry.register_mutator::<AddToActionBudget>();
 	registry.register_mutator::<AddMaxHeight>();
 	registry.register_mutator::<AddMaxHitPoints>();
 	registry.register_mutator::<AddModifier>();

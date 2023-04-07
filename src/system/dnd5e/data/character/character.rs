@@ -22,7 +22,7 @@ use std::{
 	str::FromStr,
 };
 
-use super::{DefaultsBlock, HitPoint, HitPoints};
+use super::{Actions, DefaultsBlock, HitPoint, HitPoints};
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum ActionEffect {
@@ -371,11 +371,11 @@ impl Character {
 		&self.derived.features
 	}
 
-	pub fn actions(&self) -> &Vec<Action> {
+	pub fn actions(&self) -> &Actions {
 		&self.derived.actions
 	}
 
-	pub fn actions_mut(&mut self) -> &mut Vec<Action> {
+	pub fn actions_mut(&mut self) -> &mut Actions {
 		&mut self.derived.actions
 	}
 
@@ -391,7 +391,7 @@ impl Character {
 		&mut self,
 		restriction: &Option<weapon::Restriction>,
 	) -> Vec<&mut Action> {
-		let mut actions = self.derived.actions.iter_mut().collect::<Vec<_>>();
+		let mut actions = self.derived.actions.list.iter_mut().collect::<Vec<_>>();
 		if let Some(weapon::Restriction {
 			weapon_kind,
 			attack_kind,

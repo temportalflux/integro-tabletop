@@ -2,7 +2,6 @@ use super::AttributedValue;
 use crate::{
 	path_map::PathMap,
 	system::dnd5e::data::{
-		action::Action,
 		mutator::{Defense, Flag},
 		proficiency,
 		roll::{Modifier, RollSet},
@@ -14,6 +13,8 @@ use std::{collections::BTreeMap, path::PathBuf};
 
 mod ability_score;
 pub use ability_score::*;
+mod actions;
+pub use actions::*;
 mod sense;
 pub use sense::*;
 mod speed;
@@ -36,7 +37,7 @@ pub struct Derived {
 	pub features: PathMap<BoxedFeature>,
 	pub max_hit_points: MaxHitPoints,
 	pub armor_class: ArmorClass,
-	pub actions: Vec<Action>,
+	pub actions: Actions,
 	pub description: DerivedDescription,
 	pub flags: EnumMap<Flag, bool>,
 }
