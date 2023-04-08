@@ -8,6 +8,8 @@ mod browse_content;
 pub use browse_content::*;
 mod equip_toggle;
 pub use equip_toggle::*;
+mod item_content;
+pub use item_content::*;
 mod row;
 pub use row::*;
 

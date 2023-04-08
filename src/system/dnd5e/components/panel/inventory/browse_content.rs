@@ -1,4 +1,7 @@
-use crate::system::dnd5e::{data::item::Item, DnD5e};
+use crate::system::{
+	core::ModuleId,
+	dnd5e::{components::{editor::CollapsableCard, panel::item_body}, data::item::Item, DnD5e},
+};
 use wasm_bindgen::JsCast;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
@@ -27,6 +30,12 @@ pub fn BrowseModal() -> Html {
 		}
 	});
 
+	let items = {
+		let mut items = relevant_item_ids.iter().filter_map(|id| system.items.get(id).map(|item| (id, item))).collect::<Vec<_>>();
+		items.sort_by(|(_, a), (_, b)| a.name.cmp(&b.name));
+		items
+	};
+
 	html! {<>
 		<div class="modal-header">
 			<h1 class="modal-title fs-4">{"Item Browser"}</h1>
@@ -35,11 +44,40 @@ pub fn BrowseModal() -> Html {
 		<div class="modal-body">
 			<SearchInput on_change={on_search_changed} />
 			<div style="height: 600px">
-				{relevant_item_ids.iter().filter_map(|id| {
-					let Some(item) = system.items.get(id) else { return None; };
-					Some(html! {
-						<div>{item.name.clone()}</div>
-					})
+				{items.into_iter().map(|(id, item)| {
+					let card_id = format!(
+						"{}{}{}",
+						match &id.module {
+							None => String::new(),
+							Some(ModuleId::Local { name }) => format!("{name}_"),
+							Some(ModuleId::Github { user_org, repository }) => format!("{user_org}_{repository}_"),
+						},
+						{
+							let path = id.path.with_extension("");
+							path.to_str().unwrap().replace("/", "_")
+						},
+						match id.node_idx {
+							0 => String::new(),
+							idx => format!("_{idx}"),
+						}
+					);
+					html! {
+						<CollapsableCard
+							id={card_id}
+							header_content={{
+								html! {<>
+									<span>{item.name.clone()}</span>
+									<button
+										type="button" class="btn btn-primary btn-xs ms-auto"
+									>
+										{"Add"}
+									</button>
+								</>}
+							}}
+						>
+							{item_body(item)}
+						</CollapsableCard>
+					}
 				}).collect::<Vec<_>>()}
 			</div>
 		</div>
@@ -95,7 +133,7 @@ pub fn SearchInput(SearchInputProps { on_change }: &SearchInputProps) -> Html {
 	});
 
 	html! {
-		<div class="input-group mt-2">
+		<div class="input-group mb-2">
 			<span class="input-group-text"><i class="bi bi-search"/></span>
 			<input
 				type="text" class="form-control"

@@ -7,7 +7,7 @@ use crate::{
 		},
 		data::{
 			action::{Action, ActionSource, ActivationKind, AttackCheckKind, AttackKindValue},
-			character::{ActionEffect, Persistent, ActionBudgetKind},
+			character::{ActionBudgetKind, ActionEffect, Persistent},
 			DamageRoll,
 		},
 		DnD5e,
@@ -79,7 +79,10 @@ pub fn Actions() -> Html {
 			budget_items.push((ActionBudgetKind::Bonus, amount));
 		}
 		if selected_tags.contains(ActionTag::Reaction) {
-			let (amount, _) = state.actions().action_budget.get(ActionBudgetKind::Reaction);
+			let (amount, _) = state
+				.actions()
+				.action_budget
+				.get(ActionBudgetKind::Reaction);
 			budget_items.push((ActionBudgetKind::Reaction, amount));
 		}
 		html! {
