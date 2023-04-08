@@ -1,8 +1,8 @@
 use crate::system::{
 	core::{ModuleId, SourceId},
 	dnd5e::{
-		components::{editor::CollapsableCard, panel::item_body},
-		data::item::Item,
+		components::{editor::CollapsableCard, panel::item_body, SharedCharacter},
+		data::{item::Item, character::Persistent},
 		DnD5e,
 	},
 };
@@ -21,6 +21,7 @@ fn now() -> f64 {
 pub fn BrowseModal() -> Html {
 	static DEFAULT_RESULT_LIMIT: usize = 10;
 	static SEARCH_BUDGET_MS: u64 = 2;
+	let state = use_context::<SharedCharacter>().unwrap();
 	let system = use_context::<UseStateHandle<DnD5e>>().unwrap();
 
 	let search_params = use_state(|| SearchParams::default());
@@ -81,6 +82,18 @@ pub fn BrowseModal() -> Html {
 		}
 	});
 
+	let add_item = Callback::from({
+		let state = state.clone();
+		let system = system.clone();
+		move |id: SourceId| {
+			let Some(item) = system.items.get(&id).cloned() else { return; };
+			state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
+				persistent.inventory.insert(item);
+				None
+			}));
+		}
+	});
+
 	let found_item_listings = match (search_params.is_empty(), search_results.loading, &search_results.data) {
 		(true, _, _) => html! {},
 		(_, true, _) => html! {
@@ -114,6 +127,10 @@ pub fn BrowseModal() -> Html {
 						idx => format!("_{idx}"),
 					}
 				);
+				let add_item = add_item.reform({
+					let id = id.clone();
+					move |_| id.clone()
+				});
 				Some(html! {
 					<CollapsableCard
 						id={card_id}
@@ -122,6 +139,7 @@ pub fn BrowseModal() -> Html {
 								<span>{item.name.clone()}</span>
 								<button
 									type="button" class="btn btn-primary btn-xs ms-auto"
+									onclick={add_item}
 								>
 									{"Add"}
 								</button>
