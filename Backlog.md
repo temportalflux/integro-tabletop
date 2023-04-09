@@ -1,8 +1,13 @@
 # Backlog
 -----
 
-## Attacks per Action
-Track Attacks per Action & display in attacks pane
+- Item modal
+- Action / Attack modal
+- Feature modal
+- Feature limited uses
+- Feature & Action category sorting/stacking
+- Limited Use numerical modifier (for max uses > 5)
+- Condition UI lists mutators
 
 ## Attunement UI
 - 3 slots to which attunable items can be "equipped"
