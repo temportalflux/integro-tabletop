@@ -3,6 +3,7 @@ pub use ability::*;
 pub mod action;
 mod area_of_effect;
 pub use area_of_effect::*;
+pub mod bundle;
 pub mod character;
 mod condition;
 pub use condition::*;
@@ -29,5 +30,7 @@ pub use class::*;
 pub mod description;
 mod proficiencies;
 pub use proficiencies::*;
-
-pub mod bundle;
+mod spell;
+pub use spell::*;
+mod feat;
+pub use feat::*;

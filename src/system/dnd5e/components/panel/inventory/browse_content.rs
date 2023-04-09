@@ -2,7 +2,7 @@ use crate::system::{
 	core::{ModuleId, SourceId},
 	dnd5e::{
 		components::{editor::CollapsableCard, panel::item_body, SharedCharacter},
-		data::{item::Item, character::Persistent},
+		data::{character::Persistent, item::Item},
 		DnD5e,
 	},
 };
@@ -34,7 +34,7 @@ pub fn BrowseModal() -> Html {
 			if search_params.is_empty() {
 				return Ok((Vec::<SourceId>::new(), false));
 			}
-			
+
 			let start = now();
 
 			let mut stopped_early = false;
@@ -51,9 +51,13 @@ pub fn BrowseModal() -> Html {
 					}
 				}
 			}
-			
+
 			matched.sort_by(|(_, a), (_, b)| a.name.cmp(&b.name));
-			let ids = matched.into_iter().map(|(id, _)| id).cloned().collect::<Vec<_>>();
+			let ids = matched
+				.into_iter()
+				.map(|(id, _)| id)
+				.cloned()
+				.collect::<Vec<_>>();
 			Ok((ids, stopped_early)) as Result<_, ()>
 		}
 	});
@@ -94,7 +98,11 @@ pub fn BrowseModal() -> Html {
 		}
 	});
 
-	let found_item_listings = match (search_params.is_empty(), search_results.loading, &search_results.data) {
+	let found_item_listings = match (
+		search_params.is_empty(),
+		search_results.loading,
+		&search_results.data,
+	) {
 		(true, _, _) => html! {},
 		(_, true, _) => html! {
 			<div class="d-flex justify-content-center">

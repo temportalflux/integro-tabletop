@@ -81,6 +81,8 @@ pub fn component_registry() -> ComponentRegistry<DnD5e> {
 	registry.register::<data::Subclass>();
 	registry.register::<data::Condition>();
 	registry.register::<data::item::Item>();
+	registry.register::<data::Spell>();
+	registry.register::<data::Feat>();
 	registry
 }
 
