@@ -24,24 +24,14 @@ impl HasArmorEquipped {
 		}
 		let mut sorted_kinds = self.kinds.iter().collect::<Vec<_>>();
 		sorted_kinds.sort();
-		let mut kinds = sorted_kinds
+		let kinds = sorted_kinds
 			.into_iter()
 			.map(|kind| match kind {
 				ArmorExtended::Kind(kind) => format!("{kind:?}").to_lowercase(),
 				ArmorExtended::Shield => "shield".into(),
 			})
 			.collect::<Vec<_>>();
-		Some(match kinds.len() {
-			0 => unimplemented!(),
-			1 => kinds.into_iter().next().unwrap(),
-			2 => kinds.join(format!(" {joiner} ").as_str()),
-			_ => {
-				if let Some(last) = kinds.last_mut() {
-					*last = format!("{joiner} {last}");
-				}
-				kinds.join(", ")
-			}
-		})
+		crate::utility::list_as_english(kinds, joiner)
 	}
 }
 

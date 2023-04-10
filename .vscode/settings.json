@@ -4,5 +4,6 @@
 	"task.quickOpen.history": 0,
 	"explorer.sortOrder": "mixed",
 	"terminal.integrated.defaultProfile.windows": "Git Bash",
-	"editor.detectIndentation": false
+	"editor.detectIndentation": false,
+	"rust-analyzer.showUnlinkedFileNotification": false
 }
