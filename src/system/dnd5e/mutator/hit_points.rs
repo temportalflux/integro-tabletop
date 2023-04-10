@@ -66,10 +66,8 @@ mod test {
 		use crate::system::{
 			core::NodeRegistry,
 			dnd5e::{
-				data::{
-					evaluator::{GetAbilityModifier, GetLevel, Math, MathOp},
-					Ability,
-				},
+				data::Ability,
+				evaluator::{GetAbilityModifier, GetLevel, Math, MathOp},
 				BoxedMutator,
 			},
 		};
@@ -133,8 +131,9 @@ mod test {
 
 	mod mutate {
 		use super::*;
-		use crate::system::dnd5e::data::{
-			character::Persistent, evaluator::GetAbilityModifier, Ability, Feature,
+		use crate::system::dnd5e::{
+			data::{character::Persistent, Ability, Feature},
+			evaluator::GetAbilityModifier,
 		};
 
 		fn character(mutator: AddMaxHitPoints) -> Character {

@@ -54,7 +54,7 @@ mod test {
 
 	mod from_kdl {
 		use super::*;
-		use crate::system::dnd5e::data::evaluator::GetAbilityModifier;
+		use crate::system::dnd5e::evaluator::GetAbilityModifier;
 
 		#[test]
 		fn ability_str() -> anyhow::Result<()> {

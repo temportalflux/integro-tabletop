@@ -122,11 +122,13 @@ mod test {
 			kdl_ext::NodeContext,
 			system::{
 				core::NodeRegistry,
-				dnd5e::data::{
-					item::{armor, weapon},
+				dnd5e::{
+					data::{
+						item::{armor, weapon},
+						roll::{Die, Modifier, Roll},
+						ArmorClassFormula, DamageType, Skill,
+					},
 					mutator::{AddModifier, ModifierKind},
-					roll::{Die, Modifier, Roll},
-					ArmorClassFormula, DamageType, Skill,
 				},
 			},
 			utility::Selector,

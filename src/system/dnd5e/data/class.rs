@@ -1,9 +1,9 @@
-use super::{character::Character, mutator::AddMaxHitPoints, roll::Die, BoxedFeature, Feature};
+use super::{character::Character, roll::Die, BoxedFeature, Feature};
 use crate::{
 	kdl_ext::{DocumentExt, FromKDL, NodeContext, NodeExt},
 	system::{
 		core::SourceId,
-		dnd5e::{BoxedMutator, DnD5e, SystemComponent, Value},
+		dnd5e::{mutator::AddMaxHitPoints, BoxedMutator, DnD5e, SystemComponent, Value},
 	},
 	utility::{MutatorGroup, Selector},
 };

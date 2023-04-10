@@ -8,6 +8,8 @@ use std::{collections::HashMap, sync::Arc};
 
 pub mod components;
 pub mod data;
+pub mod evaluator;
+pub mod mutator;
 
 pub type BoxedCriteria = crate::utility::GenericEvaluator<Character, Result<(), String>>;
 pub type BoxedEvaluator<V> = crate::utility::GenericEvaluator<Character, V>;
@@ -87,10 +89,8 @@ pub fn component_registry() -> ComponentRegistry<DnD5e> {
 }
 
 pub fn node_registry() -> NodeRegistry {
-	use data::{
-		evaluator::{armor::*, *},
-		mutator::*,
-	};
+	use evaluator::*;
+	use mutator::*;
 	let mut registry = NodeRegistry::default();
 
 	registry.register_mutator::<AbilityScoreChange>();

@@ -6,9 +6,9 @@ use crate::{
 			action::{
 				Action, ActionSource, ActivationKind, Attack, AttackCheckKind, AttackKindValue,
 			},
-			evaluator::{self, IsProficientWith},
 			Ability, DamageRoll, WeaponProficiency,
 		},
+		evaluator::{self, IsProficientWith},
 		Value,
 	},
 };

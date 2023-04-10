@@ -1,11 +1,13 @@
 use super::AttributedValue;
 use crate::{
 	path_map::PathMap,
-	system::dnd5e::data::{
+	system::dnd5e::{
+		data::{
+			proficiency,
+			roll::{Modifier, RollSet},
+			Ability, ArmorClass, BoxedFeature, DamageType, OtherProficiencies, Skill,
+		},
 		mutator::{Defense, Flag},
-		proficiency,
-		roll::{Modifier, RollSet},
-		Ability, ArmorClass, BoxedFeature, DamageType, OtherProficiencies, Skill,
 	},
 };
 use enum_map::{enum_map, EnumMap};

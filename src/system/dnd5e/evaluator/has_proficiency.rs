@@ -184,7 +184,10 @@ mod test {
 	mod evaluate {
 		use super::*;
 		use crate::{
-			system::dnd5e::data::{item::weapon, mutator::AddProficiency, Feature},
+			system::dnd5e::{
+				data::{item::weapon, Feature},
+				mutator::AddProficiency,
+			},
 			utility::Selector,
 		};
 

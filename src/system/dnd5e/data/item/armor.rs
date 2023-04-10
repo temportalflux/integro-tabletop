@@ -1,7 +1,8 @@
 use crate::{
 	kdl_ext::{DocumentExt, FromKDL, NodeExt},
-	system::dnd5e::data::{
-		character::Character, mutator::ArmorStrengthRequirement, ArmorClassFormula,
+	system::dnd5e::{
+		data::{character::Character, ArmorClassFormula},
+		mutator::ArmorStrengthRequirement,
 	},
 	utility::{InvalidEnumStr, MutatorGroup},
 };

@@ -183,9 +183,9 @@ mod test {
 		use crate::{
 			system::{
 				core::NodeRegistry,
-				dnd5e::data::{
+				dnd5e::{
+					data::Ability,
 					evaluator::{GetAbilityModifier, GetLevel},
-					Ability,
 				},
 			},
 			utility::GenericEvaluator,
@@ -274,10 +274,9 @@ mod test {
 
 	mod evaluate {
 		use super::*;
-		use crate::system::dnd5e::data::{
-			character::Persistent,
+		use crate::system::dnd5e::{
+			data::{character::Persistent, Ability, Class, Level},
 			evaluator::{GetAbilityModifier, GetLevel},
-			Ability, Class, Level,
 		};
 
 		fn character(scores: &[(Ability, u32)], level: usize) -> Character {

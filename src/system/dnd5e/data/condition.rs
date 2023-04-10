@@ -100,9 +100,7 @@ mod test {
 			kdl_ext::NodeContext,
 			system::{
 				core::NodeRegistry,
-				dnd5e::data::{
-					bounded::BoundValue, evaluator::armor::HasArmorEquipped, mutator::Speed,
-				},
+				dnd5e::{data::bounded::BoundValue, evaluator::HasArmorEquipped, mutator::Speed},
 			},
 		};
 

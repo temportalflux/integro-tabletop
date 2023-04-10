@@ -1,9 +1,9 @@
-use super::{currency::Wallet, mutator::AddAction};
+use super::currency::Wallet;
 use crate::{
 	kdl_ext::{DocumentExt, FromKDL, NodeContext, NodeExt},
 	system::{
 		core::SourceId,
-		dnd5e::{data::character::Character, DnD5e, SystemComponent},
+		dnd5e::{data::character::Character, mutator::AddAction, DnD5e, SystemComponent},
 	},
 	utility::{MutatorGroup, NotInList},
 };
@@ -267,12 +267,14 @@ mod test {
 			kdl_ext::NodeContext,
 			system::{
 				core::NodeRegistry,
-				dnd5e::data::{
-					currency,
-					item::{armor::Armor, equipment::Equipment},
+				dnd5e::{
+					data::{
+						currency,
+						item::{armor::Armor, equipment::Equipment},
+						roll::Modifier,
+						ArmorClassFormula, Skill,
+					},
 					mutator::{AddModifier, ModifierKind},
-					roll::Modifier,
-					ArmorClassFormula, Skill,
 				},
 			},
 			utility::Selector,

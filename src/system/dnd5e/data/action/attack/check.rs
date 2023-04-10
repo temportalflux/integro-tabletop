@@ -119,7 +119,8 @@ mod test {
 		use crate::{
 			kdl_ext::NodeContext,
 			system::dnd5e::{
-				data::{evaluator::IsProficientWith, item::weapon, WeaponProficiency},
+				data::{item::weapon, WeaponProficiency},
+				evaluator::IsProficientWith,
 				NodeRegistry,
 			},
 		};

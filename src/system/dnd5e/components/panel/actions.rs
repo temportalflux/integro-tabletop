@@ -296,6 +296,7 @@ fn ActionOverview(ActionProps { action }: &ActionProps) -> Html {
 							evt.stop_propagation();
 							let conditions_to_apply = conditions_to_apply.clone();
 							state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
+								// TODO: Applying a condition should include the path to the feature which caused it (if it was not manually added)
 								for condition in &*conditions_to_apply {
 									persistent.conditions.insert(condition.clone());
 								}
