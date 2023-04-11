@@ -190,6 +190,13 @@ impl Inventory {
 		self.items_by_id.get(id).map(|entry| &entry.item)
 	}
 
+	pub fn is_equipped(&self, id: &Uuid) -> bool {
+		self.items_by_id
+			.get(id)
+			.map(|entry| entry.is_equipped)
+			.unwrap_or(false)
+	}
+
 	pub fn insert(&mut self, item: Item) -> Uuid {
 		let id = Uuid::new_v4();
 		let search = self
