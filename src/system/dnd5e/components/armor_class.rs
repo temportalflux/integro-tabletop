@@ -1,6 +1,6 @@
 use crate::{
 	components::{modal, AnnotatedNumber, AnnotatedNumberCard},
-	system::dnd5e::components::SharedCharacter,
+	system::dnd5e::{components::SharedCharacter, data::ArmorClassFormula},
 };
 use yew::prelude::*;
 
@@ -31,6 +31,35 @@ pub fn ArmorClass() -> Html {
 	}
 }
 
+#[derive(Clone, PartialEq, Properties)]
+pub struct FormulaProps {
+	pub formula: ArmorClassFormula,
+}
+
+#[function_component]
+pub fn FormulaInline(FormulaProps { formula }: &FormulaProps) -> Html {
+	let state = use_context::<SharedCharacter>().unwrap();
+	html! {<>
+		<span>{formula.base}</span>
+		{formula.bonuses.iter().fold(Vec::new(), |mut html, bounded| {
+			let bonus = bounded.evaluate(&state);
+			let min = bounded.min.map(|min| format!("min {min}"));
+			let max = bounded.max.map(|max| format!("max {max}"));
+			html.push(html! {<span>
+				{" + "}
+				{bounded.ability.abbreviated_name().to_uppercase()}
+				{match (min, max) {
+					(None, None) => html! {},
+					(Some(v), None) | (None, Some(v)) => html! { {format!(" ({v})")} },
+					(Some(min), Some(max)) => html! { {format!(" ({min}, {max})")} },
+				}}
+				{format!(" ({})", bonus)}
+			</span>});
+			html
+		})}
+	</>}
+}
+
 #[function_component]
 fn Modal() -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
@@ -43,23 +72,7 @@ fn Modal() -> Html {
 			.map(|(formula, source)| {
 				html! {<tr>
 					<td>
-						<span>{formula.base}</span>
-						{formula.bonuses.iter().fold(Vec::new(), |mut html, bounded| {
-							let bonus = bounded.evaluate(&state);
-							let min = bounded.min.map(|min| format!("min {min}"));
-							let max = bounded.max.map(|max| format!("max {max}"));
-							html.push(html! {<span>
-								{" + "}
-								{bounded.ability.abbreviated_name().to_uppercase()}
-								{match (min, max) {
-									(None, None) => html! {},
-									(Some(v), None) | (None, Some(v)) => html! { {format!(" ({v})")} },
-									(Some(min), Some(max)) => html! { {format!(" ({min}, {max})")} },
-								}}
-								{format!(" ({})", bonus)}
-							</span>});
-							html
-						})}
+						<FormulaInline formula={formula.clone()} />
 					</td>
 					<td>{crate::data::as_feature_path_text(source).unwrap_or_default()}</td>
 				</tr>}

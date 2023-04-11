@@ -10,8 +10,8 @@ use std::path::Path;
 pub struct Equipment {
 	/// The criteria which must be met for this item to be equipped.
 	pub criteria: Option<BoxedCriteria>,
-	/// Passive modifiers applied while this item is equipped.
-	pub modifiers: Vec<BoxedMutator>,
+	/// Passive mutators applied while this item is equipped.
+	pub mutators: Vec<BoxedMutator>,
 	/// If this item is armor, this is the armor data.
 	pub armor: Option<Armor>,
 	/// If this item is a shield, this is the AC bonus it grants.
@@ -26,7 +26,7 @@ impl MutatorGroup for Equipment {
 	type Target = Character;
 
 	fn set_data_path(&self, path_to_item: &std::path::Path) {
-		for mutator in &self.modifiers {
+		for mutator in &self.mutators {
 			mutator.set_data_path(path_to_item);
 		}
 		if let Some(armor) = &self.armor {
@@ -35,7 +35,7 @@ impl MutatorGroup for Equipment {
 	}
 
 	fn apply_mutators(&self, stats: &mut Character, path_to_item: &Path) {
-		for modifier in &self.modifiers {
+		for modifier in &self.mutators {
 			stats.apply(modifier, path_to_item);
 		}
 		if let Some(armor) = &self.armor {
@@ -71,7 +71,6 @@ impl FromKDL for Equipment {
 			}
 		};
 
-		// TODO: Item kdls current list these as `modifier`
 		let mut mutators = Vec::new();
 		for entry_node in node.query_all("scope() > mutator")? {
 			mutators.push(ctx.parse_mutator(entry_node)?);
@@ -98,7 +97,7 @@ impl FromKDL for Equipment {
 
 		Ok(Self {
 			criteria,
-			modifiers: mutators,
+			mutators,
 			armor,
 			shield,
 			weapon,
@@ -154,7 +153,7 @@ mod test {
 			}";
 			let expected = Equipment {
 				criteria: None,
-				modifiers: vec![AddModifier {
+				mutators: vec![AddModifier {
 					modifier: Modifier::Disadvantage,
 					context: None,
 					kind: ModifierKind::Skill(Selector::Specific(Skill::Stealth)),
@@ -187,7 +186,7 @@ mod test {
 			}";
 			let expected = Equipment {
 				criteria: None,
-				modifiers: vec![],
+				mutators: vec![],
 				armor: None,
 				shield: None,
 				weapon: Some(Weapon {
@@ -217,7 +216,7 @@ mod test {
 			}";
 			let expected = Equipment {
 				criteria: None,
-				modifiers: vec![],
+				mutators: vec![],
 				armor: None,
 				shield: Some(2),
 				weapon: None,

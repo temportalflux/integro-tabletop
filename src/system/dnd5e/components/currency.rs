@@ -85,24 +85,29 @@ pub fn CoinIcon(CoinIconProps { kind, size }: &CoinIconProps) -> Html {
 	}
 }
 
+#[derive(Clone, PartialEq, Properties)]
+pub struct WalletInlineProps {
+	pub wallet: Wallet,
+}
 #[function_component]
-pub fn WalletInline() -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
-	let modal_dispatcher = use_context::<modal::Context>().unwrap();
-
-	let entries = currency::Kind::all()
-		.sorted()
-		.rev()
-		.filter_map(|coin| {
-			let amount = state.persistent().inventory.wallet()[coin];
-			match amount {
+pub fn WalletInline(WalletInlineProps { wallet }: &WalletInlineProps) -> Html {
+	let kinds = currency::Kind::all().sorted().rev();
+	return html! {<>
+		{kinds.filter_map(|coin| {
+			match wallet[coin] {
 				0 => None,
 				amt => Some(html! {
 					<span>{amt} <CoinIcon kind={coin} /></span>
 				}),
 			}
-		})
-		.collect::<Vec<_>>();
+		}).collect::<Vec<_>>()}
+	</>};
+}
+
+#[function_component]
+pub fn WalletInlineButton() -> Html {
+	let state = use_context::<SharedCharacter>().unwrap();
+	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 
 	let onclick = modal_dispatcher.callback(|_| {
 		modal::Action::Open(modal::Props {
@@ -116,9 +121,9 @@ pub fn WalletInline() -> Html {
 
 	html! {
 		<span class="wallet-inline ms-auto py-2" {onclick}>
-			{match entries.is_empty() {
+			{match state.persistent().inventory.wallet().is_empty() {
 				true => html! { "Empty Coin Pouch" },
-				false => html! {<>{entries}</>},
+				false => html! {<WalletInline wallet={*state.persistent().inventory.wallet()} />},
 			}}
 		</span>
 	}

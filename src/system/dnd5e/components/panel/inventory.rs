@@ -1,6 +1,6 @@
 use crate::{
 	components::modal,
-	system::dnd5e::components::{SharedCharacter, WalletInline},
+	system::dnd5e::components::{SharedCharacter, WalletInlineButton},
 };
 use yew::prelude::*;
 
@@ -40,7 +40,7 @@ pub fn Inventory() -> Html {
 		</div>
 		<div class="d-flex">
 			<h5 class="my-auto">{"Equipment"}</h5>
-			<WalletInline />
+			<WalletInlineButton />
 		</div>
 		<span class="hr" />
 		<table class="table table-compact m-0">

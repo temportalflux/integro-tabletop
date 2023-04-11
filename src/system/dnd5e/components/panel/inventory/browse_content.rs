@@ -139,6 +139,8 @@ pub fn BrowseModal() -> Html {
 					let id = id.clone();
 					move |_| id.clone()
 				});
+				// TODO: Amount to add (decrement, number, increment, add button)
+				// TODO: Purchase (and amount) button (show total calculated cost)
 				Some(html! {
 					<CollapsableCard
 						id={card_id}

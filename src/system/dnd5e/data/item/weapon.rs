@@ -35,9 +35,42 @@ pub struct Weapon {
 }
 
 impl Weapon {
+	pub fn melee_reach(&self) -> Option<u32> {
+		match &self.range {
+			None => {
+				let mut reach = 5;
+				if self.properties.contains(&Property::Reach) {
+					reach += 5;
+				}
+				Some(reach)
+			}
+			Some(_) => None,
+		}
+	}
+
+	pub fn range(&self) -> Option<(u32, u32)> {
+		match &self.range {
+			None => {
+				// melee weapons do not have a range/ranged attack - unless they have the thrown property
+				self.properties.iter().find_map(|property| match property {
+					Property::Thrown(short, long) => Some((*short, *long)),
+					_ => None,
+				})
+			}
+			Some(Range {
+				short_range,
+				long_range,
+				..
+			}) => Some((*short_range, *long_range)),
+		}
+	}
+
 	pub fn attack_action(&self, entry: &EquipableEntry) -> Action {
+		// TODO: Attack should have properties for both melee and range to support the thrown property
 		let attack_kind = match self.range {
-			None => AttackKindValue::Melee { reach: 5 },
+			None => AttackKindValue::Melee {
+				reach: self.melee_reach().unwrap(),
+			},
 			Some(Range {
 				short_range,
 				long_range,

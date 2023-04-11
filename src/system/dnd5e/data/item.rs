@@ -328,7 +328,7 @@ mod test {
 				notes: None,
 				kind: ItemKind::Equipment(Equipment {
 					criteria: None,
-					modifiers: vec![AddModifier {
+					mutators: vec![AddModifier {
 						modifier: Modifier::Disadvantage,
 						context: None,
 						kind: ModifierKind::Skill(Selector::Specific(Skill::Stealth)),

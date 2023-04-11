@@ -16,6 +16,50 @@ pub enum Property {
 	Versatile(Roll),
 }
 
+impl Property {
+	pub fn display_name(&self) -> &'static str {
+		match self {
+			Self::Light => "Light",
+			Self::Finesse => "Finesse",
+			Self::Heavy => "Heavy",
+			Self::Reach => "Reach",
+			Self::TwoHanded => "Two Handed",
+			Self::Thrown(_, _) => "Thrown",
+			Self::Versatile(_) => "Versatile",
+		}
+	}
+
+	pub fn description(&self) -> String {
+		match self {
+			Self::Light => {
+				"When you use the Attack action to make a melee attack with this weapon, \
+				you can use a bonus action to attack with a different light melee weapon \
+				that you're holding in the other hand."
+					.into()
+			}
+			Self::Finesse => "You can use either your Strength or Dexterity modifier \
+				for both the attack and damage rolls."
+				.into(),
+			Self::Heavy => {
+				"Small or Tiny creatures have disadvantage on attack rolls with this weapon.".into()
+			}
+			Self::Reach => "This weapon extends an additional 5 feet of melee range when \
+				making the attack action or opportunity attacks."
+				.into(),
+			Self::TwoHanded => "This weapon requires two hands when you attack with it.".into(),
+			Self::Thrown(min, max) => format!(
+				"You can throw this weapon to make a ranged attack, \
+				with an inner-range of {min} and an outer-range of {max}."
+			),
+			Self::Versatile(roll) => format!(
+				"This weapon can be used with one or two hands. \
+				You deal {} damage when using two hands.",
+				roll.to_string()
+			),
+		}
+	}
+}
+
 impl FromKDL for Property {
 	fn from_kdl(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
 		match node.get_str_req(ctx.consume_idx())? {
