@@ -290,7 +290,7 @@ impl Inventory {
 	pub fn items_by_name(&self) -> impl Iterator<Item = &EquipableEntry> {
 		self.itemids_by_name
 			.iter()
-			.map(|id| self.items_by_id.get(&id).unwrap())
+			.filter_map(|id| self.items_by_id.get(&id))
 	}
 
 	pub fn get_mut(&mut self, id: &Uuid) -> Option<&mut Item> {

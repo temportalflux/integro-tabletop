@@ -1,10 +1,17 @@
 use crate::system::dnd5e::{
-	components::{editor::mutator_list, FormulaInline, WalletInline},
+	components::{editor::mutator_list, validate_uint_only, FormulaInline, WalletInline},
 	data::item::{Item, ItemKind},
 };
+use wasm_bindgen::JsCast;
+use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
-pub fn item_body(item: &Item) -> Html {
+#[derive(Default)]
+pub struct ItemBodyProps {
+	pub on_quantity_changed: Option<Callback<u32>>,
+}
+pub fn item_body(item: &Item, props: Option<ItemBodyProps>) -> Html {
+	let props = props.unwrap_or_default();
 	// TODO: Proficient (weaponry, armor, etc)
 	// TODO: rarity
 	let mut sections = Vec::new();
@@ -26,10 +33,50 @@ pub fn item_body(item: &Item) -> Html {
 	}
 	match &item.kind {
 		ItemKind::Simple { count } => {
+			let inner = match props.on_quantity_changed {
+				None => html! { <span>{count}</span> },
+				Some(on_changed) => {
+					let count = *count;
+					let increment = Callback::from({
+						let on_changed = on_changed.clone();
+						move |_| {
+							on_changed.emit(count.saturating_add(1));
+						}
+					});
+					let decrement = Callback::from({
+						let on_changed = on_changed.clone();
+						move |_| {
+							on_changed.emit(count.saturating_sub(1));
+						}
+					});
+					let onchange = Callback::from({
+						let on_changed = on_changed.clone();
+						move |evt: web_sys::Event| {
+							let Some(target) = evt.target() else { return; };
+							let Some(input) = target.dyn_ref::<HtmlInputElement>() else { return; };
+							let Ok(value) = input.value().parse::<u32>() else { return; };
+							on_changed.emit(value);
+						}
+					});
+					html! {
+						<div class="input-group item-quantity-inline">
+							<button type="button" class="btn btn-theme" onclick={decrement}><i class="bi bi-dash" /></button>
+							<input
+								class="form-control text-center"
+								type="number"
+								min="0" value={count.to_string()}
+								onkeydown={validate_uint_only()}
+								onchange={onchange}
+							/>
+							<button type="button" class="btn btn-theme" onclick={increment}><i class="bi bi-plus" /></button>
+						</div>
+					}
+				}
+			};
 			sections.push(html! {
 				<div class="property">
 					<strong>{"Quantity:"}</strong>
-					<span>{count}</span>
+					{inner}
 				</div>
 			});
 		}

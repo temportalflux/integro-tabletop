@@ -403,3 +403,16 @@ input.slot[type="checkbox"]:checked:before {
 		width: 120px;
 	}
 }
+.item-quantity-inline {
+	display: inline-flex;
+	width: 120px;
+	
+	> * {
+		line-height: 15px;
+		padding: 0;
+	}
+
+	> button {
+		padding: 0.1rem 0.2rem;
+	}
+}

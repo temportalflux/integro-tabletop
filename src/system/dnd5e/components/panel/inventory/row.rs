@@ -2,10 +2,13 @@ use crate::{
 	components::modal,
 	system::dnd5e::{
 		components::{
-			panel::{inventory::equip_toggle::ItemRowEquipBox, item_body},
+			panel::{inventory::equip_toggle::ItemRowEquipBox, item_body, ItemBodyProps},
 			SharedCharacter,
 		},
-		data::{item::Item, character::ActionEffect},
+		data::{
+			character::ActionEffect,
+			item::{Item, ItemKind},
+		},
 	},
 };
 use uuid::Uuid;
@@ -68,7 +71,7 @@ fn ItemModal(InventoryItemProps { id }: &InventoryItemProps) -> Html {
 	let Some(item) = state.inventory().get_item(id) else { return html! {}; };
 	let _is_equipped = state.inventory().is_equipped(id);
 	// TODO: edit capability for properties:
-	// name, notes, quantity
+	// name, notes, quantity(✔)
 	// dndbeyond also supports worth and weight overrides, idk if I want that or not
 	// TODO: buttons for:
 	// (un)equip, sell(?), (un)attune, move (between containers)
@@ -86,6 +89,17 @@ fn ItemModal(InventoryItemProps { id }: &InventoryItemProps) -> Html {
 			equipped.then_some(ActionEffect::Recompile)
 		}
 	});
+	let on_quantity_changed = state.new_dispatch({
+		let id = id.clone();
+		move |amt, persistent, _| {
+			if let Some(item) = persistent.inventory.get_mut(&id) {
+				if let ItemKind::Simple { count } = &mut item.kind {
+					*count = amt;
+				}
+			}
+			None
+		}
+	});
 
 	html! {<>
 		<div class="modal-header">
@@ -93,7 +107,9 @@ fn ItemModal(InventoryItemProps { id }: &InventoryItemProps) -> Html {
 			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
 		</div>
 		<div class="modal-body">
-			{item_body(item)}
+			{item_body(item, Some(ItemBodyProps {
+				on_quantity_changed: Some(on_quantity_changed),
+			}))}
 			<span class="hr my-2" />
 			<div class="d-flex justify-content-center">
 				<button type="button" class="btn btn-sm btn-outline-theme" onclick={on_delete}>
