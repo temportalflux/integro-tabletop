@@ -5,7 +5,7 @@ use crate::{
 			panel::{inventory::equip_toggle::ItemRowEquipBox, item_body},
 			SharedCharacter,
 		},
-		data::item::Item,
+		data::{item::Item, character::ActionEffect},
 	},
 };
 use uuid::Uuid;
@@ -64,13 +64,28 @@ pub fn ItemRow(
 #[function_component]
 fn ItemModal(InventoryItemProps { id }: &InventoryItemProps) -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
+	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 	let Some(item) = state.inventory().get_item(id) else { return html! {}; };
 	let _is_equipped = state.inventory().is_equipped(id);
 	// TODO: edit capability for properties:
 	// name, notes, quantity
+	// dndbeyond also supports worth and weight overrides, idk if I want that or not
 	// TODO: buttons for:
 	// (un)equip, sell(?), (un)attune, move (between containers)
-	// TODO: button to convert into custom item, which enables full control over all properties
+	// TODO: button to convert into custom item, which enables full control over all properties.
+	// 		Or maybe this just uses some `inheiret` property and allows user to
+	// 		override any property after copying from some source id.
+
+	let on_delete = state.new_dispatch({
+		let id = id.clone();
+		let close_modal = modal_dispatcher.callback(|_| modal::Action::Close);
+		move |_: MouseEvent, persistent, _| {
+			let equipped = persistent.inventory.is_equipped(&id);
+			let _item = persistent.inventory.remove(&id);
+			close_modal.emit(());
+			equipped.then_some(ActionEffect::Recompile)
+		}
+	});
 
 	html! {<>
 		<div class="modal-header">
@@ -79,6 +94,13 @@ fn ItemModal(InventoryItemProps { id }: &InventoryItemProps) -> Html {
 		</div>
 		<div class="modal-body">
 			{item_body(item)}
+			<span class="hr my-2" />
+			<div class="d-flex justify-content-center">
+				<button type="button" class="btn btn-sm btn-outline-theme" onclick={on_delete}>
+					<i class="bi bi-trash me-1" />
+					{"Delete"}
+				</button>
+			</div>
 		</div>
 	</>}
 }
