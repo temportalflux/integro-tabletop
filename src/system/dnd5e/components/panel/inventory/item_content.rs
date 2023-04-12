@@ -20,7 +20,7 @@ pub fn item_body(item: &Item) -> Html {
 		sections.push(html! {
 			<div class="property">
 				<strong>{"Weight:"}</strong>
-				<span>{item.weight}{" lb."}</span>
+				<span>{item.weight * item.quantity() as f32}{" lb."}</span>
 			</div>
 		});
 	}

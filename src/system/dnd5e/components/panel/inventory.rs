@@ -1,6 +1,9 @@
 use crate::{
 	components::modal,
-	system::dnd5e::components::{SharedCharacter, WalletInlineButton},
+	system::{
+		core::SourceId,
+		dnd5e::components::{SharedCharacter, WalletInlineButton},
+	},
 };
 use yew::prelude::*;
 
@@ -12,6 +15,16 @@ mod item_content;
 pub use item_content::*;
 mod row;
 pub use row::*;
+
+#[derive(Clone, PartialEq, Properties)]
+pub struct SystemItemProps {
+	pub id: SourceId,
+}
+
+#[derive(Clone, PartialEq, Properties)]
+pub struct InventoryItemProps {
+	pub id: uuid::Uuid,
+}
 
 #[function_component]
 pub fn Inventory() -> Html {

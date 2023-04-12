@@ -1,12 +1,17 @@
 use crate::{
 	components::modal,
 	system::dnd5e::{
-		components::{panel::{inventory::equip_toggle::ItemRowEquipBox, item_body}, SharedCharacter},
+		components::{
+			panel::{inventory::equip_toggle::ItemRowEquipBox, item_body},
+			SharedCharacter,
+		},
 		data::item::Item,
 	},
 };
 use uuid::Uuid;
 use yew::prelude::*;
+
+use super::InventoryItemProps;
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct ItemRowProps {
@@ -49,20 +54,15 @@ pub fn ItemRow(
 				/>
 			</td>
 			<td>{item.name.clone()}</td>
-			<td class="text-center">{item.weight}{" lb."}</td>
+			<td class="text-center">{item.weight * item.quantity() as f32}{" lb."}</td>
 			<td class="text-center">{item.quantity()}</td>
 			<td style="width: 250px;">{item.notes.clone()}</td>
 		</tr>
 	}
 }
 
-#[derive(Clone, PartialEq, Properties)]
-struct ItemModalProps {
-	id: Uuid,
-}
-
 #[function_component]
-fn ItemModal(ItemModalProps { id }: &ItemModalProps) -> Html {
+fn ItemModal(InventoryItemProps { id }: &InventoryItemProps) -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
 	let Some(item) = state.inventory().get_item(id) else { return html! {}; };
 	let _is_equipped = state.inventory().is_equipped(id);

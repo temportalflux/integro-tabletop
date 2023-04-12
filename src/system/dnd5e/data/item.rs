@@ -50,6 +50,42 @@ impl Item {
 			_ => 1,
 		}
 	}
+
+	pub fn can_stack(&self) -> bool {
+		matches!(&self.kind, ItemKind::Simple { .. })
+	}
+
+	pub fn can_add_to_stack(&self, stackable: &Item) -> bool {
+		assert!(stackable.can_stack());
+		if !self.can_stack() {
+			return false;
+		}
+
+		// There are 2 properties we do not check here.
+		// `kind` is not checked because both items are `stackable` aka they are both simple items.
+		// We don't care how many are in each simple item stack,
+		// those will be combined if the other properties are equivalent.
+		// `notes` is not checked because thats extra user data that is stack-agnostic.
+		// If the user wants to have distinct stacks, they can rename the item.
+		self.name == stackable.name
+			&& self.description == stackable.description
+			&& self.weight == stackable.weight
+			&& self.worth == stackable.worth
+			&& self.tags == stackable.tags
+	}
+
+	pub fn add_to_stack(&mut self, other: Item) {
+		assert!(self.can_stack());
+		assert!(other.can_stack());
+		match (&mut self.kind, other.kind) {
+			(ItemKind::Simple { count: dst }, ItemKind::Simple { count: src }) => {
+				*dst += src;
+			}
+			_ => {
+				panic!("attempting to stack item with non-stackable item");
+			}
+		}
+	}
 }
 
 crate::impl_kdl_node!(Item, "item");
@@ -68,7 +104,7 @@ impl FromKDL for Item {
 		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
 		let name = node.get_str_req("name")?.to_owned();
-		let weight = node.get_f64_opt("weight")?.unwrap_or(0.0) as f32;
+		let mut weight = node.get_f64_opt("weight")?.unwrap_or(0.0) as f32;
 		let description = node
 			.query_str_opt("scope() > description", 0)?
 			.map(str::to_owned);
@@ -90,6 +126,17 @@ impl FromKDL for Item {
 			Some(node) => ItemKind::from_kdl(node, &mut ctx.next_node())?,
 			None => ItemKind::default(),
 		};
+
+		// Items are defined with the weight being representative of the stack,
+		// but are used as the weight being representative of a single item
+		// (total weight being calculated on the fly).
+		// TODO: This will get wonky when saving/loading characters.
+		// Use a special flag to indicate per-item vs per-stack weight?
+		if weight > 0.0 {
+			if let ItemKind::Simple { count } = &kind {
+				weight /= *count as f32;
+			}
+		}
 
 		Ok(Self {
 			name,
@@ -197,7 +244,16 @@ impl Inventory {
 			.unwrap_or(false)
 	}
 
-	pub fn insert(&mut self, item: Item) -> Uuid {
+	pub fn insert(&mut self, mut item: Item) -> Uuid {
+		if item.can_stack() {
+			for (_id, entry) in &mut self.items_by_id {
+				if entry.item.can_add_to_stack(&item) {
+					entry.item.add_to_stack(item);
+					return entry.id.clone();
+				}
+			}
+		}
+
 		let id = Uuid::new_v4();
 		let search = self
 			.itemids_by_name

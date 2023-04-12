@@ -68,6 +68,17 @@ impl std::ops::AddAssign for Wallet {
 	}
 }
 
+impl std::ops::Mul<u64> for Wallet {
+	type Output = Self;
+
+	fn mul(mut self, rhs: u64) -> Self::Output {
+		for (_, amt) in &mut self.0 {
+			*amt *= rhs;
+		}
+		self
+	}
+}
+
 impl Wallet {
 	pub fn total_value(&self) -> u64 {
 		self.0
