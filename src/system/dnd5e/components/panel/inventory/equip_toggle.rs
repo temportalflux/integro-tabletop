@@ -49,7 +49,7 @@ pub fn ItemRowEquipBox(
 			false => can_be_equipped.clone().err(),
 		}}>
 			<input
-				class={"form-check-input"} type={"checkbox"}
+				class={"form-check-input equip"} type={"checkbox"}
 				checked={*is_equipped}
 				disabled={!*is_equipped && can_be_equipped.is_err()}
 				onclick={Callback::from(|evt: web_sys::MouseEvent| evt.stop_propagation())}

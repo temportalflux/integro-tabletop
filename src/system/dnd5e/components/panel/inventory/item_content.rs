@@ -9,6 +9,8 @@ use yew::prelude::*;
 #[derive(Default)]
 pub struct ItemBodyProps {
 	pub on_quantity_changed: Option<Callback<u32>>,
+	pub is_equipped: bool,
+	pub set_equipped: Option<Callback<bool>>,
 }
 pub fn item_body(item: &Item, props: Option<ItemBodyProps>) -> Html {
 	let props = props.unwrap_or_default();
@@ -81,6 +83,27 @@ pub fn item_body(item: &Item, props: Option<ItemBodyProps>) -> Html {
 			});
 		}
 		ItemKind::Equipment(equipment) => {
+			let mut equip_sections = Vec::new();
+			if let Some(on_equipped) = props.set_equipped {
+				let onchange = Callback::from({
+					move |evt: web_sys::Event| {
+						let Some(node) = evt.target() else { return; };
+						let Some(input) = node.dyn_ref::<HtmlInputElement>() else { return; };
+						on_equipped.emit(input.checked());
+					}
+				});
+				equip_sections.push(html! {
+					<div class="form-check">
+						<input  id="equipItem" class="form-check-input equip" type="checkbox" checked={props.is_equipped} {onchange} />
+						<label for="equipItem" class="form-check-label">
+							{match props.is_equipped {
+								true => format!("Equipped"),
+								false => format!("Not Equipped"),
+							}}
+						</label>
+					</div>
+				});
+			}
 			if !equipment.mutators.is_empty() {
 				let mut criteria_html = None;
 				if let Some(criteria) = &equipment.criteria {
@@ -91,7 +114,7 @@ pub fn item_body(item: &Item, props: Option<ItemBodyProps>) -> Html {
 						</div>
 					});
 				}
-				sections.push(html! {
+				equip_sections.push(html! {
 					<div class="border-bottom-theme-muted">
 						<div>{"You gain the following benefits while this item is equipped:"}</div>
 						{mutator_list(&equipment.mutators, false)}
@@ -100,7 +123,7 @@ pub fn item_body(item: &Item, props: Option<ItemBodyProps>) -> Html {
 				});
 			}
 			if let Some(shield_bonus) = &equipment.shield {
-				sections.push(html! {
+				equip_sections.push(html! {
 					<div class="border-bottom-theme-muted">
 						<strong>{"Shield"}</strong>
 						<div class="ms-3">
@@ -134,7 +157,7 @@ pub fn item_body(item: &Item, props: Option<ItemBodyProps>) -> Html {
 						</div>
 					}),
 				};
-				sections.push(html! {
+				equip_sections.push(html! {
 					<div class="border-bottom-theme-muted">
 						<strong>{"Armor"}</strong>
 						<div class="ms-3">
@@ -211,7 +234,7 @@ pub fn item_body(item: &Item, props: Option<ItemBodyProps>) -> Html {
 						</div>
 					});
 				}
-				sections.push(html! {
+				equip_sections.push(html! {
 					<div class="border-bottom-theme-muted">
 						<strong>{"Weapon"}</strong>
 						<div class="ms-3">
@@ -226,6 +249,14 @@ pub fn item_body(item: &Item, props: Option<ItemBodyProps>) -> Html {
 				// mutators & criteria applied when attuned
 				// warning if attuned and not currently equipped
 			}
+			sections.push(html! {
+				<div>
+					<strong>{"Equipment"}</strong>
+					<div class="ms-3">
+						{equip_sections}
+					</div>
+				</div>
+			});
 		}
 	}
 	if let Some(desc) = &item.description {

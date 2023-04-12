@@ -69,12 +69,11 @@ fn ItemModal(InventoryItemProps { id }: &InventoryItemProps) -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 	let Some(item) = state.inventory().get_item(id) else { return html! {}; };
-	let _is_equipped = state.inventory().is_equipped(id);
 	// TODO: edit capability for properties:
 	// name, notes, quantity(✔)
 	// dndbeyond also supports worth and weight overrides, idk if I want that or not
 	// TODO: buttons for:
-	// (un)equip, sell(?), (un)attune, move (between containers)
+	// (un)equip(✔), sell(?), (un)attune, move (between containers)
 	// TODO: button to convert into custom item, which enables full control over all properties.
 	// 		Or maybe this just uses some `inheiret` property and allows user to
 	// 		override any property after copying from some source id.
@@ -89,17 +88,32 @@ fn ItemModal(InventoryItemProps { id }: &InventoryItemProps) -> Html {
 			equipped.then_some(ActionEffect::Recompile)
 		}
 	});
-	let on_quantity_changed = state.new_dispatch({
-		let id = id.clone();
-		move |amt, persistent, _| {
-			if let Some(item) = persistent.inventory.get_mut(&id) {
-				if let ItemKind::Simple { count } = &mut item.kind {
-					*count = amt;
+	let mut item_props = ItemBodyProps::default();
+	match &item.kind {
+		ItemKind::Simple { .. } => {
+			item_props.on_quantity_changed = Some(state.new_dispatch({
+				let id = id.clone();
+				move |amt, persistent, _| {
+					if let Some(item) = persistent.inventory.get_mut(&id) {
+						if let ItemKind::Simple { count } = &mut item.kind {
+							*count = amt;
+						}
+					}
+					None
 				}
-			}
-			None
+			}));
 		}
-	});
+		ItemKind::Equipment(_equipment) => {
+			item_props.is_equipped = state.inventory().is_equipped(id);
+			item_props.set_equipped = Some(state.new_dispatch({
+				let id = id.clone();
+				move |should_be_equipped, persistent, _| {
+					persistent.inventory.set_equipped(&id, should_be_equipped);
+					Some(ActionEffect::Recompile)
+				}
+			}));
+		}
+	}
 
 	html! {<>
 		<div class="modal-header">
@@ -107,9 +121,7 @@ fn ItemModal(InventoryItemProps { id }: &InventoryItemProps) -> Html {
 			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
 		</div>
 		<div class="modal-body">
-			{item_body(item, Some(ItemBodyProps {
-				on_quantity_changed: Some(on_quantity_changed),
-			}))}
+			{item_body(item, Some(item_props))}
 			<span class="hr my-2" />
 			<div class="d-flex justify-content-center">
 				<button type="button" class="btn btn-sm btn-outline-theme" onclick={on_delete}>
