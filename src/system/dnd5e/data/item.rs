@@ -244,7 +244,7 @@ impl Inventory {
 			.unwrap_or(false)
 	}
 
-	pub fn insert(&mut self, mut item: Item) -> Uuid {
+	pub fn insert(&mut self, item: Item) -> Uuid {
 		if item.can_stack() {
 			for (_id, entry) in &mut self.items_by_id {
 				if entry.item.can_add_to_stack(&item) {
@@ -361,7 +361,7 @@ mod test {
 			let expected = Item {
 				name: "Torch".into(),
 				description: None,
-				weight: 1.0,
+				weight: 0.2,
 				worth: Wallet::from([(1, currency::Kind::Copper)]),
 				notes: None,
 				kind: ItemKind::Simple { count: 5 },
