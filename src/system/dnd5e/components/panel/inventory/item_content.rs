@@ -1,6 +1,15 @@
-use crate::system::dnd5e::{
-	components::{editor::mutator_list, validate_uint_only, FormulaInline, WalletInline},
-	data::item::{Item, ItemKind},
+use crate::{
+	system::dnd5e::{
+		components::{
+			editor::mutator_list, validate_uint_only, FormulaInline, SharedCharacter, WalletInline,
+		},
+		data::{
+			item::{Item, ItemKind},
+			ArmorExtended, WeaponProficiency,
+		},
+		evaluator::IsProficientWith,
+	},
+	utility::Evaluator,
 };
 use wasm_bindgen::JsCast;
 use web_sys::HtmlInputElement;
@@ -8,15 +17,30 @@ use yew::prelude::*;
 
 #[derive(Default)]
 pub struct ItemBodyProps {
+	pub character: Option<SharedCharacter>,
 	pub on_quantity_changed: Option<Callback<u32>>,
 	pub is_equipped: bool,
 	pub set_equipped: Option<Callback<bool>>,
 }
-pub fn item_body(item: &Item, props: Option<ItemBodyProps>) -> Html {
+pub fn item_body(item: &Item, state: &SharedCharacter, props: Option<ItemBodyProps>) -> Html {
 	let props = props.unwrap_or_default();
-	// TODO: Proficient (weaponry, armor, etc)
-	// TODO: rarity
 	let mut sections = Vec::new();
+	if IsProficientWith::Tool(item.name.clone()).evaluate(state) {
+		sections.push(html! {
+			<div class="property">
+				<strong>{"Proficient (with tool):"}</strong>
+				<span>{"✔ Yes"}</span>
+			</div>
+		});
+	}
+	if let Some(rarity) = item.rarity {
+		sections.push(html! {
+			<div class="property">
+				<strong>{"Rarity:"}</strong>
+				<span>{rarity}</span>
+			</div>
+		});
+	}
 	if !item.worth.is_empty() {
 		sections.push(html! {
 			<div class="property">
@@ -128,6 +152,13 @@ pub fn item_body(item: &Item, props: Option<ItemBodyProps>) -> Html {
 						<strong>{"Shield"}</strong>
 						<div class="ms-3">
 							<div class="property">
+								<strong>{"Proficient:"}</strong>
+								{match IsProficientWith::Armor(ArmorExtended::Shield).evaluate(state) {
+									true => html! { <span>{"✔ Yes"}</span> },
+									false => html! { <span>{"❌ No"}</span> },
+								}}
+							</div>
+							<div class="property">
 								<strong>{"Armor Class Bonus:"}</strong>
 								<span>{format!("{shield_bonus:+}")}</span>
 							</div>
@@ -136,34 +167,41 @@ pub fn item_body(item: &Item, props: Option<ItemBodyProps>) -> Html {
 				});
 			}
 			if let Some(armor) = &equipment.armor {
-				let prop_kind = html! {
+				let mut armor_sections = Vec::new();
+				armor_sections.push(html! {
 					<div class="property">
 						<strong>{"Type:"}</strong>
 						<span>{armor.kind.to_string()}</span>
 					</div>
-				};
-				let prop_formula = html! {
+				});
+				armor_sections.push(html! {
+					<div class="property">
+						<strong>{"Proficient:"}</strong>
+						{match IsProficientWith::Armor(ArmorExtended::Kind(armor.kind)).evaluate(state) {
+							true => html! { <span>{"✔ Yes"}</span> },
+							false => html! { <span>{"❌ No"}</span> },
+						}}
+					</div>
+				});
+				armor_sections.push(html! {
 					<div class="property">
 						<strong>{"Armor Class Formula:"}</strong>
 						<span><FormulaInline formula={armor.formula.clone()} /></span>
 					</div>
-				};
-				let prop_min_score = match &armor.min_strength_score {
-					None => None,
-					Some(min_score) => Some(html! {
+				});
+				if let Some(min_score) = &armor.min_strength_score {
+					armor_sections.push(html! {
 						<div class="property">
 							<strong>{"Minimum Strength Score:"}</strong>
 							<span>{min_score}</span>
 						</div>
-					}),
-				};
+					});
+				}
 				equip_sections.push(html! {
 					<div class="border-bottom-theme-muted">
 						<strong>{"Armor"}</strong>
 						<div class="ms-3">
-							{prop_kind}
-							{prop_formula}
-							{prop_min_score.unwrap_or_default()}
+							{armor_sections}
 						</div>
 					</div>
 				});
@@ -180,6 +218,22 @@ pub fn item_body(item: &Item, props: Option<ItemBodyProps>) -> Html {
 					<div class="property">
 						<strong>{"Classification:"}</strong>
 						<span>{weapon.classification.clone()}</span>
+					</div>
+				});
+				let is_proficient = vec![
+					IsProficientWith::Weapon(WeaponProficiency::Kind(weapon.kind)),
+					IsProficientWith::Weapon(WeaponProficiency::Classification(
+						weapon.classification.clone(),
+					)),
+				];
+				let is_proficient = is_proficient.into_iter().any(|eval| eval.evaluate(state));
+				weapon_sections.push(html! {
+					<div class="property">
+						<strong>{"Proficient:"}</strong>
+						{match is_proficient {
+							true => html! { <span>{"✔ Yes"}</span> },
+							false => html! { <span>{"❌ No"}</span> },
+						}}
 					</div>
 				});
 				if let Some(reach) = weapon.melee_reach() {

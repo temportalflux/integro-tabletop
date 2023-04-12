@@ -264,7 +264,7 @@ fn BrowsedItemCard(SystemItemProps { id }: &SystemItemProps) -> Html {
 				</>}
 			}}
 		>
-			{item_body(item, None)}
+			{item_body(item, &state, None)}
 			<AddItemActions id={id.clone()} />
 		</CollapsableCard>
 	}

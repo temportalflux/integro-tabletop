@@ -1,7 +1,6 @@
 # Backlog
 -----
 
-- Item modal
 - Action / Attack modal
 - Feature modal
 - Feature limited uses

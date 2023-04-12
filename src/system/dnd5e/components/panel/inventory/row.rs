@@ -121,7 +121,7 @@ fn ItemModal(InventoryItemProps { id }: &InventoryItemProps) -> Html {
 			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
 		</div>
 		<div class="modal-body">
-			{item_body(item, Some(item_props))}
+			{item_body(item, &state, Some(item_props))}
 			<span class="hr my-2" />
 			<div class="d-flex justify-content-center">
 				<button type="button" class="btn btn-sm btn-outline-theme" onclick={on_delete}>

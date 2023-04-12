@@ -14,6 +14,8 @@ mod feature;
 pub use feature::*;
 pub mod item;
 pub mod proficiency;
+mod rarity;
+pub use rarity::*;
 mod rest;
 pub use rest::*;
 pub mod roll;

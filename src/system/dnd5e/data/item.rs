@@ -1,4 +1,4 @@
-use super::currency::Wallet;
+use super::{currency::Wallet, Rarity};
 use crate::{
 	kdl_ext::{DocumentExt, FromKDL, NodeContext, NodeExt},
 	system::{
@@ -7,7 +7,7 @@ use crate::{
 	},
 	utility::{MutatorGroup, NotInList},
 };
-use std::{collections::HashMap, path::Path};
+use std::{collections::HashMap, path::Path, str::FromStr};
 use uuid::Uuid;
 
 pub mod armor;
@@ -18,6 +18,7 @@ pub mod weapon;
 pub struct Item {
 	pub name: String,
 	pub description: Option<String>,
+	pub rarity: Option<Rarity>,
 	pub weight: f32,
 	// TODO: When browsing items to add to inventory, there should be a PURCHASE option for buying
 	// some quantity of an item and immediately removing the total from the characters's wallet.
@@ -69,6 +70,7 @@ impl Item {
 		// If the user wants to have distinct stacks, they can rename the item.
 		self.name == stackable.name
 			&& self.description == stackable.description
+			&& self.rarity == stackable.rarity
 			&& self.weight == stackable.weight
 			&& self.worth == stackable.worth
 			&& self.tags == stackable.tags
@@ -104,6 +106,10 @@ impl FromKDL for Item {
 		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
 		let name = node.get_str_req("name")?.to_owned();
+		let rarity = match node.query_str_opt("scope() > rarity", 0)? {
+			Some(value) => Some(Rarity::from_str(value)?),
+			None => None,
+		};
 		let mut weight = node.get_f64_opt("weight")?.unwrap_or(0.0) as f32;
 		let description = node
 			.query_str_opt("scope() > description", 0)?
@@ -141,6 +147,7 @@ impl FromKDL for Item {
 		Ok(Self {
 			name,
 			description,
+			rarity,
 			weight,
 			worth,
 			notes,
@@ -361,6 +368,7 @@ mod test {
 			let expected = Item {
 				name: "Torch".into(),
 				description: None,
+				rarity: None,
 				weight: 0.2,
 				worth: Wallet::from([(1, currency::Kind::Copper)]),
 				notes: None,
@@ -385,6 +393,7 @@ mod test {
 			}";
 			let expected = Item {
 				name: "Plate Armor".into(),
+				rarity: None,
 				description: None,
 				weight: 65.0,
 				worth: Wallet::from([(1500, currency::Kind::Gold)]),
