@@ -240,7 +240,7 @@ fn main() {
 	yew::Renderer::<App>::new().render();
 }
 
-async fn database() -> Result<(), database::ClientError> {
+async fn database() -> Result<(), database::Error> {
 	use database::*;
 	let client = Client::open::<SchemaVersion>("tabletop-tools").await?;
 
