@@ -1,5 +1,7 @@
 use crate::kdl_ext::NodeContext;
 use anyhow::Context;
+use serde::Serialize;
+use wasm_bindgen::JsValue;
 use std::{
 	collections::BTreeMap,
 	path::{Path, PathBuf},
@@ -125,6 +127,10 @@ fn App() -> Html {
 		let modules = modules.clone();
 		let system_state = system.clone();
 		async move {
+			if let Err(err) = database().await {
+				log::error!(target: "db", "{err:?}");
+			}
+
 			let mut system = DnD5e::default();
 			for module in &*modules {
 				log::info!("Loading content module {module:?}");
@@ -232,6 +238,120 @@ fn App() -> Html {
 fn main() {
 	logging::wasm::init(logging::wasm::Config::default().prefer_target());
 	yew::Renderer::<App>::new().render();
+}
+
+async fn database() -> Result<(), idb::Error> {
+	let factory = idb::Factory::new()?;
+	let mut request = factory.open("tabletop-tools", Some(1))?;
+	// called when the database is being created for the first time, or when the version is old
+	request.on_upgrade_needed(|event| {
+		let database = event.database().expect("missing database during on_upgrade_needed");
+		
+		// Eventually maybe handle actual upgrades, but for now just initialize the schema.
+		// event.old_version()?
+		// event.new_version()?
+
+		// Modules table - information about what modules are locally downloaded
+		let modules_table = {
+			let mut params = idb::ObjectStoreParams::new();
+			params.auto_increment(true);
+			params.key_path(Some(idb::KeyPath::new_single("id")));
+			database.create_object_store("modules", params).expect("failed to create modules table")
+		};
+		//modules_table.create_index("module_version", idb::KeyPath::new_single("version"), None).expect("failed to add index");
+
+		
+		let entries_store = {
+			let mut params = idb::ObjectStoreParams::new();
+			params.auto_increment(true);
+			params.key_path(Some(idb::KeyPath::new_single("id")));
+			database.create_object_store("entries", params).expect("failed to create entries table")
+		};
+		entries_store.create_index("system_category", idb::KeyPath::new_array(["system", "category"]), None).expect("failed to add index");
+
+	});
+	let database = request.await?;
+
+	let transaction = database.transaction(&["entries"], idb::TransactionMode::ReadWrite)?;
+	let entries_store = transaction.object_store("entries")?;
+	async fn put(store: &idb::ObjectStore, json: &serde_json::Value) -> Result<(), idb::Error> {
+		let entry = json.serialize(&serde_wasm_bindgen::Serializer::json_compatible()).expect("failed to serialize");
+		store.put(&entry, None).await?;
+		Ok(())
+	}
+
+	put(&entries_store, &serde_json::json!({
+		"id": "local://homebrew@dnd5e/item/bag_of_stuff.kdl",
+		"category": "item",
+		"system": "dnd5e",
+		"module": "homebrew",
+		"name": "Bag of Stuff",
+		"data": "item name=\"Bag of Stuff\" {...}",
+	})).await?;
+	put(&entries_store, &serde_json::json!({
+		"id": "local://homebrew@dnd5e/item/sword.kdl",
+		"category": "item",
+		"system": "dnd5e",
+		"module": "homebrew",
+		"name": "Sword",
+		"data": "item name=\"Sword\" {...}",
+	})).await?;
+	put(&entries_store, &serde_json::json!({
+		"id": "local://homebrew@dnd5e/spells/guidance.kdl",
+		"category": "spell",
+		"system": "dnd5e",
+		"module": "homebrew",
+		"name": "Guidance",
+		"data": "spell name=\"Guidance\" {...}",
+	})).await?;
+	put(&entries_store, &serde_json::json!({
+		"id": "local://homebrew@dnd5e/class/barbarian.kdl",
+		"category": "class",
+		"system": "dnd5e",
+		"module": "homebrew",
+		"name": "Barbarian",
+		"data": "class name=\"Barbarian\" {...}",
+	})).await?;
+	put(&entries_store, &serde_json::json!({
+		"id": "local://homebrew@dnd5e/race/human.kdl",
+		"category": "race",
+		"system": "dnd5e",
+		"module": "homebrew",
+		"name": "Human",
+		"data": "entry \"Race\" name=\"Human\" {...}",
+	})).await?;
+	put(&entries_store, &serde_json::json!({
+		"id": "local://homebrew@dnd5e/upbringing/dragonborn.kdl",
+		"category": "upbringing",
+		"system": "dnd5e",
+		"module": "homebrew",
+		"name": "Dragonborn",
+		"data": "entry \"Upbringing\" name=\"Dragonborn\" {...}",
+	})).await?;
+
+	let system_category = entries_store.index("system_category")?;
+	let query_dnd5e_items = idb::Query::KeyRange(
+		idb::KeyRange::only(&js_sys::Array::of2(&"dnd5e".into(), &"item".into()))?
+	);
+	let items_dnd5e = system_category.get_all(Some(query_dnd5e_items.clone()), None).await?;
+	log::debug!(target: "db", "{:?}", items_dnd5e);
+
+	if let Some(mut cursor) = system_category.open_cursor(Some(query_dnd5e_items), None).await? {
+		'iter_entries: loop {
+			let value = cursor.value()?;
+			if value.is_null() {
+				break 'iter_entries;
+			}
+			log::debug!(target: "db", "Next Item: {:?}", value);
+			cursor.advance(1).await?;
+		}
+	}
+
+	transaction.commit().await?;
+
+	database.close();
+
+	Ok(())
 }
 
 #[cfg(target_family = "windows")]

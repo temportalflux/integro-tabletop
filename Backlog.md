@@ -1,6 +1,11 @@
 # Backlog
 -----
 
+## IndexedDB
+- need to store modules locally (so they dont have to be fetched every time the app is opened)
+- localstorage is not big enough
+- use indexeddb via https://github.com/devashishdxt/rexie or https://github.com/devashishdxt/idb
+
 ## Feature UI
 - collapse features with "category" property into one section,
   where the name of a feature which is also a category for other features (e.g. `Ki`) is the root element.
@@ -81,3 +86,6 @@ written in kdl, hosted in github
 - modules are querried from backend(s) on app load, and opt-in able for any given character
 - modules have permissions (based on backend) and user access can be added by the module owner via the app
 - App has interface support for editing modules (adding/removing content, updating content with versioning)
+
+## Standalone app?
+- maybe run wasm in a winit window via https://docs.wasmtime.dev/
