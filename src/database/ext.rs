@@ -112,10 +112,10 @@ impl QueryExt for idb::Query {
 }
 
 pub trait TransactionExt {
-	fn object_store_of<T: Record>(&self) -> Result<idb::ObjectStore, idb::Error>;
+	fn object_store_of<T: Record>(&self) -> Result<idb::ObjectStore, super::Error>;
 }
 impl TransactionExt for idb::Transaction {
-	fn object_store_of<T: Record>(&self) -> Result<idb::ObjectStore, idb::Error> {
-		self.object_store(T::store_id())
+	fn object_store_of<T: Record>(&self) -> Result<idb::ObjectStore, super::Error> {
+		Ok(self.object_store(T::store_id())?)
 	}
 }

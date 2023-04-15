@@ -9,7 +9,6 @@ use std::{
 	sync::Arc,
 };
 use yew::prelude::*;
-use yew_hooks::use_is_first_mount;
 
 pub mod bootstrap;
 pub mod components;
@@ -120,7 +119,6 @@ fn App() -> Html {
 	let show_browser = use_state_eq(|| false);
 	let comp_reg = use_memo(|_| dnd5e::component_registry(), ());
 	let node_reg = Arc::new(dnd5e::node_registry());
-	let modules = use_memo(|_| vec!["basic-rules", "elf-and-orc", "wotc-toa"], ());
 	let system = use_state(|| DnD5e::default());
 	let database = yew_hooks::use_async(async move {
 		match Database::open().await {
@@ -135,6 +133,7 @@ fn App() -> Html {
 		let database = database.clone();
 		async move {
 			let Some(database) = &database.data else { return Err(()); };
+			log::debug!(target: "tabletop-tools", "Loading modules into database");
 			if let Err(err) = load_modules(database).await {
 				log::error!(target: "tabletop-tools", "Failed to load modules into database: {err:?}");
 				return Err(());
@@ -142,41 +141,54 @@ fn App() -> Html {
 			Ok(())
 		}
 	});
-
-	let content_loader = yew_hooks::use_async({
+	let load_content = yew_hooks::use_async({
+		let database = database.clone();
 		let comp_reg = comp_reg.clone();
 		let node_reg = node_reg.clone();
-		let modules = modules.clone();
 		let system_state = system.clone();
 		async move {
-			/*
+			use database::{
+				app::{entry, Entry},
+				ObjectStoreExt, TransactionExt,
+			};
+			let Some(database) = &database.data else { return Err(LoadContentError::NoDatabase); };
+			log::debug!(target: "tabletop-tools", "Loading content from database");
+			let transaction = database.read_entries()?;
+			let entries_store = transaction.object_store_of::<Entry>()?;
+			let idx_by_system = entries_store.index_of::<entry::System>()?;
+			let query = entry::System {
+				system: "dnd5e".into(),
+			};
+
 			let mut system = DnD5e::default();
-			for module in &*modules {
-				log::info!("Loading content module {module:?}");
-				let sources = fetch_local_module(*module, &["dnd5e"]).await?;
-				for (mut source_id, content) in sources {
-					let Ok(document) = content.parse::<kdl::KdlDocument>() else { continue; };
-					for (idx, node) in document.nodes().iter().enumerate() {
-						source_id.node_idx = idx;
-						let Some(comp_factory) = comp_reg.get_factory(node.name().value()).cloned() else { continue; };
-						let ctx = NodeContext::new(Arc::new(source_id.clone()), node_reg.clone());
-						match comp_factory
-							.add_from_kdl(node, &ctx)
-							.with_context(|| format!("Failed to parse {:?}", source_id.to_string()))
-						{
-							Ok(insert_callback) => {
-								(insert_callback)(&mut system);
-							}
-							Err(err) => {
-								log::error!(target: *module, "{err:?}");
-							}
+			let mut cursor = idx_by_system.open_cursor(Some(&query)).await?;
+			while let Some(entry) = cursor.next().await {
+				let source_id = entry.source_id();
+				let document = match entry.kdl.parse::<kdl::KdlDocument>() {
+					Ok(doc) => doc,
+					Err(err) => {
+						log::error!(target: "tabletop-tools", "Failed to parse the contents of {:?}: {err:?}", source_id.to_string());
+						continue;
+					}
+				};
+				for node in document.nodes() {
+					let Some(comp_factory) = comp_reg.get_factory(node.name().value()).cloned() else { continue; };
+					let ctx = NodeContext::new(Arc::new(source_id.clone()), node_reg.clone());
+					match comp_factory
+						.add_from_kdl(node, &ctx)
+						.with_context(|| format!("Failed to parse {:?}", source_id.to_string()))
+					{
+						Ok(insert_callback) => {
+							(insert_callback)(&mut system);
+						}
+						Err(err) => {
+							log::error!(target: &entry.module, "{err:?}");
 						}
 					}
 				}
 			}
 			system_state.set(system);
-			*/
-			Ok(()) as Result<(), std::sync::Arc<anyhow::Error>>
+			Ok(()) as Result<(), LoadContentError>
 		}
 	});
 
@@ -196,10 +208,15 @@ fn App() -> Html {
 		},
 		database.data.clone(),
 	);
-
-	if use_is_first_mount() {
-		//content_loader.run();
-	}
+	use_effect_with_deps(
+		{
+			let load_content = load_content.clone();
+			move |_db| {
+				load_content.run();
+			}
+		},
+		load_modules.data.clone(),
+	);
 
 	let initial_character = use_state(|| None);
 	use_effect_with_deps(
@@ -211,7 +228,7 @@ fn App() -> Html {
 				}
 			}
 		},
-		(system.clone(), content_loader.data.is_some()),
+		(system.clone(), load_content.data.is_some()),
 	);
 
 	let open_character = Callback::from({
@@ -313,7 +330,7 @@ async fn load_modules(database: &database::app::Database) -> Result<(), database
 	// Fetch the document data for all module-systems not yet in the database
 	for (module_name, systems) in systems_to_load.into_iter() {
 		log::info!("Loading content module {module_name:?}");
-		
+
 		let sources = match fetch_local_module(module_name, &systems[..]).await {
 			Ok(sources) => sources,
 			Err(err) => {
@@ -327,7 +344,9 @@ async fn load_modules(database: &database::app::Database) -> Result<(), database
 		let entry_store = transaction.object_store_of::<Entry>()?;
 		for system in &systems {
 			let record = Module {
-				module_id: ModuleId::Local { name: module_name.into() },
+				module_id: ModuleId::Local {
+					name: module_name.into(),
+				},
 				name: module_name.into(),
 				system: (*system).into(),
 			};
@@ -373,31 +392,12 @@ async fn load_modules(database: &database::app::Database) -> Result<(), database
 	Ok(())
 }
 
-async fn database() -> Result<(), database::Error> {
-	use database::{app::*, ObjectStoreExt, TransactionExt};
-	let client = Database::open().await?;
-
-	let transaction = client.write_entries()?;
-	let entries_store = transaction.object_store_of::<Entry>()?;
-
-	let system_category = entries_store.index_of::<entry::SystemCategory>()?;
-	let query_dnd5e_items = entry::SystemCategory {
-		system: "dnd5e".into(),
-		category: "item".into(),
-	};
-	let items_dnd5e = system_category.get_all(&query_dnd5e_items, None).await?;
-	log::debug!(target: "db", "{:?}", items_dnd5e);
-
-	let mut cursor = system_category
-		.open_cursor(Some(&query_dnd5e_items))
-		.await?;
-	while let Some(entry) = cursor.next().await {
-		log::debug!(target: "db", "Next Item: {:?}", entry);
-	}
-
-	transaction.commit().await?;
-
-	Ok(())
+#[derive(thiserror::Error, Debug, Clone)]
+enum LoadContentError {
+	#[error("No database connection")]
+	NoDatabase,
+	#[error(transparent)]
+	DatabaseError(#[from] database::Error),
 }
 
 #[cfg(target_family = "windows")]

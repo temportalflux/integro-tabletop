@@ -2,9 +2,7 @@
 -----
 
 ## IndexedDB
-- need to store modules locally (so they dont have to be fetched every time the app is opened)
-- localstorage is not big enough
-- use indexeddb via https://github.com/devashishdxt/rexie or https://github.com/devashishdxt/idb
+- force refresh button to forcibly reload one or more modules by wiping those entries from the database and refetching them from source
 
 ## Feature UI
 - collapse features with "category" property into one section,

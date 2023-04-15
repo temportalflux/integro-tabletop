@@ -16,27 +16,27 @@ impl Database {
 		Ok(Self(client))
 	}
 
-	pub fn write(&self) -> Result<idb::Transaction, idb::Error> {
-		self.0.transaction(
+	pub fn write(&self) -> Result<idb::Transaction, super::Error> {
+		Ok(self.0.transaction(
 			&[Entry::store_id(), Module::store_id()],
 			idb::TransactionMode::ReadWrite,
-		)
+		)?)
 	}
 
-	pub fn read_entries(&self) -> Result<idb::Transaction, idb::Error> {
-		self.0.read_only::<Entry>()
+	pub fn read_entries(&self) -> Result<idb::Transaction, super::Error> {
+		Ok(self.0.read_only::<Entry>()?)
 	}
 
-	pub fn write_entries(&self) -> Result<idb::Transaction, idb::Error> {
-		self.0.read_write::<Entry>()
+	pub fn write_entries(&self) -> Result<idb::Transaction, super::Error> {
+		Ok(self.0.read_write::<Entry>()?)
 	}
 
-	pub fn read_modules(&self) -> Result<idb::Transaction, idb::Error> {
-		self.0.read_only::<Module>()
+	pub fn read_modules(&self) -> Result<idb::Transaction, super::Error> {
+		Ok(self.0.read_only::<Module>()?)
 	}
 
-	pub fn write_modules(&self) -> Result<idb::Transaction, idb::Error> {
-		self.0.read_write::<Module>()
+	pub fn write_modules(&self) -> Result<idb::Transaction, super::Error> {
+		Ok(self.0.read_write::<Module>()?)
 	}
 }
 
