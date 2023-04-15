@@ -10,13 +10,23 @@ impl<T: IndexType> From<idb::Index> for Index<T> {
 }
 
 impl<T: IndexType> Index<T> {
+	pub async fn get<'index>(&'index self, params: &'index T) -> Result<Option<T::Record>, Error>
+	where
+		T::Record: for<'de> Deserialize<'de>,
+	{
+		match self.0.get(params.as_query()?).await? {
+			Some(js_value) => Ok(Some(serde_wasm_bindgen::from_value::<T::Record>(js_value)?)),
+			None => Ok(None),
+		}
+	}
+
 	pub async fn get_all<'index>(
 		&'index self,
 		params: &'index T,
 		limit: Option<u32>,
 	) -> Result<Vec<T::Record>, Error>
 	where
-	T::Record: for<'de> Deserialize<'de>,
+		T::Record: for<'de> Deserialize<'de>,
 	{
 		let js_values = self.0.get_all(Some(params.as_query()?), limit).await?;
 		let mut values = Vec::with_capacity(js_values.len());

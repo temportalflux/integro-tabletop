@@ -1,4 +1,4 @@
-use crate::database::{Error, IndexType, QueryExt, app::Entry};
+use crate::database::{app::Entry, Error, IndexType, QueryExt};
 
 pub struct SystemCategory {
 	pub system: String,
@@ -7,7 +7,7 @@ pub struct SystemCategory {
 
 impl IndexType for SystemCategory {
 	type Record = Entry;
-	
+
 	fn name() -> &'static str {
 		"system_category"
 	}

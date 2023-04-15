@@ -1,4 +1,4 @@
-use crate::database::{Error, IndexType, QueryExt, app::Entry};
+use crate::database::{app::Entry, Error, IndexType, QueryExt};
 
 pub struct ModuleSystem {
 	pub module: String,

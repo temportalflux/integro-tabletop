@@ -1,6 +1,7 @@
 use crate::kdl_ext::NodeContext;
 use anyhow::Context;
 use futures_util::StreamExt;
+use multimap::MultiMap;
 use std::{
 	collections::BTreeMap,
 	path::{Path, PathBuf},
@@ -114,12 +115,33 @@ fn create_character(system: &system::dnd5e::DnD5e) -> system::dnd5e::data::chara
 
 #[function_component]
 fn App() -> Html {
+	use database::app::Database;
 	use system::dnd5e::{self, DnD5e};
 	let show_browser = use_state_eq(|| false);
 	let comp_reg = use_memo(|_| dnd5e::component_registry(), ());
 	let node_reg = Arc::new(dnd5e::node_registry());
 	let modules = use_memo(|_| vec!["basic-rules", "elf-and-orc", "wotc-toa"], ());
 	let system = use_state(|| DnD5e::default());
+	let database = yew_hooks::use_async(async move {
+		match Database::open().await {
+			Ok(db) => Ok(db),
+			Err(err) => {
+				log::error!(target: "tabletop-tools", "Failed to connect to database: {err:?}");
+				Err(Arc::new(err))
+			}
+		}
+	});
+	let load_modules = yew_hooks::use_async({
+		let database = database.clone();
+		async move {
+			let Some(database) = &database.data else { return Err(()); };
+			if let Err(err) = load_modules(database).await {
+				log::error!(target: "tabletop-tools", "Failed to load modules into database: {err:?}");
+				return Err(());
+			}
+			Ok(())
+		}
+	});
 
 	let content_loader = yew_hooks::use_async({
 		let comp_reg = comp_reg.clone();
@@ -127,10 +149,7 @@ fn App() -> Html {
 		let modules = modules.clone();
 		let system_state = system.clone();
 		async move {
-			if let Err(err) = database().await {
-				log::error!(target: "db", "{err:?}");
-			}
-
+			/*
 			let mut system = DnD5e::default();
 			for module in &*modules {
 				log::info!("Loading content module {module:?}");
@@ -156,11 +175,30 @@ fn App() -> Html {
 				}
 			}
 			system_state.set(system);
+			*/
 			Ok(()) as Result<(), std::sync::Arc<anyhow::Error>>
 		}
 	});
+
+	// When the app first opens, load the database.
+	// Could probably check `use_is_first_mount()`, but checking if there database
+	// doesn't exist yet and isn't loading is more clear.
+	if database.data.is_none() && !database.loading {
+		database.run();
+	}
+	// Once the database is connected, load the modules into it.
+	use_effect_with_deps(
+		{
+			let load_modules = load_modules.clone();
+			move |_db| {
+				load_modules.run();
+			}
+		},
+		database.data.clone(),
+	);
+
 	if use_is_first_mount() {
-		content_loader.run();
+		//content_loader.run();
 	}
 
 	let initial_character = use_state(|| None);
@@ -228,9 +266,11 @@ fn App() -> Html {
 				</div>
 			</nav>
 		</header>
-		<ContextProvider<UseStateHandle<DnD5e>> context={system.clone()}>
-			{content}
-		</ContextProvider<UseStateHandle<DnD5e>>>
+		<ContextProvider<Option<Database>> context={database.data.clone()}>
+			<ContextProvider<UseStateHandle<DnD5e>> context={system.clone()}>
+				{content}
+			</ContextProvider<UseStateHandle<DnD5e>>>
+		</ContextProvider<Option<Database>>>
 	</>};
 }
 
@@ -240,68 +280,112 @@ fn main() {
 	yew::Renderer::<App>::new().render();
 }
 
+async fn load_modules(database: &database::app::Database) -> Result<(), database::Error> {
+	use database::{
+		app::{module::NameSystem, Entry, Module},
+		ObjectStoreExt, TransactionExt,
+	};
+	use system::core::ModuleId;
+	let known_modules = vec![
+		("basic-rules", vec!["dnd5e"]),
+		("elf-and-orc", vec!["dnd5e"]),
+		("wotc-oota", vec!["dnd5e"]),
+		//("wotc-phb", vec!["dnd5e"]),
+		("wotc-toa", vec!["dnd5e"]),
+	];
+	let mut systems_to_load = MultiMap::<&'static str, &'static str>::new();
+	// Find all the missing modules (if any)
+	{
+		let read_only = database.read_modules()?;
+		let store = read_only.object_store_of::<Module>()?;
+		let index = store.index_of::<NameSystem>()?;
+		let mut params = NameSystem::default();
+		for (module_name, systems) in known_modules {
+			params.name = module_name.to_owned();
+			for system in systems {
+				params.system = system.to_owned();
+				if index.get(&params).await?.is_none() {
+					systems_to_load.insert(module_name, system);
+				}
+			}
+		}
+	}
+	// Fetch the document data for all module-systems not yet in the database
+	for (module_name, systems) in systems_to_load.into_iter() {
+		log::info!("Loading content module {module_name:?}");
+		
+		let sources = match fetch_local_module(module_name, &systems[..]).await {
+			Ok(sources) => sources,
+			Err(err) => {
+				log::error!("Failed to fetch module {module_name:?}: {err:?}");
+				continue;
+			}
+		};
+
+		let transaction = database.write()?;
+		let module_store = transaction.object_store_of::<Module>()?;
+		let entry_store = transaction.object_store_of::<Entry>()?;
+		for system in &systems {
+			let record = Module {
+				module_id: ModuleId::Local { name: module_name.into() },
+				name: module_name.into(),
+				system: (*system).into(),
+			};
+			module_store.add_record(&record).await?;
+		}
+
+		for (mut source_id, content) in sources {
+			let Ok(document) = content.parse::<kdl::KdlDocument>() else { continue; };
+			for (idx, node) in document.nodes().iter().enumerate() {
+				source_id.node_idx = idx;
+				let category = match node.name().value() {
+					"condition" => "condition".into(),
+					"item" => "item".into(),
+					"spell" => "spell".into(),
+					"feat" => "feat".into(),
+					"class" => "class".into(),
+					"subclass" => "subclass".into(),
+					"background" => "background".into(),
+					"race" => "race".into(),
+					"subrace" => "race-variant".into(),
+					"lineage" => "lineage".into(),
+					"upbringing" => "upbringing".into(),
+					// "defaults"
+					_ => continue,
+				};
+				let system = source_id.system.clone().unwrap();
+				let version = source_id.version.take();
+				let record = Entry {
+					id: source_id.to_string(),
+					module: module_name.into(),
+					system: system,
+					category: category,
+					version: version.clone(),
+					kdl: node.to_string(),
+				};
+				source_id.version = version;
+				entry_store.put_record(&record).await?;
+			}
+		}
+
+		transaction.commit().await?;
+	}
+	Ok(())
+}
+
 async fn database() -> Result<(), database::Error> {
 	use database::{app::*, ObjectStoreExt, TransactionExt};
 	let client = Database::open().await?;
 
 	let transaction = client.write_entries()?;
 	let entries_store = transaction.object_store_of::<Entry>()?;
-	let entries = vec![
-		Entry {
-			id: "local://homebrew@dnd5e/item/bag_of_stuff.kdl".into(),
-			module: "homebrew".into(),
-			system: "dnd5e".into(),
-			category: "item".into(),
-			kdl: "item name=\"Bag of Stuff\" {...}".into(),
-		},
-		Entry {
-			id: "local://homebrew@dnd5e/item/sword.kdl".into(),
-			module: "homebrew".into(),
-			system: "dnd5e".into(),
-			category: "item".into(),
-			kdl: "item name=\"Sword\" {...}".into(),
-		},
-		Entry {
-			id: "local://homebrew@dnd5e/spells/guidance.kdl".into(),
-			module: "homebrew".into(),
-			system: "dnd5e".into(),
-			category: "spell".into(),
-			kdl: "spell name=\"Guidance\" {...}".into(),
-		},
-		Entry {
-			id: "local://homebrew@dnd5e/class/barbarian.kdl".into(),
-			module: "homebrew".into(),
-			system: "dnd5e".into(),
-			category: "class".into(),
-			kdl: "class name=\"Barbarian\" {...}".into(),
-		},
-		Entry {
-			id: "local://homebrew@dnd5e/race/human.kdl".into(),
-			module: "homebrew".into(),
-			system: "dnd5e".into(),
-			category: "race".into(),
-			kdl: "entry \"Race\" name=\"Human\" {...}".into(),
-		},
-		Entry {
-			id: "local://homebrew@dnd5e/upbringing/dragonborn.kdl".into(),
-			module: "homebrew".into(),
-			system: "dnd5e".into(),
-			category: "upbringing".into(),
-			kdl: "entry \"Upbringing\" name=\"Dragonborn\" {...}".into(),
-		},
-	];
-	for entry in entries {
-		entries_store.put_record(&entry).await?;
-	}
 
 	let system_category = entries_store.index_of::<entry::SystemCategory>()?;
 	let query_dnd5e_items = entry::SystemCategory {
 		system: "dnd5e".into(),
 		category: "item".into(),
 	};
-	let items_dnd5e = system_category
-		.get_all(&query_dnd5e_items, None)
-		.await?;
+	let items_dnd5e = system_category.get_all(&query_dnd5e_items, None).await?;
 	log::debug!(target: "db", "{:?}", items_dnd5e);
 
 	let mut cursor = system_category

@@ -1,9 +1,15 @@
+use super::{Error, Index, IndexType, Record};
 use crate::utility::PinFutureLifetimeNoSend;
 use wasm_bindgen::JsValue;
 
-use super::{Error, Index, IndexType, Record};
-
 pub trait ObjectStoreExt {
+	fn add_record<'store, V>(
+		&'store self,
+		record: &'store V,
+	) -> PinFutureLifetimeNoSend<'store, Result<(), Error>>
+	where
+		V: Record;
+
 	fn put_record<'store, V>(
 		&'store self,
 		record: &'store V,
@@ -29,6 +35,20 @@ pub trait ObjectStoreExt {
 }
 
 impl ObjectStoreExt for idb::ObjectStore {
+	fn add_record<'store, V>(
+		&'store self,
+		record: &'store V,
+	) -> PinFutureLifetimeNoSend<'store, Result<(), Error>>
+	where
+		V: Record,
+	{
+		Box::pin(async move {
+			let value = record.as_value()?;
+			let _ = self.add(&value, None).await?;
+			Ok(())
+		})
+	}
+
 	fn put_record<'store, V>(
 		&'store self,
 		record: &'store V,

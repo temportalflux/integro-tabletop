@@ -7,6 +7,7 @@ pub use module::Module;
 mod schema;
 pub use schema::*;
 
+#[derive(Clone, PartialEq)]
 pub struct Database(super::Client);
 
 impl Database {

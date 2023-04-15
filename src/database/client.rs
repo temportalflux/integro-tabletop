@@ -1,8 +1,16 @@
 use super::{Error, MissingVersion, Schema};
 use idb::VersionChangeEvent;
+use std::sync::Arc;
 
 /// A connection to a local IndexedDB database.
-pub struct Client(idb::Database);
+#[derive(Clone)]
+pub struct Client(Arc<idb::Database>);
+
+impl PartialEq for Client {
+	fn eq(&self, other: &Self) -> bool {
+		Arc::ptr_eq(&self.0, &other.0)
+	}
+}
 
 impl Client {
 	pub async fn open<V>(name: &str) -> Result<Self, Error>
@@ -24,7 +32,7 @@ impl Client {
 			}
 		});
 		let database = request.await?;
-		Ok(Self(database))
+		Ok(Self(Arc::new(database)))
 	}
 
 	fn upgrade_database<V>(event: &VersionChangeEvent) -> Result<(), Error>
@@ -49,7 +57,9 @@ impl Client {
 
 impl Drop for Client {
 	fn drop(&mut self) {
-		self.0.close();
+		if Arc::strong_count(&self.0) <= 1 {
+			self.0.close();
+		}
 	}
 }
 

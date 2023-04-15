@@ -12,6 +12,7 @@ pub struct Entry {
 	pub module: String,
 	pub system: String,
 	pub category: String,
+	pub version: Option<String>,
 	pub kdl: String,
 }
 impl Record for Entry {
