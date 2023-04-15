@@ -241,11 +241,11 @@ fn main() {
 }
 
 async fn database() -> Result<(), database::Error> {
-	use database::*;
-	let client = Client::open::<SchemaVersion>("tabletop-tools").await?;
+	use database::{app::*, ObjectStoreExt, TransactionExt};
+	let client = Database::open().await?;
 
-	let transaction = client.transaction(&[ENTRY_TABLE], idb::TransactionMode::ReadWrite)?;
-	let entries_store = transaction.object_store(ENTRY_TABLE)?;
+	let transaction = client.write_entries()?;
+	let entries_store = transaction.object_store_of::<Entry>()?;
 	let entries = vec![
 		Entry {
 			id: "local://homebrew@dnd5e/item/bag_of_stuff.kdl".into(),
@@ -294,18 +294,18 @@ async fn database() -> Result<(), database::Error> {
 		entries_store.put_record(&entry).await?;
 	}
 
-	let system_category = entries_store.index_of::<SystemCategory>()?;
-	let query_dnd5e_items = SystemCategory {
+	let system_category = entries_store.index_of::<entry::SystemCategory>()?;
+	let query_dnd5e_items = entry::SystemCategory {
 		system: "dnd5e".into(),
 		category: "item".into(),
 	};
 	let items_dnd5e = system_category
-		.get_all::<Entry>(&query_dnd5e_items, None)
+		.get_all(&query_dnd5e_items, None)
 		.await?;
 	log::debug!(target: "db", "{:?}", items_dnd5e);
 
 	let mut cursor = system_category
-		.open_cursor::<Entry>(Some(&query_dnd5e_items))
+		.open_cursor(Some(&query_dnd5e_items))
 		.await?;
 	while let Some(entry) = cursor.next().await {
 		log::debug!(target: "db", "Next Item: {:?}", entry);

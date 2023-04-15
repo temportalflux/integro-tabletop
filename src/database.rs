@@ -4,18 +4,17 @@
 use serde::Serialize;
 use wasm_bindgen::JsValue;
 
+pub mod app;
 mod client;
 pub use client::*;
-mod db;
-pub use db::*;
+mod cursor;
+pub use cursor::*;
 mod error;
 pub use error::*;
 mod ext;
 pub use ext::*;
 mod index;
 pub use index::*;
-mod cursor;
-pub use cursor::*;
 
 pub trait Schema {
 	fn latest() -> u32;
@@ -23,20 +22,8 @@ pub trait Schema {
 }
 
 pub trait Record: Serialize {
+	fn store_id() -> &'static str;
 	fn as_value(&self) -> Result<JsValue, serde_wasm_bindgen::Error> {
 		Ok(self.serialize(&serde_wasm_bindgen::Serializer::json_compatible())?)
-	}
-}
-
-pub fn query<T: Into<JsValue>, const N: usize>(items: [T; N]) -> Result<idb::Query, Error> {
-	if items.len() == 1 {
-		let t_val = items.into_iter().next().unwrap();
-		Ok(idb::Query::Key(t_val.into()))
-	} else {
-		let values = js_sys::Array::new_with_length(items.len() as u32);
-		for (idx, t_val) in items.into_iter().enumerate() {
-			values.set(idx as u32, t_val.into());
-		}
-		Ok(idb::Query::KeyRange(idb::KeyRange::only(&values)?))
 	}
 }

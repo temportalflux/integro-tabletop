@@ -10,37 +10,39 @@ impl<T: IndexType> From<idb::Index> for Index<T> {
 }
 
 impl<T: IndexType> Index<T> {
-	pub async fn get_all<'index, V>(
+	pub async fn get_all<'index>(
 		&'index self,
 		params: &'index T,
 		limit: Option<u32>,
-	) -> Result<Vec<V>, Error>
+	) -> Result<Vec<T::Record>, Error>
 	where
-		V: for<'de> Deserialize<'de>,
+	T::Record: for<'de> Deserialize<'de>,
 	{
 		let js_values = self.0.get_all(Some(params.as_query()?), limit).await?;
 		let mut values = Vec::with_capacity(js_values.len());
 		for js_value in js_values {
-			values.push(serde_wasm_bindgen::from_value::<V>(js_value)?);
+			values.push(serde_wasm_bindgen::from_value::<T::Record>(js_value)?);
 		}
 		Ok(values)
 	}
 
-	pub async fn open_cursor<V>(&self, params: Option<&T>) -> Result<Cursor<V>, Error>
+	pub async fn open_cursor(&self, params: Option<&T>) -> Result<Cursor<T::Record>, Error>
 	where
-		V: for<'de> Deserialize<'de>,
+		T::Record: for<'de> Deserialize<'de>,
 	{
 		let query = match params {
 			Some(params) => Some(params.as_query()?),
 			None => None,
 		};
 		let cursor = self.0.open_cursor(query, None).await?;
-		let cursor = Cursor::<V>::new(cursor);
+		let cursor = Cursor::<T::Record>::new(cursor);
 		Ok(cursor)
 	}
 }
 
 pub trait IndexType {
+	type Record: super::Record;
+
 	fn name() -> &'static str;
 	fn keys() -> &'static [&'static str];
 	fn as_query(&self) -> Result<idb::Query, Error>;

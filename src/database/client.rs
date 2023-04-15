@@ -54,14 +54,21 @@ impl Drop for Client {
 }
 
 impl Client {
-	pub fn transaction<T>(
-		&self,
-		store_names: &[T],
-		mode: idb::TransactionMode,
-	) -> Result<idb::Transaction, Error>
-	where
-		T: AsRef<str>,
-	{
-		Ok(self.0.transaction(store_names, mode)?)
+	pub fn read_only<T: super::Record>(&self) -> Result<idb::Transaction, idb::Error> {
+		self.0
+			.transaction(&[T::store_id()], idb::TransactionMode::ReadOnly)
+	}
+
+	pub fn read_write<T: super::Record>(&self) -> Result<idb::Transaction, idb::Error> {
+		self.0
+			.transaction(&[T::store_id()], idb::TransactionMode::ReadWrite)
+	}
+}
+
+impl std::ops::Deref for Client {
+	type Target = idb::Database;
+
+	fn deref(&self) -> &Self::Target {
+		&self.0
 	}
 }

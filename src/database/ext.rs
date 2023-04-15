@@ -21,6 +21,10 @@ pub trait ObjectStoreExt {
 		JsValue: From<&'store K>,
 		V: Record;
 
+	fn create_index_of<T: IndexType>(
+		&self,
+		params: Option<idb::IndexParams>,
+	) -> Result<idb::Index, idb::Error>;
 	fn index_of<T: IndexType>(&self) -> Result<Index<T>, Error>;
 }
 
@@ -57,7 +61,41 @@ impl ObjectStoreExt for idb::ObjectStore {
 		})
 	}
 
+	fn create_index_of<T: IndexType>(
+		&self,
+		params: Option<idb::IndexParams>,
+	) -> Result<idb::Index, idb::Error> {
+		self.create_index(T::name(), T::key_path(), params)
+	}
+
 	fn index_of<T: IndexType>(&self) -> Result<Index<T>, Error> {
 		Ok(Index::<T>::from(self.index(T::name())?))
+	}
+}
+
+pub trait QueryExt {
+	fn from_items<T: Into<JsValue>, const N: usize>(items: [T; N]) -> Result<idb::Query, Error>;
+}
+impl QueryExt for idb::Query {
+	fn from_items<T: Into<JsValue>, const N: usize>(items: [T; N]) -> Result<idb::Query, Error> {
+		if items.len() == 1 {
+			let t_val = items.into_iter().next().unwrap();
+			Ok(idb::Query::Key(t_val.into()))
+		} else {
+			let values = js_sys::Array::new_with_length(items.len() as u32);
+			for (idx, t_val) in items.into_iter().enumerate() {
+				values.set(idx as u32, t_val.into());
+			}
+			Ok(idb::Query::KeyRange(idb::KeyRange::only(&values)?))
+		}
+	}
+}
+
+pub trait TransactionExt {
+	fn object_store_of<T: Record>(&self) -> Result<idb::ObjectStore, idb::Error>;
+}
+impl TransactionExt for idb::Transaction {
+	fn object_store_of<T: Record>(&self) -> Result<idb::ObjectStore, idb::Error> {
+		self.object_store(T::store_id())
 	}
 }
