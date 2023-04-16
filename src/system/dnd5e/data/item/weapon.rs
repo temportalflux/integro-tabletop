@@ -3,10 +3,8 @@ use crate::{
 	kdl_ext::{FromKDL, NodeExt},
 	system::dnd5e::{
 		data::{
-			action::{
-				Action, ActionSource, ActivationKind, Attack, AttackCheckKind, AttackKindValue,
-			},
-			Ability, DamageRoll, WeaponProficiency,
+			action::{Action, ActivationKind, Attack, AttackCheckKind, AttackKindValue},
+			Ability, DamageRoll, Feature, WeaponProficiency,
 		},
 		evaluator::{self, IsProficientWith},
 		Value,
@@ -65,7 +63,7 @@ impl Weapon {
 		}
 	}
 
-	pub fn attack_action(&self, entry: &EquipableEntry) -> Action {
+	pub fn attack_action(&self, entry: &EquipableEntry) -> Feature {
 		// TODO: Attack should have properties for both melee and range to support the thrown property
 		let attack_kind = match self.range {
 			None => AttackKindValue::Melee {
@@ -89,32 +87,35 @@ impl Weapon {
 			AttackKindValue::Ranged { .. } => Ability::Dexterity,
 		};
 		// TODO: Handle weapon properties
-		Action {
+		Feature {
 			name: entry.item.name.clone(),
-			activation_kind: ActivationKind::Action,
-			source: Some(ActionSource::Item(entry.id.clone())),
-			attack: Some(Attack {
-				kind: attack_kind,
-				check: AttackCheckKind::AttackRoll {
-					ability: attack_ability,
-					proficient: Value::Evaluated(
-						evaluator::Any(vec![
-							IsProficientWith::Weapon(WeaponProficiency::Kind(self.kind)).into(),
-							IsProficientWith::Weapon(WeaponProficiency::Classification(
-								self.classification.clone(),
-							))
+			action: Some(Action {
+				activation_kind: ActivationKind::Action,
+				attack: Some(Attack {
+					kind: attack_kind,
+					check: AttackCheckKind::AttackRoll {
+						ability: attack_ability,
+						proficient: Value::Evaluated(
+							evaluator::Any(vec![
+								IsProficientWith::Weapon(WeaponProficiency::Kind(self.kind)).into(),
+								IsProficientWith::Weapon(WeaponProficiency::Classification(
+									self.classification.clone(),
+								))
+								.into(),
+							])
 							.into(),
-						])
-						.into(),
-					),
-				},
-				area_of_effect: None,
-				damage: self.damage.as_ref().map(|dmg| DamageRoll {
-					roll: dmg.roll,
-					base_bonus: dmg.bonus,
-					damage_type: dmg.damage_type,
-					..Default::default()
+						),
+					},
+					area_of_effect: None,
+					damage: self.damage.as_ref().map(|dmg| DamageRoll {
+						roll: dmg.roll,
+						base_bonus: dmg.bonus,
+						damage_type: dmg.damage_type,
+						..Default::default()
+					}),
+					weapon_kind: Some(self.kind),
 				}),
+				..Default::default()
 			}),
 			..Default::default()
 		}

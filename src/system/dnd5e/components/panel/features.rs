@@ -3,7 +3,7 @@ use crate::{
 	path_map::PathMap,
 	system::dnd5e::{
 		components::{editor::description, SharedCharacter},
-		data::BoxedFeature,
+		data::Feature,
 	},
 };
 use std::path::{Path, PathBuf};
@@ -17,8 +17,8 @@ pub fn Features() -> Html {
 	let features = match *sort_order_alpha {
 		true => {
 			let features = {
-				let mut features = state.features().as_vec();
-				features.sort_by(|(_, a), (_, b)| a.inner().name.cmp(&b.inner().name));
+				let mut features = state.features().path_map.as_vec();
+				features.sort_by(|(_, a), (_, b)| a.name.cmp(&b.name));
 				features
 			};
 			let features = features
@@ -31,7 +31,7 @@ pub fn Features() -> Html {
 				.collect::<Vec<_>>();
 			html! {<>{features}</>}
 		}
-		false => make_section_contents(PathBuf::new(), state.features()),
+		false => make_section_contents(PathBuf::new(), &state.features().path_map),
 	};
 
 	html! {<>
@@ -58,7 +58,7 @@ pub fn Features() -> Html {
 	</>}
 }
 
-fn make_section(parent: &Path, title: &String, container: &PathMap<BoxedFeature>) -> Html {
+fn make_section(parent: &Path, title: &String, container: &PathMap<Feature>) -> Html {
 	use convert_case::{Case, Casing};
 	html! {
 		<div>
@@ -73,7 +73,7 @@ fn make_section(parent: &Path, title: &String, container: &PathMap<BoxedFeature>
 	}
 }
 
-fn make_section_contents(parent: PathBuf, container: &PathMap<BoxedFeature>) -> Html {
+fn make_section_contents(parent: PathBuf, container: &PathMap<Feature>) -> Html {
 	let top_level_features = container
 		.iter_values()
 		.map(|feat| {
@@ -95,7 +95,7 @@ fn make_section_contents(parent: PathBuf, container: &PathMap<BoxedFeature>) -> 
 #[derive(Clone, PartialEq, Properties)]
 struct FeatureBlockProps {
 	parent: PathBuf,
-	feature: BoxedFeature,
+	feature: Feature,
 	show_parent: bool,
 }
 #[function_component]
@@ -108,10 +108,10 @@ fn FeatureBlock(
 ) -> Html {
 	use convert_case::{Case, Casing};
 	let state = use_context::<SharedCharacter>().unwrap();
-	let feat_data_path = feature.inner().get_display_path();
+	let feat_data_path = feature.get_display_path();
 	let selected_value_map = state.selected_values_in(&feat_data_path);
 
-	let name = feature.inner().name.to_case(Case::Title);
+	let name = feature.name.to_case(Case::Title);
 	let mut selected_values = Vec::new();
 	if let Some(value_map) = selected_value_map {
 		selected_values = value_map
@@ -134,7 +134,7 @@ fn FeatureBlock(
 					_ => html! {},
 				}}
 			</span>
-			{description(&feature.inner().description, true)}
+			{description(&feature.description, true)}
 			{match selected_values.len() {
 				0 => html! {},
 				_ => {

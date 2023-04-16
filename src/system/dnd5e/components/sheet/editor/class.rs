@@ -331,6 +331,6 @@ pub fn CollapsableCard(props: &CollapsableCardProps) -> Html {
 fn level_body(value: &Level, show_selectors: bool) -> Html {
 	html! {<>
 		{mutator_list(&value.mutators, show_selectors)}
-		{value.features.iter().map(|f| feature(f.inner(), show_selectors)).collect::<Vec<_>>()}
+		{value.features.iter().map(|f| feature(f, show_selectors)).collect::<Vec<_>>()}
 	</>}
 }

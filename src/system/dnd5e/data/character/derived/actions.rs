@@ -1,7 +1,17 @@
-use crate::{system::dnd5e::data::action::Action, utility::NotInList};
+use crate::{
+	path_map::PathMap,
+	system::dnd5e::data::{action::Action, Feature},
+	utility::NotInList,
+};
 use enum_map::{Enum, EnumMap};
 use enumset::EnumSetType;
 use std::{path::PathBuf, str::FromStr};
+
+#[derive(Clone, PartialEq, Debug, Default)]
+pub struct Features {
+	pub path_map: PathMap<Feature>,
+	pub action_budget: ActionBudget,
+}
 
 #[derive(Clone, PartialEq, Debug, Default)]
 pub struct Actions {

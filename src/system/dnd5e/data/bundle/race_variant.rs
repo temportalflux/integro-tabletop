@@ -3,7 +3,7 @@ use crate::{
 	system::{
 		core::SourceId,
 		dnd5e::{
-			data::{character::Character, BoxedFeature, Feature},
+			data::{character::Character, Feature},
 			BoxedMutator, DnD5e, SystemComponent,
 		},
 	},
@@ -19,7 +19,7 @@ pub struct RaceVariant {
 	/// requirement bundles for this bundle to be selectable (e.g. Race + Dwarf)
 	pub requirements: Vec<(String, String)>,
 	pub mutators: Vec<BoxedMutator>,
-	pub features: Vec<BoxedFeature>,
+	pub features: Vec<Feature>,
 }
 
 impl MutatorGroup for RaceVariant {

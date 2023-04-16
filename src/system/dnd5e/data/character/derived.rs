@@ -1,14 +1,11 @@
 use super::AttributedValue;
-use crate::{
-	path_map::PathMap,
-	system::dnd5e::{
-		data::{
-			proficiency,
-			roll::{Modifier, RollSet},
-			Ability, ArmorClass, BoxedFeature, DamageType, OtherProficiencies, Skill,
-		},
-		mutator::{Defense, Flag},
+use crate::system::dnd5e::{
+	data::{
+		proficiency,
+		roll::{Modifier, RollSet},
+		Ability, ArmorClass, DamageType, OtherProficiencies, Skill,
 	},
+	mutator::{Defense, Flag},
 };
 use enum_map::{enum_map, EnumMap};
 use std::{collections::BTreeMap, path::PathBuf};
@@ -36,10 +33,9 @@ pub struct Derived {
 	pub speeds: Speeds,
 	pub senses: Senses,
 	pub defenses: Defenses,
-	pub features: PathMap<BoxedFeature>,
 	pub max_hit_points: MaxHitPoints,
 	pub armor_class: ArmorClass,
-	pub actions: Actions,
+	pub features: Features,
 	pub description: DerivedDescription,
 	pub flags: EnumMap<Flag, bool>,
 }
@@ -55,10 +51,9 @@ impl Default for Derived {
 			speeds: Default::default(),
 			senses: Default::default(),
 			defenses: Default::default(),
-			features: Default::default(),
 			max_hit_points: Default::default(),
 			armor_class: Default::default(),
-			actions: Default::default(),
+			features: Default::default(),
 			description: Default::default(),
 			flags: enum_map! {
 				Flag::ArmorStrengthRequirement => true,

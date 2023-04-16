@@ -1,4 +1,4 @@
-use super::{character::Character, roll::Die, BoxedFeature, Feature};
+use super::{character::Character, roll::Die, Feature};
 use crate::{
 	kdl_ext::{DocumentExt, FromKDL, NodeContext, NodeExt},
 	system::{
@@ -124,7 +124,7 @@ impl FromKDL for Class {
 pub struct Level {
 	pub hit_points: Selector<u32>,
 	pub mutators: Vec<BoxedMutator>,
-	pub features: Vec<BoxedFeature>,
+	pub features: Vec<Feature>,
 }
 
 impl Default for Level {

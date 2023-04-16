@@ -2,13 +2,13 @@ use crate::{
 	path_map::PathMap,
 	system::dnd5e::{
 		data::{
-			action::{Action, ActionSource, AttackCheckKind},
+			action::{Action, AttackCheckKind},
 			character::{
 				AbilityScores, Defenses, Derived, DerivedDescription, MaxHitPoints, Persistent,
 				SavingThrows, Senses, Skills, Speeds,
 			},
-			item::{self, weapon, ItemKind},
-			proficiency, Ability, ArmorClass, BoxedFeature, OtherProficiencies,
+			item::{self, weapon},
+			proficiency, Ability, ArmorClass, Feature, OtherProficiencies,
 		},
 		mutator::Flag,
 		BoxedCriteria, BoxedMutator, DnD5e,
@@ -22,7 +22,7 @@ use std::{
 	str::FromStr,
 };
 
-use super::{Actions, DefaultsBlock, HitPoint, HitPoints};
+use super::{DefaultsBlock, Features, HitPoint, HitPoints};
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum ActionEffect {
@@ -362,21 +362,19 @@ impl Character {
 		&mut self.derived.other_proficiencies
 	}
 
-	pub fn add_feature(&mut self, feature: &BoxedFeature, parent_path: &Path) {
-		self.derived.features.insert(parent_path, feature.clone());
-		self.apply_from(feature.inner(), parent_path);
+	pub fn add_feature(&mut self, feature: &Feature, parent_path: &Path) {
+		self.features_mut()
+			.path_map
+			.insert(parent_path, feature.clone());
+		self.apply_from(feature, parent_path);
 	}
 
-	pub fn features(&self) -> &PathMap<BoxedFeature> {
+	pub fn features(&self) -> &Features {
 		&self.derived.features
 	}
 
-	pub fn actions(&self) -> &Actions {
-		&self.derived.actions
-	}
-
-	pub fn actions_mut(&mut self) -> &mut Actions {
-		&mut self.derived.actions
+	pub fn features_mut(&mut self) -> &mut Features {
+		&mut self.derived.features
 	}
 
 	pub fn inventory(&self) -> &item::Inventory {
@@ -391,7 +389,13 @@ impl Character {
 		&mut self,
 		restriction: &Option<weapon::Restriction>,
 	) -> Vec<&mut Action> {
-		let mut actions = self.derived.actions.list.iter_mut().collect::<Vec<_>>();
+		let mut actions = self
+			.derived
+			.features
+			.path_map
+			.iter_values_mut()
+			.filter_map(|feature| feature.action.as_mut())
+			.collect::<Vec<_>>();
 		if let Some(weapon::Restriction {
 			weapon_kind,
 			attack_kind,
@@ -402,11 +406,13 @@ impl Character {
 				actions = actions
 					.into_iter()
 					.filter_map(|action| {
-						let Some(ActionSource::Item(item_id)) = &action.source else { return None; };
-						let Some(item) = self.character.inventory.get_item(item_id) else { return None; };
-						let ItemKind::Equipment(equipment) = &item.kind else { return None; };
-						let Some(weapon) = &equipment.weapon else { return None; };
-						weapon_kind.contains(&weapon.kind).then_some(action)
+						let Some(attack) = &action.attack else {
+							return None;
+						};
+						let Some(kind) = &attack.weapon_kind else {
+							return None;
+						};
+						weapon_kind.contains(kind).then_some(action)
 					})
 					.collect();
 			}

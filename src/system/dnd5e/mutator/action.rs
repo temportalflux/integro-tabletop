@@ -1,14 +1,11 @@
 use crate::{
-	kdl_ext::FromKDL,
-	system::dnd5e::data::{
-		action::{Action, ActionSource},
-		character::Character,
-	},
-	utility::Mutator,
+	kdl_ext::{FromKDL, NodeExt},
+	system::dnd5e::data::{action::Action, character::Character, description, Feature},
+	utility::{Mutator, MutatorGroup},
 };
 
 #[derive(Clone, PartialEq, Debug)]
-pub struct AddAction(pub Action);
+pub struct AddAction(pub Feature);
 
 crate::impl_trait_eq!(AddAction);
 crate::impl_kdl_node!(AddAction, "add_action");
@@ -40,9 +37,7 @@ impl Mutator for AddAction {
 	}
 
 	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
-		let mut action = self.0.clone();
-		action.source = Some(ActionSource::Feature(parent.to_owned()));
-		stats.actions_mut().list.push(action);
+		stats.add_feature(&self.0, parent);
 	}
 }
 
@@ -51,6 +46,14 @@ impl FromKDL for AddAction {
 		node: &kdl::KdlNode,
 		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
-		Ok(Self(Action::from_kdl(node, ctx)?))
+		let name = node.get_str_req("name")?.to_owned();
+		let description = description::Info::from_kdl_all(node, ctx)?;
+		let action = Action::from_kdl(node, ctx)?;
+		Ok(Self(Feature {
+			name,
+			description,
+			action: Some(action),
+			..Default::default()
+		}))
 	}
 }

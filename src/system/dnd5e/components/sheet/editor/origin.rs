@@ -586,7 +586,7 @@ fn race(value: &Race, show_selectors: bool) -> Html {
 			{value.description.clone()}
 		</div>
 		{mutator_list(&value.mutators, show_selectors)}
-		{value.features.iter().map(|f| feature(f.inner(), show_selectors)).collect::<Vec<_>>()}
+		{value.features.iter().map(|f| feature(f, show_selectors)).collect::<Vec<_>>()}
 	</>}
 }
 
@@ -596,7 +596,7 @@ fn race_variant(value: &RaceVariant, show_selectors: bool) -> Html {
 			{value.description.clone()}
 		</div>
 		{mutator_list(&value.mutators, show_selectors)}
-		{value.features.iter().map(|f| feature(f.inner(), show_selectors)).collect::<Vec<_>>()}
+		{value.features.iter().map(|f| feature(f, show_selectors)).collect::<Vec<_>>()}
 	</>}
 }
 
@@ -606,7 +606,7 @@ fn lineage(value: &Lineage, show_selectors: bool) -> Html {
 			{value.description.clone()}
 		</div>
 		{mutator_list(&value.mutators, show_selectors)}
-		{value.features.iter().map(|f| feature(f.inner(), show_selectors)).collect::<Vec<_>>()}
+		{value.features.iter().map(|f| feature(f, show_selectors)).collect::<Vec<_>>()}
 	</>}
 }
 
@@ -616,7 +616,7 @@ fn upbringing(value: &Upbringing, show_selectors: bool) -> Html {
 			{value.description.clone()}
 		</div>
 		{mutator_list(&value.mutators, show_selectors)}
-		{value.features.iter().map(|f| feature(f.inner(), show_selectors)).collect::<Vec<_>>()}
+		{value.features.iter().map(|f| feature(f, show_selectors)).collect::<Vec<_>>()}
 	</>}
 }
 
@@ -626,7 +626,7 @@ fn background(value: &Background, show_selectors: bool) -> Html {
 			{value.description.clone()}
 		</div>
 		{mutator_list(&value.mutators, show_selectors)}
-		{value.features.iter().map(|f| feature(f.inner(), show_selectors)).collect::<Vec<_>>()}
+		{value.features.iter().map(|f| feature(f, show_selectors)).collect::<Vec<_>>()}
 	</>}
 }
 

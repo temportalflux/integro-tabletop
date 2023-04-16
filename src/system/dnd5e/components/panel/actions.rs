@@ -6,9 +6,9 @@ use crate::{
 			SharedCharacter, UsesCounter,
 		},
 		data::{
-			action::{Action, ActionSource, ActivationKind, AttackCheckKind, AttackKindValue},
+			action::{ActivationKind, AttackCheckKind, AttackKindValue},
 			character::{ActionBudgetKind, ActionEffect, Persistent},
-			DamageRoll,
+			DamageRoll, Feature,
 		},
 		DnD5e,
 	},
@@ -67,20 +67,20 @@ pub fn Actions() -> Html {
 		// TODO: Modal for action budget
 		let mut budget_items = Vec::new();
 		if selected_tags.contains(ActionTag::Action) || selected_tags.contains(ActionTag::Attack) {
-			let (amount, _) = state.actions().action_budget.get(ActionBudgetKind::Action);
+			let (amount, _) = state.features().action_budget.get(ActionBudgetKind::Action);
 			budget_items.push((ActionBudgetKind::Action, amount));
 		}
 		if selected_tags.contains(ActionTag::Attack) {
-			let (amount, _) = state.actions().action_budget.get(ActionBudgetKind::Attack);
+			let (amount, _) = state.features().action_budget.get(ActionBudgetKind::Attack);
 			budget_items.push((ActionBudgetKind::Attack, amount));
 		}
 		if selected_tags.contains(ActionTag::BonusAction) {
-			let (amount, _) = state.actions().action_budget.get(ActionBudgetKind::Bonus);
+			let (amount, _) = state.features().action_budget.get(ActionBudgetKind::Bonus);
 			budget_items.push((ActionBudgetKind::Bonus, amount));
 		}
 		if selected_tags.contains(ActionTag::Reaction) {
 			let (amount, _) = state
-				.actions()
+				.features()
 				.action_budget
 				.get(ActionBudgetKind::Reaction);
 			budget_items.push((ActionBudgetKind::Reaction, amount));
@@ -99,18 +99,18 @@ pub fn Actions() -> Html {
 
 	let mut panes = Vec::new();
 	if selected_tags.contains(ActionTag::Attack) {
-		let attacks = {
-			let mut attacks = state
-				.actions()
-				.list
-				.iter()
-				.filter_map(|action| match action.attack.as_ref() {
-					Some(attack) => Some((action.name.clone(), attack)),
-					None => None,
+		let features = {
+			let mut features = state
+				.features()
+				.path_map
+				.iter_values()
+				.filter(|feature| match feature.action.as_ref() {
+					Some(action) => action.attack.is_some(),
+					None => false,
 				})
 				.collect::<Vec<_>>();
-			attacks.sort_by(|(a, _), (b, _)| a.cmp(b));
-			attacks
+			features.sort_by(|a, b| a.name.cmp(&b.name));
+			features
 		};
 
 		panes.push(html! {
@@ -125,10 +125,16 @@ pub fn Actions() -> Html {
 					</tr>
 				</thead>
 				<tbody>
-					{attacks.into_iter().map(|(name, attack)| {
+					{features.into_iter().map(|feature| {
+						let Some(action) = &feature.action else {
+							return html! {};
+						};
+						let Some(attack) = &action.attack else {
+							return html! {};
+						};
 						html! {
 							<tr class="align-middle">
-								<td>{name}</td>
+								<td>{feature.name.clone()}</td>
 								<td>{match attack.kind {
 									AttackKindValue::Melee { reach } => html! {<>{reach}{"ft."}</>},
 									AttackKindValue::Ranged { short_dist, long_dist, .. } => html! {<>{short_dist}{" / "}{long_dist}</>},
@@ -177,12 +183,15 @@ pub fn Actions() -> Html {
 		});
 	}
 
-	let actions = {
-		let mut actions = state
-			.actions()
-			.list
-			.iter()
-			.filter(|action| {
+	let features = {
+		let mut features = state
+			.features()
+			.path_map
+			.iter_values()
+			.filter(|feature| {
+				let Some(action) = &feature.action else {
+					return false;
+				};
 				let mut passes_any = false;
 				if selected_tags.contains(ActionTag::Action) {
 					passes_any = passes_any || action.activation_kind == ActivationKind::Action;
@@ -206,11 +215,11 @@ pub fn Actions() -> Html {
 				passes_any
 			})
 			.collect::<Vec<_>>();
-		actions.sort_by(|a, b| a.name.cmp(&b.name));
-		actions
+		features.sort_by(|a, b| a.name.cmp(&b.name));
+		features
 	};
 	panes.push(html! {<>
-		{actions.into_iter().cloned().map(|action| html! { <ActionOverview {action} /> }).collect::<Vec<_>>()}
+		{features.into_iter().cloned().map(|feature| html! { <ActionOverview {feature} /> }).collect::<Vec<_>>()}
 	</>});
 
 	html! {<>
@@ -222,53 +231,38 @@ pub fn Actions() -> Html {
 	</>}
 }
 
-fn action_source_text(
-	source: &Option<ActionSource>,
-	inventory: &crate::system::dnd5e::data::item::Inventory,
-) -> Option<String> {
-	source
-		.as_ref()
-		.map(|source| crate::data::as_feature_path_text(&source.as_path(inventory)))
-		.flatten()
-}
-
 #[derive(Clone, PartialEq, Properties)]
 struct ActionProps {
-	pub action: Action,
+	pub feature: Feature,
 }
 #[function_component]
-fn ActionOverview(ActionProps { action }: &ActionProps) -> Html {
+fn ActionOverview(ActionProps { feature }: &ActionProps) -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
 	let system = use_context::<UseStateHandle<DnD5e>>().unwrap();
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();
-
+	let Some(action) = &feature.action else {
+		return html! {};
+	};
 	let onclick = modal_dispatcher.callback({
-		let action = action.clone();
+		let feature = feature.clone();
 		move |_| {
 			modal::Action::Open(modal::Props {
 				centered: true,
 				scrollable: true,
 				root_classes: classes!("action"),
-				content: html! {<Modal action={action.clone()} />},
+				content: html! {<Modal feature={feature.clone()} />},
 				..Default::default()
 			})
 		}
 	});
-	let source_path = action_source_text(&action.source, state.inventory())
-		.map(|path_text| {
-			html! {
-				<span style="color: var(--bs-gray-600);">{" ("}{path_text}{")"}</span>
-			}
-		})
-		.unwrap_or_default();
+	// TODO: Display the source path of the feature (its they key of path_map).
 	html! {
 		<div class="action short mb-2 border-bottom-theme-muted" {onclick}>
-			<strong class="title">{action.name.clone()}</strong>
+			<strong class="title">{feature.name.clone()}</strong>
 			<span class="subtitle">
 				{action.activation_kind}
-				{source_path}
 			</span>
-			{description(&action.description, true)}
+			{description(&feature.description, true)}
 			<div class="addendum mx-2 mb-1">
 				{(!action.conditions_to_apply.is_empty()).then(|| {
 					let conditions_to_apply = Arc::new(action.conditions_to_apply.iter().filter_map(|indirect| {
@@ -326,12 +320,15 @@ fn ActionOverview(ActionProps { action }: &ActionProps) -> Html {
 }
 
 #[function_component]
-fn Modal(ActionProps { action }: &ActionProps) -> Html {
+fn Modal(ActionProps { feature }: &ActionProps) -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
 	let system = use_context::<UseStateHandle<DnD5e>>().unwrap();
+	let Some(action) = &feature.action else {
+		return html! {};
+	};
 	html! {<>
 		<div class="modal-header">
-			<h1 class="modal-title fs-4">{action.name.clone()}</h1>
+			<h1 class="modal-title fs-4">{feature.name.clone()}</h1>
 			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
 		</div>
 		<div class="modal-body">
@@ -340,18 +337,12 @@ fn Modal(ActionProps { action }: &ActionProps) -> Html {
 				<strong>{"Action Type:"}</strong>
 				<span>{action.activation_kind}</span>
 			</div>
-			{action_source_text(&action.source, state.inventory()).map(|path_text| html! {
-				<div class="property">
-					<strong>{"Source:"}</strong>
-					<span>{path_text}</span>
-				</div>
-			}).unwrap_or_default()}
 
 			{action.limited_uses.as_ref().map(|limited_uses| {
 				UsesCounter { state: state.clone(), limited_uses }.to_html()
 			}).unwrap_or_default()}
 
-			{description(&action.description, false)}
+			{description(&feature.description, false)}
 
 			{(!action.conditions_to_apply.is_empty()).then(|| {
 				let conditions_to_apply = Arc::new(action.conditions_to_apply.iter().filter_map(|indirect| {

@@ -1,5 +1,8 @@
 use super::super::{AreaOfEffect, DamageRoll};
-use crate::kdl_ext::{DocumentExt, FromKDL};
+use crate::{
+	kdl_ext::{DocumentExt, FromKDL},
+	system::dnd5e::data::item::weapon,
+};
 
 mod check;
 pub use check::*;
@@ -14,6 +17,7 @@ pub struct Attack {
 	pub check: AttackCheckKind,
 	pub area_of_effect: Option<AreaOfEffect>,
 	pub damage: Option<DamageRoll>,
+	pub weapon_kind: Option<weapon::Kind>,
 }
 
 impl FromKDL for Attack {
@@ -38,6 +42,7 @@ impl FromKDL for Attack {
 			check,
 			area_of_effect,
 			damage,
+			weapon_kind: None,
 		})
 	}
 }
@@ -90,6 +95,7 @@ mod test {
 					damage_type: DamageType::Fire,
 					additional_bonuses: Vec::new(),
 				}),
+				weapon_kind: None,
 			};
 			assert_eq!(from_doc(doc)?, expected);
 			Ok(())
@@ -131,6 +137,7 @@ mod test {
 					damage_type: DamageType::Fire,
 					additional_bonuses: Vec::new(),
 				}),
+				weapon_kind: None,
 			};
 			assert_eq!(from_doc(doc)?, expected);
 			Ok(())
