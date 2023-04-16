@@ -15,14 +15,17 @@ use std::{
 	sync::{Arc, RwLock},
 };
 
+// TODO: All actions are actually features. The action structure should not have a name or description.
+// Instead, a feature can optionally have 1 action block, which must specify the activation type
+// and all of the other propertyies about an action.
+// To that end, a Feature is considered an action if it has an action block.
+// This will re-unify the weird action vs feature breakdown. All non-action features are just passive buffs.
+// This also aids in the unification of having categories for actions and features, and the display modal for both.
 #[derive(Default, Clone, Debug, Derivative)]
 #[derivative(PartialEq)]
 pub struct Feature {
 	pub name: String,
 	pub description: description::Info,
-
-	// TODO: DEPRECATED Replaced by the `add_action` mutator
-	pub actions: Vec<Action>,
 
 	pub mutators: Vec<BoxedMutator>,
 	pub criteria: Option<BoxedCriteria>,
@@ -68,11 +71,6 @@ impl MutatorGroup for Feature {
 		for mutator in &self.mutators {
 			stats.apply(mutator, &path_to_self);
 		}
-		for action in &self.actions {
-			let mut action = action.clone();
-			action.source = Some(ActionSource::Feature(path_to_self.clone()));
-			stats.actions_mut().list.push(action);
-		}
 		*self.absolute_path.write().unwrap() = path_to_self;
 	}
 }
@@ -97,9 +95,13 @@ impl FromKDL for Feature {
 			}
 		};
 
-		let mut actions = Vec::new();
 		for entry_node in node.query_all("scope() > action")? {
-			actions.push(Action::from_kdl(entry_node, &mut ctx.next_node())?);
+			log::warn!(
+				target: "kdl",
+				"Feature block does not currently support actions, \
+				use the \"add_action\" mutator instead.\n{:?}",
+				entry_node.to_string()
+			);
 		}
 
 		let mut mutators = Vec::new();
@@ -111,7 +113,6 @@ impl FromKDL for Feature {
 			name,
 			description,
 			mutators,
-			actions,
 			criteria,
 			// Generated data
 			absolute_path: Arc::new(RwLock::new(PathBuf::new())),
