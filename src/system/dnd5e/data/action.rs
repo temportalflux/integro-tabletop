@@ -1,5 +1,6 @@
 use super::IndirectCondition;
-use crate::kdl_ext::{DocumentExt, FromKDL};
+use crate::kdl_ext::{DocumentExt, FromKDL, NodeExt};
+use std::str::FromStr;
 
 mod activation;
 pub use activation::*;
@@ -23,10 +24,14 @@ impl FromKDL for Action {
 		node: &kdl::KdlNode,
 		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
-		let activation_kind = ActivationKind::from_kdl(
-			node.query_req("scope() > activation")?,
-			&mut ctx.next_node(),
-		)?;
+		let activation_kind = match (
+			node.get_str_opt(ctx.consume_idx())?,
+			node.query_opt("scope() > activation")?,
+		) {
+			(Some(str), None) => ActivationKind::from_str(str)?,
+			(None, Some(node)) => ActivationKind::from_kdl(node, &mut ctx.next_node())?,
+			_ => return Err(MissingActivation(node.to_string()).into()),
+		};
 
 		let attack = match node.query("scope() > attack")? {
 			None => None,
@@ -50,6 +55,10 @@ impl FromKDL for Action {
 		})
 	}
 }
+
+#[derive(thiserror::Error, Debug)]
+#[error("Action node is missing activation property: {0:?}")]
+pub struct MissingActivation(String);
 
 #[cfg(test)]
 mod test {

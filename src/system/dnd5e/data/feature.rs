@@ -94,15 +94,6 @@ impl FromKDL for Feature {
 			}
 		};
 
-		for entry_node in node.query_all("scope() > action")? {
-			log::warn!(
-				target: "kdl",
-				"Feature block does not currently support actions, \
-				use the \"add_action\" mutator instead.\n{:?}",
-				entry_node.to_string()
-			);
-		}
-
 		let mut mutators = Vec::new();
 		for entry_node in node.query_all("scope() > mutator")? {
 			mutators.push(ctx.parse_mutator(entry_node)?);

@@ -1,6 +1,4 @@
-use super::AddAction;
 use crate::{
-	kdl_ext::KDLNode,
 	system::dnd5e::{
 		data::{character::Character, item::weapon},
 		Value,
@@ -21,7 +19,11 @@ impl Mutator for BonusDamage {
 	type Target = Character;
 
 	fn dependencies(&self) -> Dependencies {
-		Dependencies::from([AddAction::id()]).join(self.amount.dependencies())
+		// This technically depends on actions existing,
+		// but since actions are features, and features are always
+		// added before mutators are processed,
+		// we don't have a specific mutator to call out here.
+		self.amount.dependencies()
 	}
 
 	fn description(&self) -> Option<String> {

@@ -94,7 +94,6 @@ pub fn node_registry() -> NodeRegistry {
 	let mut registry = NodeRegistry::default();
 
 	registry.register_mutator::<AbilityScoreChange>();
-	registry.register_mutator::<AddAction>();
 	registry.register_mutator::<AddArmorClassFormula>();
 	registry.register_mutator::<AddDefense>();
 	registry.register_mutator::<AddLifeExpectancy>();

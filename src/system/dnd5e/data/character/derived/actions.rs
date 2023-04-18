@@ -14,7 +14,7 @@ pub struct Features {
 }
 
 impl Features {
-	pub fn iter_all(&self) -> impl Iterator<Item=(PathBuf, &Feature)> + '_ {
+	pub fn iter_all(&self) -> impl Iterator<Item = (PathBuf, &Feature)> + '_ {
 		self.path_map.as_vec().into_iter()
 	}
 }

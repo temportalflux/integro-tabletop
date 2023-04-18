@@ -1,6 +1,7 @@
+use std::str::FromStr;
 use crate::{
 	kdl_ext::{FromKDL, NodeExt},
-	GeneralError,
+	utility::NotInList,
 };
 
 #[derive(Clone, Copy, PartialEq, PartialOrd, Default, Debug)]
@@ -27,6 +28,23 @@ impl ToString for ActivationKind {
 	}
 }
 
+impl FromStr for ActivationKind {
+	type Err = NotInList;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		match s {
+			"Action" => Ok(Self::Action),
+			"Bonus" => Ok(Self::Bonus),
+			"Reaction" => Ok(Self::Reaction),
+			"Special" => Ok(Self::Special),
+			name => Err(NotInList(
+				name.into(),
+				vec!["Action", "Bonus", "Reaction", "Special"],
+			)),
+		}
+	}
+}
+
 impl FromKDL for ActivationKind {
 	fn from_kdl(
 		node: &kdl::KdlNode,
@@ -39,10 +57,10 @@ impl FromKDL for ActivationKind {
 			"Special" => Ok(Self::Special),
 			"Minute" => Ok(Self::Minute(node.get_i64_req(ctx.consume_idx())? as u32)),
 			"Hour" => Ok(Self::Hour(node.get_i64_req(ctx.consume_idx())? as u32)),
-			name => Err(GeneralError(format!(
-				"Invalid action activation type {name:?}, expected \
-				Action, Bonus, Reaction, Special, Minute, or Hour."
-			))
+			name => Err(NotInList(
+				name.into(),
+				vec!["Action", "Bonus", "Reaction", "Special", "Minute", "Hour"],
+			)
 			.into()),
 		}
 	}

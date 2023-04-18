@@ -3,7 +3,7 @@ use crate::{
 	kdl_ext::{DocumentExt, FromKDL, NodeContext, NodeExt},
 	system::{
 		core::SourceId,
-		dnd5e::{data::character::Character, mutator::AddAction, DnD5e, SystemComponent},
+		dnd5e::{data::character::Character, DnD5e, SystemComponent},
 	},
 	utility::{MutatorGroup, NotInList},
 };
@@ -210,8 +210,7 @@ impl MutatorGroup for EquipableEntry {
 		let path_to_item = parent.join(&self.item.name);
 		stats.apply_from(equipment, &path_to_item);
 		if let Some(weapon) = &equipment.weapon {
-			let mutator = AddAction(weapon.attack_action(self));
-			stats.apply(&mutator.into(), &path_to_item);
+			stats.add_feature(&weapon.attack_action(self), &path_to_item);
 		}
 	}
 }

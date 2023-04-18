@@ -371,7 +371,9 @@ async fn load_modules(database: &database::app::Database) -> Result<(), database
 					"upbringing" => "upbringing".into(),
 					"defaults" => "defaults".into(),
 					name => {
-						log::warn!("Unsupported category name {name:?}, cannot load into database.");
+						log::warn!(
+							"Unsupported category name {name:?}, cannot load into database."
+						);
 						continue;
 					}
 				};

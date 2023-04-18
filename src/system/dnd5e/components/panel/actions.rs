@@ -100,7 +100,9 @@ pub fn Actions() -> Html {
 	let mut panes = Vec::new();
 	if selected_tags.contains(ActionTag::Attack) {
 		let features = {
-			let mut features = state.features().iter_all()
+			let mut features = state
+				.features()
+				.iter_all()
 				.filter(|(_parent_path, feature)| match feature.action.as_ref() {
 					Some(action) => action.attack.is_some(),
 					None => false,
