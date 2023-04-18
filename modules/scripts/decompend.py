@@ -2,6 +2,7 @@
 # where each relevant node is annotated with a `//!<name>` prefix.
 from pathlib import Path
 import sys
+import os
 
 compendium_file = Path(sys.argv[1])
 dst_dir = Path(sys.argv[2])
@@ -26,5 +27,6 @@ if last_name is not None and latest_segment is not None:
 
 for name,content in files.items():
 	dst_file = dst_dir.joinpath(name + ".kdl")
+	os.makedirs(os.path.dirname(dst_file), exist_ok=True)
 	dst_file.write_text(content, encoding='utf-8')
 compendium_file.write_text(left_over, encoding='utf-8')
