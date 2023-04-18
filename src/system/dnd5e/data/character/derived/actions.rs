@@ -13,10 +13,10 @@ pub struct Features {
 	pub action_budget: ActionBudget,
 }
 
-#[derive(Clone, PartialEq, Debug, Default)]
-pub struct Actions {
-	pub list: Vec<Action>,
-	pub action_budget: ActionBudget,
+impl Features {
+	pub fn iter_all(&self) -> impl Iterator<Item=(PathBuf, &Feature)> + '_ {
+		self.path_map.as_vec().into_iter()
+	}
 }
 
 #[derive(Clone, PartialEq, Debug)]

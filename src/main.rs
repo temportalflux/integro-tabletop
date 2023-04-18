@@ -369,8 +369,11 @@ async fn load_modules(database: &database::app::Database) -> Result<(), database
 					"subrace" => "race-variant".into(),
 					"lineage" => "lineage".into(),
 					"upbringing" => "upbringing".into(),
-					// "defaults"
-					_ => continue,
+					"defaults" => "defaults".into(),
+					name => {
+						log::warn!("Unsupported category name {name:?}, cannot load into database.");
+						continue;
+					}
 				};
 				let system = source_id.system.clone().unwrap();
 				let version = source_id.version.take();

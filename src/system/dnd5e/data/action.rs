@@ -18,14 +18,6 @@ pub struct Action {
 	pub conditions_to_apply: Vec<IndirectCondition>,
 }
 
-impl Action {
-	pub fn set_data_path(&self, parent: &std::path::Path) {
-		if let Some(uses) = &self.limited_uses {
-			uses.set_data_path(parent);
-		}
-	}
-}
-
 impl FromKDL for Action {
 	fn from_kdl(
 		node: &kdl::KdlNode,

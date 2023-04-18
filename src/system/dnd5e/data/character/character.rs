@@ -363,10 +363,9 @@ impl Character {
 	}
 
 	pub fn add_feature(&mut self, feature: &Feature, parent_path: &Path) {
-		self.features_mut()
-			.path_map
-			.insert(parent_path, feature.clone());
-		self.apply_from(feature, parent_path);
+		let feature = feature.clone();
+		self.apply_from(&feature, parent_path);
+		self.features_mut().path_map.insert(parent_path, feature);
 	}
 
 	pub fn features(&self) -> &Features {

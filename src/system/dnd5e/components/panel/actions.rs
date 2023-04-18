@@ -100,14 +100,12 @@ pub fn Actions() -> Html {
 	let mut panes = Vec::new();
 	if selected_tags.contains(ActionTag::Attack) {
 		let features = {
-			let mut features = state
-				.features()
-				.path_map
-				.iter_values()
-				.filter(|feature| match feature.action.as_ref() {
+			let mut features = state.features().iter_all()
+				.filter(|(_parent_path, feature)| match feature.action.as_ref() {
 					Some(action) => action.attack.is_some(),
 					None => false,
 				})
+				.map(|(_, feature)| feature)
 				.collect::<Vec<_>>();
 			features.sort_by(|a, b| a.name.cmp(&b.name));
 			features
@@ -186,11 +184,10 @@ pub fn Actions() -> Html {
 	let features = {
 		let mut features = state
 			.features()
-			.path_map
-			.iter_values()
-			.filter(|feature| {
+			.iter_all()
+			.filter_map(|(_parent_path, feature)| {
 				let Some(action) = &feature.action else {
-					return false;
+					return None;
 				};
 				let mut passes_any = false;
 				if selected_tags.contains(ActionTag::Action) {
@@ -212,7 +209,10 @@ pub fn Actions() -> Html {
 				if selected_tags.contains(ActionTag::LimitedUse) {
 					passes_any = passes_any || action.limited_uses.is_some();
 				}
-				passes_any
+				match passes_any {
+					true => Some(feature),
+					false => None,
+				}
 			})
 			.collect::<Vec<_>>();
 		features.sort_by(|a, b| a.name.cmp(&b.name));
