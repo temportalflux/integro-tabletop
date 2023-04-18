@@ -49,7 +49,7 @@ impl Mutator for AddToActionBudget {
 	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
 		if let Some(amount) = self.amount.evaluate(stats) {
 			stats
-				.actions_mut()
+				.features_mut()
 				.action_budget
 				.push(self.action_kind, amount, parent.into());
 		}
@@ -150,7 +150,7 @@ mod test {
 				action_kind: ActionBudgetKind::Action,
 				amount: scaling::Value::Fixed(1),
 			});
-			let budget = &character.actions().action_budget;
+			let budget = &character.features().action_budget;
 			assert_eq!(
 				budget.get(ActionBudgetKind::Action),
 				(2, &vec![(1, "Test".into())])
@@ -163,7 +163,7 @@ mod test {
 				action_kind: ActionBudgetKind::Attack,
 				amount: scaling::Value::Fixed(1),
 			});
-			let budget = &character.actions().action_budget;
+			let budget = &character.features().action_budget;
 			assert_eq!(
 				budget.get(ActionBudgetKind::Attack),
 				(2, &vec![(1, "Test".into())])
@@ -176,7 +176,7 @@ mod test {
 				action_kind: ActionBudgetKind::Bonus,
 				amount: scaling::Value::Fixed(1),
 			});
-			let budget = &character.actions().action_budget;
+			let budget = &character.features().action_budget;
 			assert_eq!(
 				budget.get(ActionBudgetKind::Bonus),
 				(2, &vec![(1, "Test".into())])
@@ -189,7 +189,7 @@ mod test {
 				action_kind: ActionBudgetKind::Reaction,
 				amount: scaling::Value::Fixed(1),
 			});
-			let budget = &character.actions().action_budget;
+			let budget = &character.features().action_budget;
 			assert_eq!(
 				budget.get(ActionBudgetKind::Reaction),
 				(2, &vec![(1, "Test".into())])

@@ -3,7 +3,7 @@ use crate::{
 	system::{
 		core::SourceId,
 		dnd5e::{
-			data::{character::Character, BoxedFeature, Feature},
+			data::{character::Character, Feature},
 			BoxedMutator, DnD5e, SystemComponent,
 		},
 	},
@@ -17,7 +17,7 @@ pub struct Upbringing {
 	pub name: String,
 	pub description: String,
 	pub mutators: Vec<BoxedMutator>,
-	pub features: Vec<BoxedFeature>,
+	pub features: Vec<Feature>,
 }
 
 impl MutatorGroup for Upbringing {

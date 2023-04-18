@@ -5,7 +5,7 @@ use crate::{
 		dnd5e::data::{
 			bundle::{Background, Lineage, Race, RaceVariant, Upbringing},
 			character::Character,
-			item, Ability, BoxedFeature, Class, Condition,
+			item, Ability, Class, Condition, Feature,
 		},
 	},
 	utility::MutatorGroup,
@@ -31,7 +31,7 @@ pub struct NamedGroups {
 pub struct Persistent {
 	pub named_groups: NamedGroups,
 	pub classes: Vec<Class>,
-	pub feats: Vec<BoxedFeature>,
+	pub feats: Vec<Feature>,
 	pub description: Description,
 	pub ability_scores: EnumMap<Ability, u32>,
 	pub selected_values: PathMap<String>,

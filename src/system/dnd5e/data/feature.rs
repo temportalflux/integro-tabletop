@@ -1,10 +1,6 @@
-use super::{
-	action::{Action, ActionSource},
-	character::Character,
-	description,
-};
+use super::{action::Action, character::Character, description};
 use crate::{
-	kdl_ext::{FromKDL, NodeExt},
+	kdl_ext::{DocumentExt, FromKDL, NodeExt},
 	system::dnd5e::{BoxedCriteria, BoxedMutator},
 	utility::MutatorGroup,
 };
@@ -15,12 +11,6 @@ use std::{
 	sync::{Arc, RwLock},
 };
 
-// TODO: All actions are actually features. The action structure should not have a name or description.
-// Instead, a feature can optionally have 1 action block, which must specify the activation type
-// and all of the other propertyies about an action.
-// To that end, a Feature is considered an action if it has an action block.
-// This will re-unify the weird action vs feature breakdown. All non-action features are just passive buffs.
-// This also aids in the unification of having categories for actions and features, and the display modal for both.
 #[derive(Default, Clone, Debug, Derivative)]
 #[derivative(PartialEq)]
 pub struct Feature {
@@ -29,6 +19,7 @@ pub struct Feature {
 
 	pub mutators: Vec<BoxedMutator>,
 	pub criteria: Option<BoxedCriteria>,
+	pub action: Option<Action>,
 
 	#[derivative(PartialEq = "ignore")]
 	pub absolute_path: Arc<RwLock<PathBuf>>,
@@ -37,6 +28,14 @@ pub struct Feature {
 }
 
 impl Feature {
+	pub fn set_data_path(&self, parent: &std::path::Path) {
+		if let Some(action) = &self.action {
+			if let Some(uses) = &action.limited_uses {
+				uses.set_data_path(parent);
+			}
+		}
+	}
+
 	pub fn get_display_path(&self) -> PathBuf {
 		self.absolute_path.read().unwrap().clone()
 	}
@@ -95,57 +94,25 @@ impl FromKDL for Feature {
 			}
 		};
 
-		for entry_node in node.query_all("scope() > action")? {
-			log::warn!(
-				target: "kdl",
-				"Feature block does not currently support actions, \
-				use the \"add_action\" mutator instead.\n{:?}",
-				entry_node.to_string()
-			);
-		}
-
 		let mut mutators = Vec::new();
 		for entry_node in node.query_all("scope() > mutator")? {
 			mutators.push(ctx.parse_mutator(entry_node)?);
 		}
+
+		let action = match node.query_opt("scope() > action")? {
+			None => None,
+			Some(node) => Some(Action::from_kdl(node, &mut ctx.next_node())?),
+		};
 
 		Ok(Self {
 			name,
 			description,
 			mutators,
 			criteria,
+			action,
 			// Generated data
 			absolute_path: Arc::new(RwLock::new(PathBuf::new())),
 			missing_selection_text: None,
 		})
-	}
-}
-
-#[derive(Clone, PartialEq)]
-pub struct BoxedFeature(Arc<Feature>);
-impl From<Feature> for BoxedFeature {
-	fn from(feature: Feature) -> Self {
-		Self(Arc::new(feature))
-	}
-}
-impl BoxedFeature {
-	pub fn inner(&self) -> &Feature {
-		&*self.0
-	}
-}
-impl std::fmt::Debug for BoxedFeature {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		self.0.fmt(f)
-	}
-}
-impl MutatorGroup for BoxedFeature {
-	type Target = <Feature as MutatorGroup>::Target;
-
-	fn set_data_path(&self, parent: &std::path::Path) {
-		self.0.set_data_path(parent);
-	}
-
-	fn apply_mutators(&self, target: &mut Self::Target, parent: &Path) {
-		self.0.apply_mutators(target, parent);
 	}
 }

@@ -85,6 +85,10 @@ impl<T> PathMap<T> {
 		self.values.iter()
 	}
 
+	pub fn iter_values_mut(&mut self) -> impl Iterator<Item = &mut T> {
+		self.values.iter_mut()
+	}
+
 	pub fn iter_children(&self) -> impl Iterator<Item = (&String, &PathMap<T>)> {
 		self.children.iter()
 	}
