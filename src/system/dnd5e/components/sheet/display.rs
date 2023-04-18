@@ -97,7 +97,7 @@ pub fn SheetDisplay(SheetDisplayProps { open_editor }: &SheetDisplayProps) -> Ht
 
 					<div class="card m-1" style="height: 550px;">
 						<div class="card-body" style="padding: 5px;">
-							<Nav root_classes={"onesheet-tabs"} disp={NavDisplay::Tabs} default_tab_id={"features"}>
+							<Nav root_classes={"onesheet-tabs"} disp={NavDisplay::Tabs} default_tab_id={"actions"}>
 								<TabContent id="actions" title={html! {{"Actions"}}}>
 									<panel::Actions />
 								</TabContent>

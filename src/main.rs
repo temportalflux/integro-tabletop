@@ -58,10 +58,10 @@ fn create_character(system: &system::dnd5e::DnD5e) -> system::dnd5e::data::chara
 	persistent.classes.push({
 		let mut class = system
 			.classes
-			.get(&SourceId::from_str("local://basic-rules@dnd5e/class/barbarian.kdl").unwrap())
+			.get(&SourceId::from_str("local://basic-rules@dnd5e/class/monk.kdl").unwrap())
 			.unwrap()
 			.clone();
-		class.levels.truncate(3); // level 3
+		class.levels.truncate(10); // level 10
 		class
 	});
 	persistent.named_groups.background.push(

@@ -15,6 +15,8 @@ use std::{
 #[derivative(PartialEq)]
 pub struct Feature {
 	pub name: String,
+	/// The path of the parent feature, for grouping features together in the UI.
+	pub parent: Option<PathBuf>,
 	pub description: description::Info,
 
 	pub mutators: Vec<BoxedMutator>,
@@ -80,6 +82,7 @@ impl FromKDL for Feature {
 		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
 		let name = node.get_str_req("name")?.to_owned();
+		let parent = node.get_str_opt("parent")?.map(PathBuf::from);
 		let description = description::Info::from_kdl_all(node, ctx)?;
 
 		// Specifies if this feature can appear twice.
@@ -106,6 +109,7 @@ impl FromKDL for Feature {
 
 		Ok(Self {
 			name,
+			parent,
 			description,
 			mutators,
 			criteria,

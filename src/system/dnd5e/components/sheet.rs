@@ -45,7 +45,8 @@ pub fn CharacterSheetPage(CharacterSheetPageProps { character }: &CharacterSheet
 	let character = SharedCharacter(use_reducer({
 		let system = system.clone();
 		let character = character.clone();
-		move || Character::new(character, &*system)
+		let default_blocks = system.default_blocks.values().cloned().collect();
+		move || Character::new(character, default_blocks)
 	}));
 	let modal_dispatcher = modal::Context::from(use_reducer(|| modal::State::default()));
 	let show_editor = use_state_eq(|| false);

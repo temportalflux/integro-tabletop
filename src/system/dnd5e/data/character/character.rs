@@ -11,7 +11,7 @@ use crate::{
 			proficiency, Ability, ArmorClass, Feature, OtherProficiencies,
 		},
 		mutator::Flag,
-		BoxedCriteria, BoxedMutator, DnD5e,
+		BoxedCriteria, BoxedMutator,
 	},
 	utility::{Dependencies, MutatorGroup, Selector},
 };
@@ -21,7 +21,6 @@ use std::{
 	rc::Rc,
 	str::FromStr,
 };
-
 use super::{DefaultsBlock, Features, HitPoint, HitPoints};
 
 #[derive(Clone, Copy, PartialEq)]
@@ -45,6 +44,7 @@ struct MutatorEntry {
 	dependencies: Dependencies,
 	mutator: BoxedMutator,
 }
+#[cfg(test)]
 impl From<Persistent> for Character {
 	fn from(persistent: Persistent) -> Self {
 		let mut character = Self {
@@ -64,13 +64,14 @@ impl yew::Reducible for Character {
 		let mut full = (*self).clone();
 		Rc::new(match action(&mut full.character, &self) {
 			None => full,
-			Some(ActionEffect::Recompile) => Self::from(full.character.clone()),
+			Some(ActionEffect::Recompile) => {
+				Self::new(full.character.clone(), full.default_blocks.clone())
+			}
 		})
 	}
 }
 impl Character {
-	pub fn new(persistent: Persistent, system: &DnD5e) -> Self {
-		let default_blocks = system.default_blocks.values().cloned().collect();
+	pub fn new(persistent: Persistent, default_blocks: Vec<DefaultsBlock>) -> Self {
 		let mut character = Self {
 			default_blocks,
 			character: persistent,
@@ -365,7 +366,9 @@ impl Character {
 	pub fn add_feature(&mut self, feature: &Feature, parent_path: &Path) {
 		let feature = feature.clone();
 		self.apply_from(&feature, parent_path);
-		self.features_mut().path_map.insert(parent_path, feature);
+		self.features_mut()
+			.path_map
+			.insert(parent_path.join(&feature.name), feature);
 	}
 
 	pub fn features(&self) -> &Features {

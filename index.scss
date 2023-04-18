@@ -350,22 +350,27 @@ input.slot[type="checkbox"]:checked:before {
 	--bs-btn-font-size: .75rem;
 }
 
-.action.short {
+.action-budget {
+	font-size: 14px;
+	min-height: 23px;
+}
+.feature.short {
 	font-size: 12px;
 }
-.action.short > .title {
+.feature.short > .title {
 	font-size: 14px;
 }
-.action.short > .subtitle {
+.feature.short > .subtitle {
 	display: block;
+	color: var(--bs-gray-600);
 }
-.action.short .conditions > .title {
+.feature.short .conditions > .title {
 	min-width: 110px;
 }
-.action.short .conditions > button {
+.feature.short .conditions > button {
 	min-width: 60px;
 }
-.action.modal .modal-body {
+.feature.modal .modal-body {
 	font-size: 12px;
 	> .description {
 		margin-top: 0.5rem;
@@ -376,6 +381,10 @@ input.slot[type="checkbox"]:checked:before {
 	> strong {
 		margin-right: 0.5rem;
 	}
+}
+.feature:not(:last-child) {
+	margin-bottom: 0.5rem!important;
+	border-bottom: var(--bs-border-width) var(--bs-border-style) var(--theme-frame-color-muted)!important;
 }
 
 .item-add-amount {

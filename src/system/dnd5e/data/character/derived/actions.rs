@@ -1,8 +1,4 @@
-use crate::{
-	path_map::PathMap,
-	system::dnd5e::data::{action::Action, Feature},
-	utility::NotInList,
-};
+use crate::{path_map::PathMap, system::dnd5e::data::Feature, utility::NotInList};
 use enum_map::{Enum, EnumMap};
 use enumset::EnumSetType;
 use std::{path::PathBuf, str::FromStr};

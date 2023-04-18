@@ -1,8 +1,8 @@
-use std::str::FromStr;
 use crate::{
 	kdl_ext::{FromKDL, NodeExt},
 	utility::NotInList,
 };
+use std::str::FromStr;
 
 #[derive(Clone, Copy, PartialEq, PartialOrd, Default, Debug)]
 pub enum ActivationKind {

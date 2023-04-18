@@ -93,17 +93,41 @@ impl<T> PathMap<T> {
 		self.children.iter()
 	}
 
-	pub fn get(&self, path: impl AsRef<Path>) -> Option<&Vec<T>> {
-		self.get_all(path).map(|map| &map.values)
-	}
-
 	pub fn get_all(&self, path: impl AsRef<Path>) -> Option<&PathMap<T>> {
 		let mut map = self;
 		for component in path.as_ref().components() {
 			let key = component.as_os_str().to_str().unwrap();
-			let Some(next_map) = map.children.get(key) else { return None; };
+			let Some(next_map) = map.children.get(key) else {
+				return None;
+			};
 			map = next_map;
 		}
 		Some(&map)
+	}
+
+	pub fn get_all_mut(&mut self, path: impl AsRef<Path>) -> Option<&mut PathMap<T>> {
+		let mut map = self;
+		for component in path.as_ref().components() {
+			let key = component.as_os_str().to_str().unwrap();
+			let Some(next_map) = map.children.get_mut(key) else { return None; };
+			map = next_map;
+		}
+		Some(map)
+	}
+
+	pub fn get(&self, path: impl AsRef<Path>) -> Option<&Vec<T>> {
+		self.get_all(path).map(|map| &map.values)
+	}
+
+	pub fn get_mut(&mut self, path: impl AsRef<Path>) -> Option<&mut Vec<T>> {
+		self.get_all_mut(path).map(|map| &mut map.values)
+	}
+
+	pub fn get_first(&self, path: impl AsRef<Path>) -> Option<&T> {
+		self.get(path).map(|all| all.first()).flatten()
+	}
+
+	pub fn get_first_mut(&mut self, path: impl AsRef<Path>) -> Option<&mut T> {
+		self.get_mut(path).map(|all| all.first_mut()).flatten()
 	}
 }

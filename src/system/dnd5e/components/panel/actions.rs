@@ -14,7 +14,7 @@ use crate::{
 	},
 };
 use enumset::{EnumSet, EnumSetType};
-use std::sync::Arc;
+use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use yew::prelude::*;
 
 #[derive(EnumSetType)]
@@ -25,6 +25,7 @@ pub enum ActionTag {
 	Reaction,
 	Other,
 	LimitedUse,
+	Passive,
 }
 impl ActionTag {
 	pub fn display_name(&self) -> &'static str {
@@ -35,6 +36,7 @@ impl ActionTag {
 			Self::Reaction => "Reaction",
 			Self::Other => "Other",
 			Self::LimitedUse => "Limited Use",
+			Self::Passive => "Passive",
 		}
 	}
 }
@@ -66,7 +68,7 @@ pub fn Actions() -> Html {
 	let budget = {
 		// TODO: Modal for action budget
 		let mut budget_items = Vec::new();
-		if selected_tags.contains(ActionTag::Action) || selected_tags.contains(ActionTag::Attack) {
+		{
 			let (amount, _) = state.features().action_budget.get(ActionBudgetKind::Action);
 			budget_items.push((ActionBudgetKind::Action, amount));
 		}
@@ -74,11 +76,11 @@ pub fn Actions() -> Html {
 			let (amount, _) = state.features().action_budget.get(ActionBudgetKind::Attack);
 			budget_items.push((ActionBudgetKind::Attack, amount));
 		}
-		if selected_tags.contains(ActionTag::BonusAction) {
+		{
 			let (amount, _) = state.features().action_budget.get(ActionBudgetKind::Bonus);
 			budget_items.push((ActionBudgetKind::Bonus, amount));
 		}
-		if selected_tags.contains(ActionTag::Reaction) {
+		{
 			let (amount, _) = state
 				.features()
 				.action_budget
@@ -86,14 +88,15 @@ pub fn Actions() -> Html {
 			budget_items.push((ActionBudgetKind::Reaction, amount));
 		}
 		html! {
-			<div class="action-budget">
+			<span class="action-budget">
+				{"Action Budget: "}
 				{budget_items.into_iter().map(|(kind, amount)| match kind {
-					ActionBudgetKind::Action => format!("Actions: {amount}"),
-					ActionBudgetKind::Attack => format!("Attacks per Action: {amount}"),
-					ActionBudgetKind::Bonus => format!("Bonus Actions: {amount}"),
-					ActionBudgetKind::Reaction => format!("Reactions: {amount}"),
+					ActionBudgetKind::Action => format!("{amount} Actions"),
+					ActionBudgetKind::Attack => format!("{amount} Attacks per Action"),
+					ActionBudgetKind::Bonus => format!("{amount} Bonus Actions"),
+					ActionBudgetKind::Reaction => format!("{amount} Reactions"),
 				}).collect::<Vec<_>>().join(", ")}
-			</div>
+			</span>
 		}
 	};
 
@@ -184,14 +187,11 @@ pub fn Actions() -> Html {
 	}
 
 	let features = {
-		let mut features = state
-			.features()
-			.iter_all()
-			.filter_map(|(_parent_path, feature)| {
-				let Some(action) = &feature.action else {
-					return None;
-				};
-				let mut passes_any = false;
+		let mut root_features = FeatureDisplayGroup::default();
+		for (feature_path, feature) in state.features().iter_all() {
+			let mut passes_any = false;
+			if let Some(action) = &feature.action {
+				// Has an action, we can include this feature depending on the action types that we are displaying
 				if selected_tags.contains(ActionTag::Action) {
 					passes_any = passes_any || action.activation_kind == ActivationKind::Action;
 				}
@@ -211,60 +211,117 @@ pub fn Actions() -> Html {
 				if selected_tags.contains(ActionTag::LimitedUse) {
 					passes_any = passes_any || action.limited_uses.is_some();
 				}
-				match passes_any {
-					true => Some(feature),
-					false => None,
-				}
-			})
-			.collect::<Vec<_>>();
-		features.sort_by(|a, b| a.name.cmp(&b.name));
-		features
+			} else {
+				// No action, we can include this feature if we are displaying passive features.
+				passes_any = passes_any || selected_tags.contains(ActionTag::Passive);
+			}
+			if !passes_any {
+				continue;
+			}
+
+			// Insert the feature as an entry into the display groups
+			let display_parent_entry = match &feature.parent {
+				Some(parent) => root_features.by_path.get_mut(parent),
+				None => None,
+			};
+			let target_group = match display_parent_entry {
+				Some(parent_group) => &mut parent_group.children,
+				None => &mut root_features,
+			};
+			target_group.insert(FeatureEntry {
+				feature_path,
+				// cloning the feature is required to pass the feature to a yew component later
+				feature: feature.clone(),
+				children: FeatureDisplayGroup::default(),
+			});
+		}
+		root_features
 	};
-	panes.push(html! {<>
-		{features.into_iter().cloned().map(|feature| html! { <ActionOverview {feature} /> }).collect::<Vec<_>>()}
-	</>});
+	panes.push(html! {<div>
+		{features.into_iter().map(|entry| {
+			html! { <ActionOverview {entry} /> }
+		}).collect::<Vec<_>>()}
+	</div>});
 
 	html! {<>
 		<Tags>{tag_htmls}</Tags>
 		{budget}
-		<div style="overflow-y: scroll; height: 483px;">
+		<div style="overflow-y: scroll; height: 455px;">
 			{panes}
 		</div>
 	</>}
 }
 
+#[derive(Clone, PartialEq, Default)]
+struct FeatureDisplayGroup {
+	// the order of entries, identified by the path of a feature,
+	// sorted alphabetically by feature name
+	order: Vec<PathBuf>,
+	// features keyed by their unique paths
+	by_path: HashMap<PathBuf, FeatureEntry>,
+}
+#[derive(Clone, PartialEq)]
+struct FeatureEntry {
+	feature_path: PathBuf,
+	feature: Feature,
+	children: FeatureDisplayGroup,
+}
+impl FeatureDisplayGroup {
+	fn insert(&mut self, entry: FeatureEntry) {
+		// Insertion sort the feature_path into the alphabetical order
+		let insert_idx = self.order.binary_search_by(|path_to_existing| {
+			let existing_entry = self.by_path.get(path_to_existing).unwrap();
+			existing_entry.feature.name.cmp(&entry.feature.name)
+		});
+		let insert_idx = match insert_idx {
+			Ok(idx) => idx,  // was found, but thats fineTM, we'll just ignore it
+			Err(idx) => idx, // not found, we can insert here
+		};
+		self.order.insert(insert_idx, entry.feature_path.clone());
+		self.by_path.insert(entry.feature_path.clone(), entry);
+	}
+
+	fn is_empty(&self) -> bool {
+		self.order.is_empty()
+	}
+
+	fn iter(&self) -> impl Iterator<Item = &FeatureEntry> {
+		self.order
+			.iter()
+			.filter_map(move |path| self.by_path.get(path))
+	}
+
+	fn into_iter(mut self) -> impl Iterator<Item = FeatureEntry> {
+		self.order
+			.into_iter()
+			.filter_map(move |path| self.by_path.remove(&path))
+	}
+}
+
 #[derive(Clone, PartialEq, Properties)]
 struct ActionProps {
-	pub feature: Feature,
+	pub entry: FeatureEntry,
 }
 #[function_component]
-fn ActionOverview(ActionProps { feature }: &ActionProps) -> Html {
+fn ActionOverview(ActionProps { entry }: &ActionProps) -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
 	let system = use_context::<UseStateHandle<DnD5e>>().unwrap();
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();
-	let Some(action) = &feature.action else {
-		return html! {};
-	};
 	let onclick = modal_dispatcher.callback({
-		let feature = feature.clone();
+		let feature_path = entry.feature_path.clone();
 		move |_| {
 			modal::Action::Open(modal::Props {
 				centered: true,
 				scrollable: true,
-				root_classes: classes!("action"),
-				content: html! {<Modal feature={feature.clone()} />},
+				root_classes: classes!("feature"),
+				content: html! {<Modal path={feature_path.clone()} />},
 				..Default::default()
 			})
 		}
 	});
-	// TODO: Display the source path of the feature (its they key of path_map).
-	html! {
-		<div class="action short mb-2 border-bottom-theme-muted" {onclick}>
-			<strong class="title">{feature.name.clone()}</strong>
-			<span class="subtitle">
-				{action.activation_kind}
-			</span>
-			{description(&feature.description, true)}
+	let action_block = match &entry.feature.action {
+		None => html! {},
+		Some(action) => html! {
 			<div class="addendum mx-2 mb-1">
 				{(!action.conditions_to_apply.is_empty()).then(|| {
 					let conditions_to_apply = Arc::new(action.conditions_to_apply.iter().filter_map(|indirect| {
@@ -317,23 +374,64 @@ fn ActionOverview(ActionProps { feature }: &ActionProps) -> Html {
 					UsesCounter { state: state.clone(), limited_uses }.to_html()
 				}).unwrap_or_default()}
 			</div>
+		},
+	};
+	html! {
+		<div class="feature short pb-1" {onclick}>
+			<strong class="title">{entry.feature.name.clone()}</strong>
+			<span class="subtitle">
+				<span style="margin-right: 5px;">
+					{match &entry.feature.action {
+						Some(action) => html! { {action.activation_kind} },
+						None => html! { "Passive" },
+					}}
+				</span>
+				{match entry.feature_path.parent() {
+					Some(parent_path) if parent_path.components().count() > 0 => html! {
+						<span>{"("}{crate::data::as_feature_path_text(parent_path)}{")"}</span>
+					},
+					_ => html! {},
+				}}
+			</span>
+			{description(&entry.feature.description, true)}
+			{action_block}
+			{match entry.children.is_empty() {
+				true => html! {},
+				false => html! {
+					<div class="children mx-2 mb-1" onclick={Callback::from(|evt: MouseEvent| evt.stop_propagation())}>
+						{entry.children.iter().cloned().map(|entry| {
+							html! { <ActionOverview {entry} /> }
+						}).collect::<Vec<_>>()}
+					</div>
+				}
+			}}
 		</div>
 	}
 }
 
+#[derive(Clone, PartialEq, Properties)]
+struct ModalProps {
+	// The path to the feature in `state.features().path_map`.
+	pub path: PathBuf,
+}
 #[function_component]
-fn Modal(ActionProps { feature }: &ActionProps) -> Html {
+fn Modal(ModalProps { path }: &ModalProps) -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
 	let system = use_context::<UseStateHandle<DnD5e>>().unwrap();
-	let Some(action) = &feature.action else {
-		return html! {};
+	let Some(feature) = state.features().path_map.get_first(&path) else {
+		return html! {<>
+			<div class="modal-header">
+			<h1 class="modal-title fs-4">{"Missing Feature"}</h1>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
+			</div>
+			<div class="modal-body">
+				{crate::data::as_feature_path_text(&path)}
+			</div>
+		</>};
 	};
-	html! {<>
-		<div class="modal-header">
-			<h1 class="modal-title fs-4">{feature.name.clone()}</h1>
-			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
-		</div>
-		<div class="modal-body">
+	let action_block = match &feature.action {
+		None => html! {},
+		Some(action) => html! {<>
 
 			<div class="property">
 				<strong>{"Action Type:"}</strong>
@@ -343,8 +441,6 @@ fn Modal(ActionProps { feature }: &ActionProps) -> Html {
 			{action.limited_uses.as_ref().map(|limited_uses| {
 				UsesCounter { state: state.clone(), limited_uses }.to_html()
 			}).unwrap_or_default()}
-
-			{description(&feature.description, false)}
 
 			{(!action.conditions_to_apply.is_empty()).then(|| {
 				let conditions_to_apply = Arc::new(action.conditions_to_apply.iter().filter_map(|indirect| {
@@ -377,6 +473,19 @@ fn Modal(ActionProps { feature }: &ActionProps) -> Html {
 					</div>
 				}
 			}).unwrap_or_default()}
+
+		</>},
+	};
+	// TODO: Display mutators
+	// TODO: Display criteria
+	html! {<>
+		<div class="modal-header">
+			<h1 class="modal-title fs-4">{feature.name.clone()}</h1>
+			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
+		</div>
+		<div class="modal-body">
+			{action_block}
+			{description(&feature.description, false)}
 		</div>
 	</>}
 }
