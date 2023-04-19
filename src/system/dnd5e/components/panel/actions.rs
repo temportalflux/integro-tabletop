@@ -13,12 +13,14 @@ use crate::{
 		DnD5e,
 	},
 };
+use enum_map::{EnumMap, Enum};
 use enumset::{EnumSet, EnumSetType};
+use itertools::{Itertools, Position};
 use multimap::MultiMap;
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use yew::prelude::*;
 
-#[derive(EnumSetType)]
+#[derive(EnumSetType, Enum)]
 pub enum ActionTag {
 	Attack,
 	Action,
@@ -27,6 +29,18 @@ pub enum ActionTag {
 	Other,
 	LimitedUse,
 	Passive,
+}
+impl From<ActivationKind> for ActionTag {
+    fn from(value: ActivationKind) -> Self {
+      match value {
+				ActivationKind::Action => Self::Action,
+				ActivationKind::Bonus => Self::BonusAction,
+				ActivationKind::Reaction => Self::Reaction,
+				ActivationKind::Special => Self::Other,
+				ActivationKind::Minute(_) => Self::Other,
+				ActivationKind::Hour(_) => Self::Other,
+			}
+    }
 }
 impl ActionTag {
 	pub fn display_name(&self) -> &'static str {
@@ -187,8 +201,9 @@ pub fn Actions() -> Html {
 		});
 	}
 
-	let features = {
+	let (root_features, collapsed_features) = {
 		let mut root_features = FeatureDisplayGroup::default();
+		let mut collapsed_features = FeatureDisplayGroup::default();
 		let mut features_by_parent = MultiMap::new();
 		for (feature_path, feature) in state.features().iter_all() {
 			let mut passes_any = false;
@@ -232,12 +247,18 @@ pub fn Actions() -> Html {
 			// may be encountered before the parent itself).
 			if let Some(display_parent_path) = &feature.parent {
 				features_by_parent.insert(display_parent_path.clone(), entry);
-			}
-			else {
-				root_features.insert(entry);
+			} else {
+				if feature.collapsed {
+					collapsed_features.insert(entry);
+				} else {
+					root_features.insert(entry);
+				}
 			}
 		}
 		for (parent_path, child_features) in features_by_parent.into_iter() {
+			if let Some(prev_collapsed) = collapsed_features.remove(&parent_path) {
+				root_features.insert(prev_collapsed);
+			}
 			let Some(parent_group) = root_features.by_path.get_mut(&parent_path) else {
 				log::warn!("Found features with the parent path \"{}\", but no such feature exists", parent_path.display());
 				continue;
@@ -246,10 +267,47 @@ pub fn Actions() -> Html {
 				parent_group.children.insert(entry);
 			}
 		}
-		root_features
+		(root_features, collapsed_features)
 	};
 	panes.push(html! {<div>
-		{features.into_iter().map(|entry| {
+		{(!collapsed_features.is_empty()).then(move || {
+			let mut entries_by_tag = EnumMap::<ActionTag, Vec<Html>>::default();
+			for entry in collapsed_features.into_iter() {
+				let tag = match &entry.feature.action {
+					Some(action) => ActionTag::from(action.activation_kind),
+					None => ActionTag::Passive,
+				};
+				entries_by_tag[tag].push(html! { <CollapsedFeature {entry} /> });
+			}
+			html! {
+				<div class="mb-2 border-bottom-theme-muted">
+					<strong>{"Other Features"}</strong>
+					<div class="pb-1 ms-3" style="font-size: 12px;">
+						{entries_by_tag.into_iter().filter_map(|(tag, nodes)| {
+							if nodes.is_empty() {
+								return None;
+							}
+							Some(html! {
+								<div>
+									<strong>{tag.display_name()}{": "}</strong>
+									<span>
+										{nodes.into_iter().with_position().map(|position| {
+											{match position {
+												Position::Only(node) | Position::Last(node) => node,
+												Position::First(node) | Position::Middle(node) => html! {
+													<span>{node}{", "}</span>
+												},
+											}}
+										}).collect::<Vec<_>>()}
+									</span>
+								</div>
+							})
+						}).collect::<Vec<_>>()}
+					</div>
+				</div>
+			}
+		}).unwrap_or_default()}
+		{root_features.into_iter().map(|entry| {
 			html! { <ActionOverview {entry} /> }
 		}).collect::<Vec<_>>()}
 	</div>});
@@ -294,6 +352,14 @@ impl FeatureDisplayGroup {
 		self.by_path.insert(entry.feature_path.clone(), entry);
 	}
 
+	fn remove(&mut self, path: &PathBuf) -> Option<FeatureEntry> {
+		let value = self.by_path.remove(path);
+		if value.is_some() {
+			self.order.retain(|p| p != path);
+		}
+		value
+	}
+
 	fn is_empty(&self) -> bool {
 		self.order.is_empty()
 	}
@@ -315,6 +381,27 @@ impl FeatureDisplayGroup {
 struct ActionProps {
 	pub entry: FeatureEntry,
 }
+
+#[function_component]
+fn CollapsedFeature(ActionProps { entry }: &ActionProps) -> Html {
+	let modal_dispatcher = use_context::<modal::Context>().unwrap();
+	let onclick = modal_dispatcher.callback({
+		let feature_path: PathBuf = entry.feature_path.clone();
+		move |_| {
+			modal::Action::Open(modal::Props {
+				centered: true,
+				scrollable: true,
+				root_classes: classes!("feature"),
+				content: html! {<Modal path={feature_path.clone()} />},
+				..Default::default()
+			})
+		}
+	});
+	html! {
+		<span {onclick}>{entry.feature.name.clone()}</span>
+	}
+}
+
 #[function_component]
 fn ActionOverview(ActionProps { entry }: &ActionProps) -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
@@ -515,11 +602,11 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 				},
 				_ => html! {},
 			}}
-			
+
 			{action_block}
-			
+
 			{description(&feature.description, false)}
-			
+
 			{feature.criteria.as_ref().map(|criteria| html! {
 				<div class="property">
 					<strong>{"Criteria:"}</strong>

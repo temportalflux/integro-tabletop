@@ -15,9 +15,16 @@ use std::{
 #[derivative(PartialEq)]
 pub struct Feature {
 	pub name: String,
+	pub description: description::Info,
+
+	/// If true, the feature should not be shown in full in the feature overviews.
+	/// Instead, display only the name in a brief section,
+	/// and clicking the name opens the modal for the feature.
+	/// If a feature is marked as collapsed, but another feature
+	/// marks it as its parent, the collapsed property is ignored.
+	pub collapsed: bool,
 	/// The path of the parent feature, for grouping features together in the UI.
 	pub parent: Option<PathBuf>,
-	pub description: description::Info,
 
 	pub mutators: Vec<BoxedMutator>,
 	pub criteria: Option<BoxedCriteria>,
@@ -82,8 +89,10 @@ impl FromKDL for Feature {
 		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
 		let name = node.get_str_req("name")?.to_owned();
-		let parent = node.get_str_opt("parent")?.map(PathBuf::from);
 		let description = description::Info::from_kdl_all(node, ctx)?;
+
+		let collapsed = node.get_bool_opt("collapsed")?.unwrap_or_default();
+		let parent = node.get_str_opt("parent")?.map(PathBuf::from);
 
 		// Specifies if this feature can appear twice.
 		// If true, any other features with the same name are ignored/discarded.
@@ -109,8 +118,9 @@ impl FromKDL for Feature {
 
 		Ok(Self {
 			name,
-			parent,
 			description,
+			collapsed,
+			parent,
 			mutators,
 			criteria,
 			action,

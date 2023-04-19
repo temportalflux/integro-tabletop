@@ -1,3 +1,4 @@
+use super::{DefaultsBlock, Features, HitPoint, HitPoints};
 use crate::{
 	path_map::PathMap,
 	system::dnd5e::{
@@ -21,7 +22,6 @@ use std::{
 	rc::Rc,
 	str::FromStr,
 };
-use super::{DefaultsBlock, Features, HitPoint, HitPoints};
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum ActionEffect {

@@ -4,17 +4,7 @@
 ## IndexedDB
 - force refresh button to forcibly reload one or more modules by wiping those entries from the database and refetching them from source
 
-## Feature UI
-- use short description; if no short text, collapse feature to only name & source
-- open modal on click
-	- source
-  - mutators & criteria
-
-## Action UI
-- use short description; if no short text, collapse feature to only name & source
-- open modal
-	- source
-
+# Feature UI
 - Open modal for attacks
 - Limited Use numerical modifier (for max uses > 5)
 - Condition UI lists mutators
