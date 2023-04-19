@@ -506,8 +506,34 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
 		</div>
 		<div class="modal-body">
+			{match path.parent() {
+				Some(parent) if parent.components().count() > 0 => html! {
+					<div class="property">
+						<strong>{"Source:"}</strong>
+						<span>{crate::data::as_feature_path_text(parent)}</span>
+					</div>
+				},
+				_ => html! {},
+			}}
+			
 			{action_block}
+			
 			{description(&feature.description, false)}
+			
+			{feature.criteria.as_ref().map(|criteria| html! {
+				<div class="property">
+					<strong>{"Criteria:"}</strong>
+					<span>{criteria.description().unwrap_or_else(|| format!("criteria missing description"))}</span>
+				</div>
+			}).unwrap_or_default()}
+			{(!feature.mutators.is_empty()).then(|| html! {
+				<div class="property">
+					<strong>{"Alterations:"}</strong>
+					<div>
+						{mutator_list(&feature.mutators, true)}
+					</div>
+				</div>
+			}).unwrap_or_default()}
 		</div>
 	</>}
 }
