@@ -282,7 +282,9 @@ impl FeatureDisplayGroup {
 		// Insertion sort the feature_path into the alphabetical order
 		let insert_idx = self.order.binary_search_by(|path_to_existing| {
 			let existing_entry = self.by_path.get(path_to_existing).unwrap();
-			existing_entry.feature.name.cmp(&entry.feature.name)
+			let cmp_name = existing_entry.feature.name.cmp(&entry.feature.name);
+			let cmp_path = existing_entry.feature_path.cmp(&entry.feature_path);
+			cmp_name.then(cmp_path)
 		});
 		let insert_idx = match insert_idx {
 			Ok(idx) => idx,  // was found, but thats fineTM, we'll just ignore it
@@ -387,9 +389,18 @@ fn ActionOverview(ActionProps { entry }: &ActionProps) -> Html {
 			</div>
 		},
 	};
+	let same_name_as_display_parent = match &entry.feature.parent {
+		None => false,
+		Some(parent) => match parent.file_name() {
+			None => false,
+			Some(parent_name) => parent_name.to_str() == Some(&entry.feature.name),
+		},
+	};
 	html! {
 		<div class="feature short pb-1" {onclick}>
-			<strong class="title">{entry.feature.name.clone()}</strong>
+			{(!same_name_as_display_parent).then(|| html! {
+				<strong class="title">{entry.feature.name.clone()}</strong>
+			}).unwrap_or_default()}
 			<span class="subtitle">
 				<span style="margin-right: 5px;">
 					{match &entry.feature.action {
