@@ -8,10 +8,10 @@ use crate::{
 		data::{
 			action::{ActivationKind, AttackCheckKind, AttackKindValue},
 			character::{ActionBudgetKind, ActionEffect, Persistent},
-			DamageRoll, Feature,
+			DamageRoll, Feature, AreaOfEffect, roll::Roll,
 		},
 		DnD5e,
-	},
+	}, utility::Evaluator,
 };
 use enum_map::{EnumMap, Enum};
 use enumset::{EnumSet, EnumSetType};
@@ -59,6 +59,7 @@ impl ActionTag {
 #[function_component]
 pub fn Actions() -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
+	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 	let selected_tags = use_state(|| EnumSet::<ActionTag>::all());
 
 	let make_tag_html = {
@@ -121,15 +122,26 @@ pub fn Actions() -> Html {
 			let mut features = state
 				.features()
 				.iter_all()
-				.filter(|(_parent_path, feature)| match feature.action.as_ref() {
+				.filter(|(_, feature)| match feature.action.as_ref() {
 					Some(action) => action.attack.is_some(),
 					None => false,
 				})
-				.map(|(_, feature)| feature)
 				.collect::<Vec<_>>();
-			features.sort_by(|a, b| a.name.cmp(&b.name));
+			features.sort_by(|(_, a), (_, b)| a.name.cmp(&b.name));
 			features
 		};
+
+		let open_attack_modal = modal_dispatcher.callback({
+			move |feature_path| {
+				modal::Action::Open(modal::Props {
+					centered: true,
+					scrollable: true,
+					root_classes: classes!("feature"),
+					content: html! {<Modal path={feature_path} />},
+					..Default::default()
+				})
+			}
+		});
 
 		panes.push(html! {
 			<table class="table table-compact m-0 mb-3">
@@ -143,15 +155,16 @@ pub fn Actions() -> Html {
 					</tr>
 				</thead>
 				<tbody>
-					{features.into_iter().map(|feature| {
+					{features.into_iter().filter_map(|(feature_path, feature)| {
 						let Some(action) = &feature.action else {
-							return html! {};
+							return None;
 						};
 						let Some(attack) = &action.attack else {
-							return html! {};
+							return None;
 						};
-						html! {
-							<tr class="align-middle">
+						let onclick = open_attack_modal.reform(move |_| feature_path.clone());
+						Some(html! {
+							<tr class="align-middle" {onclick}>
 								<td>{feature.name.clone()}</td>
 								<td>{match attack.kind {
 									AttackKindValue::Melee { reach } => html! {<>{reach}{"ft."}</>},
@@ -194,7 +207,7 @@ pub fn Actions() -> Html {
 								}}</td>
 								<td style="width: 200px;"></td>
 							</tr>
-						}
+						})
 					}).collect::<Vec<_>>()}
 				</tbody>
 			</table>
@@ -538,89 +551,251 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 			</div>
 		</>};
 	};
-	let action_block = match &feature.action {
-		None => html! {},
-		Some(action) => html! {<>
-
+	
+	let mut sections = Vec::new();
+	
+	if let Some(parent) = path.parent() {
+		if parent.components().count() > 0 {
+			sections.push(html! {
+				<div class="property">
+					<strong>{"Source:"}</strong>
+					<span>{crate::data::as_feature_path_text(parent)}</span>
+				</div>
+			});
+		}
+	}
+	
+	if let Some(action) = &feature.action {
+		let mut action_sections = Vec::new();
+		
+		action_sections.push(html! {
 			<div class="property">
 				<strong>{"Action Type:"}</strong>
 				<span>{action.activation_kind}</span>
 			</div>
+		});
 
-			{action.limited_uses.as_ref().map(|limited_uses| {
-				UsesCounter { state: state.clone(), limited_uses }.to_html()
-			}).unwrap_or_default()}
+		if let Some(attack) = &action.attack {
+			let mut attack_sections = Vec::new();
+			
+			match &attack.kind {
+				AttackKindValue::Melee { reach } => {
+					attack_sections.push(html! {
+						<div class="property">
+							<strong>{"Kind:"}</strong>
+							<span>{"Melee"}</span>
+						</div>
+					});
+					attack_sections.push(html! {
+						<div class="property">
+							<strong>{"Range:"}</strong>
+							<span>{format!("{reach} ft.")}</span>
+						</div>
+					});
+				},
+				// TODO: find a way to communicate attack range better:
+				// - normal if the target is at or closer than `short`
+				// - made a disadvantage when the target is father than `short`, but closer than `long`
+				// - impossible beyond the `long` range
+				AttackKindValue::Ranged { short_dist, long_dist } => {
+					attack_sections.push(html! {
+						<div class="property">
+							<strong>{"Kind:"}</strong>
+							<span>{"Ranged"}</span>
+						</div>
+					});
+					attack_sections.push(html! {
+						<div class="property">
+							<strong>{"Range:"}</strong>
+							<span>
+								{format!("{short_dist} ft / {long_dist} ft")}
+							</span>
+						</div>
+					});
+				},
+			}
 
-			{(!action.conditions_to_apply.is_empty()).then(|| {
-				let conditions_to_apply = Arc::new(action.conditions_to_apply.iter().filter_map(|indirect| {
-					indirect.resolve(&system).cloned()
-				}).collect::<Vec<_>>());
-
-				html! {
-					<div class="conditions">
-						<h5>{"Conditions Applied on Use"}</h5>
-						{conditions_to_apply.iter().map(|condition| {
-							html! {<div>
-								<h6>{condition.name.clone()}</h6>
-								{condition.description.clone()}
-								<div>
-									<strong>{"Effects:"}</strong>
-									<div class="mx-2">
-										{mutator_list(&condition.mutators, true)}
-									</div>
-								</div>
-								{condition.criteria.as_ref().map(|evaluator| {
-									html! {
-										<div>
-											<strong class="me-2">{"Only If:"}</strong>
-											{format!("TODO: missing description for {:?}", evaluator)}
-										</div>
-									}
-								})}
-							</div>}
-						}).collect::<Vec<_>>()}
-					</div>
+			let value = attack.check.evaluate(&*state);
+			match &attack.check {
+				AttackCheckKind::AttackRoll { ability, proficient } => {
+					let use_prof = proficient.evaluate(&*state);
+					attack_sections.push(html! {
+						<div class="property">
+							<strong>{"To Hit:"}</strong>
+							<span>
+								{match value >= 0 { true => "+", false => "-" }}
+								{value.abs()}
+							</span>
+							<span>
+								{" ("}
+								{format!("{} modifier", ability.long_name())}
+								{use_prof.then(|| html! { {" + proficiency bonus"} }).unwrap_or_default()}
+								{")"}
+							</span>
+						</div>
+					});
 				}
-			}).unwrap_or_default()}
+				AttackCheckKind::SavingThrow { base, dc_ability, proficient, save_ability } => {
+					attack_sections.push(html! {
+						<div class="property">
+							<strong>{"Saving Throw:"}</strong>
+							<span>
+								{format!("{} {value}", save_ability.long_name())}
+							</span>
+							<span>
+								{"("}
+								{(*base > 0).then(|| html! { {format!("{base}")} }).unwrap_or_default()}
+								{dc_ability.as_ref().map(|ability| html! {
+									{format!(" + {} modifier", ability.long_name())}
+								}).unwrap_or_default()}
+								{proficient.then(|| html! { {" + proficiency bonus"} }).unwrap_or_default()}
+								{")"}
+							</span>
+						</div>
+					});
+				}
+			}
 
-		</>},
-	};
-	// TODO: Display mutators
-	// TODO: Display criteria
+			if let Some(area_of_effect) = &attack.area_of_effect {
+				attack_sections.push(html! {
+					<div class="property">
+						<strong>{"Area of Effect:"}</strong>
+						<span>
+							{match area_of_effect {
+								AreaOfEffect::Cone { length } => format!("Cone ({length} ft)"),
+								AreaOfEffect::Cube { size } => format!("Cube ({size} ft)"),
+								AreaOfEffect::Cylinder { radius, height } => format!("Cylinder ({radius} ft. radius, {height} ft. height)"),
+								AreaOfEffect::Line { width, length } => format!("Cylinder ({width} ft. width, {length} ft. length)"),
+								AreaOfEffect::Sphere { radius } => format!("Sphere ({radius} ft)"),
+							}}
+						</span>
+					</div>
+				});
+			}
+
+			if let Some(DamageRoll { roll, base_bonus, damage_type, additional_bonuses }) = &attack.damage {
+				let (check_ability, ability_bonus) = match &attack.check {
+					AttackCheckKind::AttackRoll { ability, .. } => (Some(*ability), state.ability_modifier(*ability, None)),
+					_ => (None, 0),
+				};
+				let additional_bonus: i32 = additional_bonuses.iter().map(|(v, _)| *v).sum();
+				let bonus = base_bonus + ability_bonus + additional_bonus;
+				let roll_str = roll.as_ref().map(Roll::to_string);
+				let concat_roll_bonus = |roll_str: &Option<String>, bonus: i32| {
+					match (&roll_str, bonus) {
+						(None, bonus) => html! {{bonus.max(0)}},
+						(Some(roll), 0) => html! {{roll}},
+						(Some(roll), 1..=i32::MAX) => html! {<>{roll}{" + "}{bonus}</>},
+						(Some(roll), i32::MIN..=-1) => html! {<>{roll}{" - "}{bonus.abs()}</>},
+					}
+				};
+				attack_sections.push(html! {
+					<div class="property">
+						<strong>{"Damage:"}</strong>
+						<span>
+							{concat_roll_bonus(&roll_str, bonus)}{format!(" {}", damage_type.display_name())}
+						</span>
+						<span>
+							{" ("}
+							{concat_roll_bonus(&roll_str, *base_bonus)}
+							{check_ability.map(|ability| html! { {format!(" + {} modifier", ability.long_name())} }).unwrap_or_default()}
+							{additional_bonuses.iter().map(|(value, source)| html! {
+								<span>
+									{match *value >= 0 { true => "+", false => "-" }}
+									{value.abs()}
+									{"("}{crate::data::as_feature_path_text(source).unwrap_or_default()}{")"}
+								</span>
+							}).collect::<Vec<_>>()}
+							{")"}
+						</span>
+					</div>
+				});
+			}
+
+			if let Some(weapon_kind) = &attack.weapon_kind {
+				attack_sections.push(html! {
+					<div class="property">
+						<strong>{"Weapon Kind:"}</strong>
+						<span>{weapon_kind.to_string()}</span>
+					</div>
+				});
+			}
+
+			action_sections.push(html! {
+				<div class="ms-2 border-bottom-theme-muted">
+					<strong>{"Attack"}</strong>
+					<div>{attack_sections}</div>
+				</div>
+			});
+		}
+
+		if let Some(limited_uses) = &action.limited_uses {
+			action_sections.push(UsesCounter { state: state.clone(), limited_uses }.to_html());
+		}
+
+		if !action.conditions_to_apply.is_empty() {
+			let conditions_to_apply = Arc::new(action.conditions_to_apply.iter().filter_map(|indirect| {
+				indirect.resolve(&system).cloned()
+			}).collect::<Vec<_>>());
+			action_sections.push(html! {
+				<div class="conditions">
+					<h5>{"Conditions Applied on Use"}</h5>
+					{conditions_to_apply.iter().map(|condition| {
+						html! {<div>
+							<h6>{condition.name.clone()}</h6>
+							{condition.description.clone()}
+							<div>
+								<strong>{"Effects:"}</strong>
+								<div class="mx-2">
+									{mutator_list(&condition.mutators, true)}
+								</div>
+							</div>
+							{condition.criteria.as_ref().map(|evaluator| {
+								html! {
+									<div>
+										<strong class="me-2">{"Only If:"}</strong>
+										{format!("TODO: missing description for {:?}", evaluator)}
+									</div>
+								}
+							})}
+						</div>}
+					}).collect::<Vec<_>>()}
+				</div>
+			});
+		}
+
+		sections.push(html! {<>{action_sections}</>});
+	}
+	
+	sections.push(description(&feature.description, false));
+	
+	if let Some(criteria) = &feature.criteria {
+		sections.push(html! {
+			<div class="property">
+				<strong>{"Criteria:"}</strong>
+				<span>{criteria.description().unwrap_or_else(|| format!("criteria missing description"))}</span>
+			</div>
+		});
+	}
+	
+	if !feature.mutators.is_empty() {
+		sections.push(html! {
+			<div class="property">
+				<strong>{"Alterations:"}</strong>
+				<div>
+					{mutator_list(&feature.mutators, true)}
+				</div>
+			</div>
+		});
+	}
+	
 	html! {<>
 		<div class="modal-header">
 			<h1 class="modal-title fs-4">{feature.name.clone()}</h1>
 			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
 		</div>
 		<div class="modal-body">
-			{match path.parent() {
-				Some(parent) if parent.components().count() > 0 => html! {
-					<div class="property">
-						<strong>{"Source:"}</strong>
-						<span>{crate::data::as_feature_path_text(parent)}</span>
-					</div>
-				},
-				_ => html! {},
-			}}
-
-			{action_block}
-
-			{description(&feature.description, false)}
-
-			{feature.criteria.as_ref().map(|criteria| html! {
-				<div class="property">
-					<strong>{"Criteria:"}</strong>
-					<span>{criteria.description().unwrap_or_else(|| format!("criteria missing description"))}</span>
-				</div>
-			}).unwrap_or_default()}
-			{(!feature.mutators.is_empty()).then(|| html! {
-				<div class="property">
-					<strong>{"Alterations:"}</strong>
-					<div>
-						{mutator_list(&feature.mutators, true)}
-					</div>
-				</div>
-			}).unwrap_or_default()}
+			{sections}
 		</div>
 	</>}
 }

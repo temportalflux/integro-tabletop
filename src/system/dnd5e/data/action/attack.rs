@@ -119,7 +119,6 @@ mod test {
 				kind: AttackKindValue::Ranged {
 					short_dist: 20,
 					long_dist: 60,
-					kind: None,
 				},
 				check: AttackCheckKind::SavingThrow {
 					base: 8,

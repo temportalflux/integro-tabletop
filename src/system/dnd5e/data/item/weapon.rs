@@ -76,7 +76,6 @@ impl Weapon {
 			}) => AttackKindValue::Ranged {
 				short_dist: short_range,
 				long_dist: long_range,
-				kind: None,
 			},
 		};
 		// TODO: The ability modifier used for a melee weapon attack is Strength,

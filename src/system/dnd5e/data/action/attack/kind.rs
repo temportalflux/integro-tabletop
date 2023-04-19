@@ -19,7 +19,6 @@ pub enum AttackKindValue {
 	Ranged {
 		short_dist: u32,
 		long_dist: u32,
-		kind: Option<RangeKind>,
 	},
 }
 
@@ -44,14 +43,9 @@ impl FromKDL for AttackKindValue {
 			"Ranged" => {
 				let short_dist = node.get_i64_req(ctx.consume_idx())? as u32;
 				let long_dist = node.get_i64_req(ctx.consume_idx())? as u32;
-				let kind = match node.get_str_opt("kind")? {
-					None => None,
-					Some(str) => Some(RangeKind::from_str(str)?),
-				};
 				Ok(Self::Ranged {
 					short_dist,
 					long_dist,
-					kind,
 				})
 			}
 			name => Err(NotInList(name.into(), vec!["Melee", "Ranged"]).into()),
@@ -97,19 +91,6 @@ mod test {
 			let expected = AttackKindValue::Ranged {
 				short_dist: 20,
 				long_dist: 60,
-				kind: None,
-			};
-			assert_eq!(from_doc(doc)?, expected);
-			Ok(())
-		}
-
-		#[test]
-		fn ranged_kind() -> anyhow::Result<()> {
-			let doc = "kind \"Ranged\" 20 60 kind=\"Unlimited\"";
-			let expected = AttackKindValue::Ranged {
-				short_dist: 20,
-				long_dist: 60,
-				kind: Some(RangeKind::Unlimited),
 			};
 			assert_eq!(from_doc(doc)?, expected);
 			Ok(())
