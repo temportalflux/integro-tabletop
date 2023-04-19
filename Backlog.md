@@ -5,26 +5,17 @@
 - force refresh button to forcibly reload one or more modules by wiping those entries from the database and refetching them from source
 
 ## Feature UI
-- collapse features with "category" property into one section,
-  where the name of a feature which is also a category for other features (e.g. `Ki`) is the root element.
-- smaller text
 - use short description; if no short text, collapse feature to only name & source
 - open modal on click
 	- source
-  - long description
   - mutators & criteria
 
 ## Action UI
-- collapse features with "category" property into one section,
-  where the name of a feature which is also a category for other features (e.g. `Ki`) is the root element.
 - use short description; if no short text, collapse feature to only name & source
 - open modal
 	- source
-  - long description
-	- attack
-	- applied conditions
-	- limited uses
 
+- Open modal for attacks
 - Limited Use numerical modifier (for max uses > 5)
 - Condition UI lists mutators
 

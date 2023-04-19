@@ -14,6 +14,7 @@ use crate::{
 	},
 };
 use enumset::{EnumSet, EnumSetType};
+use multimap::MultiMap;
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use yew::prelude::*;
 
@@ -188,6 +189,7 @@ pub fn Actions() -> Html {
 
 	let features = {
 		let mut root_features = FeatureDisplayGroup::default();
+		let mut features_by_parent = MultiMap::new();
 		for (feature_path, feature) in state.features().iter_all() {
 			let mut passes_any = false;
 			if let Some(action) = &feature.action {
@@ -219,21 +221,30 @@ pub fn Actions() -> Html {
 				continue;
 			}
 
-			// Insert the feature as an entry into the display groups
-			let display_parent_entry = match &feature.parent {
-				Some(parent) => root_features.by_path.get_mut(parent),
-				None => None,
-			};
-			let target_group = match display_parent_entry {
-				Some(parent_group) => &mut parent_group.children,
-				None => &mut root_features,
-			};
-			target_group.insert(FeatureEntry {
+			let entry = FeatureEntry {
 				feature_path,
 				// cloning the feature is required to pass the feature to a yew component later
 				feature: feature.clone(),
 				children: FeatureDisplayGroup::default(),
-			});
+			};
+			// If this feature has a display parent, cache it off until all of the
+			// top-level features have been gathered (a feature with a display parent
+			// may be encountered before the parent itself).
+			if let Some(display_parent_path) = &feature.parent {
+				features_by_parent.insert(display_parent_path.clone(), entry);
+			}
+			else {
+				root_features.insert(entry);
+			}
+		}
+		for (parent_path, child_features) in features_by_parent.into_iter() {
+			let Some(parent_group) = root_features.by_path.get_mut(&parent_path) else {
+				log::warn!("Found features with the parent path \"{}\", but no such feature exists", parent_path.display());
+				continue;
+			};
+			for entry in child_features {
+				parent_group.children.insert(entry);
+			}
 		}
 		root_features
 	};
