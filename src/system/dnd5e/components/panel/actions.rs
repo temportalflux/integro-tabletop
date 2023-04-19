@@ -221,7 +221,6 @@ pub fn Actions() -> Html {
 		for (feature_path, feature) in state.features().iter_all() {
 			let mut passes_any = false;
 			if let Some(action) = &feature.action {
-				// Has an action, we can include this feature depending on the action types that we are displaying
 				if selected_tags.contains(ActionTag::Action) {
 					passes_any = passes_any || action.activation_kind == ActivationKind::Action;
 				}
@@ -240,6 +239,13 @@ pub fn Actions() -> Html {
 				}
 				if selected_tags.contains(ActionTag::LimitedUse) {
 					passes_any = passes_any || action.limited_uses.is_some();
+				}
+				// Has an action, we can include this feature depending on the action types that we are displaying
+				if let Some(attack) = &action.attack {
+					if attack.weapon_kind.is_some() {
+						// weapon attacks are hidden from general feature listings (they only show as attacks)
+						passes_any = false;
+					}
 				}
 			} else {
 				// No action, we can include this feature if we are displaying passive features.
@@ -626,7 +632,7 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 								{match value >= 0 { true => "+", false => "-" }}
 								{value.abs()}
 							</span>
-							<span>
+							<span style="color: var(--bs-gray-600);">
 								{" ("}
 								{format!("{} modifier", ability.long_name())}
 								{use_prof.then(|| html! { {" + proficiency bonus"} }).unwrap_or_default()}
@@ -642,7 +648,7 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 							<span>
 								{format!("{} {value}", save_ability.long_name())}
 							</span>
-							<span>
+							<span style="color: var(--bs-gray-600);">
 								{"("}
 								{(*base > 0).then(|| html! { {format!("{base}")} }).unwrap_or_default()}
 								{dc_ability.as_ref().map(|ability| html! {
@@ -695,7 +701,7 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 						<span>
 							{concat_roll_bonus(&roll_str, bonus)}{format!(" {}", damage_type.display_name())}
 						</span>
-						<span>
+						<span style="color: var(--bs-gray-600);">
 							{" ("}
 							{concat_roll_bonus(&roll_str, *base_bonus)}
 							{check_ability.map(|ability| html! { {format!(" + {} modifier", ability.long_name())} }).unwrap_or_default()}
