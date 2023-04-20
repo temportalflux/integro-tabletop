@@ -14,11 +14,11 @@ crate::impl_kdl_node!(Feat, "feat");
 impl SystemComponent for Feat {
 	type System = DnD5e;
 
-	fn add_component(mut self, source_id: SourceId, system: &mut Self::System) {}
+	fn add_component(self, _source_id: SourceId, _system: &mut Self::System) {}
 }
 
 impl FromKDL for Feat {
-	fn from_kdl(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
+	fn from_kdl(_node: &kdl::KdlNode, _ctx: &mut NodeContext) -> anyhow::Result<Self> {
 		Ok(Self {})
 	}
 }
