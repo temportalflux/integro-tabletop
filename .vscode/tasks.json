@@ -6,54 +6,49 @@
 		{
 			"label": "1. Serve",
 			"command": "trunk",
-			"args": [
-				"serve"
-			],
+			"args": [ "serve" ],
 			"group": "build",
 			"problemMatcher": []
 		},
 		{
 			"label": "2. Format",
 			"command": "cargo",
-			"args": [
-				"fmt"
-			],
+			"args": [ "fmt" ],
 			"group": "build",
 			"problemMatcher": []
 		},
 		{
-			"label": "3. Build",
+			"label": "3. Run Tests",
 			"command": "cargo",
-			"args": [
-				"build"
-			],
+			"args": [ "test" ],
+			"problemMatcher": []
+		},
+		{
+			"label": "4. Fix",
+			"command": "cargo",
+			"args": [ "fix", "--allow-staged" ],
 			"group": "build",
 			"problemMatcher": []
 		},
 		{
-			"label": "4. Run Binary",
+			"label": "5. Build",
 			"command": "cargo",
-			"args": [
-				"run"
-			],
+			"args": [ "build" ],
 			"group": "build",
 			"problemMatcher": []
 		},
 		{
-			"label": "5. Clean",
+			"label": "6. Run Binary",
 			"command": "cargo",
-			"args": [
-				"clean"
-			],
+			"args": [ "run" ],
 			"group": "build",
 			"problemMatcher": []
 		},
 		{
-			"label": "6. Run Tests",
+			"label": "7. Clean",
 			"command": "cargo",
-			"args": [
-				"test"
-			],
+			"args": [ "clean" ],
+			"group": "build",
 			"problemMatcher": []
 		}
 	]

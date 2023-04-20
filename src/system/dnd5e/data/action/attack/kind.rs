@@ -1,9 +1,7 @@
-
 use crate::{
 	kdl_ext::{FromKDL, NodeExt},
 	utility::NotInList,
 };
-
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum AttackKind {
@@ -13,13 +11,8 @@ pub enum AttackKind {
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum AttackKindValue {
-	Melee {
-		reach: u32,
-	},
-	Ranged {
-		short_dist: u32,
-		long_dist: u32,
-	},
+	Melee { reach: u32 },
+	Ranged { short_dist: u32, long_dist: u32 },
 }
 
 impl AttackKindValue {

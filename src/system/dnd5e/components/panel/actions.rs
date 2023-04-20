@@ -8,12 +8,14 @@ use crate::{
 		data::{
 			action::{ActivationKind, AttackCheckKind, AttackKindValue},
 			character::{ActionBudgetKind, ActionEffect, Persistent},
-			DamageRoll, Feature, AreaOfEffect, roll::Roll,
+			roll::Roll,
+			AreaOfEffect, DamageRoll, Feature,
 		},
 		DnD5e,
-	}, utility::Evaluator,
+	},
+	utility::Evaluator,
 };
-use enum_map::{EnumMap, Enum};
+use enum_map::{Enum, EnumMap};
 use enumset::{EnumSet, EnumSetType};
 use itertools::{Itertools, Position};
 use multimap::MultiMap;
@@ -31,16 +33,16 @@ pub enum ActionTag {
 	Passive,
 }
 impl From<ActivationKind> for ActionTag {
-    fn from(value: ActivationKind) -> Self {
-      match value {
-				ActivationKind::Action => Self::Action,
-				ActivationKind::Bonus => Self::BonusAction,
-				ActivationKind::Reaction => Self::Reaction,
-				ActivationKind::Special => Self::Other,
-				ActivationKind::Minute(_) => Self::Other,
-				ActivationKind::Hour(_) => Self::Other,
-			}
-    }
+	fn from(value: ActivationKind) -> Self {
+		match value {
+			ActivationKind::Action => Self::Action,
+			ActivationKind::Bonus => Self::BonusAction,
+			ActivationKind::Reaction => Self::Reaction,
+			ActivationKind::Special => Self::Other,
+			ActivationKind::Minute(_) => Self::Other,
+			ActivationKind::Hour(_) => Self::Other,
+		}
+	}
 }
 impl ActionTag {
 	pub fn display_name(&self) -> &'static str {
@@ -557,9 +559,9 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 			</div>
 		</>};
 	};
-	
+
 	let mut sections = Vec::new();
-	
+
 	if let Some(parent) = path.parent() {
 		if parent.components().count() > 0 {
 			sections.push(html! {
@@ -570,10 +572,10 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 			});
 		}
 	}
-	
+
 	if let Some(action) = &feature.action {
 		let mut action_sections = Vec::new();
-		
+
 		action_sections.push(html! {
 			<div class="property">
 				<strong>{"Action Type:"}</strong>
@@ -583,7 +585,7 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 
 		if let Some(attack) = &action.attack {
 			let mut attack_sections = Vec::new();
-			
+
 			match &attack.kind {
 				AttackKindValue::Melee { reach } => {
 					attack_sections.push(html! {
@@ -598,12 +600,15 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 							<span>{format!("{reach} ft.")}</span>
 						</div>
 					});
-				},
+				}
 				// TODO: find a way to communicate attack range better:
 				// - normal if the target is at or closer than `short`
 				// - made a disadvantage when the target is father than `short`, but closer than `long`
 				// - impossible beyond the `long` range
-				AttackKindValue::Ranged { short_dist, long_dist } => {
+				AttackKindValue::Ranged {
+					short_dist,
+					long_dist,
+				} => {
 					attack_sections.push(html! {
 						<div class="property">
 							<strong>{"Kind:"}</strong>
@@ -618,12 +623,15 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 							</span>
 						</div>
 					});
-				},
+				}
 			}
 
 			let value = attack.check.evaluate(&*state);
 			match &attack.check {
-				AttackCheckKind::AttackRoll { ability, proficient } => {
+				AttackCheckKind::AttackRoll {
+					ability,
+					proficient,
+				} => {
 					let use_prof = proficient.evaluate(&*state);
 					attack_sections.push(html! {
 						<div class="property">
@@ -641,7 +649,12 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 						</div>
 					});
 				}
-				AttackCheckKind::SavingThrow { base, dc_ability, proficient, save_ability } => {
+				AttackCheckKind::SavingThrow {
+					base,
+					dc_ability,
+					proficient,
+					save_ability,
+				} => {
 					attack_sections.push(html! {
 						<div class="property">
 							<strong>{"Saving Throw:"}</strong>
@@ -679,22 +692,29 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 				});
 			}
 
-			if let Some(DamageRoll { roll, base_bonus, damage_type, additional_bonuses }) = &attack.damage {
+			if let Some(DamageRoll {
+				roll,
+				base_bonus,
+				damage_type,
+				additional_bonuses,
+			}) = &attack.damage
+			{
 				let (check_ability, ability_bonus) = match &attack.check {
-					AttackCheckKind::AttackRoll { ability, .. } => (Some(*ability), state.ability_modifier(*ability, None)),
+					AttackCheckKind::AttackRoll { ability, .. } => {
+						(Some(*ability), state.ability_modifier(*ability, None))
+					}
 					_ => (None, 0),
 				};
 				let additional_bonus: i32 = additional_bonuses.iter().map(|(v, _)| *v).sum();
 				let bonus = base_bonus + ability_bonus + additional_bonus;
 				let roll_str = roll.as_ref().map(Roll::to_string);
-				let concat_roll_bonus = |roll_str: &Option<String>, bonus: i32| {
-					match (&roll_str, bonus) {
+				let concat_roll_bonus =
+					|roll_str: &Option<String>, bonus: i32| match (&roll_str, bonus) {
 						(None, bonus) => html! {{bonus.max(0)}},
 						(Some(roll), 0) => html! {{roll}},
 						(Some(roll), 1..=i32::MAX) => html! {<>{roll}{" + "}{bonus}</>},
 						(Some(roll), i32::MIN..=-1) => html! {<>{roll}{" - "}{bonus.abs()}</>},
-					}
-				};
+					};
 				attack_sections.push(html! {
 					<div class="property">
 						<strong>{"Damage:"}</strong>
@@ -736,13 +756,23 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 		}
 
 		if let Some(limited_uses) = &action.limited_uses {
-			action_sections.push(UsesCounter { state: state.clone(), limited_uses }.to_html());
+			action_sections.push(
+				UsesCounter {
+					state: state.clone(),
+					limited_uses,
+				}
+				.to_html(),
+			);
 		}
 
 		if !action.conditions_to_apply.is_empty() {
-			let conditions_to_apply = Arc::new(action.conditions_to_apply.iter().filter_map(|indirect| {
-				indirect.resolve(&system).cloned()
-			}).collect::<Vec<_>>());
+			let conditions_to_apply = Arc::new(
+				action
+					.conditions_to_apply
+					.iter()
+					.filter_map(|indirect| indirect.resolve(&system).cloned())
+					.collect::<Vec<_>>(),
+			);
 			action_sections.push(html! {
 				<div class="conditions">
 					<h5>{"Conditions Applied on Use"}</h5>
@@ -772,9 +802,9 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 
 		sections.push(html! {<>{action_sections}</>});
 	}
-	
+
 	sections.push(description(&feature.description, false));
-	
+
 	if let Some(criteria) = &feature.criteria {
 		sections.push(html! {
 			<div class="property">
@@ -783,7 +813,7 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 			</div>
 		});
 	}
-	
+
 	if !feature.mutators.is_empty() {
 		sections.push(html! {
 			<div class="property">
@@ -794,7 +824,7 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 			</div>
 		});
 	}
-	
+
 	html! {<>
 		<div class="modal-header">
 			<h1 class="modal-title fs-4">{feature.name.clone()}</h1>
