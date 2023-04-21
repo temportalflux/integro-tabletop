@@ -4,3 +4,12 @@
 [submodule "modules/elf-and-orc"]
 	path = modules/elf-and-orc
 	url = git@github.com:flux-tabletop/elf-and-orc.git
+[submodule "modules/wotc-oota"]
+	path = modules/wotc-oota
+	url = git@github.com:flux-tabletop/wotc-oota.git
+[submodule "modules/wotc-phb"]
+	path = modules/wotc-phb
+	url = git@github.com:flux-tabletop/wotc-phb.git
+[submodule "modules/wotc-toa"]
+	path = modules/wotc-toa
+	url = git@github.com:flux-tabletop/wotc-toa.git
