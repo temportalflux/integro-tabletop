@@ -1,8 +1,10 @@
 use super::SharedCharacter;
-use crate::system::dnd5e::data::{action::LimitedUses, character::Persistent};
+use crate::{
+	components::stop_propagation,
+	system::dnd5e::data::{action::LimitedUses, character::Persistent},
+	utility::InputExt,
+};
 use std::sync::Arc;
-use wasm_bindgen::JsCast;
-use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
 pub struct UsesCounter<'parent> {
@@ -35,9 +37,7 @@ impl<'parent> UsesCounter<'parent> {
 				let toggle_use = Callback::from({
 					let consume_delta = consume_delta.clone();
 					move |evt: web_sys::Event| {
-						let Some(target) = evt.target() else { return; };
-						let Some(input) = target.dyn_ref::<HtmlInputElement>() else { return; };
-						let consume_use = input.checked();
+						let Some(consume_use) = evt.input_checked() else { return; };
 						consume_delta.emit(consume_use.then_some(1).unwrap_or(-1));
 					}
 				});
@@ -49,7 +49,7 @@ impl<'parent> UsesCounter<'parent> {
 								<input
 									class={"form-check-input slot"} type={"checkbox"}
 									checked={idx < consumed_uses}
-									onclick={Callback::from(|evt: web_sys::MouseEvent| evt.stop_propagation())}
+									onclick={stop_propagation()}
 									onchange={toggle_use.clone()}
 								/>
 							}
@@ -140,7 +140,7 @@ fn UseCounterDelta(
 
 	let uses_remaining = max_uses - consumed_uses;
 	let new_uses_remaining = (uses_remaining as i32).saturating_add(*delta_state).max(0) as u32;
-	html! {<span class="deltaform d-flex align-items-center" onclick={Callback::from(|evt: MouseEvent| evt.stop_propagation())}>
+	html! {<span class="deltaform d-flex align-items-center" onclick={stop_propagation()}>
 		<button type="button" class="btn btn-theme sub" onclick={onclick_sub} disabled={new_uses_remaining == 0} />
 		<span class="amount">{format!("{new_uses_remaining} / {max_uses}")}</span>
 		<button type="button" class="btn btn-theme add" onclick={onclick_add} disabled={new_uses_remaining >= *max_uses} />

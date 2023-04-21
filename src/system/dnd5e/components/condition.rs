@@ -13,9 +13,11 @@ use crate::{
 			DnD5e,
 		},
 	},
+	utility::{
+		web_ext::{self, CallbackExt, CallbackOptExt},
+		InputExt,
+	},
 };
-use wasm_bindgen::JsCast;
-use web_sys::HtmlSelectElement;
 use yew::prelude::*;
 
 #[function_component]
@@ -69,22 +71,22 @@ fn Modal() -> Html {
 	let system = use_context::<UseStateHandle<DnD5e>>().unwrap();
 	let add_condition_section = {
 		// TODO: This should use a regex-capable search bar, just like searching for an item in the inventory
-		let on_add_condition = Callback::from({
-			let state = state.clone();
-			let system = system.clone();
-			move |evt: web_sys::Event| {
-				let Some(target) = evt.target() else { return; };
-				let Some(element) = target.dyn_ref::<HtmlSelectElement>() else { return; };
-				let value = element.value();
-				let Ok(source_id) = SourceId::from_str(&value) else { return; };
-				let Some(condition) = system.conditions.get(&source_id) else { return; };
-				let condition = condition.clone();
-				state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
-					persistent.conditions.insert(condition);
-					Some(ActionEffect::Recompile)
-				}));
-			}
-		});
+		let on_add_condition = web_ext::callback()
+			.map(|evt: web_sys::Event| evt.input_value())
+			.map_some(|value| SourceId::from_str(&value).ok())
+			.map_some({
+				let system = system.clone();
+				move |source_id| system.conditions.get(&source_id).cloned()
+			})
+			.on_some({
+				let state = state.clone();
+				move |condition| {
+					state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
+						persistent.conditions.insert(condition);
+						Some(ActionEffect::Recompile)
+					}));
+				}
+			});
 		html! {
 			<div class="input-group mb-3">
 				<span class="input-group-text">{"Add a Condition"}</span>

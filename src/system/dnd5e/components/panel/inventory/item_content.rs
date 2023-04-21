@@ -9,10 +9,8 @@ use crate::{
 		},
 		evaluator::IsProficientWith,
 	},
-	utility::Evaluator,
+	utility::{Evaluator, InputExt},
 };
-use wasm_bindgen::JsCast;
-use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
 #[derive(Default)]
@@ -78,9 +76,7 @@ pub fn item_body(item: &Item, state: &SharedCharacter, props: Option<ItemBodyPro
 					let onchange = Callback::from({
 						let on_changed = on_changed.clone();
 						move |evt: web_sys::Event| {
-							let Some(target) = evt.target() else { return; };
-							let Some(input) = target.dyn_ref::<HtmlInputElement>() else { return; };
-							let Ok(value) = input.value().parse::<u32>() else { return; };
+							let Some(value) = evt.input_value_t::<u32>() else { return; };
 							on_changed.emit(value);
 						}
 					});
@@ -111,9 +107,8 @@ pub fn item_body(item: &Item, state: &SharedCharacter, props: Option<ItemBodyPro
 			if let Some(on_equipped) = props.set_equipped {
 				let onchange = Callback::from({
 					move |evt: web_sys::Event| {
-						let Some(node) = evt.target() else { return; };
-						let Some(input) = node.dyn_ref::<HtmlInputElement>() else { return; };
-						on_equipped.emit(input.checked());
+						let Some(checked) = evt.input_checked() else { return; };
+						on_equipped.emit(checked);
 					}
 				});
 				equip_sections.push(html! {

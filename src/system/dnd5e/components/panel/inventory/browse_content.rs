@@ -1,21 +1,22 @@
-use crate::system::{
-	core::{ModuleId, SourceId},
-	dnd5e::{
-		components::{
-			editor::CollapsableCard,
-			panel::{item_body, SystemItemProps},
-			validate_uint_only, SharedCharacter, WalletInline,
+use crate::{
+	system::{
+		core::{ModuleId, SourceId},
+		dnd5e::{
+			components::{
+				editor::CollapsableCard,
+				panel::{item_body, SystemItemProps},
+				validate_uint_only, SharedCharacter, WalletInline,
+			},
+			data::{
+				character::Persistent,
+				currency::Wallet,
+				item::{Item, ItemKind},
+			},
+			DnD5e,
 		},
-		data::{
-			character::Persistent,
-			currency::Wallet,
-			item::{Item, ItemKind},
-		},
-		DnD5e,
 	},
+	utility::InputExt,
 };
-use wasm_bindgen::JsCast;
-use web_sys::HtmlInputElement;
 use yew::prelude::*;
 use yew_hooks::use_async;
 
@@ -190,9 +191,8 @@ pub fn SearchInput(SearchInputProps { on_change }: &SearchInputProps) -> Html {
 	let oninput = Callback::from({
 		let set_params_text = set_params_text.clone();
 		move |evt: InputEvent| {
-			let Some(target) = evt.target() else { return; };
-			let Some(element) = target.dyn_ref::<HtmlInputElement>() else { return; };
-			set_params_text.emit(element.value());
+			let Some(value) = evt.input_value() else { return; };
+			set_params_text.emit(value);
 		}
 	});
 
@@ -322,9 +322,7 @@ fn AddItemActions(SystemItemProps { id }: &SystemItemProps) -> Html {
 			let onchange = Callback::from({
 				let set_amt = set_amt.clone();
 				move |evt: web_sys::Event| {
-					let Some(target) = evt.target() else { return; };
-					let Some(input) = target.dyn_ref::<HtmlInputElement>() else { return; };
-					let Ok(value) = input.value().parse::<u32>() else { return; };
+					let Some(value) = evt.input_value_t::<u32>() else { return; };
 					set_amt.emit(value);
 				}
 			});
@@ -397,9 +395,7 @@ fn AddItemActions(SystemItemProps { id }: &SystemItemProps) -> Html {
 			let onchange = Callback::from({
 				let set_amt = set_amt.clone();
 				move |evt: web_sys::Event| {
-					let Some(target) = evt.target() else { return; };
-					let Some(input) = target.dyn_ref::<HtmlInputElement>() else { return; };
-					let Ok(value) = input.value().parse::<u32>() else { return; };
+					let Some(value) = evt.input_value_t::<u32>() else { return; };
 					set_amt.emit(value);
 				}
 			});

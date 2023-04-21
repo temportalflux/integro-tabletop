@@ -18,9 +18,7 @@ impl FromKDL for Check {
 				node.get_str_req(ctx.consume_idx())?,
 			)?)),
 			"SavingThrow" => {
-				let ability = Ability::from_str(
-					node.get_str_req(ctx.consume_idx())?,
-				)?;
+				let ability = Ability::from_str(node.get_str_req(ctx.consume_idx())?)?;
 				let dc = node.get_i64_opt("dc")?.map(|v| v as u8);
 				Ok(Self::SavingThrow(ability, dc))
 			}

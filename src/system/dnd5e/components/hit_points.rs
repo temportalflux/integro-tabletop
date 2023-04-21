@@ -1,13 +1,12 @@
 use crate::{
-	components::modal,
+	components::{modal, stop_propagation},
 	system::dnd5e::{
 		components::SharedCharacter,
 		data::character::{HitPoint, Persistent},
 	},
+	utility::InputExt,
 };
 use std::cmp::Ordering;
-use wasm_bindgen::JsCast;
-use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
 static TEXT_HIT_POINTS: &'static str = "\
@@ -145,14 +144,14 @@ fn HitPointsBody(BodyProps { on_open_modal }: &BodyProps) -> Html {
 	let take_hp_input = Callback::from({
 		let node = hp_input_node.clone();
 		move |_: ()| {
-			let Some(node) = node.get() else { return None; };
-			let Some(input) = node.dyn_ref::<HtmlInputElement>() else { return None; };
-			let value = input.value();
+			let Some(value) = node.input_value() else { return None; };
 			if value.is_empty() {
 				return Some(1);
 			}
 			let Ok(value) = value.parse::<u32>() else { return None; };
-			input.set_value("");
+			if let Some(input) = node.target_input() {
+				input.set_value("");
+			}
 			Some(value)
 		}
 	});
@@ -174,7 +173,6 @@ fn HitPointsBody(BodyProps { on_open_modal }: &BodyProps) -> Html {
 			None
 		}
 	});
-	let onclick_amt = Callback::from(|evt: MouseEvent| evt.stop_propagation());
 
 	html! {
 		<div class="d-flex">
@@ -209,7 +207,7 @@ fn HitPointsBody(BodyProps { on_open_modal }: &BodyProps) -> Html {
 					type="number" class="form-control text-center" id="hp-amount"
 					style="padding: 0; margin: 0 0 4px 0; height: 20px;"
 					min="0"
-					onclick={onclick_amt} onkeydown={validate_uint_only()}
+					onclick={stop_propagation()} onkeydown={validate_uint_only()}
 				/>
 				<button
 					type="button" class="btn btn-danger btn-xs"
@@ -223,7 +221,6 @@ fn HitPointsBody(BodyProps { on_open_modal }: &BodyProps) -> Html {
 
 #[function_component]
 fn DeathSavesBody(BodyProps { on_open_modal }: &BodyProps) -> Html {
-	let onclick = Callback::from(|evt: MouseEvent| evt.stop_propagation());
 	html! {
 		<div class="death-saves" onclick={on_open_modal.clone()}>
 			<h5 class="text-center" style="font-size: 0.8rem; color: var(--bs-card-title-color); margin: 0 0 2px 0;">{"Death Saves"}</h5>
@@ -237,7 +234,7 @@ fn DeathSavesBody(BodyProps { on_open_modal }: &BodyProps) -> Html {
 					<div class="death-save-label">{"FAILURE"}</div>
 					<div class="death-save-label">{"SUCCESS"}</div>
 				</div>
-				<div class="col-auto p-0" {onclick}>
+				<div class="col-auto p-0" onclick={stop_propagation()}>
 					<DeathSaveBoxes class_name={"failure"} />
 					<DeathSaveBoxes class_name={"success"} />
 				</div>
@@ -306,9 +303,7 @@ pub fn ModalSectionCurrentStats() -> Html {
 	let apply_temp_hp = Callback::from({
 		let state = state.clone();
 		move |evt: web_sys::Event| {
-			let Some(target) = evt.target() else { return; };
-			let Some(input) = target.dyn_ref::<HtmlInputElement>() else { return; };
-			let Ok(value) = input.value().parse::<u32>() else { return; };
+			let Some(value) = evt.input_value_t::<u32>() else { return; };
 			state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
 				persistent.hit_points_mut().temp = value;
 				None
@@ -371,18 +366,14 @@ pub fn ModalSectionApplyChangeForm() -> Html {
 	let onchange_healing = Callback::from({
 		let delta = delta.clone();
 		move |evt: web_sys::Event| {
-			let Some(target) = evt.target() else { return; };
-			let Some(input) = target.dyn_ref::<HtmlInputElement>() else { return; };
-			let Ok(value) = input.value().parse::<u32>() else { return; };
+			let Some(value) = evt.input_value_t::<u32>() else { return; };
 			delta.set(value as i32);
 		}
 	});
 	let onchange_damage = Callback::from({
 		let delta = delta.clone();
 		move |evt: web_sys::Event| {
-			let Some(target) = evt.target() else { return; };
-			let Some(input) = target.dyn_ref::<HtmlInputElement>() else { return; };
-			let Ok(value) = input.value().parse::<u32>() else { return; };
+			let Some(value) = evt.input_value_t::<u32>() else { return; };
 			delta.set(value as i32 * -1);
 		}
 	});
@@ -688,9 +679,7 @@ fn DeathSaveBoxes(DeathSaveBoxesProps { class_name }: &DeathSaveBoxesProps) -> H
 	let onchange = state.new_dispatch({
 		let class_name = class_name.clone();
 		move |evt: web_sys::Event, persistent, _| {
-			let Some(node) = evt.target() else { return None; };
-			let Some(input) = node.dyn_ref::<HtmlInputElement>() else { return None; };
-			let checked = input.checked();
+			let Some(checked) = evt.input_checked() else { return None; };
 			let save_count = match class_name.as_str() {
 				"failure" => &mut persistent.hit_points_mut().failure_saves,
 				"success" => &mut persistent.hit_points_mut().success_saves,

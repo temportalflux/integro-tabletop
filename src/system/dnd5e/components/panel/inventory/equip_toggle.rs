@@ -1,10 +1,10 @@
 use crate::{
 	bootstrap::components::Tooltip,
+	components::stop_propagation,
 	system::dnd5e::{components::SharedCharacter, data::character::ActionEffect},
+	utility::InputExt,
 };
 use uuid::Uuid;
-use wasm_bindgen::JsCast;
-use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
 #[derive(Clone, PartialEq, Properties)]
@@ -33,9 +33,7 @@ pub fn ItemRowEquipBox(
 		let id = id.clone();
 		let state = state.clone();
 		move |evt: web_sys::Event| {
-			let Some(target) = evt.target() else { return; };
-			let Some(input) = target.dyn_ref::<HtmlInputElement>() else { return; };
-			let should_be_equipped = input.checked();
+			let Some(should_be_equipped) = evt.input_checked() else { return; };
 			state.dispatch(Box::new(move |persistent, _| {
 				persistent.inventory.set_equipped(&id, should_be_equipped);
 				Some(ActionEffect::Recompile)
@@ -52,7 +50,7 @@ pub fn ItemRowEquipBox(
 				class={"form-check-input equip"} type={"checkbox"}
 				checked={*is_equipped}
 				disabled={!*is_equipped && can_be_equipped.is_err()}
-				onclick={Callback::from(|evt: web_sys::MouseEvent| evt.stop_propagation())}
+				onclick={stop_propagation()}
 				onchange={on_change}
 			/>
 		</Tooltip>

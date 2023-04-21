@@ -11,6 +11,8 @@ pub use value::*;
 
 mod trait_object_eq;
 pub use trait_object_eq::*;
+pub mod web_ext;
+pub use web_ext::*;
 
 pub type PinFuture<T> = PinFutureLifetime<'static, T>;
 pub type PinFutureLifetime<'l, T> =

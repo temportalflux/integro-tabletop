@@ -1,16 +1,17 @@
-use crate::system::dnd5e::{
-	components::{ability, validate_uint_only, SharedCharacter},
-	data::{
-		character::{ActionEffect, Persistent},
-		Ability,
+use crate::{
+	system::dnd5e::{
+		components::{ability, validate_uint_only, SharedCharacter},
+		data::{
+			character::{ActionEffect, Persistent},
+			Ability,
+		},
 	},
+	utility::InputExt,
 };
 use enum_map::{Enum, EnumMap};
 use enumset::{EnumSet, EnumSetType};
 use itertools::Itertools;
 use std::{collections::HashSet, ops::RangeInclusive, str::FromStr};
-use wasm_bindgen::JsCast;
-use web_sys::{HtmlInputElement, HtmlSelectElement};
 use yew::prelude::*;
 
 #[function_component]
@@ -47,9 +48,7 @@ fn AbilityScoreInput(AbilityScoreInputProps { ability }: &AbilityScoreInputProps
 		let state = state.clone();
 		let ability = *ability;
 		move |evt: web_sys::Event| {
-			let Some(target) = evt.target() else { return; };
-			let Some(input) = target.dyn_ref::<HtmlInputElement>() else { return; };
-			let Ok(value) = input.value().parse::<u32>() else { return; };
+			let Some(value) = evt.input_value_t::<u32>() else { return; };
 			state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
 				persistent.ability_scores[ability] = value;
 				// only actually need ability_score_finalize to execute
@@ -129,9 +128,7 @@ fn GenerationSection() -> Html {
 	let onchange = Callback::from({
 		let method = method.clone();
 		move |evt: web_sys::Event| {
-			let Some(target) = evt.target() else { return; };
-			let Some(element) = target.dyn_ref::<HtmlSelectElement>() else { return; };
-			let value = element.value();
+			let Some(value) = evt.select_value() else { return; };
 			method.set(GeneratorMethod::from_str(&value).ok());
 		}
 	});
@@ -245,10 +242,7 @@ fn PointBuy(GeneratorMethodProps { ability_scores }: &GeneratorMethodProps) -> H
 		}
 	});
 	let parse_u32 = Callback::from(|evt: web_sys::Event| {
-		let Some(target) = evt.target() else { return None; };
-		let Some(element) = target.dyn_ref::<HtmlSelectElement>() else { return None; };
-		let value = element.value();
-		let Ok(value) = value.parse::<u32>() else { return None; };
+		let Some(value) = evt.select_value_t::<u32>() else { return None; };
 		Some(value)
 	});
 	let onchange = Callback::from({
@@ -316,13 +310,7 @@ fn StandardArray(GeneratorMethodProps { ability_scores }: &GeneratorMethodProps)
 			});
 		}
 	});
-	let parse_u32 = Callback::from(|evt: web_sys::Event| {
-		let Some(target) = evt.target() else { return None; };
-		let Some(element) = target.dyn_ref::<HtmlSelectElement>() else { return None; };
-		let value = element.value();
-		let Ok(value) = value.parse::<u32>() else { return None; };
-		Some(value)
-	});
+	let parse_u32 = Callback::from(|evt: web_sys::Event| evt.select_value_t::<u32>());
 	let onchange = Callback::from({
 		let parse_u32 = parse_u32.clone();
 		let set_score = set_score.clone();

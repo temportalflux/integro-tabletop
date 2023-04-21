@@ -7,10 +7,9 @@ use crate::{
 			currency::{self, Wallet},
 		},
 	},
+	utility::InputExt,
 };
 use itertools::Itertools;
-use wasm_bindgen::JsCast;
-use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
 #[derive(Clone, PartialEq, Properties)]
@@ -173,9 +172,7 @@ fn Modal() -> Html {
 		let on_change_adj_coin = Callback::from({
 			let wallet = adjustment_wallet.clone();
 			move |(evt, coin): (web_sys::Event, currency::Kind)| {
-				let Some(target) = evt.target() else { return; };
-				let Some(input) = target.dyn_ref::<HtmlInputElement>() else { return; };
-				let Ok(value) = input.value().parse::<u64>() else { return; };
+				let Some(value) = evt.input_value_t::<u64>() else { return; };
 				wallet.set({
 					let mut wallet = (*wallet).clone();
 					wallet[coin] = value;

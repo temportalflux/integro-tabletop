@@ -1,6 +1,7 @@
-use crate::system::dnd5e::{components::SharedCharacter, data::character::Persistent};
-use wasm_bindgen::JsCast;
-use web_sys::HtmlInputElement;
+use crate::{
+	system::dnd5e::{components::SharedCharacter, data::character::Persistent},
+	utility::InputExt,
+};
 use yew::prelude::*;
 
 #[function_component]
@@ -35,9 +36,7 @@ fn NameEditor() -> Html {
 	let onchange = Callback::from({
 		let state = state.clone();
 		move |evt: web_sys::Event| {
-			let Some(target) = evt.target() else { return; };
-			let Some(input) = target.dyn_ref::<HtmlInputElement>() else { return; };
-			let value = input.value();
+			let Some(value) = evt.input_value() else { return; };
 			state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
 				persistent.description.name = value;
 				None
@@ -64,8 +63,7 @@ fn PronounEditor() -> Html {
 	let onchange = Callback::from({
 		let state = state.clone();
 		move |evt: web_sys::Event| {
-			let Some(target) = evt.target() else { return; };
-			let Some(input) = target.dyn_ref::<HtmlInputElement>() else { return; };
+			let Some(input) = evt.target_input() else { return; };
 			let is_checkbox = input.type_() == "checkbox";
 			let is_checked = input.checked();
 			let value = input.value();
@@ -125,9 +123,7 @@ pub fn AutoExchangeSwitch() -> Html {
 	let onchange = Callback::from({
 		let state = state.clone();
 		move |evt: web_sys::Event| {
-			let Some(target) = evt.target() else { return; };
-			let Some(input) = target.dyn_ref::<HtmlInputElement>() else { return; };
-			let value = input.checked();
+			let Some(value) = evt.input_checked() else { return; };
 			state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
 				persistent.settings.currency_auto_exchange = value;
 				None

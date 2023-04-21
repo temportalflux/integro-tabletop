@@ -13,11 +13,12 @@ use crate::{
 			DnD5e,
 		},
 	},
-	utility::{GenericMutator, SelectorMeta, SelectorOptions},
+	utility::{
+		web_ext::{self, CallbackExt, CallbackOptExt},
+		GenericMutator, InputExt, SelectorMeta, SelectorOptions,
+	},
 };
 use multimap::MultiMap;
-use wasm_bindgen::JsCast;
-use web_sys::{HtmlInputElement, HtmlSelectElement};
 use yew::prelude::*;
 
 static HELP_TEXT: &'static str = "Lineages and Upbingings are a replacement for races. \
@@ -28,14 +29,12 @@ the parents and community your character comes from.";
 pub fn OriginTab() -> Html {
 	let use_lineages = use_state_eq(|| true);
 
-	let toggle_lineages = Callback::from({
-		let use_lineages = use_lineages.clone();
-		move |evt: web_sys::Event| {
-			let Some(target) = evt.target() else { return; };
-			let Some(input) = target.dyn_ref::<HtmlInputElement>() else { return; };
-			use_lineages.set(input.checked());
-		}
-	});
+	let toggle_lineages = web_ext::callback()
+		.map(|evt: web_sys::Event| evt.input_checked())
+		.on_some({
+			let use_lineages = use_lineages.clone();
+			move |checked| use_lineages.set(checked)
+		});
 	let lineages_switch = html! {
 		<div class="form-check form-switch m-2">
 			<label for="useLineages" class="form-check-label">{"Use Lineages & Upbringings"}</label>
@@ -295,9 +294,7 @@ fn CategoryPicker(
 	let on_selection_changed = Callback::from({
 		let on_change = on_change.clone();
 		move |evt: web_sys::Event| {
-			let Some(target) = evt.target() else { return; };
-			let Some(element) = target.dyn_ref::<HtmlSelectElement>() else { return; };
-			let value = element.value();
+			let Some(value) = evt.select_value() else { return; };
 			on_change.emit((!value.is_empty()).then_some(value.into()));
 		}
 	});
@@ -746,9 +743,7 @@ fn SelectorField(
 			let onchange = Callback::from({
 				let save_value = save_value.clone();
 				move |evt: web_sys::Event| {
-					let Some(target) = evt.target() else { return; };
-					let Some(element) = target.dyn_ref::<HtmlInputElement>() else { return; };
-					let value = element.value();
+					let Some(value) = evt.input_value() else { return; };
 					save_value.emit((!value.is_empty()).then_some(value.into()));
 				}
 			});
@@ -765,9 +760,7 @@ fn SelectorField(
 			let onchange = Callback::from({
 				let save_value = save_value.clone();
 				move |evt: web_sys::Event| {
-					let Some(target) = evt.target() else { return; };
-					let Some(element) = target.dyn_ref::<HtmlSelectElement>() else { return; };
-					let value = element.value();
+					let Some(value) = evt.select_value() else { return; };
 					save_value.emit((!value.is_empty()).then_some(value.into()));
 				}
 			});
