@@ -144,6 +144,21 @@
 	margin-bottom: 0.25rem;
 }
 
+button.add:before, button.sub:before {
+	background-image: url(https://www.dndbeyond.com/Content/Skins/Waterdeep/images/sprites/plus_minus-white.svg);
+	background-position: 0 0;
+	background-repeat: no-repeat;
+	background-size: cover;
+	content: "";
+	display: block;
+}
+button.add:before {
+	background-position: 0 0;
+}
+button.sub:before {
+	background-position: -17px 0;
+}
+
 .modal.hit-points button.hp-action {
 	margin-left: 0.8rem!important;
 	margin-right: 0.8rem!important;
@@ -151,20 +166,8 @@
 	padding-bottom: 0.7rem!important;
 }
 .modal.hit-points button.hp-action:before {
-	background-image: url(https://www.dndbeyond.com/Content/Skins/Waterdeep/images/sprites/plus_minus-white.svg);
-	background-position: 0 0;
-	background-repeat: no-repeat;
-	background-size: cover;
-	content: "";
-	display: block;
 	height: 16px;
 	width: 16px;
-}
-.modal.hit-points button.hp-action.add:before {
-	background-position: 0 0;
-}
-.modal.hit-points button.hp-action.sub:before {
-	background-position: -17px 0;
 }
 .modal.hit-points .heal {
 	color: var(--theme-healing);
@@ -423,5 +426,23 @@ input.slot[type="checkbox"]:checked:before {
 
 	> button {
 		padding: 0.1rem 0.2rem;
+	}
+}
+
+.uses {
+	button.add, button.sub {
+		padding: 0.3rem!important;
+	}
+	button.add:before, button.sub:before {
+		height: 12px;
+		width: 12px;
+	}
+	.deltaform {
+		*:not(:last-child) {
+			margin-right: 5px;
+		}
+	}
+	.delta {
+		margin-left: 10px;
 	}
 }
