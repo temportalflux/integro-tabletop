@@ -8,7 +8,7 @@ use std::str::FromStr;
 #[derive(Clone, PartialEq, Debug)]
 pub enum Check {
 	AttackRoll(AttackKind),
-	SavingThrow(Ability),
+	SavingThrow(Ability, Option<u8>),
 }
 
 impl FromKDL for Check {
@@ -17,9 +17,13 @@ impl FromKDL for Check {
 			"AttackRoll" => Ok(Self::AttackRoll(AttackKind::from_str(
 				node.get_str_req(ctx.consume_idx())?,
 			)?)),
-			"SavingThrow" => Ok(Self::SavingThrow(Ability::from_str(
-				node.get_str_req(ctx.consume_idx())?,
-			)?)),
+			"SavingThrow" => {
+				let ability = Ability::from_str(
+					node.get_str_req(ctx.consume_idx())?,
+				)?;
+				let dc = node.get_i64_opt("dc")?.map(|v| v as u8);
+				Ok(Self::SavingThrow(ability, dc))
+			}
 			name => Err(NotInList(name.into(), vec!["AttackRoll", "SavingThrow"]).into()),
 		}
 	}
