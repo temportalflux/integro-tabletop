@@ -253,21 +253,21 @@ pub fn Actions() -> Html {
 				// No action, we can include this feature if we are displaying passive features.
 				passes_any = passes_any || selected_tags.contains(ActionTag::Passive);
 			}
-			if !passes_any {
-				continue;
-			}
 
 			let entry = FeatureEntry {
 				feature_path,
 				// cloning the feature is required to pass the feature to a yew component later
 				feature: feature.clone(),
 				children: FeatureDisplayGroup::default(),
+				is_relevant: passes_any,
 			};
 			// If this feature has a display parent, cache it off until all of the
 			// top-level features have been gathered (a feature with a display parent
 			// may be encountered before the parent itself).
 			if let Some(display_parent_path) = &feature.parent {
-				features_by_parent.insert(display_parent_path.clone(), entry);
+				if entry.is_relevant {
+					features_by_parent.insert(display_parent_path.clone(), entry);
+				}
 			} else {
 				if feature.collapsed {
 					collapsed_features.insert(entry);
@@ -328,8 +328,13 @@ pub fn Actions() -> Html {
 				</div>
 			}
 		}).unwrap_or_default()}
-		{root_features.into_iter().map(|entry| {
-			html! { <ActionOverview {entry} /> }
+		{root_features.into_iter().filter_map(|entry| {
+			// some features are not relevant to this view, but have children which are.
+			// If its not relevant AND doesn't have children, then we shouldnt display it.
+			if !entry.is_relevant && entry.children.is_empty() {
+				return None;
+			}
+			Some(html! { <ActionOverview {entry} /> })
 		}).collect::<Vec<_>>()}
 	</div>});
 
@@ -355,6 +360,7 @@ struct FeatureEntry {
 	feature_path: PathBuf,
 	feature: Feature,
 	children: FeatureDisplayGroup,
+	is_relevant: bool,
 }
 impl FeatureDisplayGroup {
 	fn insert(&mut self, entry: FeatureEntry) {
