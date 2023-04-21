@@ -95,14 +95,14 @@ fn UseCounterDelta(
 	}: &UseCounterDeltaProps,
 ) -> Html {
 	let delta_state = use_state_eq(|| 0);
-	
+
 	let clear_delta = Callback::from({
 		let delta_state = delta_state.clone();
 		move |_| {
 			delta_state.set(0);
 		}
 	});
-	
+
 	let apply_delta = Callback::from({
 		let delta_state = delta_state.clone();
 		let on_apply = on_apply.clone();

@@ -2,11 +2,24 @@ use crate::{
 	kdl_ext::{FromKDL, NodeExt},
 	utility::NotInList,
 };
+use std::str::FromStr;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum AttackKind {
 	Melee,
 	Ranged,
+}
+
+impl FromStr for AttackKind {
+	type Err = NotInList;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		match s {
+			"Melee" => Ok(Self::Melee),
+			"Ranged" => Ok(Self::Ranged),
+			_ => Err(NotInList(s.into(), vec!["Melee", "Ranged"]).into()),
+		}
+	}
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]

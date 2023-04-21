@@ -8,6 +8,10 @@
 - Limited Use can use the resource of another feature/action by its path, and has an associated cost when doing so
 - UI components for rendering features, conditions, mutators, etc which is used for all presentations (mutators / features in origin & item browsers, condition cards, feature/action modals, etc)
 
+# Descriptions
+- Tables
+- Format Args
+
 ## Unify mutators, criteria, and features
 - Convert `feature` block to a `mutator "feature"` block, features are granted using mutators. FromKDL structs which accept both mutators and features now only accept mutators.
 - Convert `criteria` into a `mutator "only_if"` (or similar name) which accepts a single criteria and any number of submutators. Submutations are only applied if the criteria passes. This replaces the usage of `criteria` in features and conditions.
