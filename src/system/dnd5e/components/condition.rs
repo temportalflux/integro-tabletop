@@ -5,7 +5,10 @@ use crate::{
 	system::{
 		core::SourceId,
 		dnd5e::{
-			components::{editor::CollapsableCard, SharedCharacter},
+			components::{
+				editor::{mutator_list, CollapsableCard},
+				SharedCharacter,
+			},
 			data::character::{ActionEffect, Persistent},
 			DnD5e,
 		},
@@ -121,7 +124,7 @@ fn Modal() -> Html {
 						let key = key.clone();
 						move |_| key.clone()
 					});
-					// TODO: Show mutators, criteria, and degrees in body of collapsable card
+					// TODO: Show degrees in body of collapsable card
 					html! {
 						<CollapsableCard
 							id={condition.name.clone()}
@@ -136,6 +139,16 @@ fn Modal() -> Html {
 							}}
 						>
 							<div class="text-block">{condition.description.clone()}</div>
+							{match &condition.criteria {
+								None => html! {},
+								Some(criteria) => html! {
+									<div class="property">
+										<strong>{"Criteria:"}</strong>
+										<span>{criteria.description().unwrap_or_else(|| format!("criteria missing description"))}</span>
+									</div>
+								},
+							}}
+							{mutator_list(&condition.mutators, true)}
 						</CollapsableCard>
 					}
 				}).collect::<Vec<_>>()}

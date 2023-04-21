@@ -4,9 +4,16 @@
 ## IndexedDB
 - force refresh button to forcibly reload one or more modules by wiping those entries from the database and refetching them from source
 
-# Feature UI
+## UI Backlog
 - Limited Use numerical modifier (for max uses > 5)
-- Condition UI lists mutators
+- UI components for rendering features, conditions, mutators, etc which is used for all presentations (mutators / features in origin & item browsers, condition cards, feature/action modals, etc)
+
+## Unify mutators, criteria, and features
+- Convert `feature` block to a `mutator "feature"` block, features are granted using mutators. FromKDL structs which accept both mutators and features now only accept mutators.
+- Convert `criteria` into a `mutator "only_if"` (or similar name) which accepts a single criteria and any number of submutators. Submutations are only applied if the criteria passes. This replaces the usage of `criteria` in features and conditions.
+
+## Conditions
+- degrees (like exhaustion): these are stages of the same condition, which add more mutators the higher the degree.
 
 ## Attunement UI
 - 3 slots to which attunable items can be "equipped"
