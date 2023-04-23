@@ -27,6 +27,20 @@
 - Fill out the spells panel
 - a spellcasting feature populates some top-level derived optional struct for spellcasting
 - persistent data stores what spells are prepared (vs the feature or containers which store what is known/learned)
+- Spell Components
+	- items can have the `SpellComponent` tag
+	- spells which have spell components specify the name, an optional gold amount, and if there is a gold amount, optionally consume it
+	- spells with material components are displayed in the spell ui
+	- a spell is only castable if you have the components for it. if there is no gold amount, it can be covered by a component pouch or spell casting focus. if there is a gold amount, you must have a matching `SpellComponent` item with the same name and a gold amount >= the required amount.
+	- if a spell consumes one of these components w/ gold amount, the equivalent gold amount of items is removed from the inventory on cast.
+	```
+	component "Material" {
+		item "Feather"
+		item "Pearl" {
+			worth 100 (Currency)"Gold" consume=true
+		}
+	}
+	```
 
 ## Spell Containers
 - Preparation Source (can spells be prepared from here, i.e. spellbook for wizard)
