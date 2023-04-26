@@ -22,6 +22,9 @@ pub use flag::*;
 mod hit_points;
 pub use hit_points::*;
 
+mod level;
+pub use level::*;
+
 mod modifier;
 pub use modifier::*;
 
