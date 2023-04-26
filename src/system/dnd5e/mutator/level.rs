@@ -1,10 +1,9 @@
-use std::collections::BTreeMap;
-
 use crate::{
 	kdl_ext::{FromKDL, NodeExt},
-	system::dnd5e::data::character::Character,
+	system::dnd5e::data::{character::Character, description},
 	utility::{Dependencies, GenericMutator, Mutator},
 };
+use std::collections::BTreeMap;
 
 // Grants child mutators based on the character's level.
 #[derive(Clone, PartialEq, Debug)]
@@ -37,31 +36,36 @@ impl Mutator for GrantByLevel {
 		}
 	}
 
-	fn name(&self) -> Option<String> {
-		Some("Grant by Level".into())
-	}
+	fn description(&self) -> description::Section {
+		let mut sections = Vec::new();
 
-	fn description(&self) -> Option<String> {
-		let mut desc = format!(
-			"You are granted benefits based on your {} level:",
-			self.class_name.as_ref().map(String::as_str).unwrap_or("Character")
-		);
 		for (level, batch) in &self.levels {
 			if batch.is_empty() {
 				continue;
 			}
-			let mut rows = Vec::new();
-			for mutator in batch {
-				let Some(desc) = mutator.description() else { continue; };
-				let name = match mutator.name() {
-					Some(name) => format!("{name}. "),
-					None => String::new(),
-				};
-				rows.push(format!("    {name}{desc}",));
+			let children: Vec<_> = batch.iter().map(|mutator| mutator.description()).collect();
+			if children.is_empty() {
+				continue;
 			}
-			desc += &format!("\n  At level {level}:{}", rows.join("\n"));
+			sections.push(description::Section {
+				title: Some(format!("Level {level}")),
+				kind: Some(description::SectionKind::HasChildren(children)),
+				..Default::default()
+			})
 		}
-		Some(desc)
+
+		description::Section {
+			title: Some("Grant by Level".into()),
+			content: format!(
+				"You are granted benefits based on your {} level:",
+				self.class_name
+					.as_ref()
+					.map(String::as_str)
+					.unwrap_or("Character")
+			),
+			kind: Some(description::SectionKind::HasChildren(sections)),
+			..Default::default()
+		}
 	}
 
 	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {

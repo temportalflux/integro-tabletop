@@ -98,7 +98,7 @@ where
 		let path = self.id_path().map(|id_path| id_path.as_path());
 		if let Some(path) = &path {
 			if path.to_str() == Some("") {
-				log::warn!(target: "utility", "Selector data path is empty, <MutatorGroup/Mutator/Selector>::set_data_path was not called somewhere.");
+				return None;
 			}
 		}
 		path
@@ -149,7 +149,10 @@ where
 }
 
 impl Selector<String> {
-	pub fn as_meta_str(&self, name: impl Into<String>) -> Option<SelectorMeta> {
+	pub fn as_meta_str(
+		&self,
+		name: impl Into<String>,
+	) -> Result<Option<SelectorMeta>, InvalidDataPath> {
 		SelectorMeta::from_string(name, &self)
 	}
 }
@@ -158,10 +161,17 @@ impl<T> Selector<T>
 where
 	T: 'static + ToString + FromStr + EnumSetType,
 {
-	pub fn as_meta_enum(&self, name: impl Into<String>) -> Option<SelectorMeta> {
+	pub fn as_meta_enum(
+		&self,
+		name: impl Into<String>,
+	) -> Result<Option<SelectorMeta>, InvalidDataPath> {
 		SelectorMeta::from_enum(name, &self)
 	}
 }
+
+#[derive(Clone, PartialEq, thiserror::Error, Debug)]
+#[error("Invalid selector data path")]
+pub struct InvalidDataPath;
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct SelectorMeta {
@@ -170,27 +180,33 @@ pub struct SelectorMeta {
 	pub options: SelectorOptions,
 }
 impl SelectorMeta {
-	fn from_string(name: impl Into<String>, selector: &Selector<String>) -> Option<Self> {
-		let Some(data_path) = selector.get_data_path() else { return None; };
-		let Some(options) = SelectorOptions::from_string(selector) else { return None; };
-		Some(Self {
+	fn from_string(
+		name: impl Into<String>,
+		selector: &Selector<String>,
+	) -> Result<Option<Self>, InvalidDataPath> {
+		let Some(options) = SelectorOptions::from_string(selector) else { return Ok(None); };
+		let Some(data_path) = selector.get_data_path() else { return Err(InvalidDataPath); };
+		Ok(Some(Self {
 			name: name.into(),
 			data_path,
 			options,
-		})
+		}))
 	}
 
-	fn from_enum<T>(name: impl Into<String>, selector: &Selector<T>) -> Option<Self>
+	fn from_enum<T>(
+		name: impl Into<String>,
+		selector: &Selector<T>,
+	) -> Result<Option<Self>, InvalidDataPath>
 	where
 		T: 'static + ToString + FromStr + EnumSetType,
 	{
-		let Some(data_path) = selector.get_data_path() else { return None; };
-		let Some(options) = SelectorOptions::from_enum(selector) else { return None; };
-		Some(Self {
+		let Some(options) = SelectorOptions::from_enum(selector) else { return Ok(None); };
+		let Some(data_path) = selector.get_data_path() else { return Err(InvalidDataPath); };
+		Ok(Some(Self {
 			name: name.into(),
 			data_path,
 			options,
-		})
+		}))
 	}
 }
 
@@ -266,12 +282,18 @@ impl SelectorOptions {
 	}
 }
 
-#[derive(Default)]
-pub struct SelectorMetaVec(Vec<SelectorMeta>);
+#[derive(Clone, PartialEq, Debug, Default)]
+pub struct SelectorMetaVec(Vec<SelectorMeta>, Vec<InvalidDataPath>);
 impl SelectorMetaVec {
 	pub fn with_str(mut self, name: impl Into<String>, selector: &Selector<String>) -> Self {
-		if let Some(meta) = SelectorMeta::from_string(name, selector) {
-			self.0.push(meta);
+		match SelectorMeta::from_string(name, selector) {
+			Ok(Some(meta)) => {
+				self.0.push(meta);
+			}
+			Err(err) => {
+				self.1.push(err);
+			}
+			_ => {}
 		}
 		self
 	}
@@ -280,13 +302,23 @@ impl SelectorMetaVec {
 	where
 		T: 'static + ToString + FromStr + EnumSetType,
 	{
-		if let Some(meta) = SelectorMeta::from_enum(name, selector) {
-			self.0.push(meta);
+		match SelectorMeta::from_enum(name, selector) {
+			Ok(Some(meta)) => {
+				self.0.push(meta);
+			}
+			Err(err) => {
+				self.1.push(err);
+			}
+			_ => {}
 		}
 		self
 	}
 
-	pub fn to_vec(self) -> Option<Vec<SelectorMeta>> {
-		(!self.0.is_empty()).then_some(self.0)
+	pub fn as_vec(&self) -> &Vec<SelectorMeta> {
+		&self.0
+	}
+
+	pub fn errors(&self) -> &Vec<InvalidDataPath> {
+		&self.1
 	}
 }

@@ -1,6 +1,6 @@
 use crate::{
 	kdl_ext::{FromKDL, NodeExt},
-	system::dnd5e::data::character::Character,
+	system::dnd5e::data::{character::Character, description},
 	utility::Mutator,
 };
 
@@ -13,15 +13,11 @@ crate::impl_kdl_node!(AddLifeExpectancy, "extend_life_expectancy");
 impl Mutator for AddLifeExpectancy {
 	type Target = Character;
 
-	fn name(&self) -> Option<String> {
-		Some("Age".into())
-	}
-
-	fn description(&self) -> Option<String> {
-		Some(format!(
-			"Your life expectancy increases by {} years.",
-			self.0
-		))
+	fn description(&self) -> description::Section {
+		description::Section {
+			content: format!("Your life expectancy increases by {} years.", self.0),
+			..Default::default()
+		}
 	}
 
 	fn apply(&self, stats: &mut Character, _parent: &std::path::Path) {

@@ -1,6 +1,6 @@
 use crate::{
 	kdl_ext::{FromKDL, NodeExt, ValueExt},
-	system::dnd5e::data::{character::Character, DamageType},
+	system::dnd5e::data::{character::Character, description, DamageType},
 	utility::{InvalidEnumStr, Mutator},
 };
 use enum_map::Enum;
@@ -56,23 +56,26 @@ crate::impl_kdl_node!(AddDefense, "add_defense");
 impl Mutator for AddDefense {
 	type Target = Character;
 
-	fn description(&self) -> Option<String> {
-		Some(format!(
-			"You are {} to {} damage{}.",
-			match self.defense {
-				Defense::Resistance => "resistant",
-				Defense::Immunity => "immune",
-				Defense::Vulnerability => "vulnerable",
-			},
-			match &self.damage_type {
-				None => "all",
-				Some(damage_type) => damage_type.display_name(),
-			},
-			self.context
-				.as_ref()
-				.map(|ctx| format!(" from {ctx}"))
-				.unwrap_or_default(),
-		))
+	fn description(&self) -> description::Section {
+		description::Section {
+			content: format!(
+				"You are {} to {} damage{}.",
+				match self.defense {
+					Defense::Resistance => "resistant",
+					Defense::Immunity => "immune",
+					Defense::Vulnerability => "vulnerable",
+				},
+				match &self.damage_type {
+					None => "all",
+					Some(damage_type) => damage_type.display_name(),
+				},
+				self.context
+					.as_ref()
+					.map(|ctx| format!(" from {ctx}"))
+					.unwrap_or_default(),
+			),
+			..Default::default()
+		}
 	}
 
 	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {

@@ -1,4 +1,4 @@
-use crate::system::dnd5e::data::{Ability, Score};
+use crate::system::dnd5e::data::{description, Ability, Score};
 use enum_map::EnumMap;
 use itertools::{Either, Itertools};
 use std::{collections::HashSet, path::PathBuf};
@@ -36,8 +36,8 @@ impl crate::utility::Mutator for FinalizeAbilityScores {
 		["ability_score"].into()
 	}
 
-	fn description(&self) -> Option<String> {
-		None
+	fn description(&self) -> description::Section {
+		description::Section::default()
 	}
 
 	fn apply(&self, stats: &mut Self::Target, _parent: &std::path::Path) {

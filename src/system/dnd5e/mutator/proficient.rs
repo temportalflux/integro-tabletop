@@ -1,10 +1,10 @@
 use crate::{
 	kdl_ext::{EntryExt, FromKDL, NodeExt, ValueExt},
 	system::dnd5e::data::{
-		character::Character, item::weapon, proficiency, Ability, ArmorExtended, Skill,
-		WeaponProficiency,
+		character::Character, description, item::weapon, proficiency, Ability, ArmorExtended,
+		Skill, WeaponProficiency,
 	},
-	utility::{Mutator, NotInList, Selector, SelectorMeta, SelectorMetaVec},
+	utility::{Mutator, NotInList, Selector, SelectorMetaVec},
 };
 use std::str::FromStr;
 
@@ -24,26 +24,22 @@ crate::impl_kdl_node!(AddProficiency, "add_proficiency");
 impl Mutator for AddProficiency {
 	type Target = Character;
 
-	fn name(&self) -> Option<String> {
-		Some("Proficiency".into())
-	}
-
-	fn description(&self) -> Option<String> {
-		match self {
-			Self::SavingThrow(ability) => Some(format!(
+	fn description(&self) -> description::Section {
+		let content = match self {
+			Self::SavingThrow(ability) => format!(
 				"You are proficient with {} saving throws.",
 				ability.long_name()
-			)),
-			Self::Skill(Selector::Specific(skill), level) => Some(format!(
+			),
+			Self::Skill(Selector::Specific(skill), level) => format!(
 				"You are {} with {} checks.",
 				level.as_display_name().to_lowercase(),
 				skill.display_name()
-			)),
-			Self::Skill(Selector::Any { .. }, level) => Some(format!(
+			),
+			Self::Skill(Selector::Any { .. }, level) => format!(
 				"You are {} with one skill of your choice.",
 				level.as_display_name().to_lowercase()
-			)),
-			Self::Skill(Selector::AnyOf { options, .. }, level) => Some(format!(
+			),
+			Self::Skill(Selector::AnyOf { options, .. }, level) => format!(
 				"You are {} with one skill of: {}.",
 				level.as_display_name().to_lowercase(),
 				options
@@ -51,47 +47,59 @@ impl Mutator for AddProficiency {
 					.map(Skill::display_name)
 					.collect::<Vec<_>>()
 					.join(", ")
-			)),
+			),
 			Self::Language(Selector::Specific(lang)) => {
-				Some(format!("You can speak, read, and write {lang}."))
+				format!("You can speak, read, and write {lang}.")
 			}
-			Self::Language(Selector::Any { .. }) => Some(format!(
-				"You can speak, read, and write one language of your choice."
-			)),
-			Self::Language(Selector::AnyOf { options, .. }) => Some(format!(
+			Self::Language(Selector::Any { .. }) => {
+				format!("You can speak, read, and write one language of your choice.")
+			}
+			Self::Language(Selector::AnyOf { options, .. }) => format!(
 				"You can speak, read, and write one language of: {}.",
 				options.join(", ")
-			)),
+			),
 			Self::Armor(kind, context) => {
 				let ctx = context
 					.as_ref()
 					.map(|s| format!(" ({s})"))
 					.unwrap_or_default();
-				Some(match kind {
+				match kind {
 					ArmorExtended::Kind(kind) => format!(
 						"You are proficient with {} armor{ctx}.",
 						kind.to_string().to_lowercase()
 					),
 					ArmorExtended::Shield => format!("You are proficient with shields{ctx}."),
-				})
+				}
 			}
-			Self::Weapon(WeaponProficiency::Kind(kind)) => Some(format!(
+			Self::Weapon(WeaponProficiency::Kind(kind)) => format!(
 				"You are proficient with {} weapons.",
 				kind.to_string().to_lowercase()
-			)),
+			),
 			Self::Weapon(WeaponProficiency::Classification(kind)) => {
-				Some(format!("You are proficient with {kind} weapon-types."))
+				format!("You are proficient with {kind} weapon-types.")
 			}
 			Self::Tool(Selector::Specific(tool)) => {
-				Some(format!("You are proficient with {tool}."))
+				format!("You are proficient with {tool}.")
 			}
 			Self::Tool(Selector::Any { .. }) => {
-				Some(format!("You are proficient with one tool of your choice."))
+				format!("You are proficient with one tool of your choice.")
 			}
-			Self::Tool(Selector::AnyOf { options, .. }) => Some(format!(
+			Self::Tool(Selector::AnyOf { options, .. }) => format!(
 				"You are proficient with one tool of: {}.",
 				options.join(", ")
-			)),
+			),
+		};
+		description::Section {
+			content,
+			selectors: match self {
+				Self::Skill(selector, _) => SelectorMetaVec::default().with_enum("Skill", selector),
+				Self::Language(selector) => {
+					SelectorMetaVec::default().with_str("Language", selector)
+				}
+				Self::Tool(selector) => SelectorMetaVec::default().with_str("Tool", selector),
+				_ => Default::default(),
+			},
+			..Default::default()
 		}
 	}
 
@@ -146,21 +154,6 @@ impl Mutator for AddProficiency {
 						.insert(value, parent.to_owned());
 				}
 			}
-		}
-	}
-
-	fn selector_meta(&self) -> Option<Vec<SelectorMeta>> {
-		match self {
-			Self::Skill(selector, _) => SelectorMetaVec::default()
-				.with_enum("Skill", selector)
-				.to_vec(),
-			Self::Language(selector) => SelectorMetaVec::default()
-				.with_str("Language", selector)
-				.to_vec(),
-			Self::Tool(selector) => SelectorMetaVec::default()
-				.with_str("Tool", selector)
-				.to_vec(),
-			_ => None,
 		}
 	}
 }

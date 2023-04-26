@@ -1,7 +1,7 @@
 use crate::{
 	kdl_ext::{EntryExt, FromKDL, NodeExt, ValueExt},
-	system::dnd5e::data::{character::Character, roll, Ability, Skill},
-	utility::{Mutator, NotInList, Selector, SelectorMeta, SelectorMetaVec},
+	system::dnd5e::data::{character::Character, description, roll, Ability, Skill},
+	utility::{Mutator, NotInList, Selector, SelectorMetaVec},
 };
 use std::{path::Path, str::FromStr};
 
@@ -25,11 +25,7 @@ crate::impl_kdl_node!(AddModifier, "add_modifier");
 impl Mutator for AddModifier {
 	type Target = Character;
 
-	fn name(&self) -> Option<String> {
-		Some("Roll Modifier".into())
-	}
-
-	fn description(&self) -> Option<String> {
+	fn description(&self) -> description::Section {
 		let mut desc = format!("You have {} on ", self.modifier.display_name());
 		let kind_desc = match &self.kind {
 			ModifierKind::Ability(Selector::Specific(ability)) => {
@@ -89,7 +85,22 @@ impl Mutator for AddModifier {
 			desc.push_str(ctx.as_str());
 		}
 		desc.push('.');
-		Some(desc)
+		description::Section {
+			content: desc,
+			selectors: match &self.kind {
+				ModifierKind::Ability(selector) => {
+					SelectorMetaVec::default().with_enum("Ability", selector)
+				}
+				ModifierKind::SavingThrow(Some(selector)) => {
+					SelectorMetaVec::default().with_enum("Ability", selector)
+				}
+				ModifierKind::SavingThrow(None) => Default::default(),
+				ModifierKind::Skill(selector) => {
+					SelectorMetaVec::default().with_enum("Skill", selector)
+				}
+			},
+			..Default::default()
+		}
 	}
 
 	fn set_data_path(&self, parent: &std::path::Path) {
@@ -98,21 +109,6 @@ impl Mutator for AddModifier {
 			ModifierKind::SavingThrow(Some(selector)) => selector.set_data_path(parent),
 			ModifierKind::SavingThrow(None) => {}
 			ModifierKind::Skill(selector) => selector.set_data_path(parent),
-		}
-	}
-
-	fn selector_meta(&self) -> Option<Vec<SelectorMeta>> {
-		match &self.kind {
-			ModifierKind::Ability(selector) => SelectorMetaVec::default()
-				.with_enum("Ability", selector)
-				.to_vec(),
-			ModifierKind::SavingThrow(Some(selector)) => SelectorMetaVec::default()
-				.with_enum("Ability", selector)
-				.to_vec(),
-			ModifierKind::SavingThrow(None) => None,
-			ModifierKind::Skill(selector) => SelectorMetaVec::default()
-				.with_enum("Skill", selector)
-				.to_vec(),
 		}
 	}
 

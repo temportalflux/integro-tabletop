@@ -1,6 +1,6 @@
 use crate::{
 	kdl_ext::{FromKDL, NodeExt},
-	system::dnd5e::data::{bounded::BoundValue, character::Character, Ability},
+	system::dnd5e::data::{bounded::BoundValue, character::Character, description, Ability},
 	utility::{InvalidEnumStr, Mutator},
 };
 use enum_map::Enum;
@@ -46,8 +46,9 @@ crate::impl_kdl_node!(SetFlag, "flag");
 impl Mutator for SetFlag {
 	type Target = Character;
 
-	fn description(&self) -> Option<String> {
-		None
+	fn description(&self) -> description::Section {
+		// TODO: SetFlag description
+		description::Section::default()
 	}
 
 	fn apply(&self, stats: &mut Character, _parent: &std::path::Path) {
@@ -81,8 +82,9 @@ impl Mutator for ArmorStrengthRequirement {
 		["ability_score_finalize", "flag", "speed"].into()
 	}
 
-	fn description(&self) -> Option<String> {
-		None
+	fn description(&self) -> description::Section {
+		// TODO: ArmorStrengthRequirement description
+		description::Section::default()
 	}
 
 	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {

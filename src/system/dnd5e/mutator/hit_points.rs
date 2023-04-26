@@ -1,6 +1,9 @@
 use crate::{
 	kdl_ext::{FromKDL, NodeExt, ValueExt},
-	system::dnd5e::{data::character::Character, Value},
+	system::dnd5e::{
+		data::{character::Character, description},
+		Value,
+	},
 	utility::{Dependencies, Evaluator, Mutator},
 };
 
@@ -20,17 +23,20 @@ impl Mutator for AddMaxHitPoints {
 		self.value.dependencies()
 	}
 
-	fn description(&self) -> Option<String> {
+	fn description(&self) -> description::Section {
 		static PREFIX: &'static str = "Your hit point maximum increases by";
-		match &self.value {
-			Value::Fixed(amount) => Some(format!("{PREFIX} {amount}.")),
-			Value::Evaluated(evaluator) => Some(format!(
-				"{PREFIX} {}.",
-				match evaluator.description() {
-					Some(desc) => desc,
-					None => "some amount".into(),
-				}
-			)),
+		description::Section {
+			content: match &self.value {
+				Value::Fixed(amount) => format!("{PREFIX} {amount}."),
+				Value::Evaluated(evaluator) => format!(
+					"{PREFIX} {}.",
+					match evaluator.description() {
+						Some(desc) => desc,
+						None => "some amount".into(),
+					}
+				),
+			},
+			..Default::default()
 		}
 	}
 

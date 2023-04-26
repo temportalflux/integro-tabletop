@@ -1,6 +1,6 @@
 use crate::{
 	kdl_ext::{FromKDL, NodeExt},
-	system::dnd5e::data::{bounded::BoundValue, character::Character},
+	system::dnd5e::data::{bounded::BoundValue, character::Character, description},
 	utility::Mutator,
 };
 
@@ -16,21 +16,20 @@ crate::impl_kdl_node!(Speed, "speed");
 impl Mutator for Speed {
 	type Target = Character;
 
-	fn name(&self) -> Option<String> {
-		Some("Speed".into())
-	}
-
-	fn description(&self) -> Option<String> {
-		Some(format!(
-			"Your {} speed {}.",
-			self.name,
-			match &self.argument {
-				BoundValue::Minimum(value) => format!("is at least {value} feet"),
-				BoundValue::Base(value) => format!("is at least {value} feet"),
-				BoundValue::Additive(value) => format!("increases by {value} feet"),
-				BoundValue::Subtract(value) => format!("decreases by {value} feet"),
-			}
-		))
+	fn description(&self) -> description::Section {
+		description::Section {
+			content: format!(
+				"Your {} speed {}.",
+				self.name,
+				match &self.argument {
+					BoundValue::Minimum(value) => format!("is at least {value} feet"),
+					BoundValue::Base(value) => format!("is at least {value} feet"),
+					BoundValue::Additive(value) => format!("increases by {value} feet"),
+					BoundValue::Subtract(value) => format!("decreases by {value} feet"),
+				}
+			),
+			..Default::default()
+		}
 	}
 
 	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {

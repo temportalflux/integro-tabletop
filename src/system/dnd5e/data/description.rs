@@ -1,4 +1,7 @@
-use crate::kdl_ext::{DocumentExt, EntryExt, FromKDL, NodeContext, NodeExt, ValueExt};
+use crate::{
+	kdl_ext::{DocumentExt, EntryExt, FromKDL, NodeContext, NodeExt, ValueExt},
+	utility::SelectorMetaVec,
+};
 
 #[derive(Clone, PartialEq, Debug, Default)]
 pub struct Info {
@@ -6,10 +9,18 @@ pub struct Info {
 	pub long: Vec<Section>,
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug, Default)]
 pub struct Section {
 	pub title: Option<String>,
 	pub content: String,
+	pub selectors: SelectorMetaVec,
+	pub kind: Option<SectionKind>,
+}
+
+#[derive(Clone, PartialEq, Debug)]
+pub enum SectionKind {
+	HasChildren(Vec<Section>),
+	//Table,
 }
 
 impl<S> From<S> for Info
@@ -20,8 +31,8 @@ where
 		Self {
 			short: None,
 			long: vec![Section {
-				title: None,
 				content: value.into(),
+				..Default::default()
 			}],
 		}
 	}
@@ -53,6 +64,7 @@ impl Info {
 		self.long.iter().map(|section| Section {
 			title: section.title.clone(),
 			content: self.format_desc(&section.content),
+			..Default::default()
 		})
 	}
 
@@ -82,13 +94,17 @@ impl FromKDL for Section {
 			Some("Title") => {
 				let title = Some(entry.as_str_req()?.to_owned());
 				let content = node.get_str_req(ctx.consume_idx())?.to_owned();
-				Ok(Self { title, content })
+				Ok(Self {
+					title,
+					content,
+					..Default::default()
+				})
 			}
 			_ => {
 				let content = entry.as_str_req()?.to_owned();
 				Ok(Self {
-					title: None,
 					content,
+					..Default::default()
 				})
 			}
 		}
@@ -119,8 +135,8 @@ mod test {
 				Info {
 					short: None,
 					long: vec![Section {
-						title: None,
-						content: "This is some long description w/o a title".into()
+						content: "This is some long description w/o a title".into(),
+						..Default::default()
 					}]
 				}
 			);
@@ -137,8 +153,8 @@ mod test {
 				Info {
 					short: Some("Short desc of thing".into()),
 					long: vec![Section {
-						title: None,
-						content: "This is some long description w/o a title".into()
+						content: "This is some long description w/o a title".into(),
+						..Default::default()
 					}]
 				}
 			);
@@ -159,20 +175,22 @@ mod test {
 					short: Some("Short desc of thing".into()),
 					long: vec![
 						Section {
-							title: None,
-							content: "This is some long description w/o a title".into()
+							content: "This is some long description w/o a title".into(),
+							..Default::default()
 						},
 						Section {
 							title: Some("Title A".into()),
-							content: "desc for section A".into()
+							content: "desc for section A".into(),
+							..Default::default()
 						},
 						Section {
-							title: None,
-							content: "desc for section B w/o title".into()
+							content: "desc for section B w/o title".into(),
+							..Default::default()
 						},
 						Section {
 							title: Some("Title C".into()),
-							content: "desc for section C".into()
+							content: "desc for section C".into(),
+							..Default::default()
 						}
 					]
 				}

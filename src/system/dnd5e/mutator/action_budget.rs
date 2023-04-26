@@ -2,7 +2,7 @@ use crate::{
 	kdl_ext::{FromKDL, NodeExt},
 	system::dnd5e::data::{
 		character::{ActionBudgetKind, Character},
-		scaling,
+		description, scaling,
 	},
 	utility::Mutator,
 };
@@ -20,30 +20,30 @@ crate::impl_kdl_node!(AddToActionBudget, "add_to_action_budget");
 impl Mutator for AddToActionBudget {
 	type Target = Character;
 
-	fn name(&self) -> Option<String> {
-		Some("Add to Action Budget".into())
-	}
-
-	fn description(&self) -> Option<String> {
-		Some(format!(
-			"You get {} additional {} on your turn{}.",
-			match &self.amount {
-				scaling::Value::Fixed(value) => value.to_string(),
-				// TODO: Show a table for the Basis::Level, where the first column is
-				// the class or character level, and the second column the (optional) value.
-				scaling::Value::Scaled(_basis) => "some".into(),
-			},
-			match &self.action_kind {
-				ActionBudgetKind::Attack => "attack(s)",
-				ActionBudgetKind::Action => "action(s)",
-				ActionBudgetKind::Bonus => "bonus action(s)",
-				ActionBudgetKind::Reaction => "reaction(s)",
-			},
-			match &self.action_kind {
-				ActionBudgetKind::Attack => " when you use the attack action",
-				_ => "",
-			}
-		))
+	fn description(&self) -> description::Section {
+		description::Section {
+			title: Some("Add to Action Budget".into()),
+			content: format!(
+				"You get {} additional {} on your turn{}.",
+				match &self.amount {
+					scaling::Value::Fixed(value) => value.to_string(),
+					// TODO: Show a table for the Basis::Level, where the first column is
+					// the class or character level, and the second column the (optional) value.
+					scaling::Value::Scaled(_basis) => "some".into(),
+				},
+				match &self.action_kind {
+					ActionBudgetKind::Attack => "attack(s)",
+					ActionBudgetKind::Action => "action(s)",
+					ActionBudgetKind::Bonus => "bonus action(s)",
+					ActionBudgetKind::Reaction => "reaction(s)",
+				},
+				match &self.action_kind {
+					ActionBudgetKind::Attack => " when you use the attack action",
+					_ => "",
+				}
+			),
+			..Default::default()
+		}
 	}
 
 	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {

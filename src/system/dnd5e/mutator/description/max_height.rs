@@ -1,6 +1,6 @@
 use crate::{
 	kdl_ext::{FromKDL, KDLNode},
-	system::dnd5e::data::{character::Character, roll::Roll},
+	system::dnd5e::data::{character::Character, description, roll::Roll},
 	utility::Mutator,
 	GeneralError,
 };
@@ -27,18 +27,17 @@ crate::impl_kdl_node!(AddMaxHeight, "add_max_height");
 impl Mutator for AddMaxHeight {
 	type Target = Character;
 
-	fn name(&self) -> Option<String> {
-		Some("Size".into())
-	}
-
-	fn description(&self) -> Option<String> {
-		Some(format!(
-			"Your height increases by {} inches.",
-			match self {
-				Self::Value(num) => num.to_string(),
-				Self::Roll(roll) => roll.to_string(),
-			},
-		))
+	fn description(&self) -> description::Section {
+		description::Section {
+			content: format!(
+				"Your height increases by {} inches.",
+				match self {
+					Self::Value(num) => num.to_string(),
+					Self::Roll(roll) => roll.to_string(),
+				},
+			),
+			..Default::default()
+		}
 	}
 
 	fn apply(&self, stats: &mut Character, _parent: &std::path::Path) {

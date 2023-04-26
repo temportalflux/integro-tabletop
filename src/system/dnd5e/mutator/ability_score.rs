@@ -2,9 +2,9 @@ use crate::{
 	kdl_ext::{DocumentExt, FromKDL, NodeExt, ValueExt},
 	system::dnd5e::data::{
 		character::{AbilityScoreBonus, Character},
-		Ability,
+		description, Ability,
 	},
-	utility::{Mutator, Selector, SelectorMeta, SelectorMetaVec},
+	utility::{Mutator, Selector, SelectorMetaVec},
 };
 use std::str::FromStr;
 
@@ -30,11 +30,7 @@ crate::impl_kdl_node!(AbilityScoreChange, "ability_score");
 impl Mutator for AbilityScoreChange {
 	type Target = Character;
 
-	fn name(&self) -> Option<String> {
-		Some("Ability Score Increase".into())
-	}
-
-	fn description(&self) -> Option<String> {
+	fn description(&self) -> description::Section {
 		let ability = match &self.ability {
 			Selector::Specific(ability) => format!("Your {} score", ability.long_name()),
 			Selector::Any { .. } => "One ability score of your choice".to_owned(),
@@ -66,7 +62,13 @@ impl Mutator for AbilityScoreChange {
 				}
 			})
 			.collect::<Vec<_>>();
-		Some(format!("{ability}; {}.", op_descs.join(", ")))
+
+		description::Section {
+			title: Some("Ability Score Increase".into()),
+			content: format!("{ability}; {}.", op_descs.join(", ")),
+			selectors: SelectorMetaVec::default().with_enum("Ability", &self.ability),
+			..Default::default()
+		}
 	}
 
 	fn set_data_path(&self, parent: &std::path::Path) {
@@ -100,12 +102,6 @@ impl Mutator for AbilityScoreChange {
 				}
 			}
 		}
-	}
-
-	fn selector_meta(&self) -> Option<Vec<SelectorMeta>> {
-		SelectorMetaVec::default()
-			.with_enum("Ability", &self.ability)
-			.to_vec()
 	}
 }
 

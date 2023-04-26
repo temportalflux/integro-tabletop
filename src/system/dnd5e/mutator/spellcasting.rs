@@ -2,7 +2,7 @@ use crate::{
 	kdl_ext::{DocumentExt, FromKDL, NodeExt},
 	system::{
 		core::SourceId,
-		dnd5e::data::{action::LimitedUses, character::Character, Ability},
+		dnd5e::data::{action::LimitedUses, character::Character, description, Ability},
 	},
 	utility::{Mutator, NotInList},
 };
@@ -27,12 +27,11 @@ enum Operation {
 impl Mutator for Spellcasting {
 	type Target = Character;
 
-	fn name(&self) -> Option<String> {
-		Some("Spellcasting".into())
-	}
-
-	fn description(&self) -> Option<String> {
-		Some("spellcasting description todo".into())
+	fn description(&self) -> description::Section {
+		description::Section {
+			title: Some("Spellcasting".into()),
+			..Default::default()
+		}
 	}
 
 	fn set_data_path(&self, parent: &std::path::Path) {

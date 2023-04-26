@@ -672,30 +672,58 @@ pub fn mutator_list<T: 'static>(list: &Vec<GenericMutator<T>>, show_selectors: b
 }
 
 fn mutator<T: 'static>(value: &GenericMutator<T>, show_selectors: bool) -> Option<Html> {
-	let name = value.name();
-	let desc = value.description();
-	let selectors = show_selectors
-		.then(|| value.selector_meta())
-		.flatten()
-		.map(|metas| {
-			metas
-				.into_iter()
-				.map(|meta| html! { <SelectorField {meta} /> })
+	Some(html! { <DescriptionSection section={value.description()} {show_selectors} /> })
+}
+
+#[derive(Clone, PartialEq, Properties)]
+pub struct SectionProps {
+	pub section: description::Section,
+	pub show_selectors: bool,
+}
+#[function_component]
+pub fn DescriptionSection(
+	SectionProps {
+		section,
+		show_selectors,
+	}: &SectionProps,
+) -> Html {
+	let name = match &section.title {
+		None => None,
+		Some(title) => Some(html! {<strong>{title.clone()}{". "}</strong>}),
+	};
+	let selectors = match (*show_selectors, &section.selectors) {
+		(true, selectors) => {
+			if !selectors.errors().is_empty() {
+				log::warn!(target: "utility", "Section has empty data path: {section:?}");
+			}
+			selectors
+				.as_vec()
+				.iter()
+				.map(|meta| html! { <SelectorField meta={meta.clone()} /> })
 				.collect::<Vec<_>>()
-		})
-		.unwrap_or_default();
-
-	if name.is_none() && desc.is_none() && selectors.is_empty() {
-		return None;
+		}
+		_ => Vec::new(),
+	};
+	let body = match &section.kind {
+		None => None,
+		Some(description::SectionKind::HasChildren(children)) => Some(html! {
+			<div class="ms-2">
+				{children.iter().map(|section| html! {
+					<DescriptionSection section={section.clone()} show_selectors={*show_selectors} />
+				}).collect::<Vec<_>>()}
+			</div>
+		}),
+	};
+	if name.is_none() && section.content.is_empty() && selectors.is_empty() && body.is_none() {
+		return Html::default();
 	}
-
-	Some(html! {<div>
-		<span>
-			{name.map(|name| html! {<strong>{name}{". "}</strong>}).unwrap_or_default()}
-			{desc.unwrap_or_default()}
-		</span>
-		{selectors}
-	</div>})
+	html! {
+		<div>
+			<span>{name.unwrap_or_default()}{section.content.clone()}</span>
+			{selectors}
+			{body.unwrap_or_default()}
+		</div>
+	}
 }
 
 #[derive(Clone, PartialEq, Properties)]

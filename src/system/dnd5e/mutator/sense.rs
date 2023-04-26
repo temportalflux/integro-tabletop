@@ -1,6 +1,6 @@
 use crate::{
 	kdl_ext::{FromKDL, NodeExt},
-	system::dnd5e::data::{bounded::BoundValue, character::Character},
+	system::dnd5e::data::{bounded::BoundValue, character::Character, description},
 	utility::Mutator,
 };
 
@@ -16,22 +16,21 @@ crate::impl_kdl_node!(Sense, "sense");
 impl Mutator for Sense {
 	type Target = Character;
 
-	fn name(&self) -> Option<String> {
-		Some("Sense".into())
-	}
-
-	fn description(&self) -> Option<String> {
+	fn description(&self) -> description::Section {
 		let name = &self.name;
-		Some(match &self.argument {
-			BoundValue::Minimum(value) => format!("You have {name} for at least {value} feet."),
-			BoundValue::Base(value) => format!("You have {name} for at least {value} feet."),
-			BoundValue::Additive(value) => format!(
-				"If you have {name} from another source, your {name} increases by {value} feet."
-			),
-			BoundValue::Subtract(value) => {
-				format!("If you have {name}, it decreases by {value} feet.")
-			}
-		})
+		description::Section {
+			content: match &self.argument {
+				BoundValue::Minimum(value) => format!("You have {name} for at least {value} feet."),
+				BoundValue::Base(value) => format!("You have {name} for at least {value} feet."),
+				BoundValue::Additive(value) => format!(
+					"If you have {name} from another source, your {name} increases by {value} feet."
+				),
+				BoundValue::Subtract(value) => {
+					format!("If you have {name}, it decreases by {value} feet.")
+				}
+			},
+			..Default::default()
+		}
 	}
 
 	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {

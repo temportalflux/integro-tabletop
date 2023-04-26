@@ -1,5 +1,5 @@
-use super::{AsTraitEq, Dependencies, SelectorMeta, TraitEq};
-use crate::kdl_ext::KDLNode;
+use super::{AsTraitEq, Dependencies, TraitEq};
+use crate::{kdl_ext::KDLNode, system::dnd5e::data::description};
 use std::{fmt::Debug, path::Path, sync::Arc};
 
 pub trait Mutator: Debug + TraitEq + AsTraitEq<dyn TraitEq> + KDLNode {
@@ -11,17 +11,11 @@ pub trait Mutator: Debug + TraitEq + AsTraitEq<dyn TraitEq> + KDLNode {
 
 	fn set_data_path(&self, _parent: &Path) {}
 
-	fn name(&self) -> Option<String> {
-		None
+	fn description(&self) -> description::Section {
+		description::Section::default()
 	}
-
-	fn description(&self) -> Option<String>;
 
 	fn apply(&self, _: &mut Self::Target, _parent: &std::path::Path) {}
-
-	fn selector_meta(&self) -> Option<Vec<SelectorMeta>> {
-		None
-	}
 }
 
 pub type ArcMutator<T> = Arc<dyn Mutator<Target = T> + 'static + Send + Sync>;

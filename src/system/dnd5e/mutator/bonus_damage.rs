@@ -1,6 +1,6 @@
 use crate::{
 	system::dnd5e::{
-		data::{character::Character, item::weapon},
+		data::{character::Character, description, item::weapon},
 		Value,
 	},
 	utility::{Dependencies, Evaluator, Mutator},
@@ -26,8 +26,8 @@ impl Mutator for BonusDamage {
 		self.amount.dependencies()
 	}
 
-	fn description(&self) -> Option<String> {
-		None
+	fn description(&self) -> description::Section {
+		description::Section::default()
 	}
 
 	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {

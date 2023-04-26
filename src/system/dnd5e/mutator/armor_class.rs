@@ -1,6 +1,6 @@
 use crate::{
 	kdl_ext::FromKDL,
-	system::dnd5e::data::{character::Character, ArmorClassFormula},
+	system::dnd5e::data::{character::Character, description, ArmorClassFormula},
 	utility::Mutator,
 };
 
@@ -13,11 +13,7 @@ crate::impl_kdl_node!(AddArmorClassFormula, "add_armor_class_formula");
 impl Mutator for AddArmorClassFormula {
 	type Target = Character;
 
-	fn name(&self) -> Option<String> {
-		Some("Armor Class".into())
-	}
-
-	fn description(&self) -> Option<String> {
+	fn description(&self) -> description::Section {
 		let mut args = Vec::new();
 		if self.0.base > 0 {
 			args.push(format!("{}", self.0.base));
@@ -35,10 +31,14 @@ impl Mutator for AddArmorClassFormula {
 				bounds
 			));
 		}
-		Some(format!(
-			"You can calculate your Armor Class using {}.",
-			args.join(" + ")
-		))
+		description::Section {
+			title: Some("Armor Class".into()),
+			content: format!(
+				"You can calculate your Armor Class using {}.",
+				args.join(" + ")
+			),
+			..Default::default()
+		}
 	}
 
 	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
