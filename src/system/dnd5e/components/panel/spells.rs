@@ -11,7 +11,7 @@ pub fn Spells() -> Html {
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 
 	let mut entries = Vec::new();
-	for (spell_id, _, _) in state.spellcasting().prepared_spells() {
+	for (spell_id, _) in state.spellcasting().prepared_spells() {
 		entries.push(html! {
 			{spell_id.to_string()}
 		});

@@ -32,7 +32,7 @@ impl Mutator for Spellcasting {
 	}
 
 	fn description(&self) -> Option<String> {
-		None
+		Some("spellcasting description todo".into())
 	}
 
 	fn set_data_path(&self, parent: &std::path::Path) {
@@ -53,6 +53,7 @@ impl Mutator for Spellcasting {
 					spell_ids,
 					self.ability,
 					limited_uses.as_ref(),
+					parent,
 				);
 			}
 		}
