@@ -1,4 +1,4 @@
-use super::{DefaultsBlock, Features, HitPoint, HitPoints, Spellcasting};
+use super::{spellcasting, DefaultsBlock, Features, HitPoint, HitPoints, Spellcasting};
 use crate::{
 	path_map::PathMap,
 	system::dnd5e::{
@@ -451,5 +451,9 @@ impl Character {
 
 	pub fn spellcasting_mut(&mut self) -> &mut Spellcasting {
 		&mut self.derived.spellcasting
+	}
+
+	pub fn cantrip_capacity(&self) -> Vec<(usize, &spellcasting::Restriction)> {
+		self.spellcasting().cantrip_capacity(&self.character)
 	}
 }

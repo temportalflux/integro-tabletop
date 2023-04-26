@@ -17,7 +17,15 @@ pub fn Spells() -> Html {
 		</div>});
 	}
 
-	html! {<>
-		{entries}
-	</>}
+	html! {
+		<div style="overflow-y: scroll; height: 510px;">
+			<div>
+				{format!("{:?}", state.cantrip_capacity())}
+			</div>
+			{entries}
+			<div>
+				{format!("{:?}", state.spellcasting())}
+			</div>
+		</div>
+	}
 }

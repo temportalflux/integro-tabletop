@@ -58,7 +58,7 @@ fn create_character(system: &system::dnd5e::DnD5e) -> system::dnd5e::data::chara
 	persistent.classes.push({
 		let mut class = system
 			.classes
-			.get(&SourceId::from_str("local://basic-rules@dnd5e/class/monk.kdl").unwrap())
+			.get(&SourceId::from_str("local://basic-rules@dnd5e/class/cleric.kdl").unwrap())
 			.unwrap()
 			.clone();
 		class.levels.truncate(10); // level 10
@@ -71,7 +71,7 @@ fn create_character(system: &system::dnd5e::DnD5e) -> system::dnd5e::data::chara
 			.unwrap()
 			.clone(),
 	);
-	
+
 	/*
 	persistent.named_groups.race.push(
 		system

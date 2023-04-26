@@ -2,7 +2,14 @@ use crate::{
 	kdl_ext::{DocumentExt, FromKDL, NodeExt},
 	system::{
 		core::SourceId,
-		dnd5e::data::{action::LimitedUses, character::Character, description, Ability},
+		dnd5e::data::{
+			action::LimitedUses,
+			character::{
+				spellcasting::{CantripCapacity, Restriction, Slots},
+				Character, Persistent,
+			},
+			description, Ability, Rest,
+		},
 	},
 	utility::{Mutator, NotInList},
 };
@@ -19,7 +26,7 @@ crate::impl_kdl_node!(Spellcasting, "spellcasting");
 
 #[derive(Clone, Debug, PartialEq)]
 enum Operation {
-	Caster,
+	Caster { cantrips: Option<CantripCapacity> },
 	AddSource,
 	AddPrepared(Vec<SourceId>, Option<LimitedUses>),
 }
@@ -46,7 +53,13 @@ impl Mutator for Spellcasting {
 
 	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
 		match &self.operation {
-			Operation::Caster => {}
+			Operation::Caster { cantrips } => {
+				if let Some(cantrips) = cantrips {
+					stats
+						.spellcasting_mut()
+						.add_cantrip_capacity(cantrips.clone());
+				}
+			}
 			Operation::AddSource => {}
 			Operation::AddPrepared(spell_ids, limited_uses) => {
 				stats.spellcasting_mut().add_prepared(
@@ -68,36 +81,78 @@ impl FromKDL for Spellcasting {
 		let ability = Ability::from_str(node.get_str_req("ability")?)?;
 		let operation = match node.get_str_opt(ctx.consume_idx())? {
 			None => {
-				let cantrips: Option<()> = match node.query_opt("scope() > cantrips")? {
+				let class_name = node.get_str_req("class")?.to_owned();
+				let restriction = {
+					let node = node.query_req("scope() > restriction")?;
+					let _ctx = ctx.next_node();
+					let tags = node
+						.query_str_all("scope() > tag", 0)?
+						.into_iter()
+						.map(str::to_owned)
+						.collect::<Vec<_>>();
+					Restriction { tags }
+				};
+
+				let cantrips = match node.query_opt("scope() > cantrips")? {
 					None => None,
 					Some(node) => {
 						let ctx = ctx.next_node();
-						let class_name = node.get_str_req("class")?.to_owned();
-						let restriction: Option<()> =
-							match node.query_opt("scope() > restriction")? {
-								None => None,
-								Some(node) => {
-									let mut ctx = ctx.next_node();
-									let mut tags = node
-										.query_str_all("scope() > tag", 0)?
-										.into_iter()
-										.map(str::to_owned)
-										.collect::<Vec<_>>();
-									None
-								}
-							};
-						let mut levels = BTreeMap::new();
+
+						let mut level_map = BTreeMap::new();
 						for node in node.query_all("scope() > level")? {
 							let mut ctx = ctx.next_node();
-							let level = node.get_i64_req(ctx.consume_idx())? as u32;
-							let capacity = node.get_i64_req(ctx.consume_idx())? as u32;
-							levels.insert(level, capacity);
+							let level = node.get_i64_req(ctx.consume_idx())? as usize;
+							let capacity = node.get_i64_req(ctx.consume_idx())? as usize;
+							level_map.insert(level, capacity);
 						}
-						None
+
+						Some(CantripCapacity {
+							class_name: class_name.clone(),
+							level_map,
+							restriction: restriction.clone(),
+						})
 					}
 				};
 
-				Operation::Caster
+				let kind = {
+					let node = node.query_req("scope() > kind")?;
+					let mut ctx = ctx.next_node();
+					match node.get_str_req(ctx.consume_idx())? {
+						"Prepared" => {
+							let capacity = {
+								let node = node.query_req("scope() > capacity")?;
+								ctx.parse_evaluator::<Character, i32>(node)?
+							};
+							let slots = Slots::from_kdl(
+								node.query_req("scope() > slots")?,
+								&mut ctx.next_node(),
+							)?;
+						}
+						"Known" => {
+							let capacity = {
+								let node = node.query_req("scope() > capacity")?;
+								let ctx = ctx.next_node();
+								let mut capacity = BTreeMap::new();
+								for node in node.query_all("scope() > level")? {
+									let mut ctx = ctx.next_node();
+									let level = node.get_i64_req(ctx.consume_idx())? as usize;
+									let amount = node.get_i64_req(ctx.consume_idx())? as usize;
+									capacity.insert(level, amount);
+								}
+								capacity
+							};
+							let slots = Slots::from_kdl(
+								node.query_req("scope() > slots")?,
+								&mut ctx.next_node(),
+							)?;
+						}
+						name => {
+							return Err(NotInList(name.into(), vec!["Known", "Prepared"]).into());
+						}
+					}
+				};
+
+				Operation::Caster { cantrips }
 			}
 			Some("add_source") => {
 				let mut spells = Vec::new();
