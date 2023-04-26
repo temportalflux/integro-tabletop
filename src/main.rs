@@ -71,6 +71,7 @@ fn create_character(system: &system::dnd5e::DnD5e) -> system::dnd5e::data::chara
 			.unwrap()
 			.clone(),
 	);
+	
 	/*
 	persistent.named_groups.race.push(
 		system
@@ -87,7 +88,6 @@ fn create_character(system: &system::dnd5e::DnD5e) -> system::dnd5e::data::chara
 			.clone(),
 	);
 	*/
-	///*
 	persistent.named_groups.lineage.push(
 		system
 			.lineages
@@ -105,7 +105,7 @@ fn create_character(system: &system::dnd5e::DnD5e) -> system::dnd5e::data::chara
 			.unwrap()
 			.clone(),
 	);
-	//*/
+
 	persistent.named_groups.upbringing.push(
 		system
 			.upbringings

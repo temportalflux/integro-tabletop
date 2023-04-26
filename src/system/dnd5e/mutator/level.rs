@@ -1,7 +1,7 @@
 use crate::{
 	kdl_ext::{FromKDL, NodeExt},
 	system::dnd5e::data::{character::Character, description},
-	utility::{Dependencies, GenericMutator, Mutator},
+	utility::{GenericMutator, Mutator},
 };
 use std::collections::BTreeMap;
 
