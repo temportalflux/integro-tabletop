@@ -18,16 +18,6 @@ crate::impl_kdl_node!(GrantByLevel, "by_level");
 impl Mutator for GrantByLevel {
 	type Target = Character;
 
-	fn dependencies(&self) -> Dependencies {
-		let mut deps = Dependencies::default();
-		for (_level, batch) in &self.levels {
-			for mutator in batch {
-				deps = deps.join(mutator.dependencies());
-			}
-		}
-		deps
-	}
-
 	fn set_data_path(&self, parent: &std::path::Path) {
 		for (_level, batch) in &self.levels {
 			for mutator in batch {
@@ -68,7 +58,9 @@ impl Mutator for GrantByLevel {
 		}
 	}
 
-	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
+	// This needs to be run before the cached mutators are applied, otherwise
+	// the mutators inserted during this function are never truely applied.
+	fn on_insert(&self, stats: &mut Character, parent: &std::path::Path) {
 		let current_level = stats.level(self.class_name.as_ref().map(String::as_str));
 		for (level, batch) in &self.levels {
 			if *level > current_level {

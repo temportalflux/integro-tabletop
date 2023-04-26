@@ -31,9 +31,15 @@ pub struct SourceId {
 
 impl SourceId {
 	pub fn set_basis(&mut self, other: &Self) {
-		self.module = other.module.clone();
-		self.system = other.system.clone();
-		self.version = other.version.clone();
+		if self.module.is_none() {
+			self.module = other.module.clone();
+		}
+		if self.system.is_none() {
+			self.system = other.system.clone();
+		}
+		if self.version.is_none() {
+			self.version = other.version.clone();
+		}
 	}
 
 	pub fn with_basis(mut self, other: &Self) -> Self {

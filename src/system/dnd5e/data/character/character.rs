@@ -104,6 +104,7 @@ impl Character {
 			dependencies: mutator.dependencies(),
 			mutator: mutator.clone(),
 		});
+		mutator.on_insert(self, parent);
 	}
 
 	fn insert_mutator(&mut self, incoming: MutatorEntry) {

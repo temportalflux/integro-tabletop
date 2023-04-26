@@ -30,6 +30,7 @@ impl Mutator for Spellcasting {
 	fn description(&self) -> description::Section {
 		description::Section {
 			title: Some("Spellcasting".into()),
+			content: format!("{:?}", self),
 			..Default::default()
 		}
 	}

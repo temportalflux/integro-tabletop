@@ -15,6 +15,8 @@ pub trait Mutator: Debug + TraitEq + AsTraitEq<dyn TraitEq> + KDLNode {
 		description::Section::default()
 	}
 
+	fn on_insert(&self, _: &mut Self::Target, _parent: &std::path::Path) {}
+
 	fn apply(&self, _: &mut Self::Target, _parent: &std::path::Path) {}
 }
 

@@ -12,9 +12,9 @@ pub fn Spells() -> Html {
 
 	let mut entries = Vec::new();
 	for (spell_id, _) in state.spellcasting().prepared_spells() {
-		entries.push(html! {
+		entries.push(html! {<div>
 			{spell_id.to_string()}
-		});
+		</div>});
 	}
 
 	html! {<>
