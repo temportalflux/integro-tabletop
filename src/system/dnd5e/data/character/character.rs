@@ -1,4 +1,4 @@
-use super::{DefaultsBlock, Features, HitPoint, HitPoints};
+use super::{DefaultsBlock, Features, HitPoint, HitPoints, Spellcasting};
 use crate::{
 	path_map::PathMap,
 	system::dnd5e::{
@@ -442,5 +442,13 @@ impl Character {
 
 	pub fn derived_description_mut(&mut self) -> &mut DerivedDescription {
 		&mut self.derived.description
+	}
+
+	pub fn spellcasting(&self) -> &Spellcasting {
+		&self.derived.spellcasting
+	}
+
+	pub fn spellcasting_mut(&mut self) -> &mut Spellcasting {
+		&mut self.derived.spellcasting
 	}
 }

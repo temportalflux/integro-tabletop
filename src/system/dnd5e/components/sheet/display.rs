@@ -102,7 +102,7 @@ pub fn SheetDisplay(SheetDisplayProps { open_editor }: &SheetDisplayProps) -> Ht
 									<panel::Actions />
 								</TabContent>
 								<TabContent id="spells" title={html! {{"Spells"}}}>
-									{"Spells"}
+									<panel::Spells />
 								</TabContent>
 								<TabContent id="inventory" title={html! {{"Inventory"}}}>
 									<panel::Inventory />

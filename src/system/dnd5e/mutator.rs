@@ -33,3 +33,6 @@ pub use sense::*;
 
 mod speed;
 pub use speed::*;
+
+mod spellcasting;
+pub use spellcasting::*;

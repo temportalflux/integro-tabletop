@@ -71,6 +71,21 @@ fn create_character(system: &system::dnd5e::DnD5e) -> system::dnd5e::data::chara
 			.unwrap()
 			.clone(),
 	);
+	persistent.named_groups.race.push(
+		system
+			.races
+			.get(&SourceId::from_str("local://basic-rules@dnd5e/race/gnome.kdl").unwrap())
+			.unwrap()
+			.clone(),
+	);
+	persistent.named_groups.race_variant.push(
+		system
+			.race_variants
+			.get(&SourceId::from_str("local://basic-rules@dnd5e/race/gnome/forest.kdl").unwrap())
+			.unwrap()
+			.clone(),
+	);
+	/*
 	persistent.named_groups.lineage.push(
 		system
 			.lineages
@@ -88,6 +103,7 @@ fn create_character(system: &system::dnd5e::DnD5e) -> system::dnd5e::data::chara
 			.unwrap()
 			.clone(),
 	);
+	*/
 	persistent.named_groups.upbringing.push(
 		system
 			.upbringings

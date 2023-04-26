@@ -35,6 +35,11 @@ impl SourceId {
 		self.system = other.system.clone();
 		self.version = other.version.clone();
 	}
+
+	pub fn with_basis(mut self, other: &Self) -> Self {
+		self.set_basis(other);
+		self
+	}
 }
 
 impl ToString for SourceId {
