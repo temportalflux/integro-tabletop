@@ -1,9 +1,19 @@
 use crate::system::{
 	core::SourceId,
-	dnd5e::data::{action::LimitedUses, character::Persistent, Ability},
+	dnd5e::{
+		data::{
+			action::LimitedUses,
+			character::{Character, Persistent},
+			Ability,
+		},
+		BoxedEvaluator,
+	},
 };
 use multimap::MultiMap;
-use std::path::{Path, PathBuf};
+use std::{
+	collections::BTreeMap,
+	path::{Path, PathBuf},
+};
 
 mod cantrips;
 pub use cantrips::*;
@@ -18,13 +28,13 @@ pub struct Spellcasting {
 	// - spell slot map (rank to slot capacity and number used)
 	// - spell capacity (number of spells that can be prepared/known)
 	// - spells prepared (or known)
-	cantrips: Vec<CantripCapacity>,
+	casters: Vec<Caster>,
 	always_prepared: MultiMap<SourceId, SpellEntry>,
 }
 
 impl Spellcasting {
-	pub fn add_cantrip_capacity(&mut self, capacity: CantripCapacity) {
-		self.cantrips.push(capacity);
+	pub fn add_caster(&mut self, caster: Caster) {
+		self.casters.push(caster);
 	}
 
 	pub fn add_prepared(
@@ -49,11 +59,12 @@ impl Spellcasting {
 
 	pub fn cantrip_capacity(&self, persistent: &Persistent) -> Vec<(usize, &Restriction)> {
 		let mut total_capacity = Vec::new();
-		for capacity in &self.cantrips {
-			let current_level = persistent.level(Some(&capacity.class_name));
+		for caster in &self.casters {
+			let Some(capacity) = &caster.cantrip_capacity else { continue; };
+			let current_level = persistent.level(Some(&caster.class_name));
 			let value = {
 				let mut max_count = 0;
-				for (level, count) in &capacity.level_map {
+				for (level, count) in capacity {
 					if *level > current_level {
 						break;
 					}
@@ -61,13 +72,121 @@ impl Spellcasting {
 				}
 				max_count
 			};
-			total_capacity.push((value, &capacity.restriction));
+			total_capacity.push((value, &caster.restriction));
 		}
 		total_capacity
 	}
 
+	/// Returns the spell slots the character has to cast from.
+	/// If there are multiple caster features, the spell slots are determined from multiclassing rules.
+	pub fn spell_slots(&self, character: &Character) -> Option<BTreeMap<u8, usize>> {
+		// https://www.dndbeyond.com/sources/basic-rules/customization-options#MulticlassSpellcaster
+		lazy_static::lazy_static! {
+			static ref MULTICLASS_SLOTS: BTreeMap<usize, BTreeMap<u8, usize>> = BTreeMap::from([
+				( 1, [ (1, 2) ].into()),
+				( 2, [ (1, 3) ].into()),
+				( 3, [ (1, 4), (2, 2) ].into()),
+				( 4, [ (1, 4), (2, 3) ].into()),
+				( 5, [ (1, 4), (2, 3), (3, 2) ].into()),
+				( 6, [ (1, 4), (2, 3), (3, 3) ].into()),
+				( 7, [ (1, 4), (2, 3), (3, 3), (4, 1) ].into()),
+				( 8, [ (1, 4), (2, 3), (3, 3), (4, 2) ].into()),
+				( 9, [ (1, 4), (2, 3), (3, 3), (4, 3), (5, 1) ].into()),
+				(10, [ (1, 4), (2, 3), (3, 3), (4, 3), (5, 2) ].into()),
+				(11, [ (1, 4), (2, 3), (3, 3), (4, 3), (5, 2), (6, 1) ].into()),
+				(12, [ (1, 4), (2, 3), (3, 3), (4, 3), (5, 2), (6, 1) ].into()),
+				(13, [ (1, 4), (2, 3), (3, 3), (4, 3), (5, 2), (6, 1), (7, 1) ].into()),
+				(14, [ (1, 4), (2, 3), (3, 3), (4, 3), (5, 2), (6, 1), (7, 1) ].into()),
+				(15, [ (1, 4), (2, 3), (3, 3), (4, 3), (5, 2), (6, 1), (7, 1), (8, 1) ].into()),
+				(16, [ (1, 4), (2, 3), (3, 3), (4, 3), (5, 2), (6, 1), (7, 1), (8, 1) ].into()),
+				(17, [ (1, 4), (2, 3), (3, 3), (4, 3), (5, 2), (6, 1), (7, 1), (8, 1), (9, 1) ].into()),
+				(18, [ (1, 4), (2, 3), (3, 3), (4, 3), (5, 3), (6, 1), (7, 1), (8, 1), (9, 1) ].into()),
+				(19, [ (1, 4), (2, 3), (3, 3), (4, 3), (5, 3), (6, 2), (7, 1), (8, 1), (9, 1) ].into()),
+				(20, [ (1, 4), (2, 3), (3, 3), (4, 3), (5, 3), (6, 2), (7, 2), (8, 1), (9, 1) ].into()),
+			]);
+		}
+
+		if self.casters.is_empty() {
+			return None;
+		}
+
+		let (total_caster_level, slots_by_level) = if self.casters.len() == 1 {
+			let caster = self.casters.get(0).unwrap();
+			let current_level = character.level(Some(&caster.class_name));
+			(current_level, &caster.slots.slots_capacity)
+		} else {
+			let mut levels = 0;
+			for caster in &self.casters {
+				let current_level = character.level(Some(&caster.class_name));
+				levels += match caster.slots.multiclass_half_caster {
+					false => current_level,
+					true => current_level / 2,
+				};
+			}
+			(levels, &*MULTICLASS_SLOTS)
+		};
+
+		for (level, ranks) in slots_by_level.iter().rev() {
+			if *level <= total_caster_level {
+				return Some(ranks.clone());
+			}
+		}
+
+		None
+	}
+
 	pub fn prepared_spells(&self) -> &MultiMap<SourceId, SpellEntry> {
 		&self.always_prepared
+	}
+}
+
+#[derive(Clone, PartialEq, Debug)]
+pub struct Caster {
+	pub class_name: String,
+	pub ability: Ability,
+	pub restriction: Restriction,
+	pub cantrip_capacity: Option<BTreeMap<usize, usize>>,
+	pub slots: Slots,
+	pub spell_capacity: SpellCapacity,
+}
+
+#[derive(Clone, PartialEq, Debug)]
+pub enum SpellCapacity {
+	// the number of spells that can be known, keyed by class level
+	Known(BTreeMap<usize, usize>),
+	// the number of spells that can be prepared
+	Prepared(BoxedEvaluator<i32>),
+}
+
+impl Caster {
+	pub fn spell_capacity(&self, character: &Character) -> usize {
+		match &self.spell_capacity {
+			SpellCapacity::Known(capacity) => {
+				let current_level = character.level(Some(&self.class_name));
+				let mut max_amt = 0;
+				for (level, amount) in capacity {
+					if *level > current_level {
+						break;
+					}
+					max_amt = *amount;
+				}
+				max_amt
+			}
+			SpellCapacity::Prepared(capacity) => capacity.evaluate(&character) as usize,
+		}
+	}
+
+	/// Use to determine what kind of spells can be prepared/known.
+	pub fn max_spell_rank(&self, character: &Character) -> Option<u8> {
+		let current_level = character.level(Some(&self.class_name));
+		let mut max_rank = None;
+		for (level, rank_to_count) in &self.slots.slots_capacity {
+			if *level > current_level {
+				break;
+			}
+			max_rank = rank_to_count.keys().max().cloned();
+		}
+		max_rank
 	}
 }
 

@@ -16,11 +16,15 @@ pub fn Spells() -> Html {
 			{spell_id.to_string()}
 		</div>});
 	}
+	let spell_slots = state.spellcasting().spell_slots(&*state);
 
 	html! {
 		<div style="overflow-y: scroll; height: 510px;">
 			<div>
-				{format!("{:?}", state.cantrip_capacity())}
+				{format!("Cantrip Capacity: {:?}", state.cantrip_capacity())}
+			</div>
+			<div>
+				{format!("Spell Slots: {:?}", spell_slots)}
 			</div>
 			{entries}
 			<div>

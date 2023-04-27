@@ -5,10 +5,10 @@ use crate::{
 		dnd5e::data::{
 			action::LimitedUses,
 			character::{
-				spellcasting::{CantripCapacity, Restriction, Slots},
-				Character, Persistent,
+				spellcasting::{Caster, Restriction, Slots, SpellCapacity},
+				Character,
 			},
-			description, Ability, Rest,
+			description, Ability,
 		},
 	},
 	utility::{Mutator, NotInList},
@@ -26,7 +26,7 @@ crate::impl_kdl_node!(Spellcasting, "spellcasting");
 
 #[derive(Clone, Debug, PartialEq)]
 enum Operation {
-	Caster { cantrips: Option<CantripCapacity> },
+	Caster(Caster),
 	AddSource,
 	AddPrepared(Vec<SourceId>, Option<LimitedUses>),
 }
@@ -53,12 +53,8 @@ impl Mutator for Spellcasting {
 
 	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
 		match &self.operation {
-			Operation::Caster { cantrips } => {
-				if let Some(cantrips) = cantrips {
-					stats
-						.spellcasting_mut()
-						.add_cantrip_capacity(cantrips.clone());
-				}
+			Operation::Caster(caster) => {
+				stats.spellcasting_mut().add_caster(caster.clone());
 			}
 			Operation::AddSource => {}
 			Operation::AddPrepared(spell_ids, limited_uses) => {
@@ -93,7 +89,7 @@ impl FromKDL for Spellcasting {
 					Restriction { tags }
 				};
 
-				let cantrips = match node.query_opt("scope() > cantrips")? {
+				let cantrip_capacity = match node.query_opt("scope() > cantrips")? {
 					None => None,
 					Some(node) => {
 						let ctx = ctx.next_node();
@@ -106,15 +102,14 @@ impl FromKDL for Spellcasting {
 							level_map.insert(level, capacity);
 						}
 
-						Some(CantripCapacity {
-							class_name: class_name.clone(),
-							level_map,
-							restriction: restriction.clone(),
-						})
+						Some(level_map)
 					}
 				};
 
-				let kind = {
+				let slots =
+					Slots::from_kdl(node.query_req("scope() > slots")?, &mut ctx.next_node())?;
+
+				let spell_capacity = {
 					let node = node.query_req("scope() > kind")?;
 					let mut ctx = ctx.next_node();
 					match node.get_str_req(ctx.consume_idx())? {
@@ -123,10 +118,7 @@ impl FromKDL for Spellcasting {
 								let node = node.query_req("scope() > capacity")?;
 								ctx.parse_evaluator::<Character, i32>(node)?
 							};
-							let slots = Slots::from_kdl(
-								node.query_req("scope() > slots")?,
-								&mut ctx.next_node(),
-							)?;
+							SpellCapacity::Prepared(capacity)
 						}
 						"Known" => {
 							let capacity = {
@@ -141,10 +133,7 @@ impl FromKDL for Spellcasting {
 								}
 								capacity
 							};
-							let slots = Slots::from_kdl(
-								node.query_req("scope() > slots")?,
-								&mut ctx.next_node(),
-							)?;
+							SpellCapacity::Known(capacity)
 						}
 						name => {
 							return Err(NotInList(name.into(), vec!["Known", "Prepared"]).into());
@@ -152,7 +141,14 @@ impl FromKDL for Spellcasting {
 					}
 				};
 
-				Operation::Caster { cantrips }
+				Operation::Caster(Caster {
+					class_name,
+					ability,
+					restriction,
+					cantrip_capacity,
+					slots,
+					spell_capacity,
+				})
 			}
 			Some("add_source") => {
 				let mut spells = Vec::new();
