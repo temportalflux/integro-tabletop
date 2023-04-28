@@ -157,7 +157,7 @@ impl Character {
 		}
 	}
 
-	fn get_selections_at(&self, path: impl AsRef<Path>) -> Option<&Vec<String>> {
+	pub fn get_selections_at(&self, path: impl AsRef<Path>) -> Option<&Vec<String>> {
 		self.character.selected_values.get(path.as_ref())
 	}
 

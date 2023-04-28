@@ -135,6 +135,20 @@ impl Persistent {
 	pub fn set_selected_value(&mut self, key: impl AsRef<Path>, value: impl Into<String>) {
 		self.selected_values.set(key, value.into());
 	}
+
+	pub fn insert_selection(&mut self, key: impl AsRef<Path>, value: impl Into<String>) {
+		self.selected_values.insert(key, value.into());
+	}
+
+	pub fn remove_selection(&mut self, key: impl AsRef<Path>, index: usize) -> Option<String> {
+		let Some(values) = self.selected_values.get_mut(key) else { return None; };
+		if index < values.len() {
+			Some(values.remove(index))
+		}
+		else {
+			None
+		}
+	}
 }
 
 #[derive(Clone, Copy, PartialEq, Default, Debug)]

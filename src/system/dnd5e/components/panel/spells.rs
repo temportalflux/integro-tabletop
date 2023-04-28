@@ -21,12 +21,33 @@ pub fn Spells() -> Html {
 	html! {
 		<div style="overflow-y: scroll; height: 510px;">
 			<div>
-				{format!("Cantrip Capacity: {:?}", state.cantrip_capacity())}
-			</div>
-			<div>
 				{format!("Spell Slots: {:?}", spell_slots)}
 			</div>
-			{entries}
+			<div>
+				{state.spellcasting().iter_casters().map(|caster| {
+					html! {
+						<div>
+							<strong>{caster.name().clone()}</strong>
+							<div>
+								{format!("Restriction: {:?}", caster.restriction)}
+							</div>
+							<div>
+								{format!("Cantrip Capacity: {:?}", caster.cantrip_capacity(state.persistent()))}
+							</div>
+							{caster.cantrip_data_path().map(|key| {
+								html! { <div>{format!("Cantrips: {:?}", state.get_selections_at(&key))}</div> }
+							}).unwrap_or_default()}
+							<div>{format!("Spell Capacity: {:?}", caster.spell_capacity(&state))}</div>
+							<div>{format!("Max Level: {:?}", caster.max_spell_rank(&state))}</div>
+							<div>{format!("Spells: {:?}", state.get_selections_at(&caster.spells_data_path()))}</div>
+						</div>
+					}
+				}).collect::<Vec<_>>()}
+			</div>
+			<div>
+				<strong>{"Always Prepared:"}</strong>
+				{entries}
+			</div>
 			<div>
 				{format!("{:?}", state.spellcasting())}
 			</div>

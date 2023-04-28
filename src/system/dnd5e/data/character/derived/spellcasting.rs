@@ -60,19 +60,10 @@ impl Spellcasting {
 	pub fn cantrip_capacity(&self, persistent: &Persistent) -> Vec<(usize, &Restriction)> {
 		let mut total_capacity = Vec::new();
 		for caster in &self.casters {
-			let Some(capacity) = &caster.cantrip_capacity else { continue; };
-			let current_level = persistent.level(Some(&caster.class_name));
-			let value = {
-				let mut max_count = 0;
-				for (level, count) in capacity {
-					if *level > current_level {
-						break;
-					}
-					max_count = *count;
-				}
-				max_count
-			};
-			total_capacity.push((value, &caster.restriction));
+			let value = caster.cantrip_capacity(persistent);
+			if value > 0 {
+				total_capacity.push((value, &caster.restriction));
+			}
 		}
 		total_capacity
 	}
@@ -138,6 +129,10 @@ impl Spellcasting {
 	pub fn prepared_spells(&self) -> &MultiMap<SourceId, SpellEntry> {
 		&self.always_prepared
 	}
+
+	pub fn iter_casters(&self) -> impl Iterator<Item = &Caster> {
+		self.casters.iter()
+	}
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -159,6 +154,35 @@ pub enum SpellCapacity {
 }
 
 impl Caster {
+	pub fn name(&self) -> &String {
+		&self.class_name
+	}
+
+	fn all_spells_data_path(&self) -> PathBuf {
+		PathBuf::from("Spellcasting").join(&self.class_name)
+	}
+
+	/// The path for [Character::get_selections_at] which contains the cantrip spell source ids.
+	pub fn cantrip_data_path(&self) -> Option<PathBuf> {
+		self.cantrip_capacity.is_some().then(|| self.all_spells_data_path().join("cantrips"))
+	}
+	
+	/// The path for [Character::get_selections_at] which contains the leveled spell source ids.
+	pub fn spells_data_path(&self) -> PathBuf {
+		self.all_spells_data_path().join("spells")
+	}
+
+	pub fn cantrip_capacity(&self, persistent: &Persistent) -> usize {
+		let Some(capacity) = &self.cantrip_capacity else { return 0; };
+		let current_level = persistent.level(Some(&self.class_name));
+		for (level, count) in capacity.iter().rev() {
+			if *level <= current_level {
+				return *count;
+			}
+		}
+		0
+	}
+
 	pub fn spell_capacity(&self, character: &Character) -> usize {
 		match &self.spell_capacity {
 			SpellCapacity::Known(capacity) => {

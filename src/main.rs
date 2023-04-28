@@ -127,6 +127,7 @@ fn create_character(system: &system::dnd5e::DnD5e) -> system::dnd5e::data::chara
 		(30, currency::Kind::Silver),
 		(152, currency::Kind::Copper),
 	]);
+	persistent.insert_selection("Spellcasting/Cleric/cantrips", "local://basic-rules@dnd5e/spells/guidance.kdl");
 	persistent
 }
 
