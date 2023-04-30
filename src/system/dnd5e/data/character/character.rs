@@ -380,11 +380,11 @@ impl Character {
 		&mut self.derived.features
 	}
 
-	pub fn inventory(&self) -> &item::Inventory {
+	pub fn inventory(&self) -> &item::Inventory<item::EquipableEntry> {
 		&self.character.inventory
 	}
 
-	pub fn inventory_mut(&mut self) -> &mut item::Inventory {
+	pub fn inventory_mut(&mut self) -> &mut item::Inventory<item::EquipableEntry> {
 		&mut self.character.inventory
 	}
 

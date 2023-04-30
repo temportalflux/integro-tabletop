@@ -45,7 +45,9 @@ fn create_character(system: &system::dnd5e::DnD5e) -> system::dnd5e::data::chara
 		dnd5e::data::{
 			character::{Description, Persistent},
 			currency::{self, Wallet},
-			Ability,
+			item,
+			roll::{Die, Roll},
+			Ability, DamageType,
 		},
 	};
 	let mut persistent = Persistent {
@@ -127,7 +129,52 @@ fn create_character(system: &system::dnd5e::DnD5e) -> system::dnd5e::data::chara
 		(30, currency::Kind::Silver),
 		(152, currency::Kind::Copper),
 	]);
-	persistent.insert_selection("Spellcasting/Cleric/cantrips", "local://basic-rules@dnd5e/spells/guidance.kdl");
+	persistent.inventory.insert(item::Item {
+		name: "Handaxe".into(),
+		kind: item::ItemKind::Equipment(item::equipment::Equipment {
+			weapon: Some(item::weapon::Weapon {
+				kind: item::weapon::Kind::Simple,
+				classification: "Handaxe".into(),
+				damage: Some(item::weapon::WeaponDamage {
+					roll: Some(Roll {
+						amount: 1,
+						die: Die::D6,
+					}),
+					bonus: 0,
+					damage_type: DamageType::Slashing,
+				}),
+				properties: vec![
+					item::weapon::Property::Light,
+					item::weapon::Property::Thrown(20, 60),
+				],
+				range: None,
+			}),
+			..Default::default()
+		}),
+		..Default::default()
+	});
+	persistent.inventory.insert(item::Item {
+		name: "Chest".into(),
+		items: Some({
+			let mut contents = item::Inventory::default();
+			*contents.wallet_mut() = Wallet::from(5123);
+			contents.insert(item::Item {
+				name: "Torch".into(),
+				..Default::default()
+			});
+			contents.insert(item::Item {
+				name: "Backpack".into(),
+				items: Some(item::Inventory::default()),
+				..Default::default()
+			});
+			contents
+		}),
+		..Default::default()
+	});
+	persistent.insert_selection(
+		"Spellcasting/Cleric/cantrips",
+		"local://basic-rules@dnd5e/spells/guidance.kdl",
+	);
 	persistent
 }
 

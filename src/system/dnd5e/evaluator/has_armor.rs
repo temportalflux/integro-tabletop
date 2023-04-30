@@ -49,12 +49,7 @@ impl crate::utility::Evaluator for HasArmorEquipped {
 	}
 
 	fn evaluate(&self, character: &Self::Context) -> Result<(), String> {
-		for EquipableEntry {
-			id: _,
-			item,
-			is_equipped,
-		} in character.inventory().entries()
-		{
+		for EquipableEntry { item, is_equipped } in character.inventory().entries() {
 			if !item.is_equipable() || !is_equipped {
 				continue;
 			}

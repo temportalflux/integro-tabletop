@@ -10,6 +10,7 @@ use crate::{
 	utility::InputExt,
 };
 use itertools::Itertools;
+use uuid::Uuid;
 use yew::prelude::*;
 
 #[derive(Clone, PartialEq, Properties)]
@@ -103,38 +104,70 @@ pub fn WalletInline(WalletInlineProps { wallet }: &WalletInlineProps) -> Html {
 	</>};
 }
 
+#[derive(Clone, PartialEq, Properties)]
+pub struct WalletContainerProps {
+	pub id: Option<Uuid>,
+}
+
+fn get_wallet<'c>(state: &'c SharedCharacter, id: &Option<Uuid>) -> Option<&'c Wallet> {
+	match id {
+		None => Some(state.inventory().wallet()),
+		Some(id) => {
+			let Some(item) = state.inventory().get_item(id) else { return None; };
+			let Some(container) = &item.items else { return None; };
+			Some(container.wallet())
+		}
+	}
+}
+
+fn get_wallet_mut<'c>(persistent: &'c mut Persistent, id: &Option<Uuid>) -> Option<&'c mut Wallet> {
+	match id {
+		None => Some(persistent.inventory.wallet_mut()),
+		Some(id) => {
+			let Some(item) = persistent.inventory.get_mut(id) else { return None; };
+			let Some(container) = &mut item.items else { return None; };
+			Some(container.wallet_mut())
+		}
+	}
+}
+
 #[function_component]
-pub fn WalletInlineButton() -> Html {
+pub fn WalletInlineButton(WalletContainerProps { id }: &WalletContainerProps) -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 
-	let onclick = modal_dispatcher.callback(|_| {
-		modal::Action::Open(modal::Props {
-			centered: true,
-			scrollable: true,
-			root_classes: classes!("wallet"),
-			content: html! {<Modal />},
-			..Default::default()
-		})
+	let onclick = modal_dispatcher.callback({
+		let id = id.clone();
+		move |evt: MouseEvent| {
+			evt.stop_propagation();
+			modal::Action::Open(modal::Props {
+				centered: true,
+				scrollable: true,
+				root_classes: classes!("wallet"),
+				content: html! {<Modal {id} />},
+				..Default::default()
+			})
+		}
 	});
 
+	let Some(wallet) = get_wallet(&state, id).cloned() else { return Html::default(); };
 	html! {
 		<span class="wallet-inline ms-auto py-2" {onclick}>
-			{match state.persistent().inventory.wallet().is_empty() {
+			{match wallet.is_empty() {
 				true => html! { "Empty Coin Pouch" },
-				false => html! {<WalletInline wallet={*state.persistent().inventory.wallet()} />},
+				false => html! {<WalletInline {wallet} />},
 			}}
 		</span>
 	}
 }
 
 #[function_component]
-fn Modal() -> Html {
+fn Modal(WalletContainerProps { id }: &WalletContainerProps) -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
+	let Some(wallet) = get_wallet(&state, id) else { return Html::default(); };
 	let adjustment_wallet = use_state(|| Wallet::default());
 	let balance_display = {
-		let total_value_gold =
-			state.persistent().inventory.wallet().total_value() / currency::Kind::Gold.multiplier();
+		let total_value_gold = wallet.total_value() / currency::Kind::Gold.multiplier();
 		html! {
 			<div>
 				<div class="d-flex">
@@ -148,7 +181,7 @@ fn Modal() -> Html {
 					</span>
 				</div>
 				{currency::Kind::all().sorted().rev().map(|coin| {
-					let amount = state.persistent().inventory.wallet()[coin];
+					let amount = wallet[coin];
 					html! {<>
 						<div class="d-flex py-1" style="font-size: 1.25rem;">
 							<div class="me-2"><CoinIcon kind={coin} size={24} /></div>
@@ -164,11 +197,7 @@ fn Modal() -> Html {
 	let adjustment_form = {
 		let auto_exchange = state.persistent().settings.currency_auto_exchange;
 		let is_empty = adjustment_wallet.is_empty();
-		let contains_enough = state
-			.persistent()
-			.inventory
-			.wallet()
-			.contains(&*adjustment_wallet, auto_exchange);
+		let contains_enough = wallet.contains(&*adjustment_wallet, auto_exchange);
 		let on_change_adj_coin = Callback::from({
 			let wallet = adjustment_wallet.clone();
 			move |(evt, coin): (web_sys::Event, currency::Kind)| {
@@ -182,6 +211,7 @@ fn Modal() -> Html {
 		});
 		let onclick_add = Callback::from({
 			let adjustments = adjustment_wallet.clone();
+			let id = id.clone();
 			let state = state.clone();
 			move |_| {
 				let adjustments = {
@@ -190,13 +220,16 @@ fn Modal() -> Html {
 					wallet
 				};
 				state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
-					*persistent.inventory.wallet_mut() += adjustments;
+					if let Some(target) = get_wallet_mut(persistent, &id) {
+						*target += adjustments;
+					}
 					None
 				}));
 			}
 		});
 		let onclick_remove = Callback::from({
 			let adjustments = adjustment_wallet.clone();
+			let id = id.clone();
 			let state = state.clone();
 			move |_| {
 				if !contains_enough {
@@ -208,7 +241,7 @@ fn Modal() -> Html {
 					wallet
 				};
 				state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
-					let target = persistent.inventory.wallet_mut();
+					let Some(target) = get_wallet_mut(persistent, &id) else { return None; };
 					assert!(target.contains(&adjustments, auto_exchange));
 					target.remove(adjustments, auto_exchange);
 					None
@@ -226,13 +259,15 @@ fn Modal() -> Html {
 			exchange_div_classes.push("v-hidden");
 		}
 		let onclick_exchange = Callback::from({
+			let id = id.clone();
 			let state = state.clone();
 			move |_| {
 				if !auto_exchange {
 					return;
 				}
 				state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
-					persistent.inventory.wallet_mut().normalize();
+					let Some(target) = get_wallet_mut(persistent, &id) else { return None; };
+					target.normalize();
 					None
 				}));
 			}

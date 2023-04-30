@@ -26,6 +26,8 @@ pub struct Item {
 	pub notes: Option<String>,
 	pub kind: ItemKind,
 	pub tags: Vec<String>,
+	// TODO: Tests for item containers
+	pub items: Option<Inventory<Item>>,
 }
 
 impl Item {
@@ -133,6 +135,11 @@ impl FromKDL for Item {
 			None => ItemKind::default(),
 		};
 
+		let items = match node.query_opt("scope() > items")? {
+			None => None,
+			Some(node) => Some(Inventory::<Item>::from_kdl(node, &mut ctx.next_node())?),
+		};
+
 		// Items are defined with the weight being representative of the stack,
 		// but are used as the weight being representative of a single item
 		// (total weight being calculated on the fly).
@@ -153,6 +160,7 @@ impl FromKDL for Item {
 			notes,
 			kind,
 			tags,
+			items,
 		})
 	}
 }
@@ -187,7 +195,6 @@ impl FromKDL for ItemKind {
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct EquipableEntry {
-	pub id: Uuid,
 	pub item: Item,
 	pub is_equipped: bool,
 }
@@ -215,16 +222,74 @@ impl MutatorGroup for EquipableEntry {
 	}
 }
 
-#[derive(Clone, PartialEq, Default, Debug)]
-pub struct Inventory {
-	items_by_id: HashMap<Uuid, EquipableEntry>,
+pub trait AsItem {
+	fn from_item(item: Item) -> Self;
+	fn into_item(self) -> Item;
+	fn as_item(&self) -> &Item;
+	fn as_item_mut(&mut self) -> &mut Item;
+}
+impl AsItem for Item {
+	fn from_item(item: Item) -> Self {
+		item
+	}
+
+	fn into_item(self) -> Item {
+		self
+	}
+
+	fn as_item(&self) -> &Item {
+		self
+	}
+
+	fn as_item_mut(&mut self) -> &mut Item {
+		self
+	}
+}
+impl AsItem for EquipableEntry {
+	fn from_item(item: Item) -> Self {
+		Self {
+			item,
+			is_equipped: false,
+		}
+	}
+
+	fn into_item(self) -> Item {
+		self.item
+	}
+
+	fn as_item(&self) -> &Item {
+		&self.item
+	}
+
+	fn as_item_mut(&mut self) -> &mut Item {
+		&mut self.item
+	}
+}
+
+#[derive(Clone, PartialEq, Debug)]
+pub struct Inventory<T> {
+	pub capacity: ItemContainerCapacity,
+	pub restriction: Option<Restriction>,
+	items_by_id: HashMap<Uuid, T>,
 	itemids_by_name: Vec<Uuid>,
 	wallet: Wallet,
 }
-
-impl Inventory {
+impl<T> Default for Inventory<T> {
+	fn default() -> Self {
+		Self {
+			capacity: Default::default(),
+			restriction: Default::default(),
+			items_by_id: Default::default(),
+			itemids_by_name: Default::default(),
+			wallet: Default::default(),
+		}
+	}
+}
+impl<T> Inventory<T> {
 	pub fn new() -> Self {
 		Self {
+			capacity: ItemContainerCapacity::default(),
+			restriction: None,
 			items_by_id: HashMap::new(),
 			itemids_by_name: Vec::new(),
 			wallet: Wallet::default(),
@@ -239,31 +304,42 @@ impl Inventory {
 		&mut self.wallet
 	}
 
+	pub fn iter_by_name(&self) -> impl Iterator<Item = (&Uuid, &T)> {
+		self.itemids_by_name
+			.iter()
+			.filter_map(|id| self.items_by_id.get(&id).map(|item| (id, item)))
+	}
+}
+
+impl<T: AsItem> Inventory<T> {
 	pub fn get_item(&self, id: &Uuid) -> Option<&Item> {
-		self.items_by_id.get(id).map(|entry| &entry.item)
+		self.items_by_id.get(id).map(|entry| entry.as_item())
 	}
 
-	pub fn is_equipped(&self, id: &Uuid) -> bool {
+	pub fn get_mut(&mut self, id: &Uuid) -> Option<&mut Item> {
 		self.items_by_id
-			.get(id)
-			.map(|entry| entry.is_equipped)
-			.unwrap_or(false)
+			.get_mut(id)
+			.map(|entry| entry.as_item_mut())
 	}
 
-	pub fn insert(&mut self, item: Item) -> Uuid {
-		if item.can_stack() {
-			for (_id, entry) in &mut self.items_by_id {
-				if entry.item.can_add_to_stack(&item) {
-					entry.item.add_to_stack(item);
-					return entry.id.clone();
-				}
-			}
+	pub fn get_mut_at_path<'c>(&'c mut self, id_path: &Vec<Uuid>) -> Option<&'c mut Item> {
+		let mut iter = id_path.iter();
+		let Some(first_id) = iter.next() else { return None; };
+		let Some(mut item) = self.get_mut(first_id) else { return None };
+		for id in iter {
+			let Some(container) = &mut item.items else { return None; };
+			let Some(next_item) = container.get_mut(id) else { return None; };
+			item = next_item;
 		}
+		Some(item)
+	}
 
+	pub fn push(&mut self, item: Item) -> Uuid {
 		let id = Uuid::new_v4();
-		let search = self
-			.itemids_by_name
-			.binary_search_by(|id| self.get_item(id).unwrap().name.cmp(&item.name));
+		let search = self.itemids_by_name.binary_search_by(|id| {
+			let entry_item = self.get_item(id).unwrap();
+			entry_item.name.cmp(&item.name)
+		});
 		let idx = match search {
 			// an item with the same name already exists at this index
 			Ok(idx) => idx,
@@ -271,36 +347,62 @@ impl Inventory {
 			Err(idx) => idx,
 		};
 		self.itemids_by_name.insert(idx, id.clone());
-		self.items_by_id.insert(
-			id.clone(),
-			EquipableEntry {
-				id,
-				item,
-				is_equipped: false,
-			},
-		);
+		self.items_by_id.insert(id.clone(), T::from_item(item));
 		id
+	}
+
+	pub fn insert(&mut self, item: Item) -> Uuid {
+		if item.can_stack() {
+			for (id, entry) in &mut self.items_by_id {
+				if entry.as_item().can_add_to_stack(&item) {
+					entry.as_item_mut().add_to_stack(item);
+					return id.clone();
+				}
+			}
+		}
+		self.push(item)
 	}
 
 	pub fn remove(&mut self, id: &Uuid) -> Option<Item> {
 		if let Ok(idx) = self.itemids_by_name.binary_search(id) {
 			self.itemids_by_name.remove(idx);
 		}
-		self.items_by_id.remove(id).map(|entry| entry.item)
+		self.items_by_id.remove(id).map(|entry| entry.into_item())
+	}
+
+	pub fn remove_at_path(&mut self, id_path: &Vec<Uuid>) -> Option<Item> {
+		let count = id_path.len();
+		let mut iter = id_path
+			.iter()
+			.enumerate()
+			.map(|(idx, id)| (id, idx == count - 1));
+		let Some((first_id, single_entry)) = iter.next() else { return None; };
+		if single_entry {
+			return self.remove(first_id);
+		}
+		let Some(mut item) = self.get_mut(first_id) else { return None; };
+		for (id, is_last) in iter {
+			let Some(container) = &mut item.items else { return None; };
+			if is_last {
+				return container.remove(id);
+			}
+			let Some(next_item) = container.get_mut(id) else { return None; };
+			item = next_item;
+		}
+		None
+	}
+}
+
+impl Inventory<EquipableEntry> {
+	pub fn is_equipped(&self, id: &Uuid) -> bool {
+		self.items_by_id
+			.get(id)
+			.map(|entry| entry.is_equipped)
+			.unwrap_or(false)
 	}
 
 	pub fn entries(&self) -> impl Iterator<Item = &EquipableEntry> {
 		self.items_by_id.values()
-	}
-
-	pub fn items_by_name(&self) -> impl Iterator<Item = &EquipableEntry> {
-		self.itemids_by_name
-			.iter()
-			.filter_map(|id| self.items_by_id.get(&id))
-	}
-
-	pub fn get_mut(&mut self, id: &Uuid) -> Option<&mut Item> {
-		self.items_by_id.get_mut(id).map(|entry| &mut entry.item)
 	}
 
 	pub fn set_equipped(&mut self, id: &Uuid, equipped: bool) {
@@ -309,21 +411,85 @@ impl Inventory {
 	}
 }
 
-impl MutatorGroup for Inventory {
+impl MutatorGroup for Inventory<EquipableEntry> {
 	type Target = Character;
 
 	fn set_data_path(&self, parent: &std::path::Path) {
 		let path_to_self = parent.join("Inventory");
-		for entry in self.items_by_name() {
+		for (_, entry) in self.iter_by_name() {
 			entry.set_data_path(&path_to_self);
 		}
 	}
 
 	fn apply_mutators(&self, stats: &mut Character, parent: &Path) {
-		for entry in self.items_by_name() {
+		for (_id, entry) in self.iter_by_name() {
 			stats.apply_from(entry, parent);
 		}
 	}
+}
+
+#[derive(Clone, PartialEq, Default, Debug)]
+pub struct ItemContainerCapacity {
+	pub count: Option<usize>,
+	// Unit: pounds (lbs)
+	pub weight: Option<f64>,
+	// Unit: cubic feet
+	pub volume: Option<f64>,
+}
+
+impl<T: AsItem> FromKDL for Inventory<T> {
+	fn from_kdl(
+		node: &kdl::KdlNode,
+		ctx: &mut crate::kdl_ext::NodeContext,
+	) -> anyhow::Result<Self> {
+		let wallet = match node.query_opt("scope() > wallet")? {
+			Some(node) => Wallet::from_kdl(node, &mut ctx.next_node())?,
+			None => Default::default(),
+		};
+
+		let capacity = match node.query_opt("scope() > capacity")? {
+			Some(node) => {
+				let count = node.get_i64_opt("count")?.map(|v| v as usize);
+				let weight = node.get_f64_opt("weight")?;
+				let volume = node.get_f64_opt("volume")?;
+				ItemContainerCapacity {
+					count,
+					weight,
+					volume,
+				}
+			}
+			None => Default::default(),
+		};
+
+		let restriction = match node.query_opt("scope() > restriction")? {
+			Some(node) => {
+				let tags = node.query_str_all("scope() > tag", 0)?;
+				let tags = tags.into_iter().map(str::to_owned).collect::<Vec<_>>();
+				Some(Restriction { tags })
+			}
+			None => None,
+		};
+
+		let mut inventory = Self {
+			wallet,
+			capacity,
+			restriction,
+			items_by_id: HashMap::new(),
+			itemids_by_name: Vec::new(),
+		};
+
+		for node in node.query_all("item")? {
+			let item = Item::from_kdl(node, &mut ctx.next_node())?;
+			inventory.push(item);
+		}
+
+		Ok(inventory)
+	}
+}
+
+#[derive(Clone, Default, PartialEq, Debug)]
+pub struct Restriction {
+	pub tags: Vec<String>,
 }
 
 #[cfg(test)]
@@ -366,13 +532,10 @@ mod test {
 			}";
 			let expected = Item {
 				name: "Torch".into(),
-				description: None,
-				rarity: None,
 				weight: 0.2,
 				worth: Wallet::from([(1, currency::Kind::Copper)]),
-				notes: None,
 				kind: ItemKind::Simple { count: 5 },
-				tags: vec![],
+				..Default::default()
 			};
 			assert_eq!(from_doc(doc)?, expected);
 			Ok(())
@@ -392,11 +555,8 @@ mod test {
 			}";
 			let expected = Item {
 				name: "Plate Armor".into(),
-				rarity: None,
-				description: None,
 				weight: 65.0,
 				worth: Wallet::from([(1500, currency::Kind::Gold)]),
-				notes: None,
 				kind: ItemKind::Equipment(Equipment {
 					criteria: None,
 					mutators: vec![AddModifier {
@@ -417,7 +577,7 @@ mod test {
 					weapon: None,
 					attunement: None,
 				}),
-				tags: vec![],
+				..Default::default()
 			};
 			assert_eq!(from_doc(doc)?, expected);
 			Ok(())

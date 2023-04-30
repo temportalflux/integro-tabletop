@@ -164,9 +164,11 @@ impl Caster {
 
 	/// The path for [Character::get_selections_at] which contains the cantrip spell source ids.
 	pub fn cantrip_data_path(&self) -> Option<PathBuf> {
-		self.cantrip_capacity.is_some().then(|| self.all_spells_data_path().join("cantrips"))
+		self.cantrip_capacity
+			.is_some()
+			.then(|| self.all_spells_data_path().join("cantrips"))
 	}
-	
+
 	/// The path for [Character::get_selections_at] which contains the leveled spell source ids.
 	pub fn spells_data_path(&self) -> PathBuf {
 		self.all_spells_data_path().join("spells")

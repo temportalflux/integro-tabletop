@@ -35,7 +35,7 @@ pub struct Persistent {
 	pub description: Description,
 	pub ability_scores: EnumMap<Ability, u32>,
 	pub selected_values: PathMap<String>,
-	pub inventory: item::Inventory,
+	pub inventory: item::Inventory<item::EquipableEntry>,
 	pub conditions: Conditions,
 	pub hit_points: HitPoints,
 	pub inspiration: bool,
@@ -144,8 +144,7 @@ impl Persistent {
 		let Some(values) = self.selected_values.get_mut(key) else { return None; };
 		if index < values.len() {
 			Some(values.remove(index))
-		}
-		else {
+		} else {
 			None
 		}
 	}
