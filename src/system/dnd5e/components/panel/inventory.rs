@@ -11,6 +11,8 @@ use crate::{
 use uuid::Uuid;
 use yew::prelude::*;
 
+mod add_btn;
+pub use add_btn::*;
 mod browse_content;
 pub use browse_content::*;
 mod equip_toggle;

@@ -3,7 +3,10 @@ use crate::{
 	components::modal,
 	system::dnd5e::{
 		components::{
-			panel::{inventory::equip_toggle::ItemRowEquipBox, item_body, ItemBodyProps},
+			panel::{
+				inventory::equip_toggle::ItemRowEquipBox, item_body, AddItemButton,
+				AddItemOperation, ItemBodyProps,
+			},
 			SharedCharacter,
 		},
 		data::{
@@ -134,16 +137,44 @@ pub fn ItemModal(InventoryItemProps { id_path }: &InventoryItemProps) -> Html {
 		}
 	}
 
+	// TODO: In order to move only part of a stack, we should have a form field to allow the user to split the itemstack
+	// (taking stack - newsize and inserting that as a new item), so the user can move this stack to a new container.
+	let move_button = html! {
+		<AddItemButton
+			btn_classes={classes!("btn-outline-theme", "btn-sm", "mx-1")}
+			operation={AddItemOperation::Move {
+				item_id: id_path.clone(),
+				source_container: match id_path.len() {
+					1 => None,
+					// TODO: This should take the first n-1 elements as the parent path,
+					// right now it assumes that the current item is always in a top-level container.
+					n => Some(id_path[0..(n-1)].to_vec()),
+				},
+			}}
+			on_click={state.new_dispatch({
+				let close_modal = modal_dispatcher.callback(|_| modal::Action::Close);
+				let id_path = id_path.clone();
+				move |dst_id: Option<Vec<Uuid>>, persistent, _| {
+					let Some(item) = persistent.inventory.remove_at_path(&id_path) else { return None; };
+					persistent.inventory.insert_to(item, &dst_id);
+					close_modal.emit(());
+					None
+				}
+			})}
+		/>
+	};
+
 	html! {<>
 		<div class="modal-header">
 			<h1 class="modal-title fs-4">{item.name.clone()}</h1>
 			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
 		</div>
-		<div class="modal-body">
+		<div class="modal-body d-flex flex-column" style="min-height: 200px;">
 			{item_body(item, &state, Some(item_props))}
 			<span class="hr my-2" />
-			<div class="d-flex justify-content-center">
-				<button type="button" class="btn btn-sm btn-outline-theme" onclick={on_delete}>
+			<div class="d-flex justify-content-center mt-auto">
+				{move_button}
+				<button type="button" class="btn btn-sm btn-outline-theme mx-1" onclick={on_delete}>
 					<i class="bi bi-trash me-1" />
 					{"Delete"}
 				</button>

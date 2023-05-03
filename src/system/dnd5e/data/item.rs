@@ -55,7 +55,7 @@ impl Item {
 	}
 
 	pub fn can_stack(&self) -> bool {
-		matches!(&self.kind, ItemKind::Simple { .. })
+		matches!(&self.kind, ItemKind::Simple { .. }) && self.items.is_none()
 	}
 
 	pub fn can_add_to_stack(&self, stackable: &Item) -> bool {
@@ -368,11 +368,14 @@ impl<T: AsItem> Inventory<T> {
 	/// Attempts to insert the item into the specified item container.
 	/// If no such item at the id exists OR that item is not an item container,
 	/// the provided item is inserted into this inventory.
-	pub fn insert_to(&mut self, item: Item, container_id: &Option<Uuid>) -> Vec<Uuid> {
+	pub fn insert_to(&mut self, item: Item, container_id: &Option<Vec<Uuid>>) -> Vec<Uuid> {
 		if let Some(container_id) = container_id {
-			if let Some(existing_item) = self.get_mut(container_id) {
+			if let Some(existing_item) = self.get_mut_at_path(container_id) {
 				if let Some(container) = &mut existing_item.items {
-					return vec![container_id.clone(), container.insert(item)];
+					let id = container.insert(item);
+					let mut full_path = container_id.clone();
+					full_path.push(id);
+					return full_path;
 				}
 			}
 		}

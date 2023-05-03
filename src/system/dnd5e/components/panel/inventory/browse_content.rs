@@ -4,7 +4,7 @@ use crate::{
 		dnd5e::{
 			components::{
 				editor::CollapsableCard,
-				panel::{item_body, SystemItemProps},
+				panel::{item_body, AddItemButton, AddItemOperation, SystemItemProps},
 				validate_uint_only, SharedCharacter, WalletInline,
 			},
 			data::{
@@ -217,7 +217,7 @@ fn BrowsedItemCard(SystemItemProps { id }: &SystemItemProps) -> Html {
 	let add_item = Callback::from({
 		let state = state.clone();
 		let system = system.clone();
-		move |(id, container_id): (SourceId, Option<Uuid>)| {
+		move |(id, container_id): (SourceId, Option<Vec<Uuid>>)| {
 			let Some(item) = system.items.get(&id).cloned() else { return; };
 			state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
 				persistent.inventory.insert_to(item, &container_id);
@@ -258,6 +258,7 @@ fn BrowsedItemCard(SystemItemProps { id }: &SystemItemProps) -> Html {
 					<span>{item.name.clone()}</span>
 					<AddItemButton
 						root_classes={"ms-auto"} btn_classes={classes!("btn-theme", "btn-xs")}
+						operation={AddItemOperation::Add}
 						on_click={add_item}
 					/>
 				</>}
@@ -268,99 +269,6 @@ fn BrowsedItemCard(SystemItemProps { id }: &SystemItemProps) -> Html {
 		</CollapsableCard>
 	}
 }
-
-#[derive(Clone, PartialEq, Properties)]
-pub struct AddItemButtonProps {
-	#[prop_or_default]
-	pub root_classes: Classes,
-	#[prop_or_default]
-	pub btn_classes: Classes,
-	#[prop_or_else(|| 1)]
-	pub amount: u32,
-	#[prop_or_default]
-	pub disabled: bool,
-	#[prop_or_default]
-	pub purchase: bool,
-	pub on_click: Callback<Option<Uuid>>,
-}
-
-#[function_component]
-fn AddItemButton(props: &AddItemButtonProps) -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
-
-	let item_containers = {
-		use crate::system::dnd5e::data::item::AsItem;
-		let iter = state.inventory().iter_by_name();
-		let iter = iter.filter(|(_, entry)| entry.as_item().items.is_some());
-		let iter = iter.map(|(id, entry)| (id, entry.as_item()));
-		iter.collect::<Vec<_>>()
-	};
-
-	let mut btn_classes = classes!("btn", props.btn_classes.clone());
-
-	if !item_containers.is_empty() {
-		btn_classes.push("dropdown-toggle");
-	}
-
-	let prefix = match props.purchase {
-		true => "BUY",
-		false => "ADD",
-	};
-	let add_text = match (props.amount, item_containers.is_empty()) {
-		(n, _) if n < 1 => return Html::default(),
-		// Single item, single destination
-		(1, true) => format!("{prefix}"),
-		// Single item, multi destination
-		(1, false) => format!("{prefix} TO"),
-		(n, true) => format!("{prefix} {n}"),
-		(n, false) => format!("{prefix} {n} TO"),
-	};
-
-	if item_containers.is_empty() {
-		return html! {
-			<button
-				type="button" class={classes!(btn_classes, props.root_classes.clone())}
-				onclick={props.on_click.reform(|_| None)}
-				disabled={props.disabled}
-			>
-				{add_text}
-			</button>
-		};
-	}
-	
-	let make_container_button = |id: Option<Uuid>, name: String| -> Html {
-		html! {
-			<li>
-				<a class="dropdown-item"
-					onclick={props.on_click.reform(move |_| id)}
-				>
-					{name}
-				</a>
-			</li>
-		}
-	};
-	let mut container_entries = Vec::with_capacity(item_containers.len() + 1);
-	container_entries.push(make_container_button(None, "Equipment".into()));
-	container_entries.extend(item_containers.into_iter().map(|(id, item)| {
-		make_container_button(Some(id.clone()), item.name.clone())
-	}));
-	
-	html! {
-		<div class={classes!("btn-group", props.root_classes.clone())} role="group">
-			<button
-				type="button" class={btn_classes}
-				disabled={props.disabled}
-				data-bs-toggle="dropdown"
-			>
-				{add_text}
-			</button>
-			<ul class="dropdown-menu">
-				{container_entries}
-			</ul>
-		</div>
-	}
-}
-
 
 #[function_component]
 fn AddItemActions(SystemItemProps { id }: &SystemItemProps) -> Html {
@@ -375,7 +283,7 @@ fn AddItemActions(SystemItemProps { id }: &SystemItemProps) -> Html {
 		let id = id.clone();
 		let state = state.clone();
 		let system = system.clone();
-		move |(amount, cost, container_id): (u32, Wallet, Option<Uuid>)| {
+		move |(amount, cost, container_id): (u32, Wallet, Option<Vec<Uuid>>)| {
 			let Some(mut item) = system.items.get(&id).cloned() else { return; };
 			let items = if let ItemKind::Simple { count } = &mut item.kind {
 				*count *= amount;
@@ -453,6 +361,7 @@ fn AddItemActions(SystemItemProps { id }: &SystemItemProps) -> Html {
 					<span class="input-group-text spacer" />
 					<AddItemButton
 						root_classes={"submit"} btn_classes={classes!("btn-theme", "btn-xs")}
+						operation={AddItemOperation::Add}
 						amount={*amt_state} on_click={on_confirm}
 					/>
 				</div>
@@ -536,7 +445,7 @@ fn AddItemActions(SystemItemProps { id }: &SystemItemProps) -> Html {
 					<AddItemButton
 						root_classes={"submit"} btn_classes={classes!("btn-theme", "btn-xs")}
 						amount={*amt_state} on_click={on_confirm}
-						purchase={true}
+						operation={AddItemOperation::Buy}
 						disabled={not_enough_in_wallet}
 					/>
 				</div>

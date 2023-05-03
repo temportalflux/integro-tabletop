@@ -5,6 +5,10 @@
 @import "src/components/tag.scss";
 @import "src/system/dnd5e/components/ability/score.scss";
 
+.dropdown-item.disabled, .dropdown-item:disabled {
+	color: #adb5bd75;
+}
+
 .text-block {
 	white-space: pre-line;
 }

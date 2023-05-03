@@ -57,9 +57,9 @@ pub fn item_body(item: &Item, state: &SharedCharacter, props: Option<ItemBodyPro
 	}
 	match &item.kind {
 		ItemKind::Simple { count } => {
-			let inner = match props.on_quantity_changed {
-				None => html! { <span>{count}</span> },
-				Some(on_changed) => {
+			let inner = match (props.on_quantity_changed, item.can_stack()) {
+				(None, _) | (Some(_), false) => html! { <span>{count}</span> },
+				(Some(on_changed), true) => {
 					let count = *count;
 					let increment = Callback::from({
 						let on_changed = on_changed.clone();
