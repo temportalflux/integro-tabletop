@@ -337,7 +337,9 @@ impl<T: AsItem> Inventory<T> {
 	pub fn push(&mut self, item: Item) -> Uuid {
 		let id = Uuid::new_v4();
 		let search = self.itemids_by_name.binary_search_by(|id| {
-			let entry_item = self.get_item(id).unwrap();
+			let Some(entry_item) = self.get_item(id) else {
+				return std::cmp::Ordering::Less;
+			};
 			entry_item.name.cmp(&item.name)
 		});
 		let idx = match search {
@@ -361,6 +363,20 @@ impl<T: AsItem> Inventory<T> {
 			}
 		}
 		self.push(item)
+	}
+
+	/// Attempts to insert the item into the specified item container.
+	/// If no such item at the id exists OR that item is not an item container,
+	/// the provided item is inserted into this inventory.
+	pub fn insert_to(&mut self, item: Item, container_id: &Option<Uuid>) -> Vec<Uuid> {
+		if let Some(container_id) = container_id {
+			if let Some(existing_item) = self.get_mut(container_id) {
+				if let Some(container) = &mut existing_item.items {
+					return vec![container_id.clone(), container.insert(item)];
+				}
+			}
+		}
+		vec![self.insert(item)]
 	}
 
 	pub fn remove(&mut self, id: &Uuid) -> Option<Item> {

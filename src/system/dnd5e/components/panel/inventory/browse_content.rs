@@ -17,6 +17,7 @@ use crate::{
 	},
 	utility::InputExt,
 };
+use uuid::Uuid;
 use yew::prelude::*;
 use yew_hooks::use_async;
 
@@ -216,10 +217,10 @@ fn BrowsedItemCard(SystemItemProps { id }: &SystemItemProps) -> Html {
 	let add_item = Callback::from({
 		let state = state.clone();
 		let system = system.clone();
-		move |id: SourceId| {
+		move |(id, container_id): (SourceId, Option<Uuid>)| {
 			let Some(item) = system.items.get(&id).cloned() else { return; };
 			state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
-				persistent.inventory.insert(item);
+				persistent.inventory.insert_to(item, &container_id);
 				None
 			}));
 		}
@@ -247,7 +248,7 @@ fn BrowsedItemCard(SystemItemProps { id }: &SystemItemProps) -> Html {
 	);
 	let add_item = add_item.reform({
 		let id = id.clone();
-		move |_| id.clone()
+		move |container_id| (id.clone(), container_id)
 	});
 	html! {
 		<CollapsableCard
@@ -255,12 +256,10 @@ fn BrowsedItemCard(SystemItemProps { id }: &SystemItemProps) -> Html {
 			header_content={{
 				html! {<>
 					<span>{item.name.clone()}</span>
-					<button
-						type="button" class="btn btn-primary btn-xs ms-auto"
-						onclick={add_item}
-					>
-						{"Add"}
-					</button>
+					<AddItemButton
+						root_classes={"ms-auto"} btn_classes={classes!("btn-theme", "btn-xs")}
+						on_click={add_item}
+					/>
 				</>}
 			}}
 		>
@@ -269,6 +268,99 @@ fn BrowsedItemCard(SystemItemProps { id }: &SystemItemProps) -> Html {
 		</CollapsableCard>
 	}
 }
+
+#[derive(Clone, PartialEq, Properties)]
+pub struct AddItemButtonProps {
+	#[prop_or_default]
+	pub root_classes: Classes,
+	#[prop_or_default]
+	pub btn_classes: Classes,
+	#[prop_or_else(|| 1)]
+	pub amount: u32,
+	#[prop_or_default]
+	pub disabled: bool,
+	#[prop_or_default]
+	pub purchase: bool,
+	pub on_click: Callback<Option<Uuid>>,
+}
+
+#[function_component]
+fn AddItemButton(props: &AddItemButtonProps) -> Html {
+	let state = use_context::<SharedCharacter>().unwrap();
+
+	let item_containers = {
+		use crate::system::dnd5e::data::item::AsItem;
+		let iter = state.inventory().iter_by_name();
+		let iter = iter.filter(|(_, entry)| entry.as_item().items.is_some());
+		let iter = iter.map(|(id, entry)| (id, entry.as_item()));
+		iter.collect::<Vec<_>>()
+	};
+
+	let mut btn_classes = classes!("btn", props.btn_classes.clone());
+
+	if !item_containers.is_empty() {
+		btn_classes.push("dropdown-toggle");
+	}
+
+	let prefix = match props.purchase {
+		true => "BUY",
+		false => "ADD",
+	};
+	let add_text = match (props.amount, item_containers.is_empty()) {
+		(n, _) if n < 1 => return Html::default(),
+		// Single item, single destination
+		(1, true) => format!("{prefix}"),
+		// Single item, multi destination
+		(1, false) => format!("{prefix} TO"),
+		(n, true) => format!("{prefix} {n}"),
+		(n, false) => format!("{prefix} {n} TO"),
+	};
+
+	if item_containers.is_empty() {
+		return html! {
+			<button
+				type="button" class={classes!(btn_classes, props.root_classes.clone())}
+				onclick={props.on_click.reform(|_| None)}
+				disabled={props.disabled}
+			>
+				{add_text}
+			</button>
+		};
+	}
+	
+	let make_container_button = |id: Option<Uuid>, name: String| -> Html {
+		html! {
+			<li>
+				<a class="dropdown-item"
+					onclick={props.on_click.reform(move |_| id)}
+				>
+					{name}
+				</a>
+			</li>
+		}
+	};
+	let mut container_entries = Vec::with_capacity(item_containers.len() + 1);
+	container_entries.push(make_container_button(None, "Equipment".into()));
+	container_entries.extend(item_containers.into_iter().map(|(id, item)| {
+		make_container_button(Some(id.clone()), item.name.clone())
+	}));
+	
+	html! {
+		<div class={classes!("btn-group", props.root_classes.clone())} role="group">
+			<button
+				type="button" class={btn_classes}
+				disabled={props.disabled}
+				data-bs-toggle="dropdown"
+			>
+				{add_text}
+			</button>
+			<ul class="dropdown-menu">
+				{container_entries}
+			</ul>
+		</div>
+	}
+}
+
 
 #[function_component]
 fn AddItemActions(SystemItemProps { id }: &SystemItemProps) -> Html {
@@ -279,13 +371,11 @@ fn AddItemActions(SystemItemProps { id }: &SystemItemProps) -> Html {
 	let amt_to_buy = use_state_eq(|| 1u32);
 	let Some(item) = system.items.get(id) else { return html! {}; };
 
-	// TODO: item container destination selector
-
 	let add_items = Callback::from({
 		let id = id.clone();
 		let state = state.clone();
 		let system = system.clone();
-		move |(amount, cost): (u32, Wallet)| {
+		move |(amount, cost, container_id): (u32, Wallet, Option<Uuid>)| {
 			let Some(mut item) = system.items.get(&id).cloned() else { return; };
 			let items = if let ItemKind::Simple { count } = &mut item.kind {
 				*count *= amount;
@@ -303,7 +393,7 @@ fn AddItemActions(SystemItemProps { id }: &SystemItemProps) -> Html {
 						.remove(cost, auto_exchange);
 				}
 				for item in items {
-					persistent.inventory.insert(item);
+					persistent.inventory.insert_to(item, &container_id);
 				}
 				None
 			}));
@@ -343,8 +433,8 @@ fn AddItemActions(SystemItemProps { id }: &SystemItemProps) -> Html {
 			let on_confirm = Callback::from({
 				let add_items = add_items.clone();
 				let amt_state = amt_state.clone();
-				move |_| {
-					add_items.emit((*amt_state, Wallet::default()));
+				move |container_id| {
+					add_items.emit((*amt_state, Wallet::default(), container_id));
 					amt_state.set(1);
 				}
 			});
@@ -361,12 +451,10 @@ fn AddItemActions(SystemItemProps { id }: &SystemItemProps) -> Html {
 					/>
 					<button type="button" class="btn btn-outline-theme inc" onclick={increment}><i class="bi bi-plus" /></button>
 					<span class="input-group-text spacer" />
-					<button type="button" class="btn btn-theme submit" onclick={on_confirm}>
-						{match *amt_state {
-							1 => format!("ADD ITEM"),
-							n => format!("ADD {n} ITEMS"),
-						}}
-					</button>
+					<AddItemButton
+						root_classes={"submit"} btn_classes={classes!("btn-theme", "btn-xs")}
+						amount={*amt_state} on_click={on_confirm}
+					/>
 				</div>
 				<div class="form-text">
 					{match (*amt_state, *batch_size) {
@@ -423,8 +511,8 @@ fn AddItemActions(SystemItemProps { id }: &SystemItemProps) -> Html {
 			let on_confirm = Callback::from({
 				let add_items = add_items.clone();
 				let amt_state = amt_state.clone();
-				move |_| {
-					add_items.emit((*amt_state, purchase_cost));
+				move |container_id| {
+					add_items.emit((*amt_state, purchase_cost, container_id));
 					amt_state.set(1);
 				}
 			});
@@ -445,12 +533,12 @@ fn AddItemActions(SystemItemProps { id }: &SystemItemProps) -> Html {
 					/>
 					<button type="button" class="btn btn-outline-theme inc" onclick={increment}><i class="bi bi-plus" /></button>
 					<span class="input-group-text spacer" />
-					<button type="button" class="btn btn-theme submit" onclick={on_confirm} disabled={not_enough_in_wallet}>
-						{match *amt_state {
-							1 => format!("BUY ITEM"),
-							n => format!("BUY {n} ITEMS"),
-						}}
-					</button>
+					<AddItemButton
+						root_classes={"submit"} btn_classes={classes!("btn-theme", "btn-xs")}
+						amount={*amt_state} on_click={on_confirm}
+						purchase={true}
+						disabled={not_enough_in_wallet}
+					/>
 				</div>
 				<div class="form-text">
 					{match (*amt_state, batch_size) {

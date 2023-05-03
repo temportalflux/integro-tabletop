@@ -10,6 +10,8 @@ Things that contribute to your AC include the armor you wear, the shield you car
 and your Dexterity modifier. Not all characters wear armor or carry shields, however. \
 Without armor or a shield, your character's AC equals 10 + their Dexterity modifier.";
 
+// TODO: Rules text for Cover (half, 3/4, and full cover)
+
 #[function_component]
 pub fn ArmorClass() -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
