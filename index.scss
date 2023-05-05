@@ -450,3 +450,49 @@ input.slot[type="checkbox"]:checked:before {
 		margin-left: 10px;
 	}
 }
+
+.spell-section {
+	> .header {
+		display: flex!important;
+		border-bottom: var(--bs-border-width) var(--bs-border-style) var(--theme-frame-color-muted)!important;
+		> .title {
+			color: var(--theme-frame-color);
+		}
+		> .slots {
+			margin-left: auto!important;
+		}
+	}
+	> .empty-note {
+		font-size: 14px;
+	}
+}
+
+.panel.spells > .caster-stats {
+	margin: 0 8rem;
+	height: 55px;
+	> .names {
+		text-align: center!important;
+	}
+	> .row {
+		--bs-gutter-x: 0.5rem;
+		margin-top: -5px;
+		.stats {
+			text-align: center!important;
+			font-size: 15px;
+		}
+		.title {
+			text-align: center!important;
+			margin-top: -5px;
+			font-size: 12px;
+			font-weight: 600;
+		}
+	}
+}
+.panel.spells > .sections {
+	padding-right: 1rem!important;
+	overflow-y: scroll;
+	height: 460px;
+}
+.panel.spells:has(> .caster-stats) > .sections {
+	height: 400px;
+}

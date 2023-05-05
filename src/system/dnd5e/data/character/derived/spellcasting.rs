@@ -130,6 +130,10 @@ impl Spellcasting {
 		&self.always_prepared
 	}
 
+	pub fn has_casters(&self) -> bool {
+		!self.casters.is_empty()
+	}
+
 	pub fn iter_casters(&self) -> impl Iterator<Item = &Caster> {
 		self.casters.iter()
 	}
