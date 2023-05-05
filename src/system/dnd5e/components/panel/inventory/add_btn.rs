@@ -78,9 +78,10 @@ pub fn AddItemButton(props: &AddItemButtonProps) -> Html {
 	}
 
 	let is_valid_dst = |dst_id: &Option<Vec<Uuid>>| match &props.operation {
-		AddItemOperation::Move { item_id, source_container } => {
-			dst_id != source_container && dst_id.as_ref() != Some(item_id)
-		}
+		AddItemOperation::Move {
+			item_id,
+			source_container,
+		} => dst_id != source_container && dst_id.as_ref() != Some(item_id),
 		_ => true,
 	};
 	let make_container_button = |id: Option<Vec<Uuid>>, name: String| -> Html {

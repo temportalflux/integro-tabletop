@@ -22,6 +22,7 @@ pub use range::*;
 
 #[derive(Default, Clone, PartialEq, Debug)]
 pub struct Spell {
+	pub id: SourceId,
 	pub name: String,
 	pub description: description::Info,
 	pub rank: u8,
@@ -40,7 +41,9 @@ crate::impl_kdl_node!(Spell, "spell");
 impl SystemComponent for Spell {
 	type System = DnD5e;
 
-	fn add_component(self, _source_id: SourceId, _system: &mut Self::System) {}
+	fn add_component(self, _source_id: SourceId, system: &mut Self::System) {
+		system.spells.insert(self.id.clone(), self);
+	}
 }
 
 impl FromKDL for Spell {
@@ -74,6 +77,7 @@ impl FromKDL for Spell {
 		let tags = tags.into_iter().map(str::to_owned).collect();
 
 		Ok(Self {
+			id: ctx.id().clone(),
 			name,
 			description,
 			rank,

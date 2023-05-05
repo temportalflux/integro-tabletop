@@ -175,6 +175,18 @@ fn create_character(system: &system::dnd5e::DnD5e) -> system::dnd5e::data::chara
 		"Spellcasting/Cleric/cantrips",
 		"local://basic-rules@dnd5e/spells/guidance.kdl",
 	);
+	persistent.insert_selection(
+		"Spellcasting/Cleric/spells",
+		"local://basic-rules@dnd5e/spells/colorSpray.kdl",
+	);
+	persistent.insert_selection(
+		"Spellcasting/Cleric/spells",
+		"local://basic-rules@dnd5e/spells/scrying.kdl",
+	);
+	persistent.insert_selection(
+		"Spellcasting/Cleric/spells",
+		"local://basic-rules@dnd5e/spells/revivify.kdl",
+	);
 	persistent
 }
 

@@ -131,6 +131,7 @@ pub struct DnD5e {
 	pub subclasses: HashMap<SourceId, data::Subclass>,
 	pub conditions: HashMap<SourceId, data::Condition>,
 	pub items: HashMap<SourceId, data::item::Item>,
+	pub spells: HashMap<SourceId, data::Spell>,
 }
 
 impl super::core::System for DnD5e {
