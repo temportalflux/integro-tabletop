@@ -10,7 +10,7 @@ use crate::{
 	},
 };
 use itertools::Itertools;
-use std::{collections::BTreeMap, str::FromStr};
+use std::{collections::{BTreeMap, HashSet}, str::FromStr};
 use yew::prelude::*;
 
 #[function_component]
@@ -288,23 +288,46 @@ impl From<&Spell> for SpellRowProps {
 pub fn BrowseModal() -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
 	let system = use_context::<UseStateHandle<DnD5e>>().unwrap();
-	state.spellcasting().iter_casters().map(|caster| {
+	let mut sections = Vec::new();
+	for caster in state.spellcasting().iter_casters() {
 		let restriction = &caster.restriction;
-		if let Some(key_selected_cantrips) = caster.cantrip_data_path() {
-			let max_cantrips = caster.cantrip_capacity(state.persistent());
-			let selected_cantrips = state.get_selections_at(&key_selected_cantrips);
-		}
+
+		let max_cantrips = caster.cantrip_capacity(state.persistent());
+		let selected_cantrips = match caster.cantrip_data_path() {
+			None => HashSet::new(),
+			Some(key) => match state.get_selections_at(&key) {
+				None => HashSet::new(),
+				Some(selections) => {
+					selections.into_iter().filter_map(|id| SourceId::from_str(id).ok()).collect::<HashSet<_>>()
+				}
+			},
+		};
+
 		let max_spells = caster.spell_capacity(&state);
 		let max_spell_rank = caster.max_spell_rank(&state);
-		let selected_spells = state.get_selections_at(&caster.spells_data_path());
-	});
+		let selected_spells = match state.get_selections_at(&caster.spells_data_path()) {
+			None => HashSet::new(),
+			Some(selections) => {
+				selections.into_iter().filter_map(|id| SourceId::from_str(id).ok()).collect::<HashSet<_>>()
+			}
+		};
+
+		sections.push(html! {
+			<div>
+				<div>{caster.name().clone()}</div>
+				<div>{format!("Cantrips: {} / {max_cantrips}", selected_cantrips.len())}</div>
+				<div>{format!("Spells: {} / {max_spells}", selected_spells.len())}</div>
+				<div>{format!("Max Spell Level: {max_spell_rank:?}")}</div>
+			</div>
+		});
+	}
 	html! {<>
 		<div class="modal-header">
 			<h1 class="modal-title fs-4">{"Manage Spells"}</h1>
 			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
 		</div>
 		<div class="modal-body">
-			{"Spell management!"}
+			{sections}
 		</div>
 	</>}
 }
