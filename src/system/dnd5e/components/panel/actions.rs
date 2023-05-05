@@ -341,7 +341,7 @@ pub fn Actions() -> Html {
 	html! {<>
 		<Tags>{tag_htmls}</Tags>
 		{budget}
-		<div style="overflow-y: scroll; height: 455px;">
+		<div class="pe-3" style="overflow-y: scroll; height: 455px;">
 			{panes}
 		</div>
 	</>}
@@ -534,7 +534,7 @@ fn ActionOverview(ActionProps { entry }: &ActionProps) -> Html {
 			{match entry.children.is_empty() {
 				true => html! {},
 				false => html! {
-					<div class="children mx-2 mb-1" onclick={stop_propagation()}>
+					<div class="children ms-3 mb-1" onclick={stop_propagation()}>
 						{entry.children.iter().cloned().map(|entry| {
 							html! { <ActionOverview {entry} /> }
 						}).collect::<Vec<_>>()}
