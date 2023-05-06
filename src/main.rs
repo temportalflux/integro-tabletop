@@ -171,22 +171,18 @@ fn create_character(system: &system::dnd5e::DnD5e) -> system::dnd5e::data::chara
 		}),
 		..Default::default()
 	});
-	persistent.insert_selection(
-		"Spellcasting/Cleric/cantrips",
-		"local://basic-rules@dnd5e/spells/guidance.kdl",
-	);
-	persistent.insert_selection(
-		"Spellcasting/Cleric/spells",
-		"local://basic-rules@dnd5e/spells/colorSpray.kdl",
-	);
-	persistent.insert_selection(
-		"Spellcasting/Cleric/spells",
-		"local://basic-rules@dnd5e/spells/scrying.kdl",
-	);
-	persistent.insert_selection(
-		"Spellcasting/Cleric/spells",
-		"local://basic-rules@dnd5e/spells/revivify.kdl",
-	);
+
+	for (caster, id_str) in [
+		("Cleric", "local://basic-rules@dnd5e/spells/guidance.kdl"),
+		("Cleric", "local://basic-rules@dnd5e/spells/colorSpray.kdl"),
+		("Cleric", "local://basic-rules@dnd5e/spells/scrying.kdl"),
+		("Cleric", "local://basic-rules@dnd5e/spells/revivify.kdl"),
+	] {
+		let Ok(id) = SourceId::from_str(id_str) else { continue; };
+		let Some(spell) = system.spells.get(&id) else { continue; };
+		persistent.selected_spells.insert(&caster, spell);
+	}
+
 	persistent
 }
 

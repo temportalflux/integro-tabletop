@@ -1,16 +1,13 @@
 use crate::{
 	components::modal,
-	system::{
-		core::SourceId,
-		dnd5e::{
-			components::{SharedCharacter, editor::CollapsableCard},
-			data::{proficiency, Spell},
-			DnD5e,
-		},
+	system::dnd5e::{
+		components::{editor::CollapsableCard, SharedCharacter},
+		data::{proficiency, Spell},
+		DnD5e,
 	},
 };
 use itertools::Itertools;
-use std::{collections::{BTreeMap, HashSet}, str::FromStr};
+use std::collections::BTreeMap;
 use yew::prelude::*;
 
 #[function_component]
@@ -46,50 +43,20 @@ pub fn Spells() -> Html {
 			section.slot_count = Some(slot_count);
 		}
 	}
-	{
-		// TODO: Spellcasting should act more like an inventory, for the sake of being able to
-		// load character without relying on modules being loaded. Instead of selected spell ids
-		// being stored in selections, the spellcasting features should have a vec of
-		// selected spells whose values are the `Spell` struct (like how items are duplicated to the character and stored).
-		let mut spell_ids = Vec::new();
-		for caster in state.spellcasting().iter_casters() {
-			if let Some(key_selected_cantrips) = caster.cantrip_data_path() {
-				if let Some(selections) = state.get_selections_at(&key_selected_cantrips) {
-					spell_ids.extend(
-						selections
-							.iter()
-							.filter_map(|id_str| SourceId::from_str(id_str).ok()),
-					);
-				}
-			}
-			if let Some(selections) = state.get_selections_at(&caster.spells_data_path()) {
-				spell_ids.extend(
-					selections
-						.iter()
-						.filter_map(|id_str| SourceId::from_str(id_str).ok()),
-				);
-			}
-		}
-		for spell_id in spell_ids {
-			let Some(spell) = system.spells.get(&spell_id) else { continue; };
-			let max_rank = match spell.rank {
-				0 => 0,
-				_ => MAX_SPELL_RANK,
-			};
-			for section_rank in spell.rank..=max_rank {
-				let section = sections.get_mut(&section_rank).expect(&format!(
-					"Spell rank {} is not supported by UI, must be in the range of [0, {MAX_SPELL_RANK}].",
-					section_rank
-				));
-				if section.slot_count.is_some() {
-					section.spells.push(SpellRowProps::from(spell));
+	for (spell, caster_names) in state.persistent().selected_spells.iter_all_casters() {
+		let max_rank = match spell.rank {
+			0 => 0,
+			_ => MAX_SPELL_RANK,
+		};
+		for section_rank in spell.rank..=max_rank {
+			let Some(section) = sections.get_mut(&section_rank) else { continue; };
+			if section_rank == 0 || section.slot_count.is_some() {
+				for caster_name in caster_names {
+					section.insert_spell(spell, caster_name);
 				}
 			}
 		}
-		for (_rank, section) in &mut sections {
-			section.spells.sort_by(|a, b| a.name.cmp(&b.name));
-		}
-	};
+	}
 
 	let sections = {
 		use convert_case::{Case, Casing};
@@ -137,18 +104,24 @@ pub fn Spells() -> Html {
 			let contents = match section_props.spells.is_empty() {
 				true => html! { <p class="empty-note mx-4">{empty_note}</p> },
 				false => {
-					let rows = section_props.spells.iter().map(|row_props| html! {
-						<div class="d-flex">
-							<div class="me-2">{row_props.name.clone()}</div>
-							<div class="me-2">{row_props.id.to_string()}</div>
-						</div>
-					}).collect::<Vec<_>>();
+					let rows = section_props
+						.spells
+						.iter()
+						.map(|entry| {
+							html! {
+								<div class="d-flex">
+									<div class="me-2">{entry.spell.name.clone()}</div>
+									<div class="me-2">{entry.spell.id.to_string()}</div>
+								</div>
+							}
+						})
+						.collect::<Vec<_>>();
 					html! {
 						<div>
 							{rows}
 						</div>
 					}
-				},
+				}
 			};
 			html.push(html! {
 				<div class="spell-section mb-2">
@@ -225,31 +198,6 @@ pub fn Spells() -> Html {
 
 			<div class="sections">
 				{sections}
-
-				<div>
-					{format!("Spell Slots: {:?}", state.spellcasting().spell_slots(&*state))}
-				</div>
-				<div>
-					{state.spellcasting().iter_casters().map(|caster| {
-						html! {
-							<div>
-								<strong>{caster.name().clone()}</strong>
-								<div>
-									{format!("Restriction: {:?}", caster.restriction)}
-								</div>
-								<div>
-									{format!("Cantrip Capacity: {:?}", caster.cantrip_capacity(state.persistent()))}
-								</div>
-								{caster.cantrip_data_path().map(|key| {
-									html! { <div>{format!("Cantrips: {:?}", state.get_selections_at(&key))}</div> }
-								}).unwrap_or_default()}
-								<div>{format!("Spell Capacity: {:?}", caster.spell_capacity(&state))}</div>
-								<div>{format!("Max Level: {:?}", caster.max_spell_rank(&state))}</div>
-								<div>{format!("Spells: {:?}", state.get_selections_at(&caster.spells_data_path()))}</div>
-							</div>
-						}
-					}).collect::<Vec<_>>()}
-				</div>
 				<div>
 					<strong>{"Always Prepared:"}</strong>
 					{entries}
@@ -262,25 +210,26 @@ pub fn Spells() -> Html {
 	}
 }
 
-#[derive(Clone, PartialEq, Properties, Default)]
-struct SectionProps {
+#[derive(Clone, PartialEq, Default)]
+struct SectionProps<'c> {
 	slot_count: Option<usize>,
-	spells: Vec<SpellRowProps>,
+	spells: Vec<SpellEntry<'c>>,
 }
-
-#[derive(Clone, PartialEq, Properties)]
-struct SpellRowProps {
-	id: SourceId,
-	name: String,
-	rank: u8,
+#[derive(Clone, PartialEq)]
+struct SpellEntry<'c> {
+	caster_name: &'c String,
+	spell: &'c Spell,
 }
-impl From<&Spell> for SpellRowProps {
-	fn from(value: &Spell) -> Self {
-		Self {
-			id: value.id.clone(),
-			name: value.name.clone(),
-			rank: value.rank,
-		}
+impl<'c> SectionProps<'c> {
+	pub fn insert_spell(&mut self, spell: &'c Spell, caster_name: &'c String) {
+		let idx = self.spells.binary_search_by(|a: &SpellEntry<'c>| {
+			a.spell
+				.rank
+				.cmp(&spell.rank)
+				.then(a.spell.name.cmp(&spell.name))
+		});
+		let idx = idx.unwrap_or_else(|e| e);
+		self.spells.insert(idx, SpellEntry { spell, caster_name });
 	}
 }
 
@@ -293,47 +242,44 @@ pub fn BrowseModal() -> Html {
 		let restriction = &caster.restriction;
 
 		let max_cantrips = caster.cantrip_capacity(state.persistent());
-		let selected_cantrip_ids = match caster.cantrip_data_path() {
-			None => HashSet::new(),
-			Some(key) => match state.get_selections_at(&key) {
-				None => HashSet::new(),
-				Some(selections) => {
-					selections.into_iter().filter_map(|id| SourceId::from_str(id).ok()).collect::<HashSet<_>>()
-				}
-			},
-		};
-
 		let max_spells = caster.spell_capacity(&state);
 		let max_spell_rank = caster.max_spell_rank(&state);
-		let selected_spell_ids = match state.get_selections_at(&caster.spells_data_path()) {
-			None => HashSet::new(),
-			Some(selections) => {
-				selections.into_iter().filter_map(|id| SourceId::from_str(id).ok()).collect::<HashSet<_>>()
+		let mut num_cantrips = 0;
+		let mut num_spells = 0;
+		let num_all_selections = state
+			.persistent()
+			.selected_spells
+			.len_caster(caster.name())
+			.unwrap_or(0);
+		let mut selected_spells = Vec::with_capacity(num_all_selections);
+		if let Some(iter_selected) = state
+			.persistent()
+			.selected_spells
+			.iter_caster(caster.name())
+		{
+			for spell in iter_selected {
+				match spell.rank {
+					0 => num_cantrips += 1,
+					_ => num_spells += 1,
+				}
+				// Since we are only processing one caster per section, we can assume the
+				// selected spells have already been sorted (rank then name) when they were loaded from kdl.
+				selected_spells.push(spell);
 			}
-		};
-
-		let mut selected_spells = Vec::with_capacity(selected_cantrip_ids.len() + selected_spell_ids.len());
-		for spell_id in selected_cantrip_ids.union(&selected_spell_ids) {
-			let Some(spell) = system.spells.get(&spell_id) else { continue; };
-			let idx = selected_spells.binary_search_by(|a: &&Spell| {
-				a.rank.cmp(&spell.rank).then(a.name.cmp(&spell.name))
-			});
-			let idx = idx.unwrap_or_else(|e| e);
-			selected_spells.insert(idx, spell);
 		}
 
 		sections.push(html! {
 			<div>
 				<div>{caster.name().clone()}</div>
-				
+
 				<div>
 					<CollapsableCard
 						id={"selected-spells"}
 						header_content={{html! { {"Selected Spells"} }}}
 						body_classes={"spell-list selected"}
 					>
-						<div>{format!("Cantrips: {} / {max_cantrips}", selected_cantrip_ids.len())}</div>
-						<div>{format!("Spells: {} / {max_spells}", selected_spell_ids.len())}</div>
+						<div>{format!("Cantrips: {num_cantrips} / {max_cantrips}")}</div>
+						<div>{format!("Spells: {num_spells} / {max_spells}")}</div>
 						{selected_spells.into_iter().map(|spell| {
 							html! {
 								<div>

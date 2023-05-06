@@ -5,13 +5,17 @@ use crate::{
 		dnd5e::data::{
 			bundle::{Background, Lineage, Race, RaceVariant, Upbringing},
 			character::Character,
-			item, Ability, Class, Condition, Feature,
+			item, Ability, Class, Condition, Feature, Spell,
 		},
 	},
 	utility::MutatorGroup,
 };
 use enum_map::EnumMap;
-use std::{collections::BTreeMap, path::Path, sync::Arc};
+use std::{
+	collections::{BTreeMap, HashMap, HashSet},
+	path::Path,
+	sync::Arc,
+};
 
 mod description;
 pub use description::*;
@@ -35,6 +39,7 @@ pub struct Persistent {
 	pub description: Description,
 	pub ability_scores: EnumMap<Ability, u32>,
 	pub selected_values: PathMap<String>,
+	pub selected_spells: SelectedSpells,
 	pub inventory: item::Inventory<item::EquipableEntry>,
 	pub conditions: Conditions,
 	pub hit_points: HitPoints,
@@ -274,4 +279,110 @@ impl MutatorGroup for Conditions {
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct Settings {
 	pub currency_auto_exchange: bool,
+}
+
+#[derive(Clone, PartialEq, Default, Debug)]
+pub struct SelectedSpells {
+	/// All selected spells for all casters and other spellcasting features.
+	cache: HashMap<SourceId, (Spell, HashSet</*caster name*/ String>)>,
+	/// The ids for spells selected for any caster designation,
+	/// values sorted by rank then name of the spell (which is in `cache`).
+	per_caster: HashMap<String, Vec<SourceId>>,
+	/// Sorted list (by rank then name of the spell) of all selected spells for caster features.
+	all_caster_selection: Vec<SourceId>,
+}
+impl SelectedSpells {
+	pub fn insert(&mut self, caster_id: &impl AsRef<str>, spell: &Spell) {
+		#[derive(PartialEq)]
+		enum NewEntry {
+			Uncached,
+			ForCaster,
+		}
+		let new_entry = match self.cache.get_mut(&spell.id) {
+			None => {
+				self.cache.insert(
+					spell.id.clone(),
+					(
+						spell.clone(),
+						HashSet::from([caster_id.as_ref().to_owned()]),
+					),
+				);
+				Some(NewEntry::Uncached)
+			}
+			Some((_spell, required_by)) => {
+				match required_by.insert(caster_id.as_ref().to_owned()) {
+					true => Some(NewEntry::ForCaster),
+					false => None,
+				}
+			}
+		};
+
+		match self.per_caster.get_mut(caster_id.as_ref()) {
+			None => {
+				self.per_caster
+					.insert(caster_id.as_ref().to_owned(), vec![spell.id.clone()]);
+			}
+			Some(selection_ids) => {
+				let idx = Self::binary_search_ids(selection_ids, &self.cache, spell);
+				selection_ids.insert(idx, spell.id.clone());
+			}
+		}
+
+		if new_entry == Some(NewEntry::Uncached) {
+			let idx = Self::binary_search_ids(&self.all_caster_selection, &self.cache, spell);
+			self.all_caster_selection.insert(idx, spell.id.clone());
+		}
+	}
+
+	fn binary_search_ids<'this>(
+		ids: &'this Vec<SourceId>,
+		cache: &'this HashMap<SourceId, (Spell, HashSet</*caster name*/ String>)>,
+		other: &Spell,
+	) -> usize {
+		ids.binary_search_by(|entry_id| {
+			let Some((entry, _)) = cache.get(entry_id) else { return std::cmp::Ordering::Less; };
+			entry
+				.rank
+				.cmp(&other.rank)
+				.then(entry.name.cmp(&other.name))
+		})
+		.unwrap_or_else(|err_idx| err_idx)
+	}
+
+	pub fn remove(&mut self, caster_id: &String, spell_id: &SourceId) {
+		{
+			let Some(caster_list) = self.per_caster.get_mut(caster_id) else { return; };
+			caster_list.retain(|id| id != spell_id);
+		}
+
+		let was_last_requirement = {
+			let Some((_spell, required_by)) = self.cache.get_mut(&spell_id) else { return; };
+			required_by.remove(caster_id);
+			required_by.is_empty()
+		};
+		if was_last_requirement {
+			let _ = self.cache.remove(&spell_id);
+			self.all_caster_selection.retain(|id| id != spell_id);
+		}
+	}
+
+	pub fn iter_all_casters(&self) -> impl Iterator<Item = &(Spell, HashSet<String>)> {
+		self.all_caster_selection
+			.iter()
+			.filter_map(|id| self.cache.get(id))
+	}
+
+	pub fn len_caster(&self, id: &String) -> Option<usize> {
+		self.per_caster.get(id).map(|list| list.len())
+	}
+
+	pub fn iter_caster(&self, id: &String) -> Option<impl Iterator<Item = &Spell>> {
+		let Some(caster) = self.per_caster.get(id) else { return None; };
+		Some(
+			caster
+				.iter()
+				.filter_map(|id| self.cache.get(id))
+				.map(|(spell, _)| spell),
+		)
+	}
 }
