@@ -3,7 +3,7 @@ use crate::{
 	system::{
 		core::SourceId,
 		dnd5e::{
-			components::SharedCharacter,
+			components::{SharedCharacter, editor::CollapsableCard},
 			data::{proficiency, Spell},
 			DnD5e,
 		},
@@ -293,7 +293,7 @@ pub fn BrowseModal() -> Html {
 		let restriction = &caster.restriction;
 
 		let max_cantrips = caster.cantrip_capacity(state.persistent());
-		let selected_cantrips = match caster.cantrip_data_path() {
+		let selected_cantrip_ids = match caster.cantrip_data_path() {
 			None => HashSet::new(),
 			Some(key) => match state.get_selections_at(&key) {
 				None => HashSet::new(),
@@ -305,19 +305,54 @@ pub fn BrowseModal() -> Html {
 
 		let max_spells = caster.spell_capacity(&state);
 		let max_spell_rank = caster.max_spell_rank(&state);
-		let selected_spells = match state.get_selections_at(&caster.spells_data_path()) {
+		let selected_spell_ids = match state.get_selections_at(&caster.spells_data_path()) {
 			None => HashSet::new(),
 			Some(selections) => {
 				selections.into_iter().filter_map(|id| SourceId::from_str(id).ok()).collect::<HashSet<_>>()
 			}
 		};
 
+		let mut selected_spells = Vec::with_capacity(selected_cantrip_ids.len() + selected_spell_ids.len());
+		for spell_id in selected_cantrip_ids.union(&selected_spell_ids) {
+			let Some(spell) = system.spells.get(&spell_id) else { continue; };
+			let idx = selected_spells.binary_search_by(|a: &&Spell| {
+				a.rank.cmp(&spell.rank).then(a.name.cmp(&spell.name))
+			});
+			let idx = idx.unwrap_or_else(|e| e);
+			selected_spells.insert(idx, spell);
+		}
+
 		sections.push(html! {
 			<div>
 				<div>{caster.name().clone()}</div>
-				<div>{format!("Cantrips: {} / {max_cantrips}", selected_cantrips.len())}</div>
-				<div>{format!("Spells: {} / {max_spells}", selected_spells.len())}</div>
-				<div>{format!("Max Spell Level: {max_spell_rank:?}")}</div>
+				
+				<div>
+					<CollapsableCard
+						id={"selected-spells"}
+						header_content={{html! { {"Selected Spells"} }}}
+						body_classes={"spell-list selected"}
+					>
+						<div>{format!("Cantrips: {} / {max_cantrips}", selected_cantrip_ids.len())}</div>
+						<div>{format!("Spells: {} / {max_spells}", selected_spell_ids.len())}</div>
+						{selected_spells.into_iter().map(|spell| {
+							html! {
+								<div>
+									{spell.name.clone()}
+									{format!(" ({})", spell.rank)}
+								</div>
+							}
+						}).collect::<Vec<_>>()}
+					</CollapsableCard>
+					<CollapsableCard
+						id={"available-spells"}
+						header_content={{html! { {"Available Spells"} }}}
+						body_classes={"spell-list available"}
+					>
+						{"List of all spells that can be selected (known or prepared)"}
+						<div>{format!("Restriction: {restriction:?}")}</div>
+						<div>{format!("Max Spell Level: {max_spell_rank:?}")}</div>
+					</CollapsableCard>
+				</div>
 			</div>
 		});
 	}
