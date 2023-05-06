@@ -268,18 +268,51 @@ pub fn BrowseModal() -> Html {
 			}
 		}
 
+		// TODO: Search bar for available spells section
+		let available_spells = {
+			let mut relevant_spells = Vec::new();
+			'iter_spell: for (_id, spell) in system.spells.iter() {
+				// TODO: Available spells section wont have togglable filters for max_rank or restriction,
+				// BUT when custom feats are a thing, users should be able to add a feat which grants them
+				// access to a spell that isnt in their normal class list.
+				// e.g. feat which allows the player to have access to a spell
+				// 			OR a feat which grants a spell as always prepared.
+				// Filter based on restriction
+				if let Some(max_rank) = &max_spell_rank {
+					if spell.rank > *max_rank {
+						continue;
+					}
+				}
+				for tag in &restriction.tags {
+					if !spell.tags.contains(tag) {
+						continue 'iter_spell;
+					}
+				}
+				// Insertion sort by rank & name
+				let idx = relevant_spells.binary_search_by(|a: &&Spell| {
+					a.rank.cmp(&spell.rank).then(a.name.cmp(&spell.name))
+				}).unwrap_or_else(|err_idx| err_idx);
+				relevant_spells.insert(idx, spell);
+			}
+			relevant_spells.into_iter().map(|spell| html! {
+				<div>
+					{spell.name.clone()}
+					{format!(" ({})", spell.rank)}
+				</div>
+			}).collect::<Vec<_>>()
+		};
+
 		sections.push(html! {
 			<div>
 				<div>{caster.name().clone()}</div>
-
+				<div>{format!("Cantrips: {num_cantrips} / {max_cantrips}")}</div>
+				<div>{format!("Spells: {num_spells} / {max_spells}")}</div>
 				<div>
 					<CollapsableCard
 						id={"selected-spells"}
 						header_content={{html! { {"Selected Spells"} }}}
 						body_classes={"spell-list selected"}
 					>
-						<div>{format!("Cantrips: {num_cantrips} / {max_cantrips}")}</div>
-						<div>{format!("Spells: {num_spells} / {max_spells}")}</div>
 						{selected_spells.into_iter().map(|spell| {
 							html! {
 								<div>
@@ -294,9 +327,9 @@ pub fn BrowseModal() -> Html {
 						header_content={{html! { {"Available Spells"} }}}
 						body_classes={"spell-list available"}
 					>
-						{"List of all spells that can be selected (known or prepared)"}
-						<div>{format!("Restriction: {restriction:?}")}</div>
-						<div>{format!("Max Spell Level: {max_spell_rank:?}")}</div>
+						<div>
+							{available_spells}
+						</div>
 					</CollapsableCard>
 				</div>
 			</div>

@@ -24,9 +24,13 @@
 - must be in the top-level inventory (equipment)
 
 ## Spellcasting
-- Fill out the spells panel
-- a spellcasting feature populates some top-level derived optional struct for spellcasting
-- persistent data stores what spells are prepared (vs the feature or containers which store what is known/learned)
+- Spell panel rows for selected spells
+	- cast vs use buttons
+- non-stub search functionality in main panel
+- Spell management
+	- collasable sections for selected and available spells
+	- selecting and unselecting spells
+	- search available spells to be selected
 - Spell Components
 	- items can have the `SpellComponent` tag
 	- spells which have spell components specify the name, an optional gold amount, and if there is a gold amount, optionally consume it
@@ -48,6 +52,16 @@
 - Max Level Per Spell (optional); max level any spell in this container can be (e.g. spell gems have a cap on the tier of spell)
 - Max Total Level (optional): max value of the sum of all spell levels in this container (e.g. ring of spell storing has a general cap on all stored spells)
 - Entries (list of spells)
+- Some spell containers can only be transcribed from, never prepare or cast from
+
+## Inventory
+- non-stub search functionality
+
+## Performance
+- When a character is loaded, it shouldnt require any extra data from modules, it should be able to be fully self contained
+	- known problem areas: features which grant innate spellcasting
+- load spells and items in the background after the character is loaded
+- dont load feature groups (class, race, background, lineage, etc) unless the character needs access to editor. Once a character is created, the user doesn't usually need access to any of the other components that arent inlined into their character data.
 
 ## Description
 - Gender/Pronouns
@@ -65,6 +79,7 @@ Allow users to create new elements
 - Skills
 - Other Proficiencies
 - Defenses
+- Feats
 
 ## Serialization
 - `trait AsKDL` & `trait FromKDL` to handling kdl text <=> structs
