@@ -10,6 +10,16 @@ use itertools::Itertools;
 use std::collections::BTreeMap;
 use yew::prelude::*;
 
+fn rank_suffix(rank: u8) -> &'static str {
+	match rank {
+		1 => "st",
+		2 => "nd",
+		3 => "rd",
+		4..=9 => "th",
+		_ => "",
+	}
+}
+
 #[function_component]
 pub fn Spells() -> Html {
 	static MAX_SPELL_RANK: u8 = 9;
@@ -62,13 +72,7 @@ pub fn Spells() -> Html {
 		use convert_case::{Case, Casing};
 		let mut html = Vec::new();
 		for (rank, section_props) in sections {
-			let suffix = match rank {
-				1 => "st",
-				2 => "nd",
-				3 => "rd",
-				4..=9 => "th",
-				_ => "",
-			};
+			let suffix = rank_suffix(rank);
 			let rank_text = match rank {
 				0 => "cantrip",
 				_ => "level",
@@ -294,11 +298,9 @@ pub fn BrowseModal() -> Html {
 				}).unwrap_or_else(|err_idx| err_idx);
 				relevant_spells.insert(idx, spell);
 			}
-			relevant_spells.into_iter().map(|spell| html! {
-				<div>
-					{spell.name.clone()}
-					{format!(" ({})", spell.rank)}
-				</div>
+			relevant_spells.into_iter().map(|spell| {
+				let action = html! { <button type="button" class="btn btn-xs btn-outline-theme select">{"Select"}</button> };
+				spell_list_item(spell, action)
 			}).collect::<Vec<_>>()
 		};
 
@@ -314,12 +316,8 @@ pub fn BrowseModal() -> Html {
 						body_classes={"spell-list selected"}
 					>
 						{selected_spells.into_iter().map(|spell| {
-							html! {
-								<div>
-									{spell.name.clone()}
-									{format!(" ({})", spell.rank)}
-								</div>
-							}
+							let action = html! { <button type="button" class="btn btn-xs btn-outline-theme select">{"Select"}</button> };
+							spell_list_item(spell, action)
 						}).collect::<Vec<_>>()}
 					</CollapsableCard>
 					<CollapsableCard
@@ -327,9 +325,7 @@ pub fn BrowseModal() -> Html {
 						header_content={{html! { {"Available Spells"} }}}
 						body_classes={"spell-list available"}
 					>
-						<div>
-							{available_spells}
-						</div>
+						{available_spells}
 					</CollapsableCard>
 				</div>
 			</div>
@@ -344,4 +340,38 @@ pub fn BrowseModal() -> Html {
 			{sections}
 		</div>
 	</>}
+}
+
+fn spell_list_item(spell: &Spell, action: Html) -> Html {
+	let collapse_id = spell.id.ref_id();
+	html! {
+		<div class="spell mb-1">
+			<div class="header mb-1">
+				<button
+					role="button" class={"collapse_trigger arrow_left collapsed"}
+					data-bs-toggle="collapse"
+					data-bs-target={format!("#{collapse_id}")}
+				>
+					{spell.name.clone()}
+					<span class="spell_rank_suffix">
+						{"("}
+						{match spell.rank {
+							0 => "Cantrip".into(),
+							n => format!("{n}{}", rank_suffix(n))
+						}}
+						{")"}
+					</span>
+				</button>
+				{action}
+			</div>
+			<div class="collapse mb-2" id={collapse_id}>
+				<div class="card">
+					<div class="card-body px-2 py-1">
+						<div>{"spell content for "}{spell.name.clone()}</div>
+						<div>{spell.id.clone()}</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	}
 }
