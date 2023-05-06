@@ -1,0 +1,13 @@
+// An example of finding a wizard's spellbook, which the user cannot prepare or cast from, but can transcribe spells from.
+item name="Karnac's Spellbook" weight=3.0 {
+	kind "Simple"
+	spells transcribe=true {
+		contents {
+			spell "basic-rules@dnd5e/spells/arcaneLock.kdl"
+			spell "basic-rules@dnd5e/spells/glyphOfWarding.kdl"
+			spell "basic-rules@dnd5e/spells/identify.kdl"
+			spell "basic-rules@dnd5e/spells/falseLife.kdl"
+			spell "basic-rules@dnd5e/spells/teleport.kdl"
+		}
+	}
+}
