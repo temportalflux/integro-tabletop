@@ -51,7 +51,10 @@ impl SourceId {
 		let prefix = match &self.module {
 			None => String::default(),
 			Some(ModuleId::Local { name }) => format!("{name}-"),
-			Some(ModuleId::Github { user_org, repository }) => format!("{user_org}_{repository}-"),
+			Some(ModuleId::Github {
+				user_org,
+				repository,
+			}) => format!("{user_org}_{repository}-"),
 		};
 		let name = self.path.file_stem().unwrap().to_str().unwrap();
 		format!("{prefix}{name}")

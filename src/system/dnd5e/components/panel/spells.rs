@@ -1,9 +1,12 @@
 use crate::{
 	components::modal,
-	system::dnd5e::{
-		components::{editor::CollapsableCard, SharedCharacter},
-		data::{proficiency, Spell},
-		DnD5e,
+	system::{
+		core::SourceId,
+		dnd5e::{
+			components::{editor::CollapsableCard, SharedCharacter},
+			data::{character::spellcasting::Restriction, proficiency, Spell},
+			DnD5e,
+		},
 	},
 };
 use itertools::Itertools;
@@ -25,16 +28,6 @@ pub fn Spells() -> Html {
 	static MAX_SPELL_RANK: u8 = 9;
 	let state = use_context::<SharedCharacter>().unwrap();
 	let system = use_context::<UseStateHandle<DnD5e>>().unwrap();
-	let modal_dispatcher = use_context::<modal::Context>().unwrap();
-	let open_browser = modal_dispatcher.callback(|_| {
-		modal::Action::Open(modal::Props {
-			centered: true,
-			scrollable: true,
-			root_classes: classes!("spells", "browse"),
-			content: html! {<BrowseModal />},
-			..Default::default()
-		})
-	});
 
 	let mut entries = Vec::new();
 	for (spell_id, _) in state.spellcasting().prepared_spells() {
@@ -155,10 +148,9 @@ pub fn Spells() -> Html {
 				(name, modifier, atk_bonus, save_dc)
 			})
 			.unzip_n_vec();
-		let names = names.into_iter().map(|name| {
-			// TODO: Small buttons to open the spellcasting modal for each feature (to display information about spellcasting, not spell management)
+		let names = names.into_iter().map(|caster_id| {
 			html! {
-				<span>{name}</span>
+				<ManageCasterButton {caster_id} />
 			}
 		});
 		let names = Itertools::intersperse(names, html! { <span class="mx-1">{"/"}</span> })
@@ -197,7 +189,6 @@ pub fn Spells() -> Html {
 					type="text" class="form-control"
 					placeholder="Search spell names, tags, or other properties"
 				/>
-				<button type="button" class="btn btn-outline-theme" onclick={open_browser}>{"Manage Spells"}</button>
 			</div>
 
 			<div class="sections">
@@ -211,6 +202,33 @@ pub fn Spells() -> Html {
 				</div>
 			</div>
 		</div>
+	}
+}
+
+#[derive(Clone, PartialEq, Properties)]
+struct CasterNameProps {
+	caster_id: AttrValue,
+}
+#[function_component]
+fn ManageCasterButton(CasterNameProps { caster_id }: &CasterNameProps) -> Html {
+	let modal_dispatcher = use_context::<modal::Context>().unwrap();
+	let open_browser = modal_dispatcher.callback({
+		let caster_id = caster_id.clone();
+		move |_| {
+			let caster_id = caster_id.clone();
+			modal::Action::Open(modal::Props {
+				centered: true,
+				scrollable: true,
+				root_classes: classes!("spells", "browse"),
+				content: html! {<ManagerCasterModal {caster_id} />},
+				..Default::default()
+			})
+		}
+	});
+	html! {
+		<button type="button" class="btn btn-xs btn-outline-theme" onclick={open_browser}>
+			{caster_id.clone()}
+		</button>
 	}
 }
 
@@ -238,106 +256,78 @@ impl<'c> SectionProps<'c> {
 }
 
 #[function_component]
-pub fn BrowseModal() -> Html {
+fn ManagerCasterModal(CasterNameProps { caster_id }: &CasterNameProps) -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
-	let system = use_context::<UseStateHandle<DnD5e>>().unwrap();
-	let mut sections = Vec::new();
-	for caster in state.spellcasting().iter_casters() {
-		let restriction = &caster.restriction;
-
-		let max_cantrips = caster.cantrip_capacity(state.persistent());
-		let max_spells = caster.spell_capacity(&state);
-		let max_spell_rank = caster.max_spell_rank(&state);
-		let mut num_cantrips = 0;
-		let mut num_spells = 0;
-		let num_all_selections = state
-			.persistent()
-			.selected_spells
-			.len_caster(caster.name())
-			.unwrap_or(0);
-		let mut selected_spells = Vec::with_capacity(num_all_selections);
-		if let Some(iter_selected) = state
-			.persistent()
-			.selected_spells
-			.iter_caster(caster.name())
-		{
-			for spell in iter_selected {
-				match spell.rank {
-					0 => num_cantrips += 1,
-					_ => num_spells += 1,
-				}
-				// Since we are only processing one caster per section, we can assume the
-				// selected spells have already been sorted (rank then name) when they were loaded from kdl.
-				selected_spells.push(spell);
-			}
-		}
-
-		// TODO: Search bar for available spells section
-		let available_spells = {
-			let mut relevant_spells = Vec::new();
-			'iter_spell: for (_id, spell) in system.spells.iter() {
-				// TODO: Available spells section wont have togglable filters for max_rank or restriction,
-				// BUT when custom feats are a thing, users should be able to add a feat which grants them
-				// access to a spell that isnt in their normal class list.
-				// e.g. feat which allows the player to have access to a spell
-				// 			OR a feat which grants a spell as always prepared.
-				// Filter based on restriction
-				if let Some(max_rank) = &max_spell_rank {
-					if spell.rank > *max_rank {
-						continue;
-					}
-				}
-				for tag in &restriction.tags {
-					if !spell.tags.contains(tag) {
-						continue 'iter_spell;
-					}
-				}
-				// Insertion sort by rank & name
-				let idx = relevant_spells.binary_search_by(|a: &&Spell| {
-					a.rank.cmp(&spell.rank).then(a.name.cmp(&spell.name))
-				}).unwrap_or_else(|err_idx| err_idx);
-				relevant_spells.insert(idx, spell);
-			}
-			relevant_spells.into_iter().map(|spell| {
-				let action = html! { <button type="button" class="btn btn-xs btn-outline-theme select">{"Select"}</button> };
-				spell_list_item(spell, action)
-			}).collect::<Vec<_>>()
-		};
-
-		sections.push(html! {
-			<div>
-				<div>{caster.name().clone()}</div>
-				<div>{format!("Cantrips: {num_cantrips} / {max_cantrips}")}</div>
-				<div>{format!("Spells: {num_spells} / {max_spells}")}</div>
-				<div>
-					<CollapsableCard
-						id={"selected-spells"}
-						header_content={{html! { {"Selected Spells"} }}}
-						body_classes={"spell-list selected"}
-					>
-						{selected_spells.into_iter().map(|spell| {
-							let action = html! { <button type="button" class="btn btn-xs btn-outline-theme select">{"Select"}</button> };
-							spell_list_item(spell, action)
-						}).collect::<Vec<_>>()}
-					</CollapsableCard>
-					<CollapsableCard
-						id={"available-spells"}
-						header_content={{html! { {"Available Spells"} }}}
-						body_classes={"spell-list available"}
-					>
-						{available_spells}
-					</CollapsableCard>
-				</div>
+	let Some(caster) = state.spellcasting().get_caster(caster_id.as_str()) else {
+		return html! {<>
+			<div class="modal-header">
+				<h1 class="modal-title fs-4">{"Not Found: "}{caster_id}</h1>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
 			</div>
-		});
+			<div class="modal-body">
+				{"No spellcasting data found."}
+			</div>
+		</>};
+	};
+
+	let max_cantrips = caster.cantrip_capacity(state.persistent());
+	let max_spells = caster.spell_capacity(&state);
+	let max_spell_rank = caster.max_spell_rank(&state);
+	let mut num_cantrips = 0;
+	let mut num_spells = 0;
+	let num_all_selections = state
+		.persistent()
+		.selected_spells
+		.len_caster(caster.name())
+		.unwrap_or(0);
+	let mut selected_spells = Vec::with_capacity(num_all_selections);
+	if let Some(iter_selected) = state
+		.persistent()
+		.selected_spells
+		.iter_caster(caster.name())
+	{
+		for spell in iter_selected {
+			match spell.rank {
+				0 => num_cantrips += 1,
+				_ => num_spells += 1,
+			}
+			// Since we are only processing one caster per section, we can assume the
+			// selected spells have already been sorted (rank then name) when they were loaded from kdl.
+			selected_spells.push(spell);
+		}
 	}
+
 	html! {<>
 		<div class="modal-header">
 			<h1 class="modal-title fs-4">{"Manage Spells"}</h1>
 			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
 		</div>
 		<div class="modal-body">
-			{sections}
+			<div>{caster.name().clone()}</div>
+			<div>{format!("Cantrips: {num_cantrips} / {max_cantrips}")}</div>
+			<div>{format!("Spells: {num_spells} / {max_spells}")}</div>
+			<div>
+				<CollapsableCard
+					id={"selected-spells"}
+					header_content={{html! { {"Selected Spells"} }}}
+					body_classes={"spell-list selected"}
+				>
+					{selected_spells.into_iter().map(|spell| {
+						let action = html! { <button type="button" class="btn btn-xs btn-outline-theme select">{"Select"}</button> };
+						spell_list_item(spell, action)
+					}).collect::<Vec<_>>()}
+				</CollapsableCard>
+				<CollapsableCard
+					id={"available-spells"}
+					header_content={{html! { {"Available Spells"} }}}
+					body_classes={"spell-list available"}
+				>
+					<AvailableSpellList
+						restriction={caster.restriction.clone()}
+						max_rank={max_spell_rank}
+					/>
+				</CollapsableCard>
+			</div>
 		</div>
 	</>}
 }
@@ -373,5 +363,132 @@ fn spell_list_item(spell: &Spell, action: Html) -> Html {
 				</div>
 			</div>
 		</div>
+	}
+}
+
+#[derive(Clone, PartialEq, Properties)]
+struct SpellListFilter {
+	restriction: Restriction,
+	max_rank: Option<u8>,
+}
+#[function_component]
+fn AvailableSpellList(props: &SpellListFilter) -> Html {
+	use yew_hooks::{use_async_with_options, UseAsyncOptions};
+	log::debug!(target: "ui", "Render available spells");
+	let system = use_context::<UseStateHandle<DnD5e>>().unwrap();
+	let load_data = use_async_with_options(
+		{
+			let filter = props.clone();
+			let system = system.clone();
+			async move {
+				// TODO: Available spells section wont have togglable filters for max_rank or restriction,
+				// BUT when custom feats are a thing, users should be able to add a feat which grants them
+				// access to a spell that isnt in their normal class list.
+				// e.g. feat which allows the player to have access to a spell
+				// 			OR a feat which grants a spell as always prepared.
+				Ok(FindRelevantSpells::new(system.clone(), filter).await) as Result<Html, ()>
+			}
+		},
+		UseAsyncOptions::default(),
+	);
+	// PERF: The relevant spell list could be searched when the character is opened, instead of doing it every time the modal is opened
+	if yew_hooks::use_is_first_mount() {
+		load_data.run();
+	}
+
+	// TODO: Search bar for available spells section
+	html! {<>
+		{match (load_data.loading, &load_data.data) {
+			(false, None) => html! {"Spells not loaded"},
+			(true, _) => html! {
+				<div class="spinner-border" role="status">
+					<span class="visually-hidden">{"Loading..."}</span>
+				</div>
+			},
+			(false, Some(data)) => data.clone(),
+		}}
+	</>}
+}
+
+struct FindRelevantSpells {
+	filter: SpellListFilter,
+	system: UseStateHandle<DnD5e>,
+	all_ids: Vec<SourceId>,
+	sorted_info: Vec<(String, u8)>,
+	spell_htmls: Option<Vec<Html>>,
+}
+impl FindRelevantSpells {
+	fn new(system: UseStateHandle<DnD5e>, filter: SpellListFilter) -> Self {
+		let all_ids = system.spells.keys().cloned().collect::<Vec<_>>();
+		let sorted_info = Vec::with_capacity(all_ids.len());
+		let spell_htmls = Some(Vec::with_capacity(all_ids.len()));
+		Self {
+			system,
+			all_ids,
+			filter,
+			sorted_info,
+			spell_htmls,
+		}
+	}
+}
+impl FindRelevantSpells {
+	fn pending_delay(cx: &mut std::task::Context<'_>, millis: u32) -> std::task::Poll<Html> {
+		use gloo_timers::callback::Timeout;
+		let waker = cx.waker().clone();
+		if millis > 0 {
+			Timeout::new(millis, move || waker.wake()).forget();
+		} else {
+			waker.wake();
+		}
+		std::task::Poll::Pending
+	}
+}
+impl futures::Future for FindRelevantSpells {
+	type Output = Html;
+
+	fn poll(
+		mut self: std::pin::Pin<&mut Self>,
+		cx: &mut std::task::Context<'_>,
+	) -> std::task::Poll<Self::Output> {
+		if let Some(spell_id) = self.all_ids.pop() {
+			let Some(spell) = self.system.spells.get(&spell_id) else {
+				return Self::pending_delay(cx, 0);
+			};
+
+			// Filter based on restriction
+			if let Some(max_rank) = self.filter.max_rank {
+				if spell.rank > max_rank {
+					return Self::pending_delay(cx, 0);
+				}
+			}
+			for tag in &self.filter.restriction.tags {
+				if !spell.tags.contains(tag) {
+					return Self::pending_delay(cx, 0);
+				}
+			}
+
+			// Insertion sort by rank & name
+			let idx = self
+				.sorted_info
+				.binary_search_by(|(name, rank)| rank.cmp(&spell.rank).then(name.cmp(&spell.name)))
+				.unwrap_or_else(|err_idx| err_idx);
+
+			let info = (spell.name.clone(), spell.rank);
+			let html = {
+				let action = html! { <button type="button" class="btn btn-xs btn-outline-theme select">{"Select"}</button> };
+				spell_list_item(spell, action)
+			};
+			drop(spell);
+			self.sorted_info.insert(idx, info);
+
+			let mut spell_htmls = self.spell_htmls.take().unwrap();
+			spell_htmls.insert(idx, html);
+			self.spell_htmls = Some(spell_htmls);
+
+			return Self::pending_delay(cx, 1);
+		}
+
+		let spell_htmls = self.spell_htmls.take().unwrap();
+		std::task::Poll::Ready(html! {<>{spell_htmls}</>})
 	}
 }

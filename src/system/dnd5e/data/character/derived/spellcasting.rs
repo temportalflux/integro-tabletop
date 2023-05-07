@@ -11,7 +11,7 @@ use crate::system::{
 };
 use multimap::MultiMap;
 use std::{
-	collections::BTreeMap,
+	collections::{BTreeMap, HashMap},
 	path::{Path, PathBuf},
 };
 
@@ -28,13 +28,13 @@ pub struct Spellcasting {
 	// - spell slot map (rank to slot capacity and number used)
 	// - spell capacity (number of spells that can be prepared/known)
 	// - spells prepared (or known)
-	casters: Vec<Caster>,
+	casters: HashMap<String, Caster>,
 	always_prepared: MultiMap<SourceId, SpellEntry>,
 }
 
 impl Spellcasting {
 	pub fn add_caster(&mut self, caster: Caster) {
-		self.casters.push(caster);
+		self.casters.insert(caster.name().clone(), caster);
 	}
 
 	pub fn add_prepared(
@@ -59,7 +59,7 @@ impl Spellcasting {
 
 	pub fn cantrip_capacity(&self, persistent: &Persistent) -> Vec<(usize, &Restriction)> {
 		let mut total_capacity = Vec::new();
-		for caster in &self.casters {
+		for (_id, caster) in &self.casters {
 			let value = caster.cantrip_capacity(persistent);
 			if value > 0 {
 				total_capacity.push((value, &caster.restriction));
@@ -102,12 +102,12 @@ impl Spellcasting {
 		}
 
 		let (total_caster_level, slots_by_level) = if self.casters.len() == 1 {
-			let caster = self.casters.get(0).unwrap();
+			let (_id, caster) = self.casters.iter().next().unwrap();
 			let current_level = character.level(Some(&caster.class_name));
 			(current_level, &caster.slots.slots_capacity)
 		} else {
 			let mut levels = 0;
-			for caster in &self.casters {
+			for (_id, caster) in &self.casters {
 				let current_level = character.level(Some(&caster.class_name));
 				levels += match caster.slots.multiclass_half_caster {
 					false => current_level,
@@ -134,8 +134,12 @@ impl Spellcasting {
 		!self.casters.is_empty()
 	}
 
+	pub fn get_caster(&self, id: &str) -> Option<&Caster> {
+		self.casters.get(id)
+	}
+
 	pub fn iter_casters(&self) -> impl Iterator<Item = &Caster> {
-		self.casters.iter()
+		self.casters.iter().map(|(_id, caster)| caster)
 	}
 }
 
