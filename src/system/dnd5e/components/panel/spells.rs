@@ -4,13 +4,19 @@ use crate::{
 		core::SourceId,
 		dnd5e::{
 			components::{editor::CollapsableCard, SharedCharacter},
-			data::{character::spellcasting::Restriction, proficiency, Spell},
+			data::{
+				character::{
+					spellcasting::{CasterKind, Restriction},
+					ActionEffect,
+				},
+				proficiency, Spell,
+			},
 			DnD5e,
 		},
 	},
 };
 use itertools::Itertools;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use yew::prelude::*;
 
 fn rank_suffix(rank: u8) -> &'static str {
@@ -226,7 +232,7 @@ fn ManageCasterButton(CasterNameProps { caster_id }: &CasterNameProps) -> Html {
 		}
 	});
 	html! {
-		<button type="button" class="btn btn-xs btn-outline-theme" onclick={open_browser}>
+		<button type="button" class="btn btn-xs btn-outline-theme mb-1" onclick={open_browser}>
 			{caster_id.clone()}
 		</button>
 	}
@@ -275,11 +281,12 @@ fn ManagerCasterModal(CasterNameProps { caster_id }: &CasterNameProps) -> Html {
 	let max_spell_rank = caster.max_spell_rank(&state);
 	let mut num_cantrips = 0;
 	let mut num_spells = 0;
-	let num_all_selections = state
-		.persistent()
-		.selected_spells
-		.len_caster(caster.name())
-		.unwrap_or(0);
+	let mut num_all_selections = 0;
+	if let Some(selections) = state.persistent().selected_spells.get(Some(caster.name())) {
+		num_cantrips = selections.num_cantrips;
+		num_spells = selections.num_spells;
+		num_all_selections = selections.len();
+	}
 	let mut selected_spells = Vec::with_capacity(num_all_selections);
 	if let Some(iter_selected) = state
 		.persistent()
@@ -287,25 +294,25 @@ fn ManagerCasterModal(CasterNameProps { caster_id }: &CasterNameProps) -> Html {
 		.iter_caster(caster.name())
 	{
 		for spell in iter_selected {
-			match spell.rank {
-				0 => num_cantrips += 1,
-				_ => num_spells += 1,
-			}
 			// Since we are only processing one caster per section, we can assume the
 			// selected spells have already been sorted (rank then name) when they were loaded from kdl.
 			selected_spells.push(spell);
 		}
 	}
+	let caster_info = ActionCasterInfo {
+		id: caster_id.clone(),
+		num_cantrips,
+		max_cantrips,
+		num_spells,
+		max_spells,
+	};
 
 	html! {<>
 		<div class="modal-header">
-			<h1 class="modal-title fs-4">{"Manage Spells"}</h1>
+			<h1 class="modal-title fs-4">{caster.name().clone()}{" Spellcasting"}</h1>
 			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
 		</div>
 		<div class="modal-body">
-			<div>{caster.name().clone()}</div>
-			<div>{format!("Cantrips: {num_cantrips} / {max_cantrips}")}</div>
-			<div>{format!("Spells: {num_spells} / {max_spells}")}</div>
 			<div>
 				<CollapsableCard
 					id={"selected-spells"}
@@ -313,8 +320,13 @@ fn ManagerCasterModal(CasterNameProps { caster_id }: &CasterNameProps) -> Html {
 					body_classes={"spell-list selected"}
 				>
 					{selected_spells.into_iter().map(|spell| {
-						let action = html! { <button type="button" class="btn btn-xs btn-outline-theme select">{"Select"}</button> };
-						spell_list_item(spell, action)
+						let action = html! {<SpellListAction
+							section={SpellListSection::Selected}
+							caster={caster_info.clone()}
+							spell_id={spell.id.clone()}
+							rank={spell.rank}
+						/>};
+						spell_list_item("selected", spell, action)
 					}).collect::<Vec<_>>()}
 				</CollapsableCard>
 				<CollapsableCard
@@ -323,17 +335,151 @@ fn ManagerCasterModal(CasterNameProps { caster_id }: &CasterNameProps) -> Html {
 					body_classes={"spell-list available"}
 				>
 					<AvailableSpellList
-						restriction={caster.restriction.clone()}
-						max_rank={max_spell_rank}
+						caster={caster_info.clone()}
+						filter={SpellListFilter {
+							restriction: caster.restriction.clone(),
+							max_rank: max_spell_rank,
+						}}
 					/>
 				</CollapsableCard>
 			</div>
 		</div>
+		<div class="modal-footer">
+			<SpellCapacity name={"Cantrips"} num={num_cantrips} max={max_cantrips} />
+			<SpellCapacity name={"Spells"} num={num_spells} max={max_spells} />
+		</div>
 	</>}
 }
 
-fn spell_list_item(spell: &Spell, action: Html) -> Html {
-	let collapse_id = spell.id.ref_id();
+#[derive(Clone, PartialEq, Properties)]
+struct SpellCapacityProps {
+	name: AttrValue,
+	num: usize,
+	max: usize,
+}
+#[function_component]
+fn SpellCapacity(SpellCapacityProps { name, num, max }: &SpellCapacityProps) -> Html {
+	let mut classes = classes!("alert");
+	if num < max {
+		classes.push("alert-warning");
+	}
+	html! {
+		<div class={classes} role="alert">
+			{name}{": "}{num}{" / "}{max}
+		</div>
+	}
+}
+
+#[derive(Clone, PartialEq, Properties)]
+struct SpellListActionProps {
+	caster: ActionCasterInfo,
+	section: SpellListSection,
+	spell_id: SourceId,
+	rank: u8,
+}
+#[derive(Clone, PartialEq)]
+struct ActionCasterInfo {
+	id: AttrValue,
+	num_cantrips: usize,
+	max_cantrips: usize,
+	num_spells: usize,
+	max_spells: usize,
+}
+#[derive(Clone, PartialEq)]
+enum SpellListSection {
+	Selected,
+	Available,
+}
+#[function_component]
+fn SpellListAction(
+	SpellListActionProps {
+		caster: info,
+		section,
+		spell_id,
+		rank,
+	}: &SpellListActionProps,
+) -> Html {
+	let state = use_context::<SharedCharacter>().unwrap();
+	let system = use_context::<UseStateHandle<DnD5e>>().unwrap();
+	let Some(caster) = state.spellcasting().get_caster(info.id.as_str()) else { return Html::default(); };
+
+	let mut can_select_more = true;
+	if let Some(selections) = state
+		.persistent()
+		.selected_spells
+		.get(Some(info.id.as_str()))
+	{
+		can_select_more = match rank {
+			0 => selections.num_cantrips < info.max_cantrips,
+			_ => selections.num_spells < info.max_spells,
+		};
+	}
+
+	let is_selected = state
+		.persistent()
+		.selected_spells
+		.has_selected(Some(info.id.as_str()), &spell_id);
+
+	let mut classes = classes!("btn", "btn-xs", "select");
+	let mut disabled = false;
+	match section {
+		SpellListSection::Selected => {
+			classes.push("btn-outline-theme");
+		}
+		SpellListSection::Available => match is_selected {
+			true => {
+				classes.push("btn-theme");
+			}
+			false => match can_select_more {
+				true => {
+					classes.push("btn-outline-theme");
+				}
+				false => {
+					classes.push("btn-outline-secondary");
+					disabled = true;
+				}
+			},
+		},
+	}
+
+	let action_name = match (caster.kind(), rank, is_selected) {
+		(_, 0, false) => "Learn",
+		(_, 0, true) => "Delete",
+		(CasterKind::Known, _, false) => "Learn",
+		(CasterKind::Known, _, true) => "Delete",
+		(CasterKind::Prepared, _, false) => "Prepare",
+		(CasterKind::Prepared, _, true) => match section {
+			SpellListSection::Selected => "Unprepare",
+			SpellListSection::Available => "Prepared",
+		},
+	};
+
+	let onclick = (!disabled).then({
+		|| {
+			let caster_id = info.id.clone();
+			let spell_id = spell_id.clone();
+			let system = system.clone();
+			state.new_dispatch(move |evt: MouseEvent, persistent, _| {
+				evt.stop_propagation();
+				if is_selected {
+					persistent.selected_spells.remove(&caster_id, &spell_id);
+					None
+				} else {
+					let Some(spell) = system.spells.get(&spell_id) else { return None; };
+					persistent.selected_spells.insert(&caster_id, spell);
+					None // TODO: maybe recompile when spells are added because of bonuses to spell attacks and other mutators?
+				}
+			})
+		}
+	});
+
+	html! {
+		<button type="button" class={classes} {disabled} {onclick}>{action_name}</button>
+	}
+}
+
+fn spell_list_item(section_id: &str, spell: &Spell, action: Html) -> Html {
+	let collapse_id = format!("{section_id}-{}", spell.id.ref_id());
 	html! {
 		<div class="spell mb-1">
 			<div class="header mb-1">
@@ -367,18 +513,23 @@ fn spell_list_item(spell: &Spell, action: Html) -> Html {
 }
 
 #[derive(Clone, PartialEq, Properties)]
+struct AvailableSpellListProps {
+	caster: ActionCasterInfo,
+	filter: SpellListFilter,
+}
+#[derive(Clone, PartialEq)]
 struct SpellListFilter {
 	restriction: Restriction,
 	max_rank: Option<u8>,
 }
 #[function_component]
-fn AvailableSpellList(props: &SpellListFilter) -> Html {
+fn AvailableSpellList(props: &AvailableSpellListProps) -> Html {
 	use yew_hooks::{use_async_with_options, UseAsyncOptions};
 	log::debug!(target: "ui", "Render available spells");
 	let system = use_context::<UseStateHandle<DnD5e>>().unwrap();
 	let load_data = use_async_with_options(
 		{
-			let filter = props.clone();
+			let props = props.clone();
 			let system = system.clone();
 			async move {
 				// TODO: Available spells section wont have togglable filters for max_rank or restriction,
@@ -386,7 +537,7 @@ fn AvailableSpellList(props: &SpellListFilter) -> Html {
 				// access to a spell that isnt in their normal class list.
 				// e.g. feat which allows the player to have access to a spell
 				// 			OR a feat which grants a spell as always prepared.
-				Ok(FindRelevantSpells::new(system.clone(), filter).await) as Result<Html, ()>
+				Ok(FindRelevantSpells::new(system.clone(), props).await) as Result<Html, ()>
 			}
 		},
 		UseAsyncOptions::default(),
@@ -412,20 +563,22 @@ fn AvailableSpellList(props: &SpellListFilter) -> Html {
 
 struct FindRelevantSpells {
 	filter: SpellListFilter,
+	caster: ActionCasterInfo,
 	system: UseStateHandle<DnD5e>,
 	all_ids: Vec<SourceId>,
 	sorted_info: Vec<(String, u8)>,
 	spell_htmls: Option<Vec<Html>>,
 }
 impl FindRelevantSpells {
-	fn new(system: UseStateHandle<DnD5e>, filter: SpellListFilter) -> Self {
+	fn new(system: UseStateHandle<DnD5e>, props: AvailableSpellListProps) -> Self {
 		let all_ids = system.spells.keys().cloned().collect::<Vec<_>>();
 		let sorted_info = Vec::with_capacity(all_ids.len());
 		let spell_htmls = Some(Vec::with_capacity(all_ids.len()));
 		Self {
+			filter: props.filter,
+			caster: props.caster,
 			system,
 			all_ids,
-			filter,
 			sorted_info,
 			spell_htmls,
 		}
@@ -475,8 +628,13 @@ impl futures::Future for FindRelevantSpells {
 
 			let info = (spell.name.clone(), spell.rank);
 			let html = {
-				let action = html! { <button type="button" class="btn btn-xs btn-outline-theme select">{"Select"}</button> };
-				spell_list_item(spell, action)
+				let action = html! { <SpellListAction
+					caster={self.caster.clone()}
+					section={SpellListSection::Available}
+					spell_id={spell.id.clone()}
+					rank={spell.rank}
+				/> };
+				spell_list_item("available", spell, action)
 			};
 			drop(spell);
 			self.sorted_info.insert(idx, info);

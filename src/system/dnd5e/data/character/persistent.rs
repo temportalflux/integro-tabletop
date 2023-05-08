@@ -285,11 +285,17 @@ pub struct Settings {
 pub struct SelectedSpells {
 	/// All selected spells for all casters and other spellcasting features.
 	cache: HashMap<SourceId, (Spell, HashSet</*caster name*/ String>)>,
-	/// The ids for spells selected for any caster designation,
-	/// values sorted by rank then name of the spell (which is in `cache`).
-	per_caster: HashMap<String, Vec<SourceId>>,
-	/// Sorted list (by rank then name of the spell) of all selected spells for caster features.
-	all_caster_selection: Vec<SourceId>,
+	per_caster: HashMap<String, SelectedSpellsData>,
+	all_caster_selection: SelectedSpellsData,
+}
+#[derive(Clone, PartialEq, Default, Debug)]
+pub struct SelectedSpellsData {
+	/// The ids for spells selected, values sorted by rank then name of the spell (which is in `cache`).
+	ordered_ids: Vec<(SourceId, /*name*/ String, /*rank*/ u8)>,
+	/// The number of rank 0 spells selected.
+	pub num_cantrips: usize,
+	/// The number of spells selected whose rank is > 0.
+	pub num_spells: usize,
 }
 impl SelectedSpells {
 	pub fn insert(&mut self, caster_id: &impl AsRef<str>, spell: &Spell) {
@@ -319,45 +325,30 @@ impl SelectedSpells {
 
 		match self.per_caster.get_mut(caster_id.as_ref()) {
 			None => {
-				self.per_caster
-					.insert(caster_id.as_ref().to_owned(), vec![spell.id.clone()]);
+				let caster_id = caster_id.as_ref().to_owned();
+				let mut data = SelectedSpellsData::default();
+				data.insert(&spell);
+				self.per_caster.insert(caster_id, data);
 			}
 			Some(selection_ids) => {
-				let idx = Self::binary_search_ids(selection_ids, &self.cache, spell);
-				selection_ids.insert(idx, spell.id.clone());
+				selection_ids.insert(&spell);
 			}
 		}
 
 		if new_entry == Some(NewEntry::Uncached) {
-			let idx = Self::binary_search_ids(&self.all_caster_selection, &self.cache, spell);
-			self.all_caster_selection.insert(idx, spell.id.clone());
+			self.all_caster_selection.insert(&spell);
 		}
 	}
 
-	fn binary_search_ids<'this>(
-		ids: &'this Vec<SourceId>,
-		cache: &'this HashMap<SourceId, (Spell, HashSet</*caster name*/ String>)>,
-		other: &Spell,
-	) -> usize {
-		ids.binary_search_by(|entry_id| {
-			let Some((entry, _)) = cache.get(entry_id) else { return std::cmp::Ordering::Less; };
-			entry
-				.rank
-				.cmp(&other.rank)
-				.then(entry.name.cmp(&other.name))
-		})
-		.unwrap_or_else(|err_idx| err_idx)
-	}
-
-	pub fn remove(&mut self, caster_id: &String, spell_id: &SourceId) {
+	pub fn remove(&mut self, caster_id: &impl AsRef<str>, spell_id: &SourceId) {
 		{
-			let Some(caster_list) = self.per_caster.get_mut(caster_id) else { return; };
+			let Some(caster_list) = self.per_caster.get_mut(caster_id.as_ref()) else { return; };
 			caster_list.retain(|id| id != spell_id);
 		}
 
 		let was_last_requirement = {
 			let Some((_spell, required_by)) = self.cache.get_mut(&spell_id) else { return; };
-			required_by.remove(caster_id);
+			required_by.remove(caster_id.as_ref());
 			required_by.is_empty()
 		};
 		if was_last_requirement {
@@ -366,23 +357,73 @@ impl SelectedSpells {
 		}
 	}
 
-	pub fn iter_all_casters(&self) -> impl Iterator<Item = &(Spell, HashSet<String>)> {
-		self.all_caster_selection
-			.iter()
-			.filter_map(|id| self.cache.get(id))
+	pub fn get(&self, caster_id: Option<&str>) -> Option<&SelectedSpellsData> {
+		match caster_id {
+			None => Some(&self.all_caster_selection),
+			Some(id) => self.per_caster.get(id),
+		}
 	}
 
-	pub fn len_caster(&self, id: &String) -> Option<usize> {
-		self.per_caster.get(id).map(|list| list.len())
+	pub fn iter_all_casters(&self) -> impl Iterator<Item = &(Spell, HashSet<String>)> {
+		self.all_caster_selection
+			.ordered_ids
+			.iter()
+			.filter_map(|(id, _name, _rank)| self.cache.get(id))
 	}
 
 	pub fn iter_caster(&self, id: &String) -> Option<impl Iterator<Item = &Spell>> {
 		let Some(caster) = self.per_caster.get(id) else { return None; };
 		Some(
 			caster
+				.ordered_ids
 				.iter()
-				.filter_map(|id| self.cache.get(id))
+				.filter_map(|(id, _name, _rank)| self.cache.get(id))
 				.map(|(spell, _)| spell),
 		)
+	}
+
+	pub fn has_selected(&self, caster_id: Option<&str>, spell_id: &SourceId) -> bool {
+		match self.cache.get(spell_id) {
+			None => false,
+			Some((_, casters_selected_by)) => match caster_id {
+				None => true,
+				Some(caster_id) => casters_selected_by.contains(caster_id),
+			},
+		}
+	}
+}
+impl SelectedSpellsData {
+	fn binary_search_ids(ids: &Vec<(SourceId, String, u8)>, other: &Spell) -> usize {
+		ids.binary_search_by(|(_id, name, rank)| rank.cmp(&other.rank).then(name.cmp(&other.name)))
+			.unwrap_or_else(|err_idx| err_idx)
+	}
+
+	fn insert(&mut self, spell: &Spell) {
+		let idx = Self::binary_search_ids(&self.ordered_ids, spell);
+		self.ordered_ids
+			.insert(idx, (spell.id.clone(), spell.name.clone(), spell.rank));
+		match spell.rank {
+			0 => self.num_cantrips += 1,
+			_ => self.num_spells += 1,
+		}
+	}
+
+	fn retain(&mut self, mut should_keep: impl FnMut(&SourceId) -> bool) {
+		let num_cantrips = &mut self.num_cantrips;
+		let num_spells = &mut self.num_spells;
+		self.ordered_ids.retain(move |(id, _name, rank)| {
+			let keep = should_keep(id);
+			if !keep {
+				match rank {
+					0 => *num_cantrips -= 1,
+					_ => *num_spells -= 1,
+				}
+			}
+			keep
+		});
+	}
+
+	pub fn len(&self) -> usize {
+		self.ordered_ids.len()
 	}
 }

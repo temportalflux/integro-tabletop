@@ -153,6 +153,12 @@ pub struct Caster {
 	pub spell_capacity: SpellCapacity,
 }
 
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum CasterKind {
+	Known,
+	Prepared,
+}
+
 #[derive(Clone, PartialEq, Debug)]
 pub enum SpellCapacity {
 	// the number of spells that can be known, keyed by class level
@@ -164,6 +170,13 @@ pub enum SpellCapacity {
 impl Caster {
 	pub fn name(&self) -> &String {
 		&self.class_name
+	}
+
+	pub fn kind(&self) -> CasterKind {
+		match &self.spell_capacity {
+			SpellCapacity::Known(_) => CasterKind::Known,
+			SpellCapacity::Prepared(_) => CasterKind::Prepared,
+		}
 	}
 
 	pub fn cantrip_capacity(&self, persistent: &Persistent) -> usize {
