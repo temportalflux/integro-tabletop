@@ -5,10 +5,7 @@ use crate::{
 		dnd5e::{
 			components::{editor::CollapsableCard, SharedCharacter},
 			data::{
-				character::{
-					spellcasting::{CasterKind, Restriction},
-					ActionEffect,
-				},
+				character::spellcasting::{CasterKind, Restriction},
 				proficiency, Spell,
 			},
 			DnD5e,
@@ -16,7 +13,7 @@ use crate::{
 	},
 };
 use itertools::Itertools;
-use std::collections::{BTreeMap, HashSet};
+use std::collections::BTreeMap;
 use yew::prelude::*;
 
 fn rank_suffix(rank: u8) -> &'static str {
@@ -33,7 +30,6 @@ fn rank_suffix(rank: u8) -> &'static str {
 pub fn Spells() -> Html {
 	static MAX_SPELL_RANK: u8 = 9;
 	let state = use_context::<SharedCharacter>().unwrap();
-	let system = use_context::<UseStateHandle<DnD5e>>().unwrap();
 
 	let mut entries = Vec::new();
 	for (spell_id, _) in state.spellcasting().prepared_spells() {
@@ -301,12 +297,13 @@ fn ManagerCasterModal(CasterNameProps { caster_id }: &CasterNameProps) -> Html {
 	}
 	let caster_info = ActionCasterInfo {
 		id: caster_id.clone(),
-		num_cantrips,
 		max_cantrips,
-		num_spells,
 		max_spells,
 	};
 
+	// TODO: Display modifier/atk bonus/save dc and how they are calculated for this caster.
+	// TODO: Display restriction info for the caster's spell list.
+	// TODO: Display rules for when spells can be selected or swapped out.
 	html! {<>
 		<div class="modal-header">
 			<h1 class="modal-title fs-4">{caster.name().clone()}{" Spellcasting"}</h1>
@@ -380,9 +377,7 @@ struct SpellListActionProps {
 #[derive(Clone, PartialEq)]
 struct ActionCasterInfo {
 	id: AttrValue,
-	num_cantrips: usize,
 	max_cantrips: usize,
-	num_spells: usize,
 	max_spells: usize,
 }
 #[derive(Clone, PartialEq)]
