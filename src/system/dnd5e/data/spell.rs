@@ -26,6 +26,7 @@ pub struct Spell {
 	pub name: String,
 	pub description: description::Info,
 	pub rank: u8,
+	pub school_tag: Option<String>,
 	pub components: Components,
 	pub casting_time: CastingTime,
 	pub range: Range,
@@ -51,6 +52,7 @@ impl FromKDL for Spell {
 		let name = node.get_str_req("name")?.to_owned();
 		let description = description::Info::from_kdl_all(node, ctx)?;
 		let rank = node.query_i64_req("scope() > rank", 0)? as u8;
+		let school_tag = node.get_str_opt("school")?.map(str::to_owned);
 
 		let components = Components::from_kdl_all(node, ctx)?;
 		let casting_time = node.query_req("scope() > casting-time")?;
@@ -73,7 +75,8 @@ impl FromKDL for Spell {
 			Some(node) => Some(Damage::from_kdl(node, &mut ctx.next_node())?),
 		};
 
-		let tags = node.query_str_all("scope() > tag", 0)?;
+		let mut tags = node.query_str_all("scope() > tag", 0)?;
+		tags.sort();
 		let tags = tags.into_iter().map(str::to_owned).collect();
 
 		Ok(Self {
@@ -81,6 +84,7 @@ impl FromKDL for Spell {
 			name,
 			description,
 			rank,
+			school_tag,
 			components,
 			casting_time,
 			range,

@@ -1,12 +1,12 @@
 use crate::{
 	components::modal,
 	system::{
-		core::SourceId,
+		core::{ModuleId, SourceId},
 		dnd5e::{
 			components::{editor::CollapsableCard, SharedCharacter},
 			data::{
 				character::spellcasting::{CasterKind, Restriction},
-				proficiency, Spell,
+				proficiency, spell, Spell,
 			},
 			DnD5e,
 		},
@@ -475,6 +475,7 @@ fn SpellListAction(
 
 fn spell_list_item(section_id: &str, spell: &Spell, action: Html) -> Html {
 	let collapse_id = format!("{section_id}-{}", spell.id.ref_id());
+	// TODO: concentration and ritual icons in header section
 	html! {
 		<div class="spell mb-1">
 			<div class="header mb-1">
@@ -498,13 +499,128 @@ fn spell_list_item(section_id: &str, spell: &Spell, action: Html) -> Html {
 			<div class="collapse mb-2" id={collapse_id}>
 				<div class="card">
 					<div class="card-body px-2 py-1">
-						<div>{"spell content for "}{spell.name.clone()}</div>
-						<div>{spell.id.clone()}</div>
+						{spell_content(&spell)}
 					</div>
 				</div>
 			</div>
 		</div>
 	}
+}
+
+fn spell_content(spell: &Spell) -> Html {
+	use crate::{
+		components::{Tag, Tags},
+		system::dnd5e::{components::editor::description, data::AreaOfEffect},
+	};
+	use spell::{CastingDuration, DurationKind};
+	let mut sections = Vec::new();
+	sections.push(html! {
+		<div class="property">
+			<strong>{"Rank:"}</strong>
+			{match spell.rank {
+				0 => html! { "Cantrip" },
+				n => html! {<>{n}{rank_suffix(n)}{" Level"}</>},
+			}}
+		</div>
+	});
+	if let Some(school) = &spell.school_tag {
+		sections.push(html! {
+			<div class="property">
+				<strong>{"School:"}</strong>
+				{school}
+			</div>
+		});
+	}
+	sections.push(html! {
+		<div class="property">
+			<strong>{"Casting Time:"}</strong>
+			{match &spell.casting_time.duration {
+				CastingDuration::Action => format!("1 action"),
+				CastingDuration::Bonus => format!("1 bonus action"),
+				CastingDuration::Reaction(None) => format!("1 reaction"),
+				CastingDuration::Reaction(Some(trigger)) => format!("1 reaction ({trigger})"),
+				CastingDuration::Unit(amt, kind) => format!("{amt} {kind}"),
+			}}
+			{spell.casting_time.ritual.then(|| html! { {" (ritual)"} }).unwrap_or_default()}
+		</div>
+	});
+	sections.push(html! {
+		<div class="property">
+			<strong>{"Range:"}</strong>
+			{match &spell.range {
+				spell::Range::OnlySelf => html!("Self"),
+				spell::Range::Touch => html!("Touch"),
+				spell::Range::Unit { distance, unit } => html! {<>{distance}{" "}{unit}</>},
+				spell::Range::Sight => html!("Sight"),
+				spell::Range::Unlimited => html!("Unlimited"),
+			}}
+		</div>
+	});
+	if let Some(area_of_effect) = &spell.area_of_effect {
+		sections.push(html! {
+			<div class="property">
+				<strong>{"Area of Effect:"}</strong>
+				{match area_of_effect {
+					AreaOfEffect::Cone { length } => html!{<>{length}{"ft. Cone"}</>},
+					AreaOfEffect::Cube { size } => html!{<>{size}{"ft. Cube"}</>},
+					AreaOfEffect::Cylinder { radius, height } => html!{<>{radius}{"ft. x "}{height}{"ft. Cylinder"}</>},
+					AreaOfEffect::Line { width, length } => html!{<>{width}{"ft. x "}{length}{"ft. Line"}</>},
+					AreaOfEffect::Sphere { radius } => html!{<>{radius}{"ft. Sphere"}</>},
+				}}
+			</div>
+		});
+	}
+	sections.push(html! {
+		<div class="property">
+			<strong>{"Duration:"}</strong>
+			{match &spell.duration.kind {
+				DurationKind::Instantaneous => html!("Instantaneous"),
+				DurationKind::Unit(amt, kind) => html! {<>{amt}{" "}{kind}</>},
+				DurationKind::Special => html!("Special"),
+			}}
+			{spell.duration.concentration.then(|| html!(" (requires concentration)")).unwrap_or_default()}
+		</div>
+	});
+	if !spell.tags.is_empty() {
+		sections.push(html! {
+			<div class="property d-inline-flex">
+				<strong>{"Tags:"}</strong>
+				<Tags>
+					{spell.tags.iter().map(|tag| html! {
+						<Tag>{tag}</Tag>
+					}).collect::<Vec<_>>()}
+				</Tags>
+			</div>
+		});
+	}
+
+	if let Some(module) = &spell.id.module {
+		sections.push(html! {
+			<div class="property">
+				<strong>{"Source:"}</strong>
+				{match module {
+					ModuleId::Local { name } => format!("{name} (local)"),
+					ModuleId::Github { user_org, repository } => format!("{user_org}:{repository} (github)"),
+				}}
+			</div>
+		});
+	}
+	if let Some(version) = &spell.id.version {
+		sections.push(html! {
+			<div class="property">
+				<strong>{"Version:"}</strong>
+				{version}
+			</div>
+		});
+	}
+
+	// TODO: spell components
+
+	html! {<>
+		{sections}
+		<div class="hr my-2" />
+		{description(&spell.description, false)}
+	</>}
 }
 
 #[derive(Clone, PartialEq, Properties)]
