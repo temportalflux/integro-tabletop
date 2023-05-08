@@ -64,75 +64,14 @@ pub fn Spells() -> Html {
 	}
 
 	let sections = {
-		use convert_case::{Case, Casing};
 		let mut html = Vec::new();
 		for (rank, section_props) in sections {
-			let suffix = rank_suffix(rank);
-			let rank_text = match rank {
-				0 => "cantrip",
-				_ => "level",
-			};
-			let title = match rank {
-				0 => rank_text.to_case(Case::Upper),
-				rank => format!(
-					"{rank}{}",
-					format!("{suffix} {rank_text}").to_case(Case::Upper)
-				),
-			};
-			let inline_rank_text = format!("{rank}{suffix}-{rank_text}");
-			let empty_note = format!(
-				"You do not have any {inline_rank_text} spells or spells that scale to \
-				{inline_rank_text} available, but you can cast lower level spells \
-				using your {inline_rank_text} spell slots."
-			);
-
-			let slots = section_props.slot_count.as_ref().map(|count| {
-				html! {
-					<div class="slots">
-						{(0..*count).map(|_| html! {
-							<input class={"form-check-input slot"} type="checkbox" />
-						}).collect::<Vec<_>>()}
-						<span class="ms-1">{"SLOTS"}</span>
-					</div>
-				}
-			});
-			if section_props.spells.is_empty() && (slots.is_none() || rank == 0) {
+			if section_props.spells.is_empty() && (section_props.slot_count.is_none() || rank == 0) {
 				continue;
 			}
-
-			let contents = match section_props.spells.is_empty() {
-				true => html! { <p class="empty-note mx-4">{empty_note}</p> },
-				false => {
-					let rows = section_props
-						.spells
-						.iter()
-						.map(|entry| {
-							html! {
-								<div class="d-flex">
-									<div class="me-2">{entry.spell.name.clone()}</div>
-									<div class="me-2">{entry.spell.id.to_string()}</div>
-								</div>
-							}
-						})
-						.collect::<Vec<_>>();
-					html! {
-						<div>
-							{rows}
-						</div>
-					}
-				}
-			};
-			html.push(html! {
-				<div class="spell-section mb-2">
-					<div class="header">
-						<div class="title">{title}</div>
-						{slots.unwrap_or_default()}
-					</div>
-					{contents}
-				</div>
-			});
+			html.push(spell_section(&state, rank, section_props));
 		}
-		html
+		html! {<>{html}</>}
 	};
 
 	let feature_stats = state.spellcasting().has_casters().then(|| {
@@ -255,6 +194,153 @@ impl<'c> SectionProps<'c> {
 		let idx = idx.unwrap_or_else(|e| e);
 		self.spells.insert(idx, SpellEntry { spell, caster_name });
 	}
+}
+
+fn spell_section<'c>(state: &'c SharedCharacter, rank: u8, section_props: SectionProps<'c>) -> Html {
+	use convert_case::{Case, Casing};
+	let suffix = rank_suffix(rank);
+	let rank_text = match rank {
+		0 => "cantrip",
+		_ => "level",
+	};
+	let title = match rank {
+		0 => rank_text.to_case(Case::Upper),
+		rank => format!(
+			"{rank}{}",
+			format!("{suffix} {rank_text}").to_case(Case::Upper)
+		),
+	};
+	let inline_rank_text = format!("{rank}{suffix}-{rank_text}");
+	let empty_note = format!(
+		"You do not have any {inline_rank_text} spells or spells that scale to \
+		{inline_rank_text} available, but you can cast lower level spells \
+		using your {inline_rank_text} spell slots."
+	);
+
+	let slots = section_props.slot_count.as_ref().map(|count| {
+		html! {
+			<div class="slots">
+				{(0..*count).map(|_| html! {
+					<input class={"form-check-input slot"} type="checkbox" />
+				}).collect::<Vec<_>>()}
+				<span class="ms-1">{"SLOTS"}</span>
+			</div>
+		}
+	});
+
+	let contents = match section_props.spells.is_empty() {
+		true => html! { <p class="empty-note mx-4">{empty_note}</p> },
+		false => {
+			html! {
+				<table class="table table-compact mx-auto">
+					<thead>
+						<tr style="font-size: 11px;">
+							<th scope="col"></th>
+							<th scope="col">{"Name"}</th>
+							<th scope="col">{"Time"}</th>
+							<th scope="col">{"Range"}</th>
+							<th scope="col">{"Hit / DC"}</th>
+							<th scope="col">{"Effect"}</th>
+						</tr>
+					</thead>
+					<tbody>
+						{section_props.spells.iter().map(|entry| spell_row(state, entry)).collect::<Vec<_>>()}
+					</tbody>
+				</table>
+			}
+		}
+	};
+	html! {
+		<div class="spell-section mb-2">
+			<div class="header">
+				<div class="title">{title}</div>
+				{slots.unwrap_or_default()}
+			</div>
+			{contents}
+		</div>
+	}
+}
+fn spell_row<'c>(state: &'c SharedCharacter, entry: &SpellEntry<'c>) -> Html {
+	use spell::{CastingDuration};
+	
+	// TODO: concentration and ritual icons after the spell name
+	// TODO: Casting source under the spell name
+	// TODO: tooltip for casting time duration
+	// TODO: Hit/DC column
+	// TODO: Effect column (damage or text)
+	html! {
+		<SpellModalRowRoot caster_id={entry.caster_name.clone()} spell_id={entry.spell.id.clone()}>
+			<td>{"todo"}</td>
+			<td>{&entry.spell.name}</td>
+			<td>
+				{match &entry.spell.casting_time.duration {
+					CastingDuration::Action => html!("1A"),
+					CastingDuration::Bonus => html!("1BA"),
+					CastingDuration::Reaction(_trigger) => html!("1R"),
+					CastingDuration::Unit(amt, kind) => html!{<>{amt}{kind.chars().next().unwrap()}</>},
+				}}
+			</td>
+			<td>
+				{match &entry.spell.range {
+					spell::Range::OnlySelf => html!("Self"),
+					spell::Range::Touch => html!("Touch"),
+					spell::Range::Unit { distance, unit } => html! {<>{distance}{" "}{unit}</>},
+					spell::Range::Sight => html!("Sight"),
+					spell::Range::Unlimited => html!("Unlimited"),
+				}}
+			</td>
+			<td>{"todo"}</td>
+			<td>{"todo"}</td>
+		</SpellModalRowRoot>
+	}
+}
+
+#[function_component]
+fn SpellModalRowRoot(SpellModalProps { caster_id, spell_id, children }: &SpellModalProps) -> Html {
+	let modal_dispatcher = use_context::<modal::Context>().unwrap();
+	let open_browser = modal_dispatcher.callback({
+		let caster_id = caster_id.clone();
+		let spell_id = spell_id.clone();
+		move |_| {
+			let caster_id = caster_id.clone();
+			let spell_id = spell_id.clone();
+			modal::Action::Open(modal::Props {
+				centered: true,
+				scrollable: true,
+				root_classes: classes!("spell"),
+				content: html! {<SpellModal {caster_id} {spell_id} />},
+				..Default::default()
+			})
+		}
+	});
+	html! {
+		<tr onclick={open_browser}>
+			{children.clone()}
+		</tr>
+	}
+}
+
+#[derive(Clone, PartialEq, Properties)]
+struct SpellModalProps {
+	caster_id: AttrValue,
+	spell_id: SourceId,
+	#[prop_or_default]
+	children: Children,
+}
+#[function_component]
+fn SpellModal(SpellModalProps { caster_id, spell_id, children: _ }: &SpellModalProps) -> Html {
+	let state = use_context::<SharedCharacter>().unwrap();
+	let Some(spell) = state.persistent().selected_spells.get_spell(caster_id.as_str(), spell_id) else { return Html::default(); };
+
+	html! {<>
+		<div class="modal-header">
+			<h1 class="modal-title fs-4">{&spell.name}</h1>
+			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
+		</div>
+		<div class="modal-body">
+			{spell_content(spell)}
+		</div>
+	</>}
 }
 
 #[function_component]

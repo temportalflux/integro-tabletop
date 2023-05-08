@@ -283,6 +283,7 @@ pub struct Settings {
 
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct SelectedSpells {
+	// TODO: When spells can be customized, they will need separate plots of data in SelectedSpells in order to support customizations per caster
 	/// All selected spells for all casters and other spellcasting features.
 	cache: HashMap<SourceId, (Spell, HashSet</*caster name*/ String>)>,
 	per_caster: HashMap<String, SelectedSpellsData>,
@@ -355,6 +356,10 @@ impl SelectedSpells {
 			let _ = self.cache.remove(&spell_id);
 			self.all_caster_selection.retain(|id| id != spell_id);
 		}
+	}
+
+	pub fn get_spell(&self, _caster_id: &str, spell_id: &SourceId) -> Option<&Spell> {
+		self.cache.get(spell_id).map(|(spell, _)| spell)
 	}
 
 	pub fn get(&self, caster_id: Option<&str>) -> Option<&SelectedSpellsData> {
