@@ -8,6 +8,16 @@
 - Limited Use can use the resource of another feature/action by its path, and has an associated cost when doing so
 - UI components for rendering features, conditions, mutators, etc which is used for all presentations (mutators / features in origin & item browsers, condition cards, feature/action modals, etc)
 
+## More Icons
+- conditions
+- damage types
+- attunement
+- ritual spells
+- spell concentration
+- spell schools
+- unarmed vs weapon attacks
+- ability types
+
 # Descriptions
 - Tables
 - Format Args

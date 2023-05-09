@@ -2,7 +2,7 @@ use crate::{
 	bootstrap::components::Tooltip,
 	components::modal,
 	system::dnd5e::{
-		components::SharedCharacter,
+		components::{SharedCharacter, roll::ModifierIcon},
 		data::{Ability, Skill},
 	},
 };
@@ -191,7 +191,7 @@ fn Row(
 		html! {
 			<Tooltip tag={"span"} content={tooltip} use_html={true}>
 				<span aria-label={format!("{modifier:?}")} style="margin-left: 2px; display: block; height: 16px; width: 16px; vertical-align: middle; margin-top: -2px;">
-					<crate::system::dnd5e::components::roll::Modifier value={modifier} />
+					<ModifierIcon value={modifier} />
 				</span>
 			</Tooltip>
 		}
@@ -305,7 +305,7 @@ fn SkillModal(SkillModalProps { skill }: &SkillModalProps) -> Html {
 						<tr>
 							<td class="d-flex">
 								<span aria-label={format!("{modifier:?}")} style="margin-left: 2px; display: block; height: 16px; width: 16px; vertical-align: middle; margin-top: -2px;">
-									<crate::system::dnd5e::components::roll::Modifier value={modifier} />
+									<ModifierIcon value={modifier} />
 								</span>
 								<span class="flex-grow-1 text-center" style="margin-left: 5px;">{modifier.display_name()}</span>
 							</td>

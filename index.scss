@@ -199,6 +199,18 @@
 .icon.currency.platinum {
 	--icon-image: url(assets/currency/platinum.svg);
 }
+.icon.advantage {
+	@extend .icon-mask;
+	--icon-image: url(assets/modifier/advantage.svg);
+	--icon-color: #00c680;
+	width: 24px;
+}
+.icon.disadvantage {
+	@extend .icon-mask;
+	--icon-image: url(assets/modifier/disadvantage.svg);
+	--icon-color: #e40712;
+	width: 24px;
+}
 .icon.defense {
 	display: inline-block;
 	margin-top: auto!important;

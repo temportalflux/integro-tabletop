@@ -1,7 +1,7 @@
 use crate::{
 	bootstrap::components::Tooltip,
 	components::modal,
-	system::dnd5e::components::{roll::Modifier, SharedCharacter},
+	system::dnd5e::components::{roll::ModifierIcon, SharedCharacter},
 	system::dnd5e::data::Ability,
 };
 use enumset::EnumSet;
@@ -121,7 +121,7 @@ pub fn SavingThrowContainer() -> Html {
 						html! {
 							<Tooltip content={crate::data::as_feature_path_text(&item.source)}>
 								<span class="d-inline-flex" aria-label="Advantage" {style}>
-									<Modifier value={modifier} />
+									<ModifierIcon value={modifier} />
 								</span>
 								{ability.map(|ability| html! {
 									<span>{"on "}{ability.abbreviated_name().to_uppercase()}</span>
@@ -156,7 +156,7 @@ fn Modal() -> Html {
 					<tr>
 						<td class="text-center">
 							<span class="d-inline-flex" aria-label="Advantage" {style}>
-								<Modifier value={modifier} />
+								<ModifierIcon value={modifier} />
 							</span>
 						</td>
 						<td class="text-center">{ability.map(|ability| ability.long_name()).unwrap_or_default()}</td>
