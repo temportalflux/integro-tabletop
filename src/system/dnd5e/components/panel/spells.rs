@@ -12,6 +12,7 @@ use crate::{
 		},
 	},
 };
+use convert_case::{Case, Casing};
 use itertools::Itertools;
 use std::collections::BTreeMap;
 use yew::prelude::*;
@@ -66,7 +67,8 @@ pub fn Spells() -> Html {
 	let sections = {
 		let mut html = Vec::new();
 		for (rank, section_props) in sections {
-			if section_props.spells.is_empty() && (section_props.slot_count.is_none() || rank == 0) {
+			if section_props.spells.is_empty() && (section_props.slot_count.is_none() || rank == 0)
+			{
 				continue;
 			}
 			html.push(spell_section(&state, rank, section_props));
@@ -94,11 +96,11 @@ pub fn Spells() -> Html {
 				<ManageCasterButton {caster_id} />
 			}
 		});
-		let names = Itertools::intersperse(names, html! { <span class="mx-1">{"/"}</span> })
+		let names = Itertools::intersperse(names, html! { <span class="mx-1">{"|"}</span> })
 			.collect::<Vec<_>>();
-		let modifier = modifier.into_iter().map(|v| format!("{v:+}")).join(" / ");
-		let atk_bonus = atk_bonus.into_iter().map(|v| format!("{v:+}")).join(" / ");
-		let save_dc = save_dc.into_iter().map(|v| format!("{v}")).join(" / ");
+		let modifier = modifier.into_iter().map(|v| format!("{v:+}")).join(" | ");
+		let atk_bonus = atk_bonus.into_iter().map(|v| format!("{v:+}")).join(" | ");
+		let save_dc = save_dc.into_iter().map(|v| format!("{v}")).join(" | ");
 		html! {
 			<div class="caster-stats">
 				<div class="names">{names}</div>
@@ -196,7 +198,11 @@ impl<'c> SectionProps<'c> {
 	}
 }
 
-fn spell_section<'c>(state: &'c SharedCharacter, rank: u8, section_props: SectionProps<'c>) -> Html {
+fn spell_section<'c>(
+	state: &'c SharedCharacter,
+	rank: u8,
+	section_props: SectionProps<'c>,
+) -> Html {
 	use convert_case::{Case, Casing};
 	let suffix = rank_suffix(rank);
 	let rank_text = match rank {
@@ -244,7 +250,7 @@ fn spell_section<'c>(state: &'c SharedCharacter, rank: u8, section_props: Sectio
 						</tr>
 					</thead>
 					<tbody>
-						{section_props.spells.iter().map(|entry| spell_row(state, entry)).collect::<Vec<_>>()}
+						{section_props.spells.iter().map(|entry| spell_row(state, rank, entry)).collect::<Vec<_>>()}
 					</tbody>
 				</table>
 			}
@@ -260,14 +266,12 @@ fn spell_section<'c>(state: &'c SharedCharacter, rank: u8, section_props: Sectio
 		</div>
 	}
 }
-fn spell_row<'c>(state: &'c SharedCharacter, entry: &SpellEntry<'c>) -> Html {
-	use spell::{CastingDuration};
-	
+fn spell_row<'c>(state: &'c SharedCharacter, section_rank: u8, entry: &SpellEntry<'c>) -> Html {
+	use spell::CastingDuration;
+
 	// TODO: concentration and ritual icons after the spell name
 	// TODO: Casting source under the spell name
 	// TODO: tooltip for casting time duration
-	// TODO: Hit/DC column
-	// TODO: Effect column (damage or text)
 	html! {
 		<SpellModalRowRoot caster_id={entry.caster_name.clone()} spell_id={entry.spell.id.clone()}>
 			<td>{"todo"}</td>
@@ -289,14 +293,73 @@ fn spell_row<'c>(state: &'c SharedCharacter, entry: &SpellEntry<'c>) -> Html {
 					spell::Range::Unlimited => html!("Unlimited"),
 				}}
 			</td>
-			<td>{"todo"}</td>
-			<td>{"todo"}</td>
+			<td>
+				{match &entry.spell.check {
+					None => html!("--"),
+					Some(spell::Check::AttackRoll(_atk_kind)) => {
+						match state.spellcasting().get_caster(entry.caster_name) {
+							None => html!("--"),
+							Some(caster) => {
+								let modifier = state.ability_modifier(caster.ability, Some(proficiency::Level::Full));
+								html!(format!("{modifier:+}"))
+							}
+						}
+					}
+					Some(spell::Check::SavingThrow(ability, fixed_dc)) => {
+						let abb_name = ability.abbreviated_name().to_case(Case::Upper);
+						match fixed_dc {
+							Some(dc) => html!(format!("{abb_name} {dc}")),
+							None => match state.spellcasting().get_caster(entry.caster_name) {
+								None => html!("--"),
+								Some(caster) => {
+									let modifier = state.ability_modifier(caster.ability, Some(proficiency::Level::Full));
+									let dc = 8 + modifier;
+									html!(format!("{abb_name} {dc}"))
+								}
+							}
+						}
+					}
+				}}
+			</td>
+			<td>
+				{match &entry.spell.damage {
+					None => html!("--"),
+					Some(damage) => {
+						let modifier = match state.spellcasting().get_caster(entry.caster_name) {
+							None => 0,
+							Some(caster) => state.ability_modifier(caster.ability, Some(proficiency::Level::Full)),
+						};
+						let upcast_rank = section_rank - entry.spell.rank;
+						let (roll_set, bonus) = damage.evaluate(&*state, modifier, upcast_rank as u32);
+						let mut spans = roll_set.rolls().into_iter().enumerate().map(|(idx, roll)| {
+							html! {
+								<span>
+									{(idx != 0).then(|| html!("+")).unwrap_or_default()}
+									{roll.to_string()}
+								</span>
+							}
+						}).collect::<Vec<_>>();
+						if bonus != 0 {
+							spans.push(html! {
+								<span>{format!("{bonus:+}")}</span>
+							});
+						}
+						html! {<>{spans}</>}
+					}
+				}}
+			</td>
 		</SpellModalRowRoot>
 	}
 }
 
 #[function_component]
-fn SpellModalRowRoot(SpellModalProps { caster_id, spell_id, children }: &SpellModalProps) -> Html {
+fn SpellModalRowRoot(
+	SpellModalProps {
+		caster_id,
+		spell_id,
+		children,
+	}: &SpellModalProps,
+) -> Html {
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 	let open_browser = modal_dispatcher.callback({
 		let caster_id = caster_id.clone();
@@ -328,7 +391,13 @@ struct SpellModalProps {
 	children: Children,
 }
 #[function_component]
-fn SpellModal(SpellModalProps { caster_id, spell_id, children: _ }: &SpellModalProps) -> Html {
+fn SpellModal(
+	SpellModalProps {
+		caster_id,
+		spell_id,
+		children: _,
+	}: &SpellModalProps,
+) -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
 	let Some(spell) = state.persistent().selected_spells.get_spell(caster_id.as_str(), spell_id) else { return Html::default(); };
 
@@ -700,7 +769,30 @@ fn spell_content(spell: &Spell) -> Html {
 		});
 	}
 
-	// TODO: spell components
+	let mut component_items = Vec::new();
+	if spell.components.verbal {
+		component_items.push(html!("Verbal"));
+	}
+	if spell.components.somatic {
+		component_items.push(html!("Somatic"));
+	}
+	for (material, consumed) in &spell.components.materials {
+		component_items.push(html! {
+			<span>
+				{"Material: "}
+				{material}
+				{consumed.then(|| " (consumed)").unwrap_or_default()}
+			</span>
+		});
+	}
+	sections.push(html! {
+		<div class="property">
+			<strong>{"Components:"}</strong>
+			<ul>
+				{component_items.into_iter().map(|entry| html! {<li>{entry}</li>}).collect::<Vec<_>>()}
+			</ul>
+		</div>
+	});
 
 	html! {<>
 		{sections}

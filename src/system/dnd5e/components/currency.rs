@@ -25,7 +25,14 @@ pub struct CoinIconProps {
 }
 
 #[function_component]
-pub fn CoinIcon(CoinIconProps { kind, tag, classes, large }: &CoinIconProps) -> Html {
+pub fn CoinIcon(
+	CoinIconProps {
+		kind,
+		tag,
+		classes,
+		large,
+	}: &CoinIconProps,
+) -> Html {
 	let mut classes = classes!("icon", "currency", classes.clone());
 	if *large {
 		classes.push("lg");

@@ -2,7 +2,7 @@ use crate::{
 	bootstrap::components::Tooltip,
 	components::modal,
 	system::dnd5e::{
-		components::{SharedCharacter, roll::ModifierIcon},
+		components::{roll::ModifierIcon, SharedCharacter},
 		data::{Ability, Skill},
 	},
 };

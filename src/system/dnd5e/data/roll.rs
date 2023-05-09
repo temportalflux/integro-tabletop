@@ -8,28 +8,20 @@ use std::str::FromStr;
 
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
 pub struct Roll {
-	pub amount: i32,
+	pub amount: u32,
 	pub die: Die,
 }
-impl From<(i32, Die)> for Roll {
-	fn from((amount, die): (i32, Die)) -> Self {
-		Self { amount, die }
+impl From<(u32, Die)> for Roll {
+	fn from((amount, die): (u32, Die)) -> Self {
+		Self {
+			amount,
+			die,
+		}
 	}
 }
 impl ToString for Roll {
 	fn to_string(&self) -> String {
-		format!(
-			"{}d{}",
-			self.amount,
-			match self.die {
-				Die::D4 => 4,
-				Die::D6 => 6,
-				Die::D8 => 8,
-				Die::D10 => 10,
-				Die::D12 => 12,
-				Die::D20 => 20,
-			}
-		)
+		format!("{}d{}", self.amount, self.die.value())
 	}
 }
 impl FromStr for Roll {
@@ -56,7 +48,7 @@ impl FromStr for Roll {
 			))
 			.into());
 		}
-		let amount = amount_str.parse::<u32>()? as i32;
+		let amount = amount_str.parse::<u32>()?;
 		let die = Die::try_from(die_str.parse::<u32>()?)?;
 		Ok(Self { amount, die })
 	}
@@ -71,11 +63,30 @@ impl FromKDL for Roll {
 }
 
 #[derive(Default, Clone, Copy, PartialEq, Debug)]
-pub struct RollSet(pub EnumMap<Die, i32>);
+pub struct RollSet(pub EnumMap<Die, u32>);
 
 impl RollSet {
+	pub fn multiple(roll: &Roll, amount: u32) -> Self {
+		let mut set = Self::default();
+		set.0[roll.die] = roll.amount * amount;
+		set
+	}
+
 	pub fn push(&mut self, roll: Roll) {
 		self.0[roll.die] += roll.amount;
+	}
+
+	pub fn extend(&mut self, set: RollSet) {
+		for (die, amt) in set.0 {
+			self.0[die] += amt;
+		}
+	}
+
+	pub fn rolls(&self) -> Vec<Roll> {
+		self.0.iter().filter_map(|(die, amt)| match amt {
+			0 => None,
+			amt => Some(Roll::from((*amt, die))),
+		}).collect::<Vec<_>>()
 	}
 }
 

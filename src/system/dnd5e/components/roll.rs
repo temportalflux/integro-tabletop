@@ -1,6 +1,6 @@
+use super::GeneralProp;
 use crate::system::dnd5e::data::roll;
 use yew::prelude::*;
-use super::GeneralProp;
 
 #[function_component]
 pub fn ModifierIcon(props: &GeneralProp<roll::Modifier>) -> Html {
