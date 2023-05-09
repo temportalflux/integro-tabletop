@@ -1,0 +1,22 @@
+<!-- https://www.dndbeyond.com/Content/Skins/Waterdeep/images/character-sheet/sheet-active.svg -->
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="19px" height="21px" viewBox="0 0 19 21" version="1.1">
+	<!-- Generator: Sketch 44.1 (41455) - http://www.bohemiancoding.com/sketch -->
+	<title>sheet_active</title>
+	<desc>Created with Sketch.</desc>
+	<defs/>
+	<g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+		<g id="sheet_active">
+			<g id="Page-1">
+				<path d="M0,20.6513 L18.35,20.6513 L18.35,0.0003 L0,0.0003 L0,20.6513 Z M1.199,19.5553 L17.151,19.5553 L17.151,1.0963 L1.199,1.0963 L1.199,19.5553 Z" id="Fill-1" fill="#FFFFFF"/>
+				<polygon id="Fill-2" fill="#FFFFFF" points="0 19.7153 18.35 19.7153 18.35 8.0413 0 8.0413"/>
+				<polygon id="Fill-3" fill="#333333" points="1.437 10.5763 16.914 10.5763 16.914 9.3773 1.437 9.3773"/>
+				<polygon id="Fill-4" fill="#FFFFFF" points="8.061 3.9913 15.46 3.9913 15.46 2.7923 8.061 2.7923"/>
+				<polygon id="Fill-5" fill="#FFFFFF" points="8.061 6.4473 15.46 6.4473 15.46 5.2483 8.061 5.2483"/>
+				<polygon id="Fill-6" fill="#333333" points="1.437 13.1393 16.914 13.1393 16.914 11.9403 1.437 11.9403"/>
+				<polygon id="Fill-7" fill="#333333" points="1.437 15.7013 16.914 15.7013 16.914 14.5023 1.437 14.5023"/>
+				<polygon id="Fill-8" fill="#333333" points="1.437 18.2643 16.914 18.2643 16.914 17.0653 1.437 17.0653"/>
+				<path d="M6.6596,4.6202 C6.6596,5.7462 5.7466,6.6592 4.6206,6.6592 C3.4936,6.6592 2.5806,5.7462 2.5806,4.6202 C2.5806,3.4942 3.4936,2.5812 4.6206,2.5812 C5.7466,2.5812 6.6596,3.4942 6.6596,4.6202" id="Fill-9" fill="#FFFFFF"/>
+			</g>
+		</g>
+	</g>
+</svg>

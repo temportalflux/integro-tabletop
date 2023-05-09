@@ -137,11 +137,93 @@
 	border-color: var(--theme-frame-color-muted);
 }
 
-.tag.defense .defense-icon {
+.icon {
+	--icon-image: "";
+	--icon-color: var(--theme-frame-color);
+}
+.icon-solid {
+	background-image: var(--icon-image);
+	background-repeat: no-repeat;
+	background-color: transparent;
+}
+.icon-mask {
+	-webkit-mask: var(--icon-image) no-repeat 50% 50%;
+	mask: var(--icon-image) no-repeat 50% 50%;
+	background-color: var(--icon-color);
+}
+.icon.sheet {
+	@extend .icon-solid;
+	display: block;
+	height: 30px;
+	width: 30px;
+	--icon-image: url(assets/sheet.svg);
+	background-size: 28px;
+}
+.icon.forge {
+	@extend .icon-mask;
+	display: block;
+	height: 40px;
+	width: 40px;
+	--icon-image: url(assets/forge.svg);
+	--icon-color: #fff;
+}
+.icon.inspiration {
+	@extend .icon-mask;
+	width: 50px;
+	height: 30px;
+	--icon-image: url(assets/inspiration.svg);
+}
+.icon.currency {
+	@extend .icon-solid;
+	display: inline-block;
+	width: 16px;
+	height: 16px;
+	margin-bottom: -3px;
+}
+.icon.currency.lg {
+	width: 24px;
+	height: 24px;
+}
+.icon.currency.copper {
+	--icon-image: url(assets/currency/copper.svg);
+}
+.icon.currency.silver {
+	--icon-image: url(assets/currency/silver.svg);
+}
+.icon.currency.electrum {
+	--icon-image: url(assets/currency/electrum.svg);
+}
+.icon.currency.gold {
+	--icon-image: url(assets/currency/gold.svg);
+}
+.icon.currency.platinum {
+	--icon-image: url(assets/currency/platinum.svg);
+}
+.icon.defense {
+	display: inline-block;
+	margin-top: auto!important;
+	margin-bottom: auto!important;
+}
+.icon.defense.resistance {
+	@extend .icon-mask;
+	--icon-image: url(assets/defense/resistance.svg);
+	--icon-color: #00c680;
+}
+.icon.defense.immunity {
+	@extend .icon-mask;
+	--icon-image: url(assets/defense/immunity.svg);
+	--icon-color: #00c680;
+}
+.icon.defense.vulnerability {
+	@extend .icon-mask;
+	--icon-image: url(assets/defense/vulnerability.svg);
+	--icon-color: #e40712;
+}
+.tag.defense .icon {
 	width: 12px;
 	height: 12px;
 }
-.modal.defense .defense-section .defense-icon {
+.modal.defense .defense-section .icon {
 	width: 20px;
 	height: 20px;
 	margin-right: 10px;
@@ -257,20 +339,6 @@ input.slot[type="checkbox"]:checked:before {
 	background-color: #0a5c13;
 }
 
-.sheet-icon {
-	display: block;
-	background-image: url(https://www.dndbeyond.com/Content/Skins/Waterdeep/images/character-sheet/sheet-active.svg);
-	background-repeat: no-repeat;
-	background-size: 30px;
-	height: 30px;
-	width: 30px;
-}
-.forge-icon {
-	display: block;
-	height: 40px;
-	width: 40px;
-}
-
 .selector {
 	width: auto;
 }
@@ -344,12 +412,12 @@ input.slot[type="checkbox"]:checked:before {
 	transform: var(--bs-collapse-btn-icon-transform);
 }
 [data-bs-theme=light] .card.collapsable .card-header > .arrow[role=button] {
-	--bs-collapse-btn-icon: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23212529'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e");
-	--bs-collapse-btn-active-icon: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%230a58ca'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e");
+	--bs-collapse-btn-icon: url(assets/arrow/idle_light.svg);
+	--bs-collapse-btn-active-icon: url(assets/arrow/active_light.svg);
 }
 [data-bs-theme=dark] .card.collapsable .card-header > .arrow[role=button] {
-	--bs-collapse-btn-icon: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%236ea8fe'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e");
-	--bs-collapse-btn-active-icon: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%236ea8fe'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e");
+	--bs-collapse-btn-icon: url(assets/arrow/idle_dark.svg);
+	--bs-collapse-btn-active-icon: url(assets/arrow/active_dark.svg);
 }
 
 .modal.spells.browse {
@@ -433,12 +501,12 @@ button.collapse_trigger.arrow_right.collapsed::after {
 	transform: none;
 }
 [data-bs-theme=light] button.collapse_trigger {
-	--bs-collapse-btn-icon: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23212529'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e");
-	--bs-collapse-btn-active-icon: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%230a58ca'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e");
+	--bs-collapse-btn-icon: url(assets/arrow/idle_light.svg);
+	--bs-collapse-btn-active-icon: url(assets/arrow/active_light.svg);
 }
 [data-bs-theme=dark] button.collapse_trigger {
-	--bs-collapse-btn-icon: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%236ea8fe'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e");
-	--bs-collapse-btn-active-icon: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%236ea8fe'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e");
+	--bs-collapse-btn-icon: url(assets/arrow/idle_dark.svg);
+	--bs-collapse-btn-active-icon: url(assets/arrow/active_dark.svg);
 }
 
 .btn-xs {

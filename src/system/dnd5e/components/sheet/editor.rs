@@ -19,7 +19,7 @@ pub struct SheetEditorProps {
 pub fn SheetEditor(SheetEditorProps { open_viewer }: &SheetEditorProps) -> Html {
 	let floating_exit_btn = html! {
 		<div class="ms-auto">
-			<a class="sheet-icon mt-1" onclick={open_viewer.reform(|_| ())} />
+			<a class="icon sheet mt-1" onclick={open_viewer.reform(|_| ())} />
 		</div>
 	};
 	html! {
