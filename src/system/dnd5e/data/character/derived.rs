@@ -1,4 +1,4 @@
-use super::AttributedValue;
+use super::{AttributedValue, PersonalityKind};
 use crate::system::dnd5e::{
 	data::{
 		proficiency, roll::Modifier, Ability, ArmorClass, DamageType, OtherProficiencies, Skill,
@@ -276,6 +276,8 @@ impl std::ops::Deref for Defenses {
 pub struct DerivedDescription {
 	pub life_expectancy: i32,
 	pub size_formula: SizeFormula,
+	pub personality_suggestions: EnumMap<PersonalityKind, Vec<String>>,
+	// TODO: Starter equipment here
 }
 
 #[derive(Clone, Default, PartialEq, Debug)]

@@ -20,6 +20,7 @@ impl ToString for Size {
 			Self::Large => "Large",
 			Self::Huge => "Huge",
 			Self::Gargantuan => "Gargantuan",
-		}.into()
+		}
+		.into()
 	}
 }

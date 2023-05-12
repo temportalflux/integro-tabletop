@@ -99,6 +99,7 @@ pub fn node_registry() -> NodeRegistry {
 	registry.register_mutator::<AddLifeExpectancy>();
 	registry.register_mutator::<AddToActionBudget>();
 	registry.register_mutator::<AddSize>();
+	registry.register_mutator::<SuggestedPersonality>();
 	registry.register_mutator::<AddMaxHitPoints>();
 	registry.register_mutator::<AddModifier>();
 	registry.register_mutator::<AddProficiency>();

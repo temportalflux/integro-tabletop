@@ -458,31 +458,32 @@ input.slot[type="checkbox"]:checked:before {
 		width: 85px;
 	}
 
-	> button.collapse_trigger {
-		border: 0;
-		padding: 0;
-		background-color: transparent;
-		font-family: var(--bs-body-font-family);
-		font-size: var(--bs-body-font-size);
-		font-weight: var(--bs-body-font-weight);
-		line-height: var(--bs-body-line-height);
-		color: var(--bs-body-color);
-		display: inline-flex;
+	> button.collapse_trigger > .spell_rank_suffix {
+		color: var(--bs-gray-600);
+		margin-left: 5px;
+	}
 
-		> .spell_rank_suffix {
-			color: var(--bs-gray-600);
-			margin-left: 5px;
-		}
-	}
-	
 	> button.collapse_trigger::before {
-		content: "";
-		display: inline-block;
-		--bs-collapse-btn-width: 1rem;
-		--bs-collapse-btn-icon-width: 1rem;
 		margin-top: 3px;
-		margin-right: 5px;
 	}
+}
+button.collapse_trigger {
+	border: 0;
+	padding: 0;
+	background-color: transparent;
+	font-family: var(--bs-body-font-family);
+	font-size: var(--bs-body-font-size);
+	font-weight: var(--bs-body-font-weight);
+	line-height: var(--bs-body-line-height);
+	color: var(--bs-body-color);
+	display: inline-flex;
+}
+button.collapse_trigger.arrow_left::before {
+	content: "";
+	display: inline-block;
+	--bs-collapse-btn-width: 1rem;
+	--bs-collapse-btn-icon-width: 1rem;
+	margin-right: 5px;
 }
 button.collapse_trigger.arrow_left::before, button.collapse_trigger.arrow_right::after {
 	--bs-collapse-btn-width: 1.25rem;

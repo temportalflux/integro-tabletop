@@ -81,7 +81,7 @@ impl Mutator for AddSize {
 impl FromKDL for AddSize {
 	fn from_kdl(
 		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
+		_ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
 		let height = match node.query_opt("scope() > height")? {
 			None => Vec::new(),
@@ -107,7 +107,9 @@ impl FromKDL for AddSize {
 					comps.push(FormulaComponent::Bonus(Roll::from_kdl_value(kdl_value)?));
 				}
 				if let Some(kdl_value) = node.get("multiplier") {
-					comps.push(FormulaComponent::WeightMultiplier(Roll::from_kdl_value(kdl_value)?));
+					comps.push(FormulaComponent::WeightMultiplier(Roll::from_kdl_value(
+						kdl_value,
+					)?));
 				}
 				comps
 			}

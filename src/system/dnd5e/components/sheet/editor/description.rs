@@ -1,19 +1,21 @@
-use crate::{system::dnd5e::{
-	components::{validate_uint_only, SharedCharacter},
-	data::Size,
-}, utility::InputExt};
+use crate::{
+	system::dnd5e::{
+		components::{validate_uint_only, GeneralProp, SharedCharacter},
+		data::{character::PersonalityKind, Size},
+	},
+	utility::InputExt,
+};
 use yew::prelude::*;
 
 #[function_component]
 pub fn DescriptionTab() -> Html {
 	/*
 	Age numerical field, with descriptive text for life expectancy.
-	Personality Traits, Ideals, Bonds, Flaws
 	*/
-
 
 	html! {<div class="mx-4 mt-3">
 		<SizeForm />
+		<PersonalitySection />
 		<div class="form-floating mb-3">
 			<textarea class="form-control" id="appearance" />
 			<label for="appearance">{"Appearance"}</label>
@@ -80,7 +82,10 @@ fn SizeForm() -> Html {
 	});
 	let roll_size = state.new_dispatch(|_, persistent, character| {
 		let mut rng = rand::thread_rng();
-		let (height, weight) = character.derived_description().size_formula.get_random(&mut rng);
+		let (height, weight) = character
+			.derived_description()
+			.size_formula
+			.get_random(&mut rng);
 		persistent.description.height = height;
 		persistent.description.weight = weight;
 		None
@@ -88,7 +93,7 @@ fn SizeForm() -> Html {
 
 	html! {
 		<div class="mb-3">
-			<label>{"Size"}</label>
+			<h3>{"Size"}</h3>
 			<div class="form-text mb-2" id="sizeHelp">
 				<strong>{size}{": "}</strong>
 				{size_info}
@@ -140,6 +145,134 @@ fn SizeForm() -> Html {
 					</div>
 				</div>
 			</div>
+		</div>
+	}
+}
+
+#[function_component]
+fn PersonalitySection() -> Html {
+	html! {
+		<div>
+			<h3>{"Personality"}</h3>
+			<PersonalityCard value={PersonalityKind::Trait} />
+			<PersonalityCard value={PersonalityKind::Ideal} />
+			<PersonalityCard value={PersonalityKind::Bond} />
+			<PersonalityCard value={PersonalityKind::Flaw} />
+		</div>
+	}
+}
+
+#[function_component]
+fn PersonalityCard(GeneralProp { value }: &GeneralProp<PersonalityKind>) -> Html {
+	let state = use_context::<SharedCharacter>().unwrap();
+	let personality_kind = *value;
+	let add_item = state.new_dispatch(move |value, persistent, _| {
+		persistent.description.personality[personality_kind].push(value);
+		None
+	});
+	let info_collapse = {
+		let collapse_id = format!("{}-info", value.to_string());
+		html! {
+			<div class="mb-2">
+				<div class="mb-1">
+					<button
+						role="button" class={"collapse_trigger arrow_left collapsed"}
+						data-bs-toggle="collapse"
+						data-bs-target={format!("#{collapse_id}")}
+					>
+						{"Info"}
+					</button>
+				</div>
+				<div class="collapse" id={collapse_id}>
+					{value.description()}
+				</div>
+			</div>
+		}
+	};
+	let selected_values = {
+		let add_custom = add_item.reform(|_| String::new());
+		let delete_item = state.new_dispatch(move |idx: usize, persistent, _| {
+			persistent.description.personality[personality_kind].remove(idx);
+			None
+		});
+		let update_item = state.new_dispatch(move |(idx, evt): (usize, web_sys::Event), persistent, _| {
+			let Some(value) = evt.input_value() else { return None; };
+			let Some(target) = persistent.description.personality[personality_kind].get_mut(idx) else { return None; };
+			*target = value.trim().to_owned();
+			None
+		});
+		let selected_traits = &state.persistent().description.personality[*value];
+		html! {
+			<div class="mb-3">
+				<ul class="list-group mb-1">
+					{selected_traits.iter().enumerate().map(|(idx, value)| {
+						let on_delete = delete_item.reform(move |_| idx);
+						let onchange = update_item.reform(move |evt| (idx, evt));
+						html! {
+							<li class="list-group-item d-flex p-0">
+								<input
+									type="text"
+									class="form-control border-0 w-auto flex-grow-1 px-2"
+									placeholder={format!("type your {personality_kind} here...")}
+									value={value.clone()}
+									{onchange}
+								/>
+								<button type="button" class="btn btn-danger btn-xs m-2" onclick={on_delete}>
+									<i class="bi bi-trash me-1" />
+									{"Delete"}
+								</button>
+							</li>
+						}
+					}).collect::<Vec<_>>()}
+				</ul>
+				<button role="button" class="btn btn-success btn-sm" onclick={add_custom}>
+					<i class="bi bi-plus" />{"Add Custom"}
+				</button>
+			</div>
+		}
+	};
+	let suggestions_collapsable = {
+		let suggestions = &state.derived_description().personality_suggestions[*value];
+		let collapse_id = format!("{}-suggestions", value.to_string());
+		html! {
+			<div>
+				<div class="mb-2">
+					<button
+						role="button" class={"collapse_trigger arrow_left collapsed"}
+						data-bs-toggle="collapse"
+						data-bs-target={format!("#{collapse_id}")}
+					>
+						{"Suggestions"}
+					</button>
+				</div>
+				<div class="collapse" id={collapse_id}>
+					<ul class="list-group">
+						{suggestions.iter().map(|value| {
+							let onclick = add_item.reform({
+								let value = value.clone();
+								move |_| value.clone()
+							});
+							html! {
+								<li class="list-group-item d-flex px-2">
+									<button type="button" class="btn btn-outline-success btn-xs me-2" {onclick}>
+										<i class="bi bi-plus" />
+										{"Add"}
+									</button>
+									{value}
+								</li>
+							}
+						}).collect::<Vec<_>>()}
+					</ul>
+				</div>
+			</div>
+		}
+	};
+	html! {
+		<div class="mb-4">
+			<h5>{*value}</h5>
+			{selected_values}
+			{info_collapse}
+			{suggestions_collapsable}
 		</div>
 	}
 }
