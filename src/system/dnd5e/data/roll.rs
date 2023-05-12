@@ -8,20 +8,48 @@ use std::str::FromStr;
 
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
 pub struct Roll {
-	pub amount: u32,
-	pub die: Die,
+	amount: u32,
+	die: Option<Die>,
+}
+impl From<u32> for Roll {
+	fn from(amount: u32) -> Self {
+		Self { amount, die: None }
+	}
 }
 impl From<(u32, Die)> for Roll {
 	fn from((amount, die): (u32, Die)) -> Self {
 		Self {
 			amount,
-			die,
+			die: Some(die),
 		}
 	}
 }
 impl ToString for Roll {
 	fn to_string(&self) -> String {
-		format!("{}d{}", self.amount, self.die.value())
+		match self.die {
+			None => self.amount.to_string(),
+			Some(die) => format!("{}d{}", self.amount, die.value()),
+		}
+	}
+}
+impl Roll {
+	pub fn min(&self) -> u32 {
+		self.amount
+	}
+
+	pub fn max(&self) -> u32 {
+		self.amount * self.die.clone().map(Die::value).unwrap_or(1)
+	}
+
+	pub fn as_nonzero_string(&self) -> Option<String> {
+		(self.amount > 0).then(|| self.to_string())
+	}
+
+	pub fn roll(&self, rand: &mut impl rand::Rng) -> u32 {
+		match self.die {
+			None => self.amount,
+			Some(die) => die.roll(rand, self.amount),
+		}
 	}
 }
 impl FromStr for Roll {
@@ -30,10 +58,8 @@ impl FromStr for Roll {
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		static EXPECTED: &'static str = "{int}d{int}";
 		if !s.contains('d') {
-			return Err(GeneralError(format!(
-				"Invalid Roll string format. Expected {EXPECTED:?}, but found {s}"
-			))
-			.into());
+			let amount = s.parse::<u32>()?;
+			return Ok(Self::from(amount));
 		}
 		let mut parts = s.split('d');
 		let amount_str = parts.next().ok_or(GeneralError(format!(
@@ -50,7 +76,10 @@ impl FromStr for Roll {
 		}
 		let amount = amount_str.parse::<u32>()?;
 		let die = Die::try_from(die_str.parse::<u32>()?)?;
-		Ok(Self { amount, die })
+		Ok(Self {
+			amount,
+			die: Some(die),
+		})
 	}
 }
 impl FromKDL for Roll {
@@ -61,32 +90,98 @@ impl FromKDL for Roll {
 		Ok(Self::from_str(node.get_str_req(ctx.consume_idx())?)?)
 	}
 }
+impl Roll {
+	pub fn from_kdl_value(kdl: &kdl::KdlValue) -> anyhow::Result<Self> {
+		if let Some(amt) = kdl.as_i64() {
+			return Ok(Self::from(amt as u32));
+		}
+		if let Some(str) = kdl.as_string() {
+			return Ok(Self::from_str(str)?);
+		}
+		Err(crate::kdl_ext::InvalidValueType(kdl.clone(), "i64 or string").into())
+	}
+}
 
 #[derive(Default, Clone, Copy, PartialEq, Debug)]
-pub struct RollSet(pub EnumMap<Die, u32>);
+pub struct RollSet(EnumMap<Die, u32>, u32);
 
 impl RollSet {
 	pub fn multiple(roll: &Roll, amount: u32) -> Self {
 		let mut set = Self::default();
-		set.0[roll.die] = roll.amount * amount;
+		match &roll.die {
+			None => set.1 += roll.amount * amount,
+			Some(die) => {
+				set.0[*die] += roll.amount * amount;
+			}
+		}
 		set
 	}
 
 	pub fn push(&mut self, roll: Roll) {
-		self.0[roll.die] += roll.amount;
+		match roll.die {
+			None => self.1 += roll.amount,
+			Some(die) => {
+				self.0[die] += roll.amount;
+			}
+		}
 	}
 
 	pub fn extend(&mut self, set: RollSet) {
 		for (die, amt) in set.0 {
 			self.0[die] += amt;
 		}
+		self.1 += set.1;
 	}
 
 	pub fn rolls(&self) -> Vec<Roll> {
-		self.0.iter().filter_map(|(die, amt)| match amt {
-			0 => None,
-			amt => Some(Roll::from((*amt, die))),
-		}).collect::<Vec<_>>()
+		let mut rolls = Vec::with_capacity(Die::LENGTH + 1);
+		for (die, amt) in &self.0 {
+			if *amt == 0 {
+				continue;
+			}
+			rolls.push(Roll::from((*amt, die)));
+		}
+		if self.1 > 0 {
+			rolls.push(Roll::from(self.1));
+		}
+		rolls
+	}
+
+	pub fn min(&self) -> u32 {
+		let mut value = self.1;
+		for (_die, amt) in &self.0 {
+			if *amt > 0 {
+				value += *amt;
+			}
+		}
+		value
+	}
+
+	pub fn max(&self) -> u32 {
+		let mut value = self.1;
+		for (die, amt) in &self.0 {
+			if *amt > 0 {
+				value += *amt * die.value();
+			}
+		}
+		value
+	}
+
+	pub fn as_nonzero_string(&self) -> Option<String> {
+		let roll_strs = self
+			.rolls()
+			.iter()
+			.filter_map(Roll::as_nonzero_string)
+			.collect::<Vec<_>>();
+		(!roll_strs.is_empty()).then(|| roll_strs.join(" + "))
+	}
+
+	pub fn roll(&self, rand: &mut impl rand::Rng) -> u32 {
+		let mut value = self.1;
+		for (die, amt) in &self.0 {
+			value += die.roll(rand, *amt);
+		}
+		value
 	}
 }
 
@@ -110,6 +205,14 @@ impl Die {
 			Self::D12 => 12,
 			Self::D20 => 20,
 		}
+	}
+
+	pub fn roll(&self, rand: &mut impl rand::Rng, num: u32) -> u32 {
+		if num == 0 {
+			return 0;
+		}
+		let range = 1..=self.value();
+		(0..num).map(|_| rand.gen_range(range.clone())).sum()
 	}
 }
 impl TryFrom<u32> for Die {

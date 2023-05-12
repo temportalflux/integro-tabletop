@@ -136,10 +136,7 @@ fn create_character(system: &system::dnd5e::DnD5e) -> system::dnd5e::data::chara
 				kind: item::weapon::Kind::Simple,
 				classification: "Handaxe".into(),
 				damage: Some(item::weapon::WeaponDamage {
-					roll: Some(Roll {
-						amount: 1,
-						die: Die::D6,
-					}),
+					roll: Some(Roll::from((1, Die::D6))),
 					bonus: 0,
 					damage_type: DamageType::Slashing,
 				}),

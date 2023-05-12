@@ -203,7 +203,6 @@ fn spell_section<'c>(
 	rank: u8,
 	section_props: SectionProps<'c>,
 ) -> Html {
-	use convert_case::{Case, Casing};
 	let suffix = rank_suffix(rank);
 	let rank_text = match rank {
 		0 => "cantrip",

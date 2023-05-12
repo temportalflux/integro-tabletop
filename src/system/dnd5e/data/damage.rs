@@ -181,10 +181,7 @@ mod test {
 				damage_type \"Force\"
 			}";
 			let expected = DamageRoll {
-				roll: Some(Roll {
-					amount: 2,
-					die: Die::D4,
-				}),
+				roll: Some(Roll::from((2, Die::D4))),
 				base_bonus: 0,
 				damage_type: DamageType::Force,
 				additional_bonuses: vec![],
@@ -200,10 +197,7 @@ mod test {
 				damage_type \"Bludgeoning\"
 			}";
 			let expected = DamageRoll {
-				roll: Some(Roll {
-					amount: 1,
-					die: Die::D6,
-				}),
+				roll: Some(Roll::from((1, Die::D6))),
 				base_bonus: 2,
 				damage_type: DamageType::Bludgeoning,
 				additional_bonuses: vec![],

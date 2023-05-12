@@ -5,6 +5,8 @@ mod abilities;
 pub use abilities::*;
 mod class;
 pub use class::*;
+mod description;
+pub use description::*;
 mod home;
 pub use home::*;
 mod origin;
@@ -38,7 +40,7 @@ pub fn SheetEditor(SheetEditorProps { open_viewer }: &SheetEditorProps) -> Html 
 					<AbilitiesTab />
 				</TabContent>
 				<TabContent id="description" title={html! {{"Description"}}}>
-					{"Description"}
+					<DescriptionTab />
 				</TabContent>
 			</Nav>
 		</div>

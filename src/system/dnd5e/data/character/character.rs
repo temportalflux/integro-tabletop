@@ -441,6 +441,10 @@ impl Character {
 		actions
 	}
 
+	pub fn derived_description(&self) -> &DerivedDescription {
+		&self.derived.description
+	}
+
 	pub fn derived_description_mut(&mut self) -> &mut DerivedDescription {
 		&mut self.derived.description
 	}

@@ -68,10 +68,7 @@ mod test {
 	fn roll() -> anyhow::Result<()> {
 		let doc = "damage \"Slashing\" roll=\"2d4\"";
 		let expected = WeaponDamage {
-			roll: Some(Roll {
-				amount: 2,
-				die: Die::D4,
-			}),
+			roll: Some(Roll::from((2, Die::D4))),
 			bonus: 0,
 			damage_type: DamageType::Slashing,
 		};
@@ -83,10 +80,7 @@ mod test {
 	fn combined() -> anyhow::Result<()> {
 		let doc = "damage \"Slashing\" roll=\"1d6\" base=2";
 		let expected = WeaponDamage {
-			roll: Some(Roll {
-				amount: 1,
-				die: Die::D6,
-			}),
+			roll: Some(Roll::from((1, Die::D6))),
 			bonus: 2,
 			damage_type: DamageType::Slashing,
 		};

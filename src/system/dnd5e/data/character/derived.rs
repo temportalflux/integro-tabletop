@@ -1,9 +1,7 @@
 use super::AttributedValue;
 use crate::system::dnd5e::{
 	data::{
-		proficiency,
-		roll::{Modifier, RollSet},
-		Ability, ArmorClass, DamageType, OtherProficiencies, Skill,
+		proficiency, roll::Modifier, Ability, ArmorClass, DamageType, OtherProficiencies, Skill,
 	},
 	mutator::{Defense, Flag},
 };
@@ -16,6 +14,8 @@ mod actions;
 pub use actions::*;
 mod sense;
 pub use sense::*;
+mod size;
+pub use size::*;
 mod speed;
 pub use speed::*;
 pub mod spellcasting;
@@ -275,7 +275,7 @@ impl std::ops::Deref for Defenses {
 #[derive(Clone, Default, PartialEq, Debug)]
 pub struct DerivedDescription {
 	pub life_expectancy: i32,
-	pub max_height: (i32, RollSet),
+	pub size_formula: SizeFormula,
 }
 
 #[derive(Clone, Default, PartialEq, Debug)]

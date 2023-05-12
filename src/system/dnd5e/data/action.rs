@@ -124,10 +124,7 @@ mod test {
 					},
 					area_of_effect: None,
 					damage: Some(DamageRoll {
-						roll: Some(Roll {
-							amount: 2,
-							die: Die::D6,
-						}),
+						roll: Some(Roll::from((2, Die::D6))),
 						base_bonus: 1,
 						damage_type: DamageType::Fire,
 						additional_bonuses: Vec::new(),

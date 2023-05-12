@@ -193,10 +193,7 @@ mod test {
 					kind: weapon::Kind::Martial,
 					classification: "Maul".into(),
 					damage: Some(weapon::WeaponDamage {
-						roll: Some(Roll {
-							amount: 2,
-							die: Die::D6,
-						}),
+						roll: Some(Roll::from((2, Die::D6))),
 						bonus: 0,
 						damage_type: DamageType::Bludgeoning,
 					}),

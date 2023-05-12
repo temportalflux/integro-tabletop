@@ -188,10 +188,7 @@ mod test {
 				kind: Kind::Simple,
 				classification: "Handaxe".into(),
 				damage: Some(WeaponDamage {
-					roll: Some(Roll {
-						amount: 1,
-						die: Die::D6,
-					}),
+					roll: Some(Roll::from((1, Die::D6))),
 					bonus: 0,
 					damage_type: DamageType::Slashing,
 				}),
@@ -212,10 +209,7 @@ mod test {
 				kind: Kind::Martial,
 				classification: "Rapier".into(),
 				damage: Some(WeaponDamage {
-					roll: Some(Roll {
-						amount: 1,
-						die: Die::D8,
-					}),
+					roll: Some(Roll::from((1, Die::D8))),
 					bonus: 0,
 					damage_type: DamageType::Piercing,
 				}),
@@ -240,10 +234,7 @@ mod test {
 				kind: Kind::Martial,
 				classification: "CrossbowHand".into(),
 				damage: Some(WeaponDamage {
-					roll: Some(Roll {
-						amount: 1,
-						die: Die::D6,
-					}),
+					roll: Some(Roll::from((1, Die::D6))),
 					bonus: 0,
 					damage_type: DamageType::Piercing,
 				}),
