@@ -200,7 +200,7 @@ impl<'a> MutatorGroup for LevelWithIndex<'a> {
 		let path_to_self = parent.join(self.level_name());
 		if let Some(hit_points) = stats.resolve_selector(&self.1.hit_points) {
 			let mutator = AddMaxHitPoints {
-				id: Some(format!("Level {:02}", self.0 + 1)),
+				id: None,
 				value: Value::Fixed(hit_points as i32),
 			};
 			stats.apply(&mutator.into(), &path_to_self);

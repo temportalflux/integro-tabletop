@@ -75,14 +75,18 @@ pub enum PersonalityKind {
 }
 
 impl std::fmt::Display for PersonalityKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-      write!(f, "{}", match self {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(
+			f,
+			"{}",
+			match self {
 				Self::Trait => "Trait",
 				Self::Ideal => "Ideal",
 				Self::Bond => "Bond",
 				Self::Flaw => "Flaw",
-			})
-    }
+			}
+		)
+	}
 }
 
 impl PersonalityKind {

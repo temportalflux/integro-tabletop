@@ -141,6 +141,17 @@ impl Persistent {
 		self.selected_values.set(key, value.into());
 	}
 
+	pub fn set_selected(&mut self, key: impl AsRef<Path>, value: Option<String>) {
+		match value {
+			Some(value) => {
+				self.selected_values.set(key, value);
+			}
+			None => {
+				let _ = self.selected_values.remove(key);
+			}
+		}
+	}
+
 	pub fn insert_selection(&mut self, key: impl AsRef<Path>, value: impl Into<String>) {
 		self.selected_values.insert(key, value.into());
 	}

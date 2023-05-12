@@ -1,13 +1,17 @@
-use crate::system::dnd5e::{
-	components::{
-		editor::{feature, mutator_list},
-		SharedCharacter,
+use crate::{
+	system::dnd5e::{
+		components::{
+			editor::{feature, mutator_list},
+			SharedCharacter,
+		},
+		data::{
+			character::{ActionEffect, Persistent},
+			roll::Die,
+			Class, Level,
+		},
+		DnD5e,
 	},
-	data::{
-		character::{ActionEffect, Persistent},
-		Class, Level,
-	},
-	DnD5e,
+	utility::InputExt,
 };
 use convert_case::{Case, Casing};
 use itertools::Itertools;
@@ -239,12 +243,10 @@ fn class_body(value: &Class, show_selectors: bool) -> Html {
 							html! {<>
 								<span>{"Level "}{idx + 1}</span>
 								{show_selectors.then(move || html! {
-									<span class="ms-auto">
-										{"Hit Points: "}
-										{"TODO"}
-										{" / "}
-										{hit_die.value()}
-									</span>
+									<LevelHitPoints
+										data_path={level.hit_points.get_data_path()}
+										die={value.hit_die}
+									/>
 								}).unwrap_or_default()}
 							</>}
 						}}
@@ -333,4 +335,54 @@ fn level_body(value: &Level, show_selectors: bool) -> Html {
 		{mutator_list(&value.mutators, show_selectors)}
 		{value.features.iter().map(|f| feature(f, show_selectors)).collect::<Vec<_>>()}
 	</>}
+}
+
+#[derive(Clone, PartialEq, Properties)]
+struct LevelHitPointsProps {
+	data_path: Option<std::path::PathBuf>,
+	die: Die,
+}
+#[function_component]
+fn LevelHitPoints(LevelHitPointsProps { data_path, die }: &LevelHitPointsProps) -> Html {
+	let state = use_context::<SharedCharacter>().unwrap();
+	let Some(hp_path) = data_path else { return Html::default(); };
+	let hp_value = state
+		.get_first_selection_at::<u32>(hp_path)
+		.map(|res| res.ok())
+		.flatten();
+	let mut classes = classes!("form-select", "hit-points", "py-0", "w-auto");
+	if hp_value.is_none() {
+		classes.push("missing-value");
+	}
+	let hp_path_dst = hp_path.clone();
+	let onchange = state.new_dispatch(move |evt: web_sys::Event, persistent, _| {
+		persistent.set_selected(&hp_path_dst, evt.select_value());
+		Some(ActionEffect::Recompile) // TODO: this can be delayed till editor is closed i think
+	});
+	let info_text = hp_value.is_none().then(|| {
+		html! {
+			<span class="me-2" style="color: var(--bs-warning);">
+				{"Roll your Hit Points!"}
+			</span>
+		}
+	});
+	html! {
+		<div class="d-inline-flex align-items-center ms-auto">
+			{info_text.unwrap_or_default()}
+			<span class="icon heart me-1" />
+			<select class={classes} {onchange}>
+				<option selected={hp_value == None}></option>
+				{(1..=die.value()).map(|value| {
+					html! {
+						<option
+							value={value.to_string()}
+							selected={hp_value == Some(value)}
+						>
+							{value}
+						</option>
+					}
+				}).collect::<Vec<_>>()}
+			</select>
+		</div>
+	}
 }

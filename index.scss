@@ -354,7 +354,7 @@ input.slot[type="checkbox"]:checked:before {
 .selector {
 	width: auto;
 }
-.selector.missing-value {
+.missing-value {
 	--bs-border-color: var(--bs-warning);
 }
 .selector.missing-value {
@@ -430,6 +430,19 @@ input.slot[type="checkbox"]:checked:before {
 [data-bs-theme=dark] .card.collapsable .card-header > .arrow[role=button] {
 	--bs-collapse-btn-icon: url(assets/arrow/idle_dark.svg);
 	--bs-collapse-btn-active-icon: url(assets/arrow/active_dark.svg);
+}
+
+.icon.heart::before {
+	@extend .icon-mask;
+	content: "";
+	display: block;
+	height: 20px;
+	width: 20px;
+	--icon-image: url(assets/heart-plus.svg);
+	--icon-color: var(--theme-healing);
+}
+:has(> select.missing-value) > .icon.heart::before {
+	--icon-color: var(--bs-warning);
 }
 
 .modal.spells.browse {
