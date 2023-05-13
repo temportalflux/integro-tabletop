@@ -1,16 +1,17 @@
 use crate::{
-	components::modal,
+	components::{modal, stop_propagation},
 	system::{
 		core::{ModuleId, SourceId},
 		dnd5e::{
 			components::{editor::CollapsableCard, SharedCharacter},
 			data::{
 				character::spellcasting::{CasterKind, Restriction},
-				proficiency, spell, Spell, action::LimitedUses,
+				proficiency, spell, Spell,
 			},
 			DnD5e,
 		},
 	},
+	utility::InputExt,
 };
 use convert_case::{Case, Casing};
 use itertools::Itertools;
@@ -46,7 +47,12 @@ pub fn Spells() -> Html {
 			let section = sections.get_mut(&rank).expect(&format!(
 				"Spell rank {rank} is not supported by UI, must be in the range of [0, {MAX_SPELL_RANK}]."
 			));
-			section.slot_count = Some(slot_count);
+			let consumed_slots = state
+				.persistent()
+				.selected_spells
+				.consumed_slots(rank)
+				.unwrap_or(0);
+			section.slot_count = Some((consumed_slots, slot_count));
 		}
 	}
 	for (spell, caster_names) in state.persistent().selected_spells.iter_all_casters() {
@@ -177,7 +183,7 @@ fn ManageCasterButton(CasterNameProps { caster_id }: &CasterNameProps) -> Html {
 
 #[derive(Clone, PartialEq, Default)]
 struct SectionProps<'c> {
-	slot_count: Option<usize>,
+	slot_count: Option<(/*consumed*/ usize, /*max*/ usize)>,
 	spells: Vec<SpellEntry<'c>>,
 }
 #[derive(Clone, PartialEq)]
@@ -220,11 +226,30 @@ fn spell_section<'c>(
 		using your {inline_rank_text} spell slots."
 	);
 
-	let slots = section_props.slot_count.as_ref().map(|count| {
+	let slots = section_props.slot_count.as_ref().map(|(consumed, count)| {
+		let toggle_slot = state.new_dispatch({
+			let consumed_slots = *consumed;
+			move |evt: web_sys::Event, persistent, _| {
+				let Some(consume_slot) = evt.input_checked() else { return None; };
+				let new_consumed_slots = match consume_slot {
+					true => consumed_slots.saturating_add(1),
+					false => consumed_slots.saturating_sub(1),
+				};
+				persistent
+					.selected_spells
+					.set_slots_consumed(rank, new_consumed_slots);
+				None
+			}
+		});
 		html! {
 			<div class="slots">
-				{(0..*count).map(|_| html! {
-					<input class={"form-check-input slot"} type="checkbox" />
+				{(0..*count).map(|idx| html! {
+					<input
+					type="checkbox"
+						class={"form-check-input slot"}
+						checked={idx < *consumed}
+						onchange={toggle_slot.clone()}
+					/>
 				}).collect::<Vec<_>>()}
 				<span class="ms-1">{"SLOTS"}</span>
 			</div>
@@ -247,7 +272,9 @@ fn spell_section<'c>(
 						</tr>
 					</thead>
 					<tbody>
-						{section_props.spells.iter().map(|entry| spell_row(state, rank, entry)).collect::<Vec<_>>()}
+						{section_props.spells.iter().map(|entry| {
+							spell_row(state, rank, &section_props.slot_count, entry)
+						}).collect::<Vec<_>>()}
 					</tbody>
 				</table>
 			}
@@ -263,13 +290,22 @@ fn spell_section<'c>(
 		</div>
 	}
 }
-fn spell_row<'c>(state: &'c SharedCharacter, section_rank: u8, entry: &SpellEntry<'c>) -> Html {
+fn spell_row<'c>(
+	state: &'c SharedCharacter,
+	section_rank: u8,
+	slots: &Option<(usize, usize)>,
+	entry: &SpellEntry<'c>,
+) -> Html {
 	use spell::CastingDuration;
 
 	let use_kind = match entry.spell.rank {
 		//0 => UseSpell::LimitedUse { uses_remaining: 3, max_uses: 5 },
 		0 => UseSpell::AtWill,
-		spell_rank => UseSpell::Slot { spell_rank, slot_rank: section_rank },
+		spell_rank => UseSpell::Slot {
+			spell_rank,
+			slot_rank: section_rank,
+			slots: slots.clone(),
+		},
 	};
 
 	// TODO: concentration and ritual icons after the spell name
@@ -277,7 +313,7 @@ fn spell_row<'c>(state: &'c SharedCharacter, section_rank: u8, entry: &SpellEntr
 	// TODO: tooltip for casting time duration
 	html! {
 		<SpellModalRowRoot caster_id={entry.caster_name.clone()} spell_id={entry.spell.id.clone()}>
-			<td><UseSpellButton kind={use_kind} /></td>
+			<td onclick={stop_propagation()}><UseSpellButton kind={use_kind} /></td>
 			<td>{&entry.spell.name}</td>
 			<td>
 				{match &entry.spell.casting_time.duration {
@@ -953,6 +989,7 @@ enum UseSpell {
 	Slot {
 		spell_rank: u8,
 		slot_rank: u8,
+		slots: Option<(usize, usize)>,
 	},
 	#[allow(dead_code)]
 	LimitedUse {
@@ -962,13 +999,38 @@ enum UseSpell {
 }
 #[function_component]
 fn UseSpellButton(UseSpellButtonProps { kind }: &UseSpellButtonProps) -> Html {
+	let state = use_context::<SharedCharacter>().unwrap();
 	match kind {
 		UseSpell::AtWill => html! {
 			<div class="text-center" style="font-size: 9px; font-weight: 700; color: var(--bs-gray-600);">
 				{"AT"}<br />{"WILL"}
 			</div>
 		},
-		UseSpell::Slot { spell_rank, slot_rank } => {
+		UseSpell::Slot {
+			spell_rank,
+			slot_rank,
+			slots,
+		} => {
+			let can_cast = slots
+				.as_ref()
+				.map(|(consumed, max)| consumed < max)
+				.unwrap_or(false);
+			let onclick = state.new_dispatch({
+				let consumed_slots = slots
+					.as_ref()
+					.map(|(consumed, _max)| *consumed)
+					.unwrap_or(0);
+				let slot_rank = *slot_rank;
+				move |evt: MouseEvent, persistent, _| {
+					evt.stop_propagation();
+					if can_cast {
+						persistent
+							.selected_spells
+							.set_slots_consumed(slot_rank, consumed_slots + 1);
+					}
+					None
+				}
+			});
 			// TODO: Revisit when spell panel rows are more fleshed out. This upcast rank span thing is not
 			// very well formated/displayed, esp with such a small text size.
 			let upcast_span = (slot_rank > spell_rank).then(|| html! {
@@ -979,16 +1041,24 @@ fn UseSpellButton(UseSpellButtonProps { kind }: &UseSpellButtonProps) -> Html {
 					</span>
 				</span>
 			});
+			let mut btn_classes = classes!("btn", "btn-xs", "px-1", "w-100");
+			btn_classes.push(match can_cast {
+				true => classes!("btn-theme"),
+				false => classes!("btn-outline-theme", "disabled"),
+			});
 			html! {
-				<button class="btn btn-theme btn-xs px-1 w-100">
+				<button class={btn_classes} {onclick}>
 					<div class="position-relative">
 						{upcast_span.unwrap_or_default()}
 						{"Cast"}
 					</div>
 				</button>
 			}
-		},
-		UseSpell::LimitedUse { uses_remaining, max_uses } => {
+		}
+		UseSpell::LimitedUse {
+			uses_remaining,
+			max_uses,
+		} => {
 			html! {
 				<button class="btn btn-theme btn-xs px-1 w-100">
 					{"Use"}

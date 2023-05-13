@@ -294,6 +294,7 @@ pub struct Settings {
 
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct SelectedSpells {
+	consumed_slots: HashMap<u8, usize>,
 	// TODO: When spells can be customized, they will need separate plots of data in SelectedSpells in order to support customizations per caster
 	/// All selected spells for all casters and other spellcasting features.
 	cache: HashMap<SourceId, (Spell, HashSet</*caster name*/ String>)>,
@@ -405,6 +406,25 @@ impl SelectedSpells {
 				None => true,
 				Some(caster_id) => casters_selected_by.contains(caster_id),
 			},
+		}
+	}
+
+	pub fn consumed_slots(&self, rank: u8) -> Option<usize> {
+		self.consumed_slots.get(&rank).map(|v| *v)
+	}
+
+	pub fn set_slots_consumed(&mut self, rank: u8, count: usize) {
+		if count == 0 {
+			self.consumed_slots.remove(&rank);
+			return;
+		}
+		match self.consumed_slots.get_mut(&rank) {
+			None => {
+				self.consumed_slots.insert(rank, count);
+			}
+			Some(slot_count) => {
+				*slot_count = count;
+			}
 		}
 	}
 }

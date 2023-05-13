@@ -23,6 +23,10 @@
 - 3 slots to which attunable items can be "equipped"
 - must be in the top-level inventory (equipment)
 
+## Rest
+- Short and Long rest buttons with functionality
+- make sure to clear consumed spell slots based on rest and caster data
+
 ## Spellcasting
 - Spell panel rows for selected spells
 	- cast vs use buttons
