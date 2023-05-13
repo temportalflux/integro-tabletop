@@ -648,6 +648,32 @@ button.collapse_trigger.arrow_right.collapsed::after {
 	> .empty-note {
 		font-size: 14px;
 	}
+	table > thead > tr {
+		// Use button
+		> th:nth-child(1) {
+			width: 40px;
+		}
+		// Name
+		> th:nth-child(2) {
+			width: auto;
+		}
+		// Casting Time
+		> th:nth-child(3) {
+			width: 50px;
+		}
+		// Range
+		> th:nth-child(4) {
+			width: 80px;
+		}
+		// Hit / DC
+		> th:nth-child(5) {
+			width: 80px;
+		}
+		// Effect (text, damage roll, healing roll)
+		> th:nth-child(6) {
+			width: 60px;
+		}
+	}
 }
 
 .panel.spells > .caster-stats {

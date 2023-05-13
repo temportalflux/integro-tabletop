@@ -6,7 +6,7 @@ use crate::{
 			components::{editor::CollapsableCard, SharedCharacter},
 			data::{
 				character::spellcasting::{CasterKind, Restriction},
-				proficiency, spell, Spell,
+				proficiency, spell, Spell, action::LimitedUses,
 			},
 			DnD5e,
 		},
@@ -188,10 +188,8 @@ struct SpellEntry<'c> {
 impl<'c> SectionProps<'c> {
 	pub fn insert_spell(&mut self, spell: &'c Spell, caster_name: &'c String) {
 		let idx = self.spells.binary_search_by(|a: &SpellEntry<'c>| {
-			a.spell
-				.rank
-				.cmp(&spell.rank)
-				.then(a.spell.name.cmp(&spell.name))
+			//a.spell.rank.cmp(&spell.rank)
+			a.spell.name.cmp(&spell.name)
 		});
 		let idx = idx.unwrap_or_else(|e| e);
 		self.spells.insert(idx, SpellEntry { spell, caster_name });
@@ -268,12 +266,18 @@ fn spell_section<'c>(
 fn spell_row<'c>(state: &'c SharedCharacter, section_rank: u8, entry: &SpellEntry<'c>) -> Html {
 	use spell::CastingDuration;
 
+	let use_kind = match entry.spell.rank {
+		//0 => UseSpell::LimitedUse { uses_remaining: 3, max_uses: 5 },
+		0 => UseSpell::AtWill,
+		spell_rank => UseSpell::Slot { spell_rank, slot_rank: section_rank },
+	};
+
 	// TODO: concentration and ritual icons after the spell name
 	// TODO: Casting source under the spell name
 	// TODO: tooltip for casting time duration
 	html! {
 		<SpellModalRowRoot caster_id={entry.caster_name.clone()} spell_id={entry.spell.id.clone()}>
-			<td>{"todo"}</td>
+			<td><UseSpellButton kind={use_kind} /></td>
 			<td>{&entry.spell.name}</td>
 			<td>
 				{match &entry.spell.casting_time.duration {
@@ -328,8 +332,8 @@ fn spell_row<'c>(state: &'c SharedCharacter, section_rank: u8, entry: &SpellEntr
 							None => 0,
 							Some(caster) => state.ability_modifier(caster.ability, Some(proficiency::Level::Full)),
 						};
-						let upcast_rank = section_rank - entry.spell.rank;
-						let (roll_set, bonus) = damage.evaluate(&*state, modifier, upcast_rank as u32);
+						let upcast_amt = section_rank - entry.spell.rank;
+						let (roll_set, bonus) = damage.evaluate(&*state, modifier, upcast_amt as u32);
 						let mut spans = roll_set.rolls().into_iter().enumerate().map(|(idx, roll)| {
 							html! {
 								<span>
@@ -936,5 +940,61 @@ impl futures::Future for FindRelevantSpells {
 
 		let spell_htmls = self.spell_htmls.take().unwrap();
 		std::task::Poll::Ready(html! {<>{spell_htmls}</>})
+	}
+}
+
+#[derive(Clone, PartialEq, Properties)]
+struct UseSpellButtonProps {
+	kind: UseSpell,
+}
+#[derive(Clone, Copy, PartialEq)]
+enum UseSpell {
+	AtWill,
+	Slot {
+		spell_rank: u8,
+		slot_rank: u8,
+	},
+	#[allow(dead_code)]
+	LimitedUse {
+		uses_remaining: u32,
+		max_uses: u32,
+	},
+}
+#[function_component]
+fn UseSpellButton(UseSpellButtonProps { kind }: &UseSpellButtonProps) -> Html {
+	match kind {
+		UseSpell::AtWill => html! {
+			<div class="text-center" style="font-size: 9px; font-weight: 700; color: var(--bs-gray-600);">
+				{"AT"}<br />{"WILL"}
+			</div>
+		},
+		UseSpell::Slot { spell_rank, slot_rank } => {
+			// TODO: Revisit when spell panel rows are more fleshed out. This upcast rank span thing is not
+			// very well formated/displayed, esp with such a small text size.
+			let upcast_span = (slot_rank > spell_rank).then(|| html! {
+				<span class="d-flex position-absolute" style="left: 1px; right: 0; top: -8px;">
+					<span style="align-items: flex-start; background-color: #1c9aef; border: 1px solid hsla(0,0%,100%,.5); border-radius: 2px; color: #fff; display: flex; font-size: 8px; line-height: 1; padding: 1px 3px;">
+						{*spell_rank}
+						<span style="font-size: 6px;">{rank_suffix(*spell_rank)}</span>
+					</span>
+				</span>
+			});
+			html! {
+				<button class="btn btn-theme btn-xs px-1 w-100">
+					<div class="position-relative">
+						{upcast_span.unwrap_or_default()}
+						{"Cast"}
+					</div>
+				</button>
+			}
+		},
+		UseSpell::LimitedUse { uses_remaining, max_uses } => {
+			html! {
+				<button class="btn btn-theme btn-xs px-1 w-100">
+					{"Use"}
+					<span class="ms-1 d-none" style="font-size: 9px; color: var(--bs-gray-600);">{format!("({uses_remaining}/{max_uses})")}</span>
+				</button>
+			}
+		}
 	}
 }
