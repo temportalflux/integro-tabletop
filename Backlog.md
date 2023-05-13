@@ -28,9 +28,11 @@
 	- cast vs use buttons
 - non-stub search functionality in main panel
 - Spell management
-	- collasable sections for selected and available spells
-	- selecting and unselecting spells
 	- search available spells to be selected
+- ritual & focus functionality
+- add_prepared spells (can select any spell, or with restrictions). e.g. Magical Secrets & Mystic Arcanum
+- limited uses for add_prepared (self-defined, using another feature, or charges)
+- add_prepared spells cost (at-will vs requires_slot vs limited_use)
 - Spell Components
 	- items can have the `SpellComponent` tag
 	- spells which have spell components specify the name, an optional gold amount, and if there is a gold amount, optionally consume it
@@ -62,14 +64,6 @@
 	- known problem areas: features which grant innate spellcasting
 - load spells and items in the background after the character is loaded
 - dont load feature groups (class, race, background, lineage, etc) unless the character needs access to editor. Once a character is created, the user doesn't usually need access to any of the other components that arent inlined into their character data.
-
-## Description
-- Gender/Pronouns
-- Size
-- Height + Weight
-- Age
-- Appearance
-- Personality Traits, Ideals, Bonds, Flaws
 
 ## Customizations
 Allow users to create new elements
