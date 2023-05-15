@@ -1,14 +1,13 @@
-use std::{collections::{HashMap, HashSet}, str::FromStr};
-
 use crate::{
+	components::modal,
 	system::{
 		core::SourceId,
 		dnd5e::{
-			components::SharedCharacter,
+			components::{panel::SpellFilter, GeneralProp, SharedCharacter},
 			data::{
 				bundle::{Background, Lineage, Race, RaceVariant, Upbringing},
-				character::{ActionEffect, Persistent},
-				description, Feature,
+				character::{spellcasting, ActionEffect, Persistent},
+				description, Feature, Spell,
 			},
 			DnD5e,
 		},
@@ -16,9 +15,13 @@ use crate::{
 	utility::{
 		web_ext::{self, CallbackExt, CallbackOptExt},
 		GenericMutator, InputExt, SelectorMeta, SelectorOptions,
-	}, components::modal,
+	},
 };
 use multimap::MultiMap;
+use std::{
+	collections::{HashMap, HashSet},
+	str::FromStr,
+};
 use yew::prelude::*;
 
 static HELP_TEXT: &'static str = "Lineages and Upbingings are a replacement for races. \
@@ -763,8 +766,11 @@ fn SelectorField(
 		}
 	});
 
-	let mut classes = classes!("my-2", "selector");
-	let mut missing_value = value.is_none().then(|| classes!("missing-value")).unwrap_or_default();
+	let classes = classes!("my-2", "selector");
+	let missing_value = value
+		.is_none()
+		.then(|| classes!("missing-value"))
+		.unwrap_or_default();
 	let inner = match options {
 		SelectorOptions::Any => {
 			let onchange = Callback::from({
@@ -823,43 +829,41 @@ fn SelectorField(
 				</select>
 			}
 		}
-		SelectorOptions::Object { category, count: capacity} => {
+		SelectorOptions::Object {
+			category,
+			count: capacity,
+			spell_filter,
+		} => {
 			let browse = modal_dispatcher.callback({
 				let data_path = data_path.clone();
 				let category: AttrValue = category.clone().into();
 				let capacity = *capacity;
+				let spell_filter = spell_filter.clone();
 				move |_| {
 					let data_path = data_path.clone();
 					let category = category.clone();
+					let filter = spell_filter.clone();
 					modal::Action::Open(modal::Props {
 						centered: true,
 						scrollable: true,
 						root_classes: classes!("browse", "objects"),
-						content: html! {<ModalObjectBrowser {data_path} {category} {capacity} />},
+						content: html! {<ModalObjectBrowser {data_path} {category} {capacity} {filter} />},
 						..Default::default()
 					})
 				}
 			});
 			let btn_classes = classes!("btn", "btn-outline-theme", "btn-xs", missing_value);
-			let selected_ids = state.get_selections_at(data_path).map(|id_strs| {
-				id_strs.iter().filter_map(|id_str| SourceId::from_str(id_str).ok()).collect::<Vec<_>>()
-			}).unwrap_or_default();
+			let selection_count = state
+				.get_selections_at(data_path)
+				.map(|list| list.len())
+				.unwrap_or_default();
 			return html! {
 				<div class={classes}>
 					<h6>{name.clone()}</h6>
 					<button type="button" class={btn_classes} onclick={browse}>
-						{format!("Browse ({}/{capacity} selected)", selected_ids.len())}
+						{format!("Browse ({}/{capacity} selected)", selection_count)}
 					</button>
-					<ul class="mb-0">
-						<li>{"Test 1"}</li>
-						{selected_ids.into_iter().map(|id| {
-							html! {
-								<li>
-									{id.to_string()}
-								</li>
-							}
-						}).collect::<Vec<_>>()}
-					</ul>
+					<ObjectSelectorList value={data_path.clone()} />
 				</div>
 			};
 		}
@@ -872,25 +876,140 @@ fn SelectorField(
 	}
 }
 
+#[function_component]
+fn ObjectSelectorList(props: &GeneralProp<std::path::PathBuf>) -> Html {
+	let state = use_context::<SharedCharacter>().unwrap();
+	let system = use_context::<UseStateHandle<DnD5e>>().unwrap();
+	let mut entries = Vec::new();
+	if let Some(selected_values) = state.get_selections_at(&props.value) {
+		for id_str in selected_values {
+			let Ok(id) = SourceId::from_str(id_str) else { continue; };
+			// TODO: Get this from the database, not DnD5e in-memory
+			let Some(spell) = system.spells.get(&id) else { continue; };
+			entries.push(html! {
+				<li>
+					{&spell.name}
+				</li>
+			})
+		}
+	}
+	html! {
+		<ul class="mb-0">
+			{entries}
+		</ul>
+	}
+}
+
 #[derive(Clone, PartialEq, Properties)]
 struct ModalObjectBrowserProps {
 	data_path: std::path::PathBuf,
 	category: AttrValue,
 	capacity: usize,
+	filter: Option<SpellFilter>,
 }
 #[function_component]
 fn ModalObjectBrowser(props: &ModalObjectBrowserProps) -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
-	let selected_ids = state.get_selections_at(&props.data_path).map(|id_strs| {
-		id_strs.iter().filter_map(|id_str| SourceId::from_str(id_str).ok()).collect::<HashSet<_>>()
-	}).unwrap_or_default();
+	use crate::system::dnd5e::components::panel::{AvailableSpellList, HeaderAddon};
 
+	// TODO: This modal should query the database and check for objects with provided category that meet the provided criteria,
+	// checking against database metadata instead of the actual parsed objects.
+	if props.category.as_str() != "spell" {
+		return html! {<>
+			<div class="modal-header">
+				<h1 class="modal-title fs-4">{"Unsupported object category"}</h1>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
+			</div>
+		</>};
+	}
+
+	let header_addon = HeaderAddon::from({
+		let data_path = props.data_path.clone();
+		let capacity = props.capacity;
+		move |spell: &Spell| -> Html {
+			html! {
+				<ObjectSelectorEntryButton
+					data_path={data_path.clone()}
+					id={spell.id.clone()}
+					{capacity}
+				/>
+			}
+		}
+	});
 	html! {<>
 		<div class="modal-header">
-			<h1 class="modal-title fs-4">{"Browse"}</h1>
+			<h1 class="modal-title fs-4">{"Browse Spells"}</h1>
 			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
 		</div>
-		<div class="modal-body">
+		<div class="modal-body spell-list">
+			<AvailableSpellList
+				{header_addon}
+				filter={props.filter.clone().unwrap_or_default()}
+			/>
 		</div>
 	</>}
+}
+
+#[derive(Clone, PartialEq, Properties)]
+struct ObjectSelectorEntryButtonProps {
+	data_path: std::path::PathBuf,
+	id: SourceId,
+	capacity: usize,
+}
+#[function_component]
+fn ObjectSelectorEntryButton(props: &ObjectSelectorEntryButtonProps) -> Html {
+	let state = use_context::<SharedCharacter>().unwrap();
+
+	let props_id = props.id.to_string();
+	let mut selected_idx = None;
+	let mut can_select_more = props.capacity > 0;
+
+	if let Some(entries) = state.get_selections_at(&props.data_path) {
+		can_select_more = entries.len() < props.capacity;
+		for (idx, id_str) in entries.iter().enumerate() {
+			if id_str.as_str() == props_id.as_str() {
+				selected_idx = Some(idx);
+				break;
+			}
+		}
+	}
+
+	let is_selected = selected_idx.is_some();
+	let onclick = state.new_dispatch({
+		let data_path = props.data_path.clone();
+		move |evt: MouseEvent, persistent, _| {
+			evt.stop_propagation();
+			match selected_idx {
+				None => {
+					persistent.insert_selection(&data_path, props_id.clone());
+				}
+				Some(idx) => {
+					persistent.remove_selection(&data_path, idx);
+				}
+			}
+			None
+		}
+	});
+
+	let mut classes = classes!("btn", "btn-xs");
+	let disabled = !is_selected && !can_select_more;
+	classes.push(match is_selected {
+		true => "btn-outline-theme",
+		false => match can_select_more {
+			true => "btn-theme",
+			false => "btn-outline-secondary",
+		},
+	});
+
+	html! {
+		<button
+			type="button" class={classes}
+			style={"margin-left: auto; width: 85px;"}
+			{disabled} {onclick}
+		>
+			{match is_selected {
+				true => "Selected",
+				false => "Select",
+			}}
+		</button>
+	}
 }

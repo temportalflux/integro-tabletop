@@ -4,13 +4,16 @@ use crate::{
 	kdl_ext::{DocumentExt, FromKDL, KDLNode, NodeExt},
 	system::{
 		core::SourceId,
-		dnd5e::data::{
-			action::LimitedUses,
-			character::{
-				spellcasting::{Caster, Restriction, Slots, SpellCapacity},
-				Character,
+		dnd5e::{
+			components::panel::SpellFilter,
+			data::{
+				action::LimitedUses,
+				character::{
+					spellcasting::{Caster, Restriction, Slots, SpellCapacity},
+					Character,
+				},
+				description, spell, Ability,
 			},
-			description, spell, Ability,
 		},
 	},
 	utility::{Mutator, NotInList, ObjectSelector, SelectorMetaVec},
@@ -63,47 +66,43 @@ pub struct SelectableSpells {
 	pub selector: ObjectSelector,
 	pub prepared: PreparedInfo,
 }
-#[derive(Clone, Debug, PartialEq)]
-struct SpellFilter {
-	// If provided, the selected spell must already be castable by the provided caster class.
-	can_cast: Option<String>,
-	/// The selected spell must be of one of these ranks.
-	ranks: HashSet<u8>,
-	/// The selected spell must have all of these tags
-	tags: HashSet<String>,
-}
 
 impl Mutator for Spellcasting {
 	type Target = Character;
 
 	fn description(&self) -> description::Section {
 		match &self.operation {
-			Operation::Caster(caster) => {
-				description::Section {
-					title: Some("Spellcasting".into()),
-					content: format!("Cast spells as a {} using {}.", caster.name(), caster.ability.long_name()),
-					..Default::default()
-				}
-			}
-			Operation::AddPrepared { selectable_spells, .. } => {
+			Operation::Caster(caster) => description::Section {
+				title: Some("Spellcasting".into()),
+				content: format!(
+					"Cast spells as a {} using {}.",
+					caster.name(),
+					caster.ability.long_name()
+				),
+				..Default::default()
+			},
+			Operation::AddPrepared {
+				selectable_spells, ..
+			} => {
 				let mut selectors = SelectorMetaVec::default();
 				if let Some(selectable) = selectable_spells {
 					selectors = selectors.with_object("Selected Spells", &selectable.selector);
 				}
 				description::Section {
 					title: Some("Spellcasting: Always Preppared Spells".into()),
-					content: format!("Add spells which are always prepared, using {}.", self.ability.long_name()),
+					content: format!(
+						"Add spells which are always prepared, using {}.",
+						self.ability.long_name()
+					),
 					selectors,
 					..Default::default()
 				}
 			}
-			Operation::AddSource => {
-				description::Section {
-					title: Some("Spellcasting: Expanded Spell List".into()),
-					content: format!("Add spells you can select from for the TODO class."),
-					..Default::default()
-				}
-			}
+			Operation::AddSource => description::Section {
+				title: Some("Spellcasting: Expanded Spell List".into()),
+				content: format!("Add spells you can select from for the TODO class."),
+				..Default::default()
+			},
 		}
 	}
 
@@ -272,7 +271,7 @@ impl FromKDL for Spellcasting {
 						let info = PreparedInfo::from_kdl(node, &mut ctx)?;
 						let mut selector = ObjectSelector::new(Spell::id(), count);
 						if let Some(node) = node.query_opt("scope() > filter")? {
-							let filter = {
+							selector.spell_filter = {
 								let can_cast = node.get_str_opt("can_cast")?.map(str::to_owned);
 								let ranks = node.query_i64_all("scope() > rank", 0)?;
 								let ranks =
@@ -280,11 +279,12 @@ impl FromKDL for Spellcasting {
 								let tags = node.query_str_all("scope() > tag", 0)?;
 								let tags =
 									tags.into_iter().map(str::to_owned).collect::<HashSet<_>>();
-								SpellFilter {
+								Some(SpellFilter {
 									can_cast,
 									ranks,
+									max_rank: None,
 									tags,
-								}
+								})
 							};
 						}
 						Some(SelectableSpells {

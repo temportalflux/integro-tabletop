@@ -176,7 +176,15 @@ fn create_character(system: &system::dnd5e::DnD5e) -> system::dnd5e::data::chara
 			operation: system::dnd5e::mutator::Operation::AddPrepared {
 				specific_spells: Vec::new(),
 				selectable_spells: Some(system::dnd5e::mutator::SelectableSpells {
-					selector: utility::ObjectSelector::new("spell", 2),
+					selector: {
+						let mut selector = utility::ObjectSelector::new("spell", 2);
+						selector.spell_filter = Some(system::dnd5e::components::panel::SpellFilter {
+							max_rank: Some(3),
+							tags: ["Wizard".into()].into(),
+							..Default::default()
+						});
+						selector
+					},
 					prepared: system::dnd5e::mutator::PreparedInfo::default(),
 				}),
 				limited_uses: None,

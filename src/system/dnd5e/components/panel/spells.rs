@@ -15,7 +15,7 @@ use crate::{
 };
 use convert_case::{Case, Casing};
 use itertools::Itertools;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use yew::prelude::*;
 
 fn rank_suffix(rank: u8) -> &'static str {
@@ -468,7 +468,11 @@ fn ManagerCasterModal(CasterNameProps { caster_id }: &CasterNameProps) -> Html {
 
 	let max_cantrips = caster.cantrip_capacity(state.persistent());
 	let max_spells = caster.spell_capacity(&state);
-	let max_spell_rank = caster.max_spell_rank(&state);
+	let filter = SpellFilter {
+		tags: caster.restriction.tags.iter().cloned().collect(),
+		max_rank: caster.max_spell_rank(&state),
+		..Default::default()
+	};
 	let mut num_cantrips = 0;
 	let mut num_spells = 0;
 	let mut num_all_selections = 0;
@@ -526,11 +530,20 @@ fn ManagerCasterModal(CasterNameProps { caster_id }: &CasterNameProps) -> Html {
 					body_classes={"spell-list available"}
 				>
 					<AvailableSpellList
-						caster={caster_info.clone()}
-						filter={SpellListFilter {
-							restriction: caster.restriction.clone(),
-							max_rank: max_spell_rank,
-						}}
+						header_addon={HeaderAddon::from({
+							let caster_info = caster_info.clone();
+							move |spell: &Spell| -> Html {
+								html! {
+									<SpellListAction
+										caster={caster_info.clone()}
+										section={SpellListSection::Available}
+										spell_id={spell.id.clone()}
+										rank={spell.rank}
+									/>
+								}
+							}
+						})}
+						filter={filter.clone()}
 					/>
 				</CollapsableCard>
 			</div>
@@ -841,17 +854,40 @@ fn spell_content(spell: &Spell) -> Html {
 }
 
 #[derive(Clone, PartialEq, Properties)]
-struct AvailableSpellListProps {
-	caster: ActionCasterInfo,
-	filter: SpellListFilter,
+pub struct AvailableSpellListProps {
+	pub filter: SpellFilter,
+	pub header_addon: HeaderAddon,
 }
-#[derive(Clone, PartialEq)]
-struct SpellListFilter {
-	restriction: Restriction,
-	max_rank: Option<u8>,
+#[derive(Clone)]
+pub struct HeaderAddon(std::sync::Arc<dyn Fn(&Spell) -> Html>);
+impl PartialEq for HeaderAddon {
+	fn eq(&self, other: &Self) -> bool {
+		std::sync::Arc::ptr_eq(&self.0, &other.0)
+	}
+}
+impl<F> From<F> for HeaderAddon
+where
+	F: Fn(&Spell) -> Html + 'static,
+{
+	fn from(value: F) -> Self {
+		Self(std::sync::Arc::new(value))
+	}
+}
+#[derive(Clone, Debug, PartialEq, Default)]
+pub struct SpellFilter {
+	/// The spell must already be castable by the provided caster class.
+	/// This can be true if the spell contains the class tag OR the spell is in the expanded list
+	/// for the caster data (e.g. spellcasting "add_source").
+	pub can_cast: Option<String>,
+	/// The spell must be of one of these ranks.
+	pub ranks: HashSet<u8>,
+	/// The spell's rank must be <= this rank.
+	pub max_rank: Option<u8>,
+	/// The spell must have all of these tags.
+	pub tags: HashSet<String>,
 }
 #[function_component]
-fn AvailableSpellList(props: &AvailableSpellListProps) -> Html {
+pub fn AvailableSpellList(props: &AvailableSpellListProps) -> Html {
 	use yew_hooks::{use_async_with_options, UseAsyncOptions};
 	log::debug!(target: "ui", "Render available spells");
 	let system = use_context::<UseStateHandle<DnD5e>>().unwrap();
@@ -890,8 +926,8 @@ fn AvailableSpellList(props: &AvailableSpellListProps) -> Html {
 }
 
 struct FindRelevantSpells {
-	filter: SpellListFilter,
-	caster: ActionCasterInfo,
+	filter: SpellFilter,
+	header_addon: HeaderAddon,
 	system: UseStateHandle<DnD5e>,
 	all_ids: Vec<SourceId>,
 	sorted_info: Vec<(String, u8)>,
@@ -904,7 +940,7 @@ impl FindRelevantSpells {
 		let spell_htmls = Some(Vec::with_capacity(all_ids.len()));
 		Self {
 			filter: props.filter,
-			caster: props.caster,
+			header_addon: props.header_addon,
 			system,
 			all_ids,
 			sorted_info,
@@ -937,15 +973,27 @@ impl futures::Future for FindRelevantSpells {
 			};
 
 			// Filter based on restriction
+			if !self.filter.ranks.is_empty() {
+				if !self.filter.ranks.contains(&spell.rank) {
+					return Self::pending_delay(cx, 0);
+				}
+			}
 			if let Some(max_rank) = self.filter.max_rank {
 				if spell.rank > max_rank {
 					return Self::pending_delay(cx, 0);
 				}
 			}
-			for tag in &self.filter.restriction.tags {
+			for tag in &self.filter.tags {
 				if !spell.tags.contains(tag) {
 					return Self::pending_delay(cx, 0);
 				}
+			}
+			if let Some(caster_class) = &self.filter.can_cast {
+				if !spell.tags.contains(caster_class) {
+					return Self::pending_delay(cx, 0);
+				}
+				// TODO: check if the spell is in the expanded spell list,
+				// as provided by the AddSource spellcasting mutator.
 			}
 
 			// Insertion sort by rank & name
@@ -956,13 +1004,8 @@ impl futures::Future for FindRelevantSpells {
 
 			let info = (spell.name.clone(), spell.rank);
 			let html = {
-				let action = html! { <SpellListAction
-					caster={self.caster.clone()}
-					section={SpellListSection::Available}
-					spell_id={spell.id.clone()}
-					rank={spell.rank}
-				/> };
-				spell_list_item("available", spell, action)
+				let addon = (self.header_addon.0)(spell);
+				spell_list_item("relevant", spell, addon)
 			};
 			drop(spell);
 			self.sorted_info.insert(idx, info);

@@ -61,7 +61,7 @@ impl MutatorGroup for Feature {
 				uses.set_data_path(parent);
 			}
 		}
-		
+
 		for mutator in &self.mutators {
 			mutator.set_data_path(&path_to_self);
 		}

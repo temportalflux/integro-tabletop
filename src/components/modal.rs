@@ -85,8 +85,7 @@ impl Reducible for State {
 						props_stack: vec![props],
 						next_pending: None,
 					})
-				}
-				else {
+				} else {
 					// send the signal to close the modal, since it is currently open (non-empty stack).
 					// the next modal-props are pending, waiting for the close to finish.
 					Rc::new(Self {
@@ -103,7 +102,7 @@ impl Reducible for State {
 					props_stack: self.props_stack.clone(),
 					next_pending: None,
 				})
-			},
+			}
 			Action::Closed => {
 				if let Some(pending) = self.next_pending.clone() {
 					let mut props_stack = self.props_stack.clone();
@@ -114,8 +113,7 @@ impl Reducible for State {
 						props_stack,
 						next_pending: None,
 					})
-				}
-				else {
+				} else {
 					let props_stack = {
 						let mut stack = self.props_stack.clone();
 						stack.pop();
@@ -128,8 +126,7 @@ impl Reducible for State {
 							props_stack,
 							next_pending: None,
 						})
-					}
-					else {
+					} else {
 						Rc::new(Self::default())
 					}
 				}
