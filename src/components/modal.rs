@@ -46,7 +46,8 @@ pub struct State {
 	pub should_show: Option<bool>,
 	/// The properties for the modal to use to control displayed Html.
 	/// None if the modal should be empty (i.e. not displayed).
-	pub props: Option<Props>,
+	pub props_stack: Vec<Props>,
+	pub next_pending: Option<Props>,
 }
 impl State {
 	/// If self contains props, calls the provided mapping function to unpack some data.
@@ -56,7 +57,7 @@ impl State {
 		F: FnOnce(&Props) -> T,
 		T: Default,
 	{
-		self.props.as_ref().map(map).unwrap_or_default()
+		self.props_stack.last().map(map).unwrap_or_default()
 	}
 }
 
@@ -67,9 +68,8 @@ pub enum Action {
 	Open(Props),
 	/// Close the [GeneralPurpose] modal, using the hide action and clearing [Props] data in [State].
 	Close,
-	/// Clear [State] without causing any additional animations.
 	/// Should only be used by [GeneralPurpose] when the [Close] action is complete.
-	Reset,
+	Closed,
 }
 
 impl Reducible for State {
@@ -77,15 +77,63 @@ impl Reducible for State {
 
 	fn reduce(self: Rc<Self>, action: Self::Action) -> Rc<Self> {
 		match action {
-			Action::Open(props) => Rc::new(Self {
-				should_show: Some(true),
-				props: Some(props),
-			}),
-			Action::Close => Rc::new(Self {
-				should_show: Some(false),
-				props: None,
-			}),
-			Action::Reset => Rc::new(Self::default()),
+			Action::Open(props) => {
+				if self.props_stack.is_empty() {
+					Rc::new(Self {
+						// send the signal to open the modal since it was previously closed (empty stack)
+						should_show: Some(true),
+						props_stack: vec![props],
+						next_pending: None,
+					})
+				}
+				else {
+					// send the signal to close the modal, since it is currently open (non-empty stack).
+					// the next modal-props are pending, waiting for the close to finish.
+					Rc::new(Self {
+						should_show: Some(false),
+						props_stack: self.props_stack.clone(),
+						next_pending: Some(props),
+					})
+				}
+			}
+			Action::Close => {
+				Rc::new(Self {
+					// send the signal to close the current modal
+					should_show: Some(false),
+					props_stack: self.props_stack.clone(),
+					next_pending: None,
+				})
+			},
+			Action::Closed => {
+				if let Some(pending) = self.next_pending.clone() {
+					let mut props_stack = self.props_stack.clone();
+					props_stack.push(pending);
+					Rc::new(Self {
+						// re-open the modal with the new props
+						should_show: Some(true),
+						props_stack,
+						next_pending: None,
+					})
+				}
+				else {
+					let props_stack = {
+						let mut stack = self.props_stack.clone();
+						stack.pop();
+						stack
+					};
+					if !props_stack.is_empty() {
+						// Modal was manually closed, we should re-open with the next item in the stack
+						Rc::new(Self {
+							should_show: Some(true),
+							props_stack,
+							next_pending: None,
+						})
+					}
+					else {
+						Rc::new(Self::default())
+					}
+				}
+			}
 		}
 	}
 }
@@ -128,7 +176,7 @@ pub fn GeneralPurpose() -> Html {
 					// This allows the context to be re-opened with the same content,
 					// AND prevents the bootstrap-js show/hide functions from triggering right away
 					// (the Close actions causes bootstrap::Modal::hide to be executed, see below).
-					context.dispatch(Action::Reset);
+					context.dispatch(Action::Closed);
 				})
 			}
 		},

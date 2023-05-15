@@ -16,7 +16,7 @@ use crate::{
 	utility::{
 		web_ext::{self, CallbackExt, CallbackOptExt},
 		GenericMutator, InputExt, SelectorMeta, SelectorOptions,
-	},
+	}, components::modal,
 };
 use multimap::MultiMap;
 use yew::prelude::*;
@@ -741,6 +741,7 @@ fn SelectorField(
 	}: &SelectorFieldProps,
 ) -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
+	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 	let value = state.get_first_selection(data_path);
 
 	let save_value = Callback::from({
@@ -822,21 +823,42 @@ fn SelectorField(
 				</select>
 			}
 		}
-		SelectorOptions::Object { category, count } => {
+		SelectorOptions::Object { category, count: capacity} => {
+			let browse = modal_dispatcher.callback({
+				let data_path = data_path.clone();
+				let category: AttrValue = category.clone().into();
+				let capacity = *capacity;
+				move |_| {
+					let data_path = data_path.clone();
+					let category = category.clone();
+					modal::Action::Open(modal::Props {
+						centered: true,
+						scrollable: true,
+						root_classes: classes!("browse", "objects"),
+						content: html! {<ModalObjectBrowser {data_path} {category} {capacity} />},
+						..Default::default()
+					})
+				}
+			});
 			let btn_classes = classes!("btn", "btn-outline-theme", "btn-xs", missing_value);
 			let selected_ids = state.get_selections_at(data_path).map(|id_strs| {
-				id_strs.iter().filter_map(|id_str| SourceId::from_str(id_str).ok()).collect::<HashSet<_>>()
+				id_strs.iter().filter_map(|id_str| SourceId::from_str(id_str).ok()).collect::<Vec<_>>()
 			}).unwrap_or_default();
 			return html! {
 				<div class={classes}>
 					<h6>{name.clone()}</h6>
-					<button type="button" class={btn_classes}>
-						{format!("Browse ({}/{count} selected)", selected_ids.len())}
+					<button type="button" class={btn_classes} onclick={browse}>
+						{format!("Browse ({}/{capacity} selected)", selected_ids.len())}
 					</button>
 					<ul class="mb-0">
 						<li>{"Test 1"}</li>
-						<li>{"Test 2"}</li>
-						<li>{"Test 3"}</li>
+						{selected_ids.into_iter().map(|id| {
+							html! {
+								<li>
+									{id.to_string()}
+								</li>
+							}
+						}).collect::<Vec<_>>()}
 					</ul>
 				</div>
 			};
@@ -848,4 +870,27 @@ fn SelectorField(
 			{inner}
 		</div>
 	}
+}
+
+#[derive(Clone, PartialEq, Properties)]
+struct ModalObjectBrowserProps {
+	data_path: std::path::PathBuf,
+	category: AttrValue,
+	capacity: usize,
+}
+#[function_component]
+fn ModalObjectBrowser(props: &ModalObjectBrowserProps) -> Html {
+	let state = use_context::<SharedCharacter>().unwrap();
+	let selected_ids = state.get_selections_at(&props.data_path).map(|id_strs| {
+		id_strs.iter().filter_map(|id_str| SourceId::from_str(id_str).ok()).collect::<HashSet<_>>()
+	}).unwrap_or_default();
+
+	html! {<>
+		<div class="modal-header">
+			<h1 class="modal-title fs-4">{"Browse"}</h1>
+			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
+		</div>
+		<div class="modal-body">
+		</div>
+	</>}
 }
