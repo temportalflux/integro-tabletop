@@ -169,6 +169,40 @@ where
 	}
 }
 
+/// Allows the user to select an object in the database by its `SourceId`,
+/// as long as the entry passes some criteria.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ObjectSelector {
+	id: IdPath,
+	category: String,
+	count: usize,
+}
+impl ObjectSelector {
+	pub fn new(category: impl Into<String>, count: usize) -> Self {
+		Self {
+			id: IdPath::default(),
+			category: category.into(),
+			count,
+		}
+	}
+
+	pub fn set_data_path(&self, parent: &Path) {
+		self.id.set_path(parent);
+	}
+
+	pub fn get_data_path(&self) -> Option<PathBuf> {
+		let path = self.id.as_path();
+		if path.to_str() == Some("") {
+			return None;
+		}
+		Some(path)
+	}
+
+	pub fn count(&self) -> usize {
+		self.count
+	}
+}
+
 #[derive(Clone, PartialEq, thiserror::Error, Debug)]
 #[error("Invalid selector data path")]
 pub struct InvalidDataPath;
@@ -208,6 +242,19 @@ impl SelectorMeta {
 			options,
 		}))
 	}
+
+	fn from_object(
+		name: impl Into<String>,
+		selector: &ObjectSelector,
+	) -> Result<Option<Self>, InvalidDataPath> {
+		let Some(options) = SelectorOptions::from_object(selector) else { return Ok(None); };
+		let Some(data_path) = selector.get_data_path() else { return Err(InvalidDataPath); };
+		Ok(Some(Self {
+			name: name.into(),
+			data_path,
+			options,
+		}))
+	}
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -220,6 +267,10 @@ pub enum SelectorOptions {
 		options: Vec<String>,
 		/// A list of other selectors that this selector cannot have the same value as.
 		cannot_match: Option<Vec<PathBuf>>,
+	},
+	Object {
+		count: usize,
+		category: String,
 	},
 }
 
@@ -280,6 +331,13 @@ impl SelectorOptions {
 			}
 		}
 	}
+
+	pub fn from_object(selector: &ObjectSelector) -> Option<Self> {
+		Some(Self::Object {
+			count: selector.count(),
+			category: selector.category.clone(),
+		})
+	}
 }
 
 #[derive(Clone, PartialEq, Debug, Default)]
@@ -303,6 +361,19 @@ impl SelectorMetaVec {
 		T: 'static + ToString + FromStr + EnumSetType,
 	{
 		match SelectorMeta::from_enum(name, selector) {
+			Ok(Some(meta)) => {
+				self.0.push(meta);
+			}
+			Err(err) => {
+				self.1.push(err);
+			}
+			_ => {}
+		}
+		self
+	}
+
+	pub fn with_object(mut self, name: impl Into<String>, selector: &ObjectSelector) -> Self {
+		match SelectorMeta::from_object(name, selector) {
 			Ok(Some(meta)) => {
 				self.0.push(meta);
 			}

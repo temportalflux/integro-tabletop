@@ -356,6 +356,7 @@ input.slot[type="checkbox"]:checked:before {
 }
 .missing-value {
 	--bs-border-color: var(--bs-warning);
+	--bs-btn-border-color: var(--bs-border-color);
 }
 .selector.missing-value {
 	input:focus,select:focus {

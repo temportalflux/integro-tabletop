@@ -1,5 +1,7 @@
+use spell::Spell;
+
 use crate::{
-	kdl_ext::{DocumentExt, FromKDL, NodeExt},
+	kdl_ext::{DocumentExt, FromKDL, KDLNode, NodeExt},
 	system::{
 		core::SourceId,
 		dnd5e::data::{
@@ -8,24 +10,27 @@ use crate::{
 				spellcasting::{Caster, Restriction, Slots, SpellCapacity},
 				Character,
 			},
-			description, Ability, spell,
+			description, spell, Ability,
 		},
 	},
-	utility::{Mutator, NotInList},
+	utility::{Mutator, NotInList, ObjectSelector, SelectorMetaVec},
 };
-use std::{collections::{BTreeMap, HashSet}, str::FromStr};
+use std::{
+	collections::{BTreeMap, HashSet},
+	str::FromStr,
+};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Spellcasting {
-	ability: Ability,
-	operation: Operation,
+	pub ability: Ability,
+	pub operation: Operation,
 }
 
 crate::impl_trait_eq!(Spellcasting);
 crate::impl_kdl_node!(Spellcasting, "spellcasting");
 
 #[derive(Clone, Debug, PartialEq)]
-enum Operation {
+pub enum Operation {
 	Caster(Caster),
 	/// Spells added to the list of spells that a caster can know or prepare.
 	/// These DO count against the character's known/prepared spell capacity limits.
@@ -34,31 +39,29 @@ enum Operation {
 	/// DO NOT count against the character's known/prepared spell capacity limits.
 	AddPrepared {
 		/// The spells this feature provides, with any additional metadata.
-		spells: Vec<PreparedSpell>,
+		specific_spells: Vec<(SourceId, PreparedInfo)>,
+		selectable_spells: Option<SelectableSpells>,
 		/// If provided, the specified spells are cast by using a specific usage criteria.
 		/// If a provided spell also allows it to be cast through a slot, then both methods are valid.
 		/// Otherwise, if both this is None and it cannot be cast via a slot, then the spell is cast at-will.
 		limited_uses: Option<LimitedUses>,
 	},
 }
-#[derive(Clone, Debug, PartialEq)]
-struct PreparedSpell {
-	/// The spell id that is prepared
-	selector: SpellSelector,
+#[derive(Clone, Debug, PartialEq, Default)]
+pub struct PreparedInfo {
 	/// If the spell can be cast using a spell slot.
 	/// If false, the spell is either cast At-Will or through a LimitedUses.
-	can_cast_through_slot: bool,
+	pub can_cast_through_slot: bool,
 	/// If present, the spell must be cast using the specified casting range.
-	range: Option<spell::Range>,
+	pub range: Option<spell::Range>,
 	/// If present, the spell can only be cast at this rank using this feature.
-	cast_at_rank: Option<u8>,
+	pub cast_at_rank: Option<u8>,
 }
 #[derive(Clone, Debug, PartialEq)]
-enum SpellSelector {
-	/// A specific spell id
-	Specific(SourceId),
-	/// A spell the user can select, which might be limited based on a provided filter.
-	Any(Option<SpellFilter>),
+pub struct SelectableSpells {
+	/// For all prepared spells which allow the user to select them, this is the selector that is used.
+	pub selector: ObjectSelector,
+	pub prepared: PreparedInfo,
 }
 #[derive(Clone, Debug, PartialEq)]
 struct SpellFilter {
@@ -74,17 +77,49 @@ impl Mutator for Spellcasting {
 	type Target = Character;
 
 	fn description(&self) -> description::Section {
-		description::Section {
-			title: Some("Spellcasting".into()),
-			content: format!("{:?}", self),
-			..Default::default()
+		match &self.operation {
+			Operation::Caster(caster) => {
+				description::Section {
+					title: Some("Spellcasting".into()),
+					content: format!("Cast spells as a {} using {}.", caster.name(), caster.ability.long_name()),
+					..Default::default()
+				}
+			}
+			Operation::AddPrepared { selectable_spells, .. } => {
+				let mut selectors = SelectorMetaVec::default();
+				if let Some(selectable) = selectable_spells {
+					selectors = selectors.with_object("Selected Spells", &selectable.selector);
+				}
+				description::Section {
+					title: Some("Spellcasting: Always Preppared Spells".into()),
+					content: format!("Add spells which are always prepared, using {}.", self.ability.long_name()),
+					selectors,
+					..Default::default()
+				}
+			}
+			Operation::AddSource => {
+				description::Section {
+					title: Some("Spellcasting: Expanded Spell List".into()),
+					content: format!("Add spells you can select from for the TODO class."),
+					..Default::default()
+				}
+			}
 		}
 	}
 
 	fn set_data_path(&self, parent: &std::path::Path) {
 		match &self.operation {
-			Operation::AddPrepared { spells: _, limited_uses: Some(limited_uses) } => {
-				limited_uses.set_data_path(parent);
+			Operation::AddPrepared {
+				selectable_spells,
+				limited_uses,
+				..
+			} => {
+				if let Some(selectable_spells) = selectable_spells {
+					selectable_spells.selector.set_data_path(parent);
+				}
+				if let Some(limited_uses) = limited_uses {
+					limited_uses.set_data_path(parent);
+				}
 			}
 			_ => {}
 		}
@@ -96,7 +131,28 @@ impl Mutator for Spellcasting {
 				stats.spellcasting_mut().add_caster(caster.clone());
 			}
 			Operation::AddSource => {}
-			Operation::AddPrepared { spells, limited_uses } => {
+			Operation::AddPrepared {
+				specific_spells,
+				selectable_spells,
+				limited_uses,
+			} => {
+				let mut all_spells = specific_spells
+					.iter()
+					.map(|(id, info)| (id.clone(), info))
+					.collect::<Vec<_>>();
+				if let Some(selectable) = &selectable_spells {
+					if let Some(data_path) = selectable.selector.get_data_path() {
+						if let Some(selections) = stats.get_selections_at(&data_path) {
+							let ids = selections
+								.iter()
+								.filter_map(|str| SourceId::from_str(str).ok());
+							let ids_info = ids.map(|id| (id, &selectable.prepared));
+							all_spells.extend(ids_info);
+						}
+					}
+				}
+				for (id, prepared_info) in all_spells {}
+
 				/*
 				stats.spellcasting_mut().add_prepared(
 					spell_ids,
@@ -199,46 +255,78 @@ impl FromKDL for Spellcasting {
 				Operation::AddSource
 			}
 			Some("add_prepared") => {
-				let mut spells = Vec::new();
+				let mut specific_spells = Vec::new();
 				for node in node.query_all("scope() > spell")? {
 					let mut ctx = ctx.next_node();
-					let selector = match node.get_str_req(ctx.consume_idx())? {
-						"Any" => {
-							let filter = match node.query_opt("scope() > filter")? {
-								None => None,
-								Some(node) => {
-									let can_cast = node.get_str_opt("can_cast")?.map(str::to_owned);
-									let ranks = node.query_i64_all("scope() > rank", 0)?;
-									let ranks = ranks.into_iter().map(|v| v as u8).collect::<HashSet<_>>();
-									let tags = node.query_str_all("scope() > tag", 0)?;
-									let tags = tags.into_iter().map(str::to_owned).collect::<HashSet<_>>();
-									Some(SpellFilter { can_cast, ranks, tags })
+					let id = node.get_str_req(ctx.consume_idx())?;
+					let id = SourceId::from_str(id)?.with_basis(ctx.id());
+					let info = PreparedInfo::from_kdl(node, &mut ctx)?;
+					specific_spells.push((id, info));
+				}
+
+				let selectable_spells = match node.query_opt("scope() > options")? {
+					None => None,
+					Some(node) => {
+						let mut ctx = ctx.next_node();
+						let count = node.get_i64_req(ctx.consume_idx())? as usize;
+						let info = PreparedInfo::from_kdl(node, &mut ctx)?;
+						let mut selector = ObjectSelector::new(Spell::id(), count);
+						if let Some(node) = node.query_opt("scope() > filter")? {
+							let filter = {
+								let can_cast = node.get_str_opt("can_cast")?.map(str::to_owned);
+								let ranks = node.query_i64_all("scope() > rank", 0)?;
+								let ranks =
+									ranks.into_iter().map(|v| v as u8).collect::<HashSet<_>>();
+								let tags = node.query_str_all("scope() > tag", 0)?;
+								let tags =
+									tags.into_iter().map(str::to_owned).collect::<HashSet<_>>();
+								SpellFilter {
+									can_cast,
+									ranks,
+									tags,
 								}
 							};
-							SpellSelector::Any(filter)
 						}
-						id_str => {
-							SpellSelector::Specific(SourceId::from_str(id_str)?.with_basis(ctx.id()))
-						}
-					};
-					let can_cast_through_slot = node.get_bool_opt("use_slot")?.unwrap_or_default();
-					let cast_at_rank = node.get_i64_opt("rank")?.map(|v| v as u8);
-					let range = match node.query_opt("scope() > range")? {
-						None => None,
-						Some(node) => Some(spell::Range::from_kdl(node, &mut ctx.next_node())?),
-					};
-					spells.push(PreparedSpell { selector, can_cast_through_slot, range, cast_at_rank });
-				}
+						Some(SelectableSpells {
+							selector,
+							prepared: info,
+						})
+					}
+				};
+
 				let limited_uses = match node.query_opt("scope() > limited_use")? {
 					None => None,
 					Some(node) => Some(LimitedUses::from_kdl(node, &mut ctx.next_node())?),
 				};
-				Operation::AddPrepared { spells, limited_uses }
+				Operation::AddPrepared {
+					specific_spells,
+					selectable_spells,
+					limited_uses,
+				}
 			}
 			Some(name) => {
 				return Err(NotInList(name.into(), vec!["add_source", "add_prepared"]).into())
 			}
 		};
 		Ok(Self { ability, operation })
+	}
+}
+
+impl FromKDL for PreparedInfo {
+	fn from_kdl(
+		node: &kdl::KdlNode,
+		ctx: &mut crate::kdl_ext::NodeContext,
+	) -> anyhow::Result<Self> {
+		let can_cast_through_slot = node.get_bool_opt("use_slot")?.unwrap_or_default();
+		let cast_at_rank = node.get_i64_opt("rank")?.map(|v| v as u8);
+		let range = match node.query_opt("scope() > range")? {
+			None => None,
+			Some(node) => Some(spell::Range::from_kdl(node, &mut ctx.next_node())?),
+		};
+		Ok(PreparedInfo {
+			can_cast_through_slot,
+			range,
+			cast_at_rank,
+		})
 	}
 }

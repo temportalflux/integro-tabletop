@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::{collections::{HashMap, HashSet}, str::FromStr};
 
 use crate::{
 	system::{
@@ -720,7 +720,7 @@ pub fn DescriptionSection(
 	html! {
 		<div>
 			<span>{name.unwrap_or_default()}{section.content.clone()}</span>
-			{selectors}
+			<div class="ms-2">{selectors}</div>
 			{body.unwrap_or_default()}
 		</div>
 	}
@@ -762,10 +762,8 @@ fn SelectorField(
 		}
 	});
 
-	let mut classes = classes!("input-group", "my-2", "selector");
-	if value.is_none() {
-		classes.push("missing-value");
-	}
+	let mut classes = classes!("my-2", "selector");
+	let mut missing_value = value.is_none().then(|| classes!("missing-value")).unwrap_or_default();
 	let inner = match options {
 		SelectorOptions::Any => {
 			let onchange = Callback::from({
@@ -824,9 +822,28 @@ fn SelectorField(
 				</select>
 			}
 		}
+		SelectorOptions::Object { category, count } => {
+			let btn_classes = classes!("btn", "btn-outline-theme", "btn-xs", missing_value);
+			let selected_ids = state.get_selections_at(data_path).map(|id_strs| {
+				id_strs.iter().filter_map(|id_str| SourceId::from_str(id_str).ok()).collect::<HashSet<_>>()
+			}).unwrap_or_default();
+			return html! {
+				<div class={classes}>
+					<h6>{name.clone()}</h6>
+					<button type="button" class={btn_classes}>
+						{format!("Browse ({}/{count} selected)", selected_ids.len())}
+					</button>
+					<ul class="mb-0">
+						<li>{"Test 1"}</li>
+						<li>{"Test 2"}</li>
+						<li>{"Test 3"}</li>
+					</ul>
+				</div>
+			};
+		}
 	};
 	html! {
-		<div class={classes} style="max-width: 300px;">
+		<div class={classes!("input-group", classes, missing_value)} style="max-width: 300px;">
 			<span class="input-group-text">{name.clone()}</span>
 			{inner}
 		</div>

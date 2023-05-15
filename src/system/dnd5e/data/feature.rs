@@ -37,14 +37,6 @@ pub struct Feature {
 }
 
 impl Feature {
-	pub fn set_data_path(&self, parent: &std::path::Path) {
-		if let Some(action) = &self.action {
-			if let Some(uses) = &action.limited_uses {
-				uses.set_data_path(parent);
-			}
-		}
-	}
-
 	pub fn get_display_path(&self) -> PathBuf {
 		self.absolute_path.read().unwrap().clone()
 	}
@@ -63,6 +55,13 @@ impl MutatorGroup for Feature {
 
 	fn set_data_path(&self, parent: &Path) {
 		let path_to_self = parent.join(&self.name);
+
+		if let Some(action) = &self.action {
+			if let Some(uses) = &action.limited_uses {
+				uses.set_data_path(parent);
+			}
+		}
+		
 		for mutator in &self.mutators {
 			mutator.set_data_path(&path_to_self);
 		}

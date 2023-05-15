@@ -169,6 +169,22 @@ fn create_character(system: &system::dnd5e::DnD5e) -> system::dnd5e::data::chara
 		..Default::default()
 	});
 
+	persistent.feats.push(system::dnd5e::data::Feature {
+		name: "Custom Prepared Spells".into(),
+		mutators: vec![system::dnd5e::mutator::Spellcasting {
+			ability: Ability::Charisma,
+			operation: system::dnd5e::mutator::Operation::AddPrepared {
+				specific_spells: Vec::new(),
+				selectable_spells: Some(system::dnd5e::mutator::SelectableSpells {
+					selector: utility::ObjectSelector::new("spell", 2),
+					prepared: system::dnd5e::mutator::PreparedInfo::default(),
+				}),
+				limited_uses: None,
+			},
+		}
+		.into()],
+		..Default::default()
+	});
 	for (caster, id_str) in [
 		("Cleric", "local://basic-rules@dnd5e/spells/guidance.kdl"),
 		("Cleric", "local://basic-rules@dnd5e/spells/colorSpray.kdl"),
