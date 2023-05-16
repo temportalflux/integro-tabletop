@@ -5,7 +5,7 @@ use crate::{
 		dnd5e::{
 			components::{editor::CollapsableCard, SharedCharacter},
 			data::{
-				character::spellcasting::{CasterKind, Restriction},
+				character::spellcasting::{CasterKind, SpellEntry},
 				proficiency, spell, Spell,
 			},
 			DnD5e,
@@ -30,49 +30,17 @@ fn rank_suffix(rank: u8) -> &'static str {
 
 #[function_component]
 pub fn Spells() -> Html {
-	static MAX_SPELL_RANK: u8 = 9;
 	let state = use_context::<SharedCharacter>().unwrap();
+	let system = use_context::<UseStateHandle<DnD5e>>().unwrap();
 
-	let mut entries = Vec::new();
-	for (spell_id, _) in state.spellcasting().prepared_spells() {
-		entries.push(html! {<div>
-			{spell_id.to_string()}
-		</div>});
-	}
-	let mut sections = (0..=MAX_SPELL_RANK)
-		.map(|slot: u8| (slot, SectionProps::default()))
-		.collect::<BTreeMap<_, _>>();
-	if let Some(slots) = state.spellcasting().spell_slots(&*state) {
-		for (rank, slot_count) in slots {
-			let section = sections.get_mut(&rank).expect(&format!(
-				"Spell rank {rank} is not supported by UI, must be in the range of [0, {MAX_SPELL_RANK}]."
-			));
-			let consumed_slots = state
-				.persistent()
-				.selected_spells
-				.consumed_slots(rank)
-				.unwrap_or(0);
-			section.slot_count = Some((consumed_slots, slot_count));
-		}
-	}
-	for (spell, caster_names) in state.persistent().selected_spells.iter_all_casters() {
-		let max_rank = match spell.rank {
-			0 => 0,
-			_ => MAX_SPELL_RANK,
-		};
-		for section_rank in spell.rank..=max_rank {
-			let Some(section) = sections.get_mut(&section_rank) else { continue; };
-			if section_rank == 0 || section.slot_count.is_some() {
-				for caster_name in caster_names {
-					section.insert_spell(spell, caster_name);
-				}
-			}
-		}
-	}
+	let mut sections = SpellSections::default();
+	sections.insert_slots(&state);
+	sections.insert_selected_spells(&state);
+	sections.insert_derived_spells(&state, &system);
 
 	let sections = {
 		let mut html = Vec::new();
-		for (rank, section_props) in sections {
+		for (rank, section_props) in sections.sections {
 			if section_props.spells.is_empty() && (section_props.slot_count.is_none() || rank == 0)
 			{
 				continue;
@@ -142,13 +110,6 @@ pub fn Spells() -> Html {
 
 			<div class="sections">
 				{sections}
-				<div>
-					<strong>{"Always Prepared:"}</strong>
-					{entries}
-				</div>
-				<div>
-					{format!("{:?}", state.spellcasting())}
-				</div>
 			</div>
 		</div>
 	}
@@ -181,24 +142,164 @@ fn ManageCasterButton(CasterNameProps { caster_id }: &CasterNameProps) -> Html {
 	}
 }
 
-#[derive(Clone, PartialEq, Default)]
+struct SpellSections<'c> {
+	sections: BTreeMap<u8, SectionProps<'c>>,
+}
+impl<'c> Default for SpellSections<'c> {
+	fn default() -> Self {
+		Self {
+			sections: (0..=Self::max_spell_rank())
+				.map(|slot: u8| (slot, SectionProps::default()))
+				.collect::<BTreeMap<_, _>>(),
+		}
+	}
+}
+impl<'c> SpellSections<'c> {
+	const fn max_spell_rank() -> u8 {
+		9
+	}
+
+	fn insert_slots(&mut self, state: &'c SharedCharacter) {
+		if let Some(slots) = state.spellcasting().spell_slots(&*state) {
+			for (rank, slot_count) in slots {
+				let section =
+					self.sections.get_mut(&rank).expect(&format!(
+					"Spell rank {rank} is not supported by UI, must be in the range of [0, {}].", Self::max_spell_rank()
+				));
+				let consumed_slots = state
+					.persistent()
+					.selected_spells
+					.consumed_slots(rank)
+					.unwrap_or(0);
+				section.slot_count = Some((consumed_slots, slot_count));
+			}
+		}
+	}
+
+	fn insert_spell(&mut self, spell: &'c Spell, entry: &'c SpellEntry, location: SpellLocation) {
+		let ranks = match (entry.forced_rank, entry.cast_via_slot) {
+			(Some(rank), _) => vec![(rank, location)],
+			(None, false) => vec![(spell.rank, location)],
+			(None, true) => {
+				let max_rank = match spell.rank {
+					0 => 0,
+					_ => Self::max_spell_rank(),
+				};
+				let rank_range = spell.rank..=max_rank;
+				let mut locations = Vec::with_capacity(rank_range.len());
+				locations.resize(rank_range.len(), location);
+				rank_range.zip(locations).collect::<Vec<_>>()
+			}
+		};
+		for (section_rank, location) in ranks {
+			let Some(section) = self.sections.get_mut(&section_rank) else { continue; };
+			if section_rank == 0 || section.slot_count.is_some() {
+				section.insert_spell(spell, entry, location);
+			}
+		}
+	}
+
+	fn insert_selected_spells(&mut self, state: &'c SharedCharacter) {
+		for caster_id in state.persistent().selected_spells.iter_caster_ids() {
+			let Some(caster) = state.spellcasting().get_caster(caster_id) else { continue; };
+			let Some(iter_spells) = state.persistent().selected_spells.iter_caster(caster_id) else { continue; };
+			for spell in iter_spells {
+				self.insert_spell(
+					spell,
+					&caster.spell_entry,
+					SpellLocation::Selected {
+						caster_id: caster_id.clone(),
+						spell_id: spell.id.clone(),
+					},
+				);
+			}
+		}
+	}
+
+	fn insert_derived_spells(&mut self, state: &'c SharedCharacter, system: &'c DnD5e) {
+		for (id, entries) in state.spellcasting().prepared_spells() {
+			// TODO: Query the database instead of accessing from system memory data
+			let Some(spell) = system.spells.get(id) else { continue; };
+			for (source, entry) in entries {
+				self.insert_spell(
+					spell,
+					entry,
+					SpellLocation::AlwaysPrepared {
+						spell_id: spell.id.clone(),
+						source: source.clone(),
+					},
+				);
+			}
+		}
+	}
+}
+
+#[derive(Default)]
 struct SectionProps<'c> {
 	slot_count: Option<(/*consumed*/ usize, /*max*/ usize)>,
-	spells: Vec<SpellEntry<'c>>,
+	spells: Vec<SectionSpell<'c>>,
+}
+struct SectionSpell<'c> {
+	spell: &'c Spell,
+	entry: &'c SpellEntry,
+	location: SpellLocation,
 }
 #[derive(Clone, PartialEq)]
-struct SpellEntry<'c> {
-	caster_name: &'c String,
-	spell: &'c Spell,
+enum SpellLocation {
+	Selected {
+		spell_id: SourceId,
+		caster_id: String,
+	},
+	AlwaysPrepared {
+		spell_id: SourceId,
+		source: std::path::PathBuf,
+	},
+}
+impl SpellLocation {
+	fn get<'this, 'c>(
+		&'this self,
+		state: &'c SharedCharacter,
+		system: &'c DnD5e,
+	) -> Option<(&'c Spell, &'c SpellEntry)> {
+		match self {
+			SpellLocation::Selected {
+				caster_id,
+				spell_id,
+			} => {
+				let Some(caster) = state.spellcasting().get_caster(caster_id) else { return None; };
+				let Some(spell) = state.persistent().selected_spells.get_spell(caster_id, spell_id) else { return None; };
+				Some((spell, &caster.spell_entry))
+			}
+			SpellLocation::AlwaysPrepared { spell_id, source } => {
+				let Some(spell) = system.spells.get(spell_id) else { return None; };
+				let Some(entries) = state.spellcasting().prepared_spells().get(spell_id) else { return None; };
+				let Some(entry) = entries.get(source) else { return None; };
+				Some((spell, entry))
+			}
+		}
+	}
 }
 impl<'c> SectionProps<'c> {
-	pub fn insert_spell(&mut self, spell: &'c Spell, caster_name: &'c String) {
-		let idx = self.spells.binary_search_by(|a: &SpellEntry<'c>| {
-			//a.spell.rank.cmp(&spell.rank)
-			a.spell.name.cmp(&spell.name)
+	pub fn insert_spell(
+		&mut self,
+		spell: &'c Spell,
+		entry: &'c SpellEntry,
+		location: SpellLocation,
+	) {
+		let idx = self.spells.binary_search_by(|row| {
+			let spell_name = row.spell.name.cmp(&spell.name);
+			let source = row.entry.source.cmp(&entry.source);
+			spell_name.then(source)
 		});
 		let idx = idx.unwrap_or_else(|e| e);
-		self.spells.insert(idx, SpellEntry { spell, caster_name });
+		self.spells.insert(
+			idx,
+			SectionSpell {
+				spell,
+				entry,
+				location,
+			},
+		);
 	}
 }
 
@@ -272,8 +373,13 @@ fn spell_section<'c>(
 						</tr>
 					</thead>
 					<tbody>
-						{section_props.spells.iter().map(|entry| {
-							spell_row(state, rank, &section_props.slot_count, entry)
+						{section_props.spells.into_iter().map(|section_spell| {
+							spell_row(SpellRowProps {
+								state,
+								section_rank: rank,
+								slots: section_props.slot_count,
+								section_spell,
+							})
 						}).collect::<Vec<_>>()}
 					</tbody>
 				</table>
@@ -290,33 +396,58 @@ fn spell_section<'c>(
 		</div>
 	}
 }
-fn spell_row<'c>(
+
+struct SpellRowProps<'c> {
 	state: &'c SharedCharacter,
 	section_rank: u8,
-	slots: &Option<(usize, usize)>,
-	entry: &SpellEntry<'c>,
-) -> Html {
+	slots: Option<(usize, usize)>,
+	section_spell: SectionSpell<'c>,
+}
+fn spell_row<'c>(props: SpellRowProps<'c>) -> Html {
 	use spell::CastingDuration;
+	let SpellRowProps {
+		state,
+		section_rank,
+		slots,
+		section_spell: SectionSpell {
+			spell,
+			entry,
+			location,
+		},
+	} = props;
 
-	let use_kind = match entry.spell.rank {
-		//0 => UseSpell::LimitedUse { uses_remaining: 3, max_uses: 5 },
-		0 => UseSpell::AtWill,
-		spell_rank => UseSpell::Slot {
+	let use_kind = match (spell.rank, entry.cast_via_uses.as_ref()) {
+		(0, None) => UseSpell::AtWill,
+		(spell_rank, None) => UseSpell::Slot {
 			spell_rank,
 			slot_rank: section_rank,
 			slots: slots.clone(),
 		},
+		(_, Some(_limited_uses)) => {
+			// TODO: LimitedUse button
+			UseSpell::AtWill
+			//UseSpell::LimitedUse { uses_remaining: 3, max_uses: 5 },
+		}
 	};
 
 	// TODO: concentration and ritual icons after the spell name
-	// TODO: Casting source under the spell name
+	// TODO: Casting source under the spell name (`entry.source`)
 	// TODO: tooltip for casting time duration
 	html! {
-		<SpellModalRowRoot caster_id={entry.caster_name.clone()} spell_id={entry.spell.id.clone()}>
-			<td onclick={stop_propagation()}><UseSpellButton kind={use_kind} /></td>
-			<td>{&entry.spell.name}</td>
+		<SpellModalRowRoot {location}>
+			<td onclick={stop_propagation()}>
+				<div class="d-inline-flex align-items-center justify-content-center w-100">
+					<UseSpellButton kind={use_kind} />
+				</div>
+			</td>
 			<td>
-				{match &entry.spell.casting_time.duration {
+				<div>{&spell.name}</div>
+				<div style="font-size: 10px; color: var(--bs-gray-600);">
+					{crate::data::as_feature_path_text(&entry.source)}
+				</div>
+			</td>
+			<td>
+				{match &spell.casting_time.duration {
 					CastingDuration::Action => html!("1A"),
 					CastingDuration::Bonus => html!("1BA"),
 					CastingDuration::Reaction(_trigger) => html!("1R"),
@@ -324,7 +455,7 @@ fn spell_row<'c>(
 				}}
 			</td>
 			<td>
-				{match &entry.spell.range {
+				{match entry.range.as_ref().unwrap_or(&spell.range) {
 					spell::Range::OnlySelf => html!("Self"),
 					spell::Range::Touch => html!("Touch"),
 					spell::Range::Unit { distance, unit } => html! {<>{distance}{" "}{unit}</>},
@@ -333,42 +464,31 @@ fn spell_row<'c>(
 				}}
 			</td>
 			<td>
-				{match &entry.spell.check {
+				{match &spell.check {
 					None => html!("--"),
 					Some(spell::Check::AttackRoll(_atk_kind)) => {
-						match state.spellcasting().get_caster(entry.caster_name) {
-							None => html!("--"),
-							Some(caster) => {
-								let modifier = state.ability_modifier(caster.ability, Some(proficiency::Level::Full));
-								html!(format!("{modifier:+}"))
-							}
-						}
+						let modifier = state.ability_modifier(entry.ability, Some(proficiency::Level::Full));
+						html!(format!("{modifier:+}"))
 					}
 					Some(spell::Check::SavingThrow(ability, fixed_dc)) => {
 						let abb_name = ability.abbreviated_name().to_case(Case::Upper);
 						match fixed_dc {
 							Some(dc) => html!(format!("{abb_name} {dc}")),
-							None => match state.spellcasting().get_caster(entry.caster_name) {
-								None => html!("--"),
-								Some(caster) => {
-									let modifier = state.ability_modifier(caster.ability, Some(proficiency::Level::Full));
-									let dc = 8 + modifier;
-									html!(format!("{abb_name} {dc}"))
-								}
+							None => {
+								let modifier = state.ability_modifier(entry.ability, Some(proficiency::Level::Full));
+								let dc = 8 + modifier;
+								html!(format!("{abb_name} {dc}"))
 							}
 						}
 					}
 				}}
 			</td>
 			<td>
-				{match &entry.spell.damage {
+				{match &spell.damage {
 					None => html!("--"),
 					Some(damage) => {
-						let modifier = match state.spellcasting().get_caster(entry.caster_name) {
-							None => 0,
-							Some(caster) => state.ability_modifier(caster.ability, Some(proficiency::Level::Full)),
-						};
-						let upcast_amt = section_rank - entry.spell.rank;
+						let modifier = state.ability_modifier(entry.ability, Some(proficiency::Level::Full));
+						let upcast_amt = section_rank - spell.rank;
 						let (roll_set, bonus) = damage.evaluate(&*state, modifier, upcast_amt as u32);
 						let mut spans = roll_set.rolls().into_iter().enumerate().map(|(idx, roll)| {
 							html! {
@@ -392,25 +512,17 @@ fn spell_row<'c>(
 }
 
 #[function_component]
-fn SpellModalRowRoot(
-	SpellModalProps {
-		caster_id,
-		spell_id,
-		children,
-	}: &SpellModalProps,
-) -> Html {
+fn SpellModalRowRoot(SpellModalProps { location, children }: &SpellModalProps) -> Html {
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 	let open_browser = modal_dispatcher.callback({
-		let caster_id = caster_id.clone();
-		let spell_id = spell_id.clone();
+		let location = location.clone();
 		move |_| {
-			let caster_id = caster_id.clone();
-			let spell_id = spell_id.clone();
+			let location = location.clone();
 			modal::Action::Open(modal::Props {
 				centered: true,
 				scrollable: true,
 				root_classes: classes!("spell"),
-				content: html! {<SpellModal {caster_id} {spell_id} />},
+				content: html! {<SpellModal {location} />},
 				..Default::default()
 			})
 		}
@@ -424,21 +536,20 @@ fn SpellModalRowRoot(
 
 #[derive(Clone, PartialEq, Properties)]
 struct SpellModalProps {
-	caster_id: AttrValue,
-	spell_id: SourceId,
+	location: SpellLocation,
 	#[prop_or_default]
 	children: Children,
 }
 #[function_component]
 fn SpellModal(
 	SpellModalProps {
-		caster_id,
-		spell_id,
+		location,
 		children: _,
 	}: &SpellModalProps,
 ) -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
-	let Some(spell) = state.persistent().selected_spells.get_spell(caster_id.as_str(), spell_id) else { return Html::default(); };
+	let system = use_context::<UseStateHandle<DnD5e>>().unwrap();
+	let Some((spell, entry)) = location.get(&state, &system) else { return Html::default(); };
 
 	html! {<>
 		<div class="modal-header">
@@ -446,7 +557,7 @@ fn SpellModal(
 			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
 		</div>
 		<div class="modal-body">
-			{spell_content(spell)}
+			{spell_content(spell, Some(entry))}
 		</div>
 	</>}
 }
@@ -476,7 +587,7 @@ fn ManagerCasterModal(CasterNameProps { caster_id }: &CasterNameProps) -> Html {
 	let mut num_cantrips = 0;
 	let mut num_spells = 0;
 	let mut num_all_selections = 0;
-	if let Some(selections) = state.persistent().selected_spells.get(Some(caster.name())) {
+	if let Some(selections) = state.persistent().selected_spells.get(caster.name()) {
 		num_cantrips = selections.num_cantrips;
 		num_spells = selections.num_spells;
 		num_all_selections = selections.len();
@@ -521,7 +632,7 @@ fn ManagerCasterModal(CasterNameProps { caster_id }: &CasterNameProps) -> Html {
 							spell_id={spell.id.clone()}
 							rank={spell.rank}
 						/>};
-						spell_list_item("selected", spell, action)
+						spell_list_item("selected", spell, Some(&caster.spell_entry), action)
 					}).collect::<Vec<_>>()}
 				</CollapsableCard>
 				<CollapsableCard
@@ -606,11 +717,7 @@ fn SpellListAction(
 	let Some(caster) = state.spellcasting().get_caster(info.id.as_str()) else { return Html::default(); };
 
 	let mut can_select_more = true;
-	if let Some(selections) = state
-		.persistent()
-		.selected_spells
-		.get(Some(info.id.as_str()))
-	{
+	if let Some(selections) = state.persistent().selected_spells.get(&info.id) {
 		can_select_more = match rank {
 			0 => selections.num_cantrips < info.max_cantrips,
 			_ => selections.num_spells < info.max_spells,
@@ -620,7 +727,7 @@ fn SpellListAction(
 	let is_selected = state
 		.persistent()
 		.selected_spells
-		.has_selected(Some(info.id.as_str()), &spell_id);
+		.has_selected(&info.id, &spell_id);
 
 	let mut classes = classes!("btn", "btn-xs", "select");
 	let mut disabled = false;
@@ -680,7 +787,7 @@ fn SpellListAction(
 	}
 }
 
-fn spell_list_item(section_id: &str, spell: &Spell, action: Html) -> Html {
+fn spell_list_item(section_id: &str, spell: &Spell, entry: Option<&SpellEntry>, action: Html) -> Html {
 	let collapse_id = format!("{section_id}-{}", spell.id.ref_id());
 	// TODO: concentration and ritual icons in header section
 	html! {
@@ -706,7 +813,7 @@ fn spell_list_item(section_id: &str, spell: &Spell, action: Html) -> Html {
 			<div class="collapse mb-2" id={collapse_id}>
 				<div class="card">
 					<div class="card-body px-2 py-1">
-						{spell_content(&spell)}
+						{spell_content(&spell, entry)}
 					</div>
 				</div>
 			</div>
@@ -714,7 +821,7 @@ fn spell_list_item(section_id: &str, spell: &Spell, action: Html) -> Html {
 	}
 }
 
-fn spell_content(spell: &Spell) -> Html {
+fn spell_content(spell: &Spell, entry: Option<&SpellEntry>) -> Html {
 	use crate::{
 		components::{Tag, Tags},
 		system::dnd5e::{components::editor::description, data::AreaOfEffect},
@@ -754,7 +861,7 @@ fn spell_content(spell: &Spell) -> Html {
 	sections.push(html! {
 		<div class="property">
 			<strong>{"Range:"}</strong>
-			{match &spell.range {
+			{match entry.map(|entry| entry.range.as_ref()).flatten().unwrap_or(&spell.range) {
 				spell::Range::OnlySelf => html!("Self"),
 				spell::Range::Touch => html!("Touch"),
 				spell::Range::Unit { distance, unit } => html! {<>{distance}{" "}{unit}</>},
@@ -1005,7 +1112,7 @@ impl futures::Future for FindRelevantSpells {
 			let info = (spell.name.clone(), spell.rank);
 			let html = {
 				let addon = (self.header_addon.0)(spell);
-				spell_list_item("relevant", spell, addon)
+				spell_list_item("relevant", spell, None, addon)
 			};
 			drop(spell);
 			self.sorted_info.insert(idx, info);

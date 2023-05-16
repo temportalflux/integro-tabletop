@@ -6,7 +6,7 @@ use crate::{
 			components::{panel::SpellFilter, GeneralProp, SharedCharacter},
 			data::{
 				bundle::{Background, Lineage, Race, RaceVariant, Upbringing},
-				character::{spellcasting, ActionEffect, Persistent},
+				character::{ActionEffect, Persistent},
 				description, Feature, Spell,
 			},
 			DnD5e,
@@ -986,7 +986,10 @@ fn ObjectSelectorEntryButton(props: &ObjectSelectorEntryButtonProps) -> Html {
 					persistent.remove_selection(&data_path, idx);
 				}
 			}
-			None
+			// recompile required because mutators which have object selections
+			// probably need to use those selections to affect derived data
+			// (e.g. spellcasting add_prepared)
+			Some(ActionEffect::Recompile)
 		}
 	});
 

@@ -12,7 +12,7 @@ use crate::{
 };
 use enum_map::EnumMap;
 use std::{
-	collections::{BTreeMap, HashMap, HashSet},
+	collections::{BTreeMap, HashMap},
 	path::Path,
 	sync::Arc,
 };
@@ -295,118 +295,56 @@ pub struct Settings {
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct SelectedSpells {
 	consumed_slots: HashMap<u8, usize>,
-	// TODO: When spells can be customized, they will need separate plots of data in SelectedSpells in order to support customizations per caster
-	/// All selected spells for all casters and other spellcasting features.
-	cache: HashMap<SourceId, (Spell, HashSet</*caster name*/ String>)>,
-	per_caster: HashMap<String, SelectedSpellsData>,
-	all_caster_selection: SelectedSpellsData,
+	cache_by_caster: HashMap<String, SelectedSpellsData>,
 }
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct SelectedSpellsData {
-	/// The ids for spells selected, values sorted by rank then name of the spell (which is in `cache`).
-	ordered_ids: Vec<(SourceId, /*name*/ String, /*rank*/ u8)>,
 	/// The number of rank 0 spells selected.
 	pub num_cantrips: usize,
 	/// The number of spells selected whose rank is > 0.
 	pub num_spells: usize,
+	selections: HashMap<SourceId, Spell>,
 }
 impl SelectedSpells {
 	pub fn insert(&mut self, caster_id: &impl AsRef<str>, spell: &Spell) {
-		#[derive(PartialEq)]
-		enum NewEntry {
-			Uncached,
-			ForCaster,
-		}
-		let new_entry = match self.cache.get_mut(&spell.id) {
+		let selected_spells = match self.cache_by_caster.get_mut(caster_id.as_ref()) {
+			Some(existing) => existing,
 			None => {
-				self.cache.insert(
-					spell.id.clone(),
-					(
-						spell.clone(),
-						HashSet::from([caster_id.as_ref().to_owned()]),
-					),
-				);
-				Some(NewEntry::Uncached)
-			}
-			Some((_spell, required_by)) => {
-				match required_by.insert(caster_id.as_ref().to_owned()) {
-					true => Some(NewEntry::ForCaster),
-					false => None,
-				}
+				self.cache_by_caster
+					.insert(caster_id.as_ref().to_owned(), SelectedSpellsData::default());
+				self.cache_by_caster.get_mut(caster_id.as_ref()).unwrap()
 			}
 		};
-
-		match self.per_caster.get_mut(caster_id.as_ref()) {
-			None => {
-				let caster_id = caster_id.as_ref().to_owned();
-				let mut data = SelectedSpellsData::default();
-				data.insert(&spell);
-				self.per_caster.insert(caster_id, data);
-			}
-			Some(selection_ids) => {
-				selection_ids.insert(&spell);
-			}
-		}
-
-		if new_entry == Some(NewEntry::Uncached) {
-			self.all_caster_selection.insert(&spell);
-		}
+		selected_spells.insert(&spell);
 	}
 
 	pub fn remove(&mut self, caster_id: &impl AsRef<str>, spell_id: &SourceId) {
-		{
-			let Some(caster_list) = self.per_caster.get_mut(caster_id.as_ref()) else { return; };
-			caster_list.retain(|id| id != spell_id);
-		}
-
-		let was_last_requirement = {
-			let Some((_spell, required_by)) = self.cache.get_mut(&spell_id) else { return; };
-			required_by.remove(caster_id.as_ref());
-			required_by.is_empty()
-		};
-		if was_last_requirement {
-			let _ = self.cache.remove(&spell_id);
-			self.all_caster_selection.retain(|id| id != spell_id);
-		}
+		let Some(caster_list) = self.cache_by_caster.get_mut(caster_id.as_ref()) else { return; };
+		caster_list.remove(spell_id);
 	}
 
-	pub fn get_spell(&self, _caster_id: &str, spell_id: &SourceId) -> Option<&Spell> {
-		self.cache.get(spell_id).map(|(spell, _)| spell)
+	pub fn get(&self, caster_id: &impl AsRef<str>) -> Option<&SelectedSpellsData> {
+		self.cache_by_caster.get(caster_id.as_ref())
 	}
 
-	pub fn get(&self, caster_id: Option<&str>) -> Option<&SelectedSpellsData> {
-		match caster_id {
-			None => Some(&self.all_caster_selection),
-			Some(id) => self.per_caster.get(id),
-		}
+	pub fn get_spell(&self, caster_id: &impl AsRef<str>, spell_id: &SourceId) -> Option<&Spell> {
+		let Some(data) = self.cache_by_caster.get(caster_id.as_ref()) else { return None; };
+		let Some(spell) = data.selections.get(spell_id) else { return None; };
+		Some(spell)
 	}
 
-	pub fn iter_all_casters(&self) -> impl Iterator<Item = &(Spell, HashSet<String>)> {
-		self.all_caster_selection
-			.ordered_ids
-			.iter()
-			.filter_map(|(id, _name, _rank)| self.cache.get(id))
+	pub fn iter_caster_ids(&self) -> impl Iterator<Item = &String> {
+		self.cache_by_caster.keys()
 	}
 
-	pub fn iter_caster(&self, id: &String) -> Option<impl Iterator<Item = &Spell>> {
-		let Some(caster) = self.per_caster.get(id) else { return None; };
-		Some(
-			caster
-				.ordered_ids
-				.iter()
-				.filter_map(|(id, _name, _rank)| self.cache.get(id))
-				.map(|(spell, _)| spell),
-		)
+	pub fn iter_caster(&self, caster_id: &impl AsRef<str>) -> Option<impl Iterator<Item = &Spell>> {
+		let Some(caster) = self.cache_by_caster.get(caster_id.as_ref()) else { return None; };
+		Some(caster.selections.values())
 	}
 
-	pub fn has_selected(&self, caster_id: Option<&str>, spell_id: &SourceId) -> bool {
-		match self.cache.get(spell_id) {
-			None => false,
-			Some((_, casters_selected_by)) => match caster_id {
-				None => true,
-				Some(caster_id) => casters_selected_by.contains(caster_id),
-			},
-		}
+	pub fn has_selected(&self, caster_id: &impl AsRef<str>, spell_id: &SourceId) -> bool {
+		let Some(data) = self.cache_by_caster.get(caster_id.as_ref()) else { return false; };
+		data.selections.contains_key(spell_id)
 	}
 
 	pub fn consumed_slots(&self, rank: u8) -> Option<usize> {
@@ -429,37 +367,24 @@ impl SelectedSpells {
 	}
 }
 impl SelectedSpellsData {
-	fn binary_search_ids(ids: &Vec<(SourceId, String, u8)>, other: &Spell) -> usize {
-		ids.binary_search_by(|(_id, name, rank)| rank.cmp(&other.rank).then(name.cmp(&other.name)))
-			.unwrap_or_else(|err_idx| err_idx)
-	}
-
 	fn insert(&mut self, spell: &Spell) {
-		let idx = Self::binary_search_ids(&self.ordered_ids, spell);
-		self.ordered_ids
-			.insert(idx, (spell.id.clone(), spell.name.clone(), spell.rank));
+		self.selections.insert(spell.id.clone(), spell.clone());
 		match spell.rank {
 			0 => self.num_cantrips += 1,
 			_ => self.num_spells += 1,
 		}
 	}
 
-	fn retain(&mut self, mut should_keep: impl FnMut(&SourceId) -> bool) {
-		let num_cantrips = &mut self.num_cantrips;
-		let num_spells = &mut self.num_spells;
-		self.ordered_ids.retain(move |(id, _name, rank)| {
-			let keep = should_keep(id);
-			if !keep {
-				match rank {
-					0 => *num_cantrips -= 1,
-					_ => *num_spells -= 1,
-				}
+	fn remove(&mut self, id: &SourceId) {
+		if let Some(spell) = self.selections.remove(id) {
+			match spell.rank {
+				0 => self.num_cantrips -= 1,
+				_ => self.num_spells -= 1,
 			}
-			keep
-		});
+		}
 	}
 
 	pub fn len(&self) -> usize {
-		self.ordered_ids.len()
+		self.selections.len()
 	}
 }

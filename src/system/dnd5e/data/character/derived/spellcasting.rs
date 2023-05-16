@@ -4,15 +4,14 @@ use crate::system::{
 		data::{
 			action::LimitedUses,
 			character::{Character, Persistent},
-			Ability,
+			spell, Ability,
 		},
 		BoxedEvaluator,
 	},
 };
-use multimap::MultiMap;
 use std::{
 	collections::{BTreeMap, HashMap},
-	path::{Path, PathBuf},
+	path::PathBuf,
 };
 
 mod cantrips;
@@ -29,7 +28,7 @@ pub struct Spellcasting {
 	// - spell capacity (number of spells that can be prepared/known)
 	// - spells prepared (or known)
 	casters: HashMap<String, Caster>,
-	always_prepared: MultiMap<SourceId, SpellEntry>,
+	always_prepared: HashMap<SourceId, HashMap<PathBuf, SpellEntry>>,
 }
 
 impl Spellcasting {
@@ -37,24 +36,15 @@ impl Spellcasting {
 		self.casters.insert(caster.name().clone(), caster);
 	}
 
-	pub fn add_prepared(
-		&mut self,
-		spell_ids: &Vec<SourceId>,
-		ability: Ability,
-		limited_uses: Option<&LimitedUses>,
-		source: impl AsRef<Path>,
-	) {
-		for spell_id in spell_ids {
-			let entry = SpellEntry {
-				ability,
-				capability: match limited_uses {
-					Some(uses) => SpellCapability::LimitedUses(uses.clone()),
-					None => SpellCapability::Prepared,
-				},
-				source: source.as_ref().to_owned(),
-			};
-			self.always_prepared.insert(spell_id.clone(), entry);
+	pub fn add_prepared(&mut self, spell_id: &SourceId, entry: SpellEntry) {
+		if !self.always_prepared.contains_key(&spell_id) {
+			self.always_prepared
+				.insert(spell_id.clone(), HashMap::new());
 		}
+		self.always_prepared
+			.get_mut(spell_id)
+			.unwrap()
+			.insert(entry.source.clone(), entry);
 	}
 
 	pub fn cantrip_capacity(&self, persistent: &Persistent) -> Vec<(usize, &Restriction)> {
@@ -126,7 +116,7 @@ impl Spellcasting {
 		None
 	}
 
-	pub fn prepared_spells(&self) -> &MultiMap<SourceId, SpellEntry> {
+	pub fn prepared_spells(&self) -> &HashMap<SourceId, HashMap<PathBuf, SpellEntry>> {
 		&self.always_prepared
 	}
 
@@ -151,6 +141,7 @@ pub struct Caster {
 	pub cantrip_capacity: Option<BTreeMap<usize, usize>>,
 	pub slots: Slots,
 	pub spell_capacity: SpellCapacity,
+	pub spell_entry: SpellEntry,
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -224,12 +215,10 @@ impl Caster {
 #[derive(Clone, PartialEq, Debug)]
 pub struct SpellEntry {
 	pub ability: Ability,
-	pub capability: SpellCapability,
 	pub source: PathBuf,
-}
-
-#[derive(Clone, PartialEq, Debug)]
-pub enum SpellCapability {
-	Prepared,
-	LimitedUses(LimitedUses),
+	pub classified_as: Option<String>,
+	pub cast_via_slot: bool,
+	pub cast_via_uses: Option<LimitedUses>,
+	pub range: Option<spell::Range>,
+	pub forced_rank: Option<u8>,
 }

@@ -1,5 +1,3 @@
-use spell::Spell;
-
 use crate::{
 	kdl_ext::{DocumentExt, FromKDL, KDLNode, NodeExt},
 	system::{
@@ -9,10 +7,12 @@ use crate::{
 			data::{
 				action::LimitedUses,
 				character::{
-					spellcasting::{Caster, Restriction, Slots, SpellCapacity},
+					spellcasting::{Caster, Restriction, Slots, SpellCapacity, SpellEntry},
 					Character,
 				},
-				description, spell, Ability,
+				description,
+				spell::{self, Spell},
+				Ability,
 			},
 		},
 	},
@@ -41,6 +41,9 @@ pub enum Operation {
 	/// Spells that are always available to be cast, and
 	/// DO NOT count against the character's known/prepared spell capacity limits.
 	AddPrepared {
+		/// TODO: prepared spells can be treated as spells for a given class
+		/// If provided, the specified spells are treated as tho they were prepared using this caster class.
+		classified_as: Option<String>,
 		/// The spells this feature provides, with any additional metadata.
 		specific_spells: Vec<(SourceId, PreparedInfo)>,
 		selectable_spells: Option<SelectableSpells>,
@@ -131,6 +134,7 @@ impl Mutator for Spellcasting {
 			}
 			Operation::AddSource => {}
 			Operation::AddPrepared {
+				classified_as,
 				specific_spells,
 				selectable_spells,
 				limited_uses,
@@ -150,16 +154,18 @@ impl Mutator for Spellcasting {
 						}
 					}
 				}
-				for (id, prepared_info) in all_spells {}
-
-				/*
-				stats.spellcasting_mut().add_prepared(
-					spell_ids,
-					self.ability,
-					limited_uses.as_ref(),
-					parent,
-				);
-				*/
+				for (id, prepared_info) in all_spells {
+					let entry = SpellEntry {
+						ability: self.ability,
+						source: parent.to_owned(),
+						classified_as: classified_as.clone(),
+						cast_via_slot: prepared_info.can_cast_through_slot,
+						cast_via_uses: limited_uses.clone(),
+						range: prepared_info.range.clone(),
+						forced_rank: prepared_info.cast_at_rank.clone(),
+					};
+					stats.spellcasting_mut().add_prepared(&id, entry);
+				}
 			}
 		}
 	}
@@ -237,6 +243,16 @@ impl FromKDL for Spellcasting {
 					}
 				};
 
+				let spell_entry = SpellEntry {
+					ability: ability,
+					source: std::path::PathBuf::from(&class_name),
+					classified_as: Some(class_name.clone()),
+					cast_via_slot: true,
+					cast_via_uses: None,
+					range: None,
+					forced_rank: None,
+				};
+
 				Operation::Caster(Caster {
 					class_name,
 					ability,
@@ -244,6 +260,7 @@ impl FromKDL for Spellcasting {
 					cantrip_capacity,
 					slots,
 					spell_capacity,
+					spell_entry,
 				})
 			}
 			Some("add_source") => {
@@ -254,6 +271,8 @@ impl FromKDL for Spellcasting {
 				Operation::AddSource
 			}
 			Some("add_prepared") => {
+				let classified_as = node.get_str_opt("classified_as")?.map(str::to_owned);
+
 				let mut specific_spells = Vec::new();
 				for node in node.query_all("scope() > spell")? {
 					let mut ctx = ctx.next_node();
@@ -299,6 +318,7 @@ impl FromKDL for Spellcasting {
 					Some(node) => Some(LimitedUses::from_kdl(node, &mut ctx.next_node())?),
 				};
 				Operation::AddPrepared {
+					classified_as,
 					specific_spells,
 					selectable_spells,
 					limited_uses,

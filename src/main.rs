@@ -174,15 +174,20 @@ fn create_character(system: &system::dnd5e::DnD5e) -> system::dnd5e::data::chara
 		mutators: vec![system::dnd5e::mutator::Spellcasting {
 			ability: Ability::Charisma,
 			operation: system::dnd5e::mutator::Operation::AddPrepared {
-				specific_spells: Vec::new(),
+				classified_as: None,
+				specific_spells: vec![(
+					SourceId::from_str("local://basic-rules@dnd5e/spells/fireball.kdl").unwrap(),
+					system::dnd5e::mutator::PreparedInfo::default(),
+				)],
 				selectable_spells: Some(system::dnd5e::mutator::SelectableSpells {
 					selector: {
 						let mut selector = utility::ObjectSelector::new("spell", 2);
-						selector.spell_filter = Some(system::dnd5e::components::panel::SpellFilter {
-							max_rank: Some(3),
-							tags: ["Wizard".into()].into(),
-							..Default::default()
-						});
+						selector.spell_filter =
+							Some(system::dnd5e::components::panel::SpellFilter {
+								max_rank: Some(3),
+								tags: ["Wizard".into()].into(),
+								..Default::default()
+							});
 						selector
 					},
 					prepared: system::dnd5e::mutator::PreparedInfo::default(),
