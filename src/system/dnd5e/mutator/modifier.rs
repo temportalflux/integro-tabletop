@@ -232,6 +232,7 @@ mod test {
 						id: Default::default(),
 						options: vec![Ability::Strength, Ability::Wisdom],
 						cannot_match: Default::default(),
+						amount: 1,
 					}),
 				}
 				.into()

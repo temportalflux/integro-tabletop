@@ -31,6 +31,9 @@ pub use modifier::*;
 mod proficient;
 pub use proficient::*;
 
+mod pick_n;
+pub use pick_n::*;
+
 mod sense;
 pub use sense::*;
 

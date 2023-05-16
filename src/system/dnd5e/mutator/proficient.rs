@@ -309,6 +309,7 @@ mod test {
 					id: Some("MutatorSelect").into(),
 					options: vec![Skill::Insight, Skill::AnimalHandling],
 					cannot_match: Default::default(),
+					amount: 1,
 				},
 				proficiency::Level::Full,
 			);
@@ -327,6 +328,7 @@ mod test {
 					id: Default::default(),
 					options: vec![Skill::Insight, Skill::AnimalHandling],
 					cannot_match: Default::default(),
+					amount: 1,
 				},
 				proficiency::Level::Double,
 			);
@@ -363,6 +365,7 @@ mod test {
 				id: Default::default(),
 				options: vec!["Dwarven".into(), "Giant".into()],
 				cannot_match: Default::default(),
+				amount: 1,
 			});
 			assert_eq!(from_doc(doc)?, expected.into());
 			Ok(())
@@ -449,6 +452,7 @@ mod test {
 				id: Default::default(),
 				options: vec!["Dice set".into(), "Playing card set".into(), "Flute".into()],
 				cannot_match: Default::default(),
+				amount: 1,
 			});
 			assert_eq!(from_doc(doc)?, expected.into());
 			Ok(())

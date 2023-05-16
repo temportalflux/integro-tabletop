@@ -5,6 +5,7 @@
 - force refresh button to forcibly reload one or more modules by wiping those entries from the database and refetching them from source
 
 ## UI Backlog
+- PickN mutator description (name, body, selector metadata)
 - Limited Use can use the resource of another feature/action by its path, and has an associated cost when doing so
 - UI components for rendering features, conditions, mutators, etc which is used for all presentations (mutators / features in origin & item browsers, condition cards, feature/action modals, etc)
 
@@ -13,7 +14,7 @@
 - Format Args
 
 ## Unify mutators, criteria, and features
-- Convert `feature` block to a `mutator "feature"` block, features are granted using mutators. FromKDL structs which accept both mutators and features now only accept mutators.
+- Convert `feature` block to a `mutator-todo "feature"` block, features are granted using mutators. FromKDL structs which accept both mutators and features now only accept mutators.
 - Convert `criteria` into a `mutator "only_if"` (or similar name) which accepts a single criteria and any number of submutators. Submutations are only applied if the criteria passes. This replaces the usage of `criteria` in features and conditions.
 
 ## Conditions
@@ -34,7 +35,6 @@
 - Spell management
 	- search available spells to be selected
 - ritual & focus functionality
-- add_prepared spells (can select any spell, or with restrictions). e.g. Magical Secrets & Mystic Arcanum
 - limited uses for add_prepared (self-defined, using another feature, or charges)
 - add_prepared spells cost (at-will vs requires_slot vs limited_use)
 - Spell Components

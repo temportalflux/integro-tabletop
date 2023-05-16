@@ -30,7 +30,11 @@ impl From<&str> for IdPath {
 	}
 }
 impl IdPath {
-	fn set_path(&self, path: &Path) {
+	pub fn get_id(&self) -> Option<&String> {
+		self.id.as_ref()
+	}
+
+	pub fn set_path(&self, path: &Path) {
 		let path = match &self.id {
 			Some(id) => path.join(id),
 			None => path.to_owned(),
@@ -39,8 +43,12 @@ impl IdPath {
 		*self.absolute_path.write().unwrap() = path;
 	}
 
-	fn as_path(&self) -> PathBuf {
-		self.absolute_path.read().unwrap().clone()
+	pub fn as_path(&self) -> Option<PathBuf> {
+		let path = self.absolute_path.read().unwrap().clone();
+		if path.to_str() == Some("") {
+			return None;
+		}
+		Some(path)
 	}
 }
 impl std::fmt::Debug for IdPath {
@@ -60,6 +68,7 @@ pub enum Selector<T: ToString + FromStr> {
 	AnyOf {
 		id: IdPath,
 		cannot_match: Vec<IdPath>,
+		amount: usize,
 		options: Vec<T>,
 	},
 	Any {
@@ -95,13 +104,7 @@ where
 	}
 
 	pub fn get_data_path(&self) -> Option<PathBuf> {
-		let path = self.id_path().map(|id_path| id_path.as_path());
-		if let Some(path) = &path {
-			if path.to_str() == Some("") {
-				return None;
-			}
-		}
-		path
+		self.id_path().map(|id_path| id_path.as_path()).flatten()
 	}
 
 	pub fn from_kdl(
@@ -134,6 +137,7 @@ where
 				Ok(Self::AnyOf {
 					id,
 					options,
+					amount: 1,
 					cannot_match,
 				})
 			}
@@ -194,11 +198,7 @@ impl ObjectSelector {
 	}
 
 	pub fn get_data_path(&self) -> Option<PathBuf> {
-		let path = self.id.as_path();
-		if path.to_str() == Some("") {
-			return None;
-		}
-		Some(path)
+		self.id.as_path()
 	}
 
 	pub fn count(&self) -> usize {
@@ -289,7 +289,7 @@ impl SelectorOptions {
 				..
 			} => {
 				let cannot_match = (!cannot_match.is_empty())
-					.then(|| cannot_match.iter().map(IdPath::as_path).collect());
+					.then(|| cannot_match.iter().filter_map(IdPath::as_path).collect());
 				Some(Self::AnyOf {
 					options: options.clone(),
 					cannot_match,
@@ -319,7 +319,7 @@ impl SelectorOptions {
 			} => {
 				let options = options.iter().map(|t| *t);
 				let cannot_match = (!cannot_match.is_empty())
-					.then(|| cannot_match.iter().map(IdPath::as_path).collect());
+					.then(|| cannot_match.iter().filter_map(IdPath::as_path).collect());
 				Some(Self::AnyOf {
 					options: Self::iter_to_str(options),
 					cannot_match,
@@ -328,7 +328,7 @@ impl SelectorOptions {
 			Selector::Any { cannot_match, .. } => {
 				let options = EnumSet::<T>::all().into_iter();
 				let cannot_match = (!cannot_match.is_empty())
-					.then(|| cannot_match.iter().map(IdPath::as_path).collect());
+					.then(|| cannot_match.iter().filter_map(IdPath::as_path).collect());
 				Some(Self::AnyOf {
 					options: Self::iter_to_str(options),
 					cannot_match,

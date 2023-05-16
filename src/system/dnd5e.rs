@@ -108,6 +108,7 @@ pub fn node_registry() -> NodeRegistry {
 	registry.register_mutator::<SetFlag>();
 	registry.register_mutator::<Spellcasting>();
 	registry.register_mutator::<GrantByLevel>();
+	registry.register_mutator::<PickN>();
 
 	registry.register_evaluator::<GetAbilityModifier>();
 	registry.register_evaluator::<GetHitPoints>();
