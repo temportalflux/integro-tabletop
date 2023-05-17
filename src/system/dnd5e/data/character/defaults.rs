@@ -22,6 +22,10 @@ crate::impl_kdl_node!(DefaultsBlock, "defaults");
 impl SystemComponent for DefaultsBlock {
 	type System = DnD5e;
 
+	fn to_metadata(self) -> serde_json::Value {
+		serde_json::json!(null)
+	}
+
 	fn add_component(mut self, source_id: SourceId, system: &mut Self::System) {
 		self.source_id = Some(source_id.clone());
 		system.default_blocks.insert(source_id, self);

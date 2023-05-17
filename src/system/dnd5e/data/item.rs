@@ -97,6 +97,12 @@ crate::impl_kdl_node!(Item, "item");
 impl SystemComponent for Item {
 	type System = DnD5e;
 
+	fn to_metadata(self) -> serde_json::Value {
+		serde_json::json!({
+			"name": self.name.clone(),
+		})
+	}
+
 	fn add_component(self, source_id: SourceId, system: &mut Self::System) {
 		system.items.insert(source_id, self);
 	}

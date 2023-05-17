@@ -42,6 +42,26 @@ crate::impl_kdl_node!(Spell, "spell");
 impl SystemComponent for Spell {
 	type System = DnD5e;
 
+	fn to_metadata(self) -> serde_json::Value {
+		serde_json::json!({
+			"name": self.name.clone(),
+			"tags": self.tags.clone(),
+			"rank": self.rank,
+			"school": self.school_tag.clone(),
+			"components": {
+				"verbal": self.components.verbal,
+				"somatic": self.components.somatic,
+				"material": self.components.materials.len() > 0,
+			},
+			"casting": {
+				"duration": self.casting_time.duration.as_metadata(),
+				"ritual": self.casting_time.ritual,
+			},
+			"duration": self.duration.kind.as_metadata(),
+			"concentration": self.duration.concentration,
+		})
+	}
+
 	fn add_component(self, _source_id: SourceId, system: &mut Self::System) {
 		system.spells.insert(self.id.clone(), self);
 	}
@@ -52,7 +72,9 @@ impl FromKDL for Spell {
 		let name = node.get_str_req("name")?.to_owned();
 		let description = description::Info::from_kdl_all(node, ctx)?;
 		let rank = node.query_i64_req("scope() > rank", 0)? as u8;
-		let school_tag = node.get_str_opt("school")?.map(str::to_owned);
+		let school_tag = node
+			.query_str_opt("scope() > school", 0)?
+			.map(str::to_owned);
 
 		let components = Components::from_kdl_all(node, ctx)?;
 		let casting_time = node.query_req("scope() > casting-time")?;

@@ -38,3 +38,15 @@ impl FromKDL for CastingDuration {
 		}
 	}
 }
+
+impl CastingDuration {
+	pub fn as_metadata(&self) -> String {
+		match self {
+			Self::Action => "action",
+			Self::Bonus => "bonus",
+			Self::Reaction(_) => "reaction",
+			Self::Unit(_, _) => "other",
+		}
+		.into()
+	}
+}

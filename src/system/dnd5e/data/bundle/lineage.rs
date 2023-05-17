@@ -48,6 +48,12 @@ impl MutatorGroup for Lineage {
 impl SystemComponent for Lineage {
 	type System = DnD5e;
 
+	fn to_metadata(self) -> serde_json::Value {
+		serde_json::json!({
+			"name": self.name.clone(),
+		})
+	}
+
 	fn add_component(mut self, source_id: SourceId, system: &mut Self::System) {
 		self.source_id = source_id.clone();
 		system.lineages.insert(source_id, self);

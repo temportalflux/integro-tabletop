@@ -231,10 +231,12 @@ fn App() -> Html {
 	});
 	let load_modules = yew_hooks::use_async({
 		let database = database.clone();
+		let comp_reg = comp_reg.clone();
+		let node_reg = node_reg.clone();
 		async move {
 			let Some(database) = &database.data else { return Err(()); };
 			log::debug!(target: "tabletop-tools", "Loading modules into database");
-			if let Err(err) = load_modules(database).await {
+			if let Err(err) = load_modules(database, &comp_reg, &node_reg).await {
 				log::error!(target: "tabletop-tools", "Failed to load modules into database: {err:?}");
 				return Err(());
 			}
@@ -247,47 +249,35 @@ fn App() -> Html {
 		let node_reg = node_reg.clone();
 		let system_state = system.clone();
 		async move {
-			use database::{
-				app::{entry, Entry},
-				ObjectStoreExt, TransactionExt,
-			};
-			let Some(database) = &database.data else { return Err(LoadContentError::NoDatabase); };
-			log::debug!(target: "tabletop-tools", "Loading content from database");
-			let transaction = database.read_entries()?;
-			let entries_store = transaction.object_store_of::<Entry>()?;
-			let idx_by_system = entries_store.index_of::<entry::System>()?;
-			let query = entry::System {
-				system: "dnd5e".into(),
-			};
-
-			let mut system = DnD5e::default();
-			let mut cursor = idx_by_system.open_cursor(Some(&query)).await?;
-			while let Some(entry) = cursor.next().await {
-				let source_id = entry.source_id();
-				let document = match entry.kdl.parse::<kdl::KdlDocument>() {
-					Ok(doc) => doc,
-					Err(err) => {
-						log::error!(target: "tabletop-tools", "Failed to parse the contents of {:?}: {err:?}", source_id.to_string());
-						continue;
-					}
-				};
-				for node in document.nodes() {
-					let Some(comp_factory) = comp_reg.get_factory(node.name().value()).cloned() else { continue; };
-					let ctx = NodeContext::new(Arc::new(source_id.clone()), node_reg.clone());
-					match comp_factory
-						.add_from_kdl(node, &ctx)
-						.with_context(|| format!("Failed to parse {:?}", source_id.to_string()))
-					{
-						Ok(insert_callback) => {
-							(insert_callback)(&mut system);
-						}
-						Err(err) => {
-							log::error!(target: &entry.module, "{err:?}");
-						}
-					}
-				}
-			}
+			let system = load_content(database, &comp_reg, &node_reg).await?;
 			system_state.set(system);
+			Ok(()) as Result<(), LoadContentError>
+		}
+	});
+
+	let query_test = yew_hooks::use_async({
+		let database = database.clone();
+		let node_reg = node_reg.clone();
+		async move {
+			use database::app::Criteria::*;
+			let Some(database) = &database.data else { return Err(LoadContentError::NoDatabase); };
+			let criteria = ContainsProperty("name".into(), ContainsSubstring("fire".into()).into());
+			let start_time = wasm_timer::Instant::now();
+			log::debug!("Starting test query");
+			let mut query = database
+				.query::<dnd5e::data::Spell>(criteria.into(), node_reg.clone())
+				.await?;
+			log::debug!(
+				"test query constructed ({} seconds)",
+				start_time.elapsed().as_secs_f32()
+			);
+			while let Some(spell) = query.next().await {
+				log::debug!("Loaded spell: {}", spell.name);
+			}
+			log::debug!(
+				"test query complete (total: {} seconds)",
+				start_time.elapsed().as_secs_f32()
+			);
 			Ok(()) as Result<(), LoadContentError>
 		}
 	});
@@ -311,7 +301,9 @@ fn App() -> Html {
 	use_effect_with_deps(
 		{
 			let load_content = load_content.clone();
+			let query_test = query_test.clone();
 			move |_db| {
+				query_test.run();
 				load_content.run();
 			}
 		},
@@ -397,7 +389,11 @@ fn main() {
 	yew::Renderer::<App>::new().render();
 }
 
-async fn load_modules(database: &database::app::Database) -> Result<(), database::Error> {
+async fn load_modules(
+	database: &database::app::Database,
+	comp_reg: &std::rc::Rc<system::dnd5e::ComponentRegistry<system::dnd5e::DnD5e>>,
+	node_reg: &Arc<system::core::NodeRegistry>,
+) -> Result<(), database::Error> {
 	use database::{
 		app::{module::NameSystem, Entry, Module},
 		ObjectStoreExt, TransactionExt,
@@ -457,37 +453,50 @@ async fn load_modules(database: &database::app::Database) -> Result<(), database
 			let Ok(document) = content.parse::<kdl::KdlDocument>() else { continue; };
 			for (idx, node) in document.nodes().iter().enumerate() {
 				source_id.node_idx = idx;
-				let category = match node.name().value() {
-					"condition" => "condition".into(),
-					"item" => "item".into(),
-					"spell" => "spell".into(),
-					"feat" => "feat".into(),
-					"class" => "class".into(),
-					"subclass" => "subclass".into(),
-					"background" => "background".into(),
-					"race" => "race".into(),
-					"subrace" => "race-variant".into(),
-					"lineage" => "lineage".into(),
-					"upbringing" => "upbringing".into(),
-					"defaults" => "defaults".into(),
-					name => {
-						log::warn!(
-							"Unsupported category name {name:?}, cannot load into database."
-						);
-						continue;
+
+				let category = node.name().value().to_owned();
+				// Generate the metadata for this entry
+				let metadata = {
+					let Some(comp_factory) = comp_reg.get_factory(&category).cloned() else { continue; };
+					let ctx = NodeContext::new(Arc::new(source_id.clone()), node_reg.clone());
+					let metadata = match comp_factory
+						.metadata_from_kdl(node, &ctx)
+						.with_context(|| format!("Failed to parse {:?}", source_id.to_string()))
+					{
+						Ok(metadata) => metadata,
+						Err(err) => {
+							log::error!(target: &module_name, "{err:?}");
+							continue;
+						}
+					};
+					match metadata {
+						serde_json::Value::Null => serde_json::Value::Null,
+						serde_json::Value::Object(mut metadata) => {
+							metadata
+								.insert("module".into(), serde_json::json!(module_name.clone()));
+							serde_json::Value::Object(metadata)
+						}
+						other => {
+							log::error!(
+								target: &module_name,
+								"Metadata must be a map, but {} returned {:?}.",
+								source_id.to_string(),
+								other
+							);
+							continue;
+						}
 					}
 				};
-				let system = source_id.system.clone().unwrap();
-				let version = source_id.version.take();
+
 				let record = Entry {
 					id: source_id.to_string(),
 					module: module_name.into(),
-					system: system,
+					system: source_id.system.clone().unwrap(),
 					category: category,
-					version: version.clone(),
+					version: source_id.version.clone(),
+					metadata,
 					kdl: node.to_string(),
 				};
-				source_id.version = version;
 				entry_store.put_record(&record).await?;
 			}
 		}
@@ -495,6 +504,54 @@ async fn load_modules(database: &database::app::Database) -> Result<(), database
 		transaction.commit().await?;
 	}
 	Ok(())
+}
+
+async fn load_content(
+	database: yew_hooks::UseAsyncHandle<database::app::Database, Arc<database::Error>>,
+	comp_reg: &std::rc::Rc<system::dnd5e::ComponentRegistry<system::dnd5e::DnD5e>>,
+	node_reg: &Arc<system::core::NodeRegistry>,
+) -> Result<system::dnd5e::DnD5e, LoadContentError> {
+	use database::{
+		app::{entry, Entry},
+		ObjectStoreExt, TransactionExt,
+	};
+	let Some(database) = &database.data else { return Err(LoadContentError::NoDatabase); };
+	log::debug!(target: "tabletop-tools", "Loading content from database");
+	let transaction = database.read_entries()?;
+	let entries_store = transaction.object_store_of::<Entry>()?;
+	let idx_by_system = entries_store.index_of::<entry::System>()?;
+	let query = entry::System {
+		system: "dnd5e".into(),
+	};
+
+	let mut system = system::dnd5e::DnD5e::default();
+	let mut cursor = idx_by_system.open_cursor(Some(&query)).await?;
+	while let Some(entry) = cursor.next().await {
+		let source_id = entry.source_id();
+		let document = match entry.kdl.parse::<kdl::KdlDocument>() {
+			Ok(doc) => doc,
+			Err(err) => {
+				log::error!(target: "tabletop-tools", "Failed to parse the contents of {:?}: {err:?}", source_id.to_string());
+				continue;
+			}
+		};
+		for node in document.nodes() {
+			let Some(comp_factory) = comp_reg.get_factory(node.name().value()).cloned() else { continue; };
+			let ctx = NodeContext::new(Arc::new(source_id.clone()), node_reg.clone());
+			match comp_factory
+				.add_from_kdl(node, &ctx)
+				.with_context(|| format!("Failed to parse {:?}", source_id.to_string()))
+			{
+				Ok(insert_callback) => {
+					(insert_callback)(&mut system);
+				}
+				Err(err) => {
+					log::error!(target: &entry.module, "{err:?}");
+				}
+			}
+		}
+	}
+	Ok(system)
 }
 
 #[derive(thiserror::Error, Debug, Clone)]

@@ -16,11 +16,18 @@ pub type BoxedEvaluator<V> = crate::utility::GenericEvaluator<Character, V>;
 pub type BoxedMutator = crate::utility::GenericMutator<Character>;
 pub type Value<T> = crate::utility::Value<Character, T>;
 
+type FnMetadataFromKdl = Box<
+	dyn Fn(&kdl::KdlNode, &NodeContext) -> anyhow::Result<serde_json::Value>
+		+ 'static
+		+ Send
+		+ Sync,
+>;
 type FnCompFromKdl<S> = Box<
 	dyn Fn(&kdl::KdlNode, &NodeContext) -> anyhow::Result<FnInsertComp<S>> + 'static + Send + Sync,
 >;
 type FnInsertComp<S> = Box<dyn FnOnce(&mut S) + 'static + Send + Sync>;
 pub struct ComponentFactory<S> {
+	metadata_from_kdl: FnMetadataFromKdl,
 	add_from_kdl: FnCompFromKdl<S>,
 }
 impl<S> ComponentFactory<S> {
@@ -29,6 +36,10 @@ impl<S> ComponentFactory<S> {
 		T: FromKDL + SystemComponent<System = S> + 'static + Send + Sync,
 	{
 		Self {
+			metadata_from_kdl: Box::new(|node, context| {
+				let value = T::from_kdl(node, &mut context.next_node())?;
+				Ok(T::to_metadata(value))
+			}),
 			add_from_kdl: Box::new(|node, context| {
 				let source_id = context.id().clone();
 				let value = T::from_kdl(node, &mut context.next_node())?;
@@ -37,6 +48,14 @@ impl<S> ComponentFactory<S> {
 				}))
 			}),
 		}
+	}
+
+	pub fn metadata_from_kdl(
+		&self,
+		node: &kdl::KdlNode,
+		ctx: &NodeContext,
+	) -> anyhow::Result<serde_json::Value> {
+		(*self.metadata_from_kdl)(node, ctx)
 	}
 
 	pub fn add_from_kdl(
@@ -65,6 +84,10 @@ impl<S> ComponentRegistry<S> {
 
 pub trait SystemComponent {
 	type System;
+
+	fn to_metadata(self) -> serde_json::Value
+	where
+		Self: Sized;
 
 	fn add_component(self, source_id: SourceId, system: &mut Self::System)
 	where
@@ -137,7 +160,11 @@ pub struct DnD5e {
 }
 
 impl super::core::System for DnD5e {
-	fn id(&self) -> &'static str {
+	fn id() -> &'static str {
 		"dnd5e"
+	}
+
+	fn id_owned(&self) -> &'static str {
+		Self::id()
 	}
 }

@@ -787,7 +787,12 @@ fn SpellListAction(
 	}
 }
 
-fn spell_list_item(section_id: &str, spell: &Spell, entry: Option<&SpellEntry>, action: Html) -> Html {
+fn spell_list_item(
+	section_id: &str,
+	spell: &Spell,
+	entry: Option<&SpellEntry>,
+	action: Html,
+) -> Html {
 	let collapse_id = format!("{section_id}-{}", spell.id.ref_id());
 	// TODO: concentration and ritual icons in header section
 	html! {

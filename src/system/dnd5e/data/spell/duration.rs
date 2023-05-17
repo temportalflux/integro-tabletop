@@ -37,3 +37,13 @@ impl FromKDL for DurationKind {
 		}
 	}
 }
+
+impl DurationKind {
+	pub fn as_metadata(&self) -> String {
+		match self {
+			Self::Instantaneous => "instant",
+			Self::Special | Self::Unit(_, _) => "other",
+		}
+		.into()
+	}
+}

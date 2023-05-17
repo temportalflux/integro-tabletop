@@ -5,7 +5,8 @@ use std::{
 
 /// A system which can parse a kdl document into its internal structures.
 pub trait System {
-	fn id(&self) -> &'static str;
+	fn id() -> &'static str where Self: Sized;
+	fn id_owned(&self) -> &'static str;
 }
 
 /// Registry of supported tabletop systems, referencable by their system id (e.g. `dnd5e`).
@@ -21,7 +22,7 @@ impl SystemRegistry {
 		T: System + 'static + Send + Sync,
 	{
 		self.systems
-			.insert(system.id(), Arc::new(Mutex::new(system)));
+			.insert(system.id_owned(), Arc::new(Mutex::new(system)));
 	}
 
 	/// Get a mutable lock on a system by its id.

@@ -16,6 +16,7 @@ pub struct Entry {
 	pub system: String,
 	pub category: String,
 	pub version: Option<String>,
+	pub metadata: serde_json::Value,
 	pub kdl: String,
 }
 
