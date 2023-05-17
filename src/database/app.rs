@@ -1,5 +1,4 @@
 use super::Record;
-use std::sync::Arc;
 
 pub mod entry;
 pub use entry::Entry;
@@ -42,23 +41,17 @@ impl Database {
 		Ok(self.0.read_write::<Module>()?)
 	}
 
-	pub async fn query_entries<Index: super::IndexType<Record = Entry>>(
-		&self,
-		index: Index,
-		criteria: Box<Criteria>,
-	) -> Result<Query, super::Error> {
+	fn read_index<I: super::IndexType>(&self) -> Result<super::Index<I>, super::Error> {
 		use super::{ObjectStoreExt, TransactionExt};
 		let transaction = self.read_entries()?;
-		let entries_store = transaction.object_store_of::<Entry>()?;
-		let idx_by_sys_cate = entries_store.index_of::<Index>()?;
-		let cursor = idx_by_sys_cate.open_cursor(Some(&index)).await?;
-		Ok(Query { cursor, criteria })
+		let entries_store = transaction.object_store_of::<I::Record>()?;
+		entries_store.index_of::<I>()
 	}
 
 	pub async fn query<Output>(
-		&self,
+		self,
 		criteria: Box<Criteria>,
-		node_reg: Arc<crate::system::core::NodeRegistry>,
+		node_reg: crate::system::core::ArcNodeRegistry,
 	) -> Result<QueryDeserialize<Output>, super::Error>
 	where
 		Output: crate::kdl_ext::KDLNode
@@ -68,14 +61,16 @@ impl Database {
 		Output::System: crate::system::core::System,
 	{
 		use crate::system::core::System;
+		let idx_by_sys_cate = self.read_index::<entry::SystemCategory>();
 		let index = entry::SystemCategory {
 			system: Output::System::id().into(),
 			category: Output::id().into(),
 		};
-		let query = self.query_entries(index, criteria).await?;
+		let cursor = idx_by_sys_cate?.open_cursor(Some(&index)).await?;
 		let query_typed = QueryDeserialize::<Output> {
-			query,
-			node_reg,
+			db: self,
+			query: Query { cursor, criteria },
+			node_reg: node_reg.arc().clone(),
 			marker: Default::default(),
 		};
 		Ok(query_typed)

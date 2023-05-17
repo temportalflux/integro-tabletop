@@ -7,6 +7,7 @@ use crate::{
 use futures_util::StreamExt;
 use std::{pin::Pin, sync::Arc, task::Poll};
 
+#[derive(Debug)]
 pub enum Criteria {
 	/// Passes if the value being evaluated is equal to an expected value.
 	Exact(serde_json::Value),
@@ -99,6 +100,8 @@ impl futures_util::stream::Stream for Query {
 }
 
 pub struct QueryDeserialize<Output> {
+	#[allow(dead_code)]
+	pub db: super::Database,
 	pub query: Query,
 	pub node_reg: Arc<NodeRegistry>,
 	pub marker: std::marker::PhantomData<Output>,

@@ -5,7 +5,9 @@ use std::{
 
 /// A system which can parse a kdl document into its internal structures.
 pub trait System {
-	fn id() -> &'static str where Self: Sized;
+	fn id() -> &'static str
+	where
+		Self: Sized;
 	fn id_owned(&self) -> &'static str;
 }
 

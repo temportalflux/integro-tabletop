@@ -1,4 +1,4 @@
-use crate::kdl_ext::NodeContext;
+use crate::{kdl_ext::NodeContext, system::core::ArcNodeRegistry};
 use anyhow::Context;
 use futures_util::StreamExt;
 use multimap::MultiMap;
@@ -218,7 +218,7 @@ fn App() -> Html {
 	use system::dnd5e::{self, DnD5e};
 	let show_browser = use_state_eq(|| false);
 	let comp_reg = use_memo(|_| dnd5e::component_registry(), ());
-	let node_reg = Arc::new(dnd5e::node_registry());
+	let node_reg: system::core::ArcNodeRegistry = dnd5e::node_registry().into();
 	let system = use_state(|| DnD5e::default());
 	let database = yew_hooks::use_async(async move {
 		match Database::open().await {
@@ -236,7 +236,7 @@ fn App() -> Html {
 		async move {
 			let Some(database) = &database.data else { return Err(()); };
 			log::debug!(target: "tabletop-tools", "Loading modules into database");
-			if let Err(err) = load_modules(database, &comp_reg, &node_reg).await {
+			if let Err(err) = load_modules(database, &comp_reg, node_reg.arc()).await {
 				log::error!(target: "tabletop-tools", "Failed to load modules into database: {err:?}");
 				return Err(());
 			}
@@ -251,33 +251,6 @@ fn App() -> Html {
 		async move {
 			let system = load_content(database, &comp_reg, &node_reg).await?;
 			system_state.set(system);
-			Ok(()) as Result<(), LoadContentError>
-		}
-	});
-
-	let query_test = yew_hooks::use_async({
-		let database = database.clone();
-		let node_reg = node_reg.clone();
-		async move {
-			use database::app::Criteria::*;
-			let Some(database) = &database.data else { return Err(LoadContentError::NoDatabase); };
-			let criteria = ContainsProperty("name".into(), ContainsSubstring("fire".into()).into());
-			let start_time = wasm_timer::Instant::now();
-			log::debug!("Starting test query");
-			let mut query = database
-				.query::<dnd5e::data::Spell>(criteria.into(), node_reg.clone())
-				.await?;
-			log::debug!(
-				"test query constructed ({} seconds)",
-				start_time.elapsed().as_secs_f32()
-			);
-			while let Some(spell) = query.next().await {
-				log::debug!("Loaded spell: {}", spell.name);
-			}
-			log::debug!(
-				"test query complete (total: {} seconds)",
-				start_time.elapsed().as_secs_f32()
-			);
 			Ok(()) as Result<(), LoadContentError>
 		}
 	});
@@ -301,9 +274,7 @@ fn App() -> Html {
 	use_effect_with_deps(
 		{
 			let load_content = load_content.clone();
-			let query_test = query_test.clone();
 			move |_db| {
-				query_test.run();
 				load_content.run();
 			}
 		},
@@ -376,9 +347,11 @@ fn App() -> Html {
 			</nav>
 		</header>
 		<ContextProvider<Option<Database>> context={database.data.clone()}>
-			<ContextProvider<UseStateHandle<DnD5e>> context={system.clone()}>
-				{content}
-			</ContextProvider<UseStateHandle<DnD5e>>>
+			<ContextProvider<ArcNodeRegistry> context={node_reg.clone()}>
+				<ContextProvider<UseStateHandle<DnD5e>> context={system.clone()}>
+					{content}
+				</ContextProvider<UseStateHandle<DnD5e>>>
+			</ContextProvider<ArcNodeRegistry>>
 		</ContextProvider<Option<Database>>>
 	</>};
 }
@@ -509,7 +482,7 @@ async fn load_modules(
 async fn load_content(
 	database: yew_hooks::UseAsyncHandle<database::app::Database, Arc<database::Error>>,
 	comp_reg: &std::rc::Rc<system::dnd5e::ComponentRegistry<system::dnd5e::DnD5e>>,
-	node_reg: &Arc<system::core::NodeRegistry>,
+	node_reg: &ArcNodeRegistry,
 ) -> Result<system::dnd5e::DnD5e, LoadContentError> {
 	use database::{
 		app::{entry, Entry},
@@ -537,7 +510,7 @@ async fn load_content(
 		};
 		for node in document.nodes() {
 			let Some(comp_factory) = comp_reg.get_factory(node.name().value()).cloned() else { continue; };
-			let ctx = NodeContext::new(Arc::new(source_id.clone()), node_reg.clone());
+			let ctx = NodeContext::new(Arc::new(source_id.clone()), node_reg.arc().clone());
 			match comp_factory
 				.add_from_kdl(node, &ctx)
 				.with_context(|| format!("Failed to parse {:?}", source_id.to_string()))

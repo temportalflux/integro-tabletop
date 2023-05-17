@@ -1,7 +1,7 @@
 use crate::{
 	components::{modal, stop_propagation},
 	system::{
-		core::{ModuleId, SourceId},
+		core::{ModuleId, SourceId, ArcNodeRegistry},
 		dnd5e::{
 			components::{editor::CollapsableCard, SharedCharacter},
 			data::{
@@ -11,11 +11,12 @@ use crate::{
 			DnD5e,
 		},
 	},
-	utility::InputExt,
+	utility::InputExt, database::app::{Database, QueryDeserialize},
 };
 use convert_case::{Case, Casing};
+use futures_util::{FutureExt, StreamExt};
 use itertools::Itertools;
-use std::collections::{BTreeMap, HashSet};
+use std::{collections::{BTreeMap, HashSet}, pin::Pin};
 use yew::prelude::*;
 
 fn rank_suffix(rank: u8) -> &'static str {
@@ -580,7 +581,8 @@ fn ManagerCasterModal(CasterNameProps { caster_id }: &CasterNameProps) -> Html {
 	let max_cantrips = caster.cantrip_capacity(state.persistent());
 	let max_spells = caster.spell_capacity(&state);
 	let filter = SpellFilter {
-		tags: caster.restriction.tags.iter().cloned().collect(),
+		can_cast: Some(caster.name().clone()),
+		//tags: caster.restriction.tags.iter().cloned().collect(),
 		max_rank: caster.max_spell_rank(&state),
 		..Default::default()
 	};
@@ -1002,18 +1004,25 @@ pub struct SpellFilter {
 pub fn AvailableSpellList(props: &AvailableSpellListProps) -> Html {
 	use yew_hooks::{use_async_with_options, UseAsyncOptions};
 	log::debug!(target: "ui", "Render available spells");
-	let system = use_context::<UseStateHandle<DnD5e>>().unwrap();
+	let database = use_context::<Option<Database>>().unwrap();
+	let node_registry = use_context::<ArcNodeRegistry>().unwrap();
 	let load_data = use_async_with_options(
 		{
 			let props = props.clone();
-			let system = system.clone();
 			async move {
 				// TODO: Available spells section wont have togglable filters for max_rank or restriction,
 				// BUT when custom feats are a thing, users should be able to add a feat which grants them
 				// access to a spell that isnt in their normal class list.
 				// e.g. feat which allows the player to have access to a spell
 				// 			OR a feat which grants a spell as always prepared.
-				Ok(FindRelevantSpells::new(system.clone(), props).await) as Result<Html, ()>
+				let Some(database) = database.as_ref() else {
+					return Ok(Html::default());
+				};
+				
+				//let parsing_time = wasm_timer::Instant::now();
+				let spells_html = FindRelevantSpells::new(database.clone(), node_registry, props).await;
+				//log::debug!("Finding and constructing spells took {}s", parsing_time.elapsed().as_secs_f32());
+				Ok(spells_html) as Result<Html, ()>
 			}
 		},
 		UseAsyncOptions::default(),
@@ -1038,30 +1047,67 @@ pub fn AvailableSpellList(props: &AvailableSpellListProps) -> Html {
 }
 
 struct FindRelevantSpells {
-	filter: SpellFilter,
+	pending_query: Option<Pin<Box<dyn futures_util::Future<Output = Result<QueryDeserialize<Spell>, crate::database::Error>>>>>,
+	query: Option<QueryDeserialize<Spell>>,
+
 	header_addon: HeaderAddon,
-	system: UseStateHandle<DnD5e>,
-	all_ids: Vec<SourceId>,
 	sorted_info: Vec<(String, u8)>,
 	spell_htmls: Option<Vec<Html>>,
 }
 impl FindRelevantSpells {
-	fn new(system: UseStateHandle<DnD5e>, props: AvailableSpellListProps) -> Self {
-		let all_ids = system.spells.keys().cloned().collect::<Vec<_>>();
-		let sorted_info = Vec::with_capacity(all_ids.len());
-		let spell_htmls = Some(Vec::with_capacity(all_ids.len()));
+	fn new(database: Database, node_reg: ArcNodeRegistry, props: AvailableSpellListProps) -> Self {
+		use crate::database::app::Criteria;
+
+		let criteria = Criteria::All({
+			let mut criteria = Vec::new();
+
+			let rank_range: Option<Vec<u8>> = match props.filter.max_rank {
+				Some(max_rank) => Some((0..=max_rank).collect()),
+				None if !props.filter.ranks.is_empty() => Some(props.filter.ranks.iter().map(|i| *i).collect()),
+				None => None,
+			};
+			if let Some(rank_range) = rank_range {
+				let iter_ranks = rank_range.into_iter();
+				let iter_ranks = iter_ranks.map(|rank| serde_json::json!(rank));
+				let iter_ranks = iter_ranks.map(|rank| Criteria::Exact(rank));
+				let iter_ranks = iter_ranks.map(|rank| Box::new(rank));
+				let rank_is_one_of = Criteria::Any(iter_ranks.collect());
+				criteria.push(Criteria::ContainsProperty("rank".into(), rank_is_one_of.into()).into());
+			}
+
+			if !props.filter.tags.is_empty() {
+				let iter_tags = props.filter.tags.iter();
+				let iter_tags = iter_tags.map(|tag| serde_json::json!(tag));
+				let iter_tags = iter_tags.map(|tag| Criteria::Exact(tag));
+				let iter_tags = iter_tags.map(|tag| Box::new(tag));
+				let has_all_tags = Criteria::All(iter_tags.collect());
+				criteria.push(Criteria::ContainsProperty("tags".into(), has_all_tags.into()).into());
+			}
+
+			if let Some(caster_class) = &props.filter.can_cast {
+				let class_tag_criteria = Criteria::Exact(serde_json::json!(caster_class));
+				let has_class_tag = Criteria::ContainsValue(class_tag_criteria.into());
+				// TODO: check if the spell is in the expanded spell list,
+				// as provided by the AddSource spellcasting mutator.
+				let can_cast = Criteria::Any(vec![has_class_tag.into()]);
+				criteria.push(Criteria::ContainsProperty("tags".into(), can_cast.into()).into());
+			}
+
+			criteria
+		});
+		let pending_query = database.query::<Spell>(criteria.into(), node_reg);
+		
 		Self {
-			filter: props.filter,
+			pending_query: Some(Box::pin(pending_query)),
+			query: None,
 			header_addon: props.header_addon,
-			system,
-			all_ids,
-			sorted_info,
-			spell_htmls,
+			sorted_info: Vec::new(),
+			spell_htmls: Some(Vec::new()),
 		}
 	}
 }
 impl FindRelevantSpells {
-	fn pending_delay(cx: &mut std::task::Context<'_>, millis: u32) -> std::task::Poll<Html> {
+	fn _pending_delay(cx: &mut std::task::Context<'_>, millis: u32) -> std::task::Poll<Html> {
 		use gloo_timers::callback::Timeout;
 		let waker = cx.waker().clone();
 		if millis > 0 {
@@ -1079,58 +1125,53 @@ impl futures::Future for FindRelevantSpells {
 		mut self: std::pin::Pin<&mut Self>,
 		cx: &mut std::task::Context<'_>,
 	) -> std::task::Poll<Self::Output> {
-		if let Some(spell_id) = self.all_ids.pop() {
-			let Some(spell) = self.system.spells.get(&spell_id) else {
-				return Self::pending_delay(cx, 0);
+		use std::task::Poll;
+		if let Some(mut pending) = self.pending_query.take() {
+			match pending.poll_unpin(cx) {
+				Poll::Pending => {
+					self.pending_query = Some(pending);
+					return Poll::Pending;
+				}
+				Poll::Ready(Err(_db_error)) => {
+					return Poll::Ready(Html::default());
+				}
+				Poll::Ready(Ok(query)) => {
+					self.query = Some(query);
+				}
+			}
+		}
+		loop {
+			let Some(mut query) = self.query.take() else { return Poll::Ready(Html::default()); };
+			// Poll to see if the next spell in the stream is available
+			let Poll::Ready(spell) = query.poll_next_unpin(cx) else {
+				// still pending, return the query to this struct for next poll.
+				self.query = Some(query);
+				return Poll::Pending;
 			};
-
-			// Filter based on restriction
-			if !self.filter.ranks.is_empty() {
-				if !self.filter.ranks.contains(&spell.rank) {
-					return Self::pending_delay(cx, 0);
-				}
-			}
-			if let Some(max_rank) = self.filter.max_rank {
-				if spell.rank > max_rank {
-					return Self::pending_delay(cx, 0);
-				}
-			}
-			for tag in &self.filter.tags {
-				if !spell.tags.contains(tag) {
-					return Self::pending_delay(cx, 0);
-				}
-			}
-			if let Some(caster_class) = &self.filter.can_cast {
-				if !spell.tags.contains(caster_class) {
-					return Self::pending_delay(cx, 0);
-				}
-				// TODO: check if the spell is in the expanded spell list,
-				// as provided by the AddSource spellcasting mutator.
-			}
+			// If there is no spell, the stream is finished and this future is complete.
+			let Some(spell) = spell else {
+				let spell_htmls = self.spell_htmls.take().unwrap();
+				return Poll::Ready(html! {<>{spell_htmls}</>});
+			};
+			// There is a spell, so return the query here for the next loop or poll.
+			self.query = Some(query);
 
 			// Insertion sort by rank & name
 			let idx = self
 				.sorted_info
 				.binary_search_by(|(name, rank)| rank.cmp(&spell.rank).then(name.cmp(&spell.name)))
 				.unwrap_or_else(|err_idx| err_idx);
-
 			let info = (spell.name.clone(), spell.rank);
 			let html = {
-				let addon = (self.header_addon.0)(spell);
-				spell_list_item("relevant", spell, None, addon)
+				let addon = (self.header_addon.0)(&spell);
+				spell_list_item("relevant", &spell, None, addon)
 			};
-			drop(spell);
 			self.sorted_info.insert(idx, info);
-
+	
 			let mut spell_htmls = self.spell_htmls.take().unwrap();
 			spell_htmls.insert(idx, html);
 			self.spell_htmls = Some(spell_htmls);
-
-			return Self::pending_delay(cx, 1);
 		}
-
-		let spell_htmls = self.spell_htmls.take().unwrap();
-		std::task::Poll::Ready(html! {<>{spell_htmls}</>})
 	}
 }
 

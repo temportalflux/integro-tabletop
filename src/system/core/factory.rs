@@ -8,6 +8,31 @@ use std::{
 	sync::Arc,
 };
 
+#[derive(Clone)]
+pub struct ArcNodeRegistry(Arc<NodeRegistry>);
+impl From<NodeRegistry> for ArcNodeRegistry {
+	fn from(value: NodeRegistry) -> Self {
+		Self(Arc::new(value))
+	}
+}
+impl ArcNodeRegistry {
+	pub fn arc(&self) -> &Arc<NodeRegistry> {
+		&self.0
+	}
+}
+impl std::ops::Deref for ArcNodeRegistry {
+	type Target = NodeRegistry;
+
+	fn deref(&self) -> &Self::Target {
+		&self.0
+	}
+}
+impl PartialEq for ArcNodeRegistry {
+	fn eq(&self, other: &Self) -> bool {
+		Arc::ptr_eq(&self.0, &other.0)
+	}
+}
+
 pub struct NodeRegistry {
 	mutators: HashMap<&'static str, MutatorFactory>,
 	evaluators: HashMap<&'static str, EvaluatorFactory>,
