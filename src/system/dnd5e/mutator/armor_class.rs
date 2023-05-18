@@ -36,7 +36,8 @@ impl Mutator for AddArmorClassFormula {
 			content: format!(
 				"You can calculate your Armor Class using {}.",
 				args.join(" + ")
-			),
+			)
+			.into(),
 			..Default::default()
 		}
 	}

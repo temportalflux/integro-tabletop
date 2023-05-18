@@ -35,7 +35,8 @@ impl Mutator for AddMaxHitPoints {
 						None => "some amount".into(),
 					}
 				),
-			},
+			}
+			.into(),
 			..Default::default()
 		}
 	}

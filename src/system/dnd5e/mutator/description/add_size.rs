@@ -52,7 +52,7 @@ impl Mutator for AddSize {
 			content.push(format!("Your weight increases by {desc} lbs."));
 		}
 		description::Section {
-			content: content.join(" "),
+			content: content.join(" ").into(),
 			..Default::default()
 		}
 	}

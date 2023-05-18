@@ -85,20 +85,21 @@ impl Mutator for AddModifier {
 			desc.push_str(ctx.as_str());
 		}
 		desc.push('.');
+		let selectors = match &self.kind {
+			ModifierKind::Ability(selector) => {
+				SelectorMetaVec::default().with_enum("Ability", selector)
+			}
+			ModifierKind::SavingThrow(Some(selector)) => {
+				SelectorMetaVec::default().with_enum("Ability", selector)
+			}
+			ModifierKind::SavingThrow(None) => Default::default(),
+			ModifierKind::Skill(selector) => {
+				SelectorMetaVec::default().with_enum("Skill", selector)
+			}
+		};
 		description::Section {
-			content: desc,
-			selectors: match &self.kind {
-				ModifierKind::Ability(selector) => {
-					SelectorMetaVec::default().with_enum("Ability", selector)
-				}
-				ModifierKind::SavingThrow(Some(selector)) => {
-					SelectorMetaVec::default().with_enum("Ability", selector)
-				}
-				ModifierKind::SavingThrow(None) => Default::default(),
-				ModifierKind::Skill(selector) => {
-					SelectorMetaVec::default().with_enum("Skill", selector)
-				}
-			},
+			content: desc.into(),
+			children: vec![selectors.into()],
 			..Default::default()
 		}
 	}

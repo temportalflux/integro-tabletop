@@ -89,16 +89,15 @@ impl Mutator for AddProficiency {
 				options.join(", ")
 			),
 		};
+		let selectors = match self {
+			Self::Skill(selector, _) => SelectorMetaVec::default().with_enum("Skill", selector),
+			Self::Language(selector) => SelectorMetaVec::default().with_str("Language", selector),
+			Self::Tool(selector) => SelectorMetaVec::default().with_str("Tool", selector),
+			_ => Default::default(),
+		};
 		description::Section {
-			content,
-			selectors: match self {
-				Self::Skill(selector, _) => SelectorMetaVec::default().with_enum("Skill", selector),
-				Self::Language(selector) => {
-					SelectorMetaVec::default().with_str("Language", selector)
-				}
-				Self::Tool(selector) => SelectorMetaVec::default().with_str("Tool", selector),
-				_ => Default::default(),
-			},
+			content: content.into(),
+			children: vec![selectors.into()],
 			..Default::default()
 		}
 	}

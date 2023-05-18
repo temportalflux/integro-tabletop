@@ -15,7 +15,7 @@ impl Mutator for AddLifeExpectancy {
 
 	fn description(&self, _state: Option<&Character>) -> description::Section {
 		description::Section {
-			content: format!("Your life expectancy increases by {} years.", self.0),
+			content: format!("Your life expectancy increases by {} years.", self.0).into(),
 			..Default::default()
 		}
 	}

@@ -28,7 +28,8 @@ impl Mutator for Sense {
 				BoundValue::Subtract(value) => {
 					format!("If you have {name}, it decreases by {value} feet.")
 				}
-			},
+			}
+			.into(),
 			..Default::default()
 		}
 	}

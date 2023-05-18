@@ -641,25 +641,29 @@ pub fn feature(value: &Feature, state: Option<&SharedCharacter>) -> Html {
 	}
 }
 
+// TODO: Unify with DescriptionSection
 pub fn description(info: &description::Info, prefer_short: bool) -> Html {
 	if prefer_short {
-		if let Some(desc) = info.short() {
+		if let Some(desc) = &info.short {
 			return html! { <div class="text-block">{desc}</div> };
 		}
 	}
 	html! {
 		<div class="description">
-			{info.long().map(|section| {
+			{info.sections.iter().map(|section| {
+				let content = match &section.content {
+					description::SectionContent::Body(text) => html!(text),
+					description::SectionContent::Selectors(_) => html!(),
+					description::SectionContent::Table { .. } => html!(),
+				};
 				match section.title {
 					Some(title) => html! {
 						<div>
 							<strong>{title}{". "}</strong>
-							<span class="text-block">
-								{section.content}
-							</span>
+							<span class="text-block">{content}</span>
 						</div>
 					},
-					None => html! { <div class="text-block">{section.content}</div> },
+					None => html! { <div class="text-block">{content}</div> },
 				}
 			}).collect::<Vec<_>>()}
 		</div>
