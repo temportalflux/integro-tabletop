@@ -789,6 +789,7 @@ fn SelectorField(
 		SelectorOptions::AnyOf {
 			options: valid_values,
 			cannot_match,
+			amount, // TODO: Display a different UI if amount > 1
 		} => {
 			let onchange = Callback::from({
 				let save_value = save_value.clone();

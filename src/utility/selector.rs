@@ -268,6 +268,8 @@ pub enum SelectorOptions {
 	AnyOf {
 		/// The valid string values.
 		options: Vec<String>,
+		/// The number of options that can be selected.
+		amount: usize,
 		/// A list of other selectors that this selector cannot have the same value as.
 		cannot_match: Option<Vec<PathBuf>>,
 	},
@@ -286,12 +288,14 @@ impl SelectorOptions {
 			Selector::AnyOf {
 				cannot_match,
 				options,
-				..
+				amount,
+				id: _,
 			} => {
 				let cannot_match = (!cannot_match.is_empty())
 					.then(|| cannot_match.iter().filter_map(IdPath::as_path).collect());
 				Some(Self::AnyOf {
 					options: options.clone(),
+					amount: *amount,
 					cannot_match,
 				})
 			}
@@ -315,22 +319,25 @@ impl SelectorOptions {
 			Selector::AnyOf {
 				options,
 				cannot_match,
-				..
+				amount,
+				id: _,
 			} => {
 				let options = options.iter().map(|t| *t);
 				let cannot_match = (!cannot_match.is_empty())
 					.then(|| cannot_match.iter().filter_map(IdPath::as_path).collect());
 				Some(Self::AnyOf {
 					options: Self::iter_to_str(options),
+					amount: *amount,
 					cannot_match,
 				})
 			}
-			Selector::Any { cannot_match, .. } => {
+			Selector::Any { cannot_match, id: _ } => {
 				let options = EnumSet::<T>::all().into_iter();
 				let cannot_match = (!cannot_match.is_empty())
 					.then(|| cannot_match.iter().filter_map(IdPath::as_path).collect());
 				Some(Self::AnyOf {
 					options: Self::iter_to_str(options),
+					amount: 1,
 					cannot_match,
 				})
 			}

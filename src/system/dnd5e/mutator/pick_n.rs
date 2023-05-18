@@ -1,10 +1,12 @@
+use itertools::Itertools;
+
 use crate::{
 	kdl_ext::{DocumentExt, FromKDL, NodeExt},
 	system::dnd5e::{
 		data::{character::Character, description, Feature},
 		BoxedMutator,
 	},
-	utility::{IdPath, Mutator, MutatorGroup, Selector},
+	utility::{IdPath, Mutator, MutatorGroup, Selector, SelectorMetaVec},
 };
 use std::collections::HashMap;
 
@@ -18,6 +20,7 @@ pub struct PickN {
 
 #[derive(Clone, PartialEq, Debug)]
 struct PickOption {
+	description: Option<description::Section>,
 	mutators: Vec<BoxedMutator>,
 	features: Vec<Feature>,
 }
@@ -25,25 +28,72 @@ struct PickOption {
 crate::impl_trait_eq!(PickN);
 crate::impl_kdl_node!(PickN, "pick");
 
+impl PickN {
+	fn max_selections(&self) -> usize {
+		let Selector::AnyOf { amount, .. } = &self.selector else { return 0; };
+		*amount
+	}
+
+	fn option_order(&self) -> Option<&Vec<String>> {
+		let Selector::AnyOf { options, .. } = &self.selector else { return None; };
+		Some(options)
+	}
+}
+
 impl Mutator for PickN {
 	type Target = Character;
 
 	fn description(&self) -> description::Section {
+		let selectors = SelectorMetaVec::default().with_str("Selected Option", &self.selector);
+		let mut children = Vec::new();
+		for key in self.option_order().unwrap() {
+			let Some(option) = self.options.get(key) else { continue; };
+			let mut content = String::new();
+			let mut option_children = Vec::new();
+			if let Some(description::Section {
+				title: _,
+				content: option_content,
+				selectors: _,
+				kind,
+			}) = &option.description {
+				content = option_content.clone();
+				match kind {
+					None => {}
+					Some(description::SectionKind::HasChildren(children)) => {
+						option_children.extend(children.iter().cloned());
+					}
+				}
+			}
+			for mutator in &option.mutators {
+				option_children.push(mutator.description());
+			}
+			for feature in &option.features {
+				option_children.extend(feature.description.long.iter().cloned());
+			}
+			children.push(description::Section {
+				title: Some(key.clone()),
+				content,
+				kind: Some(description::SectionKind::HasChildren(option_children)),
+				..Default::default()
+			});
+		}
 		description::Section {
 			title: Some(self.name.clone()),
-			content: "".into(),
-			..Default::default()
+			content: format!("Select {} of the following {} options.", self.max_selections(), self.options.len()),
+			selectors,
+			kind: Some(description::SectionKind::HasChildren(children)),
 		}
 	}
 
 	fn set_data_path(&self, parent: &std::path::Path) {
 		self.selector.set_data_path(parent);
-		for (_name, option) in &self.options {
+		for (name, option) in &self.options {
+			let path_to_option = parent.join(name);
 			for mutator in &option.mutators {
-				mutator.set_data_path(parent);
+				mutator.set_data_path(&path_to_option);
 			}
 			for feature in &option.features {
-				feature.set_data_path(parent);
+				feature.set_data_path(&path_to_option);
 			}
 		}
 	}
@@ -85,7 +135,12 @@ impl FromKDL for PickN {
 			let mut ctx = ctx.next_node();
 			let name = node.get_str_req(ctx.consume_idx())?.to_owned();
 
-			// TODO: Options can have a description
+			let description = match node.query_opt("scope() > description")? {
+				None => None,
+				Some(node) => {
+					Some(description::Section::from_kdl(node, &mut ctx.next_node())?)
+				}
+			};
 
 			let mut mutators = Vec::new();
 			for entry_node in node.query_all("scope() > mutator")? {
@@ -97,14 +152,14 @@ impl FromKDL for PickN {
 				features.push(Feature::from_kdl(entry_node, &mut ctx.next_node())?.into());
 			}
 
-			options.insert(name, PickOption { mutators, features });
+			options.insert(name, PickOption { description, mutators, features });
 		}
 
 		let selector = Selector::AnyOf {
 			id,
 			cannot_match,
 			amount: max_selections,
-			options: options.keys().cloned().collect(),
+			options: options.keys().cloned().sorted().collect(),
 		};
 
 		Ok(Self {
