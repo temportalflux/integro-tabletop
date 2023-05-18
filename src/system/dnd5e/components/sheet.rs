@@ -19,6 +19,11 @@ impl std::ops::Deref for SharedCharacter {
 		&self.0
 	}
 }
+impl AsRef<Character> for SharedCharacter {
+	fn as_ref(&self) -> &Character {
+		&*self.0
+	}
+}
 impl SharedCharacter {
 	pub fn new_dispatch<I, F>(&self, mutator: F) -> Callback<I>
 	where

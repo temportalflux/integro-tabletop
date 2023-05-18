@@ -340,7 +340,7 @@ fn bundle_state<T>(
 	get_item: impl Fn(&Persistent, usize) -> Option<&T> + 'static,
 	item_name: impl Fn(&T) -> &String + 'static,
 	item_reqs: impl Fn(&T) -> Option<&Vec<(String, String)>> + 'static,
-	item_body: impl Fn(&T, bool) -> Html + 'static,
+	item_body: impl Fn(&T, Option<&SharedCharacter>) -> Html + 'static,
 	remove_item: impl Fn(&mut Persistent, usize) + 'static,
 ) -> Html {
 	let Some(value) = get_item(state.persistent(), idx) else { return html! {}; };
@@ -383,7 +383,7 @@ fn bundle_state<T>(
 				}
 			})}
 		>
-			{item_body(value, true)}
+			{item_body(value, Some(state))}
 		</ContentItem>
 	}
 }
@@ -396,7 +396,7 @@ fn content_list<T>(
 	get_item_name: impl Fn(&T) -> &String + 'static,
 	get_item_limit: impl Fn(&T) -> usize + 'static,
 	item_reqs: impl Fn(&T) -> Option<&Vec<(String, String)>> + 'static,
-	item_body: impl Fn(&T, bool) -> Html + 'static,
+	item_body: impl Fn(&T, Option<&SharedCharacter>) -> Html + 'static,
 	get_state_items: impl Fn(&Persistent) -> &Vec<T> + 'static,
 	add_item: impl Fn(&mut Persistent, T) + 'static,
 ) -> Html
@@ -467,7 +467,7 @@ where
 						move |_| source_id.clone()
 					})}
 				>
-					{item_body(value, false)}
+					{item_body(value, None)}
 				</ContentItem>
 			}
 		}).collect::<Vec<_>>()}
@@ -580,63 +580,63 @@ fn ContentItem(
 	}
 }
 
-fn race(value: &Race, show_selectors: bool) -> Html {
+fn race(value: &Race, state: Option<&SharedCharacter>) -> Html {
 	html! {<>
 		<div class="text-block">
 			{value.description.clone()}
 		</div>
-		{mutator_list(&value.mutators, show_selectors)}
-		{value.features.iter().map(|f| feature(f, show_selectors)).collect::<Vec<_>>()}
+		{mutator_list(&value.mutators, state)}
+		{value.features.iter().map(|f| feature(f, state)).collect::<Vec<_>>()}
 	</>}
 }
 
-fn race_variant(value: &RaceVariant, show_selectors: bool) -> Html {
+fn race_variant(value: &RaceVariant, state: Option<&SharedCharacter>) -> Html {
 	html! {<>
 		<div class="text-block">
 			{value.description.clone()}
 		</div>
-		{mutator_list(&value.mutators, show_selectors)}
-		{value.features.iter().map(|f| feature(f, show_selectors)).collect::<Vec<_>>()}
+		{mutator_list(&value.mutators, state)}
+		{value.features.iter().map(|f| feature(f, state)).collect::<Vec<_>>()}
 	</>}
 }
 
-fn lineage(value: &Lineage, show_selectors: bool) -> Html {
+fn lineage(value: &Lineage, state: Option<&SharedCharacter>) -> Html {
 	html! {<>
 		<div class="text-block">
 			{value.description.clone()}
 		</div>
-		{mutator_list(&value.mutators, show_selectors)}
-		{value.features.iter().map(|f| feature(f, show_selectors)).collect::<Vec<_>>()}
+		{mutator_list(&value.mutators, state)}
+		{value.features.iter().map(|f| feature(f, state)).collect::<Vec<_>>()}
 	</>}
 }
 
-fn upbringing(value: &Upbringing, show_selectors: bool) -> Html {
+fn upbringing(value: &Upbringing, state: Option<&SharedCharacter>) -> Html {
 	html! {<>
 		<div class="text-block">
 			{value.description.clone()}
 		</div>
-		{mutator_list(&value.mutators, show_selectors)}
-		{value.features.iter().map(|f| feature(f, show_selectors)).collect::<Vec<_>>()}
+		{mutator_list(&value.mutators, state)}
+		{value.features.iter().map(|f| feature(f, state)).collect::<Vec<_>>()}
 	</>}
 }
 
-fn background(value: &Background, show_selectors: bool) -> Html {
+fn background(value: &Background, state: Option<&SharedCharacter>) -> Html {
 	html! {<>
 		<div class="text-block">
 			{value.description.clone()}
 		</div>
-		{mutator_list(&value.mutators, show_selectors)}
-		{value.features.iter().map(|f| feature(f, show_selectors)).collect::<Vec<_>>()}
+		{mutator_list(&value.mutators, state)}
+		{value.features.iter().map(|f| feature(f, state)).collect::<Vec<_>>()}
 	</>}
 }
 
-pub fn feature(value: &Feature, show_selectors: bool) -> Html {
+pub fn feature(value: &Feature, state: Option<&SharedCharacter>) -> Html {
 	// TODO: display criteria evaluator
 	html! {
 		<div class="my-2">
 			<h5>{value.name.clone()}</h5>
 			{description(&value.description, false)}
-			{mutator_list(&value.mutators, show_selectors)}
+			{mutator_list(&value.mutators, state)}
 		</div>
 	}
 }
@@ -666,16 +666,21 @@ pub fn description(info: &description::Info, prefer_short: bool) -> Html {
 	}
 }
 
-pub fn mutator_list<T: 'static>(list: &Vec<GenericMutator<T>>, show_selectors: bool) -> Html {
+pub fn mutator_list<T: 'static>(
+	list: &Vec<GenericMutator<T>>,
+	state: Option<&impl AsRef<T>>,
+) -> Html {
 	let mutators = list
 		.iter()
-		.filter_map(|value| mutator(value, show_selectors))
+		.filter_map(|value| mutator(value, state))
 		.collect::<Vec<_>>();
 	html! {<>{mutators}</>}
 }
 
-fn mutator<T: 'static>(value: &GenericMutator<T>, show_selectors: bool) -> Option<Html> {
-	Some(html! { <DescriptionSection section={value.description()} {show_selectors} /> })
+fn mutator<T: 'static>(value: &GenericMutator<T>, state: Option<&impl AsRef<T>>) -> Option<Html> {
+	let target = state.map(|t| t.as_ref());
+	let section = value.description(target);
+	Some(html! { <DescriptionSection {section} show_selectors={state.is_some()} /> })
 }
 
 #[derive(Clone, PartialEq, Properties)]
@@ -789,7 +794,7 @@ fn SelectorField(
 		SelectorOptions::AnyOf {
 			options: valid_values,
 			cannot_match,
-			amount, // TODO: Display a different UI if amount > 1
+			amount: _, // TODO: Display a different UI if amount > 1
 		} => {
 			let onchange = Callback::from({
 				let save_value = save_value.clone();

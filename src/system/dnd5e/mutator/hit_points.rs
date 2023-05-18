@@ -23,7 +23,7 @@ impl Mutator for AddMaxHitPoints {
 		self.value.dependencies()
 	}
 
-	fn description(&self) -> description::Section {
+	fn description(&self, _state: Option<&Character>) -> description::Section {
 		static PREFIX: &'static str = "Your hit point maximum increases by";
 		description::Section {
 			content: match &self.value {

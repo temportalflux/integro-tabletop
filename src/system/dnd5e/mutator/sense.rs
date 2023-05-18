@@ -16,7 +16,7 @@ crate::impl_kdl_node!(Sense, "sense");
 impl Mutator for Sense {
 	type Target = Character;
 
-	fn description(&self) -> description::Section {
+	fn description(&self, _state: Option<&Character>) -> description::Section {
 		let name = &self.name;
 		description::Section {
 			content: match &self.argument {

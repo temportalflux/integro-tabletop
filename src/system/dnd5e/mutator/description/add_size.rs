@@ -31,7 +31,7 @@ crate::impl_kdl_node!(AddSize, "add_size");
 impl Mutator for AddSize {
 	type Target = Character;
 
-	fn description(&self) -> description::Section {
+	fn description(&self, _state: Option<&Character>) -> description::Section {
 		let mut content = Vec::new();
 		if !self.height.is_empty() {
 			let comps = self

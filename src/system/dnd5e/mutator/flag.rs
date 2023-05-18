@@ -46,7 +46,7 @@ crate::impl_kdl_node!(SetFlag, "flag");
 impl Mutator for SetFlag {
 	type Target = Character;
 
-	fn description(&self) -> description::Section {
+	fn description(&self, _state: Option<&Character>) -> description::Section {
 		// TODO: SetFlag description
 		description::Section::default()
 	}
@@ -82,7 +82,7 @@ impl Mutator for ArmorStrengthRequirement {
 		["ability_score_finalize", "flag", "speed"].into()
 	}
 
-	fn description(&self) -> description::Section {
+	fn description(&self, _state: Option<&Character>) -> description::Section {
 		// TODO: ArmorStrengthRequirement description
 		description::Section::default()
 	}

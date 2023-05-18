@@ -56,7 +56,7 @@ crate::impl_kdl_node!(AddDefense, "add_defense");
 impl Mutator for AddDefense {
 	type Target = Character;
 
-	fn description(&self) -> description::Section {
+	fn description(&self, _state: Option<&Character>) -> description::Section {
 		description::Section {
 			content: format!(
 				"You are {} to {} damage{}.",

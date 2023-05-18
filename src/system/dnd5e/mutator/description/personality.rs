@@ -19,7 +19,7 @@ crate::impl_kdl_node!(SuggestedPersonality, "suggested_personality");
 impl Mutator for SuggestedPersonality {
 	type Target = Character;
 
-	fn description(&self) -> description::Section {
+	fn description(&self, _state: Option<&Character>) -> description::Section {
 		// TODO: SuggestedPersonality description
 		description::Section {
 			content: Default::default(),

@@ -1,7 +1,8 @@
 use crate::{
 	components::{modal, stop_propagation},
+	database::app::{Database, QueryDeserialize},
 	system::{
-		core::{ModuleId, SourceId, ArcNodeRegistry},
+		core::{ArcNodeRegistry, ModuleId, SourceId},
 		dnd5e::{
 			components::{editor::CollapsableCard, SharedCharacter},
 			data::{
@@ -11,12 +12,15 @@ use crate::{
 			DnD5e,
 		},
 	},
-	utility::InputExt, database::app::{Database, QueryDeserialize},
+	utility::InputExt,
 };
 use convert_case::{Case, Casing};
 use futures_util::{FutureExt, StreamExt};
 use itertools::Itertools;
-use std::{collections::{BTreeMap, HashSet}, pin::Pin};
+use std::{
+	collections::{BTreeMap, HashSet},
+	pin::Pin,
+};
 use yew::prelude::*;
 
 fn rank_suffix(rank: u8) -> &'static str {
@@ -1018,9 +1022,10 @@ pub fn AvailableSpellList(props: &AvailableSpellListProps) -> Html {
 				let Some(database) = database.as_ref() else {
 					return Ok(Html::default());
 				};
-				
+
 				//let parsing_time = wasm_timer::Instant::now();
-				let spells_html = FindRelevantSpells::new(database.clone(), node_registry, props).await;
+				let spells_html =
+					FindRelevantSpells::new(database.clone(), node_registry, props).await;
 				//log::debug!("Finding and constructing spells took {}s", parsing_time.elapsed().as_secs_f32());
 				Ok(spells_html) as Result<Html, ()>
 			}
@@ -1047,7 +1052,15 @@ pub fn AvailableSpellList(props: &AvailableSpellListProps) -> Html {
 }
 
 struct FindRelevantSpells {
-	pending_query: Option<Pin<Box<dyn futures_util::Future<Output = Result<QueryDeserialize<Spell>, crate::database::Error>>>>>,
+	pending_query: Option<
+		Pin<
+			Box<
+				dyn futures_util::Future<
+					Output = Result<QueryDeserialize<Spell>, crate::database::Error>,
+				>,
+			>,
+		>,
+	>,
 	query: Option<QueryDeserialize<Spell>>,
 
 	header_addon: HeaderAddon,
@@ -1063,7 +1076,9 @@ impl FindRelevantSpells {
 
 			let rank_range: Option<Vec<u8>> = match props.filter.max_rank {
 				Some(max_rank) => Some((0..=max_rank).collect()),
-				None if !props.filter.ranks.is_empty() => Some(props.filter.ranks.iter().map(|i| *i).collect()),
+				None if !props.filter.ranks.is_empty() => {
+					Some(props.filter.ranks.iter().map(|i| *i).collect())
+				}
 				None => None,
 			};
 			if let Some(rank_range) = rank_range {
@@ -1072,7 +1087,8 @@ impl FindRelevantSpells {
 				let iter_ranks = iter_ranks.map(|rank| Criteria::Exact(rank));
 				let iter_ranks = iter_ranks.map(|rank| Box::new(rank));
 				let rank_is_one_of = Criteria::Any(iter_ranks.collect());
-				criteria.push(Criteria::ContainsProperty("rank".into(), rank_is_one_of.into()).into());
+				criteria
+					.push(Criteria::ContainsProperty("rank".into(), rank_is_one_of.into()).into());
 			}
 
 			if !props.filter.tags.is_empty() {
@@ -1081,7 +1097,8 @@ impl FindRelevantSpells {
 				let iter_tags = iter_tags.map(|tag| Criteria::Exact(tag));
 				let iter_tags = iter_tags.map(|tag| Box::new(tag));
 				let has_all_tags = Criteria::All(iter_tags.collect());
-				criteria.push(Criteria::ContainsProperty("tags".into(), has_all_tags.into()).into());
+				criteria
+					.push(Criteria::ContainsProperty("tags".into(), has_all_tags.into()).into());
 			}
 
 			if let Some(caster_class) = &props.filter.can_cast {
@@ -1096,7 +1113,7 @@ impl FindRelevantSpells {
 			criteria
 		});
 		let pending_query = database.query::<Spell>(criteria.into(), node_reg);
-		
+
 		Self {
 			pending_query: Some(Box::pin(pending_query)),
 			query: None,
@@ -1167,7 +1184,7 @@ impl futures::Future for FindRelevantSpells {
 				spell_list_item("relevant", &spell, None, addon)
 			};
 			self.sorted_info.insert(idx, info);
-	
+
 			let mut spell_htmls = self.spell_htmls.take().unwrap();
 			spell_htmls.insert(idx, html);
 			self.spell_htmls = Some(spell_htmls);

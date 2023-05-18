@@ -1,4 +1,4 @@
-use crate::system::dnd5e::data::{description, Ability, Score};
+use crate::system::dnd5e::data::{character::Character, description, Ability, Score};
 use enum_map::EnumMap;
 use itertools::{Either, Itertools};
 use std::{collections::HashSet, path::PathBuf};
@@ -30,13 +30,13 @@ pub struct FinalizeAbilityScores;
 crate::impl_trait_eq!(FinalizeAbilityScores);
 crate::impl_kdl_node!(FinalizeAbilityScores, "ability_score_finalize");
 impl crate::utility::Mutator for FinalizeAbilityScores {
-	type Target = crate::system::dnd5e::data::character::Character;
+	type Target = Character;
 
 	fn dependencies(&self) -> crate::utility::Dependencies {
 		["ability_score"].into()
 	}
 
-	fn description(&self) -> description::Section {
+	fn description(&self, _state: Option<&Character>) -> description::Section {
 		description::Section::default()
 	}
 

@@ -73,7 +73,7 @@ pub struct SelectableSpells {
 impl Mutator for Spellcasting {
 	type Target = Character;
 
-	fn description(&self) -> description::Section {
+	fn description(&self, _state: Option<&Character>) -> description::Section {
 		match &self.operation {
 			Operation::Caster(caster) => description::Section {
 				title: Some("Spellcasting".into()),

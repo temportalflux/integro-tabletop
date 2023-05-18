@@ -24,7 +24,7 @@ crate::impl_kdl_node!(AddProficiency, "add_proficiency");
 impl Mutator for AddProficiency {
 	type Target = Character;
 
-	fn description(&self) -> description::Section {
+	fn description(&self, _state: Option<&Character>) -> description::Section {
 		let content = match self {
 			Self::SavingThrow(ability) => format!(
 				"You are proficient with {} saving throws.",

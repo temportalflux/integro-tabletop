@@ -130,7 +130,7 @@ fn ClassBrowser(ClassBrowserProps { on_added }: &ClassBrowserProps) -> Html {
 										}
 									})}
 								>{"Add"}</button>
-								{class_body(class, false)}
+								{class_body(class, None)}
 							</div>
 						</div>
 					</div>
@@ -197,7 +197,7 @@ fn ActiveClassList() -> Html {
 						/>
 					</div>
 					<div class="card-body">
-						{class_body(class, true)}
+						{class_body(class, Some(&state))}
 						<div class="d-flex justify-content-center">
 							<button
 								type="button" class="btn btn-success mx-2"
@@ -218,7 +218,7 @@ fn ActiveClassList() -> Html {
 	</>}
 }
 
-fn class_body(value: &Class, show_selectors: bool) -> Html {
+fn class_body(value: &Class, state: Option<&SharedCharacter>) -> Html {
 	let class_level_div_id = format!("{}-level", value.name.to_case(Case::Snake));
 	let hit_die = value.hit_die;
 	html! {<>
@@ -229,11 +229,11 @@ fn class_body(value: &Class, show_selectors: bool) -> Html {
 			{"Hit Die: "}
 			{hit_die.to_string()}
 		</span>
-		{mutator_list(&value.mutators, show_selectors)}
+		{mutator_list(&value.mutators, state)}
 
 		<div class="my-2">
 			{value.levels.iter().enumerate()
-			.filter(|(_, level)| show_selectors || !level.is_empty())
+			.filter(|(_, level)| state.is_some() || !level.is_empty())
 			.map(|(idx, level)| {
 				html! {
 					<CollapsableCard
@@ -242,7 +242,7 @@ fn class_body(value: &Class, show_selectors: bool) -> Html {
 						header_content={{
 							html! {<>
 								<span>{"Level "}{idx + 1}</span>
-								{show_selectors.then(move || html! {
+								{state.is_some().then(move || html! {
 									<LevelHitPoints
 										data_path={level.hit_points.get_data_path()}
 										die={value.hit_die}
@@ -251,7 +251,7 @@ fn class_body(value: &Class, show_selectors: bool) -> Html {
 							</>}
 						}}
 					>
-						{level_body(level, show_selectors)}
+						{level_body(level, state)}
 					</CollapsableCard>
 				}
 			}).collect::<Vec<_>>()}
@@ -330,10 +330,10 @@ pub fn CollapsableCard(props: &CollapsableCardProps) -> Html {
 	}
 }
 
-fn level_body(value: &Level, show_selectors: bool) -> Html {
+fn level_body(value: &Level, state: Option<&SharedCharacter>) -> Html {
 	html! {<>
-		{mutator_list(&value.mutators, show_selectors)}
-		{value.features.iter().map(|f| feature(f, show_selectors)).collect::<Vec<_>>()}
+		{mutator_list(&value.mutators, state)}
+		{value.features.iter().map(|f| feature(f, state)).collect::<Vec<_>>()}
 	</>}
 }
 

@@ -789,7 +789,7 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 							<div>
 								<strong>{"Effects:"}</strong>
 								<div class="mx-2">
-									{mutator_list(&condition.mutators, true)}
+									{mutator_list(&condition.mutators, Some(&state))}
 								</div>
 							</div>
 							{condition.criteria.as_ref().map(|evaluator| {
@@ -825,7 +825,7 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 			<div class="property">
 				<strong>{"Alterations:"}</strong>
 				<div>
-					{mutator_list(&feature.mutators, true)}
+					{mutator_list(&feature.mutators, Some(&state))}
 				</div>
 			</div>
 		});

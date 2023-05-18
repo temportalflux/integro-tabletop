@@ -26,14 +26,17 @@ impl Mutator for GrantByLevel {
 		}
 	}
 
-	fn description(&self) -> description::Section {
+	fn description(&self, state: Option<&Character>) -> description::Section {
 		let mut sections = Vec::new();
 
 		for (level, batch) in &self.levels {
 			if batch.is_empty() {
 				continue;
 			}
-			let children: Vec<_> = batch.iter().map(|mutator| mutator.description()).collect();
+			let children: Vec<_> = batch
+				.iter()
+				.map(|mutator| mutator.description(state))
+				.collect();
 			if children.is_empty() {
 				continue;
 			}

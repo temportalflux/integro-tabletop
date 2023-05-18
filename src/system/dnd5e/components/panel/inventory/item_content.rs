@@ -136,7 +136,7 @@ pub fn item_body(item: &Item, state: &SharedCharacter, props: Option<ItemBodyPro
 				equip_sections.push(html! {
 					<div class="border-bottom-theme-muted">
 						<div>{"You gain the following benefits while this item is equipped:"}</div>
-						{mutator_list(&equipment.mutators, false)}
+						{mutator_list(&equipment.mutators, None::<&SharedCharacter>)}
 						{criteria_html.unwrap_or_default()}
 					</div>
 				});

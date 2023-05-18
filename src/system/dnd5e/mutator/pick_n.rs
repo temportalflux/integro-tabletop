@@ -8,7 +8,7 @@ use crate::{
 	},
 	utility::{IdPath, Mutator, MutatorGroup, Selector, SelectorMetaVec},
 };
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 /// Allows the user to select some number of options where each option can apply a different group of mutators.
 #[derive(Clone, PartialEq, Debug)]
@@ -38,15 +38,31 @@ impl PickN {
 		let Selector::AnyOf { options, .. } = &self.selector else { return None; };
 		Some(options)
 	}
+
+	fn get_selections_in<'this, 'c>(
+		&'this self,
+		state: Option<&'c Character>,
+	) -> HashSet<&'c String> {
+		let Some((state, data_path)) = state.zip(self.selector.get_data_path()) else { return HashSet::default(); };
+		let Some(data) = state.get_selections_at(&data_path) else { return HashSet::default(); };
+		data.iter().collect::<HashSet<_>>()
+	}
 }
 
 impl Mutator for PickN {
 	type Target = Character;
 
-	fn description(&self) -> description::Section {
+	fn description(&self, state: Option<&Character>) -> description::Section {
+		let selections = self.get_selections_in(state);
+
 		let selectors = SelectorMetaVec::default().with_str("Selected Option", &self.selector);
 		let mut children = Vec::new();
 		for key in self.option_order().unwrap() {
+			// only show this option if: there are no options selected OR this option is selected
+			if !selections.is_empty() && !selections.contains(key) {
+				continue;
+			};
+
 			let Some(option) = self.options.get(key) else { continue; };
 			let mut content = String::new();
 			let mut option_children = Vec::new();
@@ -55,7 +71,8 @@ impl Mutator for PickN {
 				content: option_content,
 				selectors: _,
 				kind,
-			}) = &option.description {
+			}) = &option.description
+			{
 				content = option_content.clone();
 				match kind {
 					None => {}
@@ -65,7 +82,12 @@ impl Mutator for PickN {
 				}
 			}
 			for mutator in &option.mutators {
-				option_children.push(mutator.description());
+				let mut section = mutator.description(state);
+				// if no option is selected, dont show the fields to select value for any particular option
+				if selections.is_empty() {
+					section.selectors = SelectorMetaVec::default();
+				}
+				option_children.push(section);
 			}
 			for feature in &option.features {
 				option_children.extend(feature.description.long.iter().cloned());
@@ -79,7 +101,11 @@ impl Mutator for PickN {
 		}
 		description::Section {
 			title: Some(self.name.clone()),
-			content: format!("Select {} of the following {} options.", self.max_selections(), self.options.len()),
+			content: format!(
+				"Select {} of the following {} options.",
+				self.max_selections(),
+				self.options.len()
+			),
 			selectors,
 			kind: Some(description::SectionKind::HasChildren(children)),
 		}
@@ -137,9 +163,7 @@ impl FromKDL for PickN {
 
 			let description = match node.query_opt("scope() > description")? {
 				None => None,
-				Some(node) => {
-					Some(description::Section::from_kdl(node, &mut ctx.next_node())?)
-				}
+				Some(node) => Some(description::Section::from_kdl(node, &mut ctx.next_node())?),
 			};
 
 			let mut mutators = Vec::new();
@@ -152,7 +176,14 @@ impl FromKDL for PickN {
 				features.push(Feature::from_kdl(entry_node, &mut ctx.next_node())?.into());
 			}
 
-			options.insert(name, PickOption { description, mutators, features });
+			options.insert(
+				name,
+				PickOption {
+					description,
+					mutators,
+					features,
+				},
+			);
 		}
 
 		let selector = Selector::AnyOf {

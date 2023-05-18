@@ -25,7 +25,7 @@ crate::impl_kdl_node!(AddModifier, "add_modifier");
 impl Mutator for AddModifier {
 	type Target = Character;
 
-	fn description(&self) -> description::Section {
+	fn description(&self, _state: Option<&Character>) -> description::Section {
 		let mut desc = format!("You have {} on ", self.modifier.display_name());
 		let kind_desc = match &self.kind {
 			ModifierKind::Ability(Selector::Specific(ability)) => {

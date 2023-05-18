@@ -11,7 +11,7 @@ pub trait Mutator: Debug + TraitEq + AsTraitEq<dyn TraitEq> + KDLNode {
 
 	fn set_data_path(&self, _parent: &Path) {}
 
-	fn description(&self) -> description::Section {
+	fn description(&self, _state: Option<&Self::Target>) -> description::Section {
 		description::Section::default()
 	}
 

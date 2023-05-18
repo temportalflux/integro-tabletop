@@ -20,7 +20,7 @@ crate::impl_kdl_node!(AddToActionBudget, "add_to_action_budget");
 impl Mutator for AddToActionBudget {
 	type Target = Character;
 
-	fn description(&self) -> description::Section {
+	fn description(&self, _state: Option<&Character>) -> description::Section {
 		description::Section {
 			title: Some("Add to Action Budget".into()),
 			content: format!(

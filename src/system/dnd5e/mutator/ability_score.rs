@@ -30,7 +30,7 @@ crate::impl_kdl_node!(AbilityScoreChange, "ability_score");
 impl Mutator for AbilityScoreChange {
 	type Target = Character;
 
-	fn description(&self) -> description::Section {
+	fn description(&self, _state: Option<&Character>) -> description::Section {
 		let ability = match &self.ability {
 			Selector::Specific(ability) => format!("Your {} score", ability.long_name()),
 			Selector::Any { .. } => "One ability score of your choice".to_owned(),

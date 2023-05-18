@@ -150,7 +150,7 @@ fn Modal() -> Html {
 									</div>
 								},
 							}}
-							{mutator_list(&condition.mutators, true)}
+							{mutator_list(&condition.mutators, Some(&state))}
 						</CollapsableCard>
 					}
 				}).collect::<Vec<_>>()}

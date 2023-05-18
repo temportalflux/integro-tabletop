@@ -26,7 +26,7 @@ impl Mutator for BonusDamage {
 		self.amount.dependencies()
 	}
 
-	fn description(&self) -> description::Section {
+	fn description(&self, _state: Option<&Character>) -> description::Section {
 		description::Section::default()
 	}
 

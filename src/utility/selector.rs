@@ -331,7 +331,10 @@ impl SelectorOptions {
 					cannot_match,
 				})
 			}
-			Selector::Any { cannot_match, id: _ } => {
+			Selector::Any {
+				cannot_match,
+				id: _,
+			} => {
 				let options = EnumSet::<T>::all().into_iter();
 				let cannot_match = (!cannot_match.is_empty())
 					.then(|| cannot_match.iter().filter_map(IdPath::as_path).collect());

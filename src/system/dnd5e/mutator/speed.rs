@@ -16,7 +16,7 @@ crate::impl_kdl_node!(Speed, "speed");
 impl Mutator for Speed {
 	type Target = Character;
 
-	fn description(&self) -> description::Section {
+	fn description(&self, _state: Option<&Character>) -> description::Section {
 		description::Section {
 			content: format!(
 				"Your {} speed {}.",

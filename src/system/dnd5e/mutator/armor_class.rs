@@ -13,7 +13,7 @@ crate::impl_kdl_node!(AddArmorClassFormula, "add_armor_class_formula");
 impl Mutator for AddArmorClassFormula {
 	type Target = Character;
 
-	fn description(&self) -> description::Section {
+	fn description(&self, _state: Option<&Character>) -> description::Section {
 		let mut args = Vec::new();
 		if self.0.base > 0 {
 			args.push(format!("{}", self.0.base));

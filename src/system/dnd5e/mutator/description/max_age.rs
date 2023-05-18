@@ -13,7 +13,7 @@ crate::impl_kdl_node!(AddLifeExpectancy, "extend_life_expectancy");
 impl Mutator for AddLifeExpectancy {
 	type Target = Character;
 
-	fn description(&self) -> description::Section {
+	fn description(&self, _state: Option<&Character>) -> description::Section {
 		description::Section {
 			content: format!("Your life expectancy increases by {} years.", self.0),
 			..Default::default()
