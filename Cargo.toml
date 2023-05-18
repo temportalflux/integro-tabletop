@@ -59,6 +59,7 @@ lazy_static = "1.4"
 unzip-n = "0.1"
 rand = "0.8"
 wasm-timer = "0.2"
+regex = "1.8"
 
 [target.'cfg(windows)'.dependencies]
 tokio = { version="1.26", features=["full"] }

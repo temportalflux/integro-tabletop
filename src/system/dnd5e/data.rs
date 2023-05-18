@@ -30,6 +30,7 @@ pub use class::*;
 mod size;
 pub use size::*;
 pub mod description;
+pub mod description2;
 mod proficiencies;
 pub use proficiencies::*;
 pub mod spell;

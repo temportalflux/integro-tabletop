@@ -74,9 +74,21 @@ impl NodeContext {
 		V: 'static,
 	{
 		let mut ctx = self.next_node();
-		let id = node.get_str_req(ctx.consume_idx())?;
-		let factory = self.node_registry.get_evaluator_factory(id)?;
-		factory.from_kdl::<C, V>(node, &mut ctx)
+		ctx.parse_evaluator_inline(node)
+	}
+
+	pub fn parse_evaluator_inline<C, V>(
+		&mut self,
+		node: &kdl::KdlNode,
+	) -> anyhow::Result<GenericEvaluator<C, V>>
+	where
+		C: 'static,
+		V: 'static,
+	{
+		let id = node.get_str_req(self.consume_idx())?;
+		let node_reg = self.node_registry.clone();
+		let factory = node_reg.get_evaluator_factory(id)?;
+		factory.from_kdl::<C, V>(node, self)
 	}
 }
 
