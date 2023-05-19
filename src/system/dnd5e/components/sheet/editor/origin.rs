@@ -648,25 +648,21 @@ pub fn description(info: &description::Info, prefer_short: bool) -> Html {
 			return html! { <div class="text-block">{desc}</div> };
 		}
 	}
-	html! {
-		<div class="description">
-			{info.sections.iter().map(|section| {
-				let content = match &section.content {
-					description::SectionContent::Body(text) => html!(text),
-					description::SectionContent::Selectors(_) => html!(),
-					description::SectionContent::Table { .. } => html!(),
-				};
-				match section.title {
-					Some(title) => html! {
-						<div>
-							<strong>{title}{". "}</strong>
-							<span class="text-block">{content}</span>
-						</div>
-					},
-					None => html! { <div class="text-block">{content}</div> },
-				}
-			}).collect::<Vec<_>>()}
-		</div>
+	let first = info.sections.iter().filter_map(|section| {
+		match &section.content {
+			description::SectionContent::Body(text) => Some((&section.title, text)),
+			_ => None,
+		}
+	}).next();
+	let Some((title, body)) = first else { return Html::default(); };
+	match title {
+		Some(title) => html! {
+			<div>
+				<strong>{title}{". "}</strong>
+				<span class="text-block">{body}</span>
+			</div>
+		},
+		None => html! { <div class="text-block">{body}</div> },
 	}
 }
 
@@ -703,37 +699,56 @@ pub fn DescriptionSection(
 		None => None,
 		Some(title) => Some(html! {<strong>{title.clone()}{". "}</strong>}),
 	};
-	let selectors = match (*show_selectors, &section.selectors) {
-		(true, selectors) => {
-			if !selectors.errors().is_empty() {
-				log::warn!(target: "utility", "Section has empty data path: {section:?}");
+
+	let content = match &section.content {
+		description::SectionContent::Body(text) => {
+			html! {
+				<div class="text-block">
+					{text}
+				</div>
 			}
-			selectors
-				.as_vec()
-				.iter()
-				.map(|meta| html! { <SelectorField meta={meta.clone()} /> })
-				.collect::<Vec<_>>()
 		}
-		_ => Vec::new(),
+		description::SectionContent::Selectors(selectors) => {
+			show_selectors.then(|| {
+				if !selectors.errors().is_empty() {
+					log::warn!(target: "utility", "Section has empty data path: {section:?}");
+				}
+				let iter_selectors = selectors
+					.as_vec()
+					.iter();
+				let fields = iter_selectors
+					.map(|meta| html! { <SelectorField meta={meta.clone()} /> })
+					.collect::<Vec<_>>();
+				html! {
+					<div>
+						{fields}
+					</div>
+				}
+			}).unwrap_or_default()
+		}
+		description::SectionContent::Table { column_count, headers, rows } => {
+			// TODO: Table display ui
+			html! {
+				<div>
+					
+				</div>
+			}
+		}
 	};
-	let body = match &section.kind {
-		None => None,
-		Some(description::SectionKind::HasChildren(children)) => Some(html! {
-			<div class="ms-2">
-				{children.iter().map(|section| html! {
-					<DescriptionSection section={section.clone()} show_selectors={*show_selectors} />
-				}).collect::<Vec<_>>()}
-			</div>
-		}),
-	};
-	if name.is_none() && section.content.is_empty() && selectors.is_empty() && body.is_none() {
-		return Html::default();
-	}
+
+	let children = (!section.children.is_empty()).then(|| html! {
+		<div class="ms-2">
+			{section.children.iter().map(|section| html! {
+				<DescriptionSection section={section.clone()} show_selectors={*show_selectors} />
+			}).collect::<Vec<_>>()}
+		</div>
+	});
+	
 	html! {
 		<div>
-			<span>{name.unwrap_or_default()}{section.content.clone()}</span>
-			<div class="ms-2">{selectors}</div>
-			{body.unwrap_or_default()}
+			{name.unwrap_or_default()}
+			{content}
+			{children}
 		</div>
 	}
 }
