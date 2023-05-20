@@ -1,7 +1,7 @@
 use crate::{
 	system::dnd5e::{
 		components::{
-			editor::mutator_list, validate_uint_only, FormulaInline, SharedCharacter, WalletInline,
+			editor::{mutator_list, description}, validate_uint_only, FormulaInline, SharedCharacter, WalletInline,
 		},
 		data::{
 			item::{Item, ItemKind},
@@ -308,8 +308,8 @@ pub fn item_body(item: &Item, state: &SharedCharacter, props: Option<ItemBodyPro
 			});
 		}
 	}
-	if let Some(desc) = &item.description {
-		sections.push(html! { <div class="text-block">{desc.clone()}</div> });
+	if !item.description.is_empty() {
+		sections.push(description(&item.description, false));
 	}
 	if let Some(notes) = &item.notes {
 		sections.push(html! {

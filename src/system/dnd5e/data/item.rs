@@ -1,4 +1,4 @@
-use super::{currency::Wallet, Rarity};
+use super::{currency::Wallet, Rarity, description};
 use crate::{
 	kdl_ext::{DocumentExt, FromKDL, NodeContext, NodeExt},
 	system::{
@@ -17,7 +17,7 @@ pub mod weapon;
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct Item {
 	pub name: String,
-	pub description: Option<String>,
+	pub description: description::Info,
 	pub rarity: Option<Rarity>,
 	pub weight: f32,
 	// TODO: When browsing items to add to inventory, there should be a PURCHASE option for buying
@@ -122,6 +122,10 @@ impl FromKDL for Item {
 		let description = node
 			.query_str_opt("scope() > description", 0)?
 			.map(str::to_owned);
+		let description = match node.query_opt("scope() > description")? {
+			None => description::Info::default(),
+			Some(node) => description::Info::from_kdl(node, &mut ctx.next_node())?,
+		};
 
 		let worth = match node.query("scope() > worth")? {
 			Some(node) => Wallet::from_kdl(node, &mut ctx.next_node())?,

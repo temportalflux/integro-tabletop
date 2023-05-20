@@ -3,18 +3,24 @@ use crate::{
 	system::dnd5e::data::character::Character,
 	utility::Evaluator,
 };
-use std::fmt::Debug;
+use std::{fmt::Debug, collections::BTreeMap};
 
 /// Returns the numerical value of the level for a character.
 /// Optionally can return the level for a specific class, if `class_name` is specified.
 #[derive(Clone, PartialEq, Default, Debug)]
-pub struct GetLevel(pub Option<String>);
+pub struct GetLevel {
+	pub class_name: Option<String>,
+	pub order_map: BTreeMap<usize, i32>,
+}
 impl<S> From<Option<S>> for GetLevel
 where
 	S: ToString,
 {
 	fn from(value: Option<S>) -> Self {
-		Self(value.map(|s| s.to_string()))
+		Self {
+			class_name: value.map(|s| s.to_string()),
+			order_map: BTreeMap::default(),
+		}
 	}
 }
 
@@ -26,7 +32,7 @@ impl Evaluator for GetLevel {
 	fn description(&self) -> Option<String> {
 		Some(format!(
 			"your {} level",
-			match &self.0 {
+			match &self.class_name {
 				None => "character",
 				Some(class_name) => class_name.as_str(),
 			}
@@ -34,8 +40,17 @@ impl Evaluator for GetLevel {
 	}
 
 	fn evaluate(&self, state: &Self::Context) -> Self::Item {
-		let class_name = self.0.as_ref().map(String::as_str);
-		state.level(class_name) as i32
+		let class_name = self.class_name.as_ref().map(String::as_str);
+		let level = state.level(class_name);
+		if self.order_map.is_empty() {
+			return level as i32;
+		}
+		for (key, value) in self.order_map.iter().rev() {
+			if level <= *key {
+				return *value;
+			}
+		}
+		return 0;
 	}
 }
 
@@ -49,7 +64,17 @@ impl FromKDL for GetLevel {
 		let class_name = node
 			.get_str_opt(ctx.consume_idx())?
 			.map(ToString::to_string);
-		Ok(Self(class_name))
+		let mut order_map = BTreeMap::new();
+		for node in node.query_all("scope() > level")? {
+			let mut ctx = ctx.next_node();
+			let level = node.get_i64_req(ctx.consume_idx())? as usize;
+			let value = node.get_i64_req(ctx.consume_idx())? as i32;
+			order_map.insert(level, value);
+		}
+		Ok(Self {
+			class_name,
+			order_map,
+		})
 	}
 }
 

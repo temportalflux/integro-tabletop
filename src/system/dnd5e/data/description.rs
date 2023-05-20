@@ -38,6 +38,10 @@ impl Default for SectionContent {
 }
 
 impl Info {
+	pub fn is_empty(&self) -> bool {
+		self.sections.is_empty()
+	}
+
 	pub fn evaluate(mut self, state: &Character) -> Self {
 		if !self.contains_format_syntax() {
 			return self;
@@ -69,6 +73,17 @@ impl Info {
 
 impl FromKDL for Info {
 	fn from_kdl(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
+		// If there are no children, this can be treated as a single-section block,
+		// where the section is the long description.
+		if node.children().is_none() {
+			let section = Section::from_kdl(node, ctx)?;
+			return Ok(Self {
+				short: None,
+				sections: vec![section],
+				format_args: FormatArgs::default(),
+			})
+		}
+
 		let short = node.query_str_opt("scope() > short", 0)?.map(str::to_owned);
 
 		let mut sections = Vec::new();
@@ -87,7 +102,7 @@ impl FromKDL for Info {
 }
 
 impl Section {
-	fn is_empty(&self) -> bool {
+	pub fn is_empty(&self) -> bool {
 		self.content == SectionContent::default() && self.children.is_empty()
 	}
 
@@ -360,6 +375,27 @@ mod test {
 					.query("scope() > description")?
 					.expect("missing description node");
 				Info::from_kdl(node, &mut node_ctx())
+			}
+
+			#[test]
+			fn long_only_simple() -> anyhow::Result<()> {
+				let doc = "description \"This is some long description w/o a title\"";
+				assert_eq!(
+					from_doc(doc)?,
+					Info {
+						short: None,
+						sections: vec![Section {
+							title: None,
+							content: SectionContent::Body(
+								"This is some long description w/o a title".into()
+							),
+							format_args: FormatArgs::default(),
+							children: vec![],
+						}],
+						format_args: FormatArgs::default(),
+					}
+				);
+				Ok(())
 			}
 
 			#[test]
