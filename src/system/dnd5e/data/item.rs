@@ -119,9 +119,6 @@ impl FromKDL for Item {
 			None => None,
 		};
 		let mut weight = node.get_f64_opt("weight")?.unwrap_or(0.0) as f32;
-		let description = node
-			.query_str_opt("scope() > description", 0)?
-			.map(str::to_owned);
 		let description = match node.query_opt("scope() > description")? {
 			None => description::Info::default(),
 			Some(node) => description::Info::from_kdl(node, &mut ctx.next_node())?,

@@ -726,12 +726,31 @@ pub fn DescriptionSection(
 				}
 			}).unwrap_or_default()
 		}
-		description::SectionContent::Table { column_count, headers, rows } => {
-			// TODO: Table display ui
+		description::SectionContent::Table { column_count: _, headers, rows } => {
 			html! {
-				<div>
-					
-				</div>
+				<table class="table table-compact table-striped m-0">
+					<thead>
+						<tr class="text-center" style="color: var(--bs-heading-color);">
+							{match headers.as_ref() {
+								None => html!(),
+								Some(headers) => html! {<>
+									{headers.iter().map(|s| html! {
+										<th scope="col">{s}</th>
+									}).collect::<Vec<_>>()}
+								</>},
+							}}
+						</tr>
+					</thead>
+					<tbody>
+						{rows.iter().map(|cols| {
+							html! { <tr>
+								{cols.iter().map(|s| html! {
+									<td>{s}</td>
+								}).collect::<Vec<_>>()}
+							</tr> }
+						}).collect::<Vec<_>>()}
+					</tbody>
+				</table>
 			}
 		}
 	};
