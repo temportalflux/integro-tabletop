@@ -17,6 +17,7 @@ pub enum ModifierKind {
 	Ability(Selector<Ability>),
 	SavingThrow(Option<Selector<Ability>>),
 	Skill(Selector<Skill>),
+	Initiative,
 }
 
 crate::impl_trait_eq!(AddModifier);
@@ -73,6 +74,9 @@ impl Mutator for AddModifier {
 			ModifierKind::Skill(Selector::Any { .. }) => {
 				format!("any single ability skill check")
 			}
+			ModifierKind::Initiative => {
+				format!("initiative checks")
+			}
 		};
 		desc.push_str(&kind_desc);
 		if let Some(ctx) = &self.context {
@@ -80,6 +84,7 @@ impl Mutator for AddModifier {
 				ModifierKind::Ability(_) => "",
 				ModifierKind::SavingThrow(_) => " against",
 				ModifierKind::Skill(_) => "",
+				ModifierKind::Initiative => "",
 			});
 			desc.push(' ');
 			desc.push_str(ctx.as_str());
@@ -96,6 +101,7 @@ impl Mutator for AddModifier {
 			ModifierKind::Skill(selector) => {
 				SelectorMetaVec::default().with_enum("Skill", selector)
 			}
+			ModifierKind::Initiative => Default::default(),
 		};
 		description::Section {
 			content: desc.into(),
@@ -110,6 +116,7 @@ impl Mutator for AddModifier {
 			ModifierKind::SavingThrow(Some(selector)) => selector.set_data_path(parent),
 			ModifierKind::SavingThrow(None) => {}
 			ModifierKind::Skill(selector) => selector.set_data_path(parent),
+			ModifierKind::Initiative => {}
 		}
 	}
 
@@ -145,6 +152,9 @@ impl Mutator for AddModifier {
 					parent.to_owned(),
 				);
 			}
+			ModifierKind::Initiative => {
+				// TODO: apply advantage or disadvantage to initiative
+			}
 		}
 	}
 }
@@ -179,6 +189,7 @@ impl FromKDL for AddModifier {
 				})?;
 				ModifierKind::Skill(skill)
 			}
+			"Initiative" => ModifierKind::Initiative,
 			name => {
 				return Err(NotInList(name.into(), vec!["Ability", "SavingThrow", "Skill"]).into());
 			}

@@ -34,6 +34,24 @@
 	font-size: 12px;
 }
 
+.sheet-header {
+	> .identity {
+		font-weight: 800;
+		> .name {
+			font-size: 20px;
+		}
+		> .pronouns {
+			font-size: 14px;
+		}
+	}
+	> .group {
+		font-size: 14px;
+	}
+	> .level {
+		font-size: 14px;
+	}
+}
+
 .proficiency-section {
 	border-style: solid;
 	border-color: var(--bs-border-color);

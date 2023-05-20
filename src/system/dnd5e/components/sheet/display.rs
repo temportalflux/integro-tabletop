@@ -10,6 +10,9 @@ use crate::{
 };
 use yew::prelude::*;
 
+mod header;
+use header::*;
+
 #[derive(Clone, PartialEq, Properties)]
 pub struct SheetDisplayProps {
 	pub open_editor: Callback<()>,
@@ -17,15 +20,13 @@ pub struct SheetDisplayProps {
 
 #[function_component]
 pub fn SheetDisplay(SheetDisplayProps { open_editor }: &SheetDisplayProps) -> Html {
-	let floating_editor_btn = html! {
-		<div class="ms-auto">
-			<a class="icon forge" onclick={open_editor.reform(|_| ())} />
-		</div>
-	};
 	html! {
 		<div class="container overflow-hidden">
-			<div class="d-flex">
-				{floating_editor_btn}
+			<div class="d-flex border-bottom-theme-muted mb-2 px-3 pb-1">
+				<Header />
+				<div class="ms-auto">
+					<a class="icon forge" onclick={open_editor.reform(|_| ())} />
+				</div>
 			</div>
 			<div class="row" style="--bs-gutter-x: 10px;">
 				<div class="col-md-auto" style="max-width: 210px;">
