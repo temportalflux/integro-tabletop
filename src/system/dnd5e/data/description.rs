@@ -81,7 +81,7 @@ impl FromKDL for Info {
 				short: None,
 				sections: vec![section],
 				format_args: FormatArgs::default(),
-			})
+			});
 		}
 
 		let short = node.query_str_opt("scope() > short", 0)?.map(str::to_owned);

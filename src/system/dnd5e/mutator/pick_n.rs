@@ -96,14 +96,15 @@ impl Mutator for PickN {
 
 		let selectors = SelectorMetaVec::default().with_str("Selected Option", &self.selector);
 		children.insert(0, selectors.into());
-		
+
 		description::Section {
 			title: Some(self.name.clone()),
 			content: format!(
 				"Select {} of the following {} options.",
 				self.max_selections(),
 				self.options.len()
-			).into(),
+			)
+			.into(),
 			children,
 			..Default::default()
 		}

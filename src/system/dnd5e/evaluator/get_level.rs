@@ -3,7 +3,7 @@ use crate::{
 	system::dnd5e::data::character::Character,
 	utility::Evaluator,
 };
-use std::{fmt::Debug, collections::BTreeMap};
+use std::{collections::BTreeMap, fmt::Debug};
 
 /// Returns the numerical value of the level for a character.
 /// Optionally can return the level for a specific class, if `class_name` is specified.

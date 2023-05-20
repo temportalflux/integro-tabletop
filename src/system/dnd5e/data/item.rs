@@ -1,4 +1,4 @@
-use super::{currency::Wallet, Rarity, description};
+use super::{currency::Wallet, description, Rarity};
 use crate::{
 	kdl_ext::{DocumentExt, FromKDL, NodeContext, NodeExt},
 	system::{

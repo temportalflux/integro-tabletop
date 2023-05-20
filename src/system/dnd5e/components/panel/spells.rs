@@ -4,7 +4,10 @@ use crate::{
 	system::{
 		core::{ArcNodeRegistry, ModuleId, SourceId},
 		dnd5e::{
-			components::{editor::{CollapsableCard, DescriptionSection}, SharedCharacter},
+			components::{
+				editor::{CollapsableCard, DescriptionSection},
+				SharedCharacter,
+			},
 			data::{
 				character::spellcasting::{CasterKind, SpellEntry},
 				proficiency, spell, Spell,
@@ -562,7 +565,7 @@ fn SpellModal(
 			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
 		</div>
 		<div class="modal-body">
-			{spell_content(spell, Some(entry))}
+			{spell_content(spell, Some(entry), &state)}
 		</div>
 	</>}
 }
@@ -638,7 +641,7 @@ fn ManagerCasterModal(CasterNameProps { caster_id }: &CasterNameProps) -> Html {
 							spell_id={spell.id.clone()}
 							rank={spell.rank}
 						/>};
-						spell_list_item("selected", spell, Some(&caster.spell_entry), action)
+						spell_list_item("selected", &state, spell, Some(&caster.spell_entry), action)
 					}).collect::<Vec<_>>()}
 				</CollapsableCard>
 				<CollapsableCard
@@ -795,6 +798,7 @@ fn SpellListAction(
 
 fn spell_list_item(
 	section_id: &str,
+	state: &SharedCharacter,
 	spell: &Spell,
 	entry: Option<&SpellEntry>,
 	action: Html,
@@ -824,7 +828,7 @@ fn spell_list_item(
 			<div class="collapse mb-2" id={collapse_id}>
 				<div class="card">
 					<div class="card-body px-2 py-1">
-						{spell_content(&spell, entry)}
+						{spell_content(&spell, entry, state)}
 					</div>
 				</div>
 			</div>
@@ -832,10 +836,10 @@ fn spell_list_item(
 	}
 }
 
-fn spell_content(spell: &Spell, entry: Option<&SpellEntry>) -> Html {
+fn spell_content(spell: &Spell, entry: Option<&SpellEntry>, state: &SharedCharacter) -> Html {
 	use crate::{
 		components::{Tag, Tags},
-		system::dnd5e::{data::AreaOfEffect},
+		system::dnd5e::data::AreaOfEffect,
 	};
 	use spell::{CastingDuration, DurationKind};
 	let mut sections = Vec::new();
@@ -964,12 +968,22 @@ fn spell_content(spell: &Spell, entry: Option<&SpellEntry>) -> Html {
 		</div>
 	});
 
+	let desc = {
+		let desc = spell.description.clone().evaluate(state);
+		desc.sections
+			.into_iter()
+			.map(|section| {
+				html! {
+					<DescriptionSection {section} show_selectors={false} />
+				}
+			})
+			.collect::<Vec<_>>()
+	};
+
 	html! {<>
 		{sections}
 		<div class="hr my-2" />
-		{spell.description.sections.iter().map(|section| html! {
-			<DescriptionSection section={section.clone()} show_selectors={false} />
-		}).collect::<Vec<_>>()}
+		{desc}
 	</>}
 }
 
@@ -1010,11 +1024,16 @@ pub struct SpellFilter {
 pub fn AvailableSpellList(props: &AvailableSpellListProps) -> Html {
 	use yew_hooks::{use_async_with_options, UseAsyncOptions};
 	log::debug!(target: "ui", "Render available spells");
+	let state = use_context::<SharedCharacter>().unwrap();
 	let database = use_context::<Option<Database>>().unwrap();
 	let node_registry = use_context::<ArcNodeRegistry>().unwrap();
 	let load_data = use_async_with_options(
 		{
-			let props = props.clone();
+			let AvailableSpellListProps {
+				filter,
+				header_addon,
+			} = props.clone();
+			let state = state.clone();
 			async move {
 				// TODO: Available spells section wont have togglable filters for max_rank or restriction,
 				// BUT when custom feats are a thing, users should be able to add a feat which grants them
@@ -1025,11 +1044,29 @@ pub fn AvailableSpellList(props: &AvailableSpellListProps) -> Html {
 					return Ok(Html::default());
 				};
 
+				let mut sorted_info = Vec::<(String, u8)>::new();
+				let mut htmls = Vec::new();
+
 				//let parsing_time = wasm_timer::Instant::now();
-				let spells_html =
-					FindRelevantSpells::new(database.clone(), node_registry, props).await;
+				let mut stream = FindRelevantSpells::new(database.clone(), node_registry, &filter);
+				while let Some(spell) = stream.next().await {
+					// Insertion sort by rank & name
+					let idx = sorted_info
+						.binary_search_by(|(name, rank)| {
+							rank.cmp(&spell.rank).then(name.cmp(&spell.name))
+						})
+						.unwrap_or_else(|err_idx| err_idx);
+					let info = (spell.name.clone(), spell.rank);
+					let html = {
+						let addon = (header_addon.0)(&spell);
+						spell_list_item("relevant", &state, &spell, None, addon)
+					};
+					sorted_info.insert(idx, info);
+					htmls.insert(idx, html);
+				}
+
 				//log::debug!("Finding and constructing spells took {}s", parsing_time.elapsed().as_secs_f32());
-				Ok(spells_html) as Result<Html, ()>
+				Ok(html! {<>{htmls}</>}) as Result<Html, ()>
 			}
 		},
 		UseAsyncOptions::default(),
@@ -1064,23 +1101,17 @@ struct FindRelevantSpells {
 		>,
 	>,
 	query: Option<QueryDeserialize<Spell>>,
-
-	header_addon: HeaderAddon,
-	sorted_info: Vec<(String, u8)>,
-	spell_htmls: Option<Vec<Html>>,
 }
 impl FindRelevantSpells {
-	fn new(database: Database, node_reg: ArcNodeRegistry, props: AvailableSpellListProps) -> Self {
+	fn new(database: Database, node_reg: ArcNodeRegistry, filter: &SpellFilter) -> Self {
 		use crate::database::app::Criteria;
 
 		let criteria = Criteria::All({
 			let mut criteria = Vec::new();
 
-			let rank_range: Option<Vec<u8>> = match props.filter.max_rank {
+			let rank_range: Option<Vec<u8>> = match filter.max_rank {
 				Some(max_rank) => Some((0..=max_rank).collect()),
-				None if !props.filter.ranks.is_empty() => {
-					Some(props.filter.ranks.iter().map(|i| *i).collect())
-				}
+				None if !filter.ranks.is_empty() => Some(filter.ranks.iter().map(|i| *i).collect()),
 				None => None,
 			};
 			if let Some(rank_range) = rank_range {
@@ -1093,8 +1124,8 @@ impl FindRelevantSpells {
 					.push(Criteria::ContainsProperty("rank".into(), rank_is_one_of.into()).into());
 			}
 
-			if !props.filter.tags.is_empty() {
-				let iter_tags = props.filter.tags.iter();
+			if !filter.tags.is_empty() {
+				let iter_tags = filter.tags.iter();
 				let iter_tags = iter_tags.map(|tag| serde_json::json!(tag));
 				let iter_tags = iter_tags.map(|tag| Criteria::Exact(tag));
 				let iter_tags = iter_tags.map(|tag| Box::new(tag));
@@ -1103,7 +1134,7 @@ impl FindRelevantSpells {
 					.push(Criteria::ContainsProperty("tags".into(), has_all_tags.into()).into());
 			}
 
-			if let Some(caster_class) = &props.filter.can_cast {
+			if let Some(caster_class) = &filter.can_cast {
 				let class_tag_criteria = Criteria::Exact(serde_json::json!(caster_class));
 				let has_class_tag = Criteria::ContainsValue(class_tag_criteria.into());
 				// TODO: check if the spell is in the expanded spell list,
@@ -1119,9 +1150,6 @@ impl FindRelevantSpells {
 		Self {
 			pending_query: Some(Box::pin(pending_query)),
 			query: None,
-			header_addon: props.header_addon,
-			sorted_info: Vec::new(),
-			spell_htmls: Some(Vec::new()),
 		}
 	}
 }
@@ -1137,13 +1165,13 @@ impl FindRelevantSpells {
 		std::task::Poll::Pending
 	}
 }
-impl futures::Future for FindRelevantSpells {
-	type Output = Html;
+impl futures_util::Stream for FindRelevantSpells {
+	type Item = Spell;
 
-	fn poll(
-		mut self: std::pin::Pin<&mut Self>,
+	fn poll_next(
+		mut self: Pin<&mut Self>,
 		cx: &mut std::task::Context<'_>,
-	) -> std::task::Poll<Self::Output> {
+	) -> std::task::Poll<Option<Self::Item>> {
 		use std::task::Poll;
 		if let Some(mut pending) = self.pending_query.take() {
 			match pending.poll_unpin(cx) {
@@ -1152,7 +1180,7 @@ impl futures::Future for FindRelevantSpells {
 					return Poll::Pending;
 				}
 				Poll::Ready(Err(_db_error)) => {
-					return Poll::Ready(Html::default());
+					return Poll::Ready(None);
 				}
 				Poll::Ready(Ok(query)) => {
 					self.query = Some(query);
@@ -1160,7 +1188,7 @@ impl futures::Future for FindRelevantSpells {
 			}
 		}
 		loop {
-			let Some(mut query) = self.query.take() else { return Poll::Ready(Html::default()); };
+			let Some(mut query) = self.query.take() else { return Poll::Ready(None); };
 			// Poll to see if the next spell in the stream is available
 			let Poll::Ready(spell) = query.poll_next_unpin(cx) else {
 				// still pending, return the query to this struct for next poll.
@@ -1169,27 +1197,11 @@ impl futures::Future for FindRelevantSpells {
 			};
 			// If there is no spell, the stream is finished and this future is complete.
 			let Some(spell) = spell else {
-				let spell_htmls = self.spell_htmls.take().unwrap();
-				return Poll::Ready(html! {<>{spell_htmls}</>});
+				return Poll::Ready(None);
 			};
 			// There is a spell, so return the query here for the next loop or poll.
 			self.query = Some(query);
-
-			// Insertion sort by rank & name
-			let idx = self
-				.sorted_info
-				.binary_search_by(|(name, rank)| rank.cmp(&spell.rank).then(name.cmp(&spell.name)))
-				.unwrap_or_else(|err_idx| err_idx);
-			let info = (spell.name.clone(), spell.rank);
-			let html = {
-				let addon = (self.header_addon.0)(&spell);
-				spell_list_item("relevant", &spell, None, addon)
-			};
-			self.sorted_info.insert(idx, info);
-
-			let mut spell_htmls = self.spell_htmls.take().unwrap();
-			spell_htmls.insert(idx, html);
-			self.spell_htmls = Some(spell_htmls);
+			return Poll::Ready(Some(spell));
 		}
 	}
 }

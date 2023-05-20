@@ -510,6 +510,7 @@ fn ActionOverview(ActionProps { entry }: &ActionProps) -> Html {
 			Some(parent_name) => parent_name.to_str() == Some(&entry.feature.name),
 		},
 	};
+	let desc = entry.feature.description.clone().evaluate(&state);
 	html! {
 		<div class="feature short pb-1" {onclick}>
 			{(!same_name_as_display_parent).then(|| html! {
@@ -529,7 +530,7 @@ fn ActionOverview(ActionProps { entry }: &ActionProps) -> Html {
 					_ => html! {},
 				}}
 			</span>
-			{description(&entry.feature.description, true)}
+			{description(&desc, true)}
 			{action_block}
 			{match entry.children.is_empty() {
 				true => html! {},
@@ -809,7 +810,8 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 		sections.push(html! {<>{action_sections}</>});
 	}
 
-	sections.push(description(&feature.description, false));
+	let desc = feature.description.clone().evaluate(&state);
+	sections.push(description(&desc, false));
 
 	if let Some(criteria) = &feature.criteria {
 		sections.push(html! {

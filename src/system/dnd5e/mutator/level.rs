@@ -55,7 +55,8 @@ impl Mutator for GrantByLevel {
 					.as_ref()
 					.map(String::as_str)
 					.unwrap_or("Character")
-			).into(),
+			)
+			.into(),
 			children: sections,
 			..Default::default()
 		}

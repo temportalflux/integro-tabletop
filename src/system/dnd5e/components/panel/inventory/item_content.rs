@@ -1,7 +1,8 @@
 use crate::{
 	system::dnd5e::{
 		components::{
-			editor::{mutator_list, description}, validate_uint_only, FormulaInline, SharedCharacter, WalletInline,
+			editor::{description, mutator_list},
+			validate_uint_only, FormulaInline, SharedCharacter, WalletInline,
 		},
 		data::{
 			item::{Item, ItemKind},
@@ -15,7 +16,6 @@ use yew::prelude::*;
 
 #[derive(Default)]
 pub struct ItemBodyProps {
-	pub character: Option<SharedCharacter>,
 	pub on_quantity_changed: Option<Callback<u32>>,
 	pub is_equipped: bool,
 	pub set_equipped: Option<Callback<bool>>,
@@ -309,7 +309,8 @@ pub fn item_body(item: &Item, state: &SharedCharacter, props: Option<ItemBodyPro
 		}
 	}
 	if !item.description.is_empty() {
-		sections.push(description(&item.description, false));
+		let desc = item.description.clone().evaluate(state);
+		sections.push(description(&desc, false));
 	}
 	if let Some(notes) = &item.notes {
 		sections.push(html! {

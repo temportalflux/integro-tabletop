@@ -631,12 +631,30 @@ fn background(value: &Background, state: Option<&SharedCharacter>) -> Html {
 }
 
 pub fn feature(value: &Feature, state: Option<&SharedCharacter>) -> Html {
-	// TODO: display criteria evaluator
+	let desc = match (state, value.description.clone()) {
+		(Some(state), desc) => desc.evaluate(state),
+		(None, desc) => desc,
+	};
+
+	let criteria = {
+		let criteria = value.criteria.as_ref();
+		let desc = criteria.map(|eval| eval.description()).flatten();
+		desc.map(|text| {
+			html! {
+				<div class="property">
+					<strong>{"Criteria"}</strong>
+					{text}
+				</div>
+			}
+		})
+	};
+
 	html! {
 		<div class="my-2">
 			<h5>{value.name.clone()}</h5>
-			{description(&value.description, false)}
+			{description(&desc, false)}
 			{mutator_list(&value.mutators, state)}
+			{criteria.unwrap_or_default()}
 		</div>
 	}
 }
@@ -648,21 +666,17 @@ pub fn description(info: &description::Info, prefer_short: bool) -> Html {
 			return html! { <div class="text-block">{desc}</div> };
 		}
 	}
-	let first = info.sections.iter().filter_map(|section| {
-		match &section.content {
-			description::SectionContent::Body(text) => Some((&section.title, text)),
-			_ => None,
-		}
-	}).next();
-	let Some((title, body)) = first else { return Html::default(); };
-	match title {
-		Some(title) => html! {
-			<div>
-				<strong>{title}{". "}</strong>
-				<span class="text-block">{body}</span>
-			</div>
-		},
-		None => html! { <div class="text-block">{body}</div> },
+	let sections = info
+		.sections
+		.iter()
+		.map(|section| {
+			html! { <DescriptionSection section={section.clone()} show_selectors={false} /> }
+		})
+		.collect::<Vec<_>>();
+	html! {
+		<div>
+			{sections}
+		</div>
 	}
 }
 
@@ -708,14 +722,12 @@ pub fn DescriptionSection(
 				</div>
 			}
 		}
-		description::SectionContent::Selectors(selectors) => {
-			show_selectors.then(|| {
+		description::SectionContent::Selectors(selectors) => show_selectors
+			.then(|| {
 				if !selectors.errors().is_empty() {
 					log::warn!(target: "utility", "Section has empty data path: {section:?}");
 				}
-				let iter_selectors = selectors
-					.as_vec()
-					.iter();
+				let iter_selectors = selectors.as_vec().iter();
 				let fields = iter_selectors
 					.map(|meta| html! { <SelectorField meta={meta.clone()} /> })
 					.collect::<Vec<_>>();
@@ -724,9 +736,13 @@ pub fn DescriptionSection(
 						{fields}
 					</div>
 				}
-			}).unwrap_or_default()
-		}
-		description::SectionContent::Table { column_count: _, headers, rows } => {
+			})
+			.unwrap_or_default(),
+		description::SectionContent::Table {
+			column_count: _,
+			headers,
+			rows,
+		} => {
 			html! {
 				<table class="table table-compact table-striped m-0">
 					<thead>
@@ -755,14 +771,16 @@ pub fn DescriptionSection(
 		}
 	};
 
-	let children = (!section.children.is_empty()).then(|| html! {
-		<div class="ms-2">
-			{section.children.iter().map(|section| html! {
-				<DescriptionSection section={section.clone()} show_selectors={*show_selectors} />
-			}).collect::<Vec<_>>()}
-		</div>
+	let children = (!section.children.is_empty()).then(|| {
+		html! {
+			<div class="ms-2">
+				{section.children.iter().map(|section| html! {
+					<DescriptionSection section={section.clone()} show_selectors={*show_selectors} />
+				}).collect::<Vec<_>>()}
+			</div>
+		}
 	});
-	
+
 	html! {
 		<div>
 			{name.unwrap_or_default()}
