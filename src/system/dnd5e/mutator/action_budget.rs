@@ -41,7 +41,8 @@ impl Mutator for AddToActionBudget {
 					ActionBudgetKind::Attack => " when you use the attack action",
 					_ => "",
 				}
-			),
+			)
+			.into(),
 			..Default::default()
 		}
 	}

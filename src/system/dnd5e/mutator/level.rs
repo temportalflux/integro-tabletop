@@ -42,7 +42,7 @@ impl Mutator for GrantByLevel {
 			}
 			sections.push(description::Section {
 				title: Some(format!("Level {level}")),
-				kind: Some(description::SectionKind::HasChildren(children)),
+				children: children,
 				..Default::default()
 			})
 		}
@@ -55,8 +55,8 @@ impl Mutator for GrantByLevel {
 					.as_ref()
 					.map(String::as_str)
 					.unwrap_or("Character")
-			),
-			kind: Some(description::SectionKind::HasChildren(sections)),
+			).into(),
+			children: sections,
 			..Default::default()
 		}
 	}

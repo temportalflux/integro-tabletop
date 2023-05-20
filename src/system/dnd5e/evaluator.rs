@@ -1,5 +1,7 @@
 mod get_ability;
 pub use get_ability::*;
+mod get_prof_bonus;
+pub use get_prof_bonus::*;
 mod get_hit_points;
 pub use get_hit_points::*;
 mod get_level;

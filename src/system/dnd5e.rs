@@ -134,6 +134,7 @@ pub fn node_registry() -> NodeRegistry {
 	registry.register_mutator::<PickN>();
 
 	registry.register_evaluator::<GetAbilityModifier>();
+	registry.register_evaluator::<GetProficiencyBonus>();
 	registry.register_evaluator::<GetHitPoints>();
 	registry.register_evaluator::<GetLevel>();
 	registry.register_evaluator::<HasArmorEquipped>();

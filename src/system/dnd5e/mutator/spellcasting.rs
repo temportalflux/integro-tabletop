@@ -81,7 +81,8 @@ impl Mutator for Spellcasting {
 					"Cast spells as a {} using {}.",
 					caster.name(),
 					caster.ability.long_name()
-				),
+				)
+				.into(),
 				..Default::default()
 			},
 			Operation::AddPrepared {
@@ -96,14 +97,15 @@ impl Mutator for Spellcasting {
 					content: format!(
 						"Add spells which are always prepared, using {}.",
 						self.ability.long_name()
-					),
-					selectors,
+					)
+					.into(),
+					children: vec![selectors.into()],
 					..Default::default()
 				}
 			}
 			Operation::AddSource => description::Section {
 				title: Some("Spellcasting: Expanded Spell List".into()),
-				content: format!("Add spells you can select from for the TODO class."),
+				content: format!("Add spells you can select from for the TODO class.").into(),
 				..Default::default()
 			},
 		}

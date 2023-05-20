@@ -70,7 +70,10 @@ impl SystemComponent for Spell {
 impl FromKDL for Spell {
 	fn from_kdl(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
 		let name = node.get_str_req("name")?.to_owned();
-		let description = description::Info::from_kdl_all(node, ctx)?;
+		let description = match node.query_opt("scope() > description")? {
+			None => description::Info::default(),
+			Some(node) => description::Info::from_kdl(node, &mut ctx.next_node())?,
+		};
 		let rank = node.query_i64_req("scope() > rank", 0)? as u8;
 		let school_tag = node
 			.query_str_opt("scope() > school", 0)?

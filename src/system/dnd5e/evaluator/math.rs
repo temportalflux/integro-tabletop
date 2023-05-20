@@ -228,7 +228,7 @@ mod test {
 				operation: MathOp::Subtract,
 				minimum: Some(0),
 				maximum: None,
-				values: vec![Value::Evaluated(GetLevel(None).into()), Value::Fixed(10)],
+				values: vec![Value::Evaluated(GetLevel::default().into()), Value::Fixed(10)],
 			};
 			assert_eq!(from_doc(doc)?, expected.into());
 			Ok(())
@@ -246,7 +246,7 @@ mod test {
 				maximum: None,
 				values: vec![
 					Value::Evaluated(GetAbilityModifier(Ability::Constitution).into()),
-					Value::Evaluated(GetLevel(None).into()),
+					Value::Evaluated(GetLevel::default().into()),
 				],
 			};
 			assert_eq!(from_doc(doc)?, expected.into());
@@ -265,7 +265,7 @@ mod test {
 				},
 				minimum: Some(1),
 				maximum: None,
-				values: vec![Value::Evaluated(GetLevel(None).into()), Value::Fixed(2)],
+				values: vec![Value::Evaluated(GetLevel::default().into()), Value::Fixed(2)],
 			};
 			assert_eq!(from_doc(doc)?, expected.into());
 			Ok(())
@@ -323,7 +323,7 @@ mod test {
 				operation: MathOp::Subtract,
 				minimum: Some(0),
 				maximum: None,
-				values: vec![Value::Evaluated(GetLevel(None).into()), Value::Fixed(10)],
+				values: vec![Value::Evaluated(GetLevel::default().into()), Value::Fixed(10)],
 			};
 			// larger than minimum
 			let ctx = character(&[], 12);
@@ -341,7 +341,7 @@ mod test {
 				maximum: None,
 				values: vec![
 					Value::Evaluated(GetAbilityModifier(Ability::Constitution).into()),
-					Value::Evaluated(GetLevel(None).into()),
+					Value::Evaluated(GetLevel::default().into()),
 				],
 			};
 			let ctx = character(&[(Ability::Constitution, 16)], 2);
@@ -356,7 +356,7 @@ mod test {
 				},
 				minimum: None,
 				maximum: None,
-				values: vec![Value::Evaluated(GetLevel(None).into()), Value::Fixed(4)],
+				values: vec![Value::Evaluated(GetLevel::default().into()), Value::Fixed(4)],
 			};
 			let ctx = character(&[], 11);
 			// 11 / 4 = 2.75 => floored = 2
@@ -371,7 +371,7 @@ mod test {
 				},
 				minimum: None,
 				maximum: None,
-				values: vec![Value::Evaluated(GetLevel(None).into()), Value::Fixed(4)],
+				values: vec![Value::Evaluated(GetLevel::default().into()), Value::Fixed(4)],
 			};
 			let ctx = character(&[], 11);
 			// 11 / 4 = 2.75 => round up = 3
@@ -386,7 +386,7 @@ mod test {
 				},
 				minimum: None,
 				maximum: None,
-				values: vec![Value::Evaluated(GetLevel(None).into()), Value::Fixed(5)],
+				values: vec![Value::Evaluated(GetLevel::default().into()), Value::Fixed(5)],
 			};
 			let ctx = character(&[], 11);
 			// 11 / 5 = 2.2 => ceil = 3

@@ -88,7 +88,10 @@ impl FromKDL for Feature {
 		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
 		let name = node.get_str_req("name")?.to_owned();
-		let description = description::Info::from_kdl_all(node, ctx)?;
+		let description = match node.query_opt("scope() > description")? {
+			None => description::Info::default(),
+			Some(node) => description::Info::from_kdl(node, &mut ctx.next_node())?,
+		};
 
 		let collapsed = node.get_bool_opt("collapsed")?.unwrap_or_default();
 		let parent = node.get_str_opt("parent")?.map(PathBuf::from);

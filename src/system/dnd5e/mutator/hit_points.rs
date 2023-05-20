@@ -35,7 +35,8 @@ impl Mutator for AddMaxHitPoints {
 						None => "some amount".into(),
 					}
 				),
-			},
+			}
+			.into(),
 			..Default::default()
 		}
 	}
@@ -124,7 +125,7 @@ mod test {
 						maximum: None,
 						values: vec![
 							Value::Evaluated(GetAbilityModifier(Ability::Constitution).into()),
-							Value::Evaluated(GetLevel(None).into()),
+							Value::Evaluated(GetLevel::default().into()),
 						],
 					}
 					.into(),

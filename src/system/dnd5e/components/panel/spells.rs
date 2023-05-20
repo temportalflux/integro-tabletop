@@ -4,7 +4,7 @@ use crate::{
 	system::{
 		core::{ArcNodeRegistry, ModuleId, SourceId},
 		dnd5e::{
-			components::{editor::CollapsableCard, SharedCharacter},
+			components::{editor::{CollapsableCard, DescriptionSection}, SharedCharacter},
 			data::{
 				character::spellcasting::{CasterKind, SpellEntry},
 				proficiency, spell, Spell,
@@ -835,7 +835,7 @@ fn spell_list_item(
 fn spell_content(spell: &Spell, entry: Option<&SpellEntry>) -> Html {
 	use crate::{
 		components::{Tag, Tags},
-		system::dnd5e::{components::editor::description, data::AreaOfEffect},
+		system::dnd5e::{data::AreaOfEffect},
 	};
 	use spell::{CastingDuration, DurationKind};
 	let mut sections = Vec::new();
@@ -967,7 +967,9 @@ fn spell_content(spell: &Spell, entry: Option<&SpellEntry>) -> Html {
 	html! {<>
 		{sections}
 		<div class="hr my-2" />
-		{description(&spell.description, false)}
+		{spell.description.sections.iter().map(|section| html! {
+			<DescriptionSection section={section.clone()} show_selectors={false} />
+		}).collect::<Vec<_>>()}
 	</>}
 }
 

@@ -27,7 +27,8 @@ impl Mutator for Speed {
 					BoundValue::Additive(value) => format!("increases by {value} feet"),
 					BoundValue::Subtract(value) => format!("decreases by {value} feet"),
 				}
-			),
+			)
+			.into(),
 			..Default::default()
 		}
 	}

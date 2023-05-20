@@ -65,8 +65,10 @@ impl Mutator for AbilityScoreChange {
 
 		description::Section {
 			title: Some("Ability Score Increase".into()),
-			content: format!("{ability}; {}.", op_descs.join(", ")),
-			selectors: SelectorMetaVec::default().with_enum("Ability", &self.ability),
+			content: format!("{ability}; {}.", op_descs.join(", ")).into(),
+			children: vec![SelectorMetaVec::default()
+				.with_enum("Ability", &self.ability)
+				.into()],
 			..Default::default()
 		}
 	}

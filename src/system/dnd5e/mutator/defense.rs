@@ -73,7 +73,8 @@ impl Mutator for AddDefense {
 					.as_ref()
 					.map(|ctx| format!(" from {ctx}"))
 					.unwrap_or_default(),
-			),
+			)
+			.into(),
 			..Default::default()
 		}
 	}
