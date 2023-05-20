@@ -6,7 +6,7 @@ use crate::{
 			components::{panel::SpellFilter, GeneralProp, SharedCharacter},
 			data::{
 				bundle::{Background, Lineage, Race, RaceVariant, Upbringing},
-				character::{ActionEffect, Persistent},
+				character::{ActionEffect, Persistent, spellcasting::SpellEntry},
 				description, Feature, Spell,
 			},
 			DnD5e,
@@ -997,6 +997,16 @@ fn ModalObjectBrowser(props: &ModalObjectBrowserProps) -> Html {
 			}
 		}
 	});
+	// TODO: Somehow generate the spell entry for the feature's selector data
+	let spell_entry = SpellEntry {
+		ability: crate::system::dnd5e::data::Ability::Charisma,
+		source: std::path::PathBuf::new(),
+		classified_as: None,
+		cast_via_slot: false,
+		cast_via_uses: None,
+		range: None,
+		forced_rank: None,
+	};
 	html! {<>
 		<div class="modal-header">
 			<h1 class="modal-title fs-4">{"Browse Spells"}</h1>
@@ -1006,6 +1016,7 @@ fn ModalObjectBrowser(props: &ModalObjectBrowserProps) -> Html {
 			<AvailableSpellList
 				{header_addon}
 				filter={props.filter.clone().unwrap_or_default()}
+				entry={spell_entry}
 			/>
 		</div>
 	</>}

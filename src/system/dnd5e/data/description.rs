@@ -42,16 +42,25 @@ impl Info {
 		self.sections.is_empty()
 	}
 
-	pub fn evaluate(mut self, state: &Character) -> Self {
+	pub fn evaluate(self, state: &Character) -> Self {
+		self.evaluate_with(state, None)
+	}
+
+	pub fn evaluate_with(mut self, state: &Character, args: Option<HashMap<String, String>>) -> Self {
 		if !self.contains_format_syntax() {
 			return self;
 		}
-		let args = self.format_args.evaluate(state);
+		let mut all_args = self.format_args.evaluate(state);
+		if let Some(parent_args) = args {
+			for (key, value) in parent_args {
+				all_args.insert(key.into(), value.into());
+			}
+		}
 		if let Some(short) = &mut self.short {
-			FormatArgs::apply_to(short, &args);
+			FormatArgs::apply_to(short, &all_args);
 		}
 		for section in &mut self.sections {
-			section.apply_args(state, &args);
+			section.apply_args(state, &all_args);
 		}
 		self
 	}

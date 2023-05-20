@@ -565,7 +565,7 @@ fn SpellModal(
 			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
 		</div>
 		<div class="modal-body">
-			{spell_content(spell, Some(entry), &state)}
+			{spell_content(spell, entry, &state)}
 		</div>
 	</>}
 }
@@ -641,7 +641,7 @@ fn ManagerCasterModal(CasterNameProps { caster_id }: &CasterNameProps) -> Html {
 							spell_id={spell.id.clone()}
 							rank={spell.rank}
 						/>};
-						spell_list_item("selected", &state, spell, Some(&caster.spell_entry), action)
+						spell_list_item("selected", &state, spell, &caster.spell_entry, action)
 					}).collect::<Vec<_>>()}
 				</CollapsableCard>
 				<CollapsableCard
@@ -664,6 +664,7 @@ fn ManagerCasterModal(CasterNameProps { caster_id }: &CasterNameProps) -> Html {
 							}
 						})}
 						filter={filter.clone()}
+						entry={caster.spell_entry.clone()}
 					/>
 				</CollapsableCard>
 			</div>
@@ -800,7 +801,7 @@ fn spell_list_item(
 	section_id: &str,
 	state: &SharedCharacter,
 	spell: &Spell,
-	entry: Option<&SpellEntry>,
+	entry: &SpellEntry,
 	action: Html,
 ) -> Html {
 	let collapse_id = format!("{section_id}-{}", spell.id.ref_id());
@@ -836,7 +837,7 @@ fn spell_list_item(
 	}
 }
 
-fn spell_content(spell: &Spell, entry: Option<&SpellEntry>, state: &SharedCharacter) -> Html {
+fn spell_content(spell: &Spell, entry: &SpellEntry, state: &SharedCharacter) -> Html {
 	use crate::{
 		components::{Tag, Tags},
 		system::dnd5e::data::AreaOfEffect,
@@ -876,7 +877,7 @@ fn spell_content(spell: &Spell, entry: Option<&SpellEntry>, state: &SharedCharac
 	sections.push(html! {
 		<div class="property">
 			<strong>{"Range:"}</strong>
-			{match entry.map(|entry| entry.range.as_ref()).flatten().unwrap_or(&spell.range) {
+			{match entry.range.as_ref().unwrap_or(&spell.range) {
 				spell::Range::OnlySelf => html!("Self"),
 				spell::Range::Touch => html!("Touch"),
 				spell::Range::Unit { distance, unit } => html! {<>{distance}{" "}{unit}</>},
@@ -969,7 +970,14 @@ fn spell_content(spell: &Spell, entry: Option<&SpellEntry>, state: &SharedCharac
 	});
 
 	let desc = {
-		let desc = spell.description.clone().evaluate(state);
+		let modifier = state.ability_modifier(entry.ability, None);
+		let prof_bonus = state.proficiency_bonus();
+		let caster_args = std::collections::HashMap::from([
+			("{CasterMod}".into(), format!("{:+}", modifier)),
+			("{CasterAtk}".into(), format!("{:+}", modifier + prof_bonus)),
+			("{CasterDC}".into(), format!("{}", 8 + modifier + prof_bonus)),
+		]);
+		let desc = spell.description.clone().evaluate_with(state, Some(caster_args));
 		desc.sections
 			.into_iter()
 			.map(|section| {
@@ -990,6 +998,7 @@ fn spell_content(spell: &Spell, entry: Option<&SpellEntry>, state: &SharedCharac
 #[derive(Clone, PartialEq, Properties)]
 pub struct AvailableSpellListProps {
 	pub filter: SpellFilter,
+	pub entry: SpellEntry,
 	pub header_addon: HeaderAddon,
 }
 #[derive(Clone)]
@@ -1031,6 +1040,7 @@ pub fn AvailableSpellList(props: &AvailableSpellListProps) -> Html {
 		{
 			let AvailableSpellListProps {
 				filter,
+				entry,
 				header_addon,
 			} = props.clone();
 			let state = state.clone();
@@ -1059,7 +1069,7 @@ pub fn AvailableSpellList(props: &AvailableSpellListProps) -> Html {
 					let info = (spell.name.clone(), spell.rank);
 					let html = {
 						let addon = (header_addon.0)(&spell);
-						spell_list_item("relevant", &state, &spell, None, addon)
+						spell_list_item("relevant", &state, &spell, &entry, addon)
 					};
 					sorted_info.insert(idx, info);
 					htmls.insert(idx, html);
