@@ -1,17 +1,20 @@
 use crate::{
-	kdl_ext::{FromKDL, NodeExt},
-	system::dnd5e::data::{
-		character::{ActionBudgetKind, Character},
-		description, scaling,
+	kdl_ext::{FromKDL, NodeExt, ValueExt},
+	system::dnd5e::{
+		data::{
+			character::{ActionBudgetKind, Character},
+			description,
+		},
+		Value,
 	},
-	utility::Mutator,
+	utility::{Evaluator, Mutator},
 };
 use std::str::FromStr;
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct AddToActionBudget {
 	pub action_kind: ActionBudgetKind,
-	pub amount: scaling::Value<u32>,
+	pub amount: Value<i32>,
 }
 
 crate::impl_trait_eq!(AddToActionBudget);
@@ -26,10 +29,10 @@ impl Mutator for AddToActionBudget {
 			content: format!(
 				"You get {} additional {} on your turn{}.",
 				match &self.amount {
-					scaling::Value::Fixed(value) => value.to_string(),
+					Value::Fixed(value) => value.to_string(),
 					// TODO: Show a table for the Basis::Level, where the first column is
 					// the class or character level, and the second column the (optional) value.
-					scaling::Value::Scaled(_basis) => "some".into(),
+					Value::Evaluated(_basis) => "some".into(),
 				},
 				match &self.action_kind {
 					ActionBudgetKind::Attack => "attack(s)",
@@ -48,11 +51,12 @@ impl Mutator for AddToActionBudget {
 	}
 
 	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
-		if let Some(amount) = self.amount.evaluate(stats) {
+		let amount = self.amount.evaluate(stats);
+		if amount >= 0 {
 			stats
 				.features_mut()
 				.action_budget
-				.push(self.action_kind, amount, parent.into());
+				.push(self.action_kind, amount as u32, parent.into());
 		}
 	}
 }
@@ -63,7 +67,9 @@ impl FromKDL for AddToActionBudget {
 		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
 		let action_kind = ActionBudgetKind::from_str(node.get_str_req(ctx.consume_idx())?)?;
-		let amount = scaling::Value::from_kdl(node, ctx)?;
+		let amount = Value::from_kdl(node, node.entry_req(ctx.consume_idx())?, ctx, |value| {
+			Ok(value.as_i64_req()? as i32)
+		})?;
 		Ok(Self {
 			action_kind,
 			amount,
@@ -88,7 +94,7 @@ mod test {
 			let doc = "mutator \"add_to_action_budget\" \"Action\" 1";
 			let expected = AddToActionBudget {
 				action_kind: ActionBudgetKind::Action,
-				amount: scaling::Value::Fixed(1),
+				amount: Value::Fixed(1),
 			};
 			assert_eq!(from_doc(doc)?, expected.into());
 			Ok(())
@@ -99,7 +105,7 @@ mod test {
 			let doc = "mutator \"add_to_action_budget\" \"Attack\" 1";
 			let expected = AddToActionBudget {
 				action_kind: ActionBudgetKind::Attack,
-				amount: scaling::Value::Fixed(1),
+				amount: Value::Fixed(1),
 			};
 			assert_eq!(from_doc(doc)?, expected.into());
 			Ok(())
@@ -110,7 +116,7 @@ mod test {
 			let doc = "mutator \"add_to_action_budget\" \"Bonus\" 1";
 			let expected = AddToActionBudget {
 				action_kind: ActionBudgetKind::Bonus,
-				amount: scaling::Value::Fixed(1),
+				amount: Value::Fixed(1),
 			};
 			assert_eq!(from_doc(doc)?, expected.into());
 			Ok(())
@@ -121,7 +127,7 @@ mod test {
 			let doc = "mutator \"add_to_action_budget\" \"Reaction\" 1";
 			let expected = AddToActionBudget {
 				action_kind: ActionBudgetKind::Reaction,
-				amount: scaling::Value::Fixed(1),
+				amount: Value::Fixed(1),
 			};
 			assert_eq!(from_doc(doc)?, expected.into());
 			Ok(())
@@ -149,7 +155,7 @@ mod test {
 		fn action() {
 			let character = character(AddToActionBudget {
 				action_kind: ActionBudgetKind::Action,
-				amount: scaling::Value::Fixed(1),
+				amount: Value::Fixed(1),
 			});
 			let budget = &character.features().action_budget;
 			assert_eq!(
@@ -162,7 +168,7 @@ mod test {
 		fn attack() {
 			let character = character(AddToActionBudget {
 				action_kind: ActionBudgetKind::Attack,
-				amount: scaling::Value::Fixed(1),
+				amount: Value::Fixed(1),
 			});
 			let budget = &character.features().action_budget;
 			assert_eq!(
@@ -175,7 +181,7 @@ mod test {
 		fn bonus() {
 			let character = character(AddToActionBudget {
 				action_kind: ActionBudgetKind::Bonus,
-				amount: scaling::Value::Fixed(1),
+				amount: Value::Fixed(1),
 			});
 			let budget = &character.features().action_budget;
 			assert_eq!(
@@ -188,7 +194,7 @@ mod test {
 		fn reaction() {
 			let character = character(AddToActionBudget {
 				action_kind: ActionBudgetKind::Reaction,
-				amount: scaling::Value::Fixed(1),
+				amount: Value::Fixed(1),
 			});
 			let budget = &character.features().action_budget;
 			assert_eq!(

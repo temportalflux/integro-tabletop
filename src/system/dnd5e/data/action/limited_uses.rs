@@ -1,6 +1,9 @@
 use crate::{
-	kdl_ext::{DocumentExt, FromKDL},
-	system::dnd5e::data::{character::Character, scaling, Rest},
+	kdl_ext::{DocumentExt, FromKDL, NodeExt, ValueExt},
+	system::dnd5e::{
+		data::{character::Character, Rest},
+		Value,
+	},
 	utility::{IdPath, Selector},
 };
 use std::{path::PathBuf, str::FromStr};
@@ -8,7 +11,7 @@ use std::{path::PathBuf, str::FromStr};
 #[derive(Clone, PartialEq, Debug)]
 pub struct LimitedUses {
 	/// The number of uses the feature has until it resets.
-	pub max_uses: scaling::Value<u32>,
+	pub max_uses: Value<i32>,
 	/// Consumed uses resets when the user takes at least this rest
 	/// (a reset on a short rest will also reset on long rest).
 	pub reset_on: Option<Rest>,
@@ -53,8 +56,14 @@ impl FromKDL for LimitedUses {
 		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
 		let max_uses = {
+			let mut ctx = ctx.next_node();
 			let node = node.query_req("scope() > max_uses")?;
-			scaling::Value::from_kdl(node, &mut ctx.next_node())?
+			Value::from_kdl(
+				node,
+				node.entry_req(ctx.consume_idx())?,
+				&mut ctx,
+				|value| Ok(value.as_i64_req()? as i32),
+			)?
 		};
 		let reset_on = match node.query_str_opt("scope() > reset_on", 0)? {
 			None => None,
@@ -75,15 +84,16 @@ mod test {
 		use super::*;
 		use crate::{
 			kdl_ext::NodeContext,
-			system::dnd5e::data::{scaling, Rest},
+			system::{dnd5e::{data::Rest, evaluator::GetLevel}, core::NodeRegistry},
 		};
 
 		fn from_doc(doc: &str) -> anyhow::Result<LimitedUses> {
+			let mut ctx = NodeContext::registry(NodeRegistry::default_with_eval::<GetLevel>());
 			let document = doc.parse::<kdl::KdlDocument>()?;
 			let node = document
 				.query("scope() > limited_uses")?
 				.expect("missing limited_uses node");
-			LimitedUses::from_kdl(node, &mut NodeContext::default())
+			LimitedUses::from_kdl(node, &mut ctx)
 		}
 
 		#[test]
@@ -92,7 +102,7 @@ mod test {
 				max_uses 2
 			}";
 			let expected = LimitedUses {
-				max_uses: scaling::Value::Fixed(2),
+				max_uses: Value::Fixed(2),
 				..Default::default()
 			};
 			assert_eq!(from_doc(doc)?, expected);
@@ -106,7 +116,7 @@ mod test {
 				reset_on \"Short\"
 			}";
 			let expected = LimitedUses {
-				max_uses: scaling::Value::Fixed(2),
+				max_uses: Value::Fixed(2),
 				reset_on: Some(Rest::Short),
 				..Default::default()
 			};
@@ -117,27 +127,23 @@ mod test {
 		#[test]
 		fn scaling_uses_reset() -> anyhow::Result<()> {
 			let doc = "limited_uses {
-				max_uses (Scaled)\"Level\" class=\"SpecificClass\" {
+				max_uses (Evaluator)\"get_level\" class=\"SpecificClass\" {
 					level 2 1
 					level 5 2
 					level 10 4
 					level 14 5
-					level 20
+					level 20 -1
 				}
 				reset_on \"Long\"
 			}";
 			let expected = LimitedUses {
-				max_uses: scaling::Value::Scaled(scaling::Basis::Level {
-					class_name: Some("SpecificClass".into()),
-					level_map: [
-						(2, Some(1)),
-						(5, Some(2)),
-						(10, Some(4)),
-						(14, Some(5)),
-						(20, None),
-					]
+				max_uses: Value::Evaluated(
+					GetLevel {
+						class_name: Some("SpecificClass".into()),
+						order_map: [(2, 1), (5, 2), (10, 4), (14, 5), (20, -1)].into(),
+					}
 					.into(),
-				}),
+				),
 				reset_on: Some(Rest::Long),
 				..Default::default()
 			};

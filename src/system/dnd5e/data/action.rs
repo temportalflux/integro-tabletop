@@ -69,21 +69,26 @@ mod test {
 		use crate::{
 			kdl_ext::NodeContext,
 			system::{
-				core::SourceId,
-				dnd5e::data::{
-					roll::{Die, Roll},
-					scaling, Ability, Condition, DamageRoll, DamageType, Rest,
+				core::{SourceId, NodeRegistry},
+				dnd5e::{
+					data::{
+						roll::{Die, Roll},
+						Ability, Condition, DamageRoll, DamageType, Rest,
+					},
+					evaluator::GetLevel,
+					Value,
 				},
 			},
 			utility,
 		};
 
 		fn from_doc(doc: &str) -> anyhow::Result<Action> {
+			let mut ctx = NodeContext::registry(NodeRegistry::default_with_eval::<GetLevel>());
 			let document = doc.parse::<kdl::KdlDocument>()?;
 			let node = document
 				.query("scope() > action")?
 				.expect("missing action node");
-			Action::from_kdl(node, &mut NodeContext::default())
+			Action::from_kdl(node, &mut ctx)
 		}
 
 		#[test]
@@ -151,7 +156,7 @@ mod test {
 				activation_kind: ActivationKind::Action,
 				attack: None,
 				limited_uses: Some(LimitedUses {
-					max_uses: scaling::Value::Fixed(1),
+					max_uses: Value::Fixed(1),
 					reset_on: Some(Rest::Long),
 					..Default::default()
 				}),
@@ -166,12 +171,12 @@ mod test {
 			let doc = "action {
 				activation \"Action\"
 				limited_uses {
-					max_uses (Scaled)\"Level\" {
+					max_uses (Evaluator)\"get_level\" {
 						level 2 1
 						level 5 2
 						level 10 4
 						level 14 5
-						level 20
+						level 20 -1
 					}
 					reset_on \"Long\"
 				}
@@ -180,17 +185,13 @@ mod test {
 				activation_kind: ActivationKind::Action,
 				attack: None,
 				limited_uses: Some(LimitedUses {
-					max_uses: scaling::Value::Scaled(scaling::Basis::Level {
-						class_name: None,
-						level_map: [
-							(2, Some(1)),
-							(5, Some(2)),
-							(10, Some(4)),
-							(14, Some(5)),
-							(20, None),
-						]
+					max_uses: Value::Evaluated(
+						GetLevel {
+							class_name: None,
+							order_map: [(2, 1), (5, 2), (10, 4), (14, 5), (20, -1)].into(),
+						}
 						.into(),
-					}),
+					),
 					reset_on: Some(Rest::Long),
 					..Default::default()
 				}),

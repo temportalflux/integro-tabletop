@@ -2,7 +2,7 @@ use super::SharedCharacter;
 use crate::{
 	components::stop_propagation,
 	system::dnd5e::data::{action::LimitedUses, character::Persistent},
-	utility::InputExt,
+	utility::{Evaluator, InputExt},
 };
 use std::sync::Arc;
 use yew::prelude::*;
@@ -15,7 +15,10 @@ pub struct UsesCounter<'parent> {
 impl<'parent> UsesCounter<'parent> {
 	pub fn to_html(self) -> Html {
 		let consumed_uses = self.limited_uses.get_uses_consumed(&self.state);
-		let Some(max_uses) = self.limited_uses.max_uses.evaluate(&self.state) else { return html! {} };
+		let max_uses = self.limited_uses.max_uses.evaluate(&self.state);
+		if max_uses < 0 {
+			return html! {};
+		}
 
 		let consume_delta = Callback::from({
 			let state = self.state.clone();
@@ -43,7 +46,7 @@ impl<'parent> UsesCounter<'parent> {
 				});
 
 				html! {<>
-					{(0..max_uses)
+					{(0..max_uses as u32)
 						.map(|idx| {
 							html! {
 								<input
@@ -59,7 +62,7 @@ impl<'parent> UsesCounter<'parent> {
 			}
 			// otherwise we use a numerical counter form
 			_ => {
-				html! {<UseCounterDelta {max_uses} {consumed_uses} on_apply={consume_delta.reform(|delta: i32| -delta)} />}
+				html! {<UseCounterDelta max_uses={max_uses as u32} {consumed_uses} on_apply={consume_delta.reform(|delta: i32| -delta)} />}
 			}
 		};
 

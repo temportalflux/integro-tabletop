@@ -46,7 +46,7 @@ impl Evaluator for GetLevel {
 			return level as i32;
 		}
 		for (key, value) in self.order_map.iter().rev() {
-			if level <= *key {
+			if level >= *key {
 				return *value;
 			}
 		}
@@ -61,9 +61,7 @@ impl FromKDL for GetLevel {
 		node: &kdl::KdlNode,
 		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
-		let class_name = node
-			.get_str_opt(ctx.consume_idx())?
-			.map(ToString::to_string);
+		let class_name = node.get_str_opt("class")?.map(ToString::to_string);
 		let mut order_map = BTreeMap::new();
 		for node in node.query_all("scope() > level")? {
 			let mut ctx = ctx.next_node();
@@ -103,7 +101,7 @@ mod test {
 
 		#[test]
 		fn class_level() -> anyhow::Result<()> {
-			let doc = "evaluator \"get_level\" \"Wizard\"";
+			let doc = "evaluator \"get_level\" class=\"Wizard\"";
 			let expected = GetLevel::from(Some("Wizard"));
 			assert_eq!(from_doc(doc)?, expected.into());
 			Ok(())

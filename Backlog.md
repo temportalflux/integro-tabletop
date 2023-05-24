@@ -29,7 +29,7 @@
 - non-stub search functionality in main panel
 - Spell management
 	- search available spells to be selected
-- ritual & focus functionality
+- focus functionality
 - limited uses for add_prepared (self-defined, using another feature, or charges)
 - add_prepared spells cost (at-will vs requires_slot vs limited_use)
 - Spell Components
