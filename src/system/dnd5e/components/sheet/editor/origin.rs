@@ -3,10 +3,13 @@ use crate::{
 	system::{
 		core::SourceId,
 		dnd5e::{
-			components::{panel::SpellFilter, GeneralProp, SharedCharacter},
+			components::{GeneralProp, SharedCharacter},
 			data::{
 				bundle::{Background, Lineage, Race, RaceVariant, Upbringing},
-				character::{ActionEffect, Persistent, spellcasting::SpellEntry},
+				character::{
+					spellcasting::{SpellEntry, SpellFilter},
+					ActionEffect, Persistent,
+				},
 				description, Feature, Spell,
 			},
 			DnD5e,

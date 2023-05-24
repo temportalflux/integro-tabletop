@@ -24,15 +24,50 @@ pub enum Criteria {
 	ContainsProperty(String, Box<Criteria>),
 	/// Passes if the value being evaluated:
 	/// 1. Is an array
-	/// 2. Contains a value equivalent to the provided value
-	ContainsValue(Box<Criteria>),
+	/// 2. The criteria matches against any of the contents
+	ContainsElement(Box<Criteria>),
 	/// Passes if the value being evaluated passes all of the provided criteria.
-	All(Vec<Box<Criteria>>),
+	All(Vec<Criteria>),
 	/// Passes if the value being evaluated passes any of the provided criteria.
-	Any(Vec<Box<Criteria>>),
+	Any(Vec<Criteria>),
 }
 
 impl Criteria {
+	/// Converts `value` into a `serde_json::Value`, and returns the `Exact` enum with that value.
+	pub fn exact<T: Into<serde_json::Value>>(value: T) -> Self {
+		Self::Exact(value.into())
+	}
+
+	/// Returns the `Not` enum with the boxed value of `criteria`.
+	pub fn not(criteria: Self) -> Self {
+		Self::Not(criteria.into())
+	}
+
+	/// Returns the `ContainsSubstring` enum with the provided string.
+	pub fn contains_substr(str: String) -> Self {
+		Self::ContainsSubstring(str)
+	}
+
+	/// Returns the `ContainsProperty` enum with the provided string key and the boxed value of `criteria`.
+	pub fn contains_prop(key: impl Into<String>, criteria: Self) -> Self {
+		Self::ContainsProperty(key.into(), criteria.into())
+	}
+
+	/// Returns the `ContainsElement` enum with the boxed value of `criteria`.
+	pub fn contains_element(criteria: Self) -> Self {
+		Self::ContainsElement(criteria.into())
+	}
+
+	/// Returns the `All` enum with the value of `items` being collected as a `Vec`.
+	pub fn all<I: IntoIterator<Item = Criteria>>(items: I) -> Self {
+		Self::All(items.into_iter().collect())
+	}
+
+	/// Returns the `Any` enum with the value of `items` being collected as a `Vec`.
+	pub fn any<I: IntoIterator<Item = Criteria>>(items: I) -> Self {
+		Self::Any(items.into_iter().collect())
+	}
+
 	pub fn is_relevant(&self, value: &serde_json::Value) -> bool {
 		match self {
 			Self::Exact(expected) => value == expected,
@@ -46,7 +81,7 @@ impl Criteria {
 				let Some(value) = map.get(key) else { return false; };
 				criteria.is_relevant(value)
 			}
-			Self::ContainsValue(criteria) => {
+			Self::ContainsElement(criteria) => {
 				let serde_json::Value::Array(value_list) = value else { return false; };
 				for value in value_list {
 					if criteria.is_relevant(value) {
