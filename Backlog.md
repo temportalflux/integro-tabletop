@@ -5,7 +5,6 @@
 - force refresh button to forcibly reload one or more modules by wiping those entries from the database and refetching them from source
 
 ## UI Backlog
-- PickN mutator description (name, body, selector metadata)
 - Limited Use can use the resource of another feature/action by its path, and has an associated cost when doing so
 - UI components for rendering features, conditions, mutators, etc which is used for all presentations (mutators / features in origin & item browsers, condition cards, feature/action modals, etc)
 

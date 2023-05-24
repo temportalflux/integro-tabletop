@@ -9,7 +9,7 @@ use crate::{
 				SharedCharacter,
 			},
 			data::{
-				character::spellcasting::{CasterKind, SpellEntry},
+				character::spellcasting::{CasterKind, RitualCapability, SpellEntry, SpellFilter},
 				proficiency, spell, Spell,
 			},
 			DnD5e,
@@ -20,10 +20,7 @@ use crate::{
 use convert_case::{Case, Casing};
 use futures_util::{FutureExt, StreamExt};
 use itertools::Itertools;
-use std::{
-	collections::{BTreeMap, HashSet},
-	pin::Pin,
-};
+use std::{collections::BTreeMap, pin::Pin};
 use yew::prelude::*;
 
 fn rank_suffix(rank: u8) -> &'static str {
@@ -45,6 +42,7 @@ pub fn Spells() -> Html {
 	sections.insert_slots(&state);
 	sections.insert_selected_spells(&state);
 	sections.insert_derived_spells(&state, &system);
+	sections.insert_available_ritual_spells(&state, &system);
 
 	let sections = {
 		let mut html = Vec::new();
@@ -73,7 +71,7 @@ pub fn Spells() -> Html {
 				(name, modifier, atk_bonus, save_dc)
 			})
 			.unzip_n_vec();
-		let names = names.into_iter().map(|caster_id| {
+		let names = names.into_iter().sorted().map(|caster_id| {
 			html! {
 				<ManageCasterButton {caster_id} />
 			}
@@ -240,6 +238,59 @@ impl<'c> SpellSections<'c> {
 			}
 		}
 	}
+
+	fn insert_available_ritual_spells(&mut self, state: &'c SharedCharacter, system: &'c DnD5e) {
+		// TODO: Realistically, this is data that can be compiled when the sheet opens.
+		// The only things that affect this is:
+		// 1. what modules are loaded (i.e. what spells are available)
+		// 2. what caster features are in the character (what classes are selected)
+		for caster_id in state.persistent().selected_spells.iter_caster_ids() {
+			let Some(caster) = state.spellcasting().get_caster(caster_id) else { continue; };
+			let Some(ritual_capability) = &caster.ritual_capability else { continue; };
+			if !ritual_capability.available_spells {
+				continue;
+			}
+
+			// TODO: Query the database instead of accessing from system memory data
+
+			let mut available_spells_filter = caster.spell_filter(&*state);
+			// each spell the filter matches must be a ritual
+			available_spells_filter.ritual = Some(true);
+
+			// TODO: For wizards, this should check the spell source instead of always checking the database for spells.
+			for (id, spell) in system.spells.iter() {
+				// we dont care about any selected spells for this group
+				if state
+					.persistent()
+					.selected_spells
+					.get_spell(caster_id, id)
+					.is_some()
+				{
+					continue;
+				}
+				// nor do we care about spells which are not available to this caster
+				if !available_spells_filter.spell_matches(spell) {
+					continue;
+				}
+
+				// the remaining spells are ones which are:
+				// 1. available to the caster
+				// 2. not selected by the character for this class
+				// 3. are ritually castable for this caster
+
+				// ritual-only spells can only be cast at their specified rank
+				let Some(section) = self.sections.get_mut(&spell.rank) else { continue; };
+				section.insert_spell(
+					spell,
+					&caster.spell_entry,
+					SpellLocation::AvailableAsRitual {
+						spell_id: id.clone(),
+						caster_id: caster_id.clone(),
+					},
+				);
+			}
+		}
+	}
 }
 
 #[derive(Default)]
@@ -262,6 +313,10 @@ enum SpellLocation {
 		spell_id: SourceId,
 		source: std::path::PathBuf,
 	},
+	AvailableAsRitual {
+		spell_id: SourceId,
+		caster_id: String,
+	},
 }
 impl SpellLocation {
 	fn get<'this, 'c>(
@@ -283,6 +338,14 @@ impl SpellLocation {
 				let Some(entries) = state.spellcasting().prepared_spells().get(spell_id) else { return None; };
 				let Some(entry) = entries.get(source) else { return None; };
 				Some((spell, entry))
+			}
+			SpellLocation::AvailableAsRitual {
+				spell_id,
+				caster_id,
+			} => {
+				let Some(caster) = state.spellcasting().get_caster(caster_id) else { return None; };
+				let Some(spell) = system.spells.get(spell_id) else { return None; };
+				Some((spell, &caster.spell_entry))
 			}
 		}
 	}
@@ -424,23 +487,39 @@ fn spell_row<'c>(props: SpellRowProps<'c>) -> Html {
 		},
 	} = props;
 
-	let use_kind = match (spell.rank, entry.cast_via_uses.as_ref()) {
-		(0, None) => UseSpell::AtWill,
-		(spell_rank, None) => UseSpell::Slot {
+	let use_kind = match (&location, spell.rank, entry.cast_via_uses.as_ref()) {
+		(SpellLocation::AvailableAsRitual { .. }, _, _) => UseSpell::RitualOnly,
+		(_, 0, None) => UseSpell::AtWill,
+		(_, spell_rank, None) => UseSpell::Slot {
 			spell_rank,
 			slot_rank: section_rank,
 			slots: slots.clone(),
 		},
-		(_, Some(_limited_uses)) => {
+		(_, _, Some(_limited_uses)) => {
 			// TODO: LimitedUse button
 			UseSpell::AtWill
 			//UseSpell::LimitedUse { uses_remaining: 3, max_uses: 5 },
 		}
 	};
 
-	// TODO: concentration and ritual icons after the spell name
-	// TODO: Casting source under the spell name (`entry.source`)
+	let can_ritual_cast = spell.casting_time.ritual && {
+		use_kind == UseSpell::RitualOnly || {
+			let classified = entry.classified_as.as_ref();
+			let caster = classified
+				.map(|id| state.spellcasting().get_caster(id))
+				.flatten();
+			let ritual_casting = caster
+				.map(|caster| caster.ritual_capability.as_ref())
+				.flatten();
+			let ritual_cast_selected = ritual_casting
+				.map(|ritual| ritual.selected_spells)
+				.unwrap_or_default();
+			ritual_cast_selected
+		}
+	};
+
 	// TODO: tooltip for casting time duration
+	// TODO: Tooltips for ritual & concentration icons
 	html! {
 		<SpellModalRowRoot {location}>
 			<td onclick={stop_propagation()}>
@@ -449,7 +528,15 @@ fn spell_row<'c>(props: SpellRowProps<'c>) -> Html {
 				</div>
 			</td>
 			<td>
-				<div>{&spell.name}</div>
+				<div>
+					{&spell.name}
+					{can_ritual_cast.then(|| html! {
+						<div class="icon ritual ms-1" />
+					}).unwrap_or_default()}
+					{spell.duration.concentration.then(|| html! {
+						<div class="icon concentration ms-1" />
+					}).unwrap_or_default()}
+				</div>
 				<div style="font-size: 10px; color: var(--bs-gray-600);">
 					{crate::data::as_feature_path_text(&entry.source)}
 				</div>
@@ -587,12 +674,7 @@ fn ManagerCasterModal(CasterNameProps { caster_id }: &CasterNameProps) -> Html {
 
 	let max_cantrips = caster.cantrip_capacity(state.persistent());
 	let max_spells = caster.spell_capacity(&state);
-	let filter = SpellFilter {
-		can_cast: Some(caster.name().clone()),
-		//tags: caster.restriction.tags.iter().cloned().collect(),
-		max_rank: caster.max_spell_rank(&state),
-		..Default::default()
-	};
+	let filter = caster.spell_filter(&state);
 	let mut num_cantrips = 0;
 	let mut num_spells = 0;
 	let mut num_all_selections = 0;
@@ -805,7 +887,23 @@ fn spell_list_item(
 	action: Html,
 ) -> Html {
 	let collapse_id = format!("{section_id}-{}", spell.id.ref_id());
-	// TODO: concentration and ritual icons in header section
+	let can_ritual_cast = spell.casting_time.ritual && {
+		let classified = entry.classified_as.as_ref();
+		let caster = classified
+			.map(|id| state.spellcasting().get_caster(id))
+			.flatten();
+		let ritual_casting = caster
+			.map(|caster| caster.ritual_capability.as_ref())
+			.flatten();
+		match ritual_casting {
+			None => false,
+			Some(RitualCapability {
+				selected_spells,
+				available_spells,
+			}) => *available_spells || *selected_spells,
+		}
+	};
+	// TODO: Tooltips for ritual & concentration icons
 	html! {
 		<div class="spell mb-1">
 			<div class="header mb-1">
@@ -815,6 +913,12 @@ fn spell_list_item(
 					data-bs-target={format!("#{collapse_id}")}
 				>
 					{spell.name.clone()}
+					{can_ritual_cast.then(|| html! {
+						<div class="icon ritual ms-1 my-auto" />
+					}).unwrap_or_default()}
+					{spell.duration.concentration.then(|| html! {
+						<div class="icon concentration ms-1 my-auto" />
+					}).unwrap_or_default()}
 					<span class="spell_rank_suffix">
 						{"("}
 						{match spell.rank {
@@ -975,9 +1079,15 @@ fn spell_content(spell: &Spell, entry: &SpellEntry, state: &SharedCharacter) -> 
 		let caster_args = std::collections::HashMap::from([
 			("{CasterMod}".into(), format!("{:+}", modifier)),
 			("{CasterAtk}".into(), format!("{:+}", modifier + prof_bonus)),
-			("{CasterDC}".into(), format!("{}", 8 + modifier + prof_bonus)),
+			(
+				"{CasterDC}".into(),
+				format!("{}", 8 + modifier + prof_bonus),
+			),
 		]);
-		let desc = spell.description.clone().evaluate_with(state, Some(caster_args));
+		let desc = spell
+			.description
+			.clone()
+			.evaluate_with(state, Some(caster_args));
 		desc.sections
 			.into_iter()
 			.map(|section| {
@@ -1015,19 +1125,6 @@ where
 	fn from(value: F) -> Self {
 		Self(std::sync::Arc::new(value))
 	}
-}
-#[derive(Clone, Debug, PartialEq, Default)]
-pub struct SpellFilter {
-	/// The spell must already be castable by the provided caster class.
-	/// This can be true if the spell contains the class tag OR the spell is in the expanded list
-	/// for the caster data (e.g. spellcasting "add_source").
-	pub can_cast: Option<String>,
-	/// The spell must be of one of these ranks.
-	pub ranks: HashSet<u8>,
-	/// The spell's rank must be <= this rank.
-	pub max_rank: Option<u8>,
-	/// The spell must have all of these tags.
-	pub tags: HashSet<String>,
 }
 #[function_component]
 pub fn AvailableSpellList(props: &AvailableSpellListProps) -> Html {
@@ -1114,49 +1211,7 @@ struct FindRelevantSpells {
 }
 impl FindRelevantSpells {
 	fn new(database: Database, node_reg: ArcNodeRegistry, filter: &SpellFilter) -> Self {
-		use crate::database::app::Criteria;
-
-		let criteria = Criteria::All({
-			let mut criteria = Vec::new();
-
-			let rank_range: Option<Vec<u8>> = match filter.max_rank {
-				Some(max_rank) => Some((0..=max_rank).collect()),
-				None if !filter.ranks.is_empty() => Some(filter.ranks.iter().map(|i| *i).collect()),
-				None => None,
-			};
-			if let Some(rank_range) = rank_range {
-				let iter_ranks = rank_range.into_iter();
-				let iter_ranks = iter_ranks.map(|rank| serde_json::json!(rank));
-				let iter_ranks = iter_ranks.map(|rank| Criteria::Exact(rank));
-				let iter_ranks = iter_ranks.map(|rank| Box::new(rank));
-				let rank_is_one_of = Criteria::Any(iter_ranks.collect());
-				criteria
-					.push(Criteria::ContainsProperty("rank".into(), rank_is_one_of.into()).into());
-			}
-
-			if !filter.tags.is_empty() {
-				let iter_tags = filter.tags.iter();
-				let iter_tags = iter_tags.map(|tag| serde_json::json!(tag));
-				let iter_tags = iter_tags.map(|tag| Criteria::Exact(tag));
-				let iter_tags = iter_tags.map(|tag| Box::new(tag));
-				let has_all_tags = Criteria::All(iter_tags.collect());
-				criteria
-					.push(Criteria::ContainsProperty("tags".into(), has_all_tags.into()).into());
-			}
-
-			if let Some(caster_class) = &filter.can_cast {
-				let class_tag_criteria = Criteria::Exact(serde_json::json!(caster_class));
-				let has_class_tag = Criteria::ContainsValue(class_tag_criteria.into());
-				// TODO: check if the spell is in the expanded spell list,
-				// as provided by the AddSource spellcasting mutator.
-				let can_cast = Criteria::Any(vec![has_class_tag.into()]);
-				criteria.push(Criteria::ContainsProperty("tags".into(), can_cast.into()).into());
-			}
-
-			criteria
-		});
-		let pending_query = database.query::<Spell>(criteria.into(), node_reg);
-
+		let pending_query = database.query::<Spell>(filter.as_criteria().into(), node_reg);
 		Self {
 			pending_query: Some(Box::pin(pending_query)),
 			query: None,
@@ -1223,6 +1278,7 @@ struct UseSpellButtonProps {
 #[derive(Clone, Copy, PartialEq)]
 enum UseSpell {
 	AtWill,
+	RitualOnly,
 	Slot {
 		spell_rank: u8,
 		slot_rank: u8,
@@ -1241,6 +1297,11 @@ fn UseSpellButton(UseSpellButtonProps { kind }: &UseSpellButtonProps) -> Html {
 		UseSpell::AtWill => html! {
 			<div class="text-center" style="font-size: 9px; font-weight: 700; color: var(--bs-gray-600);">
 				{"AT"}<br />{"WILL"}
+			</div>
+		},
+		UseSpell::RitualOnly => html! {
+			<div class="text-center" style="font-size: 9px; font-weight: 700; color: var(--bs-gray-600);">
+				{"RITUAL"}<br />{"ONLY"}
 			</div>
 		},
 		UseSpell::Slot {

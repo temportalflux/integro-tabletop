@@ -2,18 +2,18 @@ use crate::{
 	kdl_ext::{DocumentExt, FromKDL, KDLNode, NodeExt},
 	system::{
 		core::SourceId,
-		dnd5e::{
-			components::panel::SpellFilter,
-			data::{
-				action::LimitedUses,
-				character::{
-					spellcasting::{Caster, Restriction, Slots, SpellCapacity, SpellEntry},
-					Character,
+		dnd5e::data::{
+			action::LimitedUses,
+			character::{
+				spellcasting::{
+					Caster, Restriction, RitualCapability, Slots, SpellCapacity, SpellEntry,
+					SpellFilter,
 				},
-				description,
-				spell::{self, Spell},
-				Ability,
+				Character,
 			},
+			description,
+			spell::{self, Spell},
+			Ability,
 		},
 	},
 	utility::{Mutator, NotInList, ObjectSelector, SelectorMetaVec},
@@ -255,6 +255,20 @@ impl FromKDL for Spellcasting {
 					forced_rank: None,
 				};
 
+				let ritual_capability = match node.query_opt("scope() > ritual")? {
+					None => None,
+					Some(node) => {
+						let available_spells =
+							node.query_opt("scope() > available-spells")?.is_some();
+						let selected_spells =
+							node.query_opt("scope() > selected-spells")?.is_some();
+						Some(RitualCapability {
+							available_spells,
+							selected_spells,
+						})
+					}
+				};
+
 				Operation::Caster(Caster {
 					class_name,
 					ability,
@@ -263,6 +277,7 @@ impl FromKDL for Spellcasting {
 					slots,
 					spell_capacity,
 					spell_entry,
+					ritual_capability,
 				})
 			}
 			Some("add_source") => {
@@ -303,8 +318,9 @@ impl FromKDL for Spellcasting {
 								Some(SpellFilter {
 									can_cast,
 									ranks,
-									max_rank: None,
 									tags,
+									max_rank: None,
+									ritual: None,
 								})
 							};
 						}

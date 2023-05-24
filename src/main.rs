@@ -183,7 +183,7 @@ fn create_character(system: &system::dnd5e::DnD5e) -> system::dnd5e::data::chara
 					selector: {
 						let mut selector = utility::ObjectSelector::new("spell", 2);
 						selector.spell_filter =
-							Some(system::dnd5e::components::panel::SpellFilter {
+							Some(system::dnd5e::data::character::spellcasting::SpellFilter {
 								max_rank: Some(3),
 								tags: ["Wizard".into()].into(),
 								..Default::default()

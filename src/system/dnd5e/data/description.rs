@@ -46,7 +46,11 @@ impl Info {
 		self.evaluate_with(state, None)
 	}
 
-	pub fn evaluate_with(mut self, state: &Character, args: Option<HashMap<String, String>>) -> Self {
+	pub fn evaluate_with(
+		mut self,
+		state: &Character,
+		args: Option<HashMap<String, String>>,
+	) -> Self {
 		if !self.contains_format_syntax() {
 			return self;
 		}
