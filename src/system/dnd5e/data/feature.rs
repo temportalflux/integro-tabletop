@@ -1,4 +1,8 @@
-use super::{action::Action, character::Character, description};
+use super::{
+	action::{Action, LimitedUses},
+	character::Character,
+	description,
+};
 use crate::{
 	kdl_ext::{DocumentExt, FromKDL, NodeExt},
 	system::dnd5e::{BoxedCriteria, BoxedMutator},
@@ -73,6 +77,13 @@ impl MutatorGroup for Feature {
 			// TODO: Somehow save the error text for display in feature UI
 			if stats.evaluate(criteria).is_err() {
 				return;
+			}
+		}
+		if let Some(action) = &self.action {
+			if let Some(uses) = &action.limited_uses {
+				if let LimitedUses::Usage(data) = uses {
+					stats.features_mut().register_usage(data, &path_to_self);
+				}
 			}
 		}
 		for mutator in &self.mutators {

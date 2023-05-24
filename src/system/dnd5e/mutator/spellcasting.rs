@@ -141,6 +141,11 @@ impl Mutator for Spellcasting {
 				selectable_spells,
 				limited_uses,
 			} => {
+				if let Some(uses) = limited_uses.as_ref() {
+					if let LimitedUses::Usage(data) = uses {
+						stats.features_mut().register_usage(data, parent);
+					}
+				}
 				let mut all_spells = specific_spells
 					.iter()
 					.map(|(id, info)| (id.clone(), info))

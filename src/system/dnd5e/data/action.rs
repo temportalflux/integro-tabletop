@@ -69,7 +69,7 @@ mod test {
 		use crate::{
 			kdl_ext::NodeContext,
 			system::{
-				core::{SourceId, NodeRegistry},
+				core::{NodeRegistry, SourceId},
 				dnd5e::{
 					data::{
 						roll::{Die, Roll},
@@ -155,11 +155,11 @@ mod test {
 			let expected = Action {
 				activation_kind: ActivationKind::Action,
 				attack: None,
-				limited_uses: Some(LimitedUses {
+				limited_uses: Some(LimitedUses::Usage(UseCounterData {
 					max_uses: Value::Fixed(1),
 					reset_on: Some(Rest::Long),
 					..Default::default()
-				}),
+				})),
 				conditions_to_apply: Vec::new(),
 			};
 			assert_eq!(from_doc(doc)?, expected);
@@ -184,7 +184,7 @@ mod test {
 			let expected = Action {
 				activation_kind: ActivationKind::Action,
 				attack: None,
-				limited_uses: Some(LimitedUses {
+				limited_uses: Some(LimitedUses::Usage(UseCounterData {
 					max_uses: Value::Evaluated(
 						GetLevel {
 							class_name: None,
@@ -194,7 +194,7 @@ mod test {
 					),
 					reset_on: Some(Rest::Long),
 					..Default::default()
-				}),
+				})),
 				conditions_to_apply: Vec::new(),
 			};
 			assert_eq!(from_doc(doc)?, expected);

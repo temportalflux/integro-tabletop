@@ -573,6 +573,11 @@ button.collapse_trigger.arrow_right.collapsed::after {
 	--bs-btn-font-size: .75rem;
 }
 
+.source-path-sm {
+	font-size: 10px;
+	color: var(--bs-gray-600);
+}
+
 .action-budget {
 	font-size: 14px;
 	min-height: 23px;
@@ -649,7 +654,7 @@ button.collapse_trigger.arrow_right.collapsed::after {
 	}
 }
 
-.uses {
+.uses:not(.consumer) {
 	button.add, button.sub {
 		padding: 0.3rem!important;
 	}

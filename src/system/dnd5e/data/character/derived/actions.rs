@@ -1,17 +1,35 @@
-use crate::{path_map::PathMap, system::dnd5e::data::Feature, utility::NotInList};
+use crate::{
+	path_map::PathMap,
+	system::dnd5e::data::{action::UseCounterData, Feature},
+	utility::NotInList,
+};
 use enum_map::{Enum, EnumMap};
 use enumset::EnumSetType;
-use std::{path::PathBuf, str::FromStr};
+use std::{
+	collections::HashMap,
+	path::{Path, PathBuf},
+	str::FromStr,
+};
 
 #[derive(Clone, PartialEq, Debug, Default)]
 pub struct Features {
 	pub path_map: PathMap<Feature>,
+	pub uses: HashMap<PathBuf, UseCounterData>,
 	pub action_budget: ActionBudget,
 }
 
 impl Features {
+	pub fn register_usage(&mut self, usage_data: &UseCounterData, path: impl AsRef<Path>) {
+		self.uses
+			.insert(path.as_ref().to_owned(), usage_data.clone());
+	}
+
 	pub fn iter_all(&self) -> impl Iterator<Item = (PathBuf, &Feature)> + '_ {
 		self.path_map.as_vec().into_iter()
+	}
+
+	pub fn get_usage(&self, key: impl AsRef<Path>) -> Option<&UseCounterData> {
+		self.uses.get(key.as_ref())
 	}
 }
 
