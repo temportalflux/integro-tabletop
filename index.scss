@@ -229,6 +229,20 @@
 	--icon-color: #e40712;
 	width: 24px;
 }
+.icon.concentration {
+	@extend .icon-solid;
+	display: inline-block;
+	width: 14px;
+	height: 14px;
+	--icon-image: url(assets/spells/concentration.svg);
+}
+.icon.ritual {
+	@extend .icon-solid;
+	display: inline-block;
+	width: 14px;
+	height: 14px;
+	--icon-image: url(assets/spells/ritual.svg);
+}
 .icon.defense {
 	display: inline-block;
 	margin-top: auto!important;

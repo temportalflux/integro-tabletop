@@ -438,9 +438,13 @@ fn spell_row<'c>(props: SpellRowProps<'c>) -> Html {
 		}
 	};
 
-	// TODO: concentration and ritual icons after the spell name
-	// TODO: Casting source under the spell name (`entry.source`)
+	let classified = entry.classified_as.as_ref();
+	let caster = classified.map(|id| state.spellcasting().get_caster(id)).flatten();
+	let ritual_casting = caster.map(|caster| caster.ritual_capability.as_ref()).flatten();
+	let can_ritual_cast = spell.casting_time.ritual;
+
 	// TODO: tooltip for casting time duration
+	// TODO: Tooltips for ritual & concentration icons
 	html! {
 		<SpellModalRowRoot {location}>
 			<td onclick={stop_propagation()}>
@@ -449,7 +453,15 @@ fn spell_row<'c>(props: SpellRowProps<'c>) -> Html {
 				</div>
 			</td>
 			<td>
-				<div>{&spell.name}</div>
+				<div>
+					{&spell.name}
+					{can_ritual_cast.then(|| html! {
+						<div class="icon ritual ms-1" />
+					}).unwrap_or_default()}
+					{spell.duration.concentration.then(|| html! {
+						<div class="icon concentration ms-1" />
+					}).unwrap_or_default()}
+				</div>
 				<div style="font-size: 10px; color: var(--bs-gray-600);">
 					{crate::data::as_feature_path_text(&entry.source)}
 				</div>
@@ -805,7 +817,8 @@ fn spell_list_item(
 	action: Html,
 ) -> Html {
 	let collapse_id = format!("{section_id}-{}", spell.id.ref_id());
-	// TODO: concentration and ritual icons in header section
+	// TODO: Tooltips for ritual & concentration icons
+	let can_ritual_cast = spell.casting_time.ritual;
 	html! {
 		<div class="spell mb-1">
 			<div class="header mb-1">
@@ -815,6 +828,12 @@ fn spell_list_item(
 					data-bs-target={format!("#{collapse_id}")}
 				>
 					{spell.name.clone()}
+					{can_ritual_cast.then(|| html! {
+						<div class="icon ritual ms-1 my-auto" />
+					}).unwrap_or_default()}
+					{spell.duration.concentration.then(|| html! {
+						<div class="icon concentration ms-1 my-auto" />
+					}).unwrap_or_default()}
 					<span class="spell_rank_suffix">
 						{"("}
 						{match spell.rank {

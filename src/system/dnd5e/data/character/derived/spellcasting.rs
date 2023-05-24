@@ -142,12 +142,29 @@ pub struct Caster {
 	pub slots: Slots,
 	pub spell_capacity: SpellCapacity,
 	pub spell_entry: SpellEntry,
+	pub ritual_capability: Option<RitualCapability>,
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum CasterKind {
 	Known,
 	Prepared,
+}
+
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub struct RitualCapability {
+	/// If true, the caster can ritually cast all spells which:
+	/// 1. have the ritual tag
+	/// 2. are classified as spells for this caster
+	///    (spell has the class tag or was classified and is Always Prepared)
+	/// 3. are available (e.g. all cleric spells, a wizard's spellbook)
+	pub available_spells: bool,
+	/// If true, the caster can ritually cast all spells which:
+	/// 1. have the ritual tag
+	/// 2. are classified as spells for this caster
+	///    (spell has the class tag or was classified and is Always Prepared)
+	/// 3. are selected (i.e. prepared or known)
+	pub selected_spells: bool,
 }
 
 #[derive(Clone, PartialEq, Debug)]
