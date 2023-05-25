@@ -10,7 +10,7 @@
 
 ## Unify mutators, criteria, and features
 - Convert `feature` block to a `mutator-todo "feature"` block, features are granted using mutators. FromKDL structs which accept both mutators and features now only accept mutators.
-- Convert `criteria` into a `mutator "only_if"` (or similar name) which accepts a single criteria and any number of submutators. Submutations are only applied if the criteria passes. This replaces the usage of `criteria` in features and conditions.
+- Convert `criteria` into a `mutator "only_if"` (or similar name) which accepts a single criteria and any number of submutators. Submutations are only applied if the criteria passes. This CAN replace the usage of `criteria` in features and conditions, but not entirely b/c features with criteria should still show up in UI (and just be marked as inactive/criteria not met).
 
 ## Conditions
 - degrees (like exhaustion): these are stages of the same condition, which add more mutators the higher the degree.
@@ -21,7 +21,12 @@
 
 ## Rest
 - Short and Long rest buttons with functionality
-- make sure to clear consumed spell slots based on rest and caster data
+- Things that get updated on rest
+	- anything with `LimitedUses` where `reset_on` is specified (features/actions, always-prepared spellcasting)
+	- hit points
+	- spell slots
+- Rest modal should tell the user what all is changing for a given rest (things affected get registered on the character)
+- hit points UI should track hit dice (for usage during short rest or when features specify like Wither and Bloom)
 
 ## Spellcasting
 - Spell panel rows for selected spells

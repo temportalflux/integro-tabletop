@@ -4,7 +4,8 @@ use crate::{
 	system::dnd5e::{
 		data::{
 			action::{Action, ActivationKind, Attack, AttackCheckKind, AttackKindValue},
-			Ability, DamageRoll, Feature, WeaponProficiency, roll::EvaluatedRoll,
+			roll::EvaluatedRoll,
+			Ability, DamageRoll, Feature, WeaponProficiency,
 		},
 		evaluator::{self, IsProficientWith},
 		Value,

@@ -56,11 +56,9 @@ mod test {
 		use super::*;
 		use crate::{
 			kdl_ext::NodeContext,
-			system::dnd5e::{
-				data::{
-					roll::{Die, EvaluatedRoll},
-					Ability, DamageType,
-				},
+			system::dnd5e::data::{
+				roll::{Die, EvaluatedRoll},
+				Ability, DamageType,
 			},
 			utility,
 		};

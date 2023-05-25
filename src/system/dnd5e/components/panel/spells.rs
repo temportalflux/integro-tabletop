@@ -487,18 +487,34 @@ fn spell_row<'c>(props: SpellRowProps<'c>) -> Html {
 		},
 	} = props;
 
-	let use_kind = match (&location, spell.rank, entry.cast_via_uses.as_ref()) {
-		(SpellLocation::AvailableAsRitual { .. }, _, _) => UseSpell::RitualOnly,
-		(_, 0, None) => UseSpell::AtWill,
-		(_, spell_rank, None) => UseSpell::Slot {
-			spell_rank,
-			slot_rank: section_rank,
-			slots: slots.clone(),
-		},
-		(_, _, Some(_limited_uses)) => {
-			// TODO: LimitedUse button
-			UseSpell::AtWill
-			//UseSpell::LimitedUse { uses_remaining: 3, max_uses: 5 },
+	let (use_kind, src_text_suffix) = match (&location, spell.rank, entry.cast_via_uses.as_ref()) {
+		(SpellLocation::AvailableAsRitual { .. }, _, _) => (UseSpell::RitualOnly, None),
+		(_, 0, None) => (UseSpell::AtWill, None),
+		(_, spell_rank, None) => {
+			let slot = UseSpell::Slot {
+				spell_rank,
+				slot_rank: section_rank,
+				slots: slots.clone(),
+			};
+			(slot, None)
+		}
+		(_, _, Some(limited_uses)) => {
+			let data_path = limited_uses.get_uses_path(state);
+			let max_uses = limited_uses.get_max_uses(state) as u32;
+			let uses_consumed = limited_uses.get_uses_consumed(state);
+			let kind = UseSpell::LimitedUse { uses_consumed, max_uses, data_path };
+			let text = html! {
+				<span class="ms-1">
+					{format!(
+						"({}/{max_uses}{})",
+						max_uses.saturating_sub(uses_consumed),
+						limited_uses.get_reset_rest(state).map(|rest| {
+							format!(" per {} rest", rest.to_string())
+						}).unwrap_or_default()
+					)}
+				</span>
+			};
+			(kind, Some(text))
 		}
 	};
 
@@ -539,6 +555,7 @@ fn spell_row<'c>(props: SpellRowProps<'c>) -> Html {
 				</div>
 				<div style="font-size: 10px; color: var(--bs-gray-600);">
 					{crate::data::as_feature_path_text(&entry.source)}
+					{src_text_suffix.unwrap_or_default()}
 				</div>
 			</td>
 			<td>
@@ -1275,7 +1292,7 @@ impl futures_util::Stream for FindRelevantSpells {
 struct UseSpellButtonProps {
 	kind: UseSpell,
 }
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, PartialEq)]
 enum UseSpell {
 	AtWill,
 	RitualOnly,
@@ -1284,10 +1301,10 @@ enum UseSpell {
 		slot_rank: u8,
 		slots: Option<(usize, usize)>,
 	},
-	#[allow(dead_code)]
 	LimitedUse {
-		uses_remaining: u32,
+		uses_consumed: u32,
 		max_uses: u32,
+		data_path: Option<std::path::PathBuf>,
 	},
 }
 #[function_component]
@@ -1354,11 +1371,26 @@ fn UseSpellButton(UseSpellButtonProps { kind }: &UseSpellButtonProps) -> Html {
 			}
 		}
 		UseSpell::LimitedUse {
-			uses_remaining,
+			uses_consumed,
 			max_uses,
+			data_path,
 		} => {
+			let onclick = match data_path {
+				None => Callback::default(),
+				Some(path) => state.new_dispatch({
+					let uses_consumed = *uses_consumed;
+					let key = path.clone();
+					move |evt: MouseEvent, persistent, _| {
+						evt.stop_propagation();
+						let uses_consumed = uses_consumed + 1;
+						persistent.set_selected_value(&key, uses_consumed.to_string());
+						None
+					}
+				}),
+			};
+			let uses_remaining = max_uses.saturating_sub(*uses_consumed);
 			html! {
-				<button class="btn btn-theme btn-xs px-1 w-100">
+				<button class="btn btn-theme btn-xs px-1 w-100" {onclick} disabled={uses_consumed >= max_uses}>
 					{"Use"}
 					<span class="ms-1 d-none" style="font-size: 9px; color: var(--bs-gray-600);">{format!("({uses_remaining}/{max_uses})")}</span>
 				</button>

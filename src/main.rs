@@ -42,12 +42,17 @@ impl<T> Compiled<T> {
 fn create_character(system: &system::dnd5e::DnD5e) -> system::dnd5e::data::character::Persistent {
 	use system::{
 		core::SourceId,
-		dnd5e::data::{
-			character::{Description, Persistent},
-			currency::{self, Wallet},
-			item,
-			roll::{Die, Roll},
-			Ability, DamageType,
+		dnd5e::{
+			data::{
+				action::{LimitedUses, UseCounterData},
+				character::spellcasting::SpellFilter,
+				character::{Description, Persistent},
+				currency::{self, Wallet},
+				item,
+				roll::{Die, Roll},
+				Ability, DamageType, Feature, Rest,
+			},
+			mutator, Value,
 		},
 	};
 	let mut persistent = Persistent {
@@ -169,33 +174,56 @@ fn create_character(system: &system::dnd5e::DnD5e) -> system::dnd5e::data::chara
 		..Default::default()
 	});
 
-	persistent.feats.push(system::dnd5e::data::Feature {
+	persistent.feats.push(Feature {
 		name: "Custom Prepared Spells".into(),
-		mutators: vec![system::dnd5e::mutator::Spellcasting {
-			ability: Ability::Charisma,
-			operation: system::dnd5e::mutator::Operation::AddPrepared {
-				classified_as: None,
-				specific_spells: vec![(
-					SourceId::from_str("local://basic-rules@dnd5e/spells/fireball.kdl").unwrap(),
-					system::dnd5e::mutator::PreparedInfo::default(),
-				)],
-				selectable_spells: Some(system::dnd5e::mutator::SelectableSpells {
-					selector: {
-						let mut selector = utility::ObjectSelector::new("spell", 2);
-						selector.spell_filter =
-							Some(system::dnd5e::data::character::spellcasting::SpellFilter {
+		mutators: vec![
+			mutator::Spellcasting {
+				ability: Ability::Charisma,
+				operation: mutator::Operation::AddPrepared {
+					classified_as: None,
+					specific_spells: vec![(
+						SourceId::from_str("local://basic-rules@dnd5e/spells/fireball.kdl")
+							.unwrap(),
+						mutator::PreparedInfo::default(),
+					)],
+					selectable_spells: Some(mutator::SelectableSpells {
+						selector: {
+							let mut selector = utility::ObjectSelector::new("spell", 2);
+							selector.spell_filter = Some(SpellFilter {
 								max_rank: Some(3),
 								tags: ["Wizard".into()].into(),
 								..Default::default()
 							});
-						selector
-					},
-					prepared: system::dnd5e::mutator::PreparedInfo::default(),
-				}),
-				limited_uses: None,
-			},
-		}
-		.into()],
+							selector
+						},
+						prepared: mutator::PreparedInfo {
+							can_cast_through_slot: true,
+							..Default::default()
+						},
+					}),
+					limited_uses: None,
+				},
+			}
+			.into(),
+			mutator::Spellcasting {
+				ability: Ability::Charisma,
+				operation: mutator::Operation::AddPrepared {
+					classified_as: None,
+					specific_spells: vec![(
+						SourceId::from_str("local://basic-rules@dnd5e/spells/waterWalk.kdl")
+							.unwrap(),
+						mutator::PreparedInfo::default(),
+					)],
+					selectable_spells: None,
+					limited_uses: Some(LimitedUses::Usage(UseCounterData {
+						max_uses: Value::Fixed(1),
+						reset_on: Some(Rest::Short),
+						..Default::default()
+					})),
+				},
+			}
+			.into(),
+		],
 		..Default::default()
 	});
 	for (caster, id_str) in [

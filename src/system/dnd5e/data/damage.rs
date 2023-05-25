@@ -1,4 +1,4 @@
-use super::roll::{EvaluatedRoll};
+use super::roll::EvaluatedRoll;
 use crate::{
 	kdl_ext::{DocumentExt, FromKDL, NodeExt},
 	utility::InvalidEnumStr,
