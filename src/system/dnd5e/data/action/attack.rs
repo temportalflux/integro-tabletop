@@ -13,7 +13,7 @@ pub use range::*;
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Attack {
-	pub kind: AttackKindValue,
+	pub kind: Option<AttackKindValue>,
 	pub check: AttackCheckKind,
 	pub area_of_effect: Option<AreaOfEffect>,
 	pub damage: Option<DamageRoll>,
@@ -25,8 +25,10 @@ impl FromKDL for Attack {
 		node: &kdl::KdlNode,
 		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
-		let kind =
-			AttackKindValue::from_kdl(node.query_req("scope() > kind")?, &mut ctx.next_node())?;
+		let kind = match node.query_opt("scope() > kind")? {
+			None => None,
+			Some(node) => Some(AttackKindValue::from_kdl(node, &mut ctx.next_node())?),
+		};
 		let check =
 			AttackCheckKind::from_kdl(node.query_req("scope() > check")?, &mut ctx.next_node())?;
 		let area_of_effect = match node.query("scope() > area_of_effect")? {
@@ -80,7 +82,7 @@ mod test {
 				}
 			}";
 			let expected = Attack {
-				kind: AttackKindValue::Melee { reach: 5 },
+				kind: Some(AttackKindValue::Melee { reach: 5 }),
 				check: AttackCheckKind::AttackRoll {
 					ability: Ability::Dexterity,
 					proficient: utility::Value::Fixed(true),
@@ -113,10 +115,10 @@ mod test {
 				}
 			}";
 			let expected = Attack {
-				kind: AttackKindValue::Ranged {
+				kind: Some(AttackKindValue::Ranged {
 					short_dist: 20,
 					long_dist: 60,
-				},
+				}),
 				check: AttackCheckKind::SavingThrow {
 					base: 8,
 					dc_ability: None,

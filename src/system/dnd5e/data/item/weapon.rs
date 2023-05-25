@@ -91,7 +91,7 @@ impl Weapon {
 			action: Some(Action {
 				activation_kind: ActivationKind::Action,
 				attack: Some(Attack {
-					kind: attack_kind,
+					kind: Some(attack_kind),
 					check: AttackCheckKind::AttackRoll {
 						ability: attack_ability,
 						proficient: Value::Evaluated(

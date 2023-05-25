@@ -16,6 +16,9 @@ pub use description::*;
 mod defense;
 pub use defense::*;
 
+mod feature;
+pub use feature::*;
+
 mod flag;
 pub use flag::*;
 

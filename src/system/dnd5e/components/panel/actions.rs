@@ -168,9 +168,10 @@ pub fn Actions() -> Html {
 						Some(html! {
 							<tr class="align-middle" {onclick}>
 								<td>{feature.name.clone()}</td>
-								<td>{match attack.kind {
-									AttackKindValue::Melee { reach } => html! {<>{reach}{"ft."}</>},
-									AttackKindValue::Ranged { short_dist, long_dist, .. } => html! {<>{short_dist}{" / "}{long_dist}</>},
+								<td>{match &attack.kind {
+									None => html!(),
+									Some(AttackKindValue::Melee { reach }) => html! {<>{reach}{"ft."}</>},
+									Some(AttackKindValue::Ranged { short_dist, long_dist, .. }) => html! {<>{short_dist}{" / "}{long_dist}</>},
 								}}</td>
 								<td class="text-center">{{
 									let value = attack.check.evaluate(&*state);
@@ -594,7 +595,8 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 			let mut attack_sections = Vec::new();
 
 			match &attack.kind {
-				AttackKindValue::Melee { reach } => {
+				None => {}
+				Some(AttackKindValue::Melee { reach }) => {
 					attack_sections.push(html! {
 						<div class="property">
 							<strong>{"Kind:"}</strong>
@@ -612,10 +614,10 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 				// - normal if the target is at or closer than `short`
 				// - made a disadvantage when the target is father than `short`, but closer than `long`
 				// - impossible beyond the `long` range
-				AttackKindValue::Ranged {
+				Some(AttackKindValue::Ranged {
 					short_dist,
 					long_dist,
-				} => {
+				}) => {
 					attack_sections.push(html! {
 						<div class="property">
 							<strong>{"Kind:"}</strong>
@@ -666,9 +668,9 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 						<div class="property">
 							<strong>{"Saving Throw:"}</strong>
 							<span>
-								{format!("{} {value}", save_ability.long_name())}
+								{format!("{} - DC {value}", save_ability.long_name())}
 							</span>
-							<span style="color: var(--bs-gray-600);">
+							<span class="ms-1" style="color: var(--bs-gray-600);">
 								{"("}
 								{(*base > 0).then(|| html! { {format!("{base}")} }).unwrap_or_default()}
 								{dc_ability.as_ref().map(|ability| html! {
@@ -691,7 +693,7 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 								AreaOfEffect::Cone { length } => format!("Cone ({length} ft)"),
 								AreaOfEffect::Cube { size } => format!("Cube ({size} ft)"),
 								AreaOfEffect::Cylinder { radius, height } => format!("Cylinder ({radius} ft. radius, {height} ft. height)"),
-								AreaOfEffect::Line { width, length } => format!("Cylinder ({width} ft. width, {length} ft. length)"),
+								AreaOfEffect::Line { width, length } => format!("Line ({width} ft. width, {length} ft. length)"),
 								AreaOfEffect::Sphere { radius } => format!("Sphere ({radius} ft)"),
 							}}
 						</span>
@@ -755,7 +757,7 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 			}
 
 			action_sections.push(html! {
-				<div class="ms-2 border-bottom-theme-muted">
+				<div class="ps-2 border-bottom-theme-muted">
 					<strong>{"Attack"}</strong>
 					<div>{attack_sections}</div>
 				</div>

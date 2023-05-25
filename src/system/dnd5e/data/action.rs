@@ -122,7 +122,7 @@ mod test {
 			let expected = Action {
 				activation_kind: ActivationKind::Action,
 				attack: Some(Attack {
-					kind: AttackKindValue::Melee { reach: 5 },
+					kind: Some(AttackKindValue::Melee { reach: 5 }),
 					check: AttackCheckKind::AttackRoll {
 						ability: Ability::Dexterity,
 						proficient: utility::Value::Fixed(true),

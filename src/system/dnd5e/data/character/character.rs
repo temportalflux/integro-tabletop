@@ -425,7 +425,8 @@ impl Character {
 					.into_iter()
 					.filter_map(|action| {
 						let Some(attack) = &action.attack else { return None; };
-						attack_kind.contains(&attack.kind.kind()).then_some(action)
+						let Some(atk_kind) = &attack.kind else { return None; };
+						attack_kind.contains(&atk_kind.kind()).then_some(action)
 					})
 					.collect();
 			}
