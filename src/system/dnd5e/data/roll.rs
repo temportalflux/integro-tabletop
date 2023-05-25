@@ -1,5 +1,8 @@
+use super::character::Character;
 use crate::{
-	kdl_ext::{FromKDL, NodeExt},
+	kdl_ext::{DocumentExt, FromKDL, NodeExt, ValueExt},
+	system::dnd5e::Value,
+	utility::Evaluator,
 	GeneralError,
 };
 use enum_map::{Enum, EnumMap};
@@ -182,6 +185,70 @@ impl RollSet {
 			value += die.roll(rand, *amt);
 		}
 		value
+	}
+}
+
+#[derive(Clone, PartialEq, Default, Debug)]
+pub struct EvaluatedRoll {
+	amount: Value<i32>,
+	die: Option<Value<i32>>,
+}
+impl<T> From<T> for EvaluatedRoll
+where
+	Roll: From<T>,
+{
+	fn from(value: T) -> Self {
+		let roll = Roll::from(value);
+		Self {
+			amount: Value::Fixed(roll.amount as i32),
+			die: roll.die.map(|die| Value::Fixed(die.value() as i32)),
+		}
+	}
+}
+impl EvaluatedRoll {
+	pub fn evaluate(&self, character: &Character) -> Roll {
+		let amount = self.amount.evaluate(character) as u32;
+		let die = match &self.die {
+			None => None,
+			Some(value) => {
+				let die_value = value.evaluate(character) as u32;
+				Die::try_from(die_value).ok()
+			}
+		};
+		Roll { amount, die }
+	}
+}
+impl FromKDL for EvaluatedRoll {
+	fn from_kdl(
+		node: &kdl::KdlNode,
+		ctx: &mut crate::kdl_ext::NodeContext,
+	) -> anyhow::Result<Self> {
+		if let Some(roll_str) = node.get_str_opt(ctx.consume_idx())? {
+			return Ok(Self::from(Roll::from_str(roll_str)?));
+		}
+		let amount = {
+			let node = node.query_req("scope() > amount")?;
+			let mut ctx = ctx.next_node();
+			Value::from_kdl(
+				node,
+				node.entry_req(ctx.consume_idx())?,
+				&mut ctx,
+				|value| Ok(value.as_i64_req()? as i32),
+			)?
+		};
+		let die = match node.query_opt("scope() > die")? {
+			None => None,
+			Some(node) => {
+				let mut ctx = ctx.next_node();
+				Some(Value::from_kdl(
+					node,
+					node.entry_req(ctx.consume_idx())?,
+					&mut ctx,
+					|value| Ok(value.as_i64_req()? as i32),
+				)?)
+			}
+		};
+		Ok(Self { amount, die })
 	}
 }
 

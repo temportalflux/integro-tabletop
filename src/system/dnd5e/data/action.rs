@@ -72,7 +72,7 @@ mod test {
 				core::{NodeRegistry, SourceId},
 				dnd5e::{
 					data::{
-						roll::{Die, Roll},
+						roll::{Die, EvaluatedRoll},
 						Ability, Condition, DamageRoll, DamageType, Rest,
 					},
 					evaluator::GetLevel,
@@ -129,7 +129,7 @@ mod test {
 					},
 					area_of_effect: None,
 					damage: Some(DamageRoll {
-						roll: Some(Roll::from((2, Die::D6))),
+						roll: Some(EvaluatedRoll::from((2, Die::D6))),
 						base_bonus: 1,
 						damage_type: DamageType::Fire,
 						additional_bonuses: Vec::new(),

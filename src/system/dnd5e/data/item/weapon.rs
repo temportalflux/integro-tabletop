@@ -4,7 +4,7 @@ use crate::{
 	system::dnd5e::{
 		data::{
 			action::{Action, ActivationKind, Attack, AttackCheckKind, AttackKindValue},
-			Ability, DamageRoll, Feature, WeaponProficiency,
+			Ability, DamageRoll, Feature, WeaponProficiency, roll::EvaluatedRoll,
 		},
 		evaluator::{self, IsProficientWith},
 		Value,
@@ -107,7 +107,7 @@ impl Weapon {
 					},
 					area_of_effect: None,
 					damage: self.damage.as_ref().map(|dmg| DamageRoll {
-						roll: dmg.roll,
+						roll: dmg.roll.map(|roll| EvaluatedRoll::from(roll)),
 						base_bonus: dmg.bonus,
 						damage_type: dmg.damage_type,
 						..Default::default()

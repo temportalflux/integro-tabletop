@@ -1,4 +1,4 @@
-use super::roll::Roll;
+use super::roll::{EvaluatedRoll};
 use crate::{
 	kdl_ext::{DocumentExt, FromKDL, NodeExt},
 	utility::InvalidEnumStr,
@@ -8,8 +8,7 @@ use std::{path::PathBuf, str::FromStr};
 
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct DamageRoll {
-	// TODO: Implement damage which scales according to some scalar (usually class, character, or spell level)
-	pub roll: Option<Roll>,
+	pub roll: Option<EvaluatedRoll>,
 	pub base_bonus: i32,
 	pub damage_type: DamageType,
 	// generated (see BonusDamage mutator)
@@ -19,11 +18,11 @@ pub struct DamageRoll {
 impl FromKDL for DamageRoll {
 	fn from_kdl(
 		node: &kdl::KdlNode,
-		_ctx: &mut crate::kdl_ext::NodeContext,
+		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
-		let roll = match node.query_str_opt("scope() > roll", 0)? {
+		let roll = match node.query_opt("scope() > roll")? {
 			None => None,
-			Some(str) => Some(Roll::from_str(str)?),
+			Some(node) => Some(EvaluatedRoll::from_kdl(node, &mut ctx.next_node())?),
 		};
 		let base_bonus = node.get_i64_opt("base")?.unwrap_or(0) as i32;
 		let damage_type = DamageType::from_str(node.query_str_req("scope() > damage_type", 0)?)?;
@@ -181,7 +180,7 @@ mod test {
 				damage_type \"Force\"
 			}";
 			let expected = DamageRoll {
-				roll: Some(Roll::from((2, Die::D4))),
+				roll: Some(EvaluatedRoll::from((2, Die::D4))),
 				base_bonus: 0,
 				damage_type: DamageType::Force,
 				additional_bonuses: vec![],
@@ -197,7 +196,7 @@ mod test {
 				damage_type \"Bludgeoning\"
 			}";
 			let expected = DamageRoll {
-				roll: Some(Roll::from((1, Die::D6))),
+				roll: Some(EvaluatedRoll::from((1, Die::D6))),
 				base_bonus: 2,
 				damage_type: DamageType::Bludgeoning,
 				additional_bonuses: vec![],

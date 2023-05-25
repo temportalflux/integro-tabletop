@@ -8,7 +8,6 @@ use crate::{
 		data::{
 			action::{ActivationKind, AttackCheckKind, AttackKindValue},
 			character::{ActionBudgetKind, ActionEffect, Persistent},
-			roll::Roll,
 			AreaOfEffect, DamageRoll, Feature,
 		},
 		DnD5e,
@@ -197,8 +196,11 @@ pub fn Actions() -> Html {
 										Some(DamageRoll { roll, base_bonus, damage_type: _, additional_bonuses }) => {
 											let additional_bonus: i32 = additional_bonuses.iter().map(|(v, _)| *v).sum();
 											let bonus = base_bonus + ability_bonus + additional_bonus;
-											let roll = roll.as_ref().map(|roll| html!{{roll.to_string()}});
-											match (roll, bonus) {
+											let roll_str = match &roll {
+												None => None,
+												Some(roll_value) => Some(roll_value.evaluate(&state).to_string()),
+											};
+											match (roll_str, bonus) {
 												(None, bonus) => html! {{bonus.max(0)}},
 												(Some(roll), 0) => html! {{roll}},
 												(Some(roll), 1..=i32::MAX) => html! {<>{roll}{" + "}{bonus}</>},
@@ -716,7 +718,10 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 				};
 				let additional_bonus: i32 = additional_bonuses.iter().map(|(v, _)| *v).sum();
 				let bonus = base_bonus + ability_bonus + additional_bonus;
-				let roll_str = roll.as_ref().map(Roll::to_string);
+				let roll_str = match &roll {
+					None => None,
+					Some(roll_value) => Some(roll_value.evaluate(&state).to_string()),
+				};
 				let concat_roll_bonus =
 					|roll_str: &Option<String>, bonus: i32| match (&roll_str, bonus) {
 						(None, bonus) => html! {{bonus.max(0)}},
@@ -724,25 +729,28 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 						(Some(roll), 1..=i32::MAX) => html! {<>{roll}{" + "}{bonus}</>},
 						(Some(roll), i32::MIN..=-1) => html! {<>{roll}{" - "}{bonus.abs()}</>},
 					};
+				let suffix_info = (bonus > 0 && bonus != *base_bonus).then(|| html! {
+					<span style="color: var(--bs-gray-600);">
+						{" ("}
+						{concat_roll_bonus(&roll_str, *base_bonus)}
+						{check_ability.map(|ability| html! { {format!(" + {} modifier", ability.long_name())} }).unwrap_or_default()}
+						{additional_bonuses.iter().map(|(value, source)| html! {
+							<span>
+								{match *value >= 0 { true => "+", false => "-" }}
+								{value.abs()}
+								{"("}{crate::data::as_feature_path_text(source).unwrap_or_default()}{")"}
+							</span>
+						}).collect::<Vec<_>>()}
+						{")"}
+					</span>
+				});
 				attack_sections.push(html! {
 					<div class="property">
 						<strong>{"Damage:"}</strong>
 						<span>
 							{concat_roll_bonus(&roll_str, bonus)}{format!(" {}", damage_type.display_name())}
 						</span>
-						<span style="color: var(--bs-gray-600);">
-							{" ("}
-							{concat_roll_bonus(&roll_str, *base_bonus)}
-							{check_ability.map(|ability| html! { {format!(" + {} modifier", ability.long_name())} }).unwrap_or_default()}
-							{additional_bonuses.iter().map(|(value, source)| html! {
-								<span>
-									{match *value >= 0 { true => "+", false => "-" }}
-									{value.abs()}
-									{"("}{crate::data::as_feature_path_text(source).unwrap_or_default()}{")"}
-								</span>
-							}).collect::<Vec<_>>()}
-							{")"}
-						</span>
+						{suffix_info.unwrap_or_default()}
 					</div>
 				});
 			}
