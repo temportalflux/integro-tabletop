@@ -113,7 +113,6 @@ pub fn Dropdown() -> Html {
 	let onclick = {
 		let theme = theme.clone();
 		Callback::from(move |e: MouseEvent| {
-			log::debug!("click downdown item");
 			let Some(element) = e.target_dyn_into::<web_sys::HtmlElement>() else { return; };
 			let value = element
 				.get_attribute("value")
