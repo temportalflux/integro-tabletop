@@ -240,8 +240,56 @@ fn create_character(system: &system::dnd5e::DnD5e) -> system::dnd5e::data::chara
 	persistent
 }
 
+#[cfg(target_family = "wasm")]
+fn main() {
+	logging::wasm::init(logging::wasm::Config::default().prefer_target());
+	yew::Renderer::<App>::new().render();
+}
+
 #[function_component]
 fn App() -> Html {
+	//let content = html!(<CharacterPrototype />);
+	let content = html!(<WebReady />);
+	html! {<>
+		<header>
+			<nav class="navbar navbar-expand-lg sticky-top bg-body-tertiary">
+				<div class="container-fluid">
+					<a class="navbar-brand" href="/">{"Tabletop Tools"}</a>
+					<button
+						class="navbar-toggler" type="button"
+						data-bs-toggle="collapse" data-bs-target="#navContent"
+						aria-controls="navContent" aria-expanded="false" aria-label="Toggle navigation"
+					>
+						<span class="navbar-toggler-icon"></span>
+					</button>
+					<div class="collapse navbar-collapse" id="navContent">
+						<ul class="navbar-nav">
+							<li class="nav-item">
+								<a class="nav-link">{"My Characters"}</a>
+							</li>
+							<li class="nav-item">
+								<a class="nav-link">{"Content Browser"}</a>
+							</li>
+						</ul>
+						<ul class="navbar-nav flex-row flex-wrap ms-md-auto">
+							<theme::Dropdown />
+						</ul>
+					</div>
+				</div>
+			</nav>
+		</header>
+		{content}
+	</>}
+}
+
+#[function_component]
+fn WebReady() -> Html {
+	html! {<>
+	</>}
+}
+
+#[function_component]
+fn CharacterPrototype() -> Html {
 	use database::app::Database;
 	use system::dnd5e::{self, DnD5e};
 	let show_browser = use_state_eq(|| false);
@@ -322,15 +370,15 @@ fn App() -> Html {
 		(system.clone(), load_content.data.is_some()),
 	);
 
-	let open_character = Callback::from({
+	let _open_character = Callback::from({
 		let show_browser = show_browser.clone();
-		move |_| {
+		move |_: MouseEvent| {
 			show_browser.set(false);
 		}
 	});
-	let open_content = Callback::from({
+	let _open_content = Callback::from({
 		let show_browser = show_browser.clone();
-		move |_| {
+		move |_: MouseEvent| {
 			show_browser.set(true);
 		}
 	});
@@ -347,33 +395,6 @@ fn App() -> Html {
 	};
 
 	return html! {<>
-		<header>
-			<nav class="navbar navbar-expand-lg sticky-top bg-body-tertiary">
-				<div class="container-fluid">
-					<a class="navbar-brand" href="/">{"Tabletop Tools"}</a>
-					<button
-						class="navbar-toggler" type="button"
-						data-bs-toggle="collapse" data-bs-target="#navContent"
-						aria-controls="navContent" aria-expanded="false" aria-label="Toggle navigation"
-					>
-						<span class="navbar-toggler-icon"></span>
-					</button>
-					<div class="collapse navbar-collapse" id="navContent">
-						<ul class="navbar-nav">
-							<li class="nav-item">
-								<a class="nav-link" onclick={open_character}>{"My Characters"}</a>
-							</li>
-							<li class="nav-item">
-								<a class="nav-link" onclick={open_content}>{"Content Browser"}</a>
-							</li>
-						</ul>
-						<ul class="navbar-nav flex-row flex-wrap ms-md-auto">
-							<theme::Dropdown />
-						</ul>
-					</div>
-				</div>
-			</nav>
-		</header>
 		<ContextProvider<Option<Database>> context={database.data.clone()}>
 			<ContextProvider<ArcNodeRegistry> context={node_reg.clone()}>
 				<ContextProvider<UseStateHandle<DnD5e>> context={system.clone()}>
@@ -382,12 +403,6 @@ fn App() -> Html {
 			</ContextProvider<ArcNodeRegistry>>
 		</ContextProvider<Option<Database>>>
 	</>};
-}
-
-#[cfg(target_family = "wasm")]
-fn main() {
-	logging::wasm::init(logging::wasm::Config::default().prefer_target());
-	yew::Renderer::<App>::new().render();
 }
 
 async fn load_modules(

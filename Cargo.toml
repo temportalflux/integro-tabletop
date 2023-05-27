@@ -1,7 +1,7 @@
 [package]
-name = "tabletop-tools"
+name = "integro-tabletop"
 description = ""
-repository = "https://github.com/temportalflux/tabletop-tools/"
+repository = "https://github.com/temportalflux/integro-tabletop/"
 license = "MIT OR Apache-2.0"
 authors = ["Dustin Yost <dustin.yost.t@gmail.com>"]
 version = "0.0.1"
@@ -23,7 +23,7 @@ web-sys = { version = "0.3", features = [
 	"DomTokenList", "MediaQueryList",
 	"Node", "NodeList",
 	"Event", "EventTarget", "KeyboardEvent",
-	"Performance"
+	"Performance", "Screen"
 ] }
 wasm-bindgen-futures = "0.4"
 futures = "0.3"
@@ -60,6 +60,7 @@ unzip-n = "0.1"
 rand = "0.8"
 wasm-timer = "0.2"
 regex = "1.8"
+graphql_client = { version = "0.12", features = ["reqwest"] }
 
 [target.'cfg(windows)'.dependencies]
 tokio = { version="1.26", features=["full"] }

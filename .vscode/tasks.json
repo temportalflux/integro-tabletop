@@ -4,48 +4,70 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
-			"label": "1. Serve",
+			"label": "1. [Wasm] Deploy (Once)",
+      "type": "shell",
+			"command": "netlify",
+			"args": [ "deploy", "--dir", "dist", "--alias", "local" ],
+			"group": "build",
+			"dependsOn": "2. [Wasm] Build"
+		},
+		{
+			"label": "2. [Wasm] Build",
 			"command": "trunk",
-			"args": [ "serve" ],
+			"args": [ "build" ],
 			"group": "build",
 			"problemMatcher": []
 		},
 		{
-			"label": "2. Format",
+			"label": "3. [Wasm] Serve (Watched)",
+      "type": "shell",
+			"command": "cargo",
+			"args": [ "watch", "-s", "\"trunk build\"", "-s", "\"netlify deploy --dir dist --alias local\"" ],
+			"group": "build"
+		},
+		{
+			"label": "3. [Wasm] Serve Localhost",
+      "type": "shell",
+			"command": "trunk",
+			"args": [ "serve" ],
+			"group": "build"
+		},
+		{
+			"label": "4. [Cargo] Format",
 			"command": "cargo",
 			"args": [ "fmt" ],
 			"group": "build",
 			"problemMatcher": []
 		},
 		{
-			"label": "3. Run Tests",
+			"label": "5. [Cargo] Run Tests",
 			"command": "cargo",
 			"args": [ "test" ],
 			"problemMatcher": []
 		},
 		{
-			"label": "4. Fix",
+			"label": "6. [Cargo] Fix",
 			"command": "cargo",
 			"args": [ "fix", "--allow-staged" ],
 			"group": "build",
 			"problemMatcher": []
 		},
 		{
-			"label": "5. Build",
+			"label": "7. [Binary] Build",
 			"command": "cargo",
 			"args": [ "build" ],
 			"group": "build",
 			"problemMatcher": []
 		},
 		{
-			"label": "6. Run Binary",
+			"label": "8. [Binary] Execute",
 			"command": "cargo",
 			"args": [ "run" ],
 			"group": "build",
 			"problemMatcher": []
 		},
 		{
-			"label": "7. Clean",
+			"label": "9. [Cargo] Clean",
 			"command": "cargo",
 			"args": [ "clean" ],
 			"group": "build",

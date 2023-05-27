@@ -47,9 +47,9 @@ impl Theme {
 
 	pub fn as_icon_name(&self) -> &'static str {
 		match self {
-			Self::Auto => "fa-circle-half-stroke",
-			Self::Dark => "fa-moon",
-			Self::Light => "fa-sun",
+			Self::Auto => "bi-circle-half",
+			Self::Dark => "bi-moon-fill",
+			Self::Light => "bi-sun-fill",
 		}
 	}
 
@@ -113,6 +113,7 @@ pub fn Dropdown() -> Html {
 	let onclick = {
 		let theme = theme.clone();
 		Callback::from(move |e: MouseEvent| {
+			log::debug!("click downdown item");
 			let Some(element) = e.target_dyn_into::<web_sys::HtmlElement>() else { return; };
 			let value = element
 				.get_attribute("value")
@@ -126,12 +127,12 @@ pub fn Dropdown() -> Html {
 	html! {
 		<li class="nav-item dropdown">
 			<a class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-				<i class={format!("fa-solid {}", theme.as_icon_name())} />
+				<i class={format!("bi {}", theme.as_icon_name())} />
 			</a>
 			<div class="dropdown-menu dropdown-menu-end" style="--bs-dropdown-min-width: 0rem;">
 				{EnumSet::<Theme>::all().into_iter().map(|value| html! {
 					<a class="dropdown-item" value={value.as_str()} onclick={onclick.clone()}>
-						<i class={format!("fa-solid {}", value.as_icon_name())} style="margin-right: 5px;"></i>
+						<i class={format!("bi {}", value.as_icon_name())} style="margin-right: 5px;"></i>
 						{value.as_display_name()}
 					</a>
 				}).collect::<Vec<_>>()}
