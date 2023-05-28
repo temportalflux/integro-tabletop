@@ -1,0 +1,13 @@
+query FindOrgs($cursor:String, $amount:Int!) {
+  viewer {
+    organizations(after: $cursor, first: $amount) {
+      pageInfo {
+        endCursor
+        hasNextPage
+      }
+      nodes {
+        login
+      }
+    }
+  }
+}

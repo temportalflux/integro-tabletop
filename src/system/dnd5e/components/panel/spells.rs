@@ -502,7 +502,11 @@ fn spell_row<'c>(props: SpellRowProps<'c>) -> Html {
 			let data_path = limited_uses.get_uses_path(state);
 			let max_uses = limited_uses.get_max_uses(state) as u32;
 			let uses_consumed = limited_uses.get_uses_consumed(state);
-			let kind = UseSpell::LimitedUse { uses_consumed, max_uses, data_path };
+			let kind = UseSpell::LimitedUse {
+				uses_consumed,
+				max_uses,
+				data_path,
+			};
 			let text = html! {
 				<span class="ms-1">
 					{format!(

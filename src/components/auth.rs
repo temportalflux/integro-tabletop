@@ -1,6 +1,6 @@
+use crate::auth;
 use yew::prelude::*;
 use yewdux::prelude::*;
-use crate::auth;
 
 #[function_component]
 pub fn LoginButton() -> Html {
@@ -16,9 +16,10 @@ pub fn LoginButton() -> Html {
 				{"Sign Out"}
 			</button>
 		}
-	}
-	else {
-		let onclick = auth.login_callback().reform(|_: MouseEvent| auth::OAuthProvider::Github);
+	} else {
+		let onclick = auth
+			.login_callback()
+			.reform(|_: MouseEvent| auth::OAuthProvider::Github);
 		html! {
 			<button
 				class="btn btn-success"

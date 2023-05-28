@@ -17,7 +17,9 @@ pub mod data;
 pub mod database;
 pub mod kdl_ext;
 pub mod logging;
+pub mod page;
 pub mod path_map;
+pub mod storage;
 pub mod system;
 pub mod theme;
 pub mod utility;
@@ -258,6 +260,7 @@ fn WebReady() -> Html {
 	html! {<>
 		<auth::ActionProvider>
 			<Header />
+			<page::OwnedModules />
 		</auth::ActionProvider>
 	</>}
 }
@@ -295,7 +298,6 @@ fn Header() -> Html {
 		</header>
 	}
 }
-
 
 #[function_component]
 fn CharacterPrototype() -> Html {

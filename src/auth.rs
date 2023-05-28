@@ -1,11 +1,11 @@
-use std::sync::Mutex;
-use serde::{Serialize, Deserialize};
-use yew::{prelude::*, html::ChildrenProps};
-use yewdux::prelude::*;
-use std::rc::Rc;
 use gloo_utils::format::JsValueSerdeExt;
+use serde::{Deserialize, Serialize};
+use std::rc::Rc;
+use std::sync::Mutex;
 use wasm_bindgen::{prelude::Closure, JsCast};
 use web_sys::MessageEvent;
+use yew::{html::ChildrenProps, prelude::*};
+use yewdux::prelude::*;
 
 static SITE_ID: &str = "f48e4964-d583-424b-bace-bd51a12f72a2";
 
@@ -76,18 +76,18 @@ pub fn ActionProvider(ChildrenProps { children }: &ChildrenProps) -> Html {
 		Status::Successful { token: _ } => {}
 		Status::Authorizing => {}
 		Status::None | Status::Failed { error: _ } => {
-			if let Some(auth_state) =
-				PendingAuthState::authenticate(provider, &on_window_message, &reset_auth_state, &dispatch)
-			{
+			if let Some(auth_state) = PendingAuthState::authenticate(
+				provider,
+				&on_window_message,
+				&reset_auth_state,
+				&dispatch,
+			) {
 				let Ok(mut state) = pending_auth_state.lock() else { return; };
 				*state = Some(auth_state);
 			}
 		}
 	});
-	let auth = Auth {
-		login,
-		logout,
-	};
+	let auth = Auth { login, logout };
 	html! {
 		<ContextProvider<Auth> context={auth.clone()}>
 			{children.clone()}
@@ -112,7 +112,7 @@ impl Auth {
 	pub fn sign_in(&self, provider: OAuthProvider) {
 		self.login.emit(provider);
 	}
-	
+
 	pub fn sign_out(&self) {
 		self.logout.emit(());
 	}
@@ -218,8 +218,7 @@ impl PendingAuthState {
 		} else if let Some(error_data) = data_state.strip_prefix("error:") {
 			let Ok(data) = serde_json::from_str::<serde_json::Value>(error_data) else {return None;};
 			log::debug!("error: {data:?}");
-			self.auth_status
-				.set(Status::Failed { error: "".into() });
+			self.auth_status.set(Status::Failed { error: "".into() });
 		} else {
 			self.auth_status.set(Status::None);
 		}
