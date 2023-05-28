@@ -8,7 +8,7 @@ use std::{
 	str::FromStr,
 	sync::Arc,
 };
-use yew::prelude::*;
+use yew::{html::ChildrenProps, prelude::*};
 
 pub mod auth;
 pub mod bootstrap;
@@ -21,6 +21,7 @@ pub mod page;
 pub mod path_map;
 pub mod storage;
 pub mod system;
+pub mod task;
 pub mod theme;
 pub mod utility;
 
@@ -258,11 +259,22 @@ fn App() -> Html {
 #[function_component]
 fn WebReady() -> Html {
 	html! {<>
-		<auth::ActionProvider>
+		<ProviderChain>
 			<Header />
 			<page::OwnedModules />
-		</auth::ActionProvider>
+		</ProviderChain>
 	</>}
+}
+
+#[function_component]
+fn ProviderChain(ChildrenProps { children }: &ChildrenProps) -> Html {
+	html! {
+		<auth::ActionProvider>
+			<task::Provider>
+				{children.clone()}
+			</task::Provider>
+		</auth::ActionProvider>
+	}
 }
 
 #[function_component]
