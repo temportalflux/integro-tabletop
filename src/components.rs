@@ -1,6 +1,7 @@
 mod annotated_number;
 pub use annotated_number::*;
 
+pub mod auth;
 pub mod modal;
 mod nav;
 pub use nav::*;

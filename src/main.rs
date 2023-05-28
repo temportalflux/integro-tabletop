@@ -10,6 +10,7 @@ use std::{
 };
 use yew::prelude::*;
 
+pub mod auth;
 pub mod bootstrap;
 pub mod components;
 pub mod data;
@@ -248,9 +249,22 @@ fn main() {
 
 #[function_component]
 fn App() -> Html {
-	//let content = html!(<CharacterPrototype />);
-	let content = html!(<WebReady />);
+	//html!(<CharacterPrototype />)
+	html!(<WebReady />)
+}
+
+#[function_component]
+fn WebReady() -> Html {
 	html! {<>
+		<auth::ActionProvider>
+			<Header />
+		</auth::ActionProvider>
+	</>}
+}
+
+#[function_component]
+fn Header() -> Html {
+	html! {
 		<header>
 			<nav class="navbar navbar-expand-lg sticky-top bg-body-tertiary">
 				<div class="container-fluid">
@@ -273,20 +287,15 @@ fn App() -> Html {
 						</ul>
 						<ul class="navbar-nav flex-row flex-wrap ms-md-auto">
 							<theme::Dropdown />
+							<components::auth::LoginButton />
 						</ul>
 					</div>
 				</div>
 			</nav>
 		</header>
-		{content}
-	</>}
+	}
 }
 
-#[function_component]
-fn WebReady() -> Html {
-	html! {<>
-	</>}
-}
 
 #[function_component]
 fn CharacterPrototype() -> Html {
@@ -395,6 +404,7 @@ fn CharacterPrototype() -> Html {
 	};
 
 	return html! {<>
+		<Header />
 		<ContextProvider<Option<Database>> context={database.data.clone()}>
 			<ContextProvider<ArcNodeRegistry> context={node_reg.clone()}>
 				<ContextProvider<UseStateHandle<DnD5e>> context={system.clone()}>
