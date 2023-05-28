@@ -135,7 +135,7 @@ impl PendingAuthState {
 		auth_status: &Dispatch<Status>,
 	) -> Option<Self> {
 		let provider_id = provider.oauth_id();
-		let scope = "repo,read:org,read:user";
+		let scope = "repo,read:org,read:user,workflow";
 		let base_url = "https://api.netlify.com";
 		let auth_url =
 			format!("{base_url}/auth?provider={provider_id}&site_id={SITE_ID}&scope={scope}");

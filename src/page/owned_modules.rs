@@ -95,7 +95,8 @@ impl PostLogin {
 	fn search_for_relevant_repos(self, user: String, owners: Vec<String>) {
 		use futures_util::stream::StreamExt;
 		let mut progress = self.task_dispatch.new_progress(owners.len() as u32);
-		self.task_dispatch.clone()
+		self.task_dispatch
+			.clone()
 			.spawn("Scan for Modules", Some(progress.clone()), async move {
 				let mut relevant_list = BTreeMap::new();
 				for owner in &owners {
@@ -122,6 +123,8 @@ impl PostLogin {
 
 	fn create_user_homebrew(self, user: String) {
 		log::warn!("Need to generate user's homebrew module");
+		// https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#create-a-repository-for-the-authenticated-user
+		// https://docs.github.com/en/rest/repos/contents?apiVersion=2022-11-28#create-or-update-file-contents
 	}
 }
 
