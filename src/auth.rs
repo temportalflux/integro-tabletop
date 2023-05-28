@@ -64,7 +64,8 @@ pub fn ActionProvider(ChildrenProps { children }: &ChildrenProps) -> Html {
 			let auth_status = auth_status.clone();
 			let logout = logout.clone();
 			Closure::<dyn Fn()>::new(move || {
-				if !matches!(*auth_status, Status::Successful { .. }) {
+				if *auth_status == Status::Authorizing {
+					log::debug!("Authorizing took too long, resetting auth status.");
 					logout.emit(());
 				}
 			})
