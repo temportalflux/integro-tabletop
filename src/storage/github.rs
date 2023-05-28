@@ -48,7 +48,7 @@ impl GithubClient {
 			search_for_repos::Variables {
 				cursor: None,
 				amount: 25,
-				query: format!("user:{owner} topic:opensource-tabletop-module"),
+				query: format!("user:{owner} topic:integro-tabletop-module"),
 			},
 		)
 	}
