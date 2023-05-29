@@ -12,4 +12,5 @@ pub struct RepositoryMetadata {
 	pub name: String,
 	pub is_private: bool,
 	pub version: String,
+	pub systems: Vec<String>,
 }

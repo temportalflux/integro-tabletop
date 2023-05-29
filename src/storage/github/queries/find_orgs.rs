@@ -4,7 +4,7 @@ use graphql_client::GraphQLQuery;
 #[derive(GraphQLQuery)]
 #[graphql(
 	schema_path = "src/storage/github/queries/graphql/schema.graphql",
-	query_path = "src/storage/github/queries/graphql/find_orgs.graphql",
+	query_path = "src/storage/github/queries/graphql/query_find_orgs.graphql",
 	response_derives = "Debug"
 )]
 pub struct FindOrgs;

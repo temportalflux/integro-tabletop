@@ -1,6 +1,6 @@
 use super::{
-	queries::{FindOrgs, SearchForRepos, ViewerInfo, FindUserRepo},
-	GraphQLQueryExt, QueryError, QueryFuture, QueryStream, RepositoryMetadata,
+	queries::{FindOrgs, SearchForRepos, ViewerInfo},
+	GraphQLQueryExt, QueryError, QueryStream, RepositoryMetadata,
 };
 use futures_util::future::LocalBoxFuture;
 
@@ -30,8 +30,22 @@ impl GithubClient {
 		Ok(Self(client, auth_header))
 	}
 
-	pub fn viewer(&self) -> QueryFuture<ViewerInfo> {
-		ViewerInfo::post(self.0.clone(), super::queries::viewer::Variables {})
+	pub fn viewer(
+		&self,
+	) -> LocalBoxFuture<'static, anyhow::Result<(String, Option<RepositoryMetadata>)>> {
+		use crate::storage::USER_HOMEBREW_REPO_NAME;
+		let client = self.0.clone();
+		Box::pin(async move {
+			let response = ViewerInfo::post(
+				client,
+				super::queries::viewer::Variables {
+					repo_name: USER_HOMEBREW_REPO_NAME.to_owned(),
+				},
+			)
+			.await?;
+			let repository = ViewerInfo::unpack_repository(response.viewer.repository);
+			Ok((response.viewer.login, repository))
+		})
 	}
 
 	pub fn find_all_orgs(&self) -> QueryStream<FindOrgs> {
@@ -42,26 +56,6 @@ impl GithubClient {
 				amount: 25,
 			},
 		)
-	}
-
-	pub fn find_user_repo(&self, owner: String, repo: String) -> LocalBoxFuture<'static, anyhow::Result<Option<RepositoryMetadata>>> {
-		let client = self.0.clone();
-		Box::pin(async move {
-			let data = FindUserRepo::post(client, super::queries::find_user_repo::Variables {
-				user: owner.clone(),
-				name: repo.clone(),
-			}).await?;
-			let Some(user) = data.user else { return Ok(None); };
-			let Some(repository) = user.repository else { return Ok(None); };
-			let is_private = repository.is_private;
-			let version = repository.default_branch_ref.unwrap().target.oid;
-			Ok(Some(RepositoryMetadata {
-				owner,
-				name: repo,
-				is_private,
-				version,
-			}))
-		})
 	}
 
 	pub fn search_for_repos(&self, owner: &String) -> QueryStream<SearchForRepos> {

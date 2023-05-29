@@ -23,6 +23,9 @@ pub trait Schema {
 
 pub trait Record: Serialize {
 	fn store_id() -> &'static str;
+	fn key(&self) -> Option<String> {
+		None
+	}
 	fn as_value(&self) -> Result<JsValue, serde_wasm_bindgen::Error> {
 		Ok(self.serialize(&serde_wasm_bindgen::Serializer::json_compatible())?)
 	}

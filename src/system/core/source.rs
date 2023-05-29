@@ -19,6 +19,17 @@ impl Default for ModuleId {
 		}
 	}
 }
+impl ToString for ModuleId {
+	fn to_string(&self) -> String {
+		match &self {
+			ModuleId::Local { name } => name.clone(),
+			ModuleId::Github {
+				user_org,
+				repository,
+			} => format!("{user_org}/{repository}"),
+		}
+	}
+}
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct SourceId {

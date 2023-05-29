@@ -43,8 +43,9 @@ impl ObjectStoreExt for idb::ObjectStore {
 		V: Record,
 	{
 		Box::pin(async move {
+			let key = record.key().map(|key| JsValue::from(key));
 			let value = record.as_value()?;
-			let _ = self.add(&value, None).await?;
+			let _ = self.add(&value, key.as_ref()).await?;
 			Ok(())
 		})
 	}

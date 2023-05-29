@@ -1,0 +1,30 @@
+query ViewerInfo($repo_name: String!) {
+  viewer {
+    login
+    repository(name: $repo_name) {
+      isPrivate
+      defaultBranchRef {
+        target {
+          __typename
+          oid
+          repository {
+            object(expression: "HEAD:") {
+          		__typename
+              ... on Tree {
+                entries {
+                  name
+                  type
+                }
+              }
+            }
+          }
+        }
+      }
+      owner {
+        __typename
+        login
+      }
+      name
+    }
+  }
+}

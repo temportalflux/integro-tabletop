@@ -269,11 +269,13 @@ fn WebReady() -> Html {
 #[function_component]
 fn ProviderChain(ChildrenProps { children }: &ChildrenProps) -> Html {
 	html! {
-		<auth::ActionProvider>
-			<task::Provider>
-				{children.clone()}
-			</task::Provider>
-		</auth::ActionProvider>
+		<DatabaseProvider>
+			<auth::ActionProvider>
+				<task::Provider>
+					{children.clone()}
+				</task::Provider>
+			</auth::ActionProvider>
+		</DatabaseProvider>
 	}
 }
 
@@ -308,6 +310,35 @@ fn Header() -> Html {
 				</div>
 			</nav>
 		</header>
+	}
+}
+
+#[function_component]
+fn DatabaseProvider(props: &ChildrenProps) -> Html {
+	use database::app::Database;
+	let database = yew_hooks::use_async(async move {
+		match Database::open().await {
+			Ok(db) => Ok(db),
+			Err(err) => {
+				log::error!(target: "tabletop-tools", "Failed to connect to database: {err:?}");
+				Err(Arc::new(err))
+			}
+		}
+	});
+	// When the app first opens, load the database.
+	// Could probably check `use_is_first_mount()`, but checking if there database
+	// doesn't exist yet and isn't loading is more clear.
+	if database.data.is_none() && !database.loading {
+		database.run();
+	}
+	// If the database has not yet loaded (or encountered an error),
+	// we wont even show the children - mostly to avoid the numerous errors that would occur
+	// since children strongly rely on the database existing.
+	let Some(ddb) = &database.data else { return html!(); };
+	html! {
+		<ContextProvider<Database> context={ddb.clone()}>
+			{props.children.clone()}
+		</ContextProvider<Database>>
 	}
 }
 
@@ -485,6 +516,7 @@ async fn load_modules(
 				},
 				name: module_name.into(),
 				system: (*system).into(),
+				version: String::new(),
 			};
 			module_store.add_record(&record).await?;
 		}

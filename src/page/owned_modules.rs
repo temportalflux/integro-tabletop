@@ -1,6 +1,11 @@
 use crate::{
 	auth,
-	storage::github::{CreateRepo, GithubClient, SetRepoTopics},
+	database::app::Database,
+	storage::{
+		github::{CreateRepo, GithubClient, RepositoryMetadata, SetRepoTopics},
+		USER_HOMEBREW_REPO_NAME,
+	},
+	system::core::ModuleId,
 	task,
 };
 use std::{collections::BTreeMap, rc::Rc};
@@ -10,6 +15,7 @@ use yewdux::prelude::*;
 /// Page which displays the modules the user currently logged in has contributor access to.
 #[function_component]
 pub fn OwnedModules() -> Html {
+	let database = use_context::<Database>().unwrap();
 	let task_dispatch = use_context::<task::Dispatch>().unwrap();
 	let (auth_status, _) = use_store::<auth::Status>();
 	let was_authed = use_state_eq(|| false);
@@ -21,7 +27,9 @@ pub fn OwnedModules() -> Html {
 		relevant_repos.set(BTreeMap::default());
 	} else if !*was_authed && signed_in {
 		was_authed.set(true);
-		if let Some(post_login) = PostLogin::new(&task_dispatch, &auth_status, &relevant_repos) {
+		if let Some(post_login) =
+			PostLogin::new(&task_dispatch, &auth_status, &database, &relevant_repos)
+		{
 			post_login.query_user_and_orgs();
 		}
 	}
@@ -51,18 +59,18 @@ pub fn OwnedModules() -> Html {
 	</>}
 }
 
-static USER_HOMEBREW_REPO_NAME: &str = "integro-homebrew";
-
 #[derive(Clone)]
 struct PostLogin {
-	task_dispatch: task::Dispatch,
 	client: GithubClient,
+	task_dispatch: task::Dispatch,
+	database: Database,
 	relevant_repos: UseStateHandle<BTreeMap<(String, String), (bool, String)>>,
 }
 impl PostLogin {
 	fn new(
 		task_dispatch: &task::Dispatch,
 		auth_status: &Rc<auth::Status>,
+		database: &Database,
 		relevant_repos: &UseStateHandle<BTreeMap<(String, String), (bool, String)>>,
 	) -> Option<Self> {
 		let auth::Status::Successful { token } = &**auth_status else { return None; };
@@ -71,6 +79,7 @@ impl PostLogin {
 		Some(Self {
 			client,
 			task_dispatch: task_dispatch.clone(),
+			database: database.clone(),
 			relevant_repos: relevant_repos.clone(),
 		})
 	}
@@ -81,7 +90,7 @@ impl PostLogin {
 			.clone()
 			.spawn("Query Current User & Orgs", None, {
 				async move {
-					let user = self.client.viewer().await?.viewer.login;
+					let (user, homebrew_repo) = self.client.viewer().await?;
 
 					let mut owners = vec![user.clone()];
 					let mut find_all_orgs = self.client.find_all_orgs();
@@ -90,36 +99,36 @@ impl PostLogin {
 					}
 					log::debug!("{owners:?}");
 
-					self.search_for_relevant_repos(user, owners);
+					// If the homebrew repo was not found when querying who the user is,
+					// then we need to generate one, since this is where their user data is stored
+					// and is the default location for any creations.
+					if homebrew_repo.is_none() {
+						self.clone().create_user_homebrew().wait_true().await;
+					}
+
+					self.search_for_relevant_repos(owners);
 
 					Ok(())
 				}
 			});
 	}
 
-	fn search_for_relevant_repos(self, user: String, owners: Vec<String>) {
+	fn search_for_relevant_repos(self, owners: Vec<String>) {
 		use futures_util::stream::StreamExt;
 		let mut progress = self.task_dispatch.new_progress(owners.len() as u32);
 		self.task_dispatch
 			.clone()
 			.spawn("Scan for Modules", Some(progress.clone()), async move {
-				// First query to see if the user has a homebrew module.
-				// All users need one, as this is where their user data is stored
-				// and is the default location for any creations.
-				let homebrew_repo = self.client.find_user_repo(user.clone(), USER_HOMEBREW_REPO_NAME.to_owned()).await?;
-				if homebrew_repo.is_none() {
-					// If there is no pre-existing homebrew repo, create one.
-					self.clone().create_user_homebrew().wait_true().await;
-				}
-				
 				// Regardless of if the homebrew already existed, lets gather ALL of the relevant
 				// repositories which are content modules. This will always include the homebrew repo,
 				// since it is garunteed to exist due to the above code.
 				let mut relevant_list = BTreeMap::new();
+				let mut metadata = Vec::new();
 				for owner in &owners {
 					log::debug!("searching {owner:?}");
 					let mut stream = self.client.search_for_repos(owner);
 					while let Some(repos) = stream.next().await {
+						metadata.extend(repos.clone());
 						for repo in repos {
 							relevant_list
 								.insert((repo.owner, repo.name), (repo.is_private, repo.version));
@@ -130,6 +139,8 @@ impl PostLogin {
 				log::debug!("Valid Repositories: {relevant_list:?}");
 
 				self.relevant_repos.set(relevant_list);
+				self.insert_or_update_modules(metadata);
+
 				Ok(())
 			});
 	}
@@ -157,6 +168,66 @@ impl PostLogin {
 
 				Ok(())
 			})
+	}
+
+	async fn get_ddb_module_version(&self, repo: &RepositoryMetadata) -> Option<String> {
+		use crate::database::app::Module;
+		let id = ModuleId::Github {
+			user_org: repo.owner.clone(),
+			repository: repo.name.clone(),
+		};
+		let query = self.database.get::<Module>(id.to_string()).await;
+		match query {
+			Ok(module) => module.map(|module| module.version),
+			Err(err) => {
+				log::warn!("Query for {id:?} failed: {err:?}");
+				None
+			}
+		}
+	}
+
+	fn insert_or_update_modules(self, repositories: Vec<RepositoryMetadata>) {
+		let mut progress = self.task_dispatch.new_progress(repositories.len() as u32);
+		self.task_dispatch.clone().spawn(
+			"Check for Module Updates",
+			Some(progress.clone()),
+			async move {
+				// TODO: Check the database to see what data needs to be updated.
+
+				for repo in repositories {
+					match self.get_ddb_module_version(&repo).await {
+						None => {
+							// If a module doesn't exist in the database (repo owner + name as a module id),
+							// then all of its content needs to be downloaded.
+							log::debug!("TODO: full module download {}/{}", repo.owner, repo.name);
+						}
+						Some(version) if version != repo.version => {
+							// If a module DOES exist, but its version does not match the one in metadata,
+							// then local data is out of date. Will need to query to see what files updated between the two versions,
+							// and update individual entries based on that.
+							log::debug!(
+								"TODO: partial download {}/{} ({} -> {})",
+								repo.owner,
+								repo.name,
+								version,
+								repo.version
+							);
+						}
+						// If the module exists and is up to date, then no updates are required.
+						Some(_current_version) => {
+							log::debug!(
+								"TODO: up-to-date {}/{} ({_current_version})",
+								repo.owner,
+								repo.name
+							);
+						}
+					}
+					progress.inc(1);
+				}
+
+				Ok(())
+			},
+		);
 	}
 }
 

@@ -1,4 +1,4 @@
-use std::{rc::Rc};
+use std::rc::Rc;
 use yew::prelude::*;
 
 mod dispatch;

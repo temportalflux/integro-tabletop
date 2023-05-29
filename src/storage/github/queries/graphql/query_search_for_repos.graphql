@@ -1,0 +1,34 @@
+query SearchForRepos($query: String!, $cursor: String, $amount: Int!) {
+  search(query: $query, type: REPOSITORY, first: $amount, after: $cursor) {
+    nodes {
+      __typename
+      ... on Repository {
+        name
+        isPrivate
+        defaultBranchRef {
+          target {
+            __typename
+            oid
+          }
+        }
+        owner {
+          __typename
+          login
+        }
+        object(expression: "HEAD:") {
+          __typename
+          ... on Tree {
+            entries {
+              name
+              type
+            }
+          }
+        }
+      }
+    }
+    pageInfo {
+      endCursor
+      hasNextPage
+    }
+  }
+}

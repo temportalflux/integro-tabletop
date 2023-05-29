@@ -41,6 +41,21 @@ impl Database {
 		Ok(self.0.read_write::<Module>()?)
 	}
 
+	pub async fn get<T>(
+		&self,
+		key: impl Into<wasm_bindgen::JsValue>,
+	) -> Result<Option<T>, super::Error>
+	where
+		T: Record + serde::de::DeserializeOwned,
+	{
+		use super::TransactionExt;
+		let transaction = self.0.read_only::<T>()?;
+		let store = transaction.object_store_of::<T>()?;
+		let Some(record_js) = store.get(idb::Query::Key(key.into())).await? else { return Ok(None); };
+		let record = serde_wasm_bindgen::from_value::<T>(record_js)?;
+		Ok(Some(record))
+	}
+
 	fn read_index<I: super::IndexType>(&self) -> Result<super::Index<I>, super::Error> {
 		use super::{ObjectStoreExt, TransactionExt};
 		let transaction = self.read_entries()?;
