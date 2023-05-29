@@ -3,6 +3,13 @@ use crate::utility::PinFutureLifetimeNoSend;
 use wasm_bindgen::JsValue;
 
 pub trait ObjectStoreExt {
+	fn get_record<'store, V>(
+		&'store self,
+		key: impl Into<JsValue> + 'store,
+	) -> PinFutureLifetimeNoSend<'store, Result<Option<V>, Error>>
+	where
+		V: Record + serde::de::DeserializeOwned;
+
 	fn add_record<'store, V>(
 		&'store self,
 		record: &'store V,
@@ -35,6 +42,19 @@ pub trait ObjectStoreExt {
 }
 
 impl ObjectStoreExt for idb::ObjectStore {
+	fn get_record<'store, V>(
+		&'store self,
+		key: impl Into<JsValue> + 'store,
+	) -> PinFutureLifetimeNoSend<'store, Result<Option<V>, Error>>
+	where
+		V: Record + serde::de::DeserializeOwned,
+	{
+		Box::pin(async move {
+			let Some(record_js) = self.get(idb::Query::Key(key.into())).await? else { return Ok(None); };
+			Ok(Some(serde_wasm_bindgen::from_value::<V>(record_js)?))
+		})
+	}
+
 	fn add_record<'store, V>(
 		&'store self,
 		record: &'store V,

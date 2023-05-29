@@ -48,12 +48,10 @@ impl Database {
 	where
 		T: Record + serde::de::DeserializeOwned,
 	{
-		use super::TransactionExt;
+		use super::{ObjectStoreExt, TransactionExt};
 		let transaction = self.0.read_only::<T>()?;
 		let store = transaction.object_store_of::<T>()?;
-		let Some(record_js) = store.get(idb::Query::Key(key.into())).await? else { return Ok(None); };
-		let record = serde_wasm_bindgen::from_value::<T>(record_js)?;
-		Ok(Some(record))
+		Ok(store.get_record(key).await?)
 	}
 
 	fn read_index<I: super::IndexType>(&self) -> Result<super::Index<I>, super::Error> {

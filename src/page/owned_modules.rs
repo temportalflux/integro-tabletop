@@ -9,7 +9,10 @@ use crate::{
 		},
 		USER_HOMEBREW_REPO_NAME,
 	},
-	system::core::{ModuleId, SourceId},
+	system::{
+		core::{ModuleId, NodeRegistry, SourceId},
+		dnd5e::{ComponentRegistry, DnD5e},
+	},
 	task,
 };
 use anyhow::Context;
@@ -193,16 +196,11 @@ impl PostLogin {
 	}
 
 	fn insert_or_update_modules(self, repositories: Vec<RepositoryMetadata>) {
-		use crate::database::{
-			app::{Entry, Module},
-			ObjectStoreExt, TransactionExt,
-		};
 		let mut progress = self.task_dispatch.new_progress(repositories.len() as u32);
 		self.task_dispatch.clone().spawn(
 			"Check for Module Updates",
 			Some(progress.clone()),
 			async move {
-				// TODO: Check the database to see what data needs to be updated.
 
 				// TODO: These need to go somewhere that the registries are both:
 				// - available via use_context
@@ -220,257 +218,31 @@ impl PostLogin {
 						None => {
 							// If a module doesn't exist in the database (repo owner + name as a module id),
 							// then all of its content needs to be downloaded.
-
-							log::debug!("TODO: full module download {}/{}", repo.owner, repo.name);
-							// TEMPORARY guard to only fetch basic rules
-							if repo.name != "dnd5e-basic-rules" {
-								continue;
-							}
-
-							let mut scan_progress = self.task_dispatch.new_progress(1);
-							let scan_signal = self.task_dispatch.spawn(
-								format!("Scanning {}/{}", repo.owner, repo.name),
-								Some(scan_progress.clone()),
-								{
-									let client = self.client.clone();
-									let database = self.database.clone();
-									let comp_reg = comp_reg.clone();
-									let node_reg = node_reg.clone();
-									let prev_update_signal = prev_update_signal.take();
-									async move {
-										if let Some(prev) = prev_update_signal {
-											prev.wait_true().await;
-										}
-
-										let mut file_paths = Vec::new();
-
-										let mut tree_ids = VecDeque::from([(
-											PathBuf::new(),
-											repo.tree_id.clone(),
-										)]);
-										while let Some((tree_path, tree_id)) = tree_ids.pop_front()
-										{
-											let args = GetTreeArgs {
-												owner: repo.owner.as_str(),
-												repo: repo.name.as_str(),
-												tree_id: tree_id.as_str(),
-											};
-											for entry in client.get_tree(args).await? {
-												let full_path = tree_path.join(&entry.path);
-												if let Some(tree_id) = entry.tree_id {
-													tree_ids.push_back((full_path, tree_id));
-													scan_progress.inc_max(1);
-												} else {
-													// only record content files (kdl extension)
-													if !entry.path.ends_with(".kdl") {
-														continue;
-													}
-													// extract the system the content is for (which is the top-most parent).
-													// if this path has no parent, then it isn't in a system and can be ignored.
-													match full_path.parent() {
-														None => continue,
-														Some(path)
-															if path == std::path::Path::new("") =>
-														{
-															continue
-														}
-														_ => {}
-													}
-													let mut comps = full_path.components();
-													let system_path = comps.next().unwrap();
-													let system = system_path
-														.as_os_str()
-														.to_str()
-														.unwrap()
-														.to_owned();
-													let path_str = full_path
-														.display()
-														.to_string()
-														.replace("\\", "/");
-													file_paths.push((system, path_str));
-												}
-											}
-											scan_progress.inc(1);
-										}
-
-										// Prepare the module to be inserted into the database
-										let db_modules = {
-											let mut modules =
-												Vec::with_capacity(repo.systems.len());
-											for system in &repo.systems {
-												modules.push(Module {
-													module_id: module_id.clone(),
-													name: module_id.to_string(),
-													system: system.clone(),
-													version: repo.version.clone(),
-												});
-											}
-											modules
-										};
-										let mut db_entries = Vec::with_capacity(file_paths.len());
-
-										scan_progress.set_name(
-											format!("Downloading {}/{}", repo.owner, repo.name),
-											0,
-											file_paths.len() as u32,
-										);
-										for (system, file_path) in file_paths {
-											let args = FileContentArgs {
-												owner: repo.owner.as_str(),
-												repo: repo.name.as_str(),
-												path: file_path.as_str(),
-												version: repo.version.as_str(),
-											};
-											let content = client.get_file_content(args).await?;
-
-											let document =
-												match content.parse::<kdl::KdlDocument>() {
-													Ok(doc) => doc,
-													Err(err) => {
-														log::warn!("Failed to parse module content {}:{}/{}: {err:?}", repo.owner, repo.name, file_path);
-														continue;
-													}
-												};
-											let mut source_id = SourceId {
-												module: Some(module_id.clone()),
-												system: Some(system.clone()),
-												path: PathBuf::from(&file_path),
-												version: None,
-												node_idx: 0,
-											};
-
-											for (idx, node) in document.nodes().iter().enumerate() {
-												source_id.node_idx = idx;
-
-												let category = node.name().value().to_owned();
-												// Generate the metadata for this entry
-												let metadata = {
-													let Some(comp_factory) = comp_reg.get_factory(&category).cloned() else { continue; };
-													let ctx = NodeContext::new(
-														Arc::new(source_id.clone()),
-														node_reg.clone(),
-													);
-													let metadata = comp_factory
-														.metadata_from_kdl(node, &ctx)
-														.with_context(|| {
-															format!(
-																"Failed to parse {:?}",
-																source_id.to_string()
-															)
-														});
-													let metadata = match metadata {
-														Ok(metadata) => metadata,
-														Err(err) => {
-															log::error!(
-																"Failed to parse content metadata: {err:?}"
-															);
-															continue;
-														}
-													};
-													match metadata {
-														serde_json::Value::Null => {
-															serde_json::Value::Null
-														}
-														serde_json::Value::Object(mut metadata) => {
-															metadata.insert(
-																"module".into(),
-																serde_json::json!(
-																	module_id.to_string()
-																),
-															);
-															serde_json::Value::Object(metadata)
-														}
-														other => {
-															log::error!(
-																"Metadata must be a map, but {} returned {:?}.",
-																source_id.to_string(),
-																other
-															);
-															continue;
-														}
-													}
-												};
-
-												let record = Entry {
-													id: source_id.to_string(),
-													module: module_id.to_string(),
-													system: system.clone(),
-													category: category,
-													version: Some(repo.version.clone()),
-													metadata,
-													kdl: node.to_string(),
-												};
-												db_entries.push(record);
-											}
-
-											scan_progress.inc(1);
-										}
-
-										// Now that we have all of the entries to insert,
-										// put them all in the database.
-										{
-											let transaction = database.write()?;
-											let module_store =
-												transaction.object_store_of::<Module>()?;
-											let entry_store =
-												transaction.object_store_of::<Entry>()?;
-											for record in db_modules {
-												module_store.add_record(&record).await?;
-											}
-											for record in db_entries {
-												entry_store.add_record(&record).await?;
-											}
-											if let Err(err) = transaction.commit().await {
-												log::error!("Failed to commit module content for {}/{}: {err:?}", repo.owner, repo.name);
-											}
-										}
-
-										Ok(())
-									}
-								},
+							let signal = self.download_module(
+								&comp_reg,
+								&node_reg,
+								repo,
+								module_id,
+								prev_update_signal.take(),
 							);
-							prev_update_signal = Some(scan_signal);
+							prev_update_signal = Some(signal);
 						}
-						Some(version) if version != repo.version => {
+						Some(version_in_ddb) if version_in_ddb != repo.version => {
 							// If a module DOES exist, but its version does not match the one in metadata,
 							// then local data is out of date. Will need to query to see what files updated between the two versions,
 							// and update individual entries based on that.
-							log::debug!(
-								"TODO: partial download {}/{} ({} -> {})",
-								repo.owner,
-								repo.name,
-								version,
-								repo.version
+							let signal = self.update_module(
+								&comp_reg,
+								&node_reg,
+								repo,
+								module_id,
+								version_in_ddb,
+								prev_update_signal.take(),
 							);
-
-							// TODO: After fetching all of the changes, remove the old records and insert the new ones. Also update the module version.
-
-							/*
-							// Getting the files changed for this upgrade
-							let file_paths = self.client.get_files_changed(FilesChangedArgs {
-								owner: "flux-tabletop".into(),
-								repo: "dnd5e-basic-rules".into(),
-								commit_start: "7b410f785b909d2c5569c3bbf896509cc74c402c".into(),
-								commit_end: "eb0f3fe6bf1d6d44837d3339dafd80cceea24a16".into(),
-							}).await?;
-
-							// Getting the content of each changed file
-							let content = self.client.get_file_content(FileContentArgs {
-								owner: "flux-tabletop".into(),
-								repo: "dnd5e-basic-rules".into(),
-								path: "dnd5e/class/monk.kdl".into(),
-								version: "eb0f3fe6bf1d6d44837d3339dafd80cceea24a16".into(),
-							}).await?;
-							*/
+							prev_update_signal = Some(signal);
 						}
 						// If the module exists and is up to date, then no updates are required.
-						Some(_current_version) => {
-							log::debug!(
-								"TODO: up-to-date {}/{} ({_current_version})",
-								repo.owner,
-								repo.name
-							);
-						}
+						Some(_current_version) => {}
 					}
 					progress.inc(1);
 				}
@@ -478,6 +250,296 @@ impl PostLogin {
 				Ok(())
 			},
 		);
+	}
+
+	fn get_system_in_file_path(path: &std::path::Path) -> Option<String> {
+		let Some(system_path) = path.components().next() else { return None; };
+		let system = system_path.as_os_str().to_str().unwrap().to_owned();
+		Some(system)
+	}
+
+	fn download_module(
+		&self,
+		comp_reg: &Rc<ComponentRegistry<DnD5e>>,
+		node_reg: &Arc<NodeRegistry>,
+		repo: RepositoryMetadata,
+		module_id: ModuleId,
+		prev_signal: Option<task::Signal>,
+	) -> task::Signal {
+		use crate::database::{
+			app::{Entry, Module},
+			ObjectStoreExt, TransactionExt,
+		};
+		let mut scan_progress = self.task_dispatch.new_progress(1);
+		self.task_dispatch.spawn(
+			format!("Scanning {}/{}", repo.owner, repo.name),
+			Some(scan_progress.clone()),
+			{
+				let client = self.client.clone();
+				let database = self.database.clone();
+				let comp_reg = comp_reg.clone();
+				let node_reg = node_reg.clone();
+				async move {
+					if let Some(prev) = prev_signal {
+						prev.wait_true().await;
+					}
+
+					let mut file_paths = Vec::new();
+
+					// Recursively scan the repository tree for all relevant content files
+					let mut tree_ids = VecDeque::from([(PathBuf::new(), repo.tree_id.clone())]);
+					while let Some((tree_path, tree_id)) = tree_ids.pop_front() {
+						let args = GetTreeArgs {
+							owner: repo.owner.as_str(),
+							repo: repo.name.as_str(),
+							tree_id: tree_id.as_str(),
+						};
+						for entry in client.get_tree(args).await? {
+							let full_path = tree_path.join(&entry.path);
+							// if the entry is a directory, put it in the queue to be scanned
+							if let Some(tree_id) = entry.tree_id {
+								tree_ids.push_back((full_path, tree_id));
+								scan_progress.inc_max(1);
+							} else {
+								// only record content files (kdl extension)
+								if !entry.path.ends_with(".kdl") {
+									continue;
+								}
+								// extract the system the content is for (which is the top-most parent).
+								// if this path has no parent, then it isn't in a system and can be ignored.
+								match full_path.parent() {
+									None => continue,
+									Some(path) if path == std::path::Path::new("") => continue,
+									_ => {}
+								}
+								let system = Self::get_system_in_file_path(&full_path).unwrap();
+								let path_str = full_path.display().to_string().replace("\\", "/");
+								file_paths.push((system, path_str));
+							}
+						}
+						scan_progress.inc(1);
+					}
+
+					// Prepare the module to be inserted into the database
+					let db_modules = {
+						let mut modules = Vec::with_capacity(repo.systems.len());
+						for system in &repo.systems {
+							modules.push(Module {
+								module_id: module_id.clone(),
+								name: module_id.to_string(),
+								system: system.clone(),
+								version: repo.version.clone(),
+							});
+						}
+						modules
+					};
+					let mut db_entries = Vec::with_capacity(file_paths.len());
+
+					scan_progress.set_name(
+						format!("Downloading {}/{}", repo.owner, repo.name),
+						0,
+						file_paths.len() as u32,
+					);
+					for (system, file_path) in file_paths {
+						let args = FileContentArgs {
+							owner: repo.owner.as_str(),
+							repo: repo.name.as_str(),
+							path: file_path.as_str(),
+							version: repo.version.as_str(),
+						};
+						let content = client.get_file_content(args).await?;
+
+						let entries = Self::parse_content(
+							&comp_reg, &node_reg, &repo, &module_id, system, file_path, content,
+						);
+						db_entries.extend(entries);
+
+						scan_progress.inc(1);
+					}
+
+					// Now that we have all of the entries to insert,
+					// put them all in the database.
+					{
+						let transaction = database.write()?;
+						let module_store = transaction.object_store_of::<Module>()?;
+						let entry_store = transaction.object_store_of::<Entry>()?;
+						for record in db_modules {
+							module_store.add_record(&record).await?;
+						}
+						for record in db_entries {
+							entry_store.add_record(&record).await?;
+						}
+						transaction.commit().await.map_err(crate::database::Error::from)?;
+					}
+
+					Ok(())
+				}
+			},
+		)
+	}
+
+	fn update_module(
+		&self,
+		comp_reg: &Rc<ComponentRegistry<DnD5e>>,
+		node_reg: &Arc<NodeRegistry>,
+		repo: RepositoryMetadata,
+		module_id: ModuleId,
+		version_in_ddb: String,
+		prev_signal: Option<task::Signal>,
+	) -> task::Signal {
+		use crate::database::{
+			app::{Entry, Module},
+			ObjectStoreExt, TransactionExt,
+		};
+		let mut progress = self.task_dispatch.new_progress(1);
+		self.task_dispatch.spawn(
+			format!("Updating {}/{}", repo.owner, repo.name),
+			Some(progress.clone()),
+			{
+				let client = self.client.clone();
+				let database = self.database.clone();
+				let comp_reg = comp_reg.clone();
+				let node_reg = node_reg.clone();
+				async move {
+					if let Some(prev) = prev_signal {
+						prev.wait_true().await;
+					}
+
+					// Getting the files changed for this upgrade
+					let changed_file_paths = client
+						.get_files_changed(FilesChangedArgs {
+							owner: repo.owner.as_str(),
+							repo: repo.name.as_str(),
+							commit_start: version_in_ddb.as_str(),
+							commit_end: repo.version.as_str(),
+						})
+						.await?;
+					
+					progress.inc_max(changed_file_paths.len() as u32);
+					let mut new_entries = Vec::with_capacity(changed_file_paths.len());
+
+					for file_path in changed_file_paths {
+						// Getting the content of each changed file
+						let content = client
+							.get_file_content(FileContentArgs {
+								owner: repo.owner.as_str(),
+								repo: repo.name.as_str(),
+								path: file_path.as_str(),
+								version: repo.version.as_str(),
+							})
+							.await?;
+						let system =
+							Self::get_system_in_file_path(std::path::Path::new(&file_path))
+								.unwrap();
+
+						let entries = Self::parse_content(
+							&comp_reg, &node_reg, &repo, &module_id, system, file_path, content,
+						);
+						new_entries.extend(entries);
+						progress.inc(1);
+					}
+
+					// After fetching all of the changes, update (add or replace) the entry records and update the module.
+					{
+						let transaction = database.write()?;
+						let module_store = transaction.object_store_of::<Module>()?;
+						let entry_store = transaction.object_store_of::<Entry>()?;
+
+						let mut module = module_store
+							.get_record::<Module>(module_id.to_string())
+							.await?
+							.unwrap();
+						module.version = repo.version;
+						module_store.put_record(&module).await?;
+
+						for entry in new_entries {
+							entry_store.put_record(&entry).await?;
+						}
+
+						transaction.commit().await.map_err(crate::database::Error::from)?;
+					}
+					Ok(())
+				}
+			},
+		)
+	}
+
+	fn parse_content(
+		comp_reg: &Rc<ComponentRegistry<DnD5e>>,
+		node_reg: &Arc<NodeRegistry>,
+		repo: &RepositoryMetadata,
+		module_id: &ModuleId,
+		system: String,
+		file_path: String,
+		content: String,
+	) -> Vec<crate::database::app::Entry> {
+		let document = match content.parse::<kdl::KdlDocument>() {
+			Ok(doc) => doc,
+			Err(err) => {
+				log::warn!(
+					"Failed to parse module content {}:{}/{}: {err:?}",
+					repo.owner,
+					repo.name,
+					file_path
+				);
+				return Vec::new();
+			}
+		};
+		let mut source_id = SourceId {
+			module: Some(module_id.clone()),
+			system: Some(system.clone()),
+			path: PathBuf::from(&file_path),
+			version: None,
+			node_idx: 0,
+		};
+		let mut entries = Vec::with_capacity(document.nodes().len());
+		for (idx, node) in document.nodes().iter().enumerate() {
+			source_id.node_idx = idx;
+
+			let category = node.name().value().to_owned();
+			// Generate the metadata for this entry
+			let metadata = {
+				let Some(comp_factory) = comp_reg.get_factory(&category).cloned() else { continue; };
+				let ctx = NodeContext::new(Arc::new(source_id.clone()), node_reg.clone());
+				let metadata = comp_factory
+					.metadata_from_kdl(node, &ctx)
+					.with_context(|| format!("Failed to parse {:?}", source_id.to_string()));
+				let metadata = match metadata {
+					Ok(metadata) => metadata,
+					Err(err) => {
+						log::error!("Failed to parse content metadata: {err:?}");
+						continue;
+					}
+				};
+				match metadata {
+					serde_json::Value::Null => serde_json::Value::Null,
+					serde_json::Value::Object(mut metadata) => {
+						metadata.insert("module".into(), serde_json::json!(module_id.to_string()));
+						serde_json::Value::Object(metadata)
+					}
+					other => {
+						log::error!(
+							"Metadata must be a map, but {} returned {:?}.",
+							source_id.to_string(),
+							other
+						);
+						continue;
+					}
+				}
+			};
+
+			let record = crate::database::app::Entry {
+				id: source_id.to_string(),
+				module: module_id.to_string(),
+				system: system.clone(),
+				category: category,
+				version: Some(repo.version.clone()),
+				metadata,
+				kdl: node.to_string(),
+			};
+			entries.push(record);
+		}
+		entries
 	}
 }
 
