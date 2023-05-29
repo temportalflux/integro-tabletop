@@ -1,4 +1,8 @@
-use crate::{auth, storage::github::GithubClient, task};
+use crate::{
+	auth,
+	storage::github::{CreateRepo, GithubClient, SetRepoTopics},
+	task,
+};
 use std::{collections::BTreeMap, rc::Rc};
 use yew::prelude::*;
 use yewdux::prelude::*;
@@ -48,6 +52,7 @@ pub fn OwnedModules() -> Html {
 }
 
 static USER_HOMEBREW_REPO_NAME: &str = "integro-homebrew";
+
 #[derive(Clone)]
 struct PostLogin {
 	task_dispatch: task::Dispatch,
@@ -98,6 +103,18 @@ impl PostLogin {
 		self.task_dispatch
 			.clone()
 			.spawn("Scan for Modules", Some(progress.clone()), async move {
+				// First query to see if the user has a homebrew module.
+				// All users need one, as this is where their user data is stored
+				// and is the default location for any creations.
+				let homebrew_repo = self.client.find_user_repo(user.clone(), USER_HOMEBREW_REPO_NAME.to_owned()).await?;
+				if homebrew_repo.is_none() {
+					// If there is no pre-existing homebrew repo, create one.
+					self.clone().create_user_homebrew().wait_true().await;
+				}
+				
+				// Regardless of if the homebrew already existed, lets gather ALL of the relevant
+				// repositories which are content modules. This will always include the homebrew repo,
+				// since it is garunteed to exist due to the above code.
 				let mut relevant_list = BTreeMap::new();
 				for owner in &owners {
 					log::debug!("searching {owner:?}");
@@ -112,19 +129,34 @@ impl PostLogin {
 				}
 				log::debug!("Valid Repositories: {relevant_list:?}");
 
-				if !relevant_list.contains_key(&(user.clone(), USER_HOMEBREW_REPO_NAME.into())) {
-					self.clone().create_user_homebrew(user);
-				}
-
 				self.relevant_repos.set(relevant_list);
 				Ok(())
 			});
 	}
 
-	fn create_user_homebrew(self, user: String) {
-		log::warn!("Need to generate user's homebrew module");
+	fn create_user_homebrew(self) -> task::Signal {
+		use crate::storage::github::MODULE_TOPIC;
 		// https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#create-a-repository-for-the-authenticated-user
 		// https://docs.github.com/en/rest/repos/contents?apiVersion=2022-11-28#create-or-update-file-contents
+		self.task_dispatch
+			.clone()
+			.spawn("Initialize User Homebrew", None, async move {
+				let create_repo = CreateRepo {
+					org: None,
+					name: USER_HOMEBREW_REPO_NAME.to_owned(),
+					private: true,
+				};
+				let owner = self.client.create_repo(create_repo).await?;
+
+				let set_topics = SetRepoTopics {
+					owner,
+					repo: USER_HOMEBREW_REPO_NAME.to_owned(),
+					topics: vec![MODULE_TOPIC.to_owned()],
+				};
+				self.client.set_repo_topics(set_topics).await?;
+
+				Ok(())
+			})
 	}
 }
 

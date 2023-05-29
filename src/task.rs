@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{rc::Rc};
 use yew::prelude::*;
 
 mod dispatch;
@@ -7,6 +7,8 @@ mod progress;
 pub use progress::*;
 mod list;
 pub use list::*;
+mod signal;
+pub use signal::*;
 
 #[derive(Clone, PartialEq)]
 pub struct View(UseReducerHandle<List>);

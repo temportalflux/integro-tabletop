@@ -61,6 +61,7 @@ rand = "0.8"
 wasm-timer = "0.2"
 regex = "1.8"
 graphql_client = { version = "0.12", features = ["reqwest"] }
+tokio = { version="1.26", features=["sync"] }
 
 [target.'cfg(windows)'.dependencies]
 tokio = { version="1.26", features=["full"] }

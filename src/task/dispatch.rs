@@ -1,4 +1,4 @@
-use super::{Action, List, ProgressHandle};
+use super::{Action, List, ProgressHandle, Signal};
 use futures_util::Future;
 use std::rc::Rc;
 use uuid::Uuid;
@@ -21,15 +21,30 @@ impl Dispatch {
 		}
 	}
 
-	pub fn spawn<F>(&self, name: impl Into<String>, progress: Option<ProgressHandle>, pending: F)
+	pub fn spawn<F>(
+		&self,
+		name: impl Into<String>,
+		progress: Option<ProgressHandle>,
+		pending: F,
+	) -> Signal
 	where
 		F: Future<Output = anyhow::Result<()>> + 'static,
 	{
+		let signal = Signal::new(false);
+		let pending = Box::pin({
+			let signal = signal.clone();
+			async move {
+				pending.await?;
+				signal.set();
+				Ok(())
+			}
+		});
 		self.0.dispatch(Action::Insert {
 			handle: (*self.0).clone(),
 			name: name.into(),
 			progress,
-			pending: Box::pin(pending),
+			pending,
 		});
+		signal
 	}
 }
