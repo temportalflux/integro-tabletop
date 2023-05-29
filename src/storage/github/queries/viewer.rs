@@ -26,6 +26,7 @@ impl ViewerInfo {
 
 		// HEAD (aka default branch) must have content
 		let Some(Object::Tree(head_tree)) = default_branch_ref.target.repository.object else { return None; };
+		let tree_id = head_tree.oid;
 		let Some(root_tree_entries) = &head_tree.entries else { return None; };
 		let mut systems = Vec::new();
 		for entry in root_tree_entries {
@@ -43,6 +44,7 @@ impl ViewerInfo {
 			is_private,
 			version,
 			systems,
+			tree_id,
 		})
 	}
 }

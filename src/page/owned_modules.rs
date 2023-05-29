@@ -1,14 +1,24 @@
 use crate::{
 	auth,
 	database::app::Database,
+	kdl_ext::NodeContext,
 	storage::{
-		github::{CreateRepo, GithubClient, RepositoryMetadata, SetRepoTopics},
+		github::{
+			CreateRepoArgs, FileContentArgs, FilesChangedArgs, GetTreeArgs, GithubClient,
+			RepositoryMetadata, SetRepoTopicsArgs,
+		},
 		USER_HOMEBREW_REPO_NAME,
 	},
-	system::core::ModuleId,
+	system::core::{ModuleId, SourceId},
 	task,
 };
-use std::{collections::BTreeMap, rc::Rc};
+use anyhow::Context;
+use std::{
+	collections::{BTreeMap, VecDeque},
+	path::PathBuf,
+	rc::Rc,
+	sync::Arc,
+};
 use yew::prelude::*;
 use yewdux::prelude::*;
 
@@ -152,16 +162,16 @@ impl PostLogin {
 		self.task_dispatch
 			.clone()
 			.spawn("Initialize User Homebrew", None, async move {
-				let create_repo = CreateRepo {
+				let create_repo = CreateRepoArgs {
 					org: None,
-					name: USER_HOMEBREW_REPO_NAME.to_owned(),
+					name: USER_HOMEBREW_REPO_NAME,
 					private: true,
 				};
 				let owner = self.client.create_repo(create_repo).await?;
 
-				let set_topics = SetRepoTopics {
-					owner,
-					repo: USER_HOMEBREW_REPO_NAME.to_owned(),
+				let set_topics = SetRepoTopicsArgs {
+					owner: owner.as_str(),
+					repo: USER_HOMEBREW_REPO_NAME,
 					topics: vec![MODULE_TOPIC.to_owned()],
 				};
 				self.client.set_repo_topics(set_topics).await?;
@@ -170,12 +180,8 @@ impl PostLogin {
 			})
 	}
 
-	async fn get_ddb_module_version(&self, repo: &RepositoryMetadata) -> Option<String> {
+	async fn get_ddb_module_version(&self, id: &ModuleId) -> Option<String> {
 		use crate::database::app::Module;
-		let id = ModuleId::Github {
-			user_org: repo.owner.clone(),
-			repository: repo.name.clone(),
-		};
 		let query = self.database.get::<Module>(id.to_string()).await;
 		match query {
 			Ok(module) => module.map(|module| module.version),
@@ -187,6 +193,10 @@ impl PostLogin {
 	}
 
 	fn insert_or_update_modules(self, repositories: Vec<RepositoryMetadata>) {
+		use crate::database::{
+			app::{Entry, Module},
+			ObjectStoreExt, TransactionExt,
+		};
 		let mut progress = self.task_dispatch.new_progress(repositories.len() as u32);
 		self.task_dispatch.clone().spawn(
 			"Check for Module Updates",
@@ -194,12 +204,232 @@ impl PostLogin {
 			async move {
 				// TODO: Check the database to see what data needs to be updated.
 
+				// TODO: These need to go somewhere that the registries are both:
+				// - available via use_context
+				// - holds comps and nodes for all systems (not just 1 at a time)
+				let comp_reg = Rc::new(crate::system::dnd5e::component_registry());
+				let node_reg = Arc::new(crate::system::dnd5e::node_registry());
+
+				let mut prev_update_signal = None::<task::Signal>;
 				for repo in repositories {
-					match self.get_ddb_module_version(&repo).await {
+					let module_id = ModuleId::Github {
+						user_org: repo.owner.clone(),
+						repository: repo.name.clone(),
+					};
+					match self.get_ddb_module_version(&module_id).await {
 						None => {
 							// If a module doesn't exist in the database (repo owner + name as a module id),
 							// then all of its content needs to be downloaded.
+
 							log::debug!("TODO: full module download {}/{}", repo.owner, repo.name);
+							// TEMPORARY guard to only fetch basic rules
+							if repo.name != "dnd5e-basic-rules" {
+								continue;
+							}
+
+							let mut scan_progress = self.task_dispatch.new_progress(1);
+							let scan_signal = self.task_dispatch.spawn(
+								format!("Scanning {}/{}", repo.owner, repo.name),
+								Some(scan_progress.clone()),
+								{
+									let client = self.client.clone();
+									let database = self.database.clone();
+									let comp_reg = comp_reg.clone();
+									let node_reg = node_reg.clone();
+									let prev_update_signal = prev_update_signal.take();
+									async move {
+										if let Some(prev) = prev_update_signal {
+											prev.wait_true().await;
+										}
+
+										let mut file_paths = Vec::new();
+
+										let mut tree_ids = VecDeque::from([(
+											PathBuf::new(),
+											repo.tree_id.clone(),
+										)]);
+										while let Some((tree_path, tree_id)) = tree_ids.pop_front()
+										{
+											let args = GetTreeArgs {
+												owner: repo.owner.as_str(),
+												repo: repo.name.as_str(),
+												tree_id: tree_id.as_str(),
+											};
+											for entry in client.get_tree(args).await? {
+												let full_path = tree_path.join(&entry.path);
+												if let Some(tree_id) = entry.tree_id {
+													tree_ids.push_back((full_path, tree_id));
+													scan_progress.inc_max(1);
+												} else {
+													// only record content files (kdl extension)
+													if !entry.path.ends_with(".kdl") {
+														continue;
+													}
+													// extract the system the content is for (which is the top-most parent).
+													// if this path has no parent, then it isn't in a system and can be ignored.
+													match full_path.parent() {
+														None => continue,
+														Some(path)
+															if path == std::path::Path::new("") =>
+														{
+															continue
+														}
+														_ => {}
+													}
+													let mut comps = full_path.components();
+													let system_path = comps.next().unwrap();
+													let system = system_path
+														.as_os_str()
+														.to_str()
+														.unwrap()
+														.to_owned();
+													let path_str = full_path
+														.display()
+														.to_string()
+														.replace("\\", "/");
+													file_paths.push((system, path_str));
+												}
+											}
+											scan_progress.inc(1);
+										}
+
+										// Prepare the module to be inserted into the database
+										let db_modules = {
+											let mut modules =
+												Vec::with_capacity(repo.systems.len());
+											for system in &repo.systems {
+												modules.push(Module {
+													module_id: module_id.clone(),
+													name: module_id.to_string(),
+													system: system.clone(),
+													version: repo.version.clone(),
+												});
+											}
+											modules
+										};
+										let mut db_entries = Vec::with_capacity(file_paths.len());
+
+										scan_progress.set_name(
+											format!("Downloading {}/{}", repo.owner, repo.name),
+											0,
+											file_paths.len() as u32,
+										);
+										for (system, file_path) in file_paths {
+											let args = FileContentArgs {
+												owner: repo.owner.as_str(),
+												repo: repo.name.as_str(),
+												path: file_path.as_str(),
+												version: repo.version.as_str(),
+											};
+											let content = client.get_file_content(args).await?;
+
+											let document =
+												match content.parse::<kdl::KdlDocument>() {
+													Ok(doc) => doc,
+													Err(err) => {
+														log::warn!("Failed to parse module content {}:{}/{}: {err:?}", repo.owner, repo.name, file_path);
+														continue;
+													}
+												};
+											let mut source_id = SourceId {
+												module: Some(module_id.clone()),
+												system: Some(system.clone()),
+												path: PathBuf::from(&file_path),
+												version: None,
+												node_idx: 0,
+											};
+
+											for (idx, node) in document.nodes().iter().enumerate() {
+												source_id.node_idx = idx;
+
+												let category = node.name().value().to_owned();
+												// Generate the metadata for this entry
+												let metadata = {
+													let Some(comp_factory) = comp_reg.get_factory(&category).cloned() else { continue; };
+													let ctx = NodeContext::new(
+														Arc::new(source_id.clone()),
+														node_reg.clone(),
+													);
+													let metadata = comp_factory
+														.metadata_from_kdl(node, &ctx)
+														.with_context(|| {
+															format!(
+																"Failed to parse {:?}",
+																source_id.to_string()
+															)
+														});
+													let metadata = match metadata {
+														Ok(metadata) => metadata,
+														Err(err) => {
+															log::error!(
+																"Failed to parse content metadata: {err:?}"
+															);
+															continue;
+														}
+													};
+													match metadata {
+														serde_json::Value::Null => {
+															serde_json::Value::Null
+														}
+														serde_json::Value::Object(mut metadata) => {
+															metadata.insert(
+																"module".into(),
+																serde_json::json!(
+																	module_id.to_string()
+																),
+															);
+															serde_json::Value::Object(metadata)
+														}
+														other => {
+															log::error!(
+																"Metadata must be a map, but {} returned {:?}.",
+																source_id.to_string(),
+																other
+															);
+															continue;
+														}
+													}
+												};
+
+												let record = Entry {
+													id: source_id.to_string(),
+													module: module_id.to_string(),
+													system: system.clone(),
+													category: category,
+													version: Some(repo.version.clone()),
+													metadata,
+													kdl: node.to_string(),
+												};
+												db_entries.push(record);
+											}
+
+											scan_progress.inc(1);
+										}
+
+										// Now that we have all of the entries to insert,
+										// put them all in the database.
+										{
+											let transaction = database.write()?;
+											let module_store =
+												transaction.object_store_of::<Module>()?;
+											let entry_store =
+												transaction.object_store_of::<Entry>()?;
+											for record in db_modules {
+												module_store.add_record(&record).await?;
+											}
+											for record in db_entries {
+												entry_store.add_record(&record).await?;
+											}
+											if let Err(err) = transaction.commit().await {
+												log::error!("Failed to commit module content for {}/{}: {err:?}", repo.owner, repo.name);
+											}
+										}
+
+										Ok(())
+									}
+								},
+							);
+							prev_update_signal = Some(scan_signal);
 						}
 						Some(version) if version != repo.version => {
 							// If a module DOES exist, but its version does not match the one in metadata,
@@ -212,6 +442,26 @@ impl PostLogin {
 								version,
 								repo.version
 							);
+
+							// TODO: After fetching all of the changes, remove the old records and insert the new ones. Also update the module version.
+
+							/*
+							// Getting the files changed for this upgrade
+							let file_paths = self.client.get_files_changed(FilesChangedArgs {
+								owner: "flux-tabletop".into(),
+								repo: "dnd5e-basic-rules".into(),
+								commit_start: "7b410f785b909d2c5569c3bbf896509cc74c402c".into(),
+								commit_end: "eb0f3fe6bf1d6d44837d3339dafd80cceea24a16".into(),
+							}).await?;
+
+							// Getting the content of each changed file
+							let content = self.client.get_file_content(FileContentArgs {
+								owner: "flux-tabletop".into(),
+								repo: "dnd5e-basic-rules".into(),
+								path: "dnd5e/class/monk.kdl".into(),
+								version: "eb0f3fe6bf1d6d44837d3339dafd80cceea24a16".into(),
+							}).await?;
+							*/
 						}
 						// If the module exists and is up to date, then no updates are required.
 						Some(_current_version) => {

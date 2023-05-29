@@ -30,7 +30,7 @@ impl Schema for SchemaVersion {
 					use app::module::{Module, NameSystem};
 					let mut params = idb::ObjectStoreParams::new();
 					params.auto_increment(true);
-					params.key_path(Some(idb::KeyPath::new_single("id")));
+					params.key_path(Some(idb::KeyPath::new_single("name")));
 					let store = database.create_object_store(Module::store_id(), params)?;
 					store.create_index_of::<NameSystem>(None)?;
 				}

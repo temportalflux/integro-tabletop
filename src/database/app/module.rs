@@ -18,6 +18,6 @@ impl Record for Module {
 	}
 
 	fn key(&self) -> Option<String> {
-		Some(self.module_id.to_string())
+		None // Some(self.module_id.to_string())
 	}
 }

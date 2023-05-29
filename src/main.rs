@@ -281,6 +281,8 @@ fn ProviderChain(ChildrenProps { children }: &ChildrenProps) -> Html {
 
 #[function_component]
 fn Header() -> Html {
+	//let auth_content = html!();
+	let auth_content = html!(<components::auth::LoginButton />);
 	html! {
 		<header>
 			<nav class="navbar navbar-expand-lg sticky-top bg-body-tertiary">
@@ -304,7 +306,7 @@ fn Header() -> Html {
 						</ul>
 						<ul class="navbar-nav flex-row flex-wrap ms-md-auto">
 							<theme::Dropdown />
-							<components::auth::LoginButton />
+							{auth_content}
 						</ul>
 					</div>
 				</div>

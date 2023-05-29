@@ -86,8 +86,11 @@ impl List {
 		idx.unwrap_or_else(|err_idx| err_idx)
 	}
 
-	fn set_progress(&mut self, id: &Uuid, value: u32, max: u32) {
+	fn set_progress(&mut self, id: &Uuid, value: u32, max: u32, new_name: Option<String>) {
 		let handle = self.tasks.get_mut(id).expect("task handle went missing");
+		if let Some(name) = new_name {
+			handle.name = name.into();
+		}
 		if let Some(progress) = &mut handle.progress {
 			progress.0 = value;
 			progress.1 = max;
@@ -117,6 +120,7 @@ pub enum Action {
 		id: Uuid,
 		value: u32,
 		max: u32,
+		new_name: Option<String>,
 	},
 	Remove {
 		id: Uuid,
@@ -141,8 +145,13 @@ impl yew::Reducible for List {
 			} => {
 				list.insert(handle, name, progress, pending);
 			}
-			Action::UpdateProgress { id, value, max } => {
-				list.set_progress(&id, value, max);
+			Action::UpdateProgress {
+				id,
+				value,
+				max,
+				new_name,
+			} => {
+				list.set_progress(&id, value, max, new_name);
 			}
 			Action::Remove { id } => {
 				list.remove(&id);

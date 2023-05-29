@@ -15,6 +15,7 @@ query ViewerInfo($repo_name: String!) {
                   name
                   type
                 }
+                oid
               }
             }
           }

@@ -22,6 +22,7 @@ query SearchForRepos($query: String!, $cursor: String, $amount: Int!) {
               name
               type
             }
+            oid
           }
         }
       }

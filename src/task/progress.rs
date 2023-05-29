@@ -15,11 +15,17 @@ impl ProgressHandle {
 			id: self.id,
 			value: self.value,
 			max: self.max,
+			new_name: None,
 		});
 	}
 
 	pub fn inc(&mut self, amt: u32) {
 		self.value += amt;
+		self.dispatch();
+	}
+
+	pub fn inc_max(&mut self, amt: u32) {
+		self.max += amt;
 		self.dispatch();
 	}
 
@@ -29,5 +35,16 @@ impl ProgressHandle {
 
 	pub fn max(&self) -> u32 {
 		self.max
+	}
+
+	pub fn set_name(&mut self, name: String, value: u32, max: u32) {
+		self.value = value;
+		self.max = max;
+		self.handle.dispatch(Action::UpdateProgress {
+			id: self.id,
+			new_name: Some(name),
+			value: self.value,
+			max: self.max,
+		});
 	}
 }
