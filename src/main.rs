@@ -233,8 +233,7 @@ fn App() -> Html {
 fn WebReady() -> Html {
 	html! {<>
 		<ProviderChain>
-			<Header />
-			<page::OwnedModules />
+			<page::App />
 		</ProviderChain>
 	</>}
 }
@@ -251,42 +250,6 @@ fn ProviderChain(props: &html::ChildrenProps) -> Html {
 				</system::Provider>
 			</task::Provider>
 		</auth::ActionProvider>
-	}
-}
-
-#[function_component]
-fn Header() -> Html {
-	//let auth_content = html!();
-	let auth_content = html!(<components::auth::LoginButton />);
-	html! {
-		<header>
-			<nav class="navbar navbar-expand-lg sticky-top bg-body-tertiary">
-				<div class="container-fluid">
-					<a class="navbar-brand" href="/">{"Tabletop Tools"}</a>
-					<button
-						class="navbar-toggler" type="button"
-						data-bs-toggle="collapse" data-bs-target="#navContent"
-						aria-controls="navContent" aria-expanded="false" aria-label="Toggle navigation"
-					>
-						<span class="navbar-toggler-icon"></span>
-					</button>
-					<div class="collapse navbar-collapse" id="navContent">
-						<ul class="navbar-nav">
-							<li class="nav-item">
-								<a class="nav-link">{"My Characters"}</a>
-							</li>
-							<li class="nav-item">
-								<a class="nav-link">{"Content Browser"}</a>
-							</li>
-						</ul>
-						<ul class="navbar-nav flex-row flex-wrap ms-md-auto">
-							<theme::Dropdown />
-							{auth_content}
-						</ul>
-					</div>
-				</div>
-			</nav>
-		</header>
 	}
 }
 
@@ -322,7 +285,7 @@ fn DatabaseProvider(props: &html::ChildrenProps) -> Html {
 #[function_component]
 fn CharacterPrototype() -> Html {
 	let show_browser = use_state_eq(|| false);
-	let system = use_state(|| system::dnd5e::DnD5e::default());
+	//let system = use_state(|| system::dnd5e::DnD5e::default());
 
 	let initial_character = use_state(|| None::<system::dnd5e::data::character::Persistent>);
 
@@ -352,7 +315,6 @@ fn CharacterPrototype() -> Html {
 
 	return html! {<>
 		<system::Provider>
-			<Header />
 			{content}
 		</system::Provider>
 	</>};

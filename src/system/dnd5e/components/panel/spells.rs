@@ -3,7 +3,7 @@ use crate::{
 	database::app::{Database, QueryDeserialize},
 	system::{
 		self,
-		core::{ModuleId, NodeRegistry, SourceId},
+		core::{ModuleId, SourceId},
 		dnd5e::{
 			components::{
 				editor::{CollapsableCard, DescriptionSection},
@@ -21,7 +21,7 @@ use crate::{
 use convert_case::{Case, Casing};
 use futures_util::{FutureExt, StreamExt};
 use itertools::Itertools;
-use std::{collections::BTreeMap, pin::Pin, sync::Arc};
+use std::{collections::BTreeMap, pin::Pin};
 use yew::prelude::*;
 
 fn rank_suffix(rank: u8) -> &'static str {

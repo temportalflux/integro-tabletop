@@ -1,0 +1,8 @@
+
+# For single-page-applications, ALL otherwise invalid routes
+# (because there is only 1 html) must be redirected to the original page.
+# https://docs.netlify.com/routing/redirects/rewrites-proxies/#history-pushstate-and-single-page-apps
+[[redirects]]
+	from = "/*"
+	to = "/index.html"
+	status = 200
