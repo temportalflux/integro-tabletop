@@ -27,9 +27,11 @@ impl Record for Entry {
 }
 
 impl Entry {
-	pub fn source_id(&self) -> SourceId {
+	pub fn source_id(&self, with_version: bool) -> SourceId {
 		let mut id = SourceId::from_str(&self.id).unwrap();
-		id.version = self.version.clone();
+		if with_version {
+			id.version = self.version.clone();
+		}
 		id
 	}
 

@@ -164,7 +164,7 @@ where
 			// document to first (and hopefully only) node
 			let Some(node) = document.nodes().get(0) else { continue; };
 			// node to value based on the expected type
-			let mut ctx = NodeContext::new(Arc::new(entry.source_id()), self.node_reg.clone());
+			let mut ctx = NodeContext::new(Arc::new(entry.source_id(true)), self.node_reg.clone());
 			let Ok(value) = Output::from_kdl(node, &mut ctx) else { continue; };
 			// we found a sucessful value! we can return it
 			return Poll::Ready(Some(value));
