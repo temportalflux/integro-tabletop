@@ -2,7 +2,8 @@ use crate::{
 	components::{modal, stop_propagation},
 	database::app::{Database, QueryDeserialize},
 	system::{
-		core::{ArcNodeRegistry, ModuleId, SourceId},
+		self,
+		core::{ModuleId, NodeRegistry, SourceId},
 		dnd5e::{
 			components::{
 				editor::{CollapsableCard, DescriptionSection},
@@ -20,7 +21,7 @@ use crate::{
 use convert_case::{Case, Casing};
 use futures_util::{FutureExt, StreamExt};
 use itertools::Itertools;
-use std::{collections::BTreeMap, pin::Pin};
+use std::{collections::BTreeMap, pin::Pin, sync::Arc};
 use yew::prelude::*;
 
 fn rank_suffix(rank: u8) -> &'static str {
@@ -1153,7 +1154,7 @@ pub fn AvailableSpellList(props: &AvailableSpellListProps) -> Html {
 	log::debug!(target: "ui", "Render available spells");
 	let state = use_context::<SharedCharacter>().unwrap();
 	let database = use_context::<Option<Database>>().unwrap();
-	let node_registry = use_context::<ArcNodeRegistry>().unwrap();
+	let system_depot = use_context::<system::Depot>().unwrap();
 	let load_data = use_async_with_options(
 		{
 			let AvailableSpellListProps {
@@ -1176,7 +1177,11 @@ pub fn AvailableSpellList(props: &AvailableSpellListProps) -> Html {
 				let mut htmls = Vec::new();
 
 				//let parsing_time = wasm_timer::Instant::now();
-				let mut stream = FindRelevantSpells::new(database.clone(), node_registry, &filter);
+				let Some(system_reg) = system_depot.get_sys::<DnD5e>() else {
+					return Ok(Html::default());
+				};
+				let mut stream =
+					FindRelevantSpells::new(database.clone(), system_reg.node(), &filter);
 				while let Some(spell) = stream.next().await {
 					// Insertion sort by rank & name
 					let idx = sorted_info
@@ -1231,7 +1236,7 @@ struct FindRelevantSpells {
 	query: Option<QueryDeserialize<Spell>>,
 }
 impl FindRelevantSpells {
-	fn new(database: Database, node_reg: ArcNodeRegistry, filter: &SpellFilter) -> Self {
+	fn new(database: Database, node_reg: Arc<NodeRegistry>, filter: &SpellFilter) -> Self {
 		let pending_query = database.query::<Spell>(filter.as_criteria().into(), node_reg);
 		Self {
 			pending_query: Some(Box::pin(pending_query)),

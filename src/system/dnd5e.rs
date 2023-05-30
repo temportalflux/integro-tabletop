@@ -22,30 +22,18 @@ type FnMetadataFromKdl = Box<
 		+ Send
 		+ Sync,
 >;
-type FnCompFromKdl<S> = Box<
-	dyn Fn(&kdl::KdlNode, &NodeContext) -> anyhow::Result<FnInsertComp<S>> + 'static + Send + Sync,
->;
-type FnInsertComp<S> = Box<dyn FnOnce(&mut S) + 'static + Send + Sync>;
-pub struct ComponentFactory<S> {
+pub struct ComponentFactory {
 	metadata_from_kdl: FnMetadataFromKdl,
-	add_from_kdl: FnCompFromKdl<S>,
 }
-impl<S> ComponentFactory<S> {
+impl ComponentFactory {
 	fn new<T>() -> Self
 	where
-		T: FromKDL + SystemComponent<System = S> + 'static + Send + Sync,
+		T: FromKDL + SystemComponent + 'static + Send + Sync,
 	{
 		Self {
 			metadata_from_kdl: Box::new(|node, context| {
 				let value = T::from_kdl(node, &mut context.next_node())?;
 				Ok(T::to_metadata(value))
-			}),
-			add_from_kdl: Box::new(|node, context| {
-				let source_id = context.id().clone();
-				let value = T::from_kdl(node, &mut context.next_node())?;
-				Ok(Box::new(|system| {
-					T::add_component(value, source_id, system);
-				}))
 			}),
 		}
 	}
@@ -57,27 +45,19 @@ impl<S> ComponentFactory<S> {
 	) -> anyhow::Result<serde_json::Value> {
 		(*self.metadata_from_kdl)(node, ctx)
 	}
-
-	pub fn add_from_kdl(
-		&self,
-		node: &kdl::KdlNode,
-		ctx: &NodeContext,
-	) -> anyhow::Result<FnInsertComp<S>> {
-		(*self.add_from_kdl)(node, ctx)
-	}
 }
 #[derive(Default)]
-pub struct ComponentRegistry<S>(HashMap<&'static str, Arc<ComponentFactory<S>>>);
-impl<S> ComponentRegistry<S> {
+pub struct ComponentRegistry(HashMap<&'static str, Arc<ComponentFactory>>);
+impl ComponentRegistry {
 	pub fn register<T>(&mut self)
 	where
-		T: FromKDL + KDLNode + SystemComponent<System = S> + 'static + Send + Sync,
+		T: FromKDL + KDLNode + SystemComponent + 'static + Send + Sync,
 	{
 		assert!(!self.0.contains_key(T::id()));
 		self.0.insert(T::id(), ComponentFactory::new::<T>().into());
 	}
 
-	pub fn get_factory(&self, id: &str) -> Option<&Arc<ComponentFactory<S>>> {
+	pub fn get_factory(&self, id: &str) -> Option<&Arc<ComponentFactory>> {
 		self.0.get(id)
 	}
 }
@@ -94,7 +74,7 @@ pub trait SystemComponent {
 		Self: Sized;
 }
 
-pub fn component_registry() -> ComponentRegistry<DnD5e> {
+pub fn component_registry() -> ComponentRegistry {
 	let mut registry = ComponentRegistry::default();
 	registry.register::<data::character::DefaultsBlock>();
 	registry.register::<data::bundle::Race>();

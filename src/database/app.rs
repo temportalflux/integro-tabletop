@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use super::Record;
 
 pub mod entry;
@@ -64,7 +66,7 @@ impl Database {
 	pub async fn query<Output>(
 		self,
 		criteria: Box<Criteria>,
-		node_reg: crate::system::core::ArcNodeRegistry,
+		node_reg: Arc<crate::system::core::NodeRegistry>,
 	) -> Result<QueryDeserialize<Output>, super::Error>
 	where
 		Output: crate::kdl_ext::KDLNode
@@ -83,7 +85,7 @@ impl Database {
 		let query_typed = QueryDeserialize::<Output> {
 			db: self,
 			query: Query { cursor, criteria },
-			node_reg: node_reg.arc().clone(),
+			node_reg,
 			marker: Default::default(),
 		};
 		Ok(query_typed)

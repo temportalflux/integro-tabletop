@@ -1,7 +1,6 @@
 use crate::{
 	auth,
 	database::app::Database,
-	kdl_ext::NodeContext,
 	storage::{
 		github::{
 			CreateRepoArgs, FileContentArgs, FilesChangedArgs, GetTreeArgs, GithubClient,
@@ -10,17 +9,15 @@ use crate::{
 		USER_HOMEBREW_REPO_NAME,
 	},
 	system::{
-		core::{ModuleId, NodeRegistry, SourceId},
-		dnd5e::{ComponentRegistry, DnD5e},
+		self,
+		core::{ModuleId, SourceId},
 	},
 	task,
 };
-use anyhow::Context;
 use std::{
 	collections::{BTreeMap, VecDeque},
 	path::PathBuf,
 	rc::Rc,
-	sync::Arc,
 };
 use yew::prelude::*;
 use yewdux::prelude::*;
@@ -30,6 +27,7 @@ use yewdux::prelude::*;
 pub fn OwnedModules() -> Html {
 	let database = use_context::<Database>().unwrap();
 	let task_dispatch = use_context::<task::Dispatch>().unwrap();
+	let system_depot = use_context::<system::Depot>().unwrap();
 	let (auth_status, _) = use_store::<auth::Status>();
 	let was_authed = use_state_eq(|| false);
 	let relevant_repos = use_state(|| BTreeMap::<(String, String), (bool, String)>::new());
@@ -40,9 +38,13 @@ pub fn OwnedModules() -> Html {
 		relevant_repos.set(BTreeMap::default());
 	} else if !*was_authed && signed_in {
 		was_authed.set(true);
-		if let Some(post_login) =
-			PostLogin::new(&task_dispatch, &auth_status, &database, &relevant_repos)
-		{
+		if let Some(post_login) = PostLogin::new(
+			&task_dispatch,
+			&auth_status,
+			&system_depot,
+			&database,
+			&relevant_repos,
+		) {
 			post_login.query_user_and_orgs();
 		}
 	}
@@ -76,6 +78,7 @@ pub fn OwnedModules() -> Html {
 struct PostLogin {
 	client: GithubClient,
 	task_dispatch: task::Dispatch,
+	system_depot: system::Depot,
 	database: Database,
 	relevant_repos: UseStateHandle<BTreeMap<(String, String), (bool, String)>>,
 }
@@ -83,6 +86,7 @@ impl PostLogin {
 	fn new(
 		task_dispatch: &task::Dispatch,
 		auth_status: &Rc<auth::Status>,
+		system_depot: &system::Depot,
 		database: &Database,
 		relevant_repos: &UseStateHandle<BTreeMap<(String, String), (bool, String)>>,
 	) -> Option<Self> {
@@ -92,6 +96,7 @@ impl PostLogin {
 		Some(Self {
 			client,
 			task_dispatch: task_dispatch.clone(),
+			system_depot: system_depot.clone(),
 			database: database.clone(),
 			relevant_repos: relevant_repos.clone(),
 		})
@@ -201,13 +206,6 @@ impl PostLogin {
 			"Check for Module Updates",
 			Some(progress.clone()),
 			async move {
-
-				// TODO: These need to go somewhere that the registries are both:
-				// - available via use_context
-				// - holds comps and nodes for all systems (not just 1 at a time)
-				let comp_reg = Rc::new(crate::system::dnd5e::component_registry());
-				let node_reg = Arc::new(crate::system::dnd5e::node_registry());
-
 				let mut prev_update_signal = None::<task::Signal>;
 				for repo in repositories {
 					let module_id = ModuleId::Github {
@@ -218,13 +216,8 @@ impl PostLogin {
 						None => {
 							// If a module doesn't exist in the database (repo owner + name as a module id),
 							// then all of its content needs to be downloaded.
-							let signal = self.download_module(
-								&comp_reg,
-								&node_reg,
-								repo,
-								module_id,
-								prev_update_signal.take(),
-							);
+							let signal =
+								self.download_module(repo, module_id, prev_update_signal.take());
 							prev_update_signal = Some(signal);
 						}
 						Some(version_in_ddb) if version_in_ddb != repo.version => {
@@ -232,8 +225,6 @@ impl PostLogin {
 							// then local data is out of date. Will need to query to see what files updated between the two versions,
 							// and update individual entries based on that.
 							let signal = self.update_module(
-								&comp_reg,
-								&node_reg,
 								repo,
 								module_id,
 								version_in_ddb,
@@ -260,8 +251,6 @@ impl PostLogin {
 
 	fn download_module(
 		&self,
-		comp_reg: &Rc<ComponentRegistry<DnD5e>>,
-		node_reg: &Arc<NodeRegistry>,
 		repo: RepositoryMetadata,
 		module_id: ModuleId,
 		prev_signal: Option<task::Signal>,
@@ -276,9 +265,8 @@ impl PostLogin {
 			Some(scan_progress.clone()),
 			{
 				let client = self.client.clone();
+				let system_depot = self.system_depot.clone();
 				let database = self.database.clone();
-				let comp_reg = comp_reg.clone();
-				let node_reg = node_reg.clone();
 				async move {
 					if let Some(prev) = prev_signal {
 						prev.wait_true().await;
@@ -350,7 +338,12 @@ impl PostLogin {
 						let content = client.get_file_content(args).await?;
 
 						let entries = Self::parse_content(
-							&comp_reg, &node_reg, &repo, &module_id, system, file_path, content,
+							&system_depot,
+							&repo,
+							&module_id,
+							system,
+							file_path,
+							content,
 						);
 						db_entries.extend(entries);
 
@@ -369,7 +362,10 @@ impl PostLogin {
 						for record in db_entries {
 							entry_store.add_record(&record).await?;
 						}
-						transaction.commit().await.map_err(crate::database::Error::from)?;
+						transaction
+							.commit()
+							.await
+							.map_err(crate::database::Error::from)?;
 					}
 
 					Ok(())
@@ -380,8 +376,6 @@ impl PostLogin {
 
 	fn update_module(
 		&self,
-		comp_reg: &Rc<ComponentRegistry<DnD5e>>,
-		node_reg: &Arc<NodeRegistry>,
 		repo: RepositoryMetadata,
 		module_id: ModuleId,
 		version_in_ddb: String,
@@ -397,9 +391,8 @@ impl PostLogin {
 			Some(progress.clone()),
 			{
 				let client = self.client.clone();
+				let system_depot = self.system_depot.clone();
 				let database = self.database.clone();
-				let comp_reg = comp_reg.clone();
-				let node_reg = node_reg.clone();
 				async move {
 					if let Some(prev) = prev_signal {
 						prev.wait_true().await;
@@ -414,7 +407,7 @@ impl PostLogin {
 							commit_end: repo.version.as_str(),
 						})
 						.await?;
-					
+
 					progress.inc_max(changed_file_paths.len() as u32);
 					let mut new_entries = Vec::with_capacity(changed_file_paths.len());
 
@@ -433,7 +426,12 @@ impl PostLogin {
 								.unwrap();
 
 						let entries = Self::parse_content(
-							&comp_reg, &node_reg, &repo, &module_id, system, file_path, content,
+							&system_depot,
+							&repo,
+							&module_id,
+							system,
+							file_path,
+							content,
 						);
 						new_entries.extend(entries);
 						progress.inc(1);
@@ -456,7 +454,10 @@ impl PostLogin {
 							entry_store.put_record(&entry).await?;
 						}
 
-						transaction.commit().await.map_err(crate::database::Error::from)?;
+						transaction
+							.commit()
+							.await
+							.map_err(crate::database::Error::from)?;
 					}
 					Ok(())
 				}
@@ -465,14 +466,15 @@ impl PostLogin {
 	}
 
 	fn parse_content(
-		comp_reg: &Rc<ComponentRegistry<DnD5e>>,
-		node_reg: &Arc<NodeRegistry>,
+		system_depot: &system::Depot,
 		repo: &RepositoryMetadata,
 		module_id: &ModuleId,
 		system: String,
 		file_path: String,
 		content: String,
 	) -> Vec<crate::database::app::Entry> {
+		let Some(system_reg) = system_depot.get(&system) else { return Vec::new(); };
+
 		let document = match content.parse::<kdl::KdlDocument>() {
 			Ok(doc) => doc,
 			Err(err) => {
@@ -495,39 +497,14 @@ impl PostLogin {
 		let mut entries = Vec::with_capacity(document.nodes().len());
 		for (idx, node) in document.nodes().iter().enumerate() {
 			source_id.node_idx = idx;
-
 			let category = node.name().value().to_owned();
-			// Generate the metadata for this entry
-			let metadata = {
-				let Some(comp_factory) = comp_reg.get_factory(&category).cloned() else { continue; };
-				let ctx = NodeContext::new(Arc::new(source_id.clone()), node_reg.clone());
-				let metadata = comp_factory
-					.metadata_from_kdl(node, &ctx)
-					.with_context(|| format!("Failed to parse {:?}", source_id.to_string()));
-				let metadata = match metadata {
-					Ok(metadata) => metadata,
-					Err(err) => {
-						log::error!("Failed to parse content metadata: {err:?}");
-						continue;
-					}
-				};
-				match metadata {
-					serde_json::Value::Null => serde_json::Value::Null,
-					serde_json::Value::Object(mut metadata) => {
-						metadata.insert("module".into(), serde_json::json!(module_id.to_string()));
-						serde_json::Value::Object(metadata)
-					}
-					other => {
-						log::error!(
-							"Metadata must be a map, but {} returned {:?}.",
-							source_id.to_string(),
-							other
-						);
-						continue;
-					}
+			let metadata = match system_reg.parse_metadata(node, &source_id) {
+				Ok(metadata) => metadata,
+				Err(err) => {
+					log::error!("{err:?}");
+					continue;
 				}
 			};
-
 			let record = crate::database::app::Entry {
 				id: source_id.to_string(),
 				module: module_id.to_string(),
