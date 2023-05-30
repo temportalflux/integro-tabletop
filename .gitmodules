@@ -13,3 +13,6 @@
 [submodule "modules/wotc-toa"]
 	path = modules/wotc-toa
 	url = git@github.com:flux-tabletop/wotc-toa.git
+[submodule "modules/homebrew"]
+	path = modules/homebrew
+	url = git@github.com:temportalflux/integro-homebrew.git
