@@ -1,8 +1,6 @@
 use crate::{
 	kdl_ext::{FromKDL, NodeContext},
-	system::{
-		dnd5e::{SystemComponent},
-	},
+	system::dnd5e::SystemComponent,
 };
 
 #[derive(Default, Clone, PartialEq, Debug)]

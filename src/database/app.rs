@@ -63,11 +63,26 @@ impl Database {
 		entries_store.index_of::<I>()
 	}
 
-	pub async fn query<Output>(
+	pub async fn query_entries(
+		&self,
+		system: impl Into<String>,
+		category: impl Into<String>,
+		criteria: Option<Box<Criteria>>,
+	) -> Result<Query, super::Error> {
+		let idx_by_sys_cate = self.read_index::<entry::SystemCategory>();
+		let index = entry::SystemCategory {
+			system: system.into(),
+			category: category.into(),
+		};
+		let cursor = idx_by_sys_cate?.open_cursor(Some(&index)).await?;
+		Ok(Query { cursor, criteria })
+	}
+
+	pub async fn query_typed<Output>(
 		self,
 		system: impl Into<String>,
-		criteria: Box<Criteria>,
-		node_reg: Arc<crate::system::core::NodeRegistry>,
+		system_depot: crate::system::Depot,
+		criteria: Option<Box<Criteria>>,
 	) -> Result<QueryDeserialize<Output>, super::Error>
 	where
 		Output: crate::kdl_ext::KDLNode
@@ -75,9 +90,16 @@ impl Database {
 			+ Unpin
 			+ crate::system::dnd5e::SystemComponent,
 	{
+		let system = system.into();
+		let node_reg = {
+			let system_reg = system_depot
+				.get(&system)
+				.expect("Missing system {system:?} in depot");
+			system_reg.node()
+		};
 		let idx_by_sys_cate = self.read_index::<entry::SystemCategory>();
 		let index = entry::SystemCategory {
-			system: system.into(),
+			system,
 			category: Output::id().into(),
 		};
 		let cursor = idx_by_sys_cate?.open_cursor(Some(&index)).await?;

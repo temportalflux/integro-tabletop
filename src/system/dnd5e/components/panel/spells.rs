@@ -1177,11 +1177,7 @@ pub fn AvailableSpellList(props: &AvailableSpellListProps) -> Html {
 				let mut htmls = Vec::new();
 
 				//let parsing_time = wasm_timer::Instant::now();
-				let Some(system_reg) = system_depot.get_sys::<DnD5e>() else {
-					return Ok(Html::default());
-				};
-				let mut stream =
-					FindRelevantSpells::new(database.clone(), system_reg.node(), &filter);
+				let mut stream = FindRelevantSpells::new(database.clone(), &system_depot, &filter);
 				while let Some(spell) = stream.next().await {
 					// Insertion sort by rank & name
 					let idx = sorted_info
@@ -1236,10 +1232,13 @@ struct FindRelevantSpells {
 	query: Option<QueryDeserialize<Spell>>,
 }
 impl FindRelevantSpells {
-	fn new(database: Database, node_reg: Arc<NodeRegistry>, filter: &SpellFilter) -> Self {
+	fn new(database: Database, system_depot: &system::Depot, filter: &SpellFilter) -> Self {
 		use crate::system::core::System;
-		let pending_query =
-			database.query::<Spell>(DnD5e::id(), filter.as_criteria().into(), node_reg);
+		let pending_query = database.query_typed::<Spell>(
+			DnD5e::id(),
+			system_depot.clone(),
+			Some(filter.as_criteria().into()),
+		);
 		Self {
 			pending_query: Some(Box::pin(pending_query)),
 			query: None,

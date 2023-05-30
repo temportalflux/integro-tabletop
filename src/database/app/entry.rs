@@ -9,7 +9,7 @@ pub use system::*;
 mod system_category;
 pub use system_category::*;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Entry {
 	pub id: String,
 	pub module: String,
@@ -31,5 +31,10 @@ impl Entry {
 		let mut id = SourceId::from_str(&self.id).unwrap();
 		id.version = self.version.clone();
 		id
+	}
+
+	pub fn get_meta_str(&self, key: impl AsRef<str>) -> Option<&str> {
+		let Some(value) = self.metadata.get(key.as_ref()) else { return None; };
+		value.as_str()
 	}
 }

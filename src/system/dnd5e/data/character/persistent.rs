@@ -174,7 +174,9 @@ impl Persistent {
 crate::impl_kdl_node!(Persistent, "character");
 impl SystemComponent for Persistent {
 	fn to_metadata(self) -> serde_json::Value {
-		serde_json::Value::Null
+		serde_json::json!({
+			"name": &self.description.name,
+		})
 	}
 }
 impl FromKDL for Persistent {

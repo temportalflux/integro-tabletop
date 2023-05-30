@@ -242,15 +242,15 @@ fn WebReady() -> Html {
 #[function_component]
 fn ProviderChain(props: &html::ChildrenProps) -> Html {
 	html! {
-		<DatabaseProvider>
-			<auth::ActionProvider>
-				<task::Provider>
-					<system::Provider>
+		<auth::ActionProvider>
+			<task::Provider>
+				<system::Provider>
+					<DatabaseProvider>
 						{props.children.clone()}
-					</system::Provider>
-				</task::Provider>
-			</auth::ActionProvider>
-		</DatabaseProvider>
+					</DatabaseProvider>
+				</system::Provider>
+			</task::Provider>
+		</auth::ActionProvider>
 	}
 }
 
@@ -322,21 +322,9 @@ fn DatabaseProvider(props: &html::ChildrenProps) -> Html {
 #[function_component]
 fn CharacterPrototype() -> Html {
 	let show_browser = use_state_eq(|| false);
+	let system = use_state(|| system::dnd5e::DnD5e::default());
 
 	let initial_character = use_state(|| None::<system::dnd5e::data::character::Persistent>);
-	/*
-	use_effect_with_deps(
-		{
-			let initial_character = initial_character.clone();
-			move |(system, has_loaded): &(UseStateHandle<DnD5e>, bool)| {
-				if *has_loaded {
-					initial_character.set(Some(create_character(&**system)));
-				}
-			}
-		},
-		(system.clone(), load_content.data.is_some()),
-	);
-	*/
 
 	let _open_character = Callback::from({
 		let show_browser = show_browser.clone();

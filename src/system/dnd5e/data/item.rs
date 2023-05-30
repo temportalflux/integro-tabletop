@@ -1,9 +1,7 @@
 use super::{currency::Wallet, description, Rarity};
 use crate::{
 	kdl_ext::{DocumentExt, FromKDL, NodeContext, NodeExt},
-	system::{
-		dnd5e::{data::character::Character, SystemComponent},
-	},
+	system::dnd5e::{data::character::Character, SystemComponent},
 	utility::{MutatorGroup, NotInList},
 };
 use std::{collections::HashMap, path::Path, str::FromStr};

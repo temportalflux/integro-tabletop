@@ -1,6 +1,7 @@
 use crate::{
 	auth,
 	database::app::Database,
+	kdl_ext::KDLNode,
 	storage::{
 		github::{
 			CreateRepoArgs, FileContentArgs, FilesChangedArgs, GetTreeArgs, GithubClient,
@@ -10,7 +11,8 @@ use crate::{
 	},
 	system::{
 		self,
-		core::{ModuleId, SourceId},
+		core::{ModuleId, SourceId, System},
+		dnd5e::{data::character::Persistent, DnD5e},
 	},
 	task,
 };
@@ -20,6 +22,7 @@ use std::{
 	rc::Rc,
 };
 use yew::prelude::*;
+use yew_hooks::{use_async_with_options, UseAsyncOptions};
 use yewdux::prelude::*;
 
 /// Page which displays the modules the user currently logged in has contributor access to.
@@ -71,6 +74,7 @@ pub fn OwnedModules() -> Html {
 	html! {<>
 		<TaskListView />
 		{content}
+		<CharacterList />
 	</>}
 }
 
@@ -545,6 +549,69 @@ pub fn TaskListView() -> Html {
 					}}
 				</div>
 			}).collect::<Vec<_>>()}
+		</div>
+	}
+}
+
+#[function_component]
+pub fn CharacterList() -> Html {
+	let database = use_context::<Database>().unwrap();
+	let character_entries = use_async_with_options(
+		{
+			let database = database.clone();
+			async move {
+				use crate::database::{app::Entry, Error};
+				use futures_util::StreamExt;
+				let mut entries = Vec::new();
+				let mut stream = database
+					.query_entries(DnD5e::id(), Persistent::id(), None)
+					.await?;
+				while let Some(entry) = stream.next().await {
+					entries.push(entry);
+				}
+				Ok(entries) as Result<Vec<Entry>, Error>
+			}
+		},
+		UseAsyncOptions::enable_auto(),
+	);
+	let content = if character_entries.loading {
+		html! {
+			<div class="spinner-border" role="status">
+				<span class="visually-hidden">{"Loading..."}</span>
+			</div>
+		}
+	} else if let Some(entries) = &character_entries.data {
+		html! {<>
+			{entries.iter().map(|entry| {
+				let name = entry.get_meta_str("name").unwrap_or("No Name");
+				html! {
+					<div class="d-flex align-items-center mb-2">
+						<button class="btn btn-success btn-sm me-2">
+							{"Open"}
+						</button>
+						{name}
+					</div>
+				}
+			}).collect::<Vec<_>>()}
+		</>}
+	} else {
+		html!("No characters")
+	};
+	html! {
+		<div>
+			<div class="d-flex align-items-center mb-1">
+				<h3>{"Characters"}</h3>
+				<button
+					class="btn btn-outline-secondary btn-sm ms-2"
+					onclick={Callback::from({
+						let task = character_entries.clone();
+						move |_| task.run()
+					})}
+				>
+					{"Refresh"}
+				</button>
+			</div>
+			{content}
 		</div>
 	}
 }

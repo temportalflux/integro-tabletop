@@ -1,10 +1,7 @@
 use super::{description, AreaOfEffect};
 use crate::{
 	kdl_ext::{DocumentExt, FromKDL, NodeContext, NodeExt},
-	system::{
-		core::SourceId,
-		dnd5e::{SystemComponent},
-	},
+	system::{core::SourceId, dnd5e::SystemComponent},
 };
 
 mod casting_time;

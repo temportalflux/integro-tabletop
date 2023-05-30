@@ -114,7 +114,7 @@ impl Criteria {
 
 pub struct Query {
 	pub cursor: Cursor<Entry>,
-	pub criteria: Box<Criteria>,
+	pub criteria: Option<Box<Criteria>>,
 }
 
 impl futures_util::stream::Stream for Query {
@@ -127,9 +127,12 @@ impl futures_util::stream::Stream for Query {
 		loop {
 			let Poll::Ready(entry) = self.cursor.poll_next_unpin(cx) else { return Poll::Pending };
 			let Some(entry) = entry else { return Poll::Ready(None); };
-			if self.criteria.is_relevant(&entry.metadata) {
-				return Poll::Ready(Some(entry));
+			if let Some(criteria) = &self.criteria {
+				if !criteria.is_relevant(&entry.metadata) {
+					continue;
+				}
 			}
+			return Poll::Ready(Some(entry));
 		}
 	}
 }
