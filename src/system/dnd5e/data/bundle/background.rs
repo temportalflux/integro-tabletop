@@ -4,7 +4,7 @@ use crate::{
 		core::SourceId,
 		dnd5e::{
 			data::{character::Character, Feature},
-			BoxedMutator, DnD5e, SystemComponent,
+			BoxedMutator, SystemComponent,
 		},
 	},
 	utility::MutatorGroup,
@@ -47,17 +47,10 @@ impl MutatorGroup for Background {
 crate::impl_kdl_node!(Background, "background");
 
 impl SystemComponent for Background {
-	type System = DnD5e;
-
 	fn to_metadata(self) -> serde_json::Value {
 		serde_json::json!({
 			"name": self.name.clone(),
 		})
-	}
-
-	fn add_component(mut self, source_id: SourceId, system: &mut Self::System) {
-		self.source_id = source_id.clone();
-		system.backgrounds.insert(source_id, self);
 	}
 }
 

@@ -63,13 +63,7 @@ impl ComponentRegistry {
 }
 
 pub trait SystemComponent {
-	type System;
-
 	fn to_metadata(self) -> serde_json::Value
-	where
-		Self: Sized;
-
-	fn add_component(self, source_id: SourceId, system: &mut Self::System)
 	where
 		Self: Sized;
 }
@@ -77,6 +71,7 @@ pub trait SystemComponent {
 pub fn component_registry() -> ComponentRegistry {
 	let mut registry = ComponentRegistry::default();
 	registry.register::<data::character::DefaultsBlock>();
+	registry.register::<data::character::Persistent>();
 	registry.register::<data::bundle::Race>();
 	registry.register::<data::bundle::RaceVariant>();
 	registry.register::<data::bundle::Lineage>();

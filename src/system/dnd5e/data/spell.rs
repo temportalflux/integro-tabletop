@@ -3,7 +3,7 @@ use crate::{
 	kdl_ext::{DocumentExt, FromKDL, NodeContext, NodeExt},
 	system::{
 		core::SourceId,
-		dnd5e::{DnD5e, SystemComponent},
+		dnd5e::{SystemComponent},
 	},
 };
 
@@ -40,8 +40,6 @@ pub struct Spell {
 crate::impl_kdl_node!(Spell, "spell");
 
 impl SystemComponent for Spell {
-	type System = DnD5e;
-
 	fn to_metadata(self) -> serde_json::Value {
 		serde_json::json!({
 			"name": self.name.clone(),
@@ -60,10 +58,6 @@ impl SystemComponent for Spell {
 			"duration": self.duration.kind.as_metadata(),
 			"concentration": self.duration.concentration,
 		})
-	}
-
-	fn add_component(self, _source_id: SourceId, system: &mut Self::System) {
-		system.spells.insert(self.id.clone(), self);
 	}
 }
 

@@ -16,7 +16,7 @@ pub mod task;
 pub mod theme;
 pub mod utility;
 
-fn create_character(system: &system::dnd5e::DnD5e) -> system::dnd5e::data::character::Persistent {
+fn _create_character(system: &system::dnd5e::DnD5e) -> system::dnd5e::data::character::Persistent {
 	use system::{
 		core::SourceId,
 		dnd5e::{
@@ -211,7 +211,7 @@ fn create_character(system: &system::dnd5e::DnD5e) -> system::dnd5e::data::chara
 	] {
 		let Ok(id) = SourceId::from_str(id_str) else { continue; };
 		let Some(spell) = system.spells.get(&id) else { continue; };
-		persistent.selected_spells.insert(&caster, spell);
+		persistent.selected_spells.insert(&caster, spell.clone());
 	}
 
 	persistent

@@ -1,4 +1,8 @@
-use crate::{system::dnd5e::data::Size, utility::NotInList};
+use crate::{
+	kdl_ext::{DocumentExt, FromKDL},
+	system::dnd5e::data::Size,
+	utility::NotInList,
+};
 use enum_map::{Enum, EnumMap};
 use enumset::EnumSetType;
 use std::{collections::HashSet, str::FromStr};
@@ -19,6 +23,58 @@ impl Description {
 			v if v >= 45 => Size::Medium,
 			_ => Size::Small,
 		}
+	}
+}
+
+impl FromKDL for Description {
+	fn from_kdl(
+		node: &kdl::KdlNode,
+		_ctx: &mut crate::kdl_ext::NodeContext,
+	) -> anyhow::Result<Self> {
+		let name = node.query_str_req("scope() > name", 0)?.to_owned();
+
+		let mut pronouns = HashSet::new();
+		let mut custom_pronouns = String::new();
+		for value in node.query_str_all("scope() > pronoun", 0)? {
+			match value {
+				"She/Her" | "He/Him" | "They/Them" => {
+					pronouns.insert(value.to_owned());
+				}
+				_ => {
+					if !custom_pronouns.is_empty() {
+						custom_pronouns.push(',');
+					}
+					custom_pronouns.push_str(value);
+				}
+			}
+		}
+
+		let height = node
+			.query_i64_opt("scope() > height", 0)?
+			.map(|v| v as u32)
+			.unwrap_or_default();
+		let weight = node
+			.query_i64_opt("scope() > weight", 0)?
+			.map(|v| v as u32)
+			.unwrap_or_default();
+
+		let mut personality = EnumMap::<PersonalityKind, Vec<String>>::default();
+		if let Some(node) = node.query_opt("scope() > personality")? {
+			for (kind, values) in personality.iter_mut() {
+				for node in node.query_str_all(format!("scope() > {}", kind.node_id()), 0)? {
+					values.push(node.to_owned());
+				}
+			}
+		}
+
+		Ok(Self {
+			name,
+			pronouns,
+			custom_pronouns,
+			height,
+			weight,
+			personality,
+		})
 	}
 }
 
@@ -90,6 +146,15 @@ impl std::fmt::Display for PersonalityKind {
 }
 
 impl PersonalityKind {
+	fn node_id(&self) -> &'static str {
+		match self {
+			Self::Trait => "trait",
+			Self::Ideal => "ideal",
+			Self::Bond => "bond",
+			Self::Flaw => "flaw",
+		}
+	}
+
 	pub fn description(&self) -> &'static str {
 		match self {
 			Self::Trait => DESC_TRAIT,

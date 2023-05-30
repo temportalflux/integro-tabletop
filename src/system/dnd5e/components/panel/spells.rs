@@ -889,7 +889,7 @@ fn SpellListAction(
 					None
 				} else {
 					let Some(spell) = system.spells.get(&spell_id) else { return None; };
-					persistent.selected_spells.insert(&caster_id, spell);
+					persistent.selected_spells.insert(&caster_id, spell.clone());
 					None // TODO: maybe recompile when spells are added because of bonuses to spell attacks and other mutators?
 				}
 			})
@@ -1237,7 +1237,9 @@ struct FindRelevantSpells {
 }
 impl FindRelevantSpells {
 	fn new(database: Database, node_reg: Arc<NodeRegistry>, filter: &SpellFilter) -> Self {
-		let pending_query = database.query::<Spell>(filter.as_criteria().into(), node_reg);
+		use crate::system::core::System;
+		let pending_query =
+			database.query::<Spell>(DnD5e::id(), filter.as_criteria().into(), node_reg);
 		Self {
 			pending_query: Some(Box::pin(pending_query)),
 			query: None,

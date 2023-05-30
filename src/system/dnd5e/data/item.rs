@@ -2,8 +2,7 @@ use super::{currency::Wallet, description, Rarity};
 use crate::{
 	kdl_ext::{DocumentExt, FromKDL, NodeContext, NodeExt},
 	system::{
-		core::SourceId,
-		dnd5e::{data::character::Character, DnD5e, SystemComponent},
+		dnd5e::{data::character::Character, SystemComponent},
 	},
 	utility::{MutatorGroup, NotInList},
 };
@@ -95,16 +94,10 @@ impl Item {
 crate::impl_kdl_node!(Item, "item");
 
 impl SystemComponent for Item {
-	type System = DnD5e;
-
 	fn to_metadata(self) -> serde_json::Value {
 		serde_json::json!({
 			"name": self.name.clone(),
 		})
-	}
-
-	fn add_component(self, source_id: SourceId, system: &mut Self::System) {
-		system.items.insert(source_id, self);
 	}
 }
 
@@ -504,7 +497,7 @@ impl<T: AsItem> FromKDL for Inventory<T> {
 			itemids_by_name: Vec::new(),
 		};
 
-		for node in node.query_all("item")? {
+		for node in node.query_all("scope() > item")? {
 			let item = Item::from_kdl(node, &mut ctx.next_node())?;
 			inventory.push(item);
 		}

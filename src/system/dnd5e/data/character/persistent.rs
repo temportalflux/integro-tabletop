@@ -1,19 +1,24 @@
 use crate::{
+	kdl_ext::{DocumentExt, FromKDL, NodeContext, NodeExt},
 	path_map::PathMap,
 	system::{
 		core::SourceId,
-		dnd5e::data::{
-			bundle::{Background, Lineage, Race, RaceVariant, Upbringing},
-			character::Character,
-			item, Ability, Class, Condition, Feature, Spell,
+		dnd5e::{
+			data::{
+				bundle::{Background, Lineage, Race, RaceVariant, Upbringing},
+				character::Character,
+				item, Ability, Class, Condition, Feature, Spell,
+			},
+			SystemComponent,
 		},
 	},
-	utility::MutatorGroup,
+	utility::{MutatorGroup, NotInList},
 };
 use enum_map::EnumMap;
 use std::{
 	collections::{BTreeMap, HashMap},
 	path::Path,
+	str::FromStr,
 	sync::Arc,
 };
 
@@ -166,12 +171,155 @@ impl Persistent {
 	}
 }
 
+crate::impl_kdl_node!(Persistent, "character");
+impl SystemComponent for Persistent {
+	fn to_metadata(self) -> serde_json::Value {
+		serde_json::Value::Null
+	}
+}
+impl FromKDL for Persistent {
+	fn from_kdl(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
+		let description = Description::from_kdl(
+			node.query_req("scope() > description")?,
+			&mut ctx.next_node(),
+		)?;
+
+		let mut settings = Settings::default();
+		for node in node.query_all("scope() > setting")? {
+			settings.insert_from_kdl(node, &mut ctx.next_node())?;
+		}
+
+		let mut ability_scores = EnumMap::default();
+		for node in node.query_all("scope() > ability")? {
+			let mut ctx = ctx.next_node();
+			let ability = Ability::from_str(node.get_str_req(ctx.consume_idx())?)?;
+			let score = node.get_i64_req(ctx.consume_idx())? as u32;
+			ability_scores[ability] = score;
+		}
+
+		let hit_points = HitPoints::from_kdl(
+			node.query_req("scope() > hit_points")?,
+			&mut ctx.next_node(),
+		)?;
+
+		let inspiration = node
+			.query_bool_opt("scope() > inspiration", 0)?
+			.unwrap_or_default();
+
+		let mut conditions = Conditions::default();
+		for node in node.query_all("scope() > condition")? {
+			let condition = Condition::from_kdl(node, &mut ctx.next_node())?;
+			conditions.insert(condition);
+		}
+
+		let inventory = item::Inventory::from_kdl(
+			node.query_req("scope() > inventory")?,
+			&mut ctx.next_node(),
+		)?;
+
+		let selected_spells = match node.query_opt("scope() > spells")? {
+			Some(node) => SelectedSpells::from_kdl(node, &mut ctx.next_node())?,
+			None => SelectedSpells::default(),
+		};
+
+		// TODO: Technically all named groups are also features, just with a different category.
+		let mut named_groups = NamedGroups::default();
+		let mut feats = Vec::new();
+		for node in node.query_all("scope() > feat")? {
+			let mut ctx = ctx.next_node();
+			match node.get_str_req("category")? {
+				"Feat" => {
+					let feature = Feature::from_kdl(node, &mut ctx)?;
+					feats.push(feature);
+				}
+				"Race" => {
+					let feature = Race::from_kdl(node, &mut ctx)?;
+					named_groups.race.push(feature);
+				}
+				"Subrace" => {
+					let feature = RaceVariant::from_kdl(node, &mut ctx)?;
+					named_groups.race_variant.push(feature);
+				}
+				"Lineage" => {
+					let feature = Lineage::from_kdl(node, &mut ctx)?;
+					named_groups.lineage.push(feature);
+				}
+				"Upbringing" => {
+					let feature = Upbringing::from_kdl(node, &mut ctx)?;
+					named_groups.upbringing.push(feature);
+				}
+				"Background" => {
+					let feature = Background::from_kdl(node, &mut ctx)?;
+					named_groups.background.push(feature);
+				}
+				category => {
+					return Err(NotInList(
+						category.into(),
+						vec![
+							"Race",
+							"Subrace",
+							"Lineage",
+							"Upbringing",
+							"Background",
+							"Feat",
+						],
+					)
+					.into());
+				}
+			}
+		}
+
+		let mut classes = Vec::new();
+		for node in node.query_all("scope() > class")? {
+			let class = Class::from_kdl(node, &mut ctx.next_node())?;
+			classes.push(class);
+		}
+
+		let mut selected_values = PathMap::<String>::default();
+		for node in node.query_all("scope() > selections > value")? {
+			let mut ctx = ctx.next_node();
+			let key_str = node.get_str_req(ctx.consume_idx())?;
+			let value = node.get_str_req(ctx.consume_idx())?.to_owned();
+			selected_values.insert(Path::new(key_str), value);
+		}
+
+		Ok(Self {
+			description,
+			settings,
+			ability_scores,
+			hit_points,
+			inspiration,
+			conditions,
+			inventory,
+			selected_spells,
+			named_groups,
+			feats,
+			classes,
+			selected_values,
+		})
+	}
+}
+
 #[derive(Clone, Copy, PartialEq, Default, Debug)]
 pub struct HitPoints {
 	pub current: u32,
 	pub temp: u32,
 	pub failure_saves: u8,
 	pub success_saves: u8,
+}
+impl FromKDL for HitPoints {
+	fn from_kdl(node: &kdl::KdlNode, _ctx: &mut NodeContext) -> anyhow::Result<Self> {
+		let current = node.query_i64_req("scope() > current", 0)? as u32;
+		let temp = node.query_i64_req("scope() > temp", 0)? as u32;
+		let failure_saves = node.query_i64_req("scope() > failure_saves", 0)? as u8;
+		let success_saves = node.query_i64_req("scope() > success_saves", 0)? as u8;
+		Ok(Self {
+			current,
+			temp,
+			failure_saves,
+			success_saves,
+		})
+	}
 }
 impl HitPoints {
 	pub fn set_temp_hp(&mut self, value: u32) {
@@ -292,6 +440,24 @@ pub struct Settings {
 	pub currency_auto_exchange: bool,
 }
 
+impl Settings {
+	fn insert_from_kdl(
+		&mut self,
+		node: &kdl::KdlNode,
+		ctx: &mut NodeContext,
+	) -> anyhow::Result<()> {
+		match node.get_str_req(ctx.consume_idx())? {
+			"currency_auto_exchange" => {
+				self.currency_auto_exchange = node.get_bool_req(ctx.consume_idx())?;
+			}
+			key => {
+				return Err(NotInList(key.into(), vec!["currency_auto_exchange"]).into());
+			}
+		}
+		Ok(())
+	}
+}
+
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct SelectedSpells {
 	consumed_slots: HashMap<u8, usize>,
@@ -305,8 +471,36 @@ pub struct SelectedSpellsData {
 	pub num_spells: usize,
 	selections: HashMap<SourceId, Spell>,
 }
+impl FromKDL for SelectedSpells {
+	fn from_kdl(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
+		let mut consumed_slots = HashMap::new();
+		for node in node.query_all("scope() > consumed_slots > slot")? {
+			let mut ctx = ctx.next_node();
+			let slot = node.get_i64_req(ctx.consume_idx())? as u8;
+			let consumed = node.get_i64_req(ctx.consume_idx())? as usize;
+			consumed_slots.insert(slot, consumed);
+		}
+
+		let mut cache_by_caster = HashMap::new();
+		for node in node.query_all("scope() > caster")? {
+			let mut ctx = ctx.next_node();
+			let caster_name = node.get_str_req(ctx.consume_idx())?;
+			let mut selection_data = SelectedSpellsData::default();
+			for node in node.query_all("scope() > spell")? {
+				let spell = Spell::from_kdl(node, &mut ctx.next_node())?;
+				selection_data.insert(spell);
+			}
+			cache_by_caster.insert(caster_name.to_owned(), selection_data);
+		}
+
+		Ok(Self {
+			consumed_slots,
+			cache_by_caster,
+		})
+	}
+}
 impl SelectedSpells {
-	pub fn insert(&mut self, caster_id: &impl AsRef<str>, spell: &Spell) {
+	pub fn insert(&mut self, caster_id: &impl AsRef<str>, spell: Spell) {
 		let selected_spells = match self.cache_by_caster.get_mut(caster_id.as_ref()) {
 			Some(existing) => existing,
 			None => {
@@ -315,7 +509,7 @@ impl SelectedSpells {
 				self.cache_by_caster.get_mut(caster_id.as_ref()).unwrap()
 			}
 		};
-		selected_spells.insert(&spell);
+		selected_spells.insert(spell);
 	}
 
 	pub fn remove(&mut self, caster_id: &impl AsRef<str>, spell_id: &SourceId) {
@@ -367,12 +561,12 @@ impl SelectedSpells {
 	}
 }
 impl SelectedSpellsData {
-	fn insert(&mut self, spell: &Spell) {
-		self.selections.insert(spell.id.clone(), spell.clone());
+	fn insert(&mut self, spell: Spell) {
 		match spell.rank {
 			0 => self.num_cantrips += 1,
 			_ => self.num_spells += 1,
 		}
+		self.selections.insert(spell.id.clone(), spell);
 	}
 
 	fn remove(&mut self, id: &SourceId) {

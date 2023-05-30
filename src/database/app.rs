@@ -65,6 +65,7 @@ impl Database {
 
 	pub async fn query<Output>(
 		self,
+		system: impl Into<String>,
 		criteria: Box<Criteria>,
 		node_reg: Arc<crate::system::core::NodeRegistry>,
 	) -> Result<QueryDeserialize<Output>, super::Error>
@@ -73,12 +74,10 @@ impl Database {
 			+ crate::kdl_ext::FromKDL
 			+ Unpin
 			+ crate::system::dnd5e::SystemComponent,
-		Output::System: crate::system::core::System,
 	{
-		use crate::system::core::System;
 		let idx_by_sys_cate = self.read_index::<entry::SystemCategory>();
 		let index = entry::SystemCategory {
-			system: Output::System::id().into(),
+			system: system.into(),
 			category: Output::id().into(),
 		};
 		let cursor = idx_by_sys_cate?.open_cursor(Some(&index)).await?;
