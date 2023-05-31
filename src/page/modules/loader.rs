@@ -1,5 +1,4 @@
 use crate::{
-	auth,
 	database::app::Database,
 	storage::{
 		github::{
@@ -17,91 +16,18 @@ use crate::{
 use std::{
 	collections::{BTreeMap, VecDeque},
 	path::PathBuf,
-	rc::Rc,
 };
-use yew::prelude::*;
-use yewdux::prelude::*;
-
-// TODO: All of the loading logic here needs to be run regardless of what page the user is on!
-
-/// Page which displays the modules the user currently logged in has contributor access to.
-#[function_component]
-pub fn OwnedModules() -> Html {
-	let database = use_context::<Database>().unwrap();
-	let task_dispatch = use_context::<task::Dispatch>().unwrap();
-	let system_depot = use_context::<system::Depot>().unwrap();
-	let (auth_status, _) = use_store::<auth::Status>();
-	let was_authed = use_state_eq(|| false);
-	let relevant_repos = use_state(|| BTreeMap::<(String, String), (bool, String)>::new());
-
-	let signed_in = matches!(*auth_status, auth::Status::Successful { .. });
-	if *was_authed && !signed_in {
-		was_authed.set(false);
-		relevant_repos.set(BTreeMap::default());
-	} else if !*was_authed && signed_in {
-		was_authed.set(true);
-		if let Some(post_login) = PostLogin::new(
-			&task_dispatch,
-			&auth_status,
-			&system_depot,
-			&database,
-			&relevant_repos,
-		) {
-			post_login.query_user_and_orgs();
-		}
-	}
-
-	let content = match (signed_in, &*relevant_repos) {
-		(false, _) => html!("Not signed in"),
-		(true, data) if data.len() == 0 => html! {
-			<div class="spinner-border" role="status">
-				<span class="visually-hidden">{"Loading..."}</span>
-			</div>
-		},
-		(true, data) => html! {<>
-			{data.iter().map(|((owner, name), (is_private, version))| {
-				html! {
-					<div>
-						{format!("{owner}/{name}")}
-						{is_private.then(|| html!(" [private]")).unwrap_or_default()}
-						{format!(" - version: {version}")}
-					</div>
-				}
-			}).collect::<Vec<_>>()}
-		</>},
-	};
-	html! {<>
-		<TaskListView />
-		{content}
-	</>}
-}
 
 #[derive(Clone)]
-struct PostLogin {
-	client: GithubClient,
-	task_dispatch: task::Dispatch,
-	system_depot: system::Depot,
-	database: Database,
-	relevant_repos: UseStateHandle<BTreeMap<(String, String), (bool, String)>>,
+pub struct Loader {
+	pub client: GithubClient,
+	pub task_dispatch: task::Dispatch,
+	pub system_depot: system::Depot,
+	pub database: Database,
 }
-impl PostLogin {
-	fn new(
-		task_dispatch: &task::Dispatch,
-		auth_status: &Rc<auth::Status>,
-		system_depot: &system::Depot,
-		database: &Database,
-		relevant_repos: &UseStateHandle<BTreeMap<(String, String), (bool, String)>>,
-	) -> Option<Self> {
-		let auth::Status::Successful { token } = &**auth_status else { return None; };
-		log::debug!("detected login {token:?}");
-		let Ok(client) = GithubClient::new(token) else { return None; };
-		Some(Self {
-			client,
-			task_dispatch: task_dispatch.clone(),
-			system_depot: system_depot.clone(),
-			database: database.clone(),
-			relevant_repos: relevant_repos.clone(),
-		})
+impl Loader {
+	pub fn find_and_download_modules(self) {
+		self.query_user_and_orgs();
 	}
 
 	fn query_user_and_orgs(self) {
@@ -158,7 +84,6 @@ impl PostLogin {
 				}
 				log::debug!("Valid Repositories: {relevant_list:?}");
 
-				self.relevant_repos.set(relevant_list);
 				self.insert_or_update_modules(metadata);
 
 				Ok(())
@@ -519,34 +444,5 @@ impl PostLogin {
 			entries.push(record);
 		}
 		entries
-	}
-}
-
-#[function_component]
-pub fn TaskListView() -> Html {
-	let task_view = use_context::<task::View>().unwrap();
-	html! {
-		<div>
-			{task_view.iter().map(|handle| html! {
-				<div class="d-flex align-items-center">
-					<span class="me-1">{&handle.name}{":"}</span>
-					{match &handle.status {
-						task::Status::Pending => {
-							html! {
-								<span>
-									{"PENDING"}
-									{handle.progress.as_ref().map(|(value, max)| {
-										html!(format!(" ({value} / {max})"))
-									}).unwrap_or_default()}
-								</span>
-							}
-						}
-						task::Status::Failed(error) => {
-							html!(<span>{format!("FAILED: {error:?}")}</span>)
-						}
-					}}
-				</div>
-			}).collect::<Vec<_>>()}
-		</div>
 	}
 }

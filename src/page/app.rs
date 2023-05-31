@@ -1,6 +1,6 @@
 use crate::{components::auth, page, theme};
 use yew::prelude::*;
-use yew_router::{prelude::Redirect, BrowserRouter, Routable, Switch};
+use yew_router::prelude::*;
 
 #[function_component]
 pub fn App() -> Html {
@@ -19,9 +19,9 @@ pub enum Route {
 	#[at("/modules")]
 	Modules,
 	#[at("/characters")]
-	CharactersRoot,
-	#[at("/characters/*")]
 	Characters,
+	#[at("/characters/*")]
+	CharacterSheets,
 	#[not_found]
 	#[at("/404")]
 	NotFound,
@@ -35,8 +35,8 @@ impl Route {
 	fn switch(self) -> Html {
 		match self {
 			Self::Home => html!(<page::Home />),
-			Self::Modules => html!(<page::OwnedModules />),
-			Self::CharactersRoot | Self::Characters => html!(<page::characters::Switch />),
+			Self::Modules => html!(<page::ModulesLanding />),
+			Self::Characters | Self::CharacterSheets => html!(<page::characters::Switch />),
 			Self::NotFound => html!(<page::NotFound />),
 		}
 	}
@@ -44,13 +44,12 @@ impl Route {
 
 #[function_component]
 fn Header() -> Html {
-	//let auth_content = html!();
 	let auth_content = html!(<auth::LoginButton />);
 	html! {
 		<header>
 			<nav class="navbar navbar-expand-lg sticky-top bg-body-tertiary">
 				<div class="container-fluid">
-					<a class="navbar-brand" href="/">{"Tabletop Tools"}</a>
+					<Link<Route> classes="navbar-brand" to={Route::Home}>{"Integro Tabletop"}</Link<Route>>
 					<button
 						class="navbar-toggler" type="button"
 						data-bs-toggle="collapse" data-bs-target="#navContent"
@@ -61,10 +60,10 @@ fn Header() -> Html {
 					<div class="collapse navbar-collapse" id="navContent">
 						<ul class="navbar-nav">
 							<li class="nav-item">
-								<a class="nav-link">{"My Characters"}</a>
+								<Link<Route> classes="nav-link" to={Route::Characters}>{"My Characters"}</Link<Route>>
 							</li>
 							<li class="nav-item">
-								<a class="nav-link">{"Content Browser"}</a>
+								<Link<Route> classes="nav-link" to={Route::Modules}>{"Modules"}</Link<Route>>
 							</li>
 						</ul>
 						<ul class="navbar-nav flex-row flex-wrap ms-md-auto">

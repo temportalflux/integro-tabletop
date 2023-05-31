@@ -9,5 +9,5 @@ pub use home::Home;
 mod not_found;
 pub use not_found::NotFound;
 
-pub mod owned_modules;
-pub use owned_modules::OwnedModules;
+pub mod modules;
+pub use modules::ModulesLanding;
