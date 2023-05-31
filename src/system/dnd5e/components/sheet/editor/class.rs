@@ -1,11 +1,15 @@
 use crate::{
+	components::{
+		database::{use_query_all_typed, use_typed_fetch_callback, QueryAllArgs, QueryStatus},
+		Spinner,
+	},
 	system::dnd5e::{
 		components::{
 			editor::{feature, mutator_list},
 			SharedCharacter,
 		},
 		data::{
-			character::{ActionEffect, Persistent},
+			character::{ActionEffect, Character, Persistent},
 			roll::Die,
 			Class, Level,
 		},
@@ -14,8 +18,7 @@ use crate::{
 	utility::InputExt,
 };
 use convert_case::{Case, Casing};
-use itertools::Itertools;
-use std::collections::HashSet;
+use std::{collections::HashSet, rc::Rc, sync::Arc};
 use yew::prelude::*;
 
 #[function_component]
@@ -83,23 +86,51 @@ struct ClassBrowserProps {
 
 #[function_component]
 fn ClassBrowser(ClassBrowserProps { on_added }: &ClassBrowserProps) -> Html {
-	let system = use_context::<UseStateHandle<DnD5e>>().unwrap();
+	use crate::system::core::System;
+
 	let state = use_context::<SharedCharacter>().unwrap();
+
+	let classes_handle = use_query_all_typed::<Class>(QueryAllArgs {
+		system: DnD5e::id().into(),
+		auto_fetch: true,
+		adjust_listings: Some(Arc::new({
+			let iter_classes = state.persistent().classes.iter();
+			let iter_ids = iter_classes.map(|class| class.id.unversioned());
+			let existing_class_ids = iter_ids.collect::<HashSet<_>>();
+			move |mut listings| {
+				listings.retain(|class| !existing_class_ids.contains(&class.id.unversioned()));
+				listings.sort_by(|a, b| a.name.cmp(&b.name));
+				listings
+			}
+		})),
+		..Default::default()
+	});
+
 	let update = use_force_update();
-	let added_classes = state
-		.persistent()
-		.classes
-		.iter()
-		.map(|class| class.source_id.clone())
-		.collect::<HashSet<_>>();
-	let class_iter = system
-		.classes
-		.iter()
-		.filter(|(id, _)| !added_classes.contains(*id))
-		.sorted_by(|(_, a), (_, b)| a.name.cmp(&b.name));
-	html! {
-		<div class="accordion my-2" id="all-entries">
-			{class_iter.map(|(source_id, class)| {
+	let on_add_class = use_typed_fetch_callback(
+		"Add Class".into(),
+		Callback::from({
+			let state = state.clone();
+			let on_added = on_added.clone();
+			let update = update.clone();
+			move |class_to_add: Class| {
+				state.dispatch(Box::new(
+					move |persistent: &mut Persistent, _: &Rc<Character>| {
+						persistent.add_class(class_to_add);
+						Some(ActionEffect::Recompile)
+					},
+				));
+				on_added.emit(());
+				update.force_update();
+			}
+		}),
+	);
+
+	let content = match classes_handle.status() {
+		QueryStatus::Pending => html!(<Spinner />),
+		QueryStatus::Empty | QueryStatus::Failed(_) => html!("No classes available"),
+		QueryStatus::Success(classes) => html! {<>
+			{classes.iter().map(|class| {
 				let id = class.name.to_case(Case::Snake);
 				html! {
 					<div class="accordion-item">
@@ -113,21 +144,9 @@ fn ClassBrowser(ClassBrowserProps { on_added }: &ClassBrowserProps) -> Html {
 								<button
 									type="button" class="btn btn-success my-1 w-100"
 									data-bs-toggle="collapse" data-bs-target="#classBrowser"
-									onclick={Callback::from({
-										let system = system.clone();
-										let source_id = source_id.clone();
-										let state = state.clone();
-										let on_added = on_added.clone();
-										let update = update.clone();
-										move |_| {
-											let Some(class_to_add) = system.classes.get(&source_id).cloned() else { return; };
-											state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
-												persistent.add_class(class_to_add);
-												Some(ActionEffect::Recompile)
-											}));
-											on_added.emit(());
-											update.force_update();
-										}
+									onclick={on_add_class.reform({
+										let class_id = class.id.unversioned();
+										move |_: MouseEvent| class_id.clone()
 									})}
 								>{"Add"}</button>
 								{class_body(class, None)}
@@ -136,6 +155,12 @@ fn ClassBrowser(ClassBrowserProps { on_added }: &ClassBrowserProps) -> Html {
 					</div>
 				}
 			}).collect::<Vec<_>>()}
+		</>},
+	};
+
+	html! {
+		<div class="accordion my-2" id="all-entries">
+			{content}
 		</div>
 	}
 }
@@ -151,7 +176,7 @@ fn ActiveClassList() -> Html {
 			let system = system.clone();
 			state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
 				let Some(dst) = persistent.classes.get_mut(idx) else { return None; };
-				let Some(src) = system.classes.get(&dst.source_id) else { return None; };
+				let Some(src) = system.classes.get(&dst.id) else { return None; };
 				let next_level_idx = dst.levels.len();
 				let Some(src_level) = src.levels.get(next_level_idx) else { return None; };
 				dst.levels.push(src_level.clone());

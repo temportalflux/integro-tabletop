@@ -17,7 +17,7 @@ pub use indirect::*;
 /// Conditions contain a set of mutators and an optional criteria that, if met, applies those mutators.
 #[derive(Clone, PartialEq, Debug, Default)]
 pub struct Condition {
-	pub source_id: Option<SourceId>,
+	pub id: Option<SourceId>,
 	pub name: String,
 	pub description: String,
 	pub mutators: Vec<BoxedMutator>,
@@ -63,6 +63,8 @@ impl FromKDL for Condition {
 		node: &kdl::KdlNode,
 		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
+		let id = ctx.parse_source_opt(node)?;
+
 		let name = node.get_str_req("name")?.to_owned();
 		let description = node
 			.query_str_opt("scope() > description", 0)?
@@ -81,7 +83,7 @@ impl FromKDL for Condition {
 		};
 
 		Ok(Self {
-			source_id: None,
+			id,
 			name,
 			description,
 			mutators,

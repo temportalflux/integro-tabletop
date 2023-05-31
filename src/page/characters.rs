@@ -1,5 +1,6 @@
 use super::app;
 use crate::{
+	components::Spinner,
 	database::app::Database,
 	system::core::{ModuleId, SourceId},
 };
@@ -128,11 +129,7 @@ pub fn CharacterList() -> Html {
 		UseAsyncOptions::enable_auto(),
 	);
 	let content = if character_entries.loading {
-		html! {
-			<div class="spinner-border" role="status">
-				<span class="visually-hidden">{"Loading..."}</span>
-			</div>
-		}
+		html!(<Spinner />)
 	} else if let Some(entries) = &character_entries.data {
 		html! {<>
 			{entries.iter().map(|entry| {

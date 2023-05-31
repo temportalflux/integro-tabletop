@@ -414,10 +414,14 @@ impl Loader {
 				return Vec::new();
 			}
 		};
+		let path_in_system = match file_path.strip_prefix(&format!("{system}/")) {
+			Some(systemless) => PathBuf::from(systemless),
+			None => PathBuf::from(&file_path),
+		};
 		let mut source_id = SourceId {
 			module: Some(module_id.clone()),
 			system: Some(system.clone()),
-			path: PathBuf::from(&file_path),
+			path: path_in_system,
 			version: None,
 			node_idx: 0,
 		};

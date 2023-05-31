@@ -181,6 +181,8 @@ impl SystemComponent for Persistent {
 }
 impl FromKDL for Persistent {
 	fn from_kdl(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
+		ctx.set_inheiret_source(false);
+
 		let description = Description::from_kdl(
 			node.query_req("scope() > description")?,
 			&mut ctx.next_node(),
@@ -380,9 +382,9 @@ pub struct Conditions {
 }
 impl Conditions {
 	pub fn insert(&mut self, condition: Condition) {
-		match &condition.source_id {
+		match &condition.id {
 			Some(id) => {
-				self.by_id.insert(id.clone(), condition);
+				self.by_id.insert(id.unversioned(), condition);
 			}
 			None => {
 				self.custom.push(condition);

@@ -10,6 +10,7 @@ pub struct NodeContext {
 	root_id: Arc<SourceId>,
 	index_cursor: usize,
 	node_registry: Arc<NodeRegistry>,
+	inheiret_source: bool,
 }
 
 impl NodeContext {
@@ -18,6 +19,7 @@ impl NodeContext {
 			root_id: id,
 			node_registry: registry,
 			index_cursor: 0,
+			inheiret_source: true,
 		}
 	}
 
@@ -27,6 +29,15 @@ impl NodeContext {
 			node_registry: Arc::new(registry),
 			..Default::default()
 		}
+	}
+
+	pub fn inheiret_source(mut self, inheiret: bool) -> Self {
+		self.set_inheiret_source(inheiret);
+		self
+	}
+
+	pub fn set_inheiret_source(&mut self, inheiret: bool) {
+		self.inheiret_source = inheiret;
 	}
 
 	pub fn id(&self) -> &SourceId {
@@ -48,11 +59,26 @@ impl NodeContext {
 			root_id: self.root_id.clone(),
 			index_cursor: 0,
 			node_registry: self.node_registry.clone(),
+			inheiret_source: self.inheiret_source,
 		}
 	}
 
 	pub fn node_reg(&self) -> &Arc<NodeRegistry> {
 		&self.node_registry
+	}
+
+	pub fn parse_source_opt(&self, node: &kdl::KdlNode) -> anyhow::Result<Option<SourceId>> {
+		use crate::kdl_ext::DocumentExt;
+		use std::str::FromStr;
+		match node.query_str_opt("scope() > source", 0)? {
+			Some(id_str) => Ok(Some(SourceId::from_str(id_str)?)),
+			None if self.inheiret_source => Ok(Some(self.id().clone())),
+			None => Ok(None),
+		}
+	}
+
+	pub fn parse_source_req(&self, node: &kdl::KdlNode) -> anyhow::Result<SourceId> {
+		Ok(self.parse_source_opt(node)?.ok_or(MissingSource)?)
 	}
 
 	pub fn parse_mutator<T>(&self, node: &kdl::KdlNode) -> anyhow::Result<GenericMutator<T>>
@@ -91,6 +117,10 @@ impl NodeContext {
 		factory.from_kdl::<C, V>(node, self)
 	}
 }
+
+#[derive(thiserror::Error, Debug)]
+#[error("Missing source field")]
+pub struct MissingSource;
 
 pub trait KDLNode {
 	fn id() -> &'static str

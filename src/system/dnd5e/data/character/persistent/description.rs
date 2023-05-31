@@ -37,7 +37,7 @@ impl FromKDL for Description {
 		let mut custom_pronouns = String::new();
 		for value in node.query_str_all("scope() > pronoun", 0)? {
 			match value {
-				"She/Her" | "He/Him" | "They/Them" => {
+				"she/her" | "he/him" | "they/them" => {
 					pronouns.insert(value.to_owned());
 				}
 				_ => {

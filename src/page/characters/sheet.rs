@@ -1,18 +1,18 @@
 use std::rc::Rc;
 
 use crate::{
+	components::{modal, Spinner},
 	database::app::Database,
 	system::{
 		self,
 		core::{SourceId, System},
 		dnd5e::{
-			components::{GeneralProp},
-			data::character::{DefaultsBlock, Persistent, Character, ActionEffect},
+			components::GeneralProp,
+			data::character::{ActionEffect, Character, DefaultsBlock, Persistent},
 			DnD5e,
 		},
-	}, components::modal,
+	},
 };
-use futures_util::StreamExt;
 use yew::prelude::*;
 use yew_hooks::{use_async_with_options, UseAsyncOptions};
 
@@ -48,7 +48,9 @@ impl SharedCharacter {
 pub fn Sheet(props: &GeneralProp<SourceId>) -> Html {
 	let database = use_context::<Database>().unwrap();
 	let system_depot = use_context::<system::Depot>().unwrap();
-	let character = SharedCharacter(use_reducer(|| Character::new(Persistent::default(), Vec::new())));
+	let character = SharedCharacter(use_reducer(|| {
+		Character::new(Persistent::default(), Vec::new())
+	}));
 	let initiaize_character = use_async_with_options(
 		{
 			let character = character.clone();
@@ -75,7 +77,7 @@ pub fn Sheet(props: &GeneralProp<SourceId>) -> Html {
 	);
 	// TODO: Remove dependence on system struct
 	let system = use_state(|| DnD5e::default());
-	
+
 	let show_editor = use_state_eq(|| false);
 	let open_viewer = Callback::from({
 		let show_editor = show_editor.clone();
@@ -87,14 +89,8 @@ pub fn Sheet(props: &GeneralProp<SourceId>) -> Html {
 	});
 
 	if initiaize_character.loading || initiaize_character.data.is_none() {
-		return html! {
-			<div class="spinner-border" role="status">
-				<span class="visually-hidden">{"Loading..."}</span>
-			</div>
-		};
+		return html!(<Spinner />);
 	}
-
-	log::debug!("{:?}", character.persistent().feats);
 
 	html! {<>
 		<ContextProvider<UseStateHandle<DnD5e>> context={system}>

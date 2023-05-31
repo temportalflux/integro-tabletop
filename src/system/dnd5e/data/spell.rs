@@ -61,7 +61,7 @@ impl SystemComponent for Spell {
 impl FromKDL for Spell {
 	fn from_kdl(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
 		// TODO: all system components need to check if the node has a source field
-		let id = Self::parse_source(node, ctx)?;
+		let id = ctx.parse_source_req(node)?;
 
 		let name = node.get_str_req("name")?.to_owned();
 		let description = match node.query_opt("scope() > description")? {

@@ -1,5 +1,5 @@
 use crate::{
-	components::{modal, stop_propagation},
+	components::{modal, stop_propagation, Spinner},
 	database::app::{Database, QueryDeserialize},
 	system::{
 		self,
@@ -1206,11 +1206,7 @@ pub fn AvailableSpellList(props: &AvailableSpellListProps) -> Html {
 	html! {<>
 		{match (load_data.loading, &load_data.data) {
 			(false, None) => html! {"Spells not loaded"},
-			(true, _) => html! {
-				<div class="spinner-border" role="status">
-					<span class="visually-hidden">{"Loading..."}</span>
-				</div>
-			},
+			(true, _) => html!(<Spinner />),
 			(false, Some(data)) => data.clone(),
 		}}
 	</>}

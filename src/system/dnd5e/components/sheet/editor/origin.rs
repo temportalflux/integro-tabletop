@@ -20,6 +20,7 @@ use crate::{
 		GenericMutator, InputExt, SelectorMeta, SelectorOptions,
 	},
 };
+use convert_case::{Case, Casing};
 use multimap::MultiMap;
 use std::{
 	collections::{HashMap, HashSet},
@@ -369,7 +370,7 @@ fn bundle_state<T>(
 	}
 	html! {
 		<ContentItem
-			id_prefix={format!("item{}", idx)}
+			id={format!("item{}-{}-{}", idx, category, title.to_case(Case::Kebab))}
 			name={format!("{}: {}", category, title)}
 			kind={ContentItemKind::Remove {
 				disable_selection: dependents.map(|desc| format!("Cannot remove, depended on by: {desc}").into()),
@@ -434,11 +435,12 @@ where
 			let amount_selected = get_state_items(state.persistent()).iter().filter(|selected| {
 				get_item_id(selected) == source_id
 			}).count();
-			let mut title = get_item_name(value).clone();
+			let item_name = get_item_name(value).clone();
+			let mut title = item_name.clone();
 			let mut disable_selection = None;
 			if let Some(reqs) = item_reqs(value) {
 				let reqs_as_str = reqs.iter().map(|(category, name)| format!("{category}: {name}")).collect::<Vec<_>>().join(", ");
-				title = format!("{title} (requires: [{}])", reqs_as_str);
+				title = format!("{item_name} (requires: [{}])", reqs_as_str);
 
 				for (category, name) in reqs {
 					let bundles = &state.persistent().named_groups;
@@ -459,6 +461,7 @@ where
 			html! {
 				<ContentItem
 					parent_collapse={"#all-entries"}
+					id={item_name}
 					name={title}
 					kind={ContentItemKind::Add {
 						amount_selected,
@@ -481,8 +484,7 @@ where
 struct ContentItemProps {
 	#[prop_or_default]
 	parent_collapse: Option<AttrValue>,
-	#[prop_or_default]
-	id_prefix: Option<AttrValue>,
+	id: AttrValue,
 	name: AttrValue,
 	kind: ContentItemKind,
 	children: Children,
@@ -503,15 +505,13 @@ enum ContentItemKind {
 fn ContentItem(
 	ContentItemProps {
 		parent_collapse,
-		id_prefix,
+		id,
 		name,
 		kind,
 		children,
 		on_click,
 	}: &ContentItemProps,
 ) -> Html {
-	use convert_case::{Case, Casing};
-
 	let disabled_btn = |text: Html| {
 		html! {
 			<button type="button" class="btn btn-outline-secondary my-1 w-100" disabled={true}>
@@ -558,14 +558,6 @@ fn ContentItem(
 		},
 	};
 
-	let id = format!(
-		"{}{}",
-		id_prefix
-			.as_ref()
-			.map(AttrValue::as_str)
-			.unwrap_or_default(),
-		name.as_str().to_case(Case::Kebab),
-	);
 	html! {
 		<div class="accordion-item">
 			<h2 class="accordion-header">
@@ -573,7 +565,7 @@ fn ContentItem(
 					{name.clone()}
 				</button>
 			</h2>
-			<div {id} class="accordion-collapse collapse" data-bs-parent={parent_collapse.clone()}>
+			<div id={id.clone()} class="accordion-collapse collapse" data-bs-parent={parent_collapse.clone()}>
 				<div class="accordion-body">
 					<div>{slot_buttons}</div>
 					{children.clone()}

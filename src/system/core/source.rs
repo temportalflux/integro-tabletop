@@ -70,6 +70,12 @@ impl SourceId {
 		let name = self.path.file_stem().unwrap().to_str().unwrap();
 		format!("{prefix}{name}")
 	}
+
+	pub fn unversioned(&self) -> SourceId {
+		let mut id = self.clone();
+		id.version = None;
+		id
+	}
 }
 
 impl ToString for SourceId {
@@ -288,7 +294,8 @@ mod test {
 			SourceId::from_str("local://module-name@mysystem/item/gear.kdl?version=e812da2c")?;
 		let mut relative = SourceId::from_str("feat/initiate.kdl")?;
 		relative.set_basis(&basis, true);
-		let expected = SourceId::from_str("local://module-name@mysystem/feat/initiate.kdl?version=e812da2c")?;
+		let expected =
+			SourceId::from_str("local://module-name@mysystem/feat/initiate.kdl?version=e812da2c")?;
 		assert_eq!(relative, expected);
 		Ok(())
 	}

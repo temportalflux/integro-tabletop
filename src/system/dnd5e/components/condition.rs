@@ -1,7 +1,10 @@
-use std::str::FromStr;
+use std::{rc::Rc, str::FromStr};
 
 use crate::{
-	components::{modal, Tag, Tags},
+	components::{
+		database::{use_query_all_typed, use_typed_fetch_callback, QueryAllArgs, QueryStatus},
+		modal, Spinner, Tag, Tags,
+	},
 	system::{
 		core::SourceId,
 		dnd5e::{
@@ -9,14 +12,14 @@ use crate::{
 				editor::{mutator_list, CollapsableCard},
 				SharedCharacter,
 			},
-			data::character::{ActionEffect, Persistent},
+			data::{
+				character::{ActionEffect, Character, Persistent},
+				Condition,
+			},
 			DnD5e,
 		},
 	},
-	utility::{
-		web_ext::{self, CallbackExt, CallbackOptExt},
-		InputExt,
-	},
+	utility::InputExt,
 };
 use yew::prelude::*;
 
@@ -68,42 +71,70 @@ pub fn ConditionsCard() -> Html {
 #[function_component]
 fn Modal() -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
-	let system = use_context::<UseStateHandle<DnD5e>>().unwrap();
+
 	let add_condition_section = {
+		use crate::system::core::System;
+		let conditions_handle = use_query_all_typed::<Condition>(QueryAllArgs {
+			system: DnD5e::id().into(),
+			auto_fetch: true,
+			..Default::default()
+		});
+		let add_condition_by_id = use_typed_fetch_callback(
+			"Add Condition".into(),
+			state.new_dispatch(Box::new(
+				move |condition: Condition, persistent: &mut Persistent, _: &Rc<Character>| {
+					persistent.conditions.insert(condition);
+					Some(ActionEffect::Recompile)
+				},
+			)),
+		);
+		let on_add_condition = Callback::from(move |evt: web_sys::Event| {
+			let Some(value) = evt.select_value() else { return; };
+			let Ok(source_id) = SourceId::from_str(&value) else { return; };
+			add_condition_by_id.emit(source_id);
+		});
+
 		// TODO: This should use a regex-capable search bar, just like searching for an item in the inventory
-		let on_add_condition = web_ext::callback()
-			.map(|evt: web_sys::Event| evt.input_value())
-			.map_some(|value| SourceId::from_str(&value).ok())
-			.map_some({
-				let system = system.clone();
-				move |source_id| system.conditions.get(&source_id).cloned()
-			})
-			.on_some({
-				let state = state.clone();
-				move |condition| {
-					state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
-						persistent.conditions.insert(condition);
-						Some(ActionEffect::Recompile)
-					}));
+
+		let content = match conditions_handle.status() {
+			QueryStatus::Pending => html!(<Spinner />),
+			QueryStatus::Empty | QueryStatus::Failed(_) => html! {
+				<select class="form-select">
+					<option value="" selected={true}>{"No conditions available"}</option>
+				</select>
+			},
+			QueryStatus::Success(conditions) => {
+				let options = conditions
+					.iter()
+					.map(|condition| {
+						let Some(id) = &condition.id else { return html!(); };
+						let id = id.unversioned();
+						html! {
+							<option
+								value={id.to_string()}
+								disabled={state.persistent().conditions.contains_id(&id)}
+							>
+								{condition.name.clone()}
+							</option>
+						}
+					})
+					.collect::<Vec<_>>();
+				html! {
+					<select class="form-select" onchange={on_add_condition}>
+						<option value="" selected={true}>{"Pick a Condition..."}</option>
+						{options}
+					</select>
 				}
-			});
+			}
+		};
 		html! {
 			<div class="input-group mb-3">
 				<span class="input-group-text">{"Add a Condition"}</span>
-				<select class="form-select" onchange={on_add_condition}>
-					<option value="" selected={true}>{"Pick a Condition..."}</option>
-					{system.conditions.iter().map(|(source_id, condition)| html! {
-						<option
-							value={source_id.to_string()}
-							disabled={state.persistent().conditions.contains_id(source_id)}
-						>
-							{condition.name.clone()}
-						</option>
-					}).collect::<Vec<_>>()}
-				</select>
+				{content}
 			</div>
 		}
 	};
+
 	let on_remove_condition = Callback::from({
 		let state = state.clone();
 		move |key| {
@@ -113,6 +144,7 @@ fn Modal() -> Html {
 			}));
 		}
 	});
+
 	html! {<>
 		<div class="modal-header">
 			<h1 class="modal-title fs-4">{"Conditions"}</h1>

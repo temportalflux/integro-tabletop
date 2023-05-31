@@ -26,7 +26,7 @@ pub fn SheetEditor(SheetEditorProps { open_viewer }: &SheetEditorProps) -> Html 
 	};
 	html! {
 		<div class="container overflow-hidden">
-			<Nav root_classes={""} disp={NavDisplay::Tabs} default_tab_id={"home"} extra={floating_exit_btn}>
+			<Nav root_classes={"mt-1"} disp={NavDisplay::Tabs} default_tab_id={"home"} extra={floating_exit_btn}>
 				<TabContent id="home" title={html! {{"Home"}}}>
 					<HomeTab />
 				</TabContent>

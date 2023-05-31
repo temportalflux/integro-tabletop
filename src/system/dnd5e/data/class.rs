@@ -11,7 +11,7 @@ use std::{path::Path, str::FromStr};
 
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct Class {
-	pub source_id: SourceId,
+	pub id: SourceId,
 	pub name: String,
 	pub description: String,
 	pub hit_die: Die,
@@ -77,6 +77,8 @@ crate::impl_kdl_node!(Class, "class");
 
 impl FromKDL for Class {
 	fn from_kdl(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
+		let id = ctx.parse_source_req(node)?;
+
 		let name = node.get_str_req("name")?.to_owned();
 		let description = node
 			.query_str_opt("scope() > description", 0)?
@@ -98,16 +100,17 @@ impl FromKDL for Class {
 		};
 
 		let mut levels = Vec::with_capacity(20);
-		levels.resize_with(20, Default::default);
 		for node in node.query_all("scope() > level")? {
 			let mut ctx = ctx.next_node();
 			let order = node.get_i64_req(ctx.consume_idx())? as usize;
-			let idx = order - 1;
-			levels[idx] = Level::from_kdl(node, &mut ctx)?;
+			if order > levels.len() {
+				levels.resize_with(order, Default::default);
+			}
+			levels[order - 1] = Level::from_kdl(node, &mut ctx)?;
 		}
 
 		Ok(Self {
-			source_id: SourceId::default(),
+			id,
 			name,
 			description,
 			hit_die,

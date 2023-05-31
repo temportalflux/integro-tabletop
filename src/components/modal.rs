@@ -1,7 +1,7 @@
+use crate::bootstrap;
 use std::rc::Rc;
 use wasm_bindgen::{prelude::Closure, JsCast};
-use yew::{prelude::*, html::ChildrenProps};
-use crate::bootstrap;
+use yew::{html::ChildrenProps, prelude::*};
 
 #[function_component]
 pub fn Provider(props: &ChildrenProps) -> Html {

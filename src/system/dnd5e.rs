@@ -66,15 +66,6 @@ pub trait SystemComponent {
 	fn to_metadata(self) -> serde_json::Value
 	where
 		Self: Sized;
-
-	fn parse_source(node: &kdl::KdlNode, ctx: &NodeContext) -> anyhow::Result<SourceId> {
-		use crate::kdl_ext::DocumentExt;
-		use std::str::FromStr;
-		match node.query_str_opt("scope() > source", 0)? {
-			Some(id_str) => Ok(SourceId::from_str(id_str)?),
-			None => Ok(ctx.id().clone()),
-		}
-	}
 }
 
 pub fn component_registry() -> ComponentRegistry {

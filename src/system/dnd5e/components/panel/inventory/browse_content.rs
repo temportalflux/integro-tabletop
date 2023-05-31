@@ -1,4 +1,5 @@
 use crate::{
+	components::Spinner,
 	system::{
 		core::{ModuleId, SourceId},
 		dnd5e::{
@@ -103,9 +104,7 @@ pub fn BrowseModal() -> Html {
 		(true, _, _) => html! {},
 		(_, true, _) => html! {
 			<div class="d-flex justify-content-center">
-				<div class="spinner-border" role="status">
-					<span class="visually-hidden">{"Loading..."}</span>
-				</div>
+				<Spinner />
 			</div>
 		},
 		(_, false, None) => html! {

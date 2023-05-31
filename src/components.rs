@@ -2,9 +2,13 @@ mod annotated_number;
 pub use annotated_number::*;
 
 pub mod auth;
+pub mod database;
 pub mod modal;
 mod nav;
 pub use nav::*;
+
+mod spinner;
+pub use spinner::*;
 
 mod tag;
 pub use tag::*;

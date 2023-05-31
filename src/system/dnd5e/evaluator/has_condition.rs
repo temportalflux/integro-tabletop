@@ -126,7 +126,7 @@ impl ConditionFilter {
 impl ConditionProperty {
 	pub fn matches(&self, condition: &Condition) -> bool {
 		match self {
-			Self::Id(id) => condition.source_id.as_ref() == Some(id),
+			Self::Id(id) => condition.id.as_ref() == Some(id),
 			Self::Name(name) => &condition.name == name,
 		}
 	}

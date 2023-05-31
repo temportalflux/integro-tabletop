@@ -22,7 +22,7 @@ pub struct SheetDisplayProps {
 pub fn SheetDisplay(SheetDisplayProps { open_editor }: &SheetDisplayProps) -> Html {
 	html! {
 		<div class="container overflow-hidden">
-			<div class="d-flex border-bottom-theme-muted mb-2 px-3 pb-1">
+			<div class="d-flex border-bottom-theme-muted mt-1 mb-2 px-3 pb-1">
 				<Header />
 				<div class="ms-auto">
 					<a class="icon forge" onclick={open_editor.reform(|_| ())} />
