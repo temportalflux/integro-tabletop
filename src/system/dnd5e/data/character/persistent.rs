@@ -125,12 +125,12 @@ impl Persistent {
 			Some(class_name) => {
 				for class in &self.classes {
 					if class.name == class_name {
-						return class.level_count();
+						return class.current_level;
 					}
 				}
 				return 0;
 			}
-			None => self.classes.iter().map(|class| class.level_count()).sum(),
+			None => self.classes.iter().map(|class| class.current_level).sum(),
 		}
 	}
 

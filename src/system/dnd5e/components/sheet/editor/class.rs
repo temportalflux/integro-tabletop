@@ -150,6 +150,7 @@ fn ClassBrowser(ClassBrowserProps { on_added }: &ClassBrowserProps) -> Html {
 									})}
 								>{"Add"}</button>
 								{class_body(class, None)}
+								{class_levels(class, None)}
 							</div>
 						</div>
 					</div>
@@ -167,23 +168,18 @@ fn ClassBrowser(ClassBrowserProps { on_added }: &ClassBrowserProps) -> Html {
 
 #[function_component]
 fn ActiveClassList() -> Html {
-	let system = use_context::<UseStateHandle<DnD5e>>().unwrap();
 	let state = use_context::<SharedCharacter>().unwrap();
 	let onclick_add = Callback::from({
-		let system = system.clone();
 		let state = state.clone();
 		move |idx: usize| {
-			let system = system.clone();
 			state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
-				let Some(dst) = persistent.classes.get_mut(idx) else { return None; };
-				let Some(src) = system.classes.get(&dst.id) else { return None; };
-				let next_level_idx = dst.levels.len();
-				let Some(src_level) = src.levels.get(next_level_idx) else { return None; };
-				dst.levels.push(src_level.clone());
+				let Some(class) = persistent.classes.get_mut(idx) else { return None; };
+				class.current_level += 1;
 				Some(ActionEffect::Recompile)
 			}));
 		}
 	});
+
 	let remove_class = Callback::from({
 		let state = state.clone();
 		move |idx| {
@@ -199,8 +195,8 @@ fn ActiveClassList() -> Html {
 			state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
 				let remove_class = {
 					let Some(class) = persistent.classes.get_mut(idx) else { return None; };
-					let _ = class.levels.pop();
-					class.levels.is_empty()
+					class.current_level = class.current_level.saturating_sub(1);
+					class.current_level == 0
 				};
 				if remove_class {
 					let _ = persistent.classes.remove(idx);
@@ -223,19 +219,21 @@ fn ActiveClassList() -> Html {
 					</div>
 					<div class="card-body">
 						{class_body(class, Some(&state))}
-						<div class="d-flex justify-content-center">
+						<div class="d-flex justify-content-between mt-3">
 							<button
 								type="button" class="btn btn-success mx-2"
 								onclick={onclick_add.reform(move |_| idx)}
 							>{"Add Level"}</button>
+							<h5>{"Levels"}</h5>
 							<button
 								type="button" class="btn btn-danger mx-2"
 								onclick={onclick_remove.reform(move |_| idx)}
-							>{match class.levels.len() {
+							>{match class.current_level {
 								1 => "Remove Class".to_owned(),
-								_ => format!("Remove Level {}", class.levels.len()),
+								_ => format!("Remove Level {}", class.current_level),
 							}}</button>
 						</div>
+						{class_levels(class, Some(&state))}
 					</div>
 				</div>
 			}
@@ -244,25 +242,30 @@ fn ActiveClassList() -> Html {
 }
 
 fn class_body(value: &Class, state: Option<&SharedCharacter>) -> Html {
-	let class_level_div_id = format!("{}-level", value.name.to_case(Case::Snake));
-	let hit_die = value.hit_die;
 	html! {<>
 		<div class="text-block">
 			{value.description.clone()}
 		</div>
 		<span>
 			{"Hit Die: "}
-			{hit_die.to_string()}
+			{value.hit_die.to_string()}
 		</span>
 		{mutator_list(&value.mutators, state)}
+	</>}
+}
 
+fn class_levels(value: &Class, state: Option<&SharedCharacter>) -> Html {
+	let class_level_div_id = format!("{}-level", value.name.to_case(Case::Snake));
+	let iter_levels = value.iter_levels(state.is_none());
+	let iter_levels = iter_levels.filter(|entry| state.is_some() || !entry.level().is_empty());
+	html! {
 		<div class="my-2">
-			{value.levels.iter().enumerate()
-			.filter(|(_, level)| state.is_some() || !level.is_empty())
-			.map(|(idx, level)| {
+			{iter_levels.map(|entry| {
+				let idx = entry.index();
+				let level = entry.level();
 				html! {
 					<CollapsableCard
-						id={format!("{}{}", class_level_div_id, idx)}
+						id={format!("{}-{}", class_level_div_id, idx + 1)}
 						collapse_btn_classes={level.is_empty().then_some("v-hidden").unwrap_or_default()}
 						header_content={{
 							html! {<>
@@ -281,8 +284,7 @@ fn class_body(value: &Class, state: Option<&SharedCharacter>) -> Html {
 				}
 			}).collect::<Vec<_>>()}
 		</div>
-
-	</>}
+	}
 }
 
 #[derive(Clone, PartialEq, Properties)]

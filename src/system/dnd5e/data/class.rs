@@ -15,6 +15,7 @@ pub struct Class {
 	pub name: String,
 	pub description: String,
 	pub hit_die: Die,
+	pub current_level: usize,
 	/// Mutators that are applied only when this class is the primary class (not multiclassing).
 	pub mutators: Vec<BoxedMutator>,
 	pub levels: Vec<Level>,
@@ -23,14 +24,11 @@ pub struct Class {
 }
 
 impl Class {
-	pub fn level_count(&self) -> usize {
-		self.levels.len()
-	}
-
-	fn iter_levels<'a>(&'a self) -> impl Iterator<Item = LevelWithIndex<'a>> + 'a {
+	pub fn iter_levels<'a>(&'a self, all: bool) -> impl Iterator<Item = LevelWithIndex<'a>> + 'a {
 		self.levels
 			.iter()
 			.enumerate()
+			.filter(move |(idx, _)| all || *idx < self.current_level)
 			.map(|(idx, lvl)| LevelWithIndex(idx, lvl))
 	}
 }
@@ -43,7 +41,7 @@ impl MutatorGroup for Class {
 		for mutator in &self.mutators {
 			mutator.set_data_path(&path_to_self);
 		}
-		for level in self.iter_levels() {
+		for level in self.iter_levels(true) {
 			level.set_data_path(&path_to_self);
 		}
 		if let Some(subclass) = &self.subclass {
@@ -56,7 +54,7 @@ impl MutatorGroup for Class {
 		for mutator in &self.mutators {
 			stats.apply(mutator, &path_to_self);
 		}
-		for level in self.iter_levels() {
+		for level in self.iter_levels(false) {
 			stats.apply_from(&level, &path_to_self);
 		}
 		if let Some(subclass) = &self.subclass {
@@ -85,6 +83,7 @@ impl FromKDL for Class {
 			.unwrap_or_default()
 			.to_owned();
 		let hit_die = Die::from_str(node.query_str_req("scope() > hit-die", 0)?)?;
+		let current_level = node.get_i64_opt("level")?.unwrap_or_default() as usize;
 
 		let mut mutators = Vec::new();
 		for entry_node in node.query_all("scope() > mutator")? {
@@ -100,13 +99,12 @@ impl FromKDL for Class {
 		};
 
 		let mut levels = Vec::with_capacity(20);
+		levels.resize_with(20, Default::default);
 		for node in node.query_all("scope() > level")? {
 			let mut ctx = ctx.next_node();
 			let order = node.get_i64_req(ctx.consume_idx())? as usize;
-			if order > levels.len() {
-				levels.resize_with(order, Default::default);
-			}
-			levels[order - 1] = Level::from_kdl(node, &mut ctx)?;
+			let idx = order - 1;
+			levels[idx] = Level::from_kdl(node, &mut ctx)?;
 		}
 
 		Ok(Self {
@@ -114,6 +112,7 @@ impl FromKDL for Class {
 			name,
 			description,
 			hit_die,
+			current_level,
 			mutators,
 			levels,
 			subclass_selection_level,
@@ -176,8 +175,16 @@ impl FromKDL for Level {
 	}
 }
 
-struct LevelWithIndex<'a>(usize, &'a Level);
+pub struct LevelWithIndex<'a>(usize, &'a Level);
 impl<'a> LevelWithIndex<'a> {
+	pub fn index(&self) -> usize {
+		self.0
+	}
+
+	pub fn level(&self) -> &'a Level {
+		self.1
+	}
+
 	fn level_name(&self) -> String {
 		format!("level{:02}", self.0 + 1)
 	}

@@ -85,7 +85,7 @@ pub fn Header() -> Html {
 		.persistent()
 		.classes
 		.iter()
-		.map(|class| html!(format!("{} {}", class.name, class.levels.len())));
+		.map(|class| html!(format!("{} {}", class.name, class.current_level)));
 	let classes = Itertools::intersperse(classes, html!(" / ")).collect::<Vec<_>>();
 
 	html! {
