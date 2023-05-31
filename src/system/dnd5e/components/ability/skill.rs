@@ -25,8 +25,8 @@ impl Presentation {
 
 	fn icon_html(&self) -> Html {
 		match self {
-			Self::Alphabetical => html! { <i class="fa-regular fa-a" /> },
-			Self::ByAbility => html! { <i class="fa-solid fa-dice-d20" /> },
+			Self::Alphabetical => html! { <i class="bi bi-sort-alpha-down" /> },
+			Self::ByAbility => html! { <i class="bi bi-menu-up" /> },
 		}
 	}
 }

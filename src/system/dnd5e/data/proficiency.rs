@@ -76,15 +76,15 @@ impl Into<yew::prelude::Html> for Level {
 	fn into(self) -> yew::prelude::Html {
 		use yew::prelude::*;
 		match self {
-			Self::None => html! { <i class="fa-regular fa-circle" /> },
+			Self::None => html! { <i class="bi bi-circle" /> },
 			Self::Half => {
-				html! { <i class="fa-solid fa-circle-half-stroke" style="color: var(--theme-frame-color);" /> }
+				html! { <i class="bi bi-circle-half" style="color: var(--theme-frame-color);" /> }
 			}
 			Self::Full => {
-				html! { <i class="fa-solid fa-circle" style="color: var(--theme-frame-color);" /> }
+				html! { <i class="bi bi-circle-fill" style="color: var(--theme-frame-color);" /> }
 			}
 			Self::Double => {
-				html! { <i class="fa-regular fa-circle-dot" style="color: var(--theme-frame-color);" /> }
+				html! { <i class="bi bi-record-circle" style="color: var(--theme-frame-color);" /> }
 			}
 		}
 	}
