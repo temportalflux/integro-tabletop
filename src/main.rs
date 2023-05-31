@@ -360,7 +360,11 @@ async fn main() -> anyhow::Result<()> {
 				continue;
 			};
 			let ctx = kdl_ext::NodeContext::new(Arc::new(source_id.clone()), node_reg.clone());
-			let _ = comp_factory.metadata_from_kdl(node, &ctx)?;
+			#[allow(dead_code)]
+			let metadata = comp_factory.metadata_from_kdl(node, &ctx)?;
+			if node_name == "bundle" {
+				log::debug!("{}", metadata.to_string());
+			}
 		}
 	}
 

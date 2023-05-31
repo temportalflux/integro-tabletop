@@ -72,6 +72,7 @@ pub fn component_registry() -> ComponentRegistry {
 	let mut registry = ComponentRegistry::default();
 	registry.register::<data::character::DefaultsBlock>();
 	registry.register::<data::character::Persistent>();
+	registry.register::<data::bundle::Bundle>();
 	registry.register::<data::bundle::Race>();
 	registry.register::<data::bundle::RaceVariant>();
 	registry.register::<data::bundle::Lineage>();
