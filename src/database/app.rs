@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use super::Record;
 
 pub mod entry;
@@ -41,6 +43,13 @@ impl Database {
 		Ok(self.0.read_write::<Module>()?)
 	}
 
+	fn read_index<I: super::IndexType>(&self) -> Result<super::Index<I>, super::Error> {
+		use super::{ObjectStoreExt, TransactionExt};
+		let transaction = self.read_entries()?;
+		let entries_store = transaction.object_store_of::<I::Record>()?;
+		entries_store.index_of::<I>()
+	}
+
 	pub async fn get<T>(
 		&self,
 		key: impl Into<wasm_bindgen::JsValue>,
@@ -54,11 +63,34 @@ impl Database {
 		Ok(store.get_record(key).await?)
 	}
 
-	fn read_index<I: super::IndexType>(&self) -> Result<super::Index<I>, super::Error> {
-		use super::{ObjectStoreExt, TransactionExt};
-		let transaction = self.read_entries()?;
-		let entries_store = transaction.object_store_of::<I::Record>()?;
-		entries_store.index_of::<I>()
+	pub async fn get_typed_entry<T>(
+		&self,
+		key: crate::system::core::SourceId,
+		system_depot: crate::system::Depot,
+	) -> Result<Option<T>, super::Error>
+	where
+		T: crate::kdl_ext::KDLNode
+			+ crate::kdl_ext::FromKDL
+			+ crate::system::dnd5e::SystemComponent
+			+ Unpin,
+	{
+		use crate::system::core::System;
+		let Some(entry) = self.get::<Entry>(key.to_string()).await? else { return Ok(None); };
+		// Parse the entry's kdl string:
+		// kdl string to document
+		let Ok(document) = entry.kdl.parse::<kdl::KdlDocument>() else { return Ok(None); };
+		// document to node
+		let Some(node) = document.nodes().get(key.node_idx) else { return Ok(None); };
+		// node to value based on the expected type
+		let node_reg = {
+			let system_reg = system_depot
+				.get(crate::system::dnd5e::DnD5e::id())
+				.expect("Missing system {system:?} in depot");
+			system_reg.node()
+		};
+		let mut ctx = crate::kdl_ext::NodeContext::new(Arc::new(entry.source_id(true)), node_reg);
+		let Ok(value) = T::from_kdl(node, &mut ctx) else { return Ok(None); };
+		Ok(Some(value))
 	}
 
 	pub async fn query_entries(
@@ -85,8 +117,8 @@ impl Database {
 	where
 		Output: crate::kdl_ext::KDLNode
 			+ crate::kdl_ext::FromKDL
-			+ Unpin
-			+ crate::system::dnd5e::SystemComponent,
+			+ crate::system::dnd5e::SystemComponent
+			+ Unpin,
 	{
 		let system = system.into();
 		let node_reg = {

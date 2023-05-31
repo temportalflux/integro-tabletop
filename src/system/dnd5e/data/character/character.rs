@@ -23,8 +23,9 @@ use std::{
 	str::FromStr,
 };
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub enum ActionEffect {
+	Reset(Persistent, Vec<DefaultsBlock>),
 	Recompile,
 }
 
@@ -64,6 +65,9 @@ impl yew::Reducible for Character {
 		let mut full = (*self).clone();
 		Rc::new(match action(&mut full.character, &self) {
 			None => full,
+			Some(ActionEffect::Reset(persistent, defaults)) => {
+				Self::new(persistent, defaults)
+			}
 			Some(ActionEffect::Recompile) => {
 				Self::new(full.character.clone(), full.default_blocks.clone())
 			}

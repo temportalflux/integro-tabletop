@@ -1153,7 +1153,7 @@ pub fn AvailableSpellList(props: &AvailableSpellListProps) -> Html {
 	use yew_hooks::{use_async_with_options, UseAsyncOptions};
 	log::debug!(target: "ui", "Render available spells");
 	let state = use_context::<SharedCharacter>().unwrap();
-	let database = use_context::<Option<Database>>().unwrap();
+	let database = use_context::<Database>().unwrap();
 	let system_depot = use_context::<system::Depot>().unwrap();
 	let load_data = use_async_with_options(
 		{
@@ -1169,9 +1169,6 @@ pub fn AvailableSpellList(props: &AvailableSpellListProps) -> Html {
 				// access to a spell that isnt in their normal class list.
 				// e.g. feat which allows the player to have access to a spell
 				// 			OR a feat which grants a spell as always prepared.
-				let Some(database) = database.as_ref() else {
-					return Ok(Html::default());
-				};
 
 				let mut sorted_info = Vec::<(String, u8)>::new();
 				let mut htmls = Vec::new();

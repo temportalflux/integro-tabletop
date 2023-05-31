@@ -41,20 +41,20 @@ pub struct SourceId {
 }
 
 impl SourceId {
-	pub fn set_basis(&mut self, other: &Self) {
+	pub fn set_basis(&mut self, other: &Self, include_version: bool) {
 		if self.module.is_none() {
 			self.module = other.module.clone();
 		}
 		if self.system.is_none() {
 			self.system = other.system.clone();
 		}
-		if self.version.is_none() {
+		if include_version && self.version.is_none() {
 			self.version = other.version.clone();
 		}
 	}
 
-	pub fn with_basis(mut self, other: &Self) -> Self {
-		self.set_basis(other);
+	pub fn with_basis(mut self, other: &Self, include_version: bool) -> Self {
+		self.set_basis(other, include_version);
 		self
 	}
 
@@ -287,9 +287,8 @@ mod test {
 		let basis =
 			SourceId::from_str("local://module-name@mysystem/item/gear.kdl?version=e812da2c")?;
 		let mut relative = SourceId::from_str("feat/initiate.kdl")?;
-		relative.set_basis(&basis);
-		let expected =
-			SourceId::from_str("local://module-name@mysystem/feat/initiate.kdl?version=e812da2c")?;
+		relative.set_basis(&basis, true);
+		let expected = SourceId::from_str("local://module-name@mysystem/feat/initiate.kdl?version=e812da2c")?;
 		assert_eq!(relative, expected);
 		Ok(())
 	}

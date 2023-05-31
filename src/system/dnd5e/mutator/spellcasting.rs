@@ -288,7 +288,7 @@ impl FromKDL for Spellcasting {
 			Some("add_source") => {
 				let mut spells = Vec::new();
 				for s in node.query_str_all("scope() > spell", 0)? {
-					spells.push(SourceId::from_str(s)?.with_basis(ctx.id()));
+					spells.push(SourceId::from_str(s)?.with_basis(ctx.id(), false));
 				}
 				Operation::AddSource
 			}
@@ -299,7 +299,7 @@ impl FromKDL for Spellcasting {
 				for node in node.query_all("scope() > spell")? {
 					let mut ctx = ctx.next_node();
 					let id = node.get_str_req(ctx.consume_idx())?;
-					let id = SourceId::from_str(id)?.with_basis(ctx.id());
+					let id = SourceId::from_str(id)?.with_basis(ctx.id(), false);
 					let info = PreparedInfo::from_kdl(node, &mut ctx)?;
 					specific_spells.push((id, info));
 				}

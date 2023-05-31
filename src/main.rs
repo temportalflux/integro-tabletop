@@ -225,12 +225,6 @@ fn main() {
 
 #[function_component]
 fn App() -> Html {
-	//html!(<CharacterPrototype />)
-	html!(<WebReady />)
-}
-
-#[function_component]
-fn WebReady() -> Html {
 	html! {<>
 		<ProviderChain>
 			<page::App />
@@ -280,44 +274,6 @@ fn DatabaseProvider(props: &html::ChildrenProps) -> Html {
 			{props.children.clone()}
 		</ContextProvider<Database>>
 	}
-}
-
-#[function_component]
-fn CharacterPrototype() -> Html {
-	let show_browser = use_state_eq(|| false);
-	//let system = use_state(|| system::dnd5e::DnD5e::default());
-
-	let initial_character = use_state(|| None::<system::dnd5e::data::character::Persistent>);
-
-	let _open_character = Callback::from({
-		let show_browser = show_browser.clone();
-		move |_: MouseEvent| {
-			show_browser.set(false);
-		}
-	});
-	let _open_content = Callback::from({
-		let show_browser = show_browser.clone();
-		move |_: MouseEvent| {
-			show_browser.set(true);
-		}
-	});
-
-	let content = match *show_browser {
-		false => match &*initial_character {
-			None => html! {},
-			Some(character) => {
-				let character = character.clone();
-				html! {<system::dnd5e::components::CharacterSheetPage {character} />}
-			}
-		},
-		true => html! {},
-	};
-
-	return html! {<>
-		<system::Provider>
-			{content}
-		</system::Provider>
-	</>};
 }
 
 #[cfg(target_family = "windows")]

@@ -278,11 +278,13 @@ impl FromKDL for Persistent {
 		}
 
 		let mut selected_values = PathMap::<String>::default();
-		for node in node.query_all("scope() > selections > value")? {
-			let mut ctx = ctx.next_node();
-			let key_str = node.get_str_req(ctx.consume_idx())?;
-			let value = node.get_str_req(ctx.consume_idx())?.to_owned();
-			selected_values.insert(Path::new(key_str), value);
+		if let Some(selections) = node.query_opt("scope() > selections")? {
+			for node in selections.query_all("scope() > value")? {
+				let mut ctx = ctx.next_node();
+				let key_str = node.get_str_req(ctx.consume_idx())?;
+				let value = node.get_str_req(ctx.consume_idx())?.to_owned();
+				selected_values.insert(Path::new(key_str), value);
+			}
 		}
 
 		Ok(Self {
@@ -476,11 +478,13 @@ pub struct SelectedSpellsData {
 impl FromKDL for SelectedSpells {
 	fn from_kdl(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
 		let mut consumed_slots = HashMap::new();
-		for node in node.query_all("scope() > consumed_slots > slot")? {
-			let mut ctx = ctx.next_node();
-			let slot = node.get_i64_req(ctx.consume_idx())? as u8;
-			let consumed = node.get_i64_req(ctx.consume_idx())? as usize;
-			consumed_slots.insert(slot, consumed);
+		if let Some(node) = node.query_opt("scope() > consumed_slots")? {
+			for node in node.query_all("scope() > slot")? {
+				let mut ctx = ctx.next_node();
+				let slot = node.get_i64_req(ctx.consume_idx())? as u8;
+				let consumed = node.get_i64_req(ctx.consume_idx())? as usize;
+				consumed_slots.insert(slot, consumed);
+			}
 		}
 
 		let mut cache_by_caster = HashMap::new();

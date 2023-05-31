@@ -1,8 +1,17 @@
 use std::rc::Rc;
 use wasm_bindgen::{prelude::Closure, JsCast};
-use yew::prelude::*;
-
+use yew::{prelude::*, html::ChildrenProps};
 use crate::bootstrap;
+
+#[function_component]
+pub fn Provider(props: &ChildrenProps) -> Html {
+	let modal_dispatcher = Context::from(use_reducer(|| State::default()));
+	html! {
+		<ContextProvider<Context> context={modal_dispatcher.clone()}>
+			{props.children.clone()}
+		</ContextProvider<Context>>
+	}
+}
 
 /// Dispatches reducer messages about the [GeneralPurpose] modal.
 /// Created by calling `use_reducer(|| State::default()).into()` in a component (for use in a [ContextProvider]).

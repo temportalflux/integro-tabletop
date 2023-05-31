@@ -7,7 +7,7 @@ use yew::prelude::*;
 use yew_hooks::{use_async_with_options, UseAsyncOptions};
 use yew_router::{prelude::Link, Routable};
 
-mod sheet;
+pub mod sheet;
 use sheet::Sheet;
 
 #[function_component]
@@ -86,8 +86,7 @@ impl Route {
 					version: None,
 					..Default::default()
 				};
-				log::debug!("{}", id.to_string());
-				html!(<Sheet />)
+				html!(<Sheet value={id} />)
 			}
 		}
 	}

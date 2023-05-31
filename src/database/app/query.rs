@@ -171,3 +171,15 @@ where
 		}
 	}
 }
+impl<Output> QueryDeserialize<Output>
+where
+	Output: FromKDL + Unpin,
+{
+	pub async fn all(mut self) -> Vec<Output> {
+		let mut items = Vec::new();
+		while let Some(item) = self.next().await {
+			items.push(item);
+		}
+		items
+	}
+}

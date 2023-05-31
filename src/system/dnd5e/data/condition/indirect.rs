@@ -38,7 +38,7 @@ impl FromKDL for IndirectCondition {
 				let mut source_id = SourceId::from_str(source_id_str).with_context(|| {
 					format!("Expected {source_id_str:?} to either be the value \"Custom\" or a valid SourceId.")
 				})?;
-				source_id.set_basis(ctx.id());
+				source_id.set_basis(ctx.id(), false);
 				Ok(Self::Id(source_id))
 			}
 		}
