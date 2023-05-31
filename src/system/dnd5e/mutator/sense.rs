@@ -92,15 +92,15 @@ mod test {
 		use crate::system::dnd5e::data::{
 			bounded::BoundKind,
 			character::{Character, Persistent},
-			Feature,
+			Bundle,
 		};
 
 		fn character(mutators: Vec<(&'static str, Sense)>) -> Character {
 			Character::from(Persistent {
-				feats: mutators
+				bundles: mutators
 					.into_iter()
 					.map(|(name, mutator)| {
-						Feature {
+						Bundle {
 							name: name.into(),
 							mutators: vec![mutator.into()],
 							..Default::default()

@@ -116,7 +116,7 @@ mod test {
 		dnd5e::{
 			data::{
 				character::{Character, DefenseEntry, Persistent},
-				DamageType, Feature,
+				Bundle, DamageType,
 			},
 			BoxedMutator,
 		},
@@ -160,7 +160,7 @@ mod test {
 	#[test]
 	fn resistant() {
 		let character = Character::from(Persistent {
-			feats: vec![Feature {
+			bundles: vec![Bundle {
 				name: "AddDefense".into(),
 				mutators: vec![AddDefense {
 					defense: Defense::Resistance,
@@ -186,7 +186,7 @@ mod test {
 	#[test]
 	fn immune() {
 		let character = Character::from(Persistent {
-			feats: vec![Feature {
+			bundles: vec![Bundle {
 				name: "AddDefense".into(),
 				mutators: vec![AddDefense {
 					defense: Defense::Immunity,
@@ -212,7 +212,7 @@ mod test {
 	#[test]
 	fn vulnerable() {
 		let character = Character::from(Persistent {
-			feats: vec![Feature {
+			bundles: vec![Bundle {
 				name: "AddDefense".into(),
 				mutators: vec![AddDefense {
 					defense: Defense::Vulnerability,

@@ -136,12 +136,12 @@ mod test {
 
 	mod mutate {
 		use super::*;
-		use crate::system::dnd5e::data::{character::Persistent, Feature};
+		use crate::system::dnd5e::data::{character::Persistent, Bundle};
 
 		fn character(mutator: AddToActionBudget) -> Character {
 			let mut persistent = Persistent::default();
-			persistent.feats.push(
-				Feature {
+			persistent.bundles.push(
+				Bundle {
 					name: "Test".into(),
 					mutators: vec![mutator.into()],
 					..Default::default()

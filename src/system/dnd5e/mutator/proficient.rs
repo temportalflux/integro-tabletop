@@ -464,14 +464,14 @@ mod test {
 			path_map::PathMap,
 			system::dnd5e::data::{
 				character::{Character, Persistent},
-				Feature,
+				Bundle,
 			},
 		};
 		use std::path::PathBuf;
 
 		fn character(mutator: AddProficiency, selections: Option<PathMap<String>>) -> Character {
 			Character::from(Persistent {
-				feats: vec![Feature {
+				bundles: vec![Bundle {
 					name: "AddProficiency".into(),
 					mutators: vec![mutator.into()],
 					..Default::default()

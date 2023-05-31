@@ -4,11 +4,7 @@ use crate::{
 	system::{
 		core::SourceId,
 		dnd5e::{
-			data::{
-				bundle::{Background, Lineage, Race, RaceVariant, Upbringing},
-				character::Character,
-				item, Ability, Class, Condition, Feature, Spell,
-			},
+			data::{character::Character, item, Ability, Bundle, Class, Condition, Spell},
 			SystemComponent,
 		},
 	},
@@ -25,22 +21,12 @@ use std::{
 mod description;
 pub use description::*;
 
-#[derive(Clone, PartialEq, Default, Debug)]
-pub struct NamedGroups {
-	pub race: Vec<Race>,
-	pub race_variant: Vec<RaceVariant>,
-	pub lineage: Vec<Lineage>,
-	pub upbringing: Vec<Upbringing>,
-	pub background: Vec<Background>,
-}
-
 /// Core character data which is (de)serializable and
 /// from which the derived data can be compiled.
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct Persistent {
-	pub named_groups: NamedGroups,
 	pub classes: Vec<Class>,
-	pub feats: Vec<Feature>,
+	pub bundles: Vec<Bundle>,
 	pub description: Description,
 	pub ability_scores: EnumMap<Ability, u32>,
 	pub selected_values: PathMap<String>,
@@ -55,25 +41,10 @@ impl MutatorGroup for Persistent {
 	type Target = Character;
 
 	fn set_data_path(&self, parent: &std::path::Path) {
-		for group in &self.named_groups.race {
-			group.set_data_path(parent);
-		}
-		for group in &self.named_groups.race_variant {
-			group.set_data_path(parent);
-		}
-		for group in &self.named_groups.lineage {
-			group.set_data_path(parent);
-		}
-		for group in &self.named_groups.upbringing {
-			group.set_data_path(parent);
-		}
-		for group in &self.named_groups.background {
-			group.set_data_path(parent);
+		for bundle in &self.bundles {
+			bundle.set_data_path(parent);
 		}
 		for group in &self.classes {
-			group.set_data_path(parent);
-		}
-		for group in &self.feats {
 			group.set_data_path(parent);
 		}
 		self.inventory.set_data_path(parent);
@@ -88,26 +59,11 @@ impl MutatorGroup for Persistent {
 		}
 		stats.apply(&super::FinalizeAbilityScores.into(), parent);
 
-		for group in &self.named_groups.race {
-			stats.apply_from(group, parent);
-		}
-		for group in &self.named_groups.race_variant {
-			stats.apply_from(group, parent);
-		}
-		for group in &self.named_groups.lineage {
-			stats.apply_from(group, parent);
-		}
-		for group in &self.named_groups.upbringing {
-			stats.apply_from(group, parent);
-		}
-		for group in &self.named_groups.background {
-			stats.apply_from(group, parent);
+		for bundle in &self.bundles {
+			stats.apply_from(bundle, parent);
 		}
 		for class in &self.classes {
 			stats.apply_from(class, parent);
-		}
-		for feat in &self.feats {
-			stats.add_feature(feat, parent);
 		}
 		stats.apply_from(&self.conditions, parent);
 		stats.apply_from(&self.inventory, parent);
@@ -226,51 +182,11 @@ impl FromKDL for Persistent {
 			None => SelectedSpells::default(),
 		};
 
-		// TODO: Technically all named groups are also features, just with a different category.
-		let mut named_groups = NamedGroups::default();
-		let mut feats = Vec::new();
-		for node in node.query_all("scope() > feat")? {
+		let mut bundles = Vec::new();
+		for node in node.query_all("scope() > bundle")? {
 			let mut ctx = ctx.next_node();
-			match node.get_str_req("category")? {
-				"Feat" => {
-					let feature = Feature::from_kdl(node, &mut ctx)?;
-					feats.push(feature);
-				}
-				"Race" => {
-					let feature = Race::from_kdl(node, &mut ctx)?;
-					named_groups.race.push(feature);
-				}
-				"Subrace" => {
-					let feature = RaceVariant::from_kdl(node, &mut ctx)?;
-					named_groups.race_variant.push(feature);
-				}
-				"Lineage" => {
-					let feature = Lineage::from_kdl(node, &mut ctx)?;
-					named_groups.lineage.push(feature);
-				}
-				"Upbringing" => {
-					let feature = Upbringing::from_kdl(node, &mut ctx)?;
-					named_groups.upbringing.push(feature);
-				}
-				"Background" => {
-					let feature = Background::from_kdl(node, &mut ctx)?;
-					named_groups.background.push(feature);
-				}
-				category => {
-					return Err(NotInList(
-						category.into(),
-						vec![
-							"Race",
-							"Subrace",
-							"Lineage",
-							"Upbringing",
-							"Background",
-							"Feat",
-						],
-					)
-					.into());
-				}
-			}
+			let bundle = Bundle::from_kdl(node, &mut ctx)?;
+			bundles.push(bundle);
 		}
 
 		let mut classes = Vec::new();
@@ -298,8 +214,7 @@ impl FromKDL for Persistent {
 			conditions,
 			inventory,
 			selected_spells,
-			named_groups,
-			feats,
+			bundles,
 			classes,
 			selected_values,
 		})

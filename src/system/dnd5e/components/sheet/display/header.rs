@@ -24,16 +24,28 @@ pub fn Header() -> Html {
 		</span>
 	};
 
-	let named_groups = &state.persistent().named_groups;
+	let mut races = Vec::new();
+	let mut race_variants = Vec::new();
+	let mut lineages = Vec::new();
+	let mut upbringings = Vec::new();
+	let mut backgrounds = Vec::new();
+	for bundle in &state.persistent().bundles {
+		match bundle.category.as_str() {
+			"Race" => races.push(bundle.name.as_str()),
+			"RaceVariant" => race_variants.push(bundle.name.as_str()),
+			"Lineage" => lineages.push(bundle.name.as_str()),
+			"Upbringing" => upbringings.push(bundle.name.as_str()),
+			"Background" => backgrounds.push(bundle.name.as_str()),
+			_ => {}
+		}
+	}
 
-	let race = named_groups.race.iter().map(|var| &var.name);
-	let race = group_names(html!(", "), race).map(|items| {
+	let race = group_names(html!(", "), races).map(|items| {
 		html! {
 			<>{items}</>
 		}
 	});
-	let race_variant = named_groups.race_variant.iter().map(|var| &var.name);
-	let race_variant = group_names(html!(", "), race_variant).map(|items| {
+	let race_variant = group_names(html!(", "), race_variants).map(|items| {
 		html! {
 			<span class="ms-1">{"("}{items}{")"}</span>
 		}
@@ -48,33 +60,23 @@ pub fn Header() -> Html {
 		}
 	});
 
-	let upbringing = named_groups.upbringing.iter().map(|gp| &gp.name);
-	let upbringing = group_names(html!(" / "), upbringing).map(|items| {
-		html! {
-			<>
-				<span class="ms-1 me-1">{items}</span>
-				{"&"}
-			</>
-		}
-	});
-	let lineage = named_groups.lineage.iter().map(|gp| &gp.name);
-	let lineage = group_names(html!(" / "), lineage).map(|items| {
-		html! {
-			<span class="ms-1">{items}</span>
-		}
-	});
+	let lineage =
+		group_names(html!(" / "), lineages).map(|items| html!(<span class="mx-1">{items}</span>));
+	let upbringing = group_names(html!(" / "), upbringings)
+		.map(|items| html!(<span class="mx-1">{items}</span>));
+	let joiner = (lineage.is_some() && upbringing.is_some()).then_some(html!("&"));
 	let lineage_upbringing = (lineage.is_some() || upbringing.is_some()).then(|| {
 		html! {
 			<div class="group lineage">
-				{"Lineage & Upbringing: "}
-				{upbringing.unwrap_or_default()}
+				{"Lineage & Upbringing:"}
 				{lineage.unwrap_or_default()}
+				{joiner.unwrap_or_default()}
+				{upbringing.unwrap_or_default()}
 			</div>
 		}
 	});
 
-	let background = named_groups.background.iter().map(|bg| &bg.name);
-	let background = group_names(html!(", "), background).map(|items| {
+	let background = group_names(html!(", "), backgrounds).map(|items| {
 		html! {
 			<div class="group background">{"Background: "}{items}</div>
 		}
@@ -99,8 +101,11 @@ pub fn Header() -> Html {
 	}
 }
 
-fn group_names<'a>(separator: Html, iter: impl Iterator<Item = &'a String>) -> Option<Vec<Html>> {
-	let iter = iter.map(|name| html!(name));
+fn group_names<T: AsRef<str>>(
+	separator: Html,
+	iter: impl IntoIterator<Item = T>,
+) -> Option<Vec<Html>> {
+	let iter = iter.into_iter().map(|name| html!(name.as_ref()));
 	let items = Itertools::intersperse(iter, separator).collect::<Vec<_>>();
 	(!items.is_empty()).then(|| items)
 }

@@ -4,6 +4,7 @@ pub mod action;
 mod area_of_effect;
 pub use area_of_effect::*;
 pub mod bundle;
+pub use bundle::Bundle;
 pub mod character;
 mod condition;
 pub use condition::*;

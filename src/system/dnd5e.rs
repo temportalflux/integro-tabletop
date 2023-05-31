@@ -72,12 +72,7 @@ pub fn component_registry() -> ComponentRegistry {
 	let mut registry = ComponentRegistry::default();
 	registry.register::<data::character::DefaultsBlock>();
 	registry.register::<data::character::Persistent>();
-	registry.register::<data::bundle::Bundle>();
-	registry.register::<data::bundle::Race>();
-	registry.register::<data::bundle::RaceVariant>();
-	registry.register::<data::bundle::Lineage>();
-	registry.register::<data::bundle::Upbringing>();
-	registry.register::<data::bundle::Background>();
+	registry.register::<data::Bundle>();
 	registry.register::<data::Class>();
 	registry.register::<data::Subclass>();
 	registry.register::<data::Condition>();
@@ -124,14 +119,6 @@ pub fn node_registry() -> NodeRegistry {
 
 #[derive(Clone, PartialEq, Default)]
 pub struct DnD5e {
-	pub default_blocks: HashMap<SourceId, data::character::DefaultsBlock>,
-	pub races: HashMap<SourceId, data::bundle::Race>,
-	pub race_variants: HashMap<SourceId, data::bundle::RaceVariant>,
-	pub lineages: HashMap<SourceId, data::bundle::Lineage>,
-	pub upbringings: HashMap<SourceId, data::bundle::Upbringing>,
-	pub backgrounds: HashMap<SourceId, data::bundle::Background>,
-	pub classes: HashMap<SourceId, data::Class>,
-	pub subclasses: HashMap<SourceId, data::Subclass>,
 	pub conditions: HashMap<SourceId, data::Condition>,
 	pub items: HashMap<SourceId, data::item::Item>,
 	pub spells: HashMap<SourceId, data::Spell>,

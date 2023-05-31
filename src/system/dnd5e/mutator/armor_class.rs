@@ -151,7 +151,7 @@ mod test {
 		use super::*;
 		use crate::system::dnd5e::data::{
 			character::{Character, Persistent},
-			Ability, ArmorClassFormula, Feature,
+			Ability, ArmorClassFormula, Bundle,
 		};
 
 		#[test]
@@ -181,7 +181,7 @@ mod test {
 					Ability::Wisdom => 10,
 					Ability::Charisma => 10,
 				},
-				feats: vec![Feature {
+				bundles: vec![Bundle {
 					mutators: vec![AddArmorClassFormula(ArmorClassFormula {
 						base: 11,
 						bonuses: vec![Ability::Dexterity.into(), Ability::Constitution.into()],

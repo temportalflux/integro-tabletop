@@ -11,17 +11,6 @@ use crate::{
 };
 use std::{collections::HashMap, path::Path, str::FromStr};
 
-mod background;
-pub use background::*;
-mod lineage;
-pub use lineage::*;
-mod race;
-pub use race::*;
-mod race_variant;
-pub use race_variant::*;
-mod upbringing;
-pub use upbringing::*;
-
 #[derive(Default, Clone, PartialEq, Debug)]
 pub struct Bundle {
 	pub id: SourceId,
@@ -32,7 +21,7 @@ pub struct Bundle {
 	/// The bundles required for this one to be added to a character.
 	pub requirements: Vec<BundleRequirement>,
 	/// The number of times this bundle can be added to a character.
-	pub limit: u32,
+	pub limit: usize,
 	pub mutators: Vec<BoxedMutator>,
 	pub features: Vec<Feature>,
 }
@@ -110,15 +99,19 @@ impl FromKDL for Bundle {
 		node: &kdl::KdlNode,
 		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
-		let id = ctx.parse_source_req(node)?;
-
 		let name = node.get_str_req("name")?.to_owned();
 		let category = node.get_str_req("category")?.to_owned();
+
+		let id = match category.as_str() {
+			"Feat" => ctx.parse_source_opt(node)?.unwrap_or_default(),
+			_ => ctx.parse_source_req(node)?,
+		};
+
 		let description = match node.query_opt("scope() > description")? {
 			Some(node) => description::Section::from_kdl(node, &mut ctx.next_node())?,
 			None => description::Section::default(),
 		};
-		let limit = node.get_i64_opt("limit")?.unwrap_or(1) as u32;
+		let limit = node.get_i64_opt("limit")?.unwrap_or(1) as usize;
 
 		let mut requirements = Vec::new();
 		for node in node.query_all("scope() > requirement")? {

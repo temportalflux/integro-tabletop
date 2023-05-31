@@ -185,7 +185,7 @@ mod test {
 		use super::*;
 		use crate::{
 			system::dnd5e::{
-				data::{item::weapon, Feature},
+				data::{item::weapon, Bundle},
 				mutator::AddProficiency,
 			},
 			utility::Selector,
@@ -193,8 +193,8 @@ mod test {
 
 		fn character_with_profs(mutators: Vec<AddProficiency>) -> Character {
 			let mut persistent = Persistent::default();
-			persistent.feats.push(
-				Feature {
+			persistent.bundles.push(
+				Bundle {
 					name: "CustomFeat".into(),
 					mutators: mutators.into_iter().map(|v| v.into()).collect(),
 					..Default::default()

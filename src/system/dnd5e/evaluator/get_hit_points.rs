@@ -92,7 +92,7 @@ mod test {
 	mod evaluate {
 		use super::*;
 		use crate::{
-			system::dnd5e::data::{character::Persistent, Feature},
+			system::dnd5e::data::{character::Persistent, Bundle},
 			utility::Value,
 		};
 
@@ -101,8 +101,8 @@ mod test {
 			persistent.hit_points.current = current;
 			persistent.hit_points.temp = temp;
 			if max > 0 {
-				persistent.feats.push(
-					Feature {
+				persistent.bundles.push(
+					Bundle {
 						name: "MaxHP".into(),
 						mutators: vec![AddMaxHitPoints {
 							id: None,

@@ -13,6 +13,8 @@ pub fn ModulesLanding() -> Html {
 	let (auth_status, _) = use_store::<auth::Status>();
 
 	let initiate_loader = Callback::from({
+		let database = database.clone();
+		let task_dispatch = task_dispatch.clone();
 		move |_| {
 			let auth::Status::Successful { token } = &*auth_status else { return; };
 			let Ok(client) = GithubClient::new(token) else {
@@ -27,11 +29,26 @@ pub fn ModulesLanding() -> Html {
 			.find_and_download_modules();
 		}
 	});
+	let clear_database = Callback::from({
+		let database = database.clone();
+		let task_dispatch = task_dispatch.clone();
+		move |_| {
+			let database = database.clone();
+			task_dispatch.spawn("Clear Database", None, async move {
+				database.clear().await?;
+				Ok(())
+			});
+		}
+	});
 
-	html! {<>
-		<button class="btn btn-outline-success" onclick={initiate_loader}>{"Scan Github"}</button>
+	html! {<div class="m-2">
+		<div class="d-flex justify-content-center">
+			<button class="btn btn-outline-success me-2" onclick={initiate_loader}>{"Scan Github"}</button>
+			<button class="btn btn-outline-danger me-2" onclick={clear_database}>{"Clear Downloaded Data"}</button>
+		</div>
+		
 		<TaskListView />
-	</>}
+	</div>}
 }
 
 #[function_component]

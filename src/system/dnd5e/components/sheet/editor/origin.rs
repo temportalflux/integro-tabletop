@@ -1,16 +1,20 @@
 use crate::{
-	components::modal,
+	components::{
+		database::{use_query_all_typed, use_typed_fetch_callback, QueryAllArgs, QueryStatus},
+		modal, Spinner,
+	},
+	database::app::Criteria,
 	system::{
-		core::SourceId,
+		core::{SourceId, System},
 		dnd5e::{
 			components::{GeneralProp, SharedCharacter},
 			data::{
-				bundle::{Background, Lineage, Race, RaceVariant, Upbringing},
+				bundle::BundleRequirement,
 				character::{
 					spellcasting::{SpellEntry, SpellFilter},
 					ActionEffect, Persistent,
 				},
-				description, Feature, Spell,
+				description, Bundle, Feature, Spell,
 			},
 			DnD5e,
 		},
@@ -23,8 +27,9 @@ use crate::{
 use convert_case::{Case, Casing};
 use multimap::MultiMap;
 use std::{
-	collections::{HashMap, HashSet},
+	collections::{HashSet},
 	str::FromStr,
+	sync::Arc,
 };
 use yew::prelude::*;
 
@@ -65,104 +70,27 @@ pub fn OriginTab() -> Html {
 fn CharacterContent() -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
 
-	// TODO: temporarily hard-coded until all bundles are the same type
+	// Map of things required (Bundle Category, Name) to that which requires them (Bundle Category, Name)
 	let requirements = {
 		let mut map = MultiMap::new();
-		for variant in &state.persistent().named_groups.race_variant {
-			for req in &variant.requirements {
-				map.insert(
-					req.clone(),
-					("Race Variant".to_owned(), variant.name.clone()),
-				);
+		for bundle in &state.persistent().bundles {
+			for req in &bundle.requirements {
+				if let BundleRequirement::Bundle { category, name } = req {
+					map.insert((category, name), (&bundle.category, &bundle.name));
+				}
 			}
 		}
 		map
 	};
 
-	let mut entries = Vec::new();
-	for idx in 0..state.persistent().named_groups.race.len() {
-		entries.push(bundle_state::<Race>(
-			&state,
-			idx,
-			"Race",
-			&requirements,
-			|persistent, idx| persistent.named_groups.race.get(idx),
-			|value| &value.name,
-			|_| None,
-			race,
-			|persistent, idx| {
-				persistent.named_groups.race.remove(idx);
-			},
-		));
-	}
-	for idx in 0..state.persistent().named_groups.race_variant.len() {
-		entries.push(bundle_state::<RaceVariant>(
-			&state,
-			idx,
-			"Race Variant",
-			&requirements,
-			|persistent, idx| persistent.named_groups.race_variant.get(idx),
-			|value| &value.name,
-			|value| Some(&value.requirements),
-			race_variant,
-			|persistent, idx| {
-				persistent.named_groups.race_variant.remove(idx);
-			},
-		));
-	}
-	for idx in 0..state.persistent().named_groups.lineage.len() {
-		entries.push(bundle_state::<Lineage>(
-			&state,
-			idx,
-			"Lineage",
-			&requirements,
-			|persistent, idx| persistent.named_groups.lineage.get(idx),
-			|value| &value.name,
-			|_| None,
-			lineage,
-			|persistent, idx| {
-				persistent.named_groups.lineage.remove(idx);
-			},
-		));
-	}
-	for idx in 0..state.persistent().named_groups.upbringing.len() {
-		entries.push(bundle_state::<Upbringing>(
-			&state,
-			idx,
-			"Upbringing",
-			&requirements,
-			|persistent, idx| persistent.named_groups.upbringing.get(idx),
-			|value| &value.name,
-			|_| None,
-			upbringing,
-			|persistent, idx| {
-				persistent.named_groups.upbringing.remove(idx);
-			},
-		));
-	}
-	for idx in 0..state.persistent().named_groups.background.len() {
-		entries.push(bundle_state::<Background>(
-			&state,
-			idx,
-			"Background",
-			&requirements,
-			|persistent, idx| persistent.named_groups.background.get(idx),
-			|value| &value.name,
-			|_| None,
-			background,
-			|persistent, idx| {
-				persistent.named_groups.background.remove(idx);
-			},
-		));
-	}
-
-	if entries.is_empty() {
+	if state.persistent().bundles.is_empty() {
 		return html! {};
 	}
-
 	html! {<>
 		<div class="accordion mt-2 mb-4" id="selected-content">
-			{entries}
+			{state.persistent().bundles.iter().enumerate().map(|(idx, bundle)| {
+				selected_bundle(&state, idx, bundle, &requirements)
+			}).collect::<Vec<_>>()}
 		</div>
 	</>}
 }
@@ -173,104 +101,46 @@ struct CategoryBrowserProps {
 }
 
 #[function_component]
-fn CategoryBrowser(CategoryBrowserProps { use_lineages }: &CategoryBrowserProps) -> Html {
-	let system = use_context::<UseStateHandle<DnD5e>>().unwrap();
-	let state = use_context::<SharedCharacter>().unwrap();
+fn CategoryBrowser(CategoryBrowserProps { use_lineages: _ }: &CategoryBrowserProps) -> Html {
 	let selected_category = use_state(|| None::<AttrValue>);
-	let content_list = match &*selected_category {
-		None => html! {},
-		Some(category) => html! {
-			<div class="accordion my-2" id="all-entries">
-				{match category.as_str() {
-					"Race" => {
-						content_list::<Race>(
-							&system,
-							&state,
-							|system| &system.races,
-							|value| &value.source_id,
-							|value| &value.name,
-							|_| 1,
-							|_| None,
-							race,
-							|persistent| &persistent.named_groups.race,
-							|persistent, item| persistent.named_groups.race.push(item),
-						)
-					}
-					"Race Variant" => {
-						content_list::<RaceVariant>(
-							&system,
-							&state,
-							|system| &system.race_variants,
-							|value| &value.source_id,
-							|value| &value.name,
-							|_| 1,
-							|value| Some(&value.requirements),
-							race_variant,
-							|persistent| &persistent.named_groups.race_variant,
-							|persistent, item| persistent.named_groups.race_variant.push(item),
-						)
-					}
-					"Lineage" => {
-						content_list::<Lineage>(
-							&system,
-							&state,
-							|system| &system.lineages,
-							|value| &value.source_id,
-							|value| &value.name,
-							|value| value.limit as usize,
-							|_| None,
-							lineage,
-							|persistent| &persistent.named_groups.lineage,
-							|persistent, item| persistent.named_groups.lineage.push(item),
-						)
-					}
-					"Upbringing" => {
-						content_list::<Upbringing>(
-							&system,
-							&state,
-							|system| &system.upbringings,
-							|value| &value.source_id,
-							|value| &value.name,
-							|_| 1,
-							|_| None,
-							upbringing,
-							|persistent| &persistent.named_groups.upbringing,
-							|persistent, item| persistent.named_groups.upbringing.push(item),
-						)
-					}
-					"Background" => {
-						content_list::<Background>(
-							&system,
-							&state,
-							|system| &system.backgrounds,
-							|value| &value.source_id,
-							|value| &value.name,
-							|_| 1,
-							|_| None,
-							background,
-							|persistent| &persistent.named_groups.background,
-							|persistent, item| persistent.named_groups.background.push(item),
-						)
-					}
-					_ => html! {},
-				}}
-			</div>
+	let query_bundles = use_query_all_typed::<Bundle>(QueryAllArgs {
+		auto_fetch: false,
+		system: DnD5e::id().into(),
+		criteria: Some(Arc::new({
+			let selected = selected_category.clone();
+			move || {
+				let category = selected.as_ref().map(AttrValue::as_str).unwrap().to_owned();
+				let matches_category = Criteria::Exact(category.into());
+				Some(Criteria::ContainsProperty("category".into(), matches_category.into()).into())
+			}
+		})),
+		adjust_listings: Some(Arc::new(|mut bundles| {
+			bundles.sort_by(|a, b| a.name.cmp(&b.name));
+			bundles
+		})),
+		..Default::default()
+	});
+	// Query for bundles when the category changes
+	use_effect_with_deps(
+		{
+			let query_bundles = query_bundles.clone();
+			move |category: &UseStateHandle<Option<AttrValue>>| {
+				if category.is_some() {
+					query_bundles.run();
+				}
+			}
 		},
-	};
+		selected_category.clone(),
+	);
 
-	let mut options = vec!["Background"];
-	match *use_lineages {
-		true => {
-			options.push("Lineage");
-			options.push("Upbringing");
-		}
-		false => {
-			options.push("Race");
-			options.push("Race Variant");
-		}
-	}
-	options.sort();
-
+	let options = vec![
+		"Race",
+		"Race Variant",
+		"Lineage",
+		"Upbringing",
+		"Background",
+		"Feat",
+	];
 	html! {<>
 		<CategoryPicker
 			value={(*selected_category).clone()}
@@ -280,7 +150,17 @@ fn CategoryBrowser(CategoryBrowserProps { use_lineages }: &CategoryBrowserProps)
 				move |value| selected_category.set(value)
 			})}
 		/>
-		{content_list}
+		{match query_bundles.status() {
+			QueryStatus::Pending => html!(<Spinner />),
+			QueryStatus::Empty | QueryStatus::Failed(_) => html!("No available bundles"),
+			QueryStatus::Success(bundles) => html! {
+				<div class="accordion my-2" id="all-entries">
+					{bundles.iter().map(|bundle| {
+						html!(<AvailableBundle value={bundle.clone()} />)
+					}).collect::<Vec<_>>()}
+				</div>
+			},
+		}}
 	</>}
 }
 
@@ -336,20 +216,13 @@ fn CategoryPicker(
 	}
 }
 
-fn bundle_state<T>(
+fn selected_bundle(
 	state: &SharedCharacter,
 	idx: usize,
-	category: &'static str,
-	dependencies: &MultiMap<(String, String), (String, String)>,
-	get_item: impl Fn(&Persistent, usize) -> Option<&T> + 'static,
-	item_name: impl Fn(&T) -> &String + 'static,
-	item_reqs: impl Fn(&T) -> Option<&Vec<(String, String)>> + 'static,
-	item_body: impl Fn(&T, Option<&SharedCharacter>) -> Html + 'static,
-	remove_item: impl Fn(&mut Persistent, usize) + 'static,
+	bundle: &Bundle,
+	all_dependents: &MultiMap<(&String, &String), (&String, &String)>,
 ) -> Html {
-	let Some(value) = get_item(state.persistent(), idx) else { return html! {}; };
-	let value_name = item_name(value);
-	let dependents = match dependencies.get_vec(&(category.to_owned(), value_name.clone())) {
+	let dependents = match all_dependents.get_vec(&(&bundle.category, &bundle.name)) {
 		None => None,
 		Some(reqs) => Some(
 			reqs.iter()
@@ -359,125 +232,118 @@ fn bundle_state<T>(
 		),
 	};
 
-	let mut title = value_name.clone();
-	if let Some(reqs) = item_reqs(value) {
-		let reqs_as_str = reqs
+	let reqs_desc = {
+		let reqs = bundle
+			.requirements
 			.iter()
-			.map(|(category, name)| format!("{category}: {name}"))
-			.collect::<Vec<_>>()
-			.join(", ");
-		title = format!("{title} (requires: [{}])", reqs_as_str);
-	}
+			.map(|req| match req {
+				BundleRequirement::Bundle { category, name } => format!("{category}: {name}"),
+				BundleRequirement::Ability(ability, score) => {
+					format!("{} >= {score}", ability.long_name())
+				}
+			})
+			.collect::<Vec<_>>();
+		(!reqs.is_empty()).then(|| format!(" (requires: [{}])", reqs.join(", ")))
+	};
+	let title = reqs_desc
+		.map(|desc| format!("{}{desc}", bundle.name))
+		.unwrap_or_else(|| bundle.name.clone());
+
 	html! {
 		<ContentItem
-			id={format!("item{}-{}-{}", idx, category, title.to_case(Case::Kebab))}
-			name={format!("{}: {}", category, title)}
+			id={format!("{}-{}-{}", bundle.category, idx, bundle.name.to_case(Case::Kebab))}
+			name={format!("{}: {}", bundle.category, title)}
 			kind={ContentItemKind::Remove {
 				disable_selection: dependents.map(|desc| format!("Cannot remove, depended on by: {desc}").into()),
 			}}
-			on_click={Callback::from({
-				let state = state.clone();
-				let remove_item = std::sync::Arc::new(remove_item);
-				move |_| {
-					let remove_item = remove_item.clone();
-					state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
-						(*remove_item)(persistent, idx);
-						Some(ActionEffect::Recompile) // TODO: Only do this when returning to sheet view
-					}));
-				}
+			on_click={state.new_dispatch(move |_, persistent, _| {
+				persistent.bundles.remove(idx);
+				Some(ActionEffect::Recompile) // TODO: Only do this when returning to sheet view
 			})}
 		>
-			{item_body(value, Some(state))}
+			<div class="text-block">
+				<DescriptionSection section={bundle.description.clone()} show_selectors={true} />
+			</div>
+			{mutator_list(&bundle.mutators, Some(state))}
+			{bundle.features.iter().map(|f| feature(f,  Some(state))).collect::<Vec<_>>()}
 		</ContentItem>
 	}
 }
 
-fn content_list<T>(
-	system: &UseStateHandle<DnD5e>,
-	state: &SharedCharacter,
-	get_items: impl Fn(&DnD5e) -> &HashMap<SourceId, T> + 'static,
-	get_item_id: impl Fn(&T) -> &SourceId + 'static,
-	get_item_name: impl Fn(&T) -> &String + 'static,
-	get_item_limit: impl Fn(&T) -> usize + 'static,
-	item_reqs: impl Fn(&T) -> Option<&Vec<(String, String)>> + 'static,
-	item_body: impl Fn(&T, Option<&SharedCharacter>) -> Html + 'static,
-	get_state_items: impl Fn(&Persistent) -> &Vec<T> + 'static,
-	add_item: impl Fn(&mut Persistent, T) + 'static,
-) -> Html
-where
-	T: 'static + Clone,
-{
-	let get_items = std::sync::Arc::new(get_items);
-	let on_select = Callback::from({
-		let system = system.clone();
-		let state = state.clone();
-		let get_items = get_items.clone();
-		let add_item = std::sync::Arc::new(add_item);
-		move |source_id| {
-			let Some(source) = (*get_items)(&system).get(&source_id) else { return; };
-			let new_value = source.clone();
-			let add_item = add_item.clone();
-			state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
-				(*add_item)(persistent, new_value);
-				Some(ActionEffect::Recompile) // TODO: Only do this when returning to sheet view
-			}));
-		}
-	});
+#[function_component]
+fn AvailableBundle(GeneralProp { value: bundle }: &GeneralProp<Bundle>) -> Html {
+	let state = use_context::<SharedCharacter>().unwrap();
+	let on_select = use_typed_fetch_callback(
+		"Add Bundle".into(),
+		state.new_dispatch(|bundle: Bundle, persistent, _| {
+			persistent.bundles.push(bundle);
+			Some(ActionEffect::Recompile) // TODO: Only do this when returning to sheet view
+		}),
+	);
 
-	let ordered_items = {
-		let mut vec = get_items(&system).iter().collect::<Vec<_>>();
-		vec.sort_by(|(_, a), (_, b)| get_item_name(a).partial_cmp(get_item_name(b)).unwrap());
-		vec
-	};
-
-	html! {<>
-		{ordered_items.into_iter().map(move |(source_id, value)| {
-			let amount_selected = get_state_items(state.persistent()).iter().filter(|selected| {
-				get_item_id(selected) == source_id
-			}).count();
-			let item_name = get_item_name(value).clone();
-			let mut title = item_name.clone();
-			let mut disable_selection = None;
-			if let Some(reqs) = item_reqs(value) {
-				let reqs_as_str = reqs.iter().map(|(category, name)| format!("{category}: {name}")).collect::<Vec<_>>().join(", ");
-				title = format!("{item_name} (requires: [{}])", reqs_as_str);
-
-				for (category, name) in reqs {
-					let bundles = &state.persistent().named_groups;
-					let names = match category.as_str() {
-						"Race" => bundles.race.iter().map(|value| &value.name).collect::<Vec<_>>(),
-						"RaceVariant" => bundles.race_variant.iter().map(|value| &value.name).collect::<Vec<_>>(),
-						"Lineage" => bundles.lineage.iter().map(|value| &value.name).collect::<Vec<_>>(),
-						"Upbringing" => bundles.upbringing.iter().map(|value| &value.name).collect::<Vec<_>>(),
-						"Background" => bundles.background.iter().map(|value| &value.name).collect::<Vec<_>>(),
-						_ => Vec::new(),
-					};
-					if names.into_iter().filter(|entry| *entry == name).count() == 0 {
-						disable_selection = Some(format!("Requires {category}: {name}").into());
+	let amount_selected = state
+		.persistent()
+		.bundles
+		.iter()
+		.filter(|selected| selected.id == bundle.id)
+		.count();
+	let mut title = bundle.name.clone();
+	let mut requirements_met = true;
+	if !bundle.requirements.is_empty() {
+		let reqs = bundle
+			.requirements
+			.iter()
+			.map(|req| match req {
+				BundleRequirement::Bundle { category, name } => format!("{category}: {name}"),
+				BundleRequirement::Ability(ability, score) => {
+					format!("{} >= {score}", ability.long_name())
+				}
+			})
+			.collect::<Vec<_>>();
+		title = format!("{title} (requires: [{}])", reqs.join(", "));
+		for req in &bundle.requirements {
+			match req {
+				BundleRequirement::Bundle { category, name } => {
+					let mut iter_bundles = state.persistent().bundles.iter();
+					let passed = iter_bundles
+						.find(|selected| &selected.category == category && &selected.name == name)
+						.is_some();
+					if !passed {
+						requirements_met = false;
+						break;
+					}
+				}
+				BundleRequirement::Ability(ability, score) => {
+					if state.ability_scores().get(*ability).score().0 < *score {
+						requirements_met = false;
 						break;
 					}
 				}
 			}
-			html! {
-				<ContentItem
-					parent_collapse={"#all-entries"}
-					id={item_name}
-					name={title}
-					kind={ContentItemKind::Add {
-						amount_selected,
-						selection_limit: get_item_limit(value),
-						disable_selection,
-					}}
-					on_click={on_select.reform({
-						let source_id = source_id.clone();
-						move |_| source_id.clone()
-					})}
-				>
-					{item_body(value, None)}
-				</ContentItem>
-			}
-		}).collect::<Vec<_>>()}
-	</>}
+		}
+	}
+	html! {
+		<ContentItem
+			parent_collapse={"#all-entries"}
+			id={bundle.name.clone()}
+			name={title}
+			kind={ContentItemKind::Add {
+				amount_selected,
+				selection_limit: bundle.limit,
+				disable_selection: (!requirements_met).then(|| "Requirements not met".into()),
+			}}
+			on_click={on_select.reform({
+				let source_id = bundle.id.unversioned();
+				move |_| source_id.clone()
+			})}
+		>
+			<div class="text-block">
+				<DescriptionSection section={bundle.description.clone()} show_selectors={false} />
+			</div>
+			{mutator_list(&bundle.mutators, None::<&SharedCharacter>)}
+			{bundle.features.iter().map(|f| feature(f,  None)).collect::<Vec<_>>()}
+		</ContentItem>
+	}
 }
 
 #[derive(Clone, PartialEq, Properties)]
@@ -573,56 +439,6 @@ fn ContentItem(
 			</div>
 		</div>
 	}
-}
-
-fn race(value: &Race, state: Option<&SharedCharacter>) -> Html {
-	html! {<>
-		<div class="text-block">
-			{value.description.clone()}
-		</div>
-		{mutator_list(&value.mutators, state)}
-		{value.features.iter().map(|f| feature(f, state)).collect::<Vec<_>>()}
-	</>}
-}
-
-fn race_variant(value: &RaceVariant, state: Option<&SharedCharacter>) -> Html {
-	html! {<>
-		<div class="text-block">
-			{value.description.clone()}
-		</div>
-		{mutator_list(&value.mutators, state)}
-		{value.features.iter().map(|f| feature(f, state)).collect::<Vec<_>>()}
-	</>}
-}
-
-fn lineage(value: &Lineage, state: Option<&SharedCharacter>) -> Html {
-	html! {<>
-		<div class="text-block">
-			{value.description.clone()}
-		</div>
-		{mutator_list(&value.mutators, state)}
-		{value.features.iter().map(|f| feature(f, state)).collect::<Vec<_>>()}
-	</>}
-}
-
-fn upbringing(value: &Upbringing, state: Option<&SharedCharacter>) -> Html {
-	html! {<>
-		<div class="text-block">
-			{value.description.clone()}
-		</div>
-		{mutator_list(&value.mutators, state)}
-		{value.features.iter().map(|f| feature(f, state)).collect::<Vec<_>>()}
-	</>}
-}
-
-fn background(value: &Background, state: Option<&SharedCharacter>) -> Html {
-	html! {<>
-		<div class="text-block">
-			{value.description.clone()}
-		</div>
-		{mutator_list(&value.mutators, state)}
-		{value.features.iter().map(|f| feature(f, state)).collect::<Vec<_>>()}
-	</>}
 }
 
 pub fn feature(value: &Feature, state: Option<&SharedCharacter>) -> Html {

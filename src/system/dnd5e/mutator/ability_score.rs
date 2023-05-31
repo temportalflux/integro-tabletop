@@ -272,7 +272,7 @@ mod test {
 			path_map::PathMap,
 			system::dnd5e::data::{
 				character::{AbilityScore, Character, Persistent},
-				Ability, Feature,
+				Ability, Bundle,
 			},
 			utility::Selector,
 		};
@@ -286,8 +286,8 @@ mod test {
 			for (ability, score) in base_scores {
 				persistent.ability_scores[ability] = score;
 			}
-			persistent.feats.push(
-				Feature {
+			persistent.bundles.push(
+				Bundle {
 					name: "AddAbilityScore".into(),
 					mutators: mutators.into_iter().map(|m| m.into()).collect(),
 					..Default::default()
@@ -356,7 +356,7 @@ mod test {
 					Ability::Wisdom => 12,
 					Ability::Charisma => 18,
 				},
-				feats: vec![Feature {
+				bundles: vec![Bundle {
 					name: "AddAbilityScore".into(),
 					mutators: vec![AbilityScoreChange {
 						ability: Selector::Specific(Ability::Intelligence),

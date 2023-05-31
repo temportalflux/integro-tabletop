@@ -139,14 +139,14 @@ mod test {
 	mod mutate {
 		use super::*;
 		use crate::system::dnd5e::{
-			data::{character::Persistent, Ability, Feature},
+			data::{character::Persistent, Ability, Bundle},
 			evaluator::GetAbilityModifier,
 		};
 
 		fn character(mutator: AddMaxHitPoints) -> Character {
 			let mut persistent = Persistent::default();
-			persistent.feats.push(
-				Feature {
+			persistent.bundles.push(
+				Bundle {
 					name: "TestMutator".into(),
 					mutators: vec![mutator.into()],
 					..Default::default()
