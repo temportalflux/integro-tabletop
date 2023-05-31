@@ -305,12 +305,12 @@ mod test {
 
 	mod mutate {
 		use super::*;
-		use crate::system::dnd5e::data::{character::Persistent, Feature};
+		use crate::system::dnd5e::data::{character::Persistent, Bundle};
 		use std::path::PathBuf;
 
 		fn character(mutator: AddModifier) -> Character {
 			Character::from(Persistent {
-				feats: vec![Feature {
+				bundles: vec![Bundle {
 					name: "TestMutator".into(),
 					mutators: vec![mutator.into()],
 					..Default::default()

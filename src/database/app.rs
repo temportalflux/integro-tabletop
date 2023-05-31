@@ -43,6 +43,15 @@ impl Database {
 		Ok(self.0.read_write::<Module>()?)
 	}
 
+	pub async fn clear(&self) -> Result<(), super::Error> {
+		use crate::database::TransactionExt;
+		let transaction = self.write()?;
+		transaction.object_store_of::<Module>()?.clear().await?;
+		transaction.object_store_of::<Entry>()?.clear().await?;
+		transaction.commit().await?;
+		Ok(())
+	}
+
 	fn read_index<I: super::IndexType>(&self) -> Result<super::Index<I>, super::Error> {
 		use super::{ObjectStoreExt, TransactionExt};
 		let transaction = self.read_entries()?;
