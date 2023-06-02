@@ -1214,13 +1214,7 @@ pub fn AvailableSpellList(props: &AvailableSpellListProps) -> Html {
 
 struct FindRelevantSpells {
 	pending_query: Option<
-		Pin<
-			Box<
-				dyn futures_util::Future<
-					Output = Result<QueryDeserialize<Spell>, crate::database::Error>,
-				>,
-			>,
-		>,
+		Pin<Box<dyn futures_util::Future<Output = Result<QueryDeserialize<Spell>, idb::Error>>>>,
 	>,
 	query: Option<QueryDeserialize<Spell>>,
 }

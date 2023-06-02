@@ -1,22 +1,33 @@
 #[derive(thiserror::Error, Debug, Clone)]
 pub enum Error {
 	#[error("{0}")]
-	DatabaseError(String),
-	#[error(transparent)]
-	MissingSchemaVersion(#[from] MissingVersion),
+	Internal(String),
 	#[error("{0}")]
-	FailedToSerialize(String),
+	Serialization(String),
 }
 
 impl From<idb::Error> for Error {
 	fn from(value: idb::Error) -> Self {
-		Self::DatabaseError(value.to_string())
+		Self::Internal(value.to_string())
 	}
 }
 
 impl From<serde_wasm_bindgen::Error> for Error {
 	fn from(value: serde_wasm_bindgen::Error) -> Self {
-		Self::FailedToSerialize(value.to_string())
+		Self::Serialization(value.to_string())
+	}
+}
+
+#[derive(thiserror::Error, Debug, Clone)]
+pub enum UpgradeError {
+	#[error("{0}")]
+	Internal(String),
+	#[error(transparent)]
+	MissingVersion(#[from] MissingVersion),
+}
+impl From<idb::Error> for UpgradeError {
+	fn from(value: idb::Error) -> Self {
+		Self::Internal(format!("{value:?}"))
 	}
 }
 

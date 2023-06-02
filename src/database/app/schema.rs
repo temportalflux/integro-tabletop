@@ -1,4 +1,4 @@
-use crate::database::{app, Error, MissingVersion, ObjectStoreExt, Record, Schema};
+use crate::database::{app, MissingVersion, ObjectStoreExt, Record, Schema};
 
 /// The schema for the `tabletop-tools` client database.
 /// Use with `Client::open`.
@@ -22,7 +22,7 @@ impl Schema for SchemaVersion {
 		Self::Version1 as u32
 	}
 
-	fn apply(&self, database: &idb::Database) -> Result<(), Error> {
+	fn apply(&self, database: &idb::Database) -> Result<(), idb::Error> {
 		match self {
 			Self::Version1 => {
 				// Create modules table

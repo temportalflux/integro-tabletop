@@ -26,11 +26,7 @@ use crate::{
 };
 use convert_case::{Case, Casing};
 use multimap::MultiMap;
-use std::{
-	collections::{HashSet},
-	str::FromStr,
-	sync::Arc,
-};
+use std::{collections::HashSet, str::FromStr, sync::Arc};
 use yew::prelude::*;
 
 static HELP_TEXT: &'static str = "Lineages and Upbingings are a replacement for races. \
@@ -103,30 +99,31 @@ struct CategoryBrowserProps {
 #[function_component]
 fn CategoryBrowser(CategoryBrowserProps { use_lineages: _ }: &CategoryBrowserProps) -> Html {
 	let selected_category = use_state(|| None::<AttrValue>);
-	let query_bundles = use_query_all_typed::<Bundle>(QueryAllArgs {
-		auto_fetch: false,
-		system: DnD5e::id().into(),
-		criteria: Some(Arc::new({
-			let selected = selected_category.clone();
-			move || {
-				let category = selected.as_ref().map(AttrValue::as_str).unwrap().to_owned();
-				let matches_category = Criteria::Exact(category.into());
-				Some(Criteria::ContainsProperty("category".into(), matches_category.into()).into())
-			}
-		})),
-		adjust_listings: Some(Arc::new(|mut bundles| {
-			bundles.sort_by(|a, b| a.name.cmp(&b.name));
-			bundles
-		})),
-		..Default::default()
-	});
+	let query_bundles = use_query_all_typed::<Bundle>(false, None);
 	// Query for bundles when the category changes
 	use_effect_with_deps(
 		{
 			let query_bundles = query_bundles.clone();
-			move |category: &UseStateHandle<Option<AttrValue>>| {
-				if category.is_some() {
-					query_bundles.run();
+			move |selected: &UseStateHandle<Option<AttrValue>>| {
+				if selected.is_some() {
+					let criteria = {
+						let category = selected.as_ref().map(AttrValue::as_str).unwrap().to_owned();
+						let matches_category = Criteria::Exact(category.into());
+						Some(
+							Criteria::ContainsProperty("category".into(), matches_category.into())
+								.into(),
+						)
+					};
+					let query_args = QueryAllArgs::<Bundle> {
+						system: DnD5e::id().into(),
+						criteria,
+						adjust_listings: Some(Arc::new(|mut bundles| {
+							bundles.sort_by(|a, b| a.name.cmp(&b.name));
+							bundles
+						})),
+						..Default::default()
+					};
+					query_bundles.run(Some(query_args));
 				}
 			}
 		},

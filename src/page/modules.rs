@@ -36,7 +36,7 @@ pub fn ModulesLanding() -> Html {
 			let database = database.clone();
 			task_dispatch.spawn("Clear Database", None, async move {
 				database.clear().await?;
-				Ok(())
+				Ok(()) as Result<(), crate::database::Error>
 			});
 		}
 	});
@@ -46,7 +46,7 @@ pub fn ModulesLanding() -> Html {
 			<button class="btn btn-outline-success me-2" onclick={initiate_loader}>{"Scan Github"}</button>
 			<button class="btn btn-outline-danger me-2" onclick={clear_database}>{"Clear Downloaded Data"}</button>
 		</div>
-		
+
 		<TaskListView />
 	</div>}
 }

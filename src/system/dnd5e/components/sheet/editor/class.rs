@@ -90,9 +90,8 @@ fn ClassBrowser(ClassBrowserProps { on_added }: &ClassBrowserProps) -> Html {
 
 	let state = use_context::<SharedCharacter>().unwrap();
 
-	let classes_handle = use_query_all_typed::<Class>(QueryAllArgs {
+	let query_args = QueryAllArgs::<Class> {
 		system: DnD5e::id().into(),
-		auto_fetch: true,
 		adjust_listings: Some(Arc::new({
 			let iter_classes = state.persistent().classes.iter();
 			let iter_ids = iter_classes.map(|class| class.id.unversioned());
@@ -104,7 +103,8 @@ fn ClassBrowser(ClassBrowserProps { on_added }: &ClassBrowserProps) -> Html {
 			}
 		})),
 		..Default::default()
-	});
+	};
+	let classes_handle = use_query_all_typed::<Class>(true, Some(query_args));
 
 	let update = use_force_update();
 	let on_add_class = use_typed_fetch_callback(

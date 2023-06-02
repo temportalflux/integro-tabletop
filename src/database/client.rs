@@ -1,4 +1,4 @@
-use super::{Error, MissingVersion, Schema};
+use super::{MissingVersion, UpgradeError, Schema};
 use idb::VersionChangeEvent;
 use std::sync::Arc;
 
@@ -13,7 +13,7 @@ impl PartialEq for Client {
 }
 
 impl Client {
-	pub async fn open<V>(name: &str) -> Result<Self, Error>
+	pub async fn open<V>(name: &str) -> Result<Self, idb::Error>
 	where
 		V: 'static + Schema + TryFrom<u32, Error = MissingVersion>,
 	{
@@ -35,7 +35,7 @@ impl Client {
 		Ok(Self(Arc::new(database)))
 	}
 
-	fn upgrade_database<V>(event: &VersionChangeEvent) -> Result<(), Error>
+	fn upgrade_database<V>(event: &VersionChangeEvent) -> Result<(), UpgradeError>
 	where
 		V: 'static + Schema + TryFrom<u32, Error = MissingVersion>,
 	{

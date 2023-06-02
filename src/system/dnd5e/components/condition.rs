@@ -74,11 +74,13 @@ fn Modal() -> Html {
 
 	let add_condition_section = {
 		use crate::system::core::System;
-		let conditions_handle = use_query_all_typed::<Condition>(QueryAllArgs {
-			system: DnD5e::id().into(),
-			auto_fetch: true,
-			..Default::default()
-		});
+		let conditions_handle = use_query_all_typed::<Condition>(
+			true,
+			Some(QueryAllArgs {
+				system: DnD5e::id().into(),
+				..Default::default()
+			}),
+		);
 		let add_condition_by_id = use_typed_fetch_callback(
 			"Add Condition".into(),
 			state.new_dispatch(Box::new(

@@ -7,7 +7,7 @@ use crate::{
 use futures_util::StreamExt;
 use std::{pin::Pin, sync::Arc, task::Poll};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Criteria {
 	/// Passes if the value being evaluated is equal to an expected value.
 	Exact(serde_json::Value),
@@ -175,6 +175,19 @@ impl<Output> QueryDeserialize<Output>
 where
 	Output: FromKDL + Unpin,
 {
+	pub async fn first_n(mut self, limit: Option<usize>) -> Vec<Output> {
+		let mut items = Vec::new();
+		while let Some(item) = self.next().await {
+			items.push(item);
+			if let Some(limit) = &limit {
+				if items.len() >= *limit {
+					break;
+				}
+			}
+		}
+		items
+	}
+
 	pub async fn all(mut self) -> Vec<Output> {
 		let mut items = Vec::new();
 		while let Some(item) = self.next().await {

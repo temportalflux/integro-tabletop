@@ -6,32 +6,35 @@ use crate::{
 	kdl_ext::{FromKDL, KDLNode},
 	system::{self, core::SourceId, dnd5e::SystemComponent},
 };
-use std::sync::Arc;
+use std::{
+	rc::Rc,
+	sync::{Arc, Mutex},
+};
 use yew::prelude::*;
 use yew_hooks::{use_async_with_options, UseAsyncHandle, UseAsyncOptions};
 
+#[derive(Clone)]
 pub struct QueryAllArgs<T> {
-	pub auto_fetch: bool,
 	pub system: String,
-	pub category: Option<String>,
-	pub criteria: Option<Arc<dyn Fn() -> Option<Box<Criteria>> + 'static>>,
+	pub criteria: Option<Box<Criteria>>,
 	pub adjust_listings: Option<Arc<dyn Fn(Vec<T>) -> Vec<T> + 'static>>,
+	pub max_limit: Option<usize>,
 }
 impl<T> Default for QueryAllArgs<T> {
 	fn default() -> Self {
 		Self {
-			auto_fetch: false,
 			system: Default::default(),
-			category: None,
 			criteria: None,
 			adjust_listings: None,
+			max_limit: None,
 		}
 	}
 }
 
 #[derive(Clone)]
-pub struct UseQueryHandle<T> {
-	async_handle: UseAsyncHandle<T, DatabaseError>,
+pub struct UseQueryAllHandle<T> {
+	async_handle: UseAsyncHandle<Vec<T>, DatabaseError>,
+	run: Rc<dyn Fn(Option<QueryAllArgs<T>>)>,
 }
 pub enum QueryStatus<T> {
 	Empty,
@@ -40,8 +43,8 @@ pub enum QueryStatus<T> {
 	Failed(DatabaseError),
 }
 
-impl<T> UseQueryHandle<T> {
-	pub fn status(&self) -> QueryStatus<&T> {
+impl<T> UseQueryAllHandle<T> {
+	pub fn status(&self) -> QueryStatus<&Vec<T>> {
 		if self.async_handle.loading {
 			return QueryStatus::Pending;
 		}
@@ -54,79 +57,114 @@ impl<T> UseQueryHandle<T> {
 		QueryStatus::Empty
 	}
 
-	pub fn run(&self) {
-		self.async_handle.run();
+	pub fn run(&self, args: Option<QueryAllArgs<T>>) {
+		(self.run)(args);
 	}
 }
 
 #[hook]
-pub fn use_query_all(args: QueryAllArgs<Entry>) -> UseQueryHandle<Vec<Entry>> {
-	let QueryAllArgs {
-		auto_fetch,
-		system: system_id,
-		category,
-		criteria,
-		adjust_listings,
-	} = args;
+pub fn use_query_all(
+	category: impl Into<String>,
+	auto_fetch: bool,
+	initial_args: Option<QueryAllArgs<Entry>>,
+) -> UseQueryAllHandle<Entry> {
 	let database = use_context::<Database>().unwrap();
+	let options = UseAsyncOptions { auto: auto_fetch };
+	let args_handle = Rc::new(Mutex::new(initial_args));
+	let async_args = args_handle.clone();
+	let category = category.into();
 	let async_handle = use_async_with_options(
 		async move {
 			use futures_util::stream::StreamExt;
-			let category = match category {
-				Some(category) => category,
-				None => return Ok(Vec::new()),
+			let QueryAllArgs {
+				system: system_id,
+				criteria,
+				adjust_listings,
+				max_limit,
+			} = {
+				let guard = async_args.lock().unwrap();
+				let Some(args) = &*guard else { return Ok(Vec::new()); };
+				args.clone()
 			};
-			let criteria = match criteria {
-				None => None,
-				Some(callback) => (callback)(),
-			};
+			if system_id.is_empty() {
+				return Ok(Vec::new());
+			}
 			let mut query = database
 				.query_entries(system_id, category, criteria)
 				.await?;
 			let mut items = Vec::new();
 			while let Some(item) = query.next().await {
 				items.push(item);
+				if let Some(limit) = &max_limit {
+					if items.len() >= *limit {
+						break;
+					}
+				}
 			}
 			if let Some(adjust_listings) = &adjust_listings {
 				items = (adjust_listings)(items);
 			}
 			Ok(items)
 		},
-		UseAsyncOptions { auto: auto_fetch },
+		options,
 	);
-	UseQueryHandle { async_handle }
+	let run = Rc::new({
+		let handle = async_handle.clone();
+		move |args: Option<QueryAllArgs<Entry>>| {
+			*args_handle.lock().unwrap() = args;
+			handle.run();
+		}
+	});
+	UseQueryAllHandle { async_handle, run }
 }
 
 #[hook]
-pub fn use_query_all_typed<T>(args: QueryAllArgs<T>) -> UseQueryHandle<Vec<T>>
+pub fn use_query_all_typed<T>(
+	auto_fetch: bool,
+	initial_args: Option<QueryAllArgs<T>>,
+) -> UseQueryAllHandle<T>
 where
 	T: KDLNode + FromKDL + SystemComponent + Unpin + Clone + 'static,
 {
-	let QueryAllArgs {
-		auto_fetch,
-		system: system_id,
-		category: _,
-		criteria,
-		adjust_listings,
-	} = args;
 	let database = use_context::<Database>().unwrap();
 	let system_depot = use_context::<system::Depot>().unwrap();
+	let options = UseAsyncOptions { auto: auto_fetch };
+	let args_handle = Rc::new(Mutex::new(initial_args));
+	let async_args = args_handle.clone();
 	let async_handle = use_async_with_options(
 		async move {
-			let criteria = match criteria {
-				None => None,
-				Some(callback) => (callback)(),
+			let QueryAllArgs {
+				system: system_id,
+				criteria,
+				adjust_listings,
+				max_limit,
+			} = {
+				let guard = async_args.lock().unwrap();
+				let Some(args) = &*guard else { return Ok(Vec::new()); };
+				args.clone()
 			};
+			if system_id.is_empty() {
+				return Ok(Vec::new());
+			}
 			let query = database.query_typed::<T>(system_id, system_depot, criteria);
-			let mut typed_entries = query.await?.all().await;
+			let mut typed_entries = query.await?.first_n(max_limit).await;
 			if let Some(adjust_listings) = &adjust_listings {
 				typed_entries = (adjust_listings)(typed_entries);
 			}
 			Ok(typed_entries)
 		},
-		UseAsyncOptions { auto: auto_fetch },
+		options,
 	);
-	UseQueryHandle { async_handle }
+	let run = Rc::new({
+		let handle = async_handle.clone();
+		move |args: Option<QueryAllArgs<T>>| {
+			if let Some(args) = args {
+				*args_handle.lock().unwrap() = Some(args);
+			}
+			handle.run();
+		}
+	});
+	UseQueryAllHandle { async_handle, run }
 }
 
 #[hook]
@@ -150,7 +188,35 @@ where
 				return Ok(());
 			};
 			fn_item.emit(item);
-			Ok(())
+			Ok(()) as Result<(), crate::database::app::FetchError>
+		});
+	})
+}
+
+#[hook]
+pub fn use_typed_fetch_callback_tuple<Item, Arg>(
+	task_name: String,
+	fn_item: Callback<(Item, Arg)>,
+) -> Callback<(SourceId, Arg)>
+where
+	Item: 'static + KDLNode + FromKDL + SystemComponent + Unpin,
+	Event: 'static,
+	Arg: 'static,
+{
+	let database = use_context::<Database>().unwrap();
+	let system_depot = use_context::<system::Depot>().unwrap();
+	let task_dispatch = use_context::<crate::task::Dispatch>().unwrap();
+	Callback::from(move |(source_id, arg): (SourceId, Arg)| {
+		let database = database.clone();
+		let system_depot = system_depot.clone();
+		let fn_item = fn_item.clone();
+		task_dispatch.spawn(task_name.clone(), None, async move {
+			let Some(item) = database.get_typed_entry::<Item>(source_id.clone(), system_depot).await? else {
+				log::error!("No such database entry {:?}", source_id.to_string());
+				return Ok(());
+			};
+			fn_item.emit((item, arg));
+			Ok(()) as Result<(), crate::database::app::FetchError>
 		});
 	})
 }

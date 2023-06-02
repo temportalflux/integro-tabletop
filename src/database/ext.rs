@@ -38,7 +38,7 @@ pub trait ObjectStoreExt {
 		&self,
 		params: Option<idb::IndexParams>,
 	) -> Result<idb::Index, idb::Error>;
-	fn index_of<T: IndexType>(&self) -> Result<Index<T>, Error>;
+	fn index_of<T: IndexType>(&self) -> Result<Index<T>, idb::Error>;
 }
 
 impl ObjectStoreExt for idb::ObjectStore {
@@ -109,16 +109,20 @@ impl ObjectStoreExt for idb::ObjectStore {
 		self.create_index(T::name(), T::key_path(), params)
 	}
 
-	fn index_of<T: IndexType>(&self) -> Result<Index<T>, Error> {
+	fn index_of<T: IndexType>(&self) -> Result<Index<T>, idb::Error> {
 		Ok(Index::<T>::from(self.index(T::name())?))
 	}
 }
 
 pub trait QueryExt {
-	fn from_items<T: Into<JsValue>, const N: usize>(items: [T; N]) -> Result<idb::Query, Error>;
+	fn from_items<T: Into<JsValue>, const N: usize>(
+		items: [T; N],
+	) -> Result<idb::Query, idb::Error>;
 }
 impl QueryExt for idb::Query {
-	fn from_items<T: Into<JsValue>, const N: usize>(items: [T; N]) -> Result<idb::Query, Error> {
+	fn from_items<T: Into<JsValue>, const N: usize>(
+		items: [T; N],
+	) -> Result<idb::Query, idb::Error> {
 		if items.len() == 1 {
 			let t_val = items.into_iter().next().unwrap();
 			Ok(idb::Query::Key(t_val.into()))
@@ -133,10 +137,10 @@ impl QueryExt for idb::Query {
 }
 
 pub trait TransactionExt {
-	fn object_store_of<T: Record>(&self) -> Result<idb::ObjectStore, super::Error>;
+	fn object_store_of<T: Record>(&self) -> Result<idb::ObjectStore, idb::Error>;
 }
 impl TransactionExt for idb::Transaction {
-	fn object_store_of<T: Record>(&self) -> Result<idb::ObjectStore, super::Error> {
+	fn object_store_of<T: Record>(&self) -> Result<idb::ObjectStore, idb::Error> {
 		Ok(self.object_store(T::store_id())?)
 	}
 }

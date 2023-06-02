@@ -36,7 +36,7 @@ impl<T: IndexType> Index<T> {
 		Ok(values)
 	}
 
-	pub async fn open_cursor(&self, params: Option<&T>) -> Result<Cursor<T::Record>, Error>
+	pub async fn open_cursor(&self, params: Option<&T>) -> Result<Cursor<T::Record>, idb::Error>
 	where
 		T::Record: for<'de> Deserialize<'de>,
 	{
@@ -55,7 +55,7 @@ pub trait IndexType {
 
 	fn name() -> &'static str;
 	fn keys() -> &'static [&'static str];
-	fn as_query(&self) -> Result<idb::Query, Error>;
+	fn as_query(&self) -> Result<idb::Query, idb::Error>;
 
 	fn key_path() -> idb::KeyPath {
 		let keys = Self::keys();

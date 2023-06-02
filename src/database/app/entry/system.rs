@@ -15,7 +15,7 @@ impl IndexType for System {
 		&["system"]
 	}
 
-	fn as_query(&self) -> Result<idb::Query, Error> {
+	fn as_query(&self) -> Result<idb::Query, idb::Error> {
 		idb::Query::from_items([&self.system])
 	}
 }

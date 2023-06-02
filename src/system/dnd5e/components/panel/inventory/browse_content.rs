@@ -1,15 +1,21 @@
 use crate::{
-	components::Spinner,
+	components::{
+		database::{
+			use_query_all_typed, use_typed_fetch_callback_tuple, QueryAllArgs, QueryStatus,
+		},
+		Spinner,
+	},
+	database::app::Criteria,
 	system::{
-		core::{ModuleId, SourceId},
+		core::{ModuleId, SourceId, System},
 		dnd5e::{
 			components::{
 				editor::CollapsableCard,
-				panel::{item_body, AddItemButton, AddItemOperation, SystemItemProps},
-				validate_uint_only, SharedCharacter, WalletInline,
+				panel::{item_body, AddItemButton, AddItemOperation},
+				validate_uint_only, GeneralProp, SharedCharacter, WalletInline,
 			},
 			data::{
-				character::Persistent,
+				character::{Character, Persistent},
 				currency::Wallet,
 				item::{Item, ItemKind},
 			},
@@ -18,64 +24,35 @@ use crate::{
 	},
 	utility::InputExt,
 };
+use std::rc::Rc;
 use uuid::Uuid;
 use yew::prelude::*;
-use yew_hooks::use_async;
-
-fn now() -> f64 {
-	let window = web_sys::window().expect("missing window");
-	let perf = window.performance().expect("missing performance");
-	perf.now()
-}
 
 #[function_component]
 pub fn BrowseModal() -> Html {
 	static DEFAULT_RESULT_LIMIT: usize = 10;
-	static SEARCH_BUDGET_MS: u64 = 2;
-	let system = use_context::<UseStateHandle<DnD5e>>().unwrap();
 
 	let search_params = use_state(|| SearchParams::default());
 	let result_limit = use_state_eq(|| Some(DEFAULT_RESULT_LIMIT));
-	let search_results = use_async({
-		let system = system.clone();
-		let search_params = search_params.clone();
-		let result_limit = result_limit.clone();
-		async move {
-			if search_params.is_empty() {
-				return Ok((Vec::<SourceId>::new(), false));
-			}
+	let query_handle = use_query_all_typed::<Item>(false, None);
 
-			let start = now();
-
-			let mut stopped_early = false;
-			let mut matched = Vec::with_capacity(result_limit.unwrap_or(50));
-			for (id, item) in system.items.iter() {
-				if search_params.matches(item) {
-					matched.push((id, item));
-				}
-				if let Some(max_results) = *result_limit {
-					let spent_time = now() - start;
-					if matched.len() >= max_results || spent_time >= SEARCH_BUDGET_MS as f64 {
-						stopped_early = true;
-						break;
-					}
-				}
-			}
-
-			matched.sort_by(|(_, a), (_, b)| a.name.cmp(&b.name));
-			let ids = matched
-				.into_iter()
-				.map(|(id, _)| id)
-				.cloned()
-				.collect::<Vec<_>>();
-			Ok((ids, stopped_early)) as Result<_, ()>
-		}
-	});
 	use_effect_with_deps(
 		{
-			let results = search_results.clone();
-			move |_params| {
-				results.run();
+			let query_handle = query_handle.clone();
+			move |(params, limit): &(
+				UseStateHandle<SearchParams>,
+				UseStateHandle<Option<usize>>,
+			)| {
+				if params.is_empty() {
+					return;
+				}
+				let args = QueryAllArgs::<Item> {
+					system: DnD5e::id().into(),
+					criteria: Some(params.as_criteria()),
+					max_limit: **limit,
+					..Default::default()
+				};
+				query_handle.run(Some(args));
 			}
 		},
 		(search_params.clone(), result_limit.clone()),
@@ -96,42 +73,29 @@ pub fn BrowseModal() -> Html {
 		}
 	});
 
-	let found_item_listings = match (
-		search_params.is_empty(),
-		search_results.loading,
-		&search_results.data,
-	) {
-		(true, _, _) => html! {},
-		(_, true, _) => html! {
+	let found_item_listings = match query_handle.status() {
+		QueryStatus::Pending => html! {
 			<div class="d-flex justify-content-center">
 				<Spinner />
 			</div>
 		},
-		(_, false, None) => html! {
+		QueryStatus::Empty | QueryStatus::Failed(_) => html! {
 			<div class="text-center">
 				{"No items found"}
 			</div>
 		},
-		(_, false, Some((items, stopped_early))) => html! {<>
-			{items.iter().filter_map(|id| {
-				if system.items.get(id).is_none() {
-					return None;
-				}
-				Some(html! {
-					<BrowsedItemCard id={id.clone()} />
-				})
+		QueryStatus::Success(items) => html! {<>
+			{items.iter().map(|item| {
+				html!(<BrowsedItemCard value={item.clone()} />)
 			}).collect::<Vec<_>>()}
-			{match (*result_limit, stopped_early) {
-				(None, _) | (Some(_), false) => html! {},
-				(Some(_), true) => html! {
-					<button
-						type="button" class="btn btn-primary"
-						onclick={on_load_all_results}
-					>
-						{"Load All Results"}
-					</button>
-				}
-			}}
+			{result_limit.as_ref().map(|_limit| html! {
+				<button
+					type="button" class="btn btn-primary"
+					onclick={on_load_all_results}
+				>
+					{"Load All Results"}
+				</button>
+			}).unwrap_or_default()}
 		</>},
 	};
 
@@ -158,11 +122,10 @@ impl SearchParams {
 		self.text.is_empty()
 	}
 
-	fn matches(&self, item: &Item) -> bool {
-		if item.name.to_lowercase().contains(&self.text.to_lowercase()) {
-			return true;
-		}
-		false
+	fn as_criteria(&self) -> Box<Criteria> {
+		let contains_text = Criteria::ContainsSubstring(self.text.clone());
+		let name_contains = Criteria::ContainsProperty("name".into(), contains_text.into());
+		name_contains.into()
 	}
 }
 
@@ -209,26 +172,30 @@ pub fn SearchInput(SearchInputProps { on_change }: &SearchInputProps) -> Html {
 }
 
 #[function_component]
-fn BrowsedItemCard(SystemItemProps { id }: &SystemItemProps) -> Html {
+fn BrowsedItemCard(props: &GeneralProp<Item>) -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
-	let system = use_context::<UseStateHandle<DnD5e>>().unwrap();
+	let item = &props.value;
 
-	let add_item = Callback::from({
-		let state = state.clone();
-		let system = system.clone();
-		move |(id, container_id): (SourceId, Option<Vec<Uuid>>)| {
-			let Some(item) = system.items.get(&id).cloned() else { return; };
-			state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
+	let add_item = use_typed_fetch_callback_tuple::<Item, Option<Vec<Uuid>>>(
+		"Add Item".into(),
+		state.new_dispatch(Box::new({
+			move |(item, container_id), persistent: &mut Persistent, _: &Rc<Character>| {
 				persistent.inventory.insert_to(item, &container_id);
 				None
-			}));
+			}
+		})),
+	);
+	let add_item = add_item.reform({
+		let id = item.id.unversioned();
+		move |container_id| {
+			log::debug!("{:?} {container_id:?}", id.to_string());
+			(id.clone(), container_id)
 		}
 	});
 
-	let Some(item) = system.items.get(id) else { return html! {}; };
 	let card_id = format!(
 		"{}{}{}",
-		match &id.module {
+		match &item.id.module {
 			None => String::new(),
 			Some(ModuleId::Local { name }) => format!("{name}_"),
 			Some(ModuleId::Github {
@@ -237,18 +204,18 @@ fn BrowsedItemCard(SystemItemProps { id }: &SystemItemProps) -> Html {
 			}) => format!("{user_org}_{repository}_"),
 		},
 		{
-			let path = id.path.with_extension("");
+			let path = item.id.path.with_extension("");
 			path.to_str().unwrap().replace("/", "_")
 		},
-		match id.node_idx {
+		match item.id.node_idx {
 			0 => String::new(),
 			idx => format!("_{idx}"),
 		}
 	);
-	let add_item = add_item.reform({
-		let id = id.clone();
-		move |container_id| (id.clone(), container_id)
-	});
+	let batch_size = match &item.kind {
+		ItemKind::Simple { count } => Some(*count),
+		_ => None,
+	};
 	html! {
 		<CollapsableCard
 			id={card_id}
@@ -264,51 +231,72 @@ fn BrowsedItemCard(SystemItemProps { id }: &SystemItemProps) -> Html {
 			}}
 		>
 			{item_body(item, &state, None)}
-			<AddItemActions id={id.clone()} />
+			<AddItemActions
+				id={item.id.unversioned()}
+				{batch_size}
+				worth={item.worth.clone()}
+			/>
 		</CollapsableCard>
 	}
 }
 
+#[derive(Clone, PartialEq, Properties)]
+struct AddItemActionsProps {
+	id: SourceId,
+	batch_size: Option<u32>,
+	worth: Wallet,
+}
+type AddItemArgs = (u32, Wallet, Option<Vec<Uuid>>);
 #[function_component]
-fn AddItemActions(SystemItemProps { id }: &SystemItemProps) -> Html {
+fn AddItemActions(
+	AddItemActionsProps {
+		id,
+		batch_size,
+		worth,
+	}: &AddItemActionsProps,
+) -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
 	let auto_exchange = state.persistent().settings.currency_auto_exchange;
-	let system = use_context::<UseStateHandle<DnD5e>>().unwrap();
 	let amt_to_add = use_state_eq(|| 1u32);
 	let amt_to_buy = use_state_eq(|| 1u32);
-	let Some(item) = system.items.get(id) else { return html! {}; };
 
-	let add_items = Callback::from({
-		let id = id.clone();
-		let state = state.clone();
-		let system = system.clone();
-		move |(amount, cost, container_id): (u32, Wallet, Option<Vec<Uuid>>)| {
-			let Some(mut item) = system.items.get(&id).cloned() else { return; };
-			let items = if let ItemKind::Simple { count } = &mut item.kind {
-				*count *= amount;
-				vec![item]
-			} else {
-				let mut items = Vec::with_capacity(amount as usize);
-				items.resize(amount as usize, item);
-				items
-			};
-			state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
+	let add_items = use_typed_fetch_callback_tuple::<Item, AddItemArgs>(
+		"Add Items".into(),
+		state.new_dispatch(Box::new({
+			move |args: (Item, AddItemArgs), persistent: &mut Persistent, _: &Rc<Character>| {
+				let (mut item, (amount, cost, container_id)) = args;
+				let items = if let ItemKind::Simple { count } = &mut item.kind {
+					*count *= amount;
+					vec![item]
+				} else {
+					let mut items = Vec::with_capacity(amount as usize);
+					items.resize(amount as usize, item);
+					items
+				};
 				if !cost.is_empty() {
 					persistent
 						.inventory
 						.wallet_mut()
 						.remove(cost, auto_exchange);
 				}
+				log::debug!("add items {:?}", items);
 				for item in items {
 					persistent.inventory.insert_to(item, &container_id);
 				}
 				None
-			}));
+			}
+		})),
+	);
+	let add_items = add_items.reform({
+		let id = id.clone();
+		move |args| {
+			log::debug!("{:?} {args:?}", id.to_string());
+			(id.clone(), args)
 		}
 	});
 
-	let section_add_amt = match &item.kind {
-		ItemKind::Simple { count: batch_size } => Some({
+	let section_add_amt = match batch_size {
+		Some(batch_size) => Some({
 			let amt_state = amt_to_add.clone();
 			let set_amt = Callback::from({
 				let amt_state = amt_state.clone();
@@ -373,14 +361,11 @@ fn AddItemActions(SystemItemProps { id }: &SystemItemProps) -> Html {
 				</div>
 			</>}
 		}),
-		_ => None,
+		None => None,
 	};
-	let section_purchase = match item.worth.is_empty() {
+	let section_purchase = match worth.is_empty() {
 		false => Some({
-			let batch_size = match &item.kind {
-				ItemKind::Simple { count } => *count,
-				_ => 1,
-			};
+			let batch_size = batch_size.clone().unwrap_or(1);
 			let amt_state = amt_to_buy.clone();
 			let set_amt = Callback::from({
 				let amt_state = amt_state.clone();
@@ -410,7 +395,7 @@ fn AddItemActions(SystemItemProps { id }: &SystemItemProps) -> Html {
 				}
 			});
 			let purchase_cost = {
-				let mut cost = item.worth * (*amt_state as u64);
+				let mut cost = *worth * (*amt_state as u64);
 				if auto_exchange {
 					cost.normalize();
 				}

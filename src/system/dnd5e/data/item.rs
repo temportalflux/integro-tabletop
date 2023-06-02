@@ -1,7 +1,10 @@
 use super::{currency::Wallet, description, Rarity};
 use crate::{
 	kdl_ext::{DocumentExt, FromKDL, NodeContext, NodeExt},
-	system::dnd5e::{data::character::Character, SystemComponent},
+	system::{
+		core::SourceId,
+		dnd5e::{data::character::Character, SystemComponent},
+	},
 	utility::{MutatorGroup, NotInList},
 };
 use std::{collections::HashMap, path::Path, str::FromStr};
@@ -13,6 +16,7 @@ pub mod weapon;
 
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct Item {
+	pub id: SourceId,
 	pub name: String,
 	pub description: description::Info,
 	pub rarity: Option<Rarity>,
@@ -104,6 +108,8 @@ impl FromKDL for Item {
 		node: &kdl::KdlNode,
 		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
+		let id = ctx.parse_source_req(node)?;
+
 		let name = node.get_str_req("name")?.to_owned();
 		let rarity = match node.query_str_opt("scope() > rarity", 0)? {
 			Some(value) => Some(Rarity::from_str(value)?),
@@ -150,6 +156,7 @@ impl FromKDL for Item {
 		}
 
 		Ok(Self {
+			id,
 			name,
 			description,
 			rarity,

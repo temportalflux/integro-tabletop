@@ -184,7 +184,7 @@ impl GithubClient {
 	pub fn get_files_changed(
 		&self,
 		request: FilesChangedArgs<'_>,
-	) -> LocalBoxFuture<'static, anyhow::Result<Vec<String>>> {
+	) -> LocalBoxFuture<'static, reqwest::Result<Vec<String>>> {
 		use serde_json::Value;
 		// https://docs.github.com/en/rest/commits/commits?apiVersion=2022-11-28#compare-two-commits
 		// https://www.git-scm.com/docs/gitrevisions#_dotted_range_notations
@@ -223,7 +223,7 @@ impl GithubClient {
 	pub fn get_tree(
 		&self,
 		request: GetTreeArgs<'_>,
-	) -> LocalBoxFuture<'static, anyhow::Result<Vec<TreeEntry>>> {
+	) -> LocalBoxFuture<'static, reqwest::Result<Vec<TreeEntry>>> {
 		let builder = self.0.get(format!(
 			"{GITHUB_API}/repos/{}/{}/git/trees/{}",
 			request.owner, request.repo, request.tree_id
@@ -271,7 +271,7 @@ impl GithubClient {
 	pub fn get_file_content(
 		&self,
 		request: FileContentArgs<'_>,
-	) -> LocalBoxFuture<'static, anyhow::Result<String>> {
+	) -> LocalBoxFuture<'static, reqwest::Result<String>> {
 		// https://docs.github.com/en/rest/repos/contents?apiVersion=2022-11-28#get-repository-content
 		// https://docs.github.com/en/rest/overview/media-types?apiVersion=2022-11-28
 		let builder = self.0.get(format!(

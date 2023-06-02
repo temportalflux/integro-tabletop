@@ -20,30 +20,30 @@ impl Database {
 		Ok(Self(client))
 	}
 
-	pub fn write(&self) -> Result<idb::Transaction, super::Error> {
+	pub fn write(&self) -> Result<idb::Transaction, idb::Error> {
 		Ok(self.0.transaction(
 			&[Entry::store_id(), Module::store_id()],
 			idb::TransactionMode::ReadWrite,
 		)?)
 	}
 
-	pub fn read_entries(&self) -> Result<idb::Transaction, super::Error> {
+	pub fn read_entries(&self) -> Result<idb::Transaction, idb::Error> {
 		Ok(self.0.read_only::<Entry>()?)
 	}
 
-	pub fn write_entries(&self) -> Result<idb::Transaction, super::Error> {
+	pub fn write_entries(&self) -> Result<idb::Transaction, idb::Error> {
 		Ok(self.0.read_write::<Entry>()?)
 	}
 
-	pub fn read_modules(&self) -> Result<idb::Transaction, super::Error> {
+	pub fn read_modules(&self) -> Result<idb::Transaction, idb::Error> {
 		Ok(self.0.read_only::<Module>()?)
 	}
 
-	pub fn write_modules(&self) -> Result<idb::Transaction, super::Error> {
+	pub fn write_modules(&self) -> Result<idb::Transaction, idb::Error> {
 		Ok(self.0.read_write::<Module>()?)
 	}
 
-	pub async fn clear(&self) -> Result<(), super::Error> {
+	pub async fn clear(&self) -> Result<(), idb::Error> {
 		use crate::database::TransactionExt;
 		let transaction = self.write()?;
 		transaction.object_store_of::<Module>()?.clear().await?;
@@ -52,7 +52,7 @@ impl Database {
 		Ok(())
 	}
 
-	fn read_index<I: super::IndexType>(&self) -> Result<super::Index<I>, super::Error> {
+	fn read_index<I: super::IndexType>(&self) -> Result<super::Index<I>, idb::Error> {
 		use super::{ObjectStoreExt, TransactionExt};
 		let transaction = self.read_entries()?;
 		let entries_store = transaction.object_store_of::<I::Record>()?;
@@ -76,7 +76,7 @@ impl Database {
 		&self,
 		key: crate::system::core::SourceId,
 		system_depot: crate::system::Depot,
-	) -> Result<Option<T>, super::Error>
+	) -> Result<Option<T>, FetchError>
 	where
 		T: crate::kdl_ext::KDLNode
 			+ crate::kdl_ext::FromKDL
@@ -87,9 +87,13 @@ impl Database {
 		let Some(entry) = self.get::<Entry>(key.to_string()).await? else { return Ok(None); };
 		// Parse the entry's kdl string:
 		// kdl string to document
-		let Ok(document) = entry.kdl.parse::<kdl::KdlDocument>() else { return Ok(None); };
+		let document = entry.kdl.parse::<kdl::KdlDocument>()?;
 		// document to node
-		let Some(node) = document.nodes().get(key.node_idx) else { return Ok(None); };
+		let node = match document.nodes().len() {
+			1 => &document.nodes()[0],
+			0 => return Err(FetchError::EmptyDocument),
+			_ => return Err(FetchError::TooManyDocNodes(entry.kdl.clone())),
+		};
 		// node to value based on the expected type
 		let node_reg = {
 			let system_reg = system_depot
@@ -98,7 +102,9 @@ impl Database {
 			system_reg.node()
 		};
 		let mut ctx = crate::kdl_ext::NodeContext::new(Arc::new(entry.source_id(true)), node_reg);
-		let Ok(value) = T::from_kdl(node, &mut ctx) else { return Ok(None); };
+		let Ok(value) = T::from_kdl(node, &mut ctx) else {
+			return Err(FetchError::FailedToParse(node.to_string(), T::id()));
+		};
 		Ok(Some(value))
 	}
 
@@ -122,7 +128,7 @@ impl Database {
 		system: impl Into<String>,
 		system_depot: crate::system::Depot,
 		criteria: Option<Box<Criteria>>,
-	) -> Result<QueryDeserialize<Output>, super::Error>
+	) -> Result<QueryDeserialize<Output>, idb::Error>
 	where
 		Output: crate::kdl_ext::KDLNode
 			+ crate::kdl_ext::FromKDL
@@ -158,4 +164,18 @@ impl std::ops::Deref for Database {
 	fn deref(&self) -> &Self::Target {
 		&self.0
 	}
+}
+
+#[derive(thiserror::Error, Debug, Clone)]
+pub enum FetchError {
+	#[error(transparent)]
+	FindEntry(#[from] super::Error),
+	#[error(transparent)]
+	InvalidDocument(#[from] kdl::KdlError),
+	#[error("Entry document is empty")]
+	EmptyDocument,
+	#[error("Entry document has too many nodes (should only be 1 per entry): {0:?}")]
+	TooManyDocNodes(String),
+	#[error("Failed to parse node as a {1:?}: {0:?}")]
+	FailedToParse(String, &'static str),
 }

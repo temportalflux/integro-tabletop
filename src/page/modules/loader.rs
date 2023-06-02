@@ -54,7 +54,7 @@ impl Loader {
 
 					self.search_for_relevant_repos(owners);
 
-					Ok(())
+					Ok(()) as anyhow::Result<()>
 				}
 			});
 	}
@@ -86,7 +86,7 @@ impl Loader {
 
 				self.insert_or_update_modules(metadata);
 
-				Ok(())
+				Ok(()) as anyhow::Result<()>
 			});
 	}
 
@@ -111,7 +111,7 @@ impl Loader {
 				};
 				self.client.set_repo_topics(set_topics).await?;
 
-				Ok(())
+				Ok(()) as anyhow::Result<()>
 			})
 	}
 
@@ -165,7 +165,7 @@ impl Loader {
 					progress.inc(1);
 				}
 
-				Ok(())
+				Ok(()) as anyhow::Result<()>
 			},
 		);
 	}
@@ -289,13 +289,10 @@ impl Loader {
 						for record in db_entries {
 							entry_store.add_record(&record).await?;
 						}
-						transaction
-							.commit()
-							.await
-							.map_err(crate::database::Error::from)?;
+						transaction.commit().await?;
 					}
 
-					Ok(())
+					Ok(()) as Result<(), LoaderError>
 				}
 			},
 		)
@@ -381,12 +378,9 @@ impl Loader {
 							entry_store.put_record(&entry).await?;
 						}
 
-						transaction
-							.commit()
-							.await
-							.map_err(crate::database::Error::from)?;
+						transaction.commit().await?;
 					}
-					Ok(())
+					Ok(()) as Result<(), LoaderError>
 				}
 			},
 		)
@@ -448,5 +442,25 @@ impl Loader {
 			entries.push(record);
 		}
 		entries
+	}
+}
+
+#[derive(thiserror::Error, Debug, Clone)]
+enum LoaderError {
+	#[error("{0}")]
+	ReqwestError(String),
+	#[error("{0}")]
+	IndexedDBError(String),
+	#[error(transparent)]
+	DatabaseError(#[from] crate::database::Error),
+}
+impl From<idb::Error> for LoaderError {
+	fn from(value: idb::Error) -> Self {
+		Self::IndexedDBError(value.to_string())
+	}
+}
+impl From<reqwest::Error> for LoaderError {
+	fn from(value: reqwest::Error) -> Self {
+		Self::ReqwestError(value.to_string())
 	}
 }

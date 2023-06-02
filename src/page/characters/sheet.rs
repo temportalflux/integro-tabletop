@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use crate::{
 	components::{modal, Spinner},
-	database::app::Database,
+	database::app::{Database, FetchError},
 	system::{
 		self,
 		core::{SourceId, System},
@@ -114,5 +114,10 @@ enum QueryCharacterError {
 	#[error("Entry at key {0:?} is not in the database.")]
 	EntryMissing(String),
 	#[error(transparent)]
-	DatabaseError(#[from] crate::database::Error),
+	DatabaseError(#[from] FetchError),
+}
+impl From<idb::Error> for QueryCharacterError {
+	fn from(value: idb::Error) -> Self {
+		Self::DatabaseError(FetchError::FindEntry(value.into()))
+	}
 }

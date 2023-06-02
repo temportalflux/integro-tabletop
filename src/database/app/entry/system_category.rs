@@ -16,7 +16,7 @@ impl IndexType for SystemCategory {
 		&["system", "category"]
 	}
 
-	fn as_query(&self) -> Result<idb::Query, Error> {
+	fn as_query(&self) -> Result<idb::Query, idb::Error> {
 		idb::Query::from_items([&self.system, &self.category])
 	}
 }

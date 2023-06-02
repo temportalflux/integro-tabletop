@@ -16,7 +16,7 @@ impl IndexType for ModuleSystem {
 		&["module", "system"]
 	}
 
-	fn as_query(&self) -> Result<idb::Query, Error> {
+	fn as_query(&self) -> Result<idb::Query, idb::Error> {
 		idb::Query::from_items([&self.module, &self.system])
 	}
 }

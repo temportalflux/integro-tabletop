@@ -21,14 +21,16 @@ impl Dispatch {
 		}
 	}
 
-	pub fn spawn<F>(
+	pub fn spawn<F, E>(
 		&self,
 		name: impl Into<String>,
 		progress: Option<ProgressHandle>,
 		pending: F,
 	) -> Signal
 	where
-		F: Future<Output = anyhow::Result<()>> + 'static,
+		F: Future<Output = Result<(), E>> + 'static,
+		E: 'static,
+		anyhow::Error: From<E>,
 	{
 		let signal = Signal::new(false);
 		let pending = Box::pin({
@@ -36,7 +38,7 @@ impl Dispatch {
 			async move {
 				pending.await?;
 				signal.set();
-				Ok(())
+				Ok(()) as anyhow::Result<()>
 			}
 		});
 		self.0.dispatch(Action::Insert {
