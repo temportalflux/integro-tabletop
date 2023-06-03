@@ -10,6 +10,7 @@ use std::{
 	rc::Rc,
 	sync::{Arc, Mutex},
 };
+use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
 use yew_hooks::{use_async_with_options, UseAsyncHandle, UseAsyncOptions};
 
@@ -36,6 +37,8 @@ pub struct UseQueryAllHandle<T> {
 	async_handle: UseAsyncHandle<Vec<T>, DatabaseError>,
 	run: Rc<dyn Fn(Option<QueryAllArgs<T>>)>,
 }
+
+#[derive(Debug, PartialEq)]
 pub enum QueryStatus<T> {
 	Empty,
 	Pending,
@@ -165,6 +168,67 @@ where
 		}
 	});
 	UseQueryAllHandle { async_handle, run }
+}
+
+
+#[derive(Clone)]
+pub struct UseQueryEntriesHandle {
+	state: UseStateHandle<QueryStatus<Vec<Entry>>>,
+	run: Rc<dyn Fn(Vec<SourceId>)>,
+}
+impl PartialEq for UseQueryEntriesHandle
+{
+    fn eq(&self, other: &Self) -> bool {
+        *self.state == *other.state
+    }
+}
+
+impl UseQueryEntriesHandle {
+	pub fn status(&self) -> &QueryStatus<Vec<Entry>> {
+		&*self.state
+	}
+
+	pub fn clear(&self) {
+		self.state.set(QueryStatus::Empty);
+	}
+
+	pub fn run(&self, args: Vec<SourceId>) {
+		(self.run)(args);
+	}
+}
+
+#[hook]
+pub fn use_query_entries() -> UseQueryEntriesHandle {
+	let database = use_context::<Database>().unwrap();
+	let state = use_state(|| QueryStatus::<Vec<Entry>>::Empty);
+	let run = Rc::new({
+		let state = state.clone();
+		move |args: Vec<SourceId>| {
+			state.set(QueryStatus::Pending);
+			
+			let database = database.clone();
+			let perform_query = async move {
+				let mut entries = Vec::new();
+				for id in args {
+					let Some(item) = database.get::<Entry>(id.to_string()).await? else {
+						continue;
+					};
+					entries.push(item);
+				}
+				Ok(entries)
+			};
+			
+			let state = state.clone();
+			spawn_local(async move {
+				state.set(match perform_query.await {
+					Ok(data) if data.is_empty() => QueryStatus::Empty,
+					Ok(data) => QueryStatus::Success(data),
+					Err(err) => QueryStatus::Failed(err),
+				});
+			});
+		}
+	});
+	UseQueryEntriesHandle { run, state }
 }
 
 #[hook]

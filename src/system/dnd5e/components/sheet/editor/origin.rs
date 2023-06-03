@@ -1,6 +1,9 @@
 use crate::{
 	components::{
-		database::{use_query_all_typed, use_typed_fetch_callback, QueryAllArgs, QueryStatus},
+		database::{
+			use_query_all_typed, use_query_entries, use_typed_fetch_callback, QueryAllArgs,
+			QueryStatus,
+		},
 		modal, Spinner,
 	},
 	database::app::Criteria,
@@ -26,6 +29,7 @@ use crate::{
 };
 use convert_case::{Case, Casing};
 use multimap::MultiMap;
+
 use std::{collections::HashSet, str::FromStr, sync::Arc};
 use yew::prelude::*;
 
@@ -733,7 +737,9 @@ fn SelectorField(
 					<button type="button" class={btn_classes} onclick={browse}>
 						{format!("Browse ({}/{capacity} selected)", selection_count)}
 					</button>
-					<ObjectSelectorList value={data_path.clone()} />
+					<div>
+						<ObjectSelectorList value={data_path.clone()} />
+					</div>
 				</div>
 			};
 		}
@@ -749,24 +755,39 @@ fn SelectorField(
 #[function_component]
 fn ObjectSelectorList(props: &GeneralProp<std::path::PathBuf>) -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
-	let system = use_context::<UseStateHandle<DnD5e>>().unwrap();
-	let mut entries = Vec::new();
-	if let Some(selected_values) = state.get_selections_at(&props.value) {
-		for id_str in selected_values {
-			let Ok(id) = SourceId::from_str(id_str) else { continue; };
-			// TODO: Get this from the database, not DnD5e in-memory
-			let Some(spell) = system.spells.get(&id) else { continue; };
-			entries.push(html! {
-				<li>
-					{&spell.name}
-				</li>
-			})
+	let fetched_entries = use_query_entries();
+	use_effect_with_deps(
+		{
+			let data_path = props.value.clone();
+			let fetched_entries = fetched_entries.clone();
+			move |state: &SharedCharacter| {
+				let Some(values) = state.get_selections_at(&data_path) else {
+					fetched_entries.clear();
+					return;
+				};
+				let mut ids = Vec::with_capacity(values.len());
+				for value in values {
+					let Ok(id) = SourceId::from_str(value.as_str()) else { continue; };
+					ids.push(id.into_unversioned());
+				}
+				fetched_entries.run(ids);
+			}
+		},
+		state.clone(),
+	);
+	
+	match fetched_entries.status() {
+		QueryStatus::Pending => html!(<Spinner />),
+		QueryStatus::Empty | QueryStatus::Failed(_) => html!("No selections"),
+		QueryStatus::Success(entries) => {
+			html! {
+				<ul class="mb-0">
+					{entries.iter().map(|entry| html! {
+						<li>{entry.name().unwrap_or("Unknown")}</li>
+					}).collect::<Vec<_>>()}
+				</ul>
+			}
 		}
-	}
-	html! {
-		<ul class="mb-0">
-			{entries}
-		</ul>
 	}
 }
 

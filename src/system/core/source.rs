@@ -71,10 +71,13 @@ impl SourceId {
 		format!("{prefix}{name}")
 	}
 
-	pub fn unversioned(&self) -> SourceId {
-		let mut id = self.clone();
-		id.version = None;
-		id
+	pub fn unversioned(&self) -> Self {
+		self.clone().into_unversioned()
+	}
+
+	pub fn into_unversioned(mut self) -> Self {
+		self.version = None;
+		self
 	}
 }
 

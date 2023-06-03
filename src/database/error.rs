@@ -1,4 +1,4 @@
-#[derive(thiserror::Error, Debug, Clone)]
+#[derive(thiserror::Error, Debug, Clone, PartialEq)]
 pub enum Error {
 	#[error("{0}")]
 	Internal(String),

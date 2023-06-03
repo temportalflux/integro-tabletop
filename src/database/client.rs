@@ -1,4 +1,4 @@
-use super::{MissingVersion, UpgradeError, Schema};
+use super::{MissingVersion, Schema, UpgradeError};
 use idb::VersionChangeEvent;
 use std::sync::Arc;
 

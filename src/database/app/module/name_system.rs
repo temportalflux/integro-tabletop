@@ -1,4 +1,4 @@
-use crate::database::{app::Module, Error, IndexType, QueryExt};
+use crate::database::{app::Module, IndexType, QueryExt};
 
 #[derive(Default)]
 pub struct NameSystem {
