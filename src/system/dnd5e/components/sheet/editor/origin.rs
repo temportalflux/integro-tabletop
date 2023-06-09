@@ -249,11 +249,15 @@ fn selected_bundle(
 	let title = reqs_desc
 		.map(|desc| format!("{}{desc}", bundle.name))
 		.unwrap_or_else(|| bundle.name.clone());
-
+	let bundle_id = bundle
+		.name
+		.to_case(Case::Kebab)
+		.replace("(", "")
+		.replace(")", "");
 	html! {
 		<ContentItem
-			id={format!("{}-{}-{}", bundle.category, idx, bundle.name.to_case(Case::Kebab))}
-			name={format!("{}: {}", bundle.category, title)}
+			id={format!("{}-{idx}-{bundle_id}", bundle.category)}
+			name={format!("{}: {title}", bundle.category)}
 			kind={ContentItemKind::Remove {
 				disable_selection: dependents.map(|desc| format!("Cannot remove, depended on by: {desc}").into()),
 			}}
@@ -323,10 +327,15 @@ fn AvailableBundle(GeneralProp { value: bundle }: &GeneralProp<Bundle>) -> Html 
 			}
 		}
 	}
+	let bundle_id = bundle
+		.name
+		.to_case(Case::Kebab)
+		.replace("(", "")
+		.replace(")", "");
 	html! {
 		<ContentItem
 			parent_collapse={"#all-entries"}
-			id={bundle.name.clone()}
+			id={bundle_id}
 			name={title}
 			kind={ContentItemKind::Add {
 				amount_selected,
@@ -775,14 +784,14 @@ fn ObjectSelectorList(props: &GeneralProp<std::path::PathBuf>) -> Html {
 		},
 		state.clone(),
 	);
-	
+
 	match fetched_entries.status() {
 		QueryStatus::Pending => html!(<Spinner />),
 		QueryStatus::Empty | QueryStatus::Failed(_) => html!("No selections"),
-		QueryStatus::Success(entries) => {
+		QueryStatus::Success((ids, items)) => {
 			html! {
 				<ul class="mb-0">
-					{entries.iter().map(|entry| html! {
+					{ids.iter().filter_map(|id| items.get(id)).map(|entry| html! {
 						<li>{entry.name().unwrap_or("Unknown")}</li>
 					}).collect::<Vec<_>>()}
 				</ul>

@@ -1,7 +1,7 @@
 use super::Condition;
 use crate::{
 	kdl_ext::{FromKDL, NodeExt},
-	system::{core::SourceId, dnd5e::DnD5e},
+	system::core::SourceId,
 };
 use anyhow::Context;
 use std::str::FromStr;
@@ -10,17 +10,6 @@ use std::str::FromStr;
 pub enum IndirectCondition {
 	Id(SourceId),
 	Custom(Condition),
-}
-
-impl IndirectCondition {
-	/// Returns a reference to the underlying condition.
-	/// If self is an Id, the value returned is retrieved from the system (if it exists).
-	pub fn resolve<'a>(&'a self, system: &'a DnD5e) -> Option<&'a Condition> {
-		match self {
-			Self::Custom(value) => Some(value),
-			Self::Id(id) => system.conditions.get(id),
-		}
-	}
 }
 
 impl FromKDL for IndirectCondition {

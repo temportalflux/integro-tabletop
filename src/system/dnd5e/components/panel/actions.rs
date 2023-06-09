@@ -1,16 +1,21 @@
 use crate::{
-	components::*,
-	system::dnd5e::{
-		components::{
-			editor::{description, mutator_list},
-			SharedCharacter, UsesCounter,
+	components::{
+		database::{use_query_typed, QueryStatus},
+		*,
+	},
+	system::{
+		core::SourceId,
+		dnd5e::{
+			components::{
+				editor::{description, mutator_list},
+				SharedCharacter, UsesCounter,
+			},
+			data::{
+				action::{ActivationKind, AttackCheckKind, AttackKindValue},
+				character::{ActionBudgetKind, ActionEffect, Persistent},
+				AreaOfEffect, Condition, DamageRoll, Feature, IndirectCondition,
+			},
 		},
-		data::{
-			action::{ActivationKind, AttackCheckKind, AttackKindValue},
-			character::{ActionBudgetKind, ActionEffect, Persistent},
-			AreaOfEffect, DamageRoll, Feature,
-		},
-		DnD5e,
 	},
 	utility::Evaluator,
 };
@@ -18,7 +23,7 @@ use enum_map::{Enum, EnumMap};
 use enumset::{EnumSet, EnumSetType};
 use itertools::{Itertools, Position};
 use multimap::MultiMap;
-use std::{collections::HashMap, path::PathBuf, sync::Arc};
+use std::{collections::HashMap, path::PathBuf};
 use yew::prelude::*;
 
 #[derive(EnumSetType, Enum)]
@@ -435,7 +440,7 @@ fn CollapsedFeature(ActionProps { entry }: &ActionProps) -> Html {
 #[function_component]
 fn ActionOverview(ActionProps { entry }: &ActionProps) -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
-	let system = use_context::<UseStateHandle<DnD5e>>().unwrap();
+
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 	let onclick = modal_dispatcher.callback({
 		let feature_path = entry.feature_path.clone();
@@ -449,32 +454,51 @@ fn ActionOverview(ActionProps { entry }: &ActionProps) -> Html {
 			})
 		}
 	});
-	let action_block = match &entry.feature.action {
-		None => html! {},
-		Some(action) => html! {
-			<div class="addendum mx-2 mb-1">
-				{(!action.conditions_to_apply.is_empty()).then(|| {
-					let conditions_to_apply = Arc::new(action.conditions_to_apply.iter().filter_map(|indirect| {
-						indirect.resolve(&system).cloned()
-					}).collect::<Vec<_>>());
-					let name_section = {
-						let count = conditions_to_apply.len();
-						html! {
-							<div class="mx-2">
-								{conditions_to_apply.iter().enumerate().map(|(idx, condition)| html! {
-									<span>
-										{condition.name.clone()}
-										{match /*is_last*/ idx == count - 1 {
-											false => ", ",
-											true => "",
-										}}
-									</span>
-								}).collect::<Vec<_>>()}
-							</div>
-						}
+
+	let fetch_indirect_conditions = use_query_typed::<Condition>();
+	let indirect_condition_ids = use_state_eq(|| Vec::new());
+	use_effect_with_deps(
+		{
+			let fetch_indirect_conditions = fetch_indirect_conditions.clone();
+			move |ids: &UseStateHandle<Vec<SourceId>>| {
+				fetch_indirect_conditions.run((**ids).clone());
+			}
+		},
+		indirect_condition_ids.clone(),
+	);
+
+	let mut conditions_content = html!();
+	if let Some(action) = &entry.feature.action {
+		if !action.conditions_to_apply.is_empty() {
+			indirect_condition_ids.set({
+				let iter_conditions = action.conditions_to_apply.iter();
+				let iter_conditions = iter_conditions.filter_map(|indirect| match indirect {
+					IndirectCondition::Id(id) => Some(id.clone()),
+					IndirectCondition::Custom(_custom) => None,
+				});
+				iter_conditions.collect::<Vec<_>>()
+			});
+
+			conditions_content = match fetch_indirect_conditions.status() {
+				QueryStatus::Pending => html!(<Spinner />),
+				status => {
+					let fetched_conditions = match status {
+						QueryStatus::Success((_, items)) => Some(items),
+						_ => None,
 					};
+					let iter = action.conditions_to_apply.iter();
+					let iter = iter.filter_map(|indirect| match indirect {
+						IndirectCondition::Custom(condition) => Some(condition.clone()),
+						IndirectCondition::Id(id) => fetched_conditions
+							.map(|list| list.get(id))
+							.flatten()
+							.cloned(),
+					});
+					let conditions = iter.collect::<Vec<_>>();
+
 					let onclick = Callback::from({
 						let state = state.clone();
+						let conditions_to_apply = conditions.clone();
 						move |evt: MouseEvent| {
 							evt.stop_propagation();
 							let conditions_to_apply = conditions_to_apply.clone();
@@ -487,10 +511,22 @@ fn ActionOverview(ActionProps { entry }: &ActionProps) -> Html {
 							}));
 						}
 					});
+
+					let count = conditions.len();
 					html! {
 						<div class="conditions d-flex align-items-baseline">
 							<strong class="title">{"Applies Conditions:"}</strong>
-							{name_section}
+							<div class="mx-2">
+								{conditions.iter().enumerate().map(|(idx, condition)| html! {
+									<span>
+										{&condition.name}
+										{match /*is_last*/ idx == count - 1 {
+											false => ", ",
+											true => "",
+										}}
+									</span>
+								}).collect::<Vec<_>>()}
+							</div>
 							<button
 								type="button" class="btn btn-primary btn-xs ms-auto"
 								{onclick}
@@ -499,7 +535,16 @@ fn ActionOverview(ActionProps { entry }: &ActionProps) -> Html {
 							</button>
 						</div>
 					}
-				}).unwrap_or_default()}
+				}
+			};
+		}
+	}
+
+	let action_block = match &entry.feature.action {
+		None => html! {},
+		Some(action) => html! {
+			<div class="addendum mx-2 mb-1">
+				{conditions_content}
 				{action.limited_uses.as_ref().map(|limited_uses| {
 					UsesCounter { state: state.clone(), limited_uses }.to_html()
 				}).unwrap_or_default()}
@@ -557,7 +602,18 @@ struct ModalProps {
 #[function_component]
 fn Modal(ModalProps { path }: &ModalProps) -> Html {
 	let state = use_context::<SharedCharacter>().unwrap();
-	let system = use_context::<UseStateHandle<DnD5e>>().unwrap();
+	let fetch_indirect_conditions = use_query_typed::<Condition>();
+	let indirect_condition_ids = use_state_eq(|| Vec::new());
+	use_effect_with_deps(
+		{
+			let fetch_indirect_conditions = fetch_indirect_conditions.clone();
+			move |ids: &UseStateHandle<Vec<SourceId>>| {
+				fetch_indirect_conditions.run((**ids).clone());
+			}
+		},
+		indirect_condition_ids.clone(),
+	);
+
 	let Some(feature) = state.features().path_map.get_first(&path) else {
 		return html! {<>
 			<div class="modal-header">
@@ -783,36 +839,62 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 		}
 
 		if !action.conditions_to_apply.is_empty() {
-			let conditions_to_apply = Arc::new(
-				action
-					.conditions_to_apply
-					.iter()
-					.filter_map(|indirect| indirect.resolve(&system).cloned())
-					.collect::<Vec<_>>(),
-			);
+			// Run the query with whatever conditions need to be fetched.
+			// If the query is currently active, this will silently be ignored.
+			// If the queried entries match the new query, this is a NO-OP and is silently ignored.
+			indirect_condition_ids.set({
+				let iter_conditions = action.conditions_to_apply.iter();
+				let iter_conditions = iter_conditions.filter_map(|indirect| match indirect {
+					IndirectCondition::Id(id) => Some(id.clone()),
+					IndirectCondition::Custom(_custom) => None,
+				});
+				iter_conditions.collect::<Vec<_>>()
+			});
+
+			let condition_content = match fetch_indirect_conditions.status() {
+				QueryStatus::Pending => html!(<Spinner />),
+				status => {
+					let fetched_conditions = match status {
+						QueryStatus::Success((_ids, items)) => Some(items),
+						_ => None,
+					};
+					let iter = action.conditions_to_apply.iter();
+					let iter = iter.filter_map(|indirect| match indirect {
+						IndirectCondition::Custom(custom) => Some(custom),
+						IndirectCondition::Id(id) => fetched_conditions
+							.map(|listings| listings.get(id))
+							.flatten(),
+					});
+					let condition_nodes = iter.map(|condition| {
+						html! {
+							<div>
+								<h6>{condition.name.clone()}</h6>
+								{condition.description.clone()}
+								<div>
+									<strong>{"Effects:"}</strong>
+									<div class="mx-2">
+										{mutator_list(&condition.mutators, Some(&state))}
+									</div>
+								</div>
+								{condition.criteria.as_ref().map(|evaluator| {
+									html! {
+										<div>
+											<strong class="me-2">{"Only If:"}</strong>
+											{format!("TODO: missing description for {:?}", evaluator)}
+										</div>
+									}
+								})}
+							</div>
+						}
+					});
+					html!(<>{condition_nodes.collect::<Vec<_>>()}</>)
+				}
+			};
+
 			action_sections.push(html! {
 				<div class="conditions">
 					<h5>{"Conditions Applied on Use"}</h5>
-					{conditions_to_apply.iter().map(|condition| {
-						html! {<div>
-							<h6>{condition.name.clone()}</h6>
-							{condition.description.clone()}
-							<div>
-								<strong>{"Effects:"}</strong>
-								<div class="mx-2">
-									{mutator_list(&condition.mutators, Some(&state))}
-								</div>
-							</div>
-							{condition.criteria.as_ref().map(|evaluator| {
-								html! {
-									<div>
-										<strong class="me-2">{"Only If:"}</strong>
-										{format!("TODO: missing description for {:?}", evaluator)}
-									</div>
-								}
-							})}
-						</div>}
-					}).collect::<Vec<_>>()}
+					{condition_content}
 				</div>
 			});
 		}
