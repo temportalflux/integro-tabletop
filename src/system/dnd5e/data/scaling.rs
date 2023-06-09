@@ -133,6 +133,7 @@ mod test {
 			for (name, level) in levels {
 				persistent.classes.push(Class {
 					name: (*name).to_owned(),
+					current_level: *level,
 					levels: (0..*level).into_iter().map(|_| Level::default()).collect(),
 					..Default::default()
 				});

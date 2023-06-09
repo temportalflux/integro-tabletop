@@ -117,6 +117,7 @@ mod test {
 			for (class_name, level) in levels {
 				persistent.classes.push(Class {
 					name: class_name.clone(),
+					current_level: *level,
 					levels: (0..*level).into_iter().map(|_| Level::default()).collect(),
 					..Default::default()
 				});

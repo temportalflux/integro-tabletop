@@ -293,6 +293,7 @@ mod test {
 			if level > 0 {
 				persistent.classes.push(Class {
 					name: "TestClass".into(),
+					current_level: level,
 					levels: {
 						let mut vec = Vec::with_capacity(level);
 						vec.resize_with(level, || Level::default());

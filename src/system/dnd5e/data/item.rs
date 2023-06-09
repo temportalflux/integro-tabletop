@@ -108,7 +108,8 @@ impl FromKDL for Item {
 		node: &kdl::KdlNode,
 		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
-		let id = ctx.parse_source_req(node)?;
+		// TODO: Items can have empty ids if they are completely custom in the sheet
+		let id = ctx.parse_source_opt(node)?.unwrap_or_default();
 
 		let name = node.get_str_req("name")?.to_owned();
 		let rarity = match node.query_str_opt("scope() > rarity", 0)? {
