@@ -1,0 +1,15 @@
+[
+  {
+    "version" : 1
+  },
+  {
+    "action" : {
+      "script" : "git submodule foreach --recursive \"git checkout main && git pull\"",
+      "showOutput" : false,
+      "type" : "sh",
+      "waitForExit" : true
+    },
+    "name" : "Update Submodules",
+    "target" : "repository"
+  }
+]
