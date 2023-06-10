@@ -3,7 +3,7 @@ use crate::system::{
 	dnd5e::{
 		data::{
 			action::LimitedUses,
-			character::{Character, Persistent},
+			character::{Character, ObjectCacheProvider, Persistent},
 			spell, Ability,
 		},
 		BoxedEvaluator,
@@ -18,6 +18,7 @@ mod cantrips;
 pub use cantrips::*;
 mod slots;
 pub use slots::*;
+use spell::Spell;
 
 #[derive(Clone, Default, PartialEq, Debug)]
 pub struct Spellcasting {
@@ -28,7 +29,13 @@ pub struct Spellcasting {
 	// - spell capacity (number of spells that can be prepared/known)
 	// - spells prepared (or known)
 	casters: HashMap<String, Caster>,
-	always_prepared: HashMap<SourceId, HashMap<PathBuf, SpellEntry>>,
+	always_prepared: HashMap<SourceId, AlwaysPreparedSpell>,
+}
+
+#[derive(Clone, Default, PartialEq, Debug)]
+pub struct AlwaysPreparedSpell {
+	pub spell: Option<Spell>,
+	pub entries: HashMap<PathBuf, SpellEntry>,
 }
 
 impl Spellcasting {
@@ -39,12 +46,26 @@ impl Spellcasting {
 	pub fn add_prepared(&mut self, spell_id: &SourceId, entry: SpellEntry) {
 		if !self.always_prepared.contains_key(&spell_id) {
 			self.always_prepared
-				.insert(spell_id.clone(), HashMap::new());
+				.insert(spell_id.clone(), AlwaysPreparedSpell::default());
 		}
 		self.always_prepared
 			.get_mut(spell_id)
 			.unwrap()
+			.entries
 			.insert(entry.source.clone(), entry);
+	}
+
+	pub async fn fetch_spell_objects(
+		&mut self,
+		provider: ObjectCacheProvider,
+	) -> anyhow::Result<()> {
+		for (id, spell_entry) in &mut self.always_prepared {
+			spell_entry.spell = provider
+				.database
+				.get_typed_entry::<Spell>(id.clone(), provider.system_depot.clone())
+				.await?;
+		}
+		Ok(())
 	}
 
 	pub fn cantrip_capacity(&self, persistent: &Persistent) -> Vec<(usize, &Restriction)> {
@@ -116,7 +137,7 @@ impl Spellcasting {
 		None
 	}
 
-	pub fn prepared_spells(&self) -> &HashMap<SourceId, HashMap<PathBuf, SpellEntry>> {
+	pub fn prepared_spells(&self) -> &HashMap<SourceId, AlwaysPreparedSpell> {
 		&self.always_prepared
 	}
 

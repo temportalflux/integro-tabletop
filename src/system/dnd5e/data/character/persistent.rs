@@ -489,7 +489,7 @@ impl SelectedSpellsData {
 			0 => self.num_cantrips += 1,
 			_ => self.num_spells += 1,
 		}
-		self.selections.insert(spell.id.clone(), spell);
+		self.selections.insert(spell.id.unversioned(), spell);
 	}
 
 	fn remove(&mut self, id: &SourceId) {

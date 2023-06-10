@@ -6,7 +6,7 @@ use crate::{
 		core::{SourceId, System},
 		dnd5e::{
 			components::GeneralProp,
-			data::character::{Character, DefaultsBlock, Persistent},
+			data::character::{Character, DefaultsBlock, ObjectCacheProvider, Persistent},
 			DnD5e,
 		},
 	},
@@ -58,7 +58,14 @@ fn use_character(id: SourceId) -> CharacterHandle {
 				let default_blocks = defaults_stream.all().await;
 
 				let mut character = Character::new(persistent, default_blocks);
-				character.recompile_async().await;
+				character.recompile();
+				let provider = ObjectCacheProvider {
+					database: handle.database.clone(),
+					system_depot: handle.system_depot.clone(),
+				};
+				if let Err(err) = character.update_cached_objects(provider).await {
+					log::warn!("Encountered error updating cached character objects: {err:?}");
+				}
 				handle.state.set(CharacterState::Loaded(character));
 				handle.set_recompiling(false);
 				handle.process_pending_mutations();
@@ -186,7 +193,14 @@ impl CharacterHandle {
 		let signal = self
 			.task_dispatch
 			.spawn("Recompile Character", None, async move {
-				character.recompile_async().await;
+				character.recompile();
+				let provider = ObjectCacheProvider {
+					database: handle.database.clone(),
+					system_depot: handle.system_depot.clone(),
+				};
+				if let Err(err) = character.update_cached_objects(provider).await {
+					log::warn!("Encountered error updating cached character objects: {err:?}");
+				}
 				handle.state.set(CharacterState::Loaded(character));
 				Ok(()) as anyhow::Result<()>
 			});

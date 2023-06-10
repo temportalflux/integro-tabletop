@@ -72,14 +72,7 @@ impl Character {
 		self.mutators.clear();
 	}
 
-	pub async fn recompile_async(&mut self) {
-		// TODO: STUB
-		// this is the api stub for the idea that the character could recompile asynchronously,
-		// fetching from the database as needed.
-		self.recompile();
-	}
-
-	fn recompile(&mut self) {
+	pub fn recompile(&mut self) {
 		self.character.set_data_path(&PathBuf::new());
 		self.derived = Derived::default();
 		self.mutators.clear();
@@ -88,6 +81,19 @@ impl Character {
 		}
 		self.apply_from(&self.character.clone(), &PathBuf::new());
 		self.apply_cached_mutators();
+	}
+
+	// TODO: Decouple database+system_depot from dnd data - there can be an abstraction/trait
+	// which specifies the minimal API for getting a cached object from a database of content
+	pub async fn update_cached_objects(
+		&mut self,
+		provider: ObjectCacheProvider,
+	) -> anyhow::Result<()> {
+		self.derived
+			.spellcasting
+			.fetch_spell_objects(provider)
+			.await?;
+		Ok(())
 	}
 
 	pub fn apply_from(&mut self, container: &impl MutatorGroup<Target = Self>, parent: &Path) {
@@ -466,4 +472,11 @@ impl Character {
 	pub fn cantrip_capacity(&self) -> Vec<(usize, &spellcasting::Restriction)> {
 		self.spellcasting().cantrip_capacity(&self.character)
 	}
+}
+
+pub struct ObjectCacheProvider {
+	// TODO: Decouple database+system_depot from dnd data - there can be an abstraction/trait
+	// which specifies the minimal API for getting a cached object from a database of content
+	pub database: crate::database::app::Database,
+	pub system_depot: crate::system::Depot,
 }

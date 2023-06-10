@@ -43,7 +43,7 @@ pub fn Spells() -> Html {
 	let mut sections = SpellSections::default();
 	sections.insert_slots(&state);
 	sections.insert_selected_spells(&state);
-	sections.insert_derived_spells(&state, &system);
+	sections.insert_derived_spells(&state);
 	sections.insert_available_ritual_spells(&state, &system);
 
 	let sections = {
@@ -217,23 +217,22 @@ impl<'c> SpellSections<'c> {
 					&caster.spell_entry,
 					SpellLocation::Selected {
 						caster_id: caster_id.clone(),
-						spell_id: spell.id.clone(),
+						spell_id: spell.id.unversioned(),
 					},
 				);
 			}
 		}
 	}
 
-	fn insert_derived_spells(&mut self, state: &'c CharacterHandle, system: &'c DnD5e) {
-		for (id, entries) in state.spellcasting().prepared_spells() {
-			// TODO: Query the database instead of accessing from system memory data
-			let Some(spell) = system.spells.get(id) else { continue; };
-			for (source, entry) in entries {
+	fn insert_derived_spells(&mut self, state: &'c CharacterHandle) {
+		for (_id, spell_entry) in state.spellcasting().prepared_spells() {
+			let Some(spell) = &spell_entry.spell else { continue; };
+			for (source, entry) in &spell_entry.entries {
 				self.insert_spell(
 					spell,
 					entry,
 					SpellLocation::AlwaysPrepared {
-						spell_id: spell.id.clone(),
+						spell_id: spell.id.unversioned(),
 						source: source.clone(),
 					},
 				);
@@ -286,7 +285,7 @@ impl<'c> SpellSections<'c> {
 					spell,
 					&caster.spell_entry,
 					SpellLocation::AvailableAsRitual {
-						spell_id: id.clone(),
+						spell_id: id.unversioned(),
 						caster_id: caster_id.clone(),
 					},
 				);
@@ -305,7 +304,7 @@ struct SectionSpell<'c> {
 	entry: &'c SpellEntry,
 	location: SpellLocation,
 }
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 enum SpellLocation {
 	Selected {
 		spell_id: SourceId,
@@ -336,9 +335,9 @@ impl SpellLocation {
 				Some((spell, &caster.spell_entry))
 			}
 			SpellLocation::AlwaysPrepared { spell_id, source } => {
-				let Some(spell) = system.spells.get(spell_id) else { return None; };
-				let Some(entries) = state.spellcasting().prepared_spells().get(spell_id) else { return None; };
-				let Some(entry) = entries.get(source) else { return None; };
+				let Some(spell_entry) = state.spellcasting().prepared_spells().get(spell_id) else { return None; };
+				let Some(spell) = &spell_entry.spell else { return None; };
+				let Some(entry) = spell_entry.entries.get(source) else { return None; };
 				Some((spell, entry))
 			}
 			SpellLocation::AvailableAsRitual {
@@ -667,7 +666,10 @@ fn SpellModal(
 ) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let system = use_context::<UseStateHandle<DnD5e>>().unwrap();
-	let Some((spell, entry)) = location.get(&state, &system) else { return Html::default(); };
+	let Some((spell, entry)) = location.get(&state, &system) else {
+		log::warn!("Invalid spell at location {location:?}");
+		return Html::default();
+	};
 
 	html! {<>
 		<div class="modal-header">
