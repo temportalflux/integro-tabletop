@@ -2,7 +2,7 @@ use crate::{
 	system::dnd5e::{
 		components::{
 			editor::{description, mutator_list},
-			validate_uint_only, FormulaInline, SharedCharacter, WalletInline,
+			validate_uint_only, CharacterHandle, FormulaInline, WalletInline,
 		},
 		data::{
 			item::{Item, ItemKind},
@@ -20,7 +20,7 @@ pub struct ItemBodyProps {
 	pub is_equipped: bool,
 	pub set_equipped: Option<Callback<bool>>,
 }
-pub fn item_body(item: &Item, state: &SharedCharacter, props: Option<ItemBodyProps>) -> Html {
+pub fn item_body(item: &Item, state: &CharacterHandle, props: Option<ItemBodyProps>) -> Html {
 	let props = props.unwrap_or_default();
 	let mut sections = Vec::new();
 	if IsProficientWith::Tool(item.name.clone()).evaluate(state) {
@@ -136,7 +136,7 @@ pub fn item_body(item: &Item, state: &SharedCharacter, props: Option<ItemBodyPro
 				equip_sections.push(html! {
 					<div class="border-bottom-theme-muted">
 						<div>{"You gain the following benefits while this item is equipped:"}</div>
-						{mutator_list(&equipment.mutators, None::<&SharedCharacter>)}
+						{mutator_list(&equipment.mutators, None::<&CharacterHandle>)}
 						{criteria_html.unwrap_or_default()}
 					</div>
 				});

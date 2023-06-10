@@ -1,7 +1,8 @@
 use crate::{
 	bootstrap::components::Tooltip,
 	components::stop_propagation,
-	system::dnd5e::{components::SharedCharacter, data::character::ActionEffect},
+	page::characters::sheet::MutatorImpact,
+	system::dnd5e::{components::CharacterHandle, data::character::Persistent},
 	utility::InputExt,
 };
 use uuid::Uuid;
@@ -24,7 +25,7 @@ pub fn ItemRowEquipBox(
 		is_equipped,
 	}: &EquipBoxProps,
 ) -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	if !*is_equipable {
 		return html! { {"--"} };
 	}
@@ -34,9 +35,9 @@ pub fn ItemRowEquipBox(
 		let state = state.clone();
 		move |evt: web_sys::Event| {
 			let Some(should_be_equipped) = evt.input_checked() else { return; };
-			state.dispatch(Box::new(move |persistent, _| {
+			state.dispatch(Box::new(move |persistent: &mut Persistent| {
 				persistent.inventory.set_equipped(&id, should_be_equipped);
-				Some(ActionEffect::Recompile)
+				MutatorImpact::Recompile
 			}));
 		}
 	});

@@ -1,4 +1,4 @@
-use crate::system::dnd5e::components::SharedCharacter;
+use crate::system::dnd5e::components::CharacterHandle;
 use uuid::Uuid;
 use yew::prelude::*;
 
@@ -28,7 +28,7 @@ pub enum AddItemOperation {
 
 #[function_component]
 pub fn AddItemButton(props: &AddItemButtonProps) -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 
 	let item_containers = {
 		use crate::system::dnd5e::data::item::AsItem;

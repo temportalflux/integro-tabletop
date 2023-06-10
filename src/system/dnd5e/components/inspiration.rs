@@ -1,12 +1,12 @@
-use crate::system::dnd5e::components::SharedCharacter;
+use crate::{page::characters::sheet::MutatorImpact, system::dnd5e::components::CharacterHandle};
 use yew::prelude::*;
 
 #[function_component]
 pub fn Inspiration() -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
-	let onclick = state.new_dispatch(|_, character, _| {
+	let state = use_context::<CharacterHandle>().unwrap();
+	let onclick = state.new_dispatch(|_, character| {
 		character.inspiration = !character.inspiration;
-		None
+		MutatorImpact::None
 	});
 	html! {
 		<div class="card m-1" style="width: 90px; height: 80px" {onclick}>

@@ -3,22 +3,19 @@ use crate::{
 		database::{use_query_all_typed, use_typed_fetch_callback, QueryAllArgs, QueryStatus},
 		Spinner,
 	},
+	page::characters::sheet::MutatorImpact,
 	system::dnd5e::{
 		components::{
 			editor::{feature, mutator_list},
-			SharedCharacter,
+			CharacterHandle,
 		},
-		data::{
-			character::{ActionEffect, Character, Persistent},
-			roll::Die,
-			Class, Level,
-		},
+		data::{character::Persistent, roll::Die, Class, Level},
 		DnD5e,
 	},
 	utility::InputExt,
 };
 use convert_case::{Case, Casing};
-use std::{collections::HashSet, rc::Rc, sync::Arc};
+use std::{collections::HashSet, sync::Arc};
 use yew::prelude::*;
 
 #[function_component]
@@ -88,7 +85,7 @@ struct ClassBrowserProps {
 fn ClassBrowser(ClassBrowserProps { on_added }: &ClassBrowserProps) -> Html {
 	use crate::system::core::System;
 
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 
 	let query_args = QueryAllArgs::<Class> {
 		system: DnD5e::id().into(),
@@ -114,12 +111,10 @@ fn ClassBrowser(ClassBrowserProps { on_added }: &ClassBrowserProps) -> Html {
 			let on_added = on_added.clone();
 			let update = update.clone();
 			move |class_to_add: Class| {
-				state.dispatch(Box::new(
-					move |persistent: &mut Persistent, _: &Rc<Character>| {
-						persistent.add_class(class_to_add);
-						Some(ActionEffect::Recompile)
-					},
-				));
+				state.dispatch(Box::new(move |persistent: &mut Persistent| {
+					persistent.add_class(class_to_add);
+					MutatorImpact::Recompile
+				}));
 				on_added.emit(());
 				update.force_update();
 			}
@@ -168,14 +163,14 @@ fn ClassBrowser(ClassBrowserProps { on_added }: &ClassBrowserProps) -> Html {
 
 #[function_component]
 fn ActiveClassList() -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	let onclick_add = Callback::from({
 		let state = state.clone();
 		move |idx: usize| {
-			state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
-				let Some(class) = persistent.classes.get_mut(idx) else { return None; };
+			state.dispatch(Box::new(move |persistent: &mut Persistent| {
+				let Some(class) = persistent.classes.get_mut(idx) else { return MutatorImpact::None; };
 				class.current_level += 1;
-				Some(ActionEffect::Recompile)
+				MutatorImpact::Recompile
 			}));
 		}
 	});
@@ -183,25 +178,25 @@ fn ActiveClassList() -> Html {
 	let remove_class = Callback::from({
 		let state = state.clone();
 		move |idx| {
-			state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
+			state.dispatch(Box::new(move |persistent: &mut Persistent| {
 				let _ = persistent.classes.remove(idx);
-				Some(ActionEffect::Recompile)
+				MutatorImpact::Recompile
 			}));
 		}
 	});
 	let onclick_remove = Callback::from({
 		let state = state.clone();
 		move |idx: usize| {
-			state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
+			state.dispatch(Box::new(move |persistent: &mut Persistent| {
 				let remove_class = {
-					let Some(class) = persistent.classes.get_mut(idx) else { return None; };
+					let Some(class) = persistent.classes.get_mut(idx) else { return MutatorImpact::None; };
 					class.current_level = class.current_level.saturating_sub(1);
 					class.current_level == 0
 				};
 				if remove_class {
 					let _ = persistent.classes.remove(idx);
 				}
-				Some(ActionEffect::Recompile)
+				MutatorImpact::Recompile
 			}));
 		}
 	});
@@ -241,7 +236,7 @@ fn ActiveClassList() -> Html {
 	</>}
 }
 
-fn class_body(value: &Class, state: Option<&SharedCharacter>) -> Html {
+fn class_body(value: &Class, state: Option<&CharacterHandle>) -> Html {
 	html! {<>
 		<div class="text-block">
 			{value.description.clone()}
@@ -254,7 +249,7 @@ fn class_body(value: &Class, state: Option<&SharedCharacter>) -> Html {
 	</>}
 }
 
-fn class_levels(value: &Class, state: Option<&SharedCharacter>) -> Html {
+fn class_levels(value: &Class, state: Option<&CharacterHandle>) -> Html {
 	let class_level_div_id = format!("{}-level", value.name.to_case(Case::Snake));
 	let iter_levels = value.iter_levels(state.is_none());
 	let iter_levels = iter_levels.filter(|entry| state.is_some() || !entry.level().is_empty());
@@ -357,7 +352,7 @@ pub fn CollapsableCard(props: &CollapsableCardProps) -> Html {
 	}
 }
 
-fn level_body(value: &Level, state: Option<&SharedCharacter>) -> Html {
+fn level_body(value: &Level, state: Option<&CharacterHandle>) -> Html {
 	html! {<>
 		{mutator_list(&value.mutators, state)}
 		{value.features.iter().map(|f| feature(f, state)).collect::<Vec<_>>()}
@@ -371,7 +366,7 @@ struct LevelHitPointsProps {
 }
 #[function_component]
 fn LevelHitPoints(LevelHitPointsProps { data_path, die }: &LevelHitPointsProps) -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	let Some(hp_path) = data_path else { return Html::default(); };
 	let hp_value = state
 		.get_first_selection_at::<u32>(hp_path)
@@ -382,9 +377,9 @@ fn LevelHitPoints(LevelHitPointsProps { data_path, die }: &LevelHitPointsProps) 
 		classes.push("missing-value");
 	}
 	let hp_path_dst = hp_path.clone();
-	let onchange = state.new_dispatch(move |evt: web_sys::Event, persistent, _| {
+	let onchange = state.new_dispatch(move |evt: web_sys::Event, persistent| {
 		persistent.set_selected(&hp_path_dst, evt.select_value());
-		Some(ActionEffect::Recompile) // TODO: this can be delayed till editor is closed i think
+		MutatorImpact::Recompile // TODO: this can be delayed till editor is closed i think
 	});
 	let info_text = hp_value.is_none().then(|| {
 		html! {

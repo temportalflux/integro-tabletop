@@ -2,7 +2,7 @@ use crate::{
 	bootstrap::components::Tooltip,
 	components::modal,
 	system::dnd5e::{
-		components::{roll::ModifierIcon, SharedCharacter},
+		components::{roll::ModifierIcon, CharacterHandle},
 		data::{Ability, Skill},
 	},
 };
@@ -151,7 +151,7 @@ fn Row(
 		ability_name_col,
 	}: &RowProps,
 ) -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 
 	let proficiency = state.skills().proficiency(*skill);
@@ -245,7 +245,7 @@ struct SkillModalProps {
 
 #[function_component]
 fn SkillModal(SkillModalProps { skill }: &SkillModalProps) -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 
 	let proficiency = state.skills().proficiency(*skill);
 	let bonus = state.ability_modifier(skill.ability(), Some(*proficiency.value()));

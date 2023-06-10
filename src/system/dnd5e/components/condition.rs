@@ -1,31 +1,28 @@
-use std::{rc::Rc, str::FromStr};
-
 use crate::{
 	components::{
 		database::{use_query_all_typed, use_typed_fetch_callback, QueryAllArgs, QueryStatus},
 		modal, Spinner, Tag, Tags,
 	},
+	page::characters::sheet::MutatorImpact,
 	system::{
 		core::SourceId,
 		dnd5e::{
 			components::{
 				editor::{mutator_list, CollapsableCard},
-				SharedCharacter,
+				CharacterHandle,
 			},
-			data::{
-				character::{ActionEffect, Character, Persistent},
-				Condition,
-			},
+			data::{character::Persistent, Condition},
 			DnD5e,
 		},
 	},
 	utility::InputExt,
 };
+use std::str::FromStr;
 use yew::prelude::*;
 
 #[function_component]
 pub fn ConditionsCard() -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 	let onclick = modal_dispatcher.callback(|_| {
 		modal::Action::Open(modal::Props {
@@ -70,7 +67,7 @@ pub fn ConditionsCard() -> Html {
 
 #[function_component]
 fn Modal() -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 
 	let add_condition_section = {
 		use crate::system::core::System;
@@ -84,9 +81,9 @@ fn Modal() -> Html {
 		let add_condition_by_id = use_typed_fetch_callback(
 			"Add Condition".into(),
 			state.new_dispatch(Box::new(
-				move |condition: Condition, persistent: &mut Persistent, _: &Rc<Character>| {
+				move |condition: Condition, persistent: &mut Persistent| {
 					persistent.conditions.insert(condition);
-					Some(ActionEffect::Recompile)
+					MutatorImpact::Recompile
 				},
 			)),
 		);
@@ -140,9 +137,9 @@ fn Modal() -> Html {
 	let on_remove_condition = Callback::from({
 		let state = state.clone();
 		move |key| {
-			state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
+			state.dispatch(Box::new(move |persistent: &mut Persistent| {
 				persistent.conditions.remove(&key);
-				Some(ActionEffect::Recompile)
+				MutatorImpact::Recompile
 			}));
 		}
 	});

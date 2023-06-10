@@ -1,7 +1,8 @@
 use crate::{
 	components::{modal, stop_propagation},
+	page::characters::sheet::MutatorImpact,
 	system::dnd5e::{
-		components::SharedCharacter,
+		components::CharacterHandle,
 		data::character::{HitPoint, Persistent},
 	},
 	utility::InputExt,
@@ -108,7 +109,7 @@ healed regains 1 hit point after 1d4 hours.";
 
 #[function_component]
 pub fn HitPointMgmtCard() -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 	let on_open_modal = modal_dispatcher.callback(|_| {
 		modal::Action::Open(modal::Props {
@@ -138,7 +139,7 @@ struct BodyProps {
 }
 #[function_component]
 fn HitPointsBody(BodyProps { on_open_modal }: &BodyProps) -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 
 	let hp_input_node = use_node_ref();
 	let take_hp_input = Callback::from({
@@ -155,22 +156,23 @@ fn HitPointsBody(BodyProps { on_open_modal }: &BodyProps) -> Html {
 			Some(value)
 		}
 	});
+	let max_hp = state.get_hp(HitPoint::Max);
 	let onclick_heal = state.new_dispatch({
 		let take_hp_input = take_hp_input.clone();
-		move |evt: MouseEvent, character, prev| {
+		move |evt: MouseEvent, character| {
 			evt.stop_propagation();
-			let Some(amt) = take_hp_input.emit(()) else { return None; };
-			*character.hit_points_mut() += (amt as i32, prev.get_hp(HitPoint::Max));
-			None
+			let Some(amt) = take_hp_input.emit(()) else { return MutatorImpact::None; };
+			*character.hit_points_mut() += (amt as i32, max_hp);
+			MutatorImpact::None
 		}
 	});
 	let onclick_dmg = state.new_dispatch({
 		let take_hp_input = take_hp_input.clone();
-		move |evt: MouseEvent, character, prev| {
+		move |evt: MouseEvent, character| {
 			evt.stop_propagation();
-			let Some(amt) = take_hp_input.emit(()) else { return None; };
-			*character.hit_points_mut() += (-1 * (amt as i32), prev.get_hp(HitPoint::Max));
-			None
+			let Some(amt) = take_hp_input.emit(()) else { return MutatorImpact::None; };
+			*character.hit_points_mut() += (-1 * (amt as i32), max_hp);
+			MutatorImpact::None
 		}
 	});
 
@@ -189,7 +191,7 @@ fn HitPointsBody(BodyProps { on_open_modal }: &BodyProps) -> Html {
 					</div>
 					<div class="col" style="min-width: 50px;">
 						<div style="font-size: 0.75rem; padding: 0 5px;">{"Max"}</div>
-						<div style="font-size: 26px; font-weight: 500;">{state.get_hp(HitPoint::Max)}</div>
+						<div style="font-size: 26px; font-weight: 500;">{max_hp}</div>
 					</div>
 					<div class="col" style="min-width: 50px; margin: 0 5px;">
 						<div style="font-size: 0.75rem;">{"Temp"}</div>
@@ -275,7 +277,7 @@ fn Modal() -> Html {
 
 #[function_component]
 pub fn ModalSectionDeathSaves() -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	if state.get_hp(HitPoint::Current) > 0 {
 		return html! {};
 	}
@@ -299,14 +301,14 @@ pub fn ModalSectionDeathSaves() -> Html {
 
 #[function_component]
 pub fn ModalSectionCurrentStats() -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	let apply_temp_hp = Callback::from({
 		let state = state.clone();
 		move |evt: web_sys::Event| {
 			let Some(value) = evt.input_value_t::<u32>() else { return; };
-			state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
+			state.dispatch(Box::new(move |persistent: &mut Persistent| {
 				persistent.hit_points_mut().temp = value;
-				None
+				MutatorImpact::None
 			}));
 		}
 	});
@@ -337,16 +339,14 @@ pub fn ModalSectionCurrentStats() -> Html {
 
 #[function_component]
 pub fn ModalSectionApplyChangeForm() -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 
 	let delta = use_state_eq(|| 0i32);
 	let (delta_sig, delta_abs) = (delta.signum(), delta.abs() as u32);
 	let prev_hp = state.get_hp(HitPoint::Current);
+	let max_hp = state.get_hp(HitPoint::Max);
 	let prev_temp = state.get_hp(HitPoint::Temp);
-	let next_hit_points = state
-		.persistent()
-		.hit_points()
-		.plus_hp(*delta, state.get_hp(HitPoint::Max));
+	let next_hit_points = state.persistent().hit_points().plus_hp(*delta, max_hp);
 	let healing_amt = delta_sig.max(0) as u32 * delta_abs;
 	let damage_amt = (-delta_sig).max(0) as u32 * delta_abs;
 	let new_hp_color_classes = match next_hit_points.current.cmp(&prev_hp) {
@@ -391,10 +391,10 @@ pub fn ModalSectionApplyChangeForm() -> Html {
 	});
 	let apply_delta = state.new_dispatch({
 		let delta = delta.clone();
-		move |_: MouseEvent, character, prev| {
-			*character.hit_points_mut() += (*delta, prev.get_hp(HitPoint::Max));
+		move |_: MouseEvent, character| {
+			*character.hit_points_mut() += (*delta, max_hp);
 			delta.set(0);
-			None
+			MutatorImpact::None
 		}
 	});
 	let clear_delta = Callback::from({
@@ -498,7 +498,7 @@ pub fn ModalSectionApplyChangeForm() -> Html {
 
 #[function_component]
 pub fn MaxHitPointsTable() -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	let rows =
 		state
 			.max_hit_points()
@@ -671,25 +671,25 @@ struct DeathSaveBoxesProps {
 }
 #[function_component]
 fn DeathSaveBoxes(DeathSaveBoxesProps { class_name }: &DeathSaveBoxesProps) -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 
 	let mut classes = classes!("form-check-input");
 	classes.push(class_name.as_str().to_owned());
 
 	let onchange = state.new_dispatch({
 		let class_name = class_name.clone();
-		move |evt: web_sys::Event, persistent, _| {
-			let Some(checked) = evt.input_checked() else { return None; };
+		move |evt: web_sys::Event, persistent| {
+			let Some(checked) = evt.input_checked() else { return MutatorImpact::None; };
 			let save_count = match class_name.as_str() {
 				"failure" => &mut persistent.hit_points_mut().failure_saves,
 				"success" => &mut persistent.hit_points_mut().success_saves,
-				_ => return None,
+				_ => return MutatorImpact::None,
 			};
 			*save_count = match checked {
 				true => save_count.saturating_add(1),
 				false => save_count.saturating_sub(1),
 			};
-			None
+			MutatorImpact::None
 		}
 	});
 

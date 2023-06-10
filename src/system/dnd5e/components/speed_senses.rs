@@ -3,7 +3,7 @@ use std::{collections::BTreeMap, path::PathBuf};
 use crate::{
 	components::modal,
 	system::dnd5e::{
-		components::SharedCharacter,
+		components::CharacterHandle,
 		data::bounded::{BoundKind, BoundedValue},
 	},
 };
@@ -31,7 +31,7 @@ fn SingleValue(SingleValueProps { title, amount }: &SingleValueProps) -> Html {
 
 #[function_component]
 pub fn SpeedAndSenses() -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 
 	let divider = (state.speeds().len() > 0 && state.senses().len() > 0)
@@ -147,7 +147,7 @@ static SENSE_DESC: [(&'static str, &'static str); 3] = [
 
 #[function_component]
 fn Modal() -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	html! {<>
 		<div class="modal-header">
 			<h1 class="modal-title fs-4">{"Speeds & Senses"}</h1>

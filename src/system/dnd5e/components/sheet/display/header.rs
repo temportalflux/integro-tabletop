@@ -1,10 +1,10 @@
-use crate::system::dnd5e::components::SharedCharacter;
+use crate::system::dnd5e::components::CharacterHandle;
 use itertools::Itertools;
 use yew::prelude::*;
 
 #[function_component]
 pub fn Header() -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 
 	let description = &state.persistent().description;
 	let iter_pronouns = description.pronouns.iter().sorted();

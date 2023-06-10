@@ -1,6 +1,6 @@
 use crate::{
 	components::{modal, AnnotatedNumber, AnnotatedNumberCard},
-	system::dnd5e::{components::SharedCharacter, data::ArmorClassFormula},
+	system::dnd5e::{components::CharacterHandle, data::ArmorClassFormula},
 };
 use yew::prelude::*;
 
@@ -14,7 +14,7 @@ Without armor or a shield, your character's AC equals 10 + their Dexterity modif
 
 #[function_component]
 pub fn ArmorClass() -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 	let on_click = modal_dispatcher.callback({
 		move |_| {
@@ -40,7 +40,7 @@ pub struct FormulaProps {
 
 #[function_component]
 pub fn FormulaInline(FormulaProps { formula }: &FormulaProps) -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	html! {<>
 		<span>{formula.base}</span>
 		{formula.bonuses.iter().fold(Vec::new(), |mut html, bounded| {
@@ -64,7 +64,7 @@ pub fn FormulaInline(FormulaProps { formula }: &FormulaProps) -> Html {
 
 #[function_component]
 fn Modal() -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	let value = state.armor_class().evaluate(&*state);
 
 	let formula_table = {

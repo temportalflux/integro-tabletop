@@ -19,7 +19,6 @@ use crate::{
 use enum_map::EnumMap;
 use std::{
 	path::{Path, PathBuf},
-	rc::Rc,
 	str::FromStr,
 };
 
@@ -58,30 +57,26 @@ impl From<Persistent> for Character {
 		character
 	}
 }
-impl yew::Reducible for Character {
-	type Action = Box<dyn FnOnce(&mut Persistent, &Rc<Self>) -> Option<ActionEffect>>;
-
-	fn reduce(self: Rc<Self>, action: Self::Action) -> Rc<Self> {
-		let mut full = (*self).clone();
-		Rc::new(match action(&mut full.character, &self) {
-			None => full,
-			Some(ActionEffect::Reset(persistent, defaults)) => Self::new(persistent, defaults),
-			Some(ActionEffect::Recompile) => {
-				Self::new(full.character.clone(), full.default_blocks.clone())
-			}
-		})
-	}
-}
 impl Character {
 	pub fn new(persistent: Persistent, default_blocks: Vec<DefaultsBlock>) -> Self {
-		let mut character = Self {
+		Self {
 			default_blocks,
 			character: persistent,
 			derived: Derived::default(),
 			mutators: Vec::new(),
-		};
-		character.recompile();
-		character
+		}
+	}
+
+	pub fn clear_derived(&mut self) {
+		self.derived = Derived::default();
+		self.mutators.clear();
+	}
+
+	pub async fn recompile_async(&mut self) {
+		// TODO: STUB
+		// this is the api stub for the idea that the character could recompile asynchronously,
+		// fetching from the database as needed.
+		self.recompile();
 	}
 
 	fn recompile(&mut self) {
@@ -237,8 +232,16 @@ impl Character {
 			.collect::<Vec<_>>()
 	}
 
+	pub fn default_blocks(&self) -> &Vec<DefaultsBlock> {
+		&self.default_blocks
+	}
+
 	pub fn persistent(&self) -> &Persistent {
 		&self.character
+	}
+
+	pub fn persistent_mut(&mut self) -> &mut Persistent {
+		&mut self.character
 	}
 
 	pub fn flags(&self) -> &EnumMap<Flag, bool> {

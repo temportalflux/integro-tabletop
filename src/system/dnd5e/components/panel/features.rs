@@ -2,7 +2,7 @@ use crate::{
 	components::{Tag, Tags},
 	path_map::PathMap,
 	system::dnd5e::{
-		components::{editor::description, SharedCharacter},
+		components::{editor::description, CharacterHandle},
 		data::Feature,
 	},
 };
@@ -11,7 +11,7 @@ use yew::prelude::*;
 
 #[function_component]
 pub fn Features() -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	let sort_order_alpha = use_state(|| true);
 
 	let features = match *sort_order_alpha {
@@ -107,7 +107,7 @@ fn FeatureBlock(
 	}: &FeatureBlockProps,
 ) -> Html {
 	use convert_case::{Case, Casing};
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	let feat_data_path = feature.get_display_path();
 	let selected_value_map = state.selected_values_in(&feat_data_path);
 

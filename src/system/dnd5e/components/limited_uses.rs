@@ -1,6 +1,7 @@
-use super::SharedCharacter;
+use super::CharacterHandle;
 use crate::{
 	components::stop_propagation,
+	page::characters::sheet::MutatorImpact,
 	system::dnd5e::data::{action::LimitedUses, character::Persistent},
 	utility::InputExt,
 };
@@ -8,7 +9,7 @@ use std::sync::Arc;
 use yew::prelude::*;
 
 pub struct UsesCounter<'parent> {
-	pub state: SharedCharacter,
+	pub state: CharacterHandle,
 	pub limited_uses: &'parent LimitedUses,
 }
 
@@ -28,9 +29,9 @@ impl<'parent> UsesCounter<'parent> {
 				move |delta: i32| {
 					let new_uses = consumed_uses.saturating_add(delta).max(0) as u32;
 					let uses_path = uses_path.clone();
-					state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
+					state.dispatch(Box::new(move |persistent: &mut Persistent| {
 						persistent.set_selected_value(uses_path.as_path(), new_uses.to_string());
-						None
+						MutatorImpact::None
 					}));
 				}
 			}),

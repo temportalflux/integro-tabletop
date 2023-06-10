@@ -1,7 +1,7 @@
 use crate::{
 	bootstrap::components::Tooltip,
 	components::{modal, Tag, Tags},
-	system::dnd5e::{components::SharedCharacter, mutator::Defense},
+	system::dnd5e::{components::CharacterHandle, mutator::Defense},
 };
 use yew::prelude::*;
 
@@ -24,7 +24,7 @@ half against the creature, not reduced by three-quarters.";
 
 #[function_component]
 pub fn DefensesCard() -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 	let onclick = modal_dispatcher.callback(|_| {
 		modal::Action::Open(modal::Props {
@@ -101,7 +101,7 @@ fn DefenseIcon(props: &GeneralProp<Defense>) -> Html {
 
 #[function_component]
 fn Modal() -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	let mut sections = Vec::new();
 	for (defense, entries) in state.defenses().iter() {
 		if entries.is_empty() {

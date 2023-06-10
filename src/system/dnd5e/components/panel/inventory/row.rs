@@ -1,18 +1,16 @@
 use super::InventoryItemProps;
 use crate::{
 	components::modal,
+	page::characters::sheet::MutatorImpact,
 	system::dnd5e::{
 		components::{
 			panel::{
 				inventory::equip_toggle::ItemRowEquipBox, item_body, AddItemButton,
 				AddItemOperation, ItemBodyProps,
 			},
-			SharedCharacter,
+			CharacterHandle,
 		},
-		data::{
-			character::ActionEffect,
-			item::{Item, ItemKind},
-		},
+		data::item::{Item, ItemKind},
 	},
 };
 use uuid::Uuid;
@@ -33,7 +31,7 @@ pub fn ItemRow(
 		is_equipped,
 	}: &ItemRowProps,
 ) -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 	let open_modal = modal_dispatcher.callback({
 		let id_path = id_path.clone();
@@ -70,7 +68,7 @@ pub fn ItemRow(
 
 #[function_component]
 pub fn ItemModal(InventoryItemProps { id_path }: &InventoryItemProps) -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 	let item = {
 		let mut iter = id_path.iter();
@@ -101,11 +99,14 @@ pub fn ItemModal(InventoryItemProps { id_path }: &InventoryItemProps) -> Html {
 	let on_delete = state.new_dispatch({
 		let id_path = id_path.clone();
 		let close_modal = modal_dispatcher.callback(|_| modal::Action::Close);
-		move |_: MouseEvent, persistent, _| {
+		move |_: MouseEvent, persistent| {
 			let equipped = id_path.len() == 1 && persistent.inventory.is_equipped(&id_path[0]);
 			let _item = persistent.inventory.remove_at_path(&id_path);
 			close_modal.emit(());
-			equipped.then_some(ActionEffect::Recompile)
+			match equipped {
+				true => MutatorImpact::Recompile,
+				false => MutatorImpact::None,
+			}
 		}
 	});
 	let mut item_props = ItemBodyProps::default();
@@ -113,13 +114,13 @@ pub fn ItemModal(InventoryItemProps { id_path }: &InventoryItemProps) -> Html {
 		ItemKind::Simple { .. } => {
 			item_props.on_quantity_changed = Some(state.new_dispatch({
 				let id_path = id_path.clone();
-				move |amt, persistent, _| {
+				move |amt, persistent| {
 					if let Some(item) = persistent.inventory.get_mut_at_path(&id_path) {
 						if let ItemKind::Simple { count } = &mut item.kind {
 							*count = amt;
 						}
 					}
-					None
+					MutatorImpact::None
 				}
 			}));
 		}
@@ -128,9 +129,9 @@ pub fn ItemModal(InventoryItemProps { id_path }: &InventoryItemProps) -> Html {
 				item_props.is_equipped = state.inventory().is_equipped(&id_path[0]);
 				item_props.set_equipped = Some(state.new_dispatch({
 					let id: Uuid = id_path[0].clone();
-					move |should_be_equipped, persistent, _| {
+					move |should_be_equipped, persistent| {
 						persistent.inventory.set_equipped(&id, should_be_equipped);
-						Some(ActionEffect::Recompile)
+						MutatorImpact::Recompile
 					}
 				}));
 			}
@@ -154,11 +155,11 @@ pub fn ItemModal(InventoryItemProps { id_path }: &InventoryItemProps) -> Html {
 			on_click={state.new_dispatch({
 				let close_modal = modal_dispatcher.callback(|_| modal::Action::Close);
 				let id_path = id_path.clone();
-				move |dst_id: Option<Vec<Uuid>>, persistent, _| {
-					let Some(item) = persistent.inventory.remove_at_path(&id_path) else { return None; };
+				move |dst_id: Option<Vec<Uuid>>, persistent| {
+					let Some(item) = persistent.inventory.remove_at_path(&id_path) else { return MutatorImpact::None; };
 					persistent.inventory.insert_to(item, &dst_id);
 					close_modal.emit(());
-					None
+					MutatorImpact::None
 				}
 			})}
 		/>

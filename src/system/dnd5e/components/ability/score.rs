@@ -2,7 +2,7 @@ use crate::{
 	bootstrap::components::Tooltip,
 	components::{modal, AnnotatedNumber},
 	system::dnd5e::{
-		components::{ability::AbilityGlyph, SharedCharacter},
+		components::{ability::AbilityGlyph, CharacterHandle},
 		data::{Ability, Skill},
 	},
 };
@@ -16,7 +16,7 @@ pub struct ScoreProps {
 
 #[function_component]
 pub fn Score(ScoreProps { ability }: &ScoreProps) -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 
 	// TODO: Display roll modifiers for ability checks.
@@ -73,7 +73,7 @@ pub struct AbilityProps {
 
 #[function_component]
 pub fn ScoreBreakdown(AbilityProps { ability }: &AbilityProps) -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	let ability_score = state.ability_scores().get(*ability);
 	let modifier = ability_score.score().modifier();
 	html! {<>

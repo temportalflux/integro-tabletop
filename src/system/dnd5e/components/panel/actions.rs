@@ -3,16 +3,17 @@ use crate::{
 		database::{use_query_typed, QueryStatus},
 		*,
 	},
+	page::characters::sheet::MutatorImpact,
 	system::{
 		core::SourceId,
 		dnd5e::{
 			components::{
 				editor::{description, mutator_list},
-				SharedCharacter, UsesCounter,
+				CharacterHandle, UsesCounter,
 			},
 			data::{
 				action::{ActivationKind, AttackCheckKind, AttackKindValue},
-				character::{ActionBudgetKind, ActionEffect, Persistent},
+				character::{ActionBudgetKind, Persistent},
 				AreaOfEffect, Condition, DamageRoll, Feature, IndirectCondition,
 			},
 		},
@@ -64,7 +65,7 @@ impl ActionTag {
 
 #[function_component]
 pub fn Actions() -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 	let selected_tags = use_state(|| EnumSet::<ActionTag>::all());
 
@@ -439,7 +440,7 @@ fn CollapsedFeature(ActionProps { entry }: &ActionProps) -> Html {
 
 #[function_component]
 fn ActionOverview(ActionProps { entry }: &ActionProps) -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 	let onclick = modal_dispatcher.callback({
@@ -502,12 +503,12 @@ fn ActionOverview(ActionProps { entry }: &ActionProps) -> Html {
 						move |evt: MouseEvent| {
 							evt.stop_propagation();
 							let conditions_to_apply = conditions_to_apply.clone();
-							state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
+							state.dispatch(Box::new(move |persistent: &mut Persistent| {
 								// TODO: Applying a condition should include the path to the feature which caused it (if it was not manually added)
 								for condition in &*conditions_to_apply {
 									persistent.conditions.insert(condition.clone());
 								}
-								Some(ActionEffect::Recompile)
+								MutatorImpact::Recompile
 							}));
 						}
 					});
@@ -601,7 +602,7 @@ struct ModalProps {
 }
 #[function_component]
 fn Modal(ModalProps { path }: &ModalProps) -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	let fetch_indirect_conditions = use_query_typed::<Condition>();
 	let indirect_condition_ids = use_state_eq(|| Vec::new());
 	use_effect_with_deps(

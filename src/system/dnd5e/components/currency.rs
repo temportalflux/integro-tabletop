@@ -1,7 +1,8 @@
 use crate::{
 	components::modal,
+	page::characters::sheet::MutatorImpact,
 	system::dnd5e::{
-		components::{editor::AutoExchangeSwitch, validate_uint_only, SharedCharacter},
+		components::{editor::AutoExchangeSwitch, validate_uint_only, CharacterHandle},
 		data::{
 			character::Persistent,
 			currency::{self, Wallet},
@@ -71,7 +72,7 @@ pub struct WalletContainerProps {
 	pub id: Option<Uuid>,
 }
 
-fn get_wallet<'c>(state: &'c SharedCharacter, id: &Option<Uuid>) -> Option<&'c Wallet> {
+fn get_wallet<'c>(state: &'c CharacterHandle, id: &Option<Uuid>) -> Option<&'c Wallet> {
 	match id {
 		None => Some(state.inventory().wallet()),
 		Some(id) => {
@@ -95,7 +96,7 @@ fn get_wallet_mut<'c>(persistent: &'c mut Persistent, id: &Option<Uuid>) -> Opti
 
 #[function_component]
 pub fn WalletInlineButton(WalletContainerProps { id }: &WalletContainerProps) -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 
 	let onclick = modal_dispatcher.callback({
@@ -125,7 +126,7 @@ pub fn WalletInlineButton(WalletContainerProps { id }: &WalletContainerProps) ->
 
 #[function_component]
 fn Modal(WalletContainerProps { id }: &WalletContainerProps) -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	let Some(wallet) = get_wallet(&state, id) else { return Html::default(); };
 	let adjustment_wallet = use_state(|| Wallet::default());
 	let balance_display = {
@@ -181,11 +182,11 @@ fn Modal(WalletContainerProps { id }: &WalletContainerProps) -> Html {
 					adjustments.set(Wallet::default());
 					wallet
 				};
-				state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
+				state.dispatch(Box::new(move |persistent: &mut Persistent| {
 					if let Some(target) = get_wallet_mut(persistent, &id) {
 						*target += adjustments;
 					}
-					None
+					MutatorImpact::None
 				}));
 			}
 		});
@@ -202,11 +203,11 @@ fn Modal(WalletContainerProps { id }: &WalletContainerProps) -> Html {
 					adjustments.set(Wallet::default());
 					wallet
 				};
-				state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
-					let Some(target) = get_wallet_mut(persistent, &id) else { return None; };
+				state.dispatch(Box::new(move |persistent: &mut Persistent| {
+					let Some(target) = get_wallet_mut(persistent, &id) else { return MutatorImpact::None; };
 					assert!(target.contains(&adjustments, auto_exchange));
 					target.remove(adjustments, auto_exchange);
-					None
+					MutatorImpact::None
 				}));
 			}
 		});
@@ -227,10 +228,10 @@ fn Modal(WalletContainerProps { id }: &WalletContainerProps) -> Html {
 				if !auto_exchange {
 					return;
 				}
-				state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
-					let Some(target) = get_wallet_mut(persistent, &id) else { return None; };
+				state.dispatch(Box::new(move |persistent: &mut Persistent| {
+					let Some(target) = get_wallet_mut(persistent, &id) else { return MutatorImpact::None; };
 					target.normalize();
-					None
+					MutatorImpact::None
 				}));
 			}
 		});

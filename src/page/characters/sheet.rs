@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use crate::{
 	components::{modal, Spinner},
 	database::app::{Database, FetchError},
@@ -8,73 +6,229 @@ use crate::{
 		core::{SourceId, System},
 		dnd5e::{
 			components::GeneralProp,
-			data::character::{ActionEffect, Character, DefaultsBlock, Persistent},
+			data::character::{Character, DefaultsBlock, Persistent},
 			DnD5e,
 		},
 	},
+	task,
+};
+use std::{
+	rc::Rc,
+	sync::{atomic::AtomicBool, Mutex},
 };
 use yew::prelude::*;
-use yew_hooks::{use_async_with_options, UseAsyncOptions};
 
-#[derive(Clone, PartialEq)]
-pub struct SharedCharacter(pub(crate) UseReducerHandle<Character>); // TODO: doesnt need to be pub
-impl std::ops::Deref for SharedCharacter {
-	type Target = UseReducerHandle<Character>;
+#[hook]
+fn use_character(id: SourceId) -> CharacterHandle {
+	let database = use_context::<Database>().unwrap();
+	let system_depot = use_context::<system::Depot>().unwrap();
+	let task_dispatch = use_context::<task::Dispatch>().unwrap();
+
+	let state = use_state(|| CharacterState::default());
+	let handle = CharacterHandle {
+		database,
+		system_depot,
+		task_dispatch,
+		state,
+		is_recompiling: Rc::new(AtomicBool::new(false)),
+		pending_mutations: Rc::new(Mutex::new(Vec::new())),
+	};
+
+	// Character Initialization
+	if !handle.is_loaded() && !handle.is_recompiling() {
+		handle.set_recompiling(true);
+		wasm_bindgen_futures::spawn_local({
+			let handle = handle.clone();
+			let initialize_character = async move {
+				let id_str = id.to_string();
+				log::debug!("Initializing character from {:?}", id_str);
+				let Some(persistent) = handle.database.get_typed_entry::<Persistent>(id, handle.system_depot.clone()).await? else {
+					return Err(CharacterInitializationError::CharacterMissing(id_str));
+				};
+
+				let query_defaults = handle.database.clone().query_typed::<DefaultsBlock>(
+					DnD5e::id(),
+					handle.system_depot.clone(),
+					None,
+				);
+				let query_result = query_defaults.await;
+				let defaults_stream = query_result.map_err(|err| {
+					CharacterInitializationError::DefaultsError(format!("{err:?}"))
+				})?;
+				let default_blocks = defaults_stream.all().await;
+
+				let mut character = Character::new(persistent, default_blocks);
+				character.recompile_async().await;
+				handle.state.set(CharacterState::Loaded(character));
+				handle.set_recompiling(false);
+				handle.process_pending_mutations();
+
+				Ok(()) as Result<(), CharacterInitializationError>
+			};
+			async move {
+				if let Err(err) = initialize_character.await {
+					log::error!("Failed to initialize character: {err:?}");
+				}
+			}
+		});
+	}
+
+	handle
+}
+
+#[derive(thiserror::Error, Debug)]
+enum CharacterInitializationError {
+	#[error("Character at key {0:?} is not in the database.")]
+	CharacterMissing(String),
+	#[error(transparent)]
+	EntryError(#[from] FetchError),
+	#[error("Defaults block query failed: {0}")]
+	DefaultsError(String),
+}
+
+#[derive(Clone)]
+pub struct CharacterHandle {
+	database: Database,
+	system_depot: system::Depot,
+	task_dispatch: task::Dispatch,
+	state: UseStateHandle<CharacterState>,
+	is_recompiling: Rc<AtomicBool>,
+	pending_mutations: Rc<Mutex<Vec<FnMutator>>>,
+}
+impl PartialEq for CharacterHandle {
+	fn eq(&self, other: &Self) -> bool {
+		self.state == other.state
+	}
+}
+impl std::ops::Deref for CharacterHandle {
+	type Target = Character;
 	fn deref(&self) -> &Self::Target {
-		&self.0
+		self.state.value()
 	}
 }
-impl AsRef<Character> for SharedCharacter {
+impl AsRef<Character> for CharacterHandle {
 	fn as_ref(&self) -> &Character {
-		&*self.0
+		self.state.value()
 	}
 }
-impl SharedCharacter {
+impl CharacterHandle {
+	fn set_recompiling(&self, value: bool) {
+		self.is_recompiling
+			.store(value, std::sync::atomic::Ordering::Relaxed);
+	}
+
+	fn is_recompiling(&self) -> bool {
+		self.is_recompiling
+			.load(std::sync::atomic::Ordering::Relaxed)
+	}
+
+	pub fn is_loaded(&self) -> bool {
+		matches!(&*self.state, CharacterState::Loaded(_))
+	}
+}
+
+pub enum MutatorImpact {
+	None,
+	Recompile,
+}
+
+#[derive(PartialEq, Default)]
+enum CharacterState {
+	#[default]
+	Unloaded,
+	Loaded(Character),
+}
+impl CharacterState {
+	fn value(&self) -> &Character {
+		match self {
+			Self::Loaded(character) => character,
+			Self::Unloaded => panic!("character not loaded"),
+		}
+	}
+}
+
+type FnMutator = Box<dyn FnOnce(&mut Persistent) -> MutatorImpact + 'static>;
+impl CharacterHandle {
+	fn process_pending_mutations(&self) {
+		let pending = {
+			let mut pending = self.pending_mutations.lock().unwrap();
+			pending.drain(..).collect::<Vec<_>>()
+		};
+		if pending.is_empty() {
+			return;
+		}
+
+		let mut character = match &*self.state {
+			CharacterState::Unloaded => {
+				log::error!("Failed to apply character mutation, character is not yet initialized");
+				return;
+			}
+			CharacterState::Loaded(character) => character.clone(),
+		};
+
+		let mut requires_recompile = false;
+		for mutator in pending {
+			match mutator(character.persistent_mut()) {
+				MutatorImpact::None => {}
+				MutatorImpact::Recompile => {
+					requires_recompile = true;
+				}
+			}
+		}
+		if !requires_recompile {
+			self.state.set(CharacterState::Loaded(character));
+			return;
+		}
+
+		let handle = self.clone();
+		self.set_recompiling(true);
+		character.clear_derived();
+		let signal = self
+			.task_dispatch
+			.spawn("Recompile Character", None, async move {
+				character.recompile_async().await;
+				handle.state.set(CharacterState::Loaded(character));
+				Ok(()) as anyhow::Result<()>
+			});
+
+		let handle = self.clone();
+		wasm_bindgen_futures::spawn_local(async move {
+			signal.wait_true().await;
+			handle.set_recompiling(false);
+			handle.process_pending_mutations();
+		});
+	}
+
+	pub fn dispatch<F>(&self, mutator: F)
+	where
+		F: FnOnce(&mut Persistent) -> MutatorImpact + 'static,
+	{
+		{
+			let mut pending_mutations = self.pending_mutations.lock().unwrap();
+			pending_mutations.push(Box::new(mutator));
+		}
+		if !self.is_recompiling() {
+			self.process_pending_mutations();
+		}
+	}
+
 	pub fn new_dispatch<I, F>(&self, mutator: F) -> Callback<I>
 	where
 		I: 'static,
-		F: Fn(I, &mut Persistent, &std::rc::Rc<Character>) -> Option<ActionEffect> + 'static,
+		F: Fn(I, &mut Persistent) -> MutatorImpact + 'static,
 	{
-		let handle = self.0.clone();
+		let handle = self.clone();
 		let mutator = std::rc::Rc::new(mutator);
 		Callback::from(move |input: I| {
 			let mutator = mutator.clone();
-			handle.dispatch(Box::new(move |a, b| (*mutator)(input, a, b)));
+			handle.dispatch(move |persistent| (*mutator)(input, persistent));
 		})
 	}
 }
 
 #[function_component]
 pub fn Sheet(props: &GeneralProp<SourceId>) -> Html {
-	let database = use_context::<Database>().unwrap();
-	let system_depot = use_context::<system::Depot>().unwrap();
-	let character = SharedCharacter(use_reducer(|| {
-		Character::new(Persistent::default(), Vec::new())
-	}));
-	let initiaize_character = use_async_with_options(
-		{
-			let character = character.clone();
-			let id = props.value.clone();
-			async move {
-				let Some(persistent) = database.get_typed_entry::<Persistent>(id.clone(), system_depot.clone()).await? else {
-					return Err(QueryCharacterError::EntryMissing(id.to_string()));
-				};
-
-				let default_blocks = database
-					.query_typed::<DefaultsBlock>(DnD5e::id(), system_depot.clone(), None)
-					.await?
-					.all()
-					.await;
-
-				character.dispatch(Box::new(move |_: &mut Persistent, _: &Rc<Character>| {
-					Some(ActionEffect::Reset(persistent, default_blocks))
-				}));
-
-				Ok(()) as Result<(), QueryCharacterError>
-			}
-		},
-		UseAsyncOptions::enable_auto(),
-	);
+	let character = use_character(props.value.clone());
 	// TODO: Remove dependence on system struct
 	let system = use_state(|| DnD5e::default());
 
@@ -88,13 +242,13 @@ pub fn Sheet(props: &GeneralProp<SourceId>) -> Html {
 		move |_| show_editor.set(true)
 	});
 
-	if initiaize_character.loading || initiaize_character.data.is_none() {
+	if !character.is_loaded() {
 		return html!(<Spinner />);
 	}
 
 	html! {<>
 		<ContextProvider<UseStateHandle<DnD5e>> context={system}>
-			<ContextProvider<SharedCharacter> context={character.clone()}>
+			<ContextProvider<CharacterHandle> context={character.clone()}>
 				<div style="--theme-frame-color: #BA90CB; --theme-frame-color-muted: #BA90CB80; --theme-roll-modifier: #ffffff;">
 					<modal::Provider>
 						<modal::GeneralPurpose />
@@ -104,20 +258,7 @@ pub fn Sheet(props: &GeneralProp<SourceId>) -> Html {
 						}}
 					</modal::Provider>
 				</div>
-			</ContextProvider<SharedCharacter>>
+			</ContextProvider<CharacterHandle>>
 		</ContextProvider<UseStateHandle<DnD5e>>>
 	</>}
-}
-
-#[derive(thiserror::Error, Debug, Clone)]
-enum QueryCharacterError {
-	#[error("Entry at key {0:?} is not in the database.")]
-	EntryMissing(String),
-	#[error(transparent)]
-	DatabaseError(#[from] FetchError),
-}
-impl From<idb::Error> for QueryCharacterError {
-	fn from(value: idb::Error) -> Self {
-		Self::DatabaseError(FetchError::FindEntry(value.into()))
-	}
 }

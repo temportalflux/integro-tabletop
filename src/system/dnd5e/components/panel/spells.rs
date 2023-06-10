@@ -1,13 +1,14 @@
 use crate::{
-	components::{modal, stop_propagation, Spinner},
+	components::{database::use_typed_fetch_callback, modal, stop_propagation, Spinner},
 	database::app::{Database, QueryDeserialize},
+	page::characters::sheet::MutatorImpact,
 	system::{
 		self,
 		core::{ModuleId, SourceId},
 		dnd5e::{
 			components::{
 				editor::{CollapsableCard, DescriptionSection},
-				SharedCharacter,
+				CharacterHandle,
 			},
 			data::{
 				character::spellcasting::{CasterKind, RitualCapability, SpellEntry, SpellFilter},
@@ -36,7 +37,7 @@ fn rank_suffix(rank: u8) -> &'static str {
 
 #[function_component]
 pub fn Spells() -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	let system = use_context::<UseStateHandle<DnD5e>>().unwrap();
 
 	let mut sections = SpellSections::default();
@@ -166,7 +167,7 @@ impl<'c> SpellSections<'c> {
 		9
 	}
 
-	fn insert_slots(&mut self, state: &'c SharedCharacter) {
+	fn insert_slots(&mut self, state: &'c CharacterHandle) {
 		if let Some(slots) = state.spellcasting().spell_slots(&*state) {
 			for (rank, slot_count) in slots {
 				let section =
@@ -206,7 +207,7 @@ impl<'c> SpellSections<'c> {
 		}
 	}
 
-	fn insert_selected_spells(&mut self, state: &'c SharedCharacter) {
+	fn insert_selected_spells(&mut self, state: &'c CharacterHandle) {
 		for caster_id in state.persistent().selected_spells.iter_caster_ids() {
 			let Some(caster) = state.spellcasting().get_caster(caster_id) else { continue; };
 			let Some(iter_spells) = state.persistent().selected_spells.iter_caster(caster_id) else { continue; };
@@ -223,7 +224,7 @@ impl<'c> SpellSections<'c> {
 		}
 	}
 
-	fn insert_derived_spells(&mut self, state: &'c SharedCharacter, system: &'c DnD5e) {
+	fn insert_derived_spells(&mut self, state: &'c CharacterHandle, system: &'c DnD5e) {
 		for (id, entries) in state.spellcasting().prepared_spells() {
 			// TODO: Query the database instead of accessing from system memory data
 			let Some(spell) = system.spells.get(id) else { continue; };
@@ -240,7 +241,7 @@ impl<'c> SpellSections<'c> {
 		}
 	}
 
-	fn insert_available_ritual_spells(&mut self, state: &'c SharedCharacter, system: &'c DnD5e) {
+	fn insert_available_ritual_spells(&mut self, state: &'c CharacterHandle, system: &'c DnD5e) {
 		// TODO: Realistically, this is data that can be compiled when the sheet opens.
 		// The only things that affect this is:
 		// 1. what modules are loaded (i.e. what spells are available)
@@ -322,7 +323,7 @@ enum SpellLocation {
 impl SpellLocation {
 	fn get<'this, 'c>(
 		&'this self,
-		state: &'c SharedCharacter,
+		state: &'c CharacterHandle,
 		system: &'c DnD5e,
 	) -> Option<(&'c Spell, &'c SpellEntry)> {
 		match self {
@@ -376,7 +377,7 @@ impl<'c> SectionProps<'c> {
 }
 
 fn spell_section<'c>(
-	state: &'c SharedCharacter,
+	state: &'c CharacterHandle,
 	rank: u8,
 	section_props: SectionProps<'c>,
 ) -> Html {
@@ -402,8 +403,8 @@ fn spell_section<'c>(
 	let slots = section_props.slot_count.as_ref().map(|(consumed, count)| {
 		let toggle_slot = state.new_dispatch({
 			let consumed_slots = *consumed;
-			move |evt: web_sys::Event, persistent, _| {
-				let Some(consume_slot) = evt.input_checked() else { return None; };
+			move |evt: web_sys::Event, persistent| {
+				let Some(consume_slot) = evt.input_checked() else { return MutatorImpact::None; };
 				let new_consumed_slots = match consume_slot {
 					true => consumed_slots.saturating_add(1),
 					false => consumed_slots.saturating_sub(1),
@@ -411,7 +412,7 @@ fn spell_section<'c>(
 				persistent
 					.selected_spells
 					.set_slots_consumed(rank, new_consumed_slots);
-				None
+				MutatorImpact::None
 			}
 		});
 		html! {
@@ -470,7 +471,7 @@ fn spell_section<'c>(
 }
 
 struct SpellRowProps<'c> {
-	state: &'c SharedCharacter,
+	state: &'c CharacterHandle,
 	section_rank: u8,
 	slots: Option<(usize, usize)>,
 	section_spell: SectionSpell<'c>,
@@ -664,7 +665,7 @@ fn SpellModal(
 		children: _,
 	}: &SpellModalProps,
 ) -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	let system = use_context::<UseStateHandle<DnD5e>>().unwrap();
 	let Some((spell, entry)) = location.get(&state, &system) else { return Html::default(); };
 
@@ -681,7 +682,7 @@ fn SpellModal(
 
 #[function_component]
 fn ManagerCasterModal(CasterNameProps { caster_id }: &CasterNameProps) -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	let Some(caster) = state.spellcasting().get_caster(caster_id.as_str()) else {
 		return html! {<>
 			<div class="modal-header">
@@ -826,8 +827,7 @@ fn SpellListAction(
 		rank,
 	}: &SpellListActionProps,
 ) -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
-	let system = use_context::<UseStateHandle<DnD5e>>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	let Some(caster) = state.spellcasting().get_caster(info.id.as_str()) else { return Html::default(); };
 
 	let mut can_select_more = true;
@@ -877,24 +877,35 @@ fn SpellListAction(
 		},
 	};
 
-	let onclick = (!disabled).then({
-		|| {
+	let select_spell = use_typed_fetch_callback(
+		"Select Spell".into(),
+		Callback::from({
 			let caster_id = info.id.clone();
-			let spell_id = spell_id.clone();
-			let system = system.clone();
-			state.new_dispatch(move |evt: MouseEvent, persistent, _| {
-				evt.stop_propagation();
-				if is_selected {
-					persistent.selected_spells.remove(&caster_id, &spell_id);
-					None
-				} else {
-					let Some(spell) = system.spells.get(&spell_id) else { return None; };
-					persistent.selected_spells.insert(&caster_id, spell.clone());
-					None // TODO: maybe recompile when spells are added because of bonuses to spell attacks and other mutators?
-				}
+			state.new_dispatch(move |spell: Spell, persistent| {
+				persistent.selected_spells.insert(&caster_id, spell);
+				MutatorImpact::None // TODO: maybe recompile when spells are added because of bonuses to spell attacks and other mutators?
 			})
+		}),
+	);
+	let deselect_spell = state.new_dispatch({
+		let caster_id = info.id.clone();
+		move |spell_id: SourceId, persistent| {
+			persistent.selected_spells.remove(&caster_id, &spell_id);
+			MutatorImpact::None
 		}
 	});
+	let onclick = Callback::from({
+		let spell_id = spell_id.clone();
+		move |evt: MouseEvent| {
+			evt.stop_propagation();
+			let target = match is_selected {
+				true => &deselect_spell,
+				false => &select_spell,
+			};
+			target.emit(spell_id.clone());
+		}
+	});
+	let onclick = (!disabled).then_some(onclick);
 
 	html! {
 		<button type="button" class={classes} {disabled} {onclick}>{action_name}</button>
@@ -903,7 +914,7 @@ fn SpellListAction(
 
 fn spell_list_item(
 	section_id: &str,
-	state: &SharedCharacter,
+	state: &CharacterHandle,
 	spell: &Spell,
 	entry: &SpellEntry,
 	action: Html,
@@ -963,7 +974,7 @@ fn spell_list_item(
 	}
 }
 
-fn spell_content(spell: &Spell, entry: &SpellEntry, state: &SharedCharacter) -> Html {
+fn spell_content(spell: &Spell, entry: &SpellEntry, state: &CharacterHandle) -> Html {
 	use crate::{
 		components::{Tag, Tags},
 		system::dnd5e::data::AreaOfEffect,
@@ -1152,7 +1163,7 @@ where
 pub fn AvailableSpellList(props: &AvailableSpellListProps) -> Html {
 	use yew_hooks::{use_async_with_options, UseAsyncOptions};
 	log::debug!(target: "ui", "Render available spells");
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	let database = use_context::<Database>().unwrap();
 	let system_depot = use_context::<system::Depot>().unwrap();
 	let load_data = use_async_with_options(
@@ -1306,7 +1317,7 @@ enum UseSpell {
 }
 #[function_component]
 fn UseSpellButton(UseSpellButtonProps { kind }: &UseSpellButtonProps) -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	match kind {
 		UseSpell::AtWill => html! {
 			<div class="text-center" style="font-size: 9px; font-weight: 700; color: var(--bs-gray-600);">
@@ -1333,14 +1344,14 @@ fn UseSpellButton(UseSpellButtonProps { kind }: &UseSpellButtonProps) -> Html {
 					.map(|(consumed, _max)| *consumed)
 					.unwrap_or(0);
 				let slot_rank = *slot_rank;
-				move |evt: MouseEvent, persistent, _| {
+				move |evt: MouseEvent, persistent| {
 					evt.stop_propagation();
 					if can_cast {
 						persistent
 							.selected_spells
 							.set_slots_consumed(slot_rank, consumed_slots + 1);
 					}
-					None
+					MutatorImpact::None
 				}
 			});
 			// TODO: Revisit when spell panel rows are more fleshed out. This upcast rank span thing is not
@@ -1377,11 +1388,11 @@ fn UseSpellButton(UseSpellButtonProps { kind }: &UseSpellButtonProps) -> Html {
 				Some(path) => state.new_dispatch({
 					let uses_consumed = *uses_consumed;
 					let key = path.clone();
-					move |evt: MouseEvent, persistent, _| {
+					move |evt: MouseEvent, persistent| {
 						evt.stop_propagation();
 						let uses_consumed = uses_consumed + 1;
 						persistent.set_selected_value(&key, uses_consumed.to_string());
-						None
+						MutatorImpact::None
 					}
 				}),
 			};

@@ -3,7 +3,7 @@ use crate::{
 	system::{
 		core::SourceId,
 		dnd5e::{
-			components::{SharedCharacter, WalletInlineButton},
+			components::{CharacterHandle, WalletInlineButton},
 			data::item::AsItem,
 		},
 	},
@@ -34,7 +34,7 @@ pub struct InventoryItemProps {
 
 #[function_component]
 pub fn Inventory() -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 	let open_browser = modal_dispatcher.callback(|_| {
 		modal::Action::Open(modal::Props {
@@ -74,7 +74,7 @@ struct ContainerSectionProps {
 }
 #[function_component]
 fn ContainerSection(ContainerSectionProps { container_id }: &ContainerSectionProps) -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 
 	let open_modal = match container_id {

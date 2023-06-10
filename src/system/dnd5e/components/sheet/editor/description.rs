@@ -1,6 +1,7 @@
 use crate::{
+	page::characters::sheet::MutatorImpact,
 	system::dnd5e::{
-		components::{validate_uint_only, GeneralProp, SharedCharacter},
+		components::{validate_uint_only, CharacterHandle, GeneralProp},
 		data::{character::PersonalityKind, Size},
 	},
 	utility::InputExt,
@@ -25,7 +26,7 @@ pub fn DescriptionTab() -> Html {
 
 #[function_component]
 fn SizeForm() -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 
 	let formula = state.derived_description().size_formula;
 	let height = state.persistent().description.height;
@@ -70,25 +71,22 @@ fn SizeForm() -> Html {
 	);
 	let weight_label = format!("{}kg", ((weight as f32) * 0.45359237).round() as u32);
 
-	let set_height = state.new_dispatch(|evt: web_sys::Event, persistent, _| {
-		let Some(value) = evt.input_value_t::<u32>() else { return None; };
+	let set_height = state.new_dispatch(|evt: web_sys::Event, persistent| {
+		let Some(value) = evt.input_value_t::<u32>() else { return MutatorImpact::None; };
 		persistent.description.height = value;
-		None
+		MutatorImpact::None
 	});
-	let set_weight = state.new_dispatch(|evt: web_sys::Event, persistent, _| {
-		let Some(value) = evt.input_value_t::<u32>() else { return None; };
+	let set_weight = state.new_dispatch(|evt: web_sys::Event, persistent| {
+		let Some(value) = evt.input_value_t::<u32>() else { return MutatorImpact::None; };
 		persistent.description.weight = value;
-		None
+		MutatorImpact::None
 	});
-	let roll_size = state.new_dispatch(|_, persistent, character| {
+	let roll_size = state.new_dispatch(move |_, persistent| {
 		let mut rng = rand::thread_rng();
-		let (height, weight) = character
-			.derived_description()
-			.size_formula
-			.get_random(&mut rng);
+		let (height, weight) = formula.get_random(&mut rng);
 		persistent.description.height = height;
 		persistent.description.weight = weight;
-		None
+		MutatorImpact::None
 	});
 
 	html! {
@@ -164,11 +162,11 @@ fn PersonalitySection() -> Html {
 
 #[function_component]
 fn PersonalityCard(GeneralProp { value }: &GeneralProp<PersonalityKind>) -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	let personality_kind = *value;
-	let add_item = state.new_dispatch(move |value, persistent, _| {
+	let add_item = state.new_dispatch(move |value, persistent| {
 		persistent.description.personality[personality_kind].push(value);
-		None
+		MutatorImpact::None
 	});
 	let info_collapse = {
 		let collapse_id = format!("{}-info", value.to_string());
@@ -191,15 +189,15 @@ fn PersonalityCard(GeneralProp { value }: &GeneralProp<PersonalityKind>) -> Html
 	};
 	let selected_values = {
 		let add_custom = add_item.reform(|_| String::new());
-		let delete_item = state.new_dispatch(move |idx: usize, persistent, _| {
+		let delete_item = state.new_dispatch(move |idx: usize, persistent| {
 			persistent.description.personality[personality_kind].remove(idx);
-			None
+			MutatorImpact::None
 		});
-		let update_item = state.new_dispatch(move |(idx, evt): (usize, web_sys::Event), persistent, _| {
-			let Some(value) = evt.input_value() else { return None; };
-			let Some(target) = persistent.description.personality[personality_kind].get_mut(idx) else { return None; };
+		let update_item = state.new_dispatch(move |(idx, evt): (usize, web_sys::Event), persistent| {
+			let Some(value) = evt.input_value() else { return MutatorImpact::None; };
+			let Some(target) = persistent.description.personality[personality_kind].get_mut(idx) else { return MutatorImpact::None; };
 			*target = value.trim().to_owned();
-			None
+			MutatorImpact::None
 		});
 		let selected_traits = &state.persistent().description.personality[*value];
 		html! {

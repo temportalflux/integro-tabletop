@@ -6,16 +6,17 @@ use crate::{
 		Spinner,
 	},
 	database::app::Criteria,
+	page::characters::sheet::MutatorImpact,
 	system::{
 		core::{ModuleId, SourceId, System},
 		dnd5e::{
 			components::{
 				editor::CollapsableCard,
 				panel::{item_body, AddItemButton, AddItemOperation},
-				validate_uint_only, GeneralProp, SharedCharacter, WalletInline,
+				validate_uint_only, CharacterHandle, GeneralProp, WalletInline,
 			},
 			data::{
-				character::{Character, Persistent},
+				character::Persistent,
 				currency::Wallet,
 				item::{Item, ItemKind},
 			},
@@ -24,7 +25,7 @@ use crate::{
 	},
 	utility::InputExt,
 };
-use std::rc::Rc;
+
 use uuid::Uuid;
 use yew::prelude::*;
 
@@ -173,15 +174,15 @@ pub fn SearchInput(SearchInputProps { on_change }: &SearchInputProps) -> Html {
 
 #[function_component]
 fn BrowsedItemCard(props: &GeneralProp<Item>) -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	let item = &props.value;
 
 	let add_item = use_typed_fetch_callback_tuple::<Item, Option<Vec<Uuid>>>(
 		"Add Item".into(),
 		state.new_dispatch(Box::new({
-			move |(item, container_id), persistent: &mut Persistent, _: &Rc<Character>| {
+			move |(item, container_id), persistent: &mut Persistent| {
 				persistent.inventory.insert_to(item, &container_id);
-				None
+				MutatorImpact::None
 			}
 		})),
 	);
@@ -255,7 +256,7 @@ fn AddItemActions(
 		worth,
 	}: &AddItemActionsProps,
 ) -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	let auto_exchange = state.persistent().settings.currency_auto_exchange;
 	let amt_to_add = use_state_eq(|| 1u32);
 	let amt_to_buy = use_state_eq(|| 1u32);
@@ -263,7 +264,7 @@ fn AddItemActions(
 	let add_items = use_typed_fetch_callback_tuple::<Item, AddItemArgs>(
 		"Add Items".into(),
 		state.new_dispatch(Box::new({
-			move |args: (Item, AddItemArgs), persistent: &mut Persistent, _: &Rc<Character>| {
+			move |args: (Item, AddItemArgs), persistent: &mut Persistent| {
 				let (mut item, (amount, cost, container_id)) = args;
 				let items = if let ItemKind::Simple { count } = &mut item.kind {
 					*count *= amount;
@@ -283,7 +284,7 @@ fn AddItemActions(
 				for item in items {
 					persistent.inventory.insert_to(item, &container_id);
 				}
-				None
+				MutatorImpact::None
 			}
 		})),
 	);

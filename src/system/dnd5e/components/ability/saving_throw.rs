@@ -1,7 +1,7 @@
 use crate::{
 	bootstrap::components::Tooltip,
 	components::modal,
-	system::dnd5e::components::{roll::ModifierIcon, SharedCharacter},
+	system::dnd5e::components::{roll::ModifierIcon, CharacterHandle},
 	system::dnd5e::data::Ability,
 };
 use enumset::EnumSet;
@@ -44,7 +44,7 @@ pub fn SavingThrow(
 		abbreviated,
 	}: &SavingThrowProps,
 ) -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	let proficiency = &state.saving_throws().get_prof(*ability);
 	let modifier = state.ability_modifier(*ability, Some(*proficiency.value()));
 	let mod_sign = match modifier >= 0 {
@@ -76,7 +76,7 @@ pub fn SavingThrow(
 
 #[function_component]
 pub fn SavingThrowContainer() -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 
 	let on_click = modal_dispatcher.callback({
@@ -140,7 +140,7 @@ pub fn SavingThrowContainer() -> Html {
 
 #[function_component]
 fn Modal() -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	let abilities = {
 		let mut all = EnumSet::<Ability>::all().into_iter().collect::<Vec<_>>();
 		all.sort();

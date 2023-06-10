@@ -1,10 +1,8 @@
 use crate::{
+	page::characters::sheet::MutatorImpact,
 	system::dnd5e::{
-		components::{ability, validate_uint_only, SharedCharacter},
-		data::{
-			character::{ActionEffect, Persistent},
-			Ability,
-		},
+		components::{ability, validate_uint_only, CharacterHandle},
+		data::{character::Persistent, Ability},
 	},
 	utility::InputExt,
 };
@@ -43,16 +41,16 @@ struct AbilityScoreInputProps {
 
 #[function_component]
 fn AbilityScoreInput(AbilityScoreInputProps { ability }: &AbilityScoreInputProps) -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	let onchange = Callback::from({
 		let state = state.clone();
 		let ability = *ability;
 		move |evt: web_sys::Event| {
 			let Some(value) = evt.input_value_t::<u32>() else { return; };
-			state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
+			state.dispatch(Box::new(move |persistent: &mut Persistent| {
 				persistent.ability_scores[ability] = value;
 				// only actually need ability_score_finalize to execute
-				Some(ActionEffect::Recompile)
+				MutatorImpact::Recompile
 			}));
 		}
 	});
@@ -122,7 +120,7 @@ impl FromStr for GeneratorMethod {
 
 #[function_component]
 fn GenerationSection() -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	let method = use_state_eq(|| None);
 	let scores = use_state_eq(|| EnumMap::<Ability, u32>::default());
 	let onchange = Callback::from({
@@ -137,10 +135,10 @@ fn GenerationSection() -> Html {
 		let scores = scores.clone();
 		move |_| {
 			let scores = (*scores).clone();
-			state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
+			state.dispatch(Box::new(move |persistent: &mut Persistent| {
 				persistent.ability_scores = scores;
 				// only actually need ability_score_finalize to execute
-				Some(ActionEffect::Recompile)
+				MutatorImpact::Recompile
 			}));
 		}
 	});

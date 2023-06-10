@@ -1,5 +1,6 @@
 use crate::{
-	system::dnd5e::{components::SharedCharacter, data::character::Persistent},
+	page::characters::sheet::MutatorImpact,
+	system::dnd5e::{components::CharacterHandle, data::character::Persistent},
 	utility::InputExt,
 };
 use yew::prelude::*;
@@ -32,14 +33,14 @@ pub fn HomeTab() -> Html {
 
 #[function_component]
 fn NameEditor() -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	let onchange = Callback::from({
 		let state = state.clone();
 		move |evt: web_sys::Event| {
 			let Some(value) = evt.input_value() else { return; };
-			state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
+			state.dispatch(Box::new(move |persistent: &mut Persistent| {
 				persistent.description.name = value;
-				None
+				MutatorImpact::None
 			}));
 		}
 	});
@@ -59,7 +60,7 @@ fn PronounEditor() -> Html {
 		("he/him", "He / Him"),
 		("they/them", "They / Them"),
 	];
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	let onchange = Callback::from({
 		let state = state.clone();
 		move |evt: web_sys::Event| {
@@ -67,7 +68,7 @@ fn PronounEditor() -> Html {
 			let is_checkbox = input.type_() == "checkbox";
 			let is_checked = input.checked();
 			let value = input.value();
-			state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
+			state.dispatch(Box::new(move |persistent: &mut Persistent| {
 				match (is_checkbox, is_checked) {
 					(true, true) => {
 						persistent.description.pronouns.insert(value);
@@ -79,7 +80,7 @@ fn PronounEditor() -> Html {
 						persistent.description.custom_pronouns = value.trim().to_owned();
 					}
 				}
-				None
+				MutatorImpact::None
 			}));
 		}
 	});
@@ -119,14 +120,14 @@ fn SettingsEditor() -> Html {
 
 #[function_component]
 pub fn AutoExchangeSwitch() -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	let onchange = Callback::from({
 		let state = state.clone();
 		move |evt: web_sys::Event| {
 			let Some(value) = evt.input_checked() else { return; };
-			state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
+			state.dispatch(Box::new(move |persistent: &mut Persistent| {
 				persistent.settings.currency_auto_exchange = value;
-				None
+				MutatorImpact::None
 			}));
 		}
 	});

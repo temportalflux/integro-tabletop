@@ -7,15 +7,16 @@ use crate::{
 		modal, Spinner,
 	},
 	database::app::Criteria,
+	page::characters::sheet::MutatorImpact,
 	system::{
 		core::{SourceId, System},
 		dnd5e::{
-			components::{GeneralProp, SharedCharacter},
+			components::{CharacterHandle, GeneralProp},
 			data::{
 				bundle::BundleRequirement,
 				character::{
 					spellcasting::{SpellEntry, SpellFilter},
-					ActionEffect, Persistent,
+					Persistent,
 				},
 				description, Bundle, Feature, Spell,
 			},
@@ -68,7 +69,7 @@ pub fn OriginTab() -> Html {
 
 #[function_component]
 fn CharacterContent() -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 
 	// Map of things required (Bundle Category, Name) to that which requires them (Bundle Category, Name)
 	let requirements = {
@@ -218,7 +219,7 @@ fn CategoryPicker(
 }
 
 fn selected_bundle(
-	state: &SharedCharacter,
+	state: &CharacterHandle,
 	idx: usize,
 	bundle: &Bundle,
 	all_dependents: &MultiMap<(&String, &String), (&String, &String)>,
@@ -261,9 +262,10 @@ fn selected_bundle(
 			kind={ContentItemKind::Remove {
 				disable_selection: dependents.map(|desc| format!("Cannot remove, depended on by: {desc}").into()),
 			}}
-			on_click={state.new_dispatch(move |_, persistent, _| {
+			on_click={state.new_dispatch(move |_, persistent| {
+				log::debug!("remove bundle {idx}");
 				persistent.bundles.remove(idx);
-				Some(ActionEffect::Recompile) // TODO: Only do this when returning to sheet view
+				MutatorImpact::Recompile // TODO: Only do this when returning to sheet view
 			})}
 		>
 			<div class="text-block">
@@ -277,12 +279,12 @@ fn selected_bundle(
 
 #[function_component]
 fn AvailableBundle(GeneralProp { value: bundle }: &GeneralProp<Bundle>) -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	let on_select = use_typed_fetch_callback(
 		"Add Bundle".into(),
-		state.new_dispatch(|bundle: Bundle, persistent, _| {
+		state.new_dispatch(|bundle: Bundle, persistent| {
 			persistent.bundles.push(bundle);
-			Some(ActionEffect::Recompile) // TODO: Only do this when returning to sheet view
+			MutatorImpact::Recompile // TODO: Only do this when returning to sheet view
 		}),
 	);
 
@@ -350,7 +352,7 @@ fn AvailableBundle(GeneralProp { value: bundle }: &GeneralProp<Bundle>) -> Html 
 			<div class="text-block">
 				<DescriptionSection section={bundle.description.clone()} show_selectors={false} />
 			</div>
-			{mutator_list(&bundle.mutators, None::<&SharedCharacter>)}
+			{mutator_list(&bundle.mutators, None::<&CharacterHandle>)}
 			{bundle.features.iter().map(|f| feature(f,  None)).collect::<Vec<_>>()}
 		</ContentItem>
 	}
@@ -451,7 +453,7 @@ fn ContentItem(
 	}
 }
 
-pub fn feature(value: &Feature, state: Option<&SharedCharacter>) -> Html {
+pub fn feature(value: &Feature, state: Option<&CharacterHandle>) -> Html {
 	let desc = match (state, value.description.clone()) {
 		(Some(state), desc) => desc.evaluate(state),
 		(None, desc) => desc,
@@ -625,7 +627,7 @@ fn SelectorField(
 		},
 	}: &SelectorFieldProps,
 ) -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 	let value = state.get_first_selection(data_path);
 
@@ -634,7 +636,7 @@ fn SelectorField(
 		let state = state.clone();
 		move |value| {
 			let data_path = data_path.clone();
-			state.dispatch(Box::new(move |persistent: &mut Persistent, _| {
+			state.dispatch(Box::new(move |persistent: &mut Persistent| {
 				match value {
 					None => {
 						persistent.selected_values.remove(&data_path);
@@ -643,7 +645,7 @@ fn SelectorField(
 						persistent.selected_values.set(&data_path, value);
 					}
 				}
-				Some(ActionEffect::Recompile) // TODO: Only do this when returning to sheet view
+				MutatorImpact::Recompile // TODO: Only do this when returning to sheet view
 			}));
 		}
 	});
@@ -763,13 +765,13 @@ fn SelectorField(
 
 #[function_component]
 fn ObjectSelectorList(props: &GeneralProp<std::path::PathBuf>) -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 	let fetched_entries = use_query_entries();
 	use_effect_with_deps(
 		{
 			let data_path = props.value.clone();
 			let fetched_entries = fetched_entries.clone();
-			move |state: &SharedCharacter| {
+			move |state: &CharacterHandle| {
 				let Some(values) = state.get_selections_at(&data_path) else {
 					fetched_entries.clear();
 					return;
@@ -868,7 +870,7 @@ struct ObjectSelectorEntryButtonProps {
 }
 #[function_component]
 fn ObjectSelectorEntryButton(props: &ObjectSelectorEntryButtonProps) -> Html {
-	let state = use_context::<SharedCharacter>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
 
 	let props_id = props.id.to_string();
 	let mut selected_idx = None;
@@ -887,7 +889,7 @@ fn ObjectSelectorEntryButton(props: &ObjectSelectorEntryButtonProps) -> Html {
 	let is_selected = selected_idx.is_some();
 	let onclick = state.new_dispatch({
 		let data_path = props.data_path.clone();
-		move |evt: MouseEvent, persistent, _| {
+		move |evt: MouseEvent, persistent| {
 			evt.stop_propagation();
 			match selected_idx {
 				None => {
@@ -900,7 +902,7 @@ fn ObjectSelectorEntryButton(props: &ObjectSelectorEntryButtonProps) -> Html {
 			// recompile required because mutators which have object selections
 			// probably need to use those selections to affect derived data
 			// (e.g. spellcasting add_prepared)
-			Some(ActionEffect::Recompile)
+			MutatorImpact::Recompile
 		}
 	});
 
