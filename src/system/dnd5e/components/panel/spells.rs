@@ -284,7 +284,6 @@ impl SpellLocation {
 	fn get<'this, 'c>(
 		&'this self,
 		state: &'c CharacterHandle,
-		system: &'c DnD5e,
 	) -> Option<(&'c Spell, &'c SpellEntry)> {
 		match self {
 			SpellLocation::Selected {
@@ -306,7 +305,7 @@ impl SpellLocation {
 				caster_id,
 			} => {
 				let Some(caster) = state.spellcasting().get_caster(caster_id) else { return None; };
-				let Some(spell) = system.spells.get(spell_id) else { return None; };
+				let Some(spell) = state.spellcasting().get_ritual(spell_id) else { return None; };
 				Some((spell, &caster.spell_entry))
 			}
 		}
@@ -626,8 +625,7 @@ fn SpellModal(
 	}: &SpellModalProps,
 ) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let system = use_context::<UseStateHandle<DnD5e>>().unwrap();
-	let Some((spell, entry)) = location.get(&state, &system) else {
+	let Some((spell, entry)) = location.get(&state) else {
 		log::warn!("Invalid spell at location {location:?}");
 		return Html::default();
 	};
@@ -845,7 +843,6 @@ fn SpellListAction(
 		Callback::from({
 			let caster_id = info.id.clone();
 			state.new_dispatch(move |spell: Spell, persistent| {
-				log::debug!("select {:?}", spell.id.to_string());
 				persistent.selected_spells.insert(&caster_id, spell);
 				MutatorImpact::None // TODO: maybe recompile when spells are added because of bonuses to spell attacks and other mutators?
 			})
@@ -862,7 +859,6 @@ fn SpellListAction(
 		let spell_id = spell_id.clone();
 		move |evt: MouseEvent| {
 			evt.stop_propagation();
-			log::debug!("click spell action {is_selected}");
 			let target = match is_selected {
 				true => &deselect_spell,
 				false => &select_spell,

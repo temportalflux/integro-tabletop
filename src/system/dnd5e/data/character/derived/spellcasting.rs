@@ -1,5 +1,5 @@
 use crate::system::{
-	core::{SourceId},
+	core::SourceId,
 	dnd5e::{
 		data::{
 			action::LimitedUses,
@@ -62,7 +62,7 @@ impl Spellcasting {
 			.entries
 			.insert(entry.source.clone(), entry);
 	}
-	
+
 	pub async fn fetch_spell_objects(
 		&mut self,
 		provider: ObjectCacheProvider,
@@ -73,7 +73,10 @@ impl Spellcasting {
 		Ok(())
 	}
 
-	async fn fetch_always_prepared(&mut self, provider: &ObjectCacheProvider) -> anyhow::Result<()> {
+	async fn fetch_always_prepared(
+		&mut self,
+		provider: &ObjectCacheProvider,
+	) -> anyhow::Result<()> {
 		for (id, spell_entry) in &mut self.always_prepared {
 			spell_entry.spell = provider
 				.database
@@ -89,11 +92,11 @@ impl Spellcasting {
 		persistent: &Persistent,
 	) -> anyhow::Result<RitualSpellCache> {
 		use crate::database::app::Criteria;
-		use futures_util::StreamExt;
 		use crate::system::{core::System, dnd5e::DnD5e};
+		use futures_util::StreamExt;
 
 		// TODO: For wizards, this should check the spell source instead of always checking the database for spells.
-		
+
 		let mut caster_query_criteria = Vec::new();
 		let mut caster_filters = HashMap::new();
 		for caster in self.iter_casters() {
@@ -101,11 +104,11 @@ impl Spellcasting {
 			if !ritual_capability.available_spells {
 				continue;
 			}
-			
+
 			let mut filter = caster.spell_filter(persistent);
 			// each spell the filter matches must be a ritual
 			filter.ritual = Some(true);
-			
+
 			caster_query_criteria.push(filter.as_criteria());
 			caster_filters.insert(caster.name(), filter);
 		}
@@ -116,7 +119,7 @@ impl Spellcasting {
 		let query_async = db.query_typed::<Spell>(DnD5e::id(), depot, Some(criteria.into()));
 		let query_stream_res = query_async.await;
 		let mut query_stream = query_stream_res.map_err(crate::database::Error::from)?;
-		
+
 		let mut ritual_spell_cache = HashMap::new();
 		let mut caster_ritual_list_cache = MultiMap::new();
 		while let Some(spell) = query_stream.next().await {
@@ -128,7 +131,10 @@ impl Spellcasting {
 			ritual_spell_cache.insert(spell.id.unversioned(), spell);
 		}
 
-		Ok(RitualSpellCache { spells: ritual_spell_cache, caster_lists: caster_ritual_list_cache })
+		Ok(RitualSpellCache {
+			spells: ritual_spell_cache,
+			caster_lists: caster_ritual_list_cache,
+		})
 	}
 
 	pub fn iter_ritual_spells(&self) -> impl Iterator<Item = (&String, &Spell, &SpellEntry)> + '_ {
@@ -230,6 +236,10 @@ impl Spellcasting {
 
 	pub fn iter_casters(&self) -> impl Iterator<Item = &Caster> {
 		self.casters.iter().map(|(_id, caster)| caster)
+	}
+
+	pub fn get_ritual(&self, spell_id: &SourceId) -> Option<&Spell> {
+		self.ritual_spells.spells.get(spell_id)
 	}
 }
 
