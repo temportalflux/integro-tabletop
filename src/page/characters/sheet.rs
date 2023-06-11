@@ -243,8 +243,6 @@ impl CharacterHandle {
 #[function_component]
 pub fn Sheet(props: &GeneralProp<SourceId>) -> Html {
 	let character = use_character(props.value.clone());
-	// TODO: Remove dependence on system struct
-	let system = use_state(|| DnD5e::default());
 
 	let show_editor = use_state_eq(|| false);
 	let open_viewer = Callback::from({
@@ -261,18 +259,16 @@ pub fn Sheet(props: &GeneralProp<SourceId>) -> Html {
 	}
 
 	html! {<>
-		<ContextProvider<UseStateHandle<DnD5e>> context={system}>
-			<ContextProvider<CharacterHandle> context={character.clone()}>
-				<div style="--theme-frame-color: #BA90CB; --theme-frame-color-muted: #BA90CB80; --theme-roll-modifier: #ffffff;">
-					<modal::Provider>
-						<modal::GeneralPurpose />
-						{match *show_editor {
-							true => html! { <system::dnd5e::components::editor::SheetEditor {open_viewer} /> },
-							false => html! { <system::dnd5e::components::SheetDisplay {open_editor} /> },
-						}}
-					</modal::Provider>
-				</div>
-			</ContextProvider<CharacterHandle>>
-		</ContextProvider<UseStateHandle<DnD5e>>>
+		<ContextProvider<CharacterHandle> context={character.clone()}>
+			<div style="--theme-frame-color: #BA90CB; --theme-frame-color-muted: #BA90CB80; --theme-roll-modifier: #ffffff;">
+				<modal::Provider>
+					<modal::GeneralPurpose />
+					{match *show_editor {
+						true => html! { <system::dnd5e::components::editor::SheetEditor {open_viewer} /> },
+						false => html! { <system::dnd5e::components::SheetDisplay {open_editor} /> },
+					}}
+				</modal::Provider>
+			</div>
+		</ContextProvider<CharacterHandle>>
 	</>}
 }

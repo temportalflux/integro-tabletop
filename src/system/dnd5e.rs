@@ -1,5 +1,4 @@
 use self::data::character::Character;
-use super::core::SourceId;
 use crate::{
 	kdl_ext::{FromKDL, KDLNode, NodeContext},
 	system::core::NodeRegistry,
@@ -118,11 +117,7 @@ pub fn node_registry() -> NodeRegistry {
 }
 
 #[derive(Clone, PartialEq, Default)]
-pub struct DnD5e {
-	pub conditions: HashMap<SourceId, data::Condition>,
-	pub items: HashMap<SourceId, data::item::Item>,
-	pub spells: HashMap<SourceId, data::Spell>,
-}
+pub struct DnD5e;
 
 impl super::core::System for DnD5e {
 	fn id() -> &'static str {
