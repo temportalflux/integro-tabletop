@@ -1,3 +1,5 @@
+use enumset::EnumSet;
+
 use crate::{
 	kdl_ext::{EntryExt, FromKDL, NodeExt, ValueExt},
 	system::dnd5e::data::{
@@ -10,6 +12,7 @@ use std::str::FromStr;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum AddProficiency {
+	Ability(Selector<Ability>, proficiency::Level),
 	SavingThrow(Ability),
 	Skill(Selector<Skill>, proficiency::Level),
 	Language(Selector<String>),
@@ -26,6 +29,24 @@ impl Mutator for AddProficiency {
 
 	fn description(&self, _state: Option<&Character>) -> description::Section {
 		let content = match self {
+			Self::Ability(Selector::Specific(ability), level) => format!(
+				"You are {} with all skill checks which use {}.",
+				level.as_display_name().to_lowercase(),
+				ability.long_name()
+			),
+			Self::Ability(Selector::Any { .. }, level) => format!(
+				"You are {} with all skill checks which use one ability of your choice.",
+				level.as_display_name().to_lowercase()
+			),
+			Self::Ability(Selector::AnyOf { options, .. }, level) => format!(
+				"You are {} with all skill checks which use one ability of: {}.",
+				level.as_display_name().to_lowercase(),
+				options
+					.iter()
+					.map(Ability::long_name)
+					.collect::<Vec<_>>()
+					.join(", ")
+			),
 			Self::SavingThrow(ability) => format!(
 				"You are proficient with {} saving throws.",
 				ability.long_name()
@@ -104,6 +125,7 @@ impl Mutator for AddProficiency {
 
 	fn set_data_path(&self, parent: &std::path::Path) {
 		match self {
+			Self::Ability(selector, _) => selector.set_data_path(parent),
 			Self::Skill(selector, _) => selector.set_data_path(parent),
 			Self::Language(selector) => selector.set_data_path(parent),
 			Self::Tool(selector) => selector.set_data_path(parent),
@@ -113,6 +135,19 @@ impl Mutator for AddProficiency {
 
 	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
 		match &self {
+			Self::Ability(ability, level) => {
+				if let Some(ability) = stats.resolve_selector(ability) {
+					// TODO: Grant proficiency for an ability (in addition to the skills which use that ability)
+					let derived_skills = stats.skills_mut();
+					log::debug!("{level:?} in {ability:?}");
+					for skill in EnumSet::<Skill>::all() {
+						if skill.ability() == ability {
+							log::debug!("{level:?} in {skill:?}");
+							derived_skills.add_proficiency(skill, *level, parent.to_owned());
+						}
+					}
+				}
+			}
 			Self::SavingThrow(ability) => {
 				stats
 					.saving_throws_mut()
@@ -164,6 +199,16 @@ impl FromKDL for AddProficiency {
 	) -> anyhow::Result<Self> {
 		let entry = node.entry_req(ctx.consume_idx())?;
 		match entry.type_req()? {
+			"Ability" => {
+				let ability = Selector::from_kdl(node, entry, ctx, |kdl| {
+					Ok(Ability::from_str(kdl.as_str_req()?)?)
+				})?;
+				let level = match node.get_str_opt("level")? {
+					Some(str) => proficiency::Level::from_str(str)?,
+					None => proficiency::Level::Full,
+				};
+				Ok(Self::Ability(ability, level))
+			}
 			"SavingThrow" => Ok(Self::SavingThrow(Ability::from_str(entry.as_str_req()?)?)),
 			"Skill" => {
 				let skill = Selector::from_kdl(node, entry, ctx, |kdl| {
@@ -226,6 +271,43 @@ mod test {
 		}
 
 		#[test]
+		fn ability_specific_nolevel() -> anyhow::Result<()> {
+			let doc = "mutator \"add_proficiency\" (Ability)\"Specific\" \"Intelligence\"";
+			let expected = AddProficiency::Ability(
+				Selector::Specific(Ability::Intelligence),
+				proficiency::Level::Full,
+			);
+			assert_eq!(from_doc(doc)?, expected.into());
+			Ok(())
+		}
+
+		#[test]
+		fn ability_specific_withlevel() -> anyhow::Result<()> {
+			let doc =
+				"mutator \"add_proficiency\" (Ability)\"Specific\" \"Wisdom\" level=\"Double\"";
+			let expected = AddProficiency::Ability(
+				Selector::Specific(Ability::Wisdom),
+				proficiency::Level::Double,
+			);
+			assert_eq!(from_doc(doc)?, expected.into());
+			Ok(())
+		}
+
+		#[test]
+		fn ability_any_nolevel() -> anyhow::Result<()> {
+			let doc = "mutator \"add_proficiency\" (Ability)\"Any\" id=\"MutatorSelect\"";
+			let expected = AddProficiency::Ability(
+				Selector::Any {
+					id: Some("MutatorSelect").into(),
+					cannot_match: Default::default(),
+				},
+				proficiency::Level::Full,
+			);
+			assert_eq!(from_doc(doc)?, expected.into());
+			Ok(())
+		}
+
+		#[test]
 		fn saving_throw() -> anyhow::Result<()> {
 			let doc = "mutator \"add_proficiency\" (SavingThrow)\"Constitution\"";
 			let expected = AddProficiency::SavingThrow(Ability::Constitution);
@@ -285,13 +367,13 @@ mod test {
 		#[test]
 		fn skill_any_withlevel() -> anyhow::Result<()> {
 			let doc =
-				"mutator \"add_proficiency\" (Skill)\"Any\" id=\"MutatorSelect\" level=\"Half\"";
+				"mutator \"add_proficiency\" (Skill)\"Any\" id=\"MutatorSelect\" level=\"HalfDown\"";
 			let expected = AddProficiency::Skill(
 				Selector::Any {
 					id: Some("MutatorSelect").into(),
 					cannot_match: Default::default(),
 				},
-				proficiency::Level::Half,
+				proficiency::Level::HalfDown,
 			);
 			assert_eq!(from_doc(doc)?, expected.into());
 			Ok(())
@@ -463,7 +545,7 @@ mod test {
 		use crate::{
 			path_map::PathMap,
 			system::dnd5e::data::{
-				character::{Character, Persistent},
+				character::{Character, Persistent, AttributedValue},
 				Bundle,
 			},
 		};
@@ -480,6 +562,28 @@ mod test {
 				selected_values: selections.unwrap_or_default(),
 				..Default::default()
 			})
+		}
+
+		#[test]
+		fn ability() {
+			let character = character(
+				AddProficiency::Ability(
+					Selector::Specific(Ability::Intelligence),
+					proficiency::Level::Full,
+				),
+				None,
+			);
+			let exepected_prof: AttributedValue<proficiency::Level> = (
+				proficiency::Level::Full,
+				vec![("AddProficiency".into(), proficiency::Level::Full)]
+			).into();
+			for skill in EnumSet::<Skill>::all() {
+				if skill.ability() != Ability::Intelligence {
+					continue;
+				}
+				let prof = character.skills().proficiency(skill);
+				assert_eq!(*prof, exepected_prof);
+			}
 		}
 
 		#[test]

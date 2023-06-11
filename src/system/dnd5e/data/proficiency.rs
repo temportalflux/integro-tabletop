@@ -5,7 +5,8 @@ use crate::GeneralError;
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub enum Level {
 	None,
-	Half,
+	HalfDown,
+	HalfUp,
 	Full,
 	Double,
 }
@@ -28,18 +29,10 @@ impl Level {
 	pub fn as_display_name(&self) -> &'static str {
 		match self {
 			Self::None => "Not Proficient",
-			Self::Half => "Half Proficient",
+			Self::HalfDown => "Half Proficient (rounded down)",
+			Self::HalfUp => "Half Proficient (rounded up)",
 			Self::Full => "Proficient",
 			Self::Double => "Expertise",
-		}
-	}
-
-	pub fn bonus_multiplier(&self) -> f32 {
-		match self {
-			Self::None => 0.0,
-			Self::Half => 0.5,
-			Self::Full => 1.0,
-			Self::Double => 2.0,
 		}
 	}
 
@@ -47,7 +40,8 @@ impl Level {
 	pub fn to_string(&self) -> String {
 		match self {
 			Self::None => "None",
-			Self::Half => "Half",
+			Self::HalfDown => "Half",
+			Self::HalfUp => "Half",
 			Self::Full => "Full",
 			Self::Double => "Double",
 		}
@@ -61,7 +55,8 @@ impl FromStr for Level {
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		match s {
 			"None" => Ok(Self::None),
-			"Half" => Ok(Self::Half),
+			"HalfDown" => Ok(Self::HalfDown),
+			"HalfUp" => Ok(Self::HalfUp),
 			"Full" => Ok(Self::Full),
 			"Double" => Ok(Self::Double),
 			_ => Err(GeneralError(format!(
@@ -77,7 +72,7 @@ impl Into<yew::prelude::Html> for Level {
 		use yew::prelude::*;
 		match self {
 			Self::None => html! { <i class="bi bi-circle" /> },
-			Self::Half => {
+			Self::HalfDown | Self::HalfUp => {
 				html! { <i class="bi bi-circle-half" style="color: var(--theme-frame-color);" /> }
 			}
 			Self::Full => {
@@ -94,8 +89,13 @@ impl std::ops::Mul<i32> for Level {
 	type Output = i32;
 
 	fn mul(self, prof_bonus: i32) -> Self::Output {
-		let modified = (prof_bonus as f32) * self.bonus_multiplier();
-		modified.ceil() as i32
+		match self {
+			Self::None => 0,
+			Self::HalfDown => ((prof_bonus as f32) * 0.5).floor() as i32,
+			Self::HalfUp => ((prof_bonus as f32) * 0.5).ceil() as i32,
+			Self::Full => prof_bonus,
+			Self::Double => prof_bonus * 2,
+		}
 	}
 }
 
