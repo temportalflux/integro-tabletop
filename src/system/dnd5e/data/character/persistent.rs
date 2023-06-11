@@ -71,8 +71,7 @@ impl MutatorGroup for Persistent {
 }
 
 impl Persistent {
-	pub fn add_class(&mut self, mut class: Class) {
-		class.levels.truncate(1);
+	pub fn add_class(&mut self, class: Class) {
 		self.classes.push(class);
 	}
 

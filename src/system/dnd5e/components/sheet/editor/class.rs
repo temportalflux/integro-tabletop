@@ -110,7 +110,8 @@ fn ClassBrowser(ClassBrowserProps { on_added }: &ClassBrowserProps) -> Html {
 			let state = state.clone();
 			let on_added = on_added.clone();
 			let update = update.clone();
-			move |class_to_add: Class| {
+			move |mut class_to_add: Class| {
+				class_to_add.current_level = 1;
 				state.dispatch(Box::new(move |persistent: &mut Persistent| {
 					persistent.add_class(class_to_add);
 					MutatorImpact::Recompile
@@ -170,6 +171,7 @@ fn ActiveClassList() -> Html {
 			state.dispatch(Box::new(move |persistent: &mut Persistent| {
 				let Some(class) = persistent.classes.get_mut(idx) else { return MutatorImpact::None; };
 				class.current_level += 1;
+				// TODO: Only recompile on exit
 				MutatorImpact::Recompile
 			}));
 		}
@@ -180,6 +182,7 @@ fn ActiveClassList() -> Html {
 		move |idx| {
 			state.dispatch(Box::new(move |persistent: &mut Persistent| {
 				let _ = persistent.classes.remove(idx);
+				// TODO: Only recompile on exit
 				MutatorImpact::Recompile
 			}));
 		}
@@ -196,6 +199,7 @@ fn ActiveClassList() -> Html {
 				if remove_class {
 					let _ = persistent.classes.remove(idx);
 				}
+				// TODO: Only recompile on exit
 				MutatorImpact::Recompile
 			}));
 		}
