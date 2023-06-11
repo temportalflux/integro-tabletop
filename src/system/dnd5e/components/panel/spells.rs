@@ -38,13 +38,12 @@ fn rank_suffix(rank: u8) -> &'static str {
 #[function_component]
 pub fn Spells() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let system = use_context::<UseStateHandle<DnD5e>>().unwrap();
 
 	let mut sections = SpellSections::default();
 	sections.insert_slots(&state);
 	sections.insert_selected_spells(&state);
 	sections.insert_derived_spells(&state);
-	sections.insert_available_ritual_spells(&state, &system);
+	sections.insert_available_ritual_spells(&state);
 
 	let sections = {
 		let mut html = Vec::new();
@@ -240,56 +239,18 @@ impl<'c> SpellSections<'c> {
 		}
 	}
 
-	fn insert_available_ritual_spells(&mut self, state: &'c CharacterHandle, system: &'c DnD5e) {
-		// TODO: Realistically, this is data that can be compiled when the sheet opens.
-		// The only things that affect this is:
-		// 1. what modules are loaded (i.e. what spells are available)
-		// 2. what caster features are in the character (what classes are selected)
-		for caster_id in state.persistent().selected_spells.iter_caster_ids() {
-			let Some(caster) = state.spellcasting().get_caster(caster_id) else { continue; };
-			let Some(ritual_capability) = &caster.ritual_capability else { continue; };
-			if !ritual_capability.available_spells {
-				continue;
-			}
-
-			// TODO: Query the database instead of accessing from system memory data
-
-			let mut available_spells_filter = caster.spell_filter(&*state);
-			// each spell the filter matches must be a ritual
-			available_spells_filter.ritual = Some(true);
-
-			// TODO: For wizards, this should check the spell source instead of always checking the database for spells.
-			for (id, spell) in system.spells.iter() {
-				// we dont care about any selected spells for this group
-				if state
-					.persistent()
-					.selected_spells
-					.get_spell(caster_id, id)
-					.is_some()
-				{
-					continue;
-				}
-				// nor do we care about spells which are not available to this caster
-				if !available_spells_filter.spell_matches(spell) {
-					continue;
-				}
-
-				// the remaining spells are ones which are:
-				// 1. available to the caster
-				// 2. not selected by the character for this class
-				// 3. are ritually castable for this caster
-
-				// ritual-only spells can only be cast at their specified rank
-				let Some(section) = self.sections.get_mut(&spell.rank) else { continue; };
-				section.insert_spell(
-					spell,
-					&caster.spell_entry,
-					SpellLocation::AvailableAsRitual {
-						spell_id: id.unversioned(),
-						caster_id: caster_id.clone(),
-					},
-				);
-			}
+	fn insert_available_ritual_spells(&mut self, state: &'c CharacterHandle) {
+		for (caster_id, spell, spell_entry) in state.spellcasting().iter_ritual_spells() {
+			// ritual-only spells can only be cast at their specified rank
+			let Some(section) = self.sections.get_mut(&spell.rank) else { continue; };
+			section.insert_spell(
+				spell,
+				spell_entry,
+				SpellLocation::AvailableAsRitual {
+					spell_id: spell.id.unversioned(),
+					caster_id: caster_id.clone(),
+				},
+			);
 		}
 	}
 }
@@ -699,7 +660,7 @@ fn ManagerCasterModal(CasterNameProps { caster_id }: &CasterNameProps) -> Html {
 
 	let max_cantrips = caster.cantrip_capacity(state.persistent());
 	let max_spells = caster.spell_capacity(&state);
-	let filter = caster.spell_filter(&state);
+	let filter = caster.spell_filter(state.persistent());
 	let mut num_cantrips = 0;
 	let mut num_spells = 0;
 	let mut num_all_selections = 0;
@@ -745,7 +706,7 @@ fn ManagerCasterModal(CasterNameProps { caster_id }: &CasterNameProps) -> Html {
 						let action = html! {<SpellListAction
 							section={SpellListSection::Selected}
 							caster={caster_info.clone()}
-							spell_id={spell.id.clone()}
+							spell_id={spell.id.unversioned()}
 							rank={spell.rank}
 						/>};
 						spell_list_item("selected", &state, spell, &caster.spell_entry, action)
@@ -764,7 +725,7 @@ fn ManagerCasterModal(CasterNameProps { caster_id }: &CasterNameProps) -> Html {
 									<SpellListAction
 										caster={caster_info.clone()}
 										section={SpellListSection::Available}
-										spell_id={spell.id.clone()}
+										spell_id={spell.id.unversioned()}
 										rank={spell.rank}
 									/>
 								}
@@ -884,6 +845,7 @@ fn SpellListAction(
 		Callback::from({
 			let caster_id = info.id.clone();
 			state.new_dispatch(move |spell: Spell, persistent| {
+				log::debug!("select {:?}", spell.id.to_string());
 				persistent.selected_spells.insert(&caster_id, spell);
 				MutatorImpact::None // TODO: maybe recompile when spells are added because of bonuses to spell attacks and other mutators?
 			})
@@ -900,6 +862,7 @@ fn SpellListAction(
 		let spell_id = spell_id.clone();
 		move |evt: MouseEvent| {
 			evt.stop_propagation();
+			log::debug!("click spell action {is_selected}");
 			let target = match is_selected {
 				true => &deselect_spell,
 				false => &select_spell,

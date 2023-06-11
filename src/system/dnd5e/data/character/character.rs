@@ -91,7 +91,7 @@ impl Character {
 	) -> anyhow::Result<()> {
 		self.derived
 			.spellcasting
-			.fetch_spell_objects(provider)
+			.fetch_spell_objects(provider, &self.character)
 			.await?;
 		Ok(())
 	}
