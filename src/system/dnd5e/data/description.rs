@@ -1,10 +1,13 @@
 use super::character::Character;
 use crate::{
-	kdl_ext::{DocumentExt, EntryExt, FromKDL, NodeContext, NodeExt, ValueExt},
+	kdl_ext::{AsKdl, DocumentExt, EntryExt, FromKDL, NodeBuilder, NodeContext, NodeExt, ValueExt},
 	system::dnd5e::BoxedEvaluator,
 	utility::SelectorMetaVec,
 };
-use std::{collections::HashMap, rc::Rc};
+use std::{
+	collections::{BTreeMap, HashMap},
+	rc::Rc,
+};
 
 #[derive(Clone, PartialEq, Debug, Default)]
 pub struct Info {
@@ -113,6 +116,27 @@ impl FromKDL for Info {
 		})
 	}
 }
+impl AsKdl for Info {
+	fn as_kdl(&self) -> NodeBuilder {
+		if self.short.is_none() && self.format_args.0.is_empty() && self.sections.len() == 1 {
+			return self.sections[0].as_kdl();
+		}
+
+		let mut node = NodeBuilder::default();
+
+		if let Some(short) = &self.short {
+			node.push_child_entry("short", short.clone());
+		}
+
+		for section in &self.sections {
+			node.push_child_t("section", section);
+		}
+
+		node += self.format_args.as_kdl();
+
+		node
+	}
+}
 
 impl Section {
 	pub fn is_empty(&self) -> bool {
@@ -214,6 +238,27 @@ impl FromKDL for Section {
 		})
 	}
 }
+impl AsKdl for Section {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+
+		if let Some(title) = &self.title {
+			let mut entry = kdl::KdlEntry::new(title.clone());
+			entry.set_ty("Title");
+			node.push_entry(entry);
+		}
+
+		node += self.content.as_kdl();
+
+		for section in &self.children {
+			node.push_child_opt_t("section", section);
+		}
+
+		node += self.format_args.as_kdl();
+
+		node
+	}
+}
 
 impl SectionContent {
 	fn contains_format_syntax(&self) -> bool {
@@ -285,9 +330,44 @@ impl FromKDL for SectionContent {
 		}
 	}
 }
+impl AsKdl for SectionContent {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		match self {
+			Self::Body(content) => {
+				node.push_entry(content.clone());
+			}
+			Self::Table {
+				column_count: _,
+				headers,
+				rows,
+			} => {
+				node.push_entry(("table", true));
+				if let Some(headers) = headers {
+					node.push_child({
+						let mut node = NodeBuilder::default();
+						for name in headers {
+							node.push_entry(name.clone());
+						}
+						node.build("headers")
+					});
+				}
+				for row in rows {
+					let mut row_node = NodeBuilder::default();
+					for col in row {
+						row_node.push_entry(col.clone());
+					}
+					node.push_child(row_node.build("row"));
+				}
+			}
+			Self::Selectors(_) => {}
+		}
+		node
+	}
+}
 
 #[derive(Clone, PartialEq, Debug, Default)]
-pub struct FormatArgs(HashMap<String, Arg>);
+pub struct FormatArgs(BTreeMap<String, Arg>);
 
 #[derive(Clone, PartialEq, Debug)]
 struct Arg {
@@ -301,7 +381,7 @@ where
 	V: Into<BoxedEvaluator<i32>>,
 {
 	fn from(values: Vec<(K, V, bool)>) -> Self {
-		let mut map = HashMap::new();
+		let mut map = BTreeMap::new();
 		for (key, value, signed) in values {
 			let arg = Arg {
 				evaluator: value.into(),
@@ -345,7 +425,7 @@ impl FormatArgs {
 	/// Queries `node` for all child nodes with the name `format-arg`,
 	/// parsing each as a named evaluator argument for the list.
 	pub fn from_kdl_all(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
-		let mut args = HashMap::new();
+		let mut args = BTreeMap::new();
 		for node in node.query_all("scope() > format-arg")? {
 			let mut ctx = ctx.next_node();
 			let key_entry = node.entry_req(ctx.consume_idx())?;
@@ -358,13 +438,35 @@ impl FormatArgs {
 		Ok(Self(args))
 	}
 }
+impl AsKdl for FormatArgs {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+
+		for (key, arg) in &self.0 {
+			let mut entry = kdl::KdlEntry::new(key.clone());
+			if arg.signed {
+				entry.set_ty("Signed");
+			}
+			let mut arg_node = NodeBuilder::default().with_entry(entry);
+			// TODO AsKdl: Evaluators; arg_node += arg.evaluator.as_kdl();
+			node.push_child(arg_node.build("format-arg"));
+		}
+
+		node
+	}
+}
 
 #[cfg(test)]
 mod test {
 	use super::*;
 
+	static NODE_DESC: &str = "description";
+	static NODE_SECTION: &str = "section";
+
+	// TODO AsKdl: tests for description::Info/Section/FormatArgs
 	mod from_kdl {
 		use super::*;
+		use crate::kdl_ext::test_utils;
 		use crate::{
 			kdl_ext::NodeContext,
 			system::{
@@ -379,22 +481,18 @@ mod test {
 			NodeContext::registry(reg)
 		}
 
+		fn from_doc<T: FromKDL>(name: &'static str, doc: &str) -> anyhow::Result<T> {
+			test_utils::from_doc_ctx(name, doc, node_ctx())
+		}
+
 		mod info {
 			use super::*;
-
-			fn from_doc(doc: &str) -> anyhow::Result<Info> {
-				let document = doc.parse::<kdl::KdlDocument>()?;
-				let node = document
-					.query("scope() > description")?
-					.expect("missing description node");
-				Info::from_kdl(node, &mut node_ctx())
-			}
 
 			#[test]
 			fn long_only_simple() -> anyhow::Result<()> {
 				let doc = "description \"This is some long description w/o a title\"";
 				assert_eq!(
-					from_doc(doc)?,
+					from_doc::<Info>(NODE_DESC, doc)?,
 					Info {
 						short: None,
 						sections: vec![Section {
@@ -417,7 +515,7 @@ mod test {
 					section \"This is some long description w/o a title\"
 				}";
 				assert_eq!(
-					from_doc(doc)?,
+					from_doc::<Info>(NODE_DESC, doc)?,
 					Info {
 						short: None,
 						sections: vec![Section {
@@ -440,7 +538,7 @@ mod test {
 					short \"This is some short description\"
 				}";
 				assert_eq!(
-					from_doc(doc)?,
+					from_doc::<Info>(NODE_DESC, doc)?,
 					Info {
 						short: Some("This is some short description".into()),
 						sections: vec![],
@@ -457,7 +555,7 @@ mod test {
 					format-arg \"DC\" (Evaluator)\"get_ability_modifier\" (Ability)\"Intelligence\"
 				}";
 				assert_eq!(
-					from_doc(doc)?,
+					from_doc::<Info>(NODE_DESC, doc)?,
 					Info {
 						short: Some("Success against a DC {DC} Wisdom saving throw".into()),
 						sections: vec![],
@@ -475,19 +573,11 @@ mod test {
 		mod section {
 			use super::*;
 
-			fn from_doc(doc: &str) -> anyhow::Result<Section> {
-				let document = doc.parse::<kdl::KdlDocument>()?;
-				let node = document
-					.query("scope() > section")?
-					.expect("missing section node");
-				Section::from_kdl(node, &mut node_ctx())
-			}
-
 			#[test]
 			fn body_only() -> anyhow::Result<()> {
 				let doc = "section \"Simple body-only section\"";
 				assert_eq!(
-					from_doc(doc)?,
+					from_doc::<Section>(NODE_SECTION, doc)?,
 					Section {
 						title: None,
 						content: SectionContent::Body("Simple body-only section".into()),
@@ -502,7 +592,7 @@ mod test {
 			fn titled_body() -> anyhow::Result<()> {
 				let doc = "section (Title)\"Section A\" \"Body with a title!\"";
 				assert_eq!(
-					from_doc(doc)?,
+					from_doc::<Section>(NODE_SECTION, doc)?,
 					Section {
 						title: Some("Section A".into()),
 						content: SectionContent::Body("Body with a title!".into()),
@@ -521,7 +611,7 @@ mod test {
 					row \"R2 C1\" \"R2 C2\" \"R2 C3\"
 				}";
 				assert_eq!(
-					from_doc(doc)?,
+					from_doc::<Section>(NODE_SECTION, doc)?,
 					Section {
 						title: None,
 						content: SectionContent::Table {
@@ -545,7 +635,7 @@ mod test {
 					format-arg \"num\" (Evaluator)\"get_ability_modifier\" (Ability)\"Intelligence\"
 				}";
 				assert_eq!(
-					from_doc(doc)?,
+					from_doc::<Section>(NODE_SECTION, doc)?,
 					Section {
 						title: None,
 						content: SectionContent::Body("Body with {num} format-args".into()),
@@ -567,7 +657,7 @@ mod test {
 					section \"subsection B body\"
 				}";
 				assert_eq!(
-					from_doc(doc)?,
+					from_doc::<Section>(NODE_SECTION, doc)?,
 					Section {
 						title: None,
 						content: SectionContent::Body("main body".into()),

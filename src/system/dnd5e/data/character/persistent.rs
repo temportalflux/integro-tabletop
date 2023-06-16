@@ -221,21 +221,48 @@ impl FromKDL for Persistent {
 }
 impl AsKdl for Persistent {
 	fn as_kdl(&self) -> NodeBuilder {
-		let mut node = NodeBuilder::new();
+		let mut node = NodeBuilder::default();
 
-		node.push_child(self.description.build_kdl("description"));
+		node.push_child_t("description", &self.description);
 		self.settings.export_as_kdl(&mut node);
 
 		for (ability, score) in self.ability_scores {
 			node.push_child(
-				NodeBuilder::new()
+				NodeBuilder::default()
 					.with_entry(ability.long_name())
 					.with_entry(score as i64)
 					.build("ability"),
 			);
 		}
 
-		node.push_child(self.hit_points.build_kdl("hit_points"));
+		node.push_child_t("hit_points", &self.hit_points);
+		node.push_child_entry("inspiration", self.inspiration);
+
+		node.push_child_opt_t("inventory", &self.inventory);
+		//node.push_child_opt_t("spells", &self.selected_spells);
+
+		for bundle in &self.bundles {
+			//node.push_child_opt_t("bundle", &bundle);
+		}
+		for class in &self.classes {
+			//node.push_child_opt_t("class", &class);
+		}
+
+		node.push_child_opt({
+			let mut node = NodeBuilder::default();
+			for (path, value) in self.selected_values.as_vec() {
+				node.push_child(
+					NodeBuilder::default()
+						.with_entry({
+							let path_str = path.display().to_string();
+							path_str.replace("\\", "/")
+						})
+						.with_entry(value.clone())
+						.build("value"),
+				);
+			}
+			node.build("selections")
+		});
 
 		node
 	}
@@ -264,7 +291,7 @@ impl FromKDL for HitPoints {
 }
 impl AsKdl for HitPoints {
 	fn as_kdl(&self) -> NodeBuilder {
-		let mut node = NodeBuilder::new();
+		let mut node = NodeBuilder::default();
 		node.push_child_entry("current", self.current as i64);
 		node.push_child_entry("temp", self.temp as i64);
 		node.push_child_entry("failure_saves", self.failure_saves as i64);
@@ -410,7 +437,7 @@ impl Settings {
 
 	fn export_as_kdl(&self, nodes: &mut NodeBuilder) {
 		nodes.push_child(
-			NodeBuilder::new()
+			NodeBuilder::default()
 				.with_entry("currency_auto_exchange")
 				.with_entry(self.currency_auto_exchange)
 				.build("setting"),

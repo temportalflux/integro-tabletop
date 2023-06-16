@@ -81,7 +81,7 @@ impl FromKDL for Description {
 
 impl AsKdl for Description {
 	fn as_kdl(&self) -> NodeBuilder {
-		let mut node = NodeBuilder::new();
+		let mut node = NodeBuilder::default();
 		node.push_child_entry("name", self.name.clone());
 		for pronoun in self.pronouns.iter().sorted() {
 			node.push_child_entry("pronoun", pronoun.clone());
@@ -96,7 +96,7 @@ impl AsKdl for Description {
 			node.push_child_entry("weight", self.weight as i64);
 		}
 		node.push_child_opt({
-			let mut node = NodeBuilder::new();
+			let mut node = NodeBuilder::default();
 			for (kind, items) in &self.personality {
 				for item in items {
 					node.push_child_entry(kind.node_id(), item.clone());
