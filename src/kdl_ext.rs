@@ -1,3 +1,5 @@
+mod as_kdl;
+pub use as_kdl::*;
 mod from_kdl;
 pub use from_kdl::*;
 
@@ -588,5 +590,35 @@ impl DocumentExt for kdl::KdlNode {
 	) -> Result<Vec<&str>, QueryError> {
 		let Some(doc) = self.children() else { return Ok(Vec::new()); };
 		doc.query_str_all(query, key)
+	}
+}
+
+#[cfg(test)]
+pub mod test_utils {
+	use crate::kdl_ext::{AsKdl, FromKDL, NodeContext};
+
+	pub fn from_doc_ctx<T: FromKDL>(
+		name: &'static str,
+		doc: &str,
+		mut ctx: NodeContext,
+	) -> anyhow::Result<T> {
+		let document = doc.parse::<kdl::KdlDocument>()?;
+		let node = document
+			.query(format!("scope() > {name}"))?
+			.expect(&format!("missing {name} node"));
+		T::from_kdl(node, &mut ctx)
+	}
+
+	pub fn from_doc<T: FromKDL>(name: &'static str, doc: &str) -> anyhow::Result<T> {
+		from_doc_ctx::<T>(name, doc, NodeContext::default())
+	}
+
+	pub fn raw_doc(str: &'static str) -> String {
+		use trim_margin::MarginTrimmable;
+		str.trim_margin().unwrap()
+	}
+
+	pub fn as_doc(name: &'static str, data: &impl AsKdl) -> String {
+		data.build_kdl(name).to_string()
 	}
 }

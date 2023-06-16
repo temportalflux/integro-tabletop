@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{DocumentExt, FromKDL, NodeContext, NodeExt},
+	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeContext, NodeExt},
 	path_map::PathMap,
 	system::{
 		core::SourceId,
@@ -219,6 +219,27 @@ impl FromKDL for Persistent {
 		})
 	}
 }
+impl AsKdl for Persistent {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::new();
+
+		node.push_child(self.description.build_kdl("description"));
+		self.settings.export_as_kdl(&mut node);
+
+		for (ability, score) in self.ability_scores {
+			node.push_child(
+				NodeBuilder::new()
+					.with_entry(ability.long_name())
+					.with_entry(score as i64)
+					.build("ability"),
+			);
+		}
+
+		node.push_child(self.hit_points.build_kdl("hit_points"));
+
+		node
+	}
+}
 
 #[derive(Clone, Copy, PartialEq, Default, Debug)]
 pub struct HitPoints {
@@ -239,6 +260,16 @@ impl FromKDL for HitPoints {
 			failure_saves,
 			success_saves,
 		})
+	}
+}
+impl AsKdl for HitPoints {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::new();
+		node.push_child_entry("current", self.current as i64);
+		node.push_child_entry("temp", self.temp as i64);
+		node.push_child_entry("failure_saves", self.failure_saves as i64);
+		node.push_child_entry("success_saves", self.success_saves as i64);
+		node
 	}
 }
 impl HitPoints {
@@ -376,6 +407,15 @@ impl Settings {
 		}
 		Ok(())
 	}
+
+	fn export_as_kdl(&self, nodes: &mut NodeBuilder) {
+		nodes.push_child(
+			NodeBuilder::new()
+				.with_entry("currency_auto_exchange")
+				.with_entry(self.currency_auto_exchange)
+				.build("setting"),
+		);
+	}
 }
 
 #[derive(Clone, PartialEq, Default, Debug)]
@@ -502,5 +542,53 @@ impl SelectedSpellsData {
 
 	pub fn len(&self) -> usize {
 		self.selections.len()
+	}
+}
+
+#[cfg(test)]
+mod test_hit_points {
+	use super::*;
+	use crate::kdl_ext::test_utils::*;
+
+	static NODE_NAME: &str = "hit_points";
+
+	#[test]
+	fn from_kdl() -> anyhow::Result<()> {
+		let doc = "hit_points {
+			current 30
+			temp 5
+			failure_saves 1
+			success_saves 2
+		}";
+		let parsed: HitPoints = from_doc(NODE_NAME, doc)?;
+		let expected = HitPoints {
+			current: 30,
+			temp: 5,
+			failure_saves: 1,
+			success_saves: 2,
+		};
+		assert_eq!(parsed, expected);
+		Ok(())
+	}
+
+	#[test]
+	fn as_kdl() -> anyhow::Result<()> {
+		let expected = "
+			|hit_points {
+			|    current 30
+			|    temp 5
+			|    failure_saves 1
+			|    success_saves 2
+			|}
+		";
+		let data = HitPoints {
+			current: 30,
+			temp: 5,
+			failure_saves: 1,
+			success_saves: 2,
+		};
+		let stringified = as_doc(NODE_NAME, &data);
+		assert_eq!(stringified, raw_doc(expected));
+		Ok(())
 	}
 }

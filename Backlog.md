@@ -5,7 +5,6 @@
 - force refresh button to forcibly reload one or more modules by wiping those entries from the database and refetching them from source
 
 ## UI Backlog
-- Limited Use can use the resource of another feature/action by its path, and has an associated cost when doing so
 - UI components for rendering features, conditions, mutators, etc which is used for all presentations (mutators / features in origin & item browsers, condition cards, feature/action modals, etc)
 
 ## Unify mutators, criteria, and features
@@ -78,9 +77,6 @@ Allow users to create new elements
 - Other Proficiencies
 - Defenses
 - Feats
-
-## Serialization
-- `trait AsKDL` & `trait FromKDL` to handling kdl text <=> structs
 
 ## Save Data
 - Save persistent data to session storage while character is open

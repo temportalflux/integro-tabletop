@@ -65,3 +65,6 @@ tokio = { version="1.26", features=["sync"] }
 
 [target.'cfg(windows)'.dependencies]
 tokio = { version="1.26", features=["full"] }
+
+[dev-dependencies]
+trim-margin = "0.1.0"

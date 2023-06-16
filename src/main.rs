@@ -166,6 +166,13 @@ async fn main() -> anyhow::Result<()> {
 				log::debug!("{}", metadata.to_string());
 			}
 			*/
+			if node_name == "character" {
+				use dnd5e::data::character::Persistent;
+				use kdl_ext::{AsKdl, FromKDL};
+				let data = Persistent::from_kdl(node, &mut ctx.next_node())?;
+				let exported = data.build_kdl("character");
+				log::debug!("{}", exported);
+			}
 		}
 	}
 

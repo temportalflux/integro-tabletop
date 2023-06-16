@@ -545,7 +545,7 @@ mod test {
 		use crate::{
 			path_map::PathMap,
 			system::dnd5e::data::{
-				character::{Character, Persistent, AttributedValue},
+				character::{AttributedValue, Character, Persistent},
 				Bundle,
 			},
 		};
@@ -575,8 +575,9 @@ mod test {
 			);
 			let exepected_prof: AttributedValue<proficiency::Level> = (
 				proficiency::Level::Full,
-				vec![("AddProficiency".into(), proficiency::Level::Full)]
-			).into();
+				vec![("AddProficiency".into(), proficiency::Level::Full)],
+			)
+				.into();
 			for skill in EnumSet::<Skill>::all() {
 				if skill.ability() != Ability::Intelligence {
 					continue;
