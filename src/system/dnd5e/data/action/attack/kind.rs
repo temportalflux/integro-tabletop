@@ -58,7 +58,7 @@ impl FromKDL for AttackKindValue {
 		}
 	}
 }
-// TODO AsKdl: tests for AttackKindValue
+
 impl AsKdl for AttackKindValue {
 	fn as_kdl(&self) -> NodeBuilder {
 		let node = NodeBuilder::default();
@@ -85,42 +85,39 @@ impl AsKdl for AttackKindValue {
 mod test {
 	use super::*;
 
-	mod from_kdl {
+	mod kdl {
 		use super::*;
-		use crate::kdl_ext::NodeContext;
+		use crate::kdl_ext::test_utils::*;
 
-		fn from_doc(doc: &str) -> anyhow::Result<AttackKindValue> {
-			let document = doc.parse::<kdl::KdlDocument>()?;
-			let node = document
-				.query("scope() > kind")?
-				.expect("missing kind node");
-			AttackKindValue::from_kdl(node, &mut NodeContext::default())
-		}
+		static NODE_NAME: &str = "kind";
 
 		#[test]
 		fn melee_base() -> anyhow::Result<()> {
 			let doc = "kind \"Melee\"";
-			let expected = AttackKindValue::Melee { reach: 5 };
-			assert_eq!(from_doc(doc)?, expected);
+			let data = AttackKindValue::Melee { reach: 5 };
+			assert_eq_fromkdl!(AttackKindValue, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 
 		#[test]
 		fn melee_reach() -> anyhow::Result<()> {
 			let doc = "kind \"Melee\" reach=10";
-			let expected = AttackKindValue::Melee { reach: 10 };
-			assert_eq!(from_doc(doc)?, expected);
+			let data = AttackKindValue::Melee { reach: 10 };
+			assert_eq_fromkdl!(AttackKindValue, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 
 		#[test]
 		fn ranged_base() -> anyhow::Result<()> {
 			let doc = "kind \"Ranged\" 20 60";
-			let expected = AttackKindValue::Ranged {
+			let data = AttackKindValue::Ranged {
 				short_dist: 20,
 				long_dist: 60,
 			};
-			assert_eq!(from_doc(doc)?, expected);
+			assert_eq_fromkdl!(AttackKindValue, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 	}
