@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{FromKDL, NodeContext, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeContext, NodeExt},
 	system::dnd5e::data::roll::Roll,
 	GeneralError,
 };
@@ -78,6 +78,24 @@ impl FromKDL for Property {
 				Ok(Self::Versatile(roll))
 			}
 			name => Err(GeneralError(format!("Unrecognized weapon property {name:?}")).into()),
+		}
+	}
+}
+// TODO AsKdl: Property tests
+impl AsKdl for Property {
+	fn as_kdl(&self) -> NodeBuilder {
+		let node = NodeBuilder::default();
+		match self {
+			Self::Light => node.with_entry("Light"),
+			Self::Finesse => node.with_entry("Finesse"),
+			Self::Heavy => node.with_entry("Heavy"),
+			Self::Reach => node.with_entry("Reach"),
+			Self::TwoHanded => node.with_entry("Two Handed"),
+			Self::Thrown(short, long) => node
+				.with_entry("Thrown")
+				.with_entry(*short as i64)
+				.with_entry(*long as i64),
+			Self::Versatile(roll) => node.with_entry("Versatile").with_entry(roll.to_string()),
 		}
 	}
 }

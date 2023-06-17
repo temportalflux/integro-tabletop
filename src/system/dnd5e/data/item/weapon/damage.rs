@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{FromKDL, NodeContext, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeContext, NodeExt},
 	system::dnd5e::data::{roll::Roll, DamageType},
 };
 use std::str::FromStr;
@@ -24,6 +24,20 @@ impl FromKDL for WeaponDamage {
 			bonus: base,
 			damage_type,
 		})
+	}
+}
+// TODO AsKdl: WeaponDamage tests
+impl AsKdl for WeaponDamage {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		node.push_entry(self.damage_type.to_string());
+		if let Some(roll) = &self.roll {
+			node.push_entry(("roll", roll.to_string()));
+		}
+		if self.bonus != 0 {
+			node.push_entry(("base", self.bonus as i64));
+		}
+		node
 	}
 }
 

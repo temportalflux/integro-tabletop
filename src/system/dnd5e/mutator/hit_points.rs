@@ -4,7 +4,7 @@ use crate::{
 		data::{character::Character, description},
 		Value,
 	},
-	utility::{Dependencies, Evaluator, Mutator},
+	utility::{Dependencies, Mutator},
 };
 
 #[derive(Clone, Debug, PartialEq)]

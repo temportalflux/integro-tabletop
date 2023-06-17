@@ -1,4 +1,4 @@
-use crate::kdl_ext::{FromKDL, NodeContext, NodeExt};
+use crate::kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeContext, NodeExt};
 
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct Range {
@@ -20,6 +20,21 @@ impl FromKDL for Range {
 			requires_ammunition,
 			requires_loading,
 		})
+	}
+}
+// TODO AsKdl: weapon Range tests
+impl AsKdl for Range {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		node.push_entry(self.short_range as i64);
+		node.push_entry(self.long_range as i64);
+		if self.requires_ammunition {
+			node.push_child(NodeBuilder::default().build("ammunition"));
+		}
+		if self.requires_loading {
+			node.push_child(NodeBuilder::default().build("loading"));
+		}
+		node
 	}
 }
 

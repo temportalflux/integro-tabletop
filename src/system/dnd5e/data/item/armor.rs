@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{DocumentExt, FromKDL, NodeExt},
+	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt},
 	system::dnd5e::{
 		data::{character::Character, ArmorClassFormula},
 		mutator::ArmorStrengthRequirement,
@@ -34,6 +34,18 @@ impl FromKDL for Armor {
 			formula,
 			min_strength_score,
 		})
+	}
+}
+// TODO AsKdl: Armor tests
+impl AsKdl for Armor {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		node.push_entry(self.kind.to_string());
+		node.push_child_t("formula", &self.formula);
+		if let Some(score) = &self.min_strength_score {
+			node.push_entry(("min-strength", *score as i64));
+		}
+		node
 	}
 }
 

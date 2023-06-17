@@ -3,7 +3,7 @@ use crate::{
 		data::{character::Character, description, item::weapon},
 		Value,
 	},
-	utility::{Dependencies, Evaluator, Mutator},
+	utility::{Dependencies, Mutator},
 };
 
 #[derive(Clone, PartialEq, Debug)]
@@ -44,7 +44,7 @@ impl Mutator for BonusDamage {
 // TODO AsKdl: tests for BonusDamage
 impl crate::kdl_ext::AsKdl for BonusDamage {
 	fn as_kdl(&self) -> crate::kdl_ext::NodeBuilder {
-		let mut node = crate::kdl_ext::NodeBuilder::default();
+		let node = crate::kdl_ext::NodeBuilder::default();
 		// TODO: not hooked up with FromKDL yet
 		node
 	}

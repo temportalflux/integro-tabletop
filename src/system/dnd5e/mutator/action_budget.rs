@@ -7,7 +7,7 @@ use crate::{
 		},
 		Value,
 	},
-	utility::{Evaluator, Mutator},
+	utility::Mutator,
 };
 use std::str::FromStr;
 

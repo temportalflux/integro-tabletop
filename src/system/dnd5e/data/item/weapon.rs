@@ -1,6 +1,6 @@
 use super::EquipableEntry;
 use crate::{
-	kdl_ext::{FromKDL, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
 	system::dnd5e::{
 		data::{
 			action::{Action, ActivationKind, Attack, AttackCheckKind, AttackKindValue},
@@ -151,6 +151,24 @@ impl FromKDL for Weapon {
 			properties,
 			range,
 		})
+	}
+}
+// TODO AsKdl: Weapon tests
+impl AsKdl for Weapon {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		node.push_entry(self.kind.to_string());
+		node.push_entry(self.classification.clone());
+		if let Some(damage) = &self.damage {
+			node.push_child_t("damage", damage);
+		}
+		for property in &self.properties {
+			node.push_child_t("property", property);
+		}
+		if let Some(range) = &self.range {
+			node.push_child_t("range", range);
+		}
+		node
 	}
 }
 

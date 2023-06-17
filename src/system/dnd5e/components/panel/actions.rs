@@ -18,7 +18,6 @@ use crate::{
 			},
 		},
 	},
-	utility::Evaluator,
 };
 use enum_map::{Enum, EnumMap};
 use enumset::{EnumSet, EnumSetType};

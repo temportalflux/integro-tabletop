@@ -61,7 +61,7 @@ impl FromKDL for AttackKindValue {
 // TODO AsKdl: tests for AttackKindValue
 impl AsKdl for AttackKindValue {
 	fn as_kdl(&self) -> NodeBuilder {
-		let mut node = NodeBuilder::default();
+		let node = NodeBuilder::default();
 		match self {
 			Self::Melee { reach } => {
 				let mut node = node.with_entry("Melee");
