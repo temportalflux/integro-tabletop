@@ -40,8 +40,8 @@ impl Level {
 	pub fn to_string(&self) -> String {
 		match self {
 			Self::None => "None",
-			Self::HalfDown => "Half",
-			Self::HalfUp => "Half",
+			Self::HalfDown => "HalfDown",
+			Self::HalfUp => "HalfUp",
 			Self::Full => "Full",
 			Self::Double => "Double",
 		}

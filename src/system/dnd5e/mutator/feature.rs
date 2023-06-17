@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::FromKDL,
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::dnd5e::data::{character::Character, description, Feature},
 	utility::{Mutator, MutatorGroup},
 };
@@ -35,6 +35,12 @@ impl FromKDL for AddFeature {
 		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
 		Ok(Self(Feature::from_kdl(node, ctx)?))
+	}
+}
+// TODO AsKdl: tests for AddFeature
+impl AsKdl for AddFeature {
+	fn as_kdl(&self) -> NodeBuilder {
+		self.0.as_kdl()
 	}
 }
 

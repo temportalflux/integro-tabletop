@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{FromKDL, NodeExt, ValueExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt, ValueExt},
 	system::dnd5e::{
 		data::{character::Character, description},
 		Value,
@@ -61,6 +61,17 @@ impl FromKDL for AddMaxHitPoints {
 			Ok(value.as_i64_req()? as i32)
 		})?;
 		Ok(Self { id, value })
+	}
+}
+// TODO AsKdl: tests for AddMaxHitPoints
+impl AsKdl for AddMaxHitPoints {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		if let Some(id) = &self.id {
+			node.push_entry(("id", id.clone()));
+		}
+		node += self.value.as_kdl();
+		node
 	}
 }
 

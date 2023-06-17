@@ -1,6 +1,6 @@
 use super::BoundedAbility;
 use crate::{
-	kdl_ext::{FromKDL, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
 	system::dnd5e::data::{character::Character, Ability},
 };
 use std::str::FromStr;
@@ -59,6 +59,26 @@ impl FromKDL for ArmorClassFormula {
 			bonuses.push(BoundedAbility { ability, min, max });
 		}
 		Ok(Self { base, bonuses })
+	}
+}
+// TODO AsKdl: tests for ArmorClassFormula
+impl AsKdl for ArmorClassFormula {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		node.push_entry(self.base as i64);
+		for bonus in &self.bonuses {
+			node.push_child({
+				let mut node = NodeBuilder::default().with_entry(bonus.ability.long_name());
+				if let Some(min) = &bonus.min {
+					node.push_entry(("min", *min as i64));
+				}
+				if let Some(max) = &bonus.max {
+					node.push_entry(("max", *max as i64));
+				}
+				node.build("bonus")
+			});
+		}
+		node
 	}
 }
 

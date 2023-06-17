@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::FromKDL,
+	kdl_ext::{AsKdl, FromKDL},
 	system::dnd5e::data::{character::Character, description, ArmorClassFormula},
 	utility::Mutator,
 };
@@ -55,6 +55,12 @@ impl FromKDL for AddArmorClassFormula {
 		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
 		Ok(Self(ArmorClassFormula::from_kdl(node, ctx)?))
+	}
+}
+// TODO AsKdl: tests for AddArmorClassFormula
+impl AsKdl for AddArmorClassFormula {
+	fn as_kdl(&self) -> crate::kdl_ext::NodeBuilder {
+		self.0.as_kdl()
 	}
 }
 

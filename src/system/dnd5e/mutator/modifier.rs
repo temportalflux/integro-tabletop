@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{EntryExt, FromKDL, NodeExt, ValueExt},
+	kdl_ext::{AsKdl, EntryExt, FromKDL, NodeBuilder, NodeExt, ValueExt},
 	system::dnd5e::data::{character::Character, description, roll, Ability, Skill},
 	utility::{Mutator, NotInList, Selector, SelectorMetaVec},
 };
@@ -199,6 +199,34 @@ impl FromKDL for AddModifier {
 			context,
 			kind,
 		})
+	}
+}
+// TODO AsKdl: tests for AddModifier
+impl AsKdl for AddModifier {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		node.push_entry(self.modifier.to_string());
+		if let Some(context) = &self.context {
+			node.push_entry(("context", context.clone()));
+		}
+		match &self.kind {
+			ModifierKind::Ability(ability) => {
+				node.append_typed("Ability", ability.as_kdl());
+			}
+			ModifierKind::SavingThrow(None) => {
+				node.push_entry_typed("All", "SavingThrow");
+			}
+			ModifierKind::SavingThrow(Some(ability)) => {
+				node.append_typed("SavingThrow", ability.as_kdl());
+			}
+			ModifierKind::Skill(skill) => {
+				node.append_typed("Skill", skill.as_kdl());
+			}
+			ModifierKind::Initiative => {
+				node.push_entry_typed("", "Initiative");
+			}
+		}
+		node
 	}
 }
 

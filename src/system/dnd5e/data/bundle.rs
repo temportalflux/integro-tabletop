@@ -185,7 +185,7 @@ impl AsKdl for Bundle {
 		}
 
 		for mutator in &self.mutators {
-			// TODO AsKdl: mutators; node.push_child_t("mutator", mutator);
+			node.push_child_t("mutator", mutator);
 		}
 		for feature in &self.features {
 			node.push_child_t("feature", feature);

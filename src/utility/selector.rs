@@ -1,5 +1,5 @@
 use super::NotInList;
-use crate::kdl_ext::{DocumentExt, NodeContext, NodeExt, ValueExt};
+use crate::kdl_ext::{AsKdl, DocumentExt, NodeBuilder, NodeContext, NodeExt, ValueExt};
 use anyhow::Context;
 use derivative::Derivative;
 use enumset::{EnumSet, EnumSetType};
@@ -149,6 +149,11 @@ where
 			}
 			name => Err(NotInList(name.into(), vec!["Specific", "Any", "AnyOf"]).into()),
 		}
+	}
+}
+impl<T: ToString + FromStr> AsKdl for Selector<T> {
+	fn as_kdl(&self) -> NodeBuilder {
+		NodeBuilder::default()
 	}
 }
 

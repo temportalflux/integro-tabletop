@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{FromKDL, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
 	system::dnd5e::data::Rest,
 	utility::NotInList,
 };
@@ -12,6 +12,29 @@ pub struct Slots {
 	pub slots_capacity: BTreeMap<usize, BTreeMap<u8, usize>>,
 }
 
+impl Slots {
+	fn transpose_reduce_capacity(&self) -> BTreeMap<u8, Vec<(usize, usize)>> {
+		let mut max_amt_by_rank = [0usize; 10];
+		let mut level_capacity_by_rank = BTreeMap::new();
+		for (level, max_rank_slots) in &self.slots_capacity {
+			for (rank, amt) in max_rank_slots {
+				if *amt > max_amt_by_rank[*rank as usize] {
+					max_amt_by_rank[*rank as usize] = *amt;
+					if !level_capacity_by_rank.contains_key(rank) {
+						level_capacity_by_rank.insert(*rank, Vec::new());
+					}
+					level_capacity_by_rank
+						.get_mut(rank)
+						.unwrap()
+						.push((*level, *amt));
+				}
+			}
+		}
+		level_capacity_by_rank
+	}
+}
+
+// TODO AsKdl: from/as for spellcasting Slots
 impl FromKDL for Slots {
 	fn from_kdl(
 		node: &kdl::KdlNode,
@@ -49,5 +72,31 @@ impl FromKDL for Slots {
 			reset_on,
 			slots_capacity,
 		})
+	}
+}
+impl AsKdl for Slots {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+
+		if self.multiclass_half_caster {
+			node.push_entry(("multiclass", "Half"));
+		}
+		node.push_entry(("reset_on", self.reset_on.to_string()));
+
+		for (rank, capacity) in self.transpose_reduce_capacity() {
+			let mut node_rank = NodeBuilder::default();
+			node_rank.push_entry(rank as i64);
+			for (level, amt) in capacity {
+				node_rank.push_child(
+					NodeBuilder::default()
+						.with_entry(level as i64)
+						.with_entry(amt as i64)
+						.build("level"),
+				);
+			}
+			node.push_child(node_rank.build("rank"));
+		}
+
+		node
 	}
 }

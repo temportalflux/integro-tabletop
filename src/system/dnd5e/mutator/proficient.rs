@@ -1,7 +1,7 @@
 use enumset::EnumSet;
 
 use crate::{
-	kdl_ext::{EntryExt, FromKDL, NodeExt, ValueExt},
+	kdl_ext::{AsKdl, EntryExt, FromKDL, NodeBuilder, NodeExt, ValueExt},
 	system::dnd5e::data::{
 		character::Character, description, item::weapon, proficiency, Ability, ArmorExtended,
 		Skill, WeaponProficiency,
@@ -253,6 +253,45 @@ impl FromKDL for AddProficiency {
 				],
 			)
 			.into()),
+		}
+	}
+}
+// TODO AsKdl: tests for AddProficiency
+impl AsKdl for AddProficiency {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		match self {
+			Self::Ability(ability, level) => {
+				node.append_typed("Ability", ability.as_kdl());
+				if *level != proficiency::Level::Full {
+					node.push_entry(("level", level.to_string()));
+				}
+				node
+			}
+			Self::SavingThrow(ability) => node.with_entry_typed(ability.long_name(), "SavingThrow"),
+			Self::Skill(skill, level) => {
+				node.append_typed("Skill", skill.as_kdl());
+				if *level != proficiency::Level::Full {
+					node.push_entry(("level", level.to_string()));
+				}
+				node
+			}
+			Self::Language(lang_name) => {
+				node.append_typed("Language", lang_name.as_kdl());
+				node
+			}
+			Self::Armor(armor_ext, context) => {
+				node.push_entry_typed(armor_ext.to_string(), "Armor");
+				if let Some(context) = context {
+					node.push_entry(context.clone());
+				}
+				node
+			}
+			Self::Weapon(weapon_prof) => node.with_entry_typed(weapon_prof.to_string(), "Weapon"),
+			Self::Tool(tool_name) => {
+				node.append_typed("Tool", tool_name.as_kdl());
+				node
+			}
 		}
 	}
 }

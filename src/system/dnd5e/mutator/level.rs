@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{FromKDL, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
 	system::dnd5e::data::{character::Character, description},
 	utility::{GenericMutator, Mutator},
 };
@@ -100,5 +100,24 @@ impl FromKDL for GrantByLevel {
 		}
 
 		Ok(Self { class_name, levels })
+	}
+}
+// TODO AsKdl: tests for GrantByLevel
+impl AsKdl for GrantByLevel {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		if let Some(class_name) = &self.class_name {
+			node.push_entry(("class", class_name.clone()));
+		}
+		for (level, mutators) in &self.levels {
+			node.push_child({
+				let mut node = NodeBuilder::default().with_entry(*level as i64);
+				for mutator in mutators {
+					node.push_child_t("mutator", mutator);
+				}
+				node.build("level")
+			})
+		}
+		node
 	}
 }

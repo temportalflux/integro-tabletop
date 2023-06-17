@@ -371,6 +371,11 @@ impl Modifier {
 		}
 	}
 }
+impl ToString for Modifier {
+	fn to_string(&self) -> String {
+		self.display_name().to_owned()
+	}
+}
 impl FromStr for Modifier {
 	type Err = GeneralError;
 

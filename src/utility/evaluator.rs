@@ -68,7 +68,7 @@ impl<C, V> std::fmt::Debug for GenericEvaluator<C, V> {
 }
 
 impl<C, V> AsKdl for GenericEvaluator<C, V> {
-    fn as_kdl(&self) -> crate::kdl_ext::NodeBuilder {
-        self.0.as_kdl()
-    }
+	fn as_kdl(&self) -> crate::kdl_ext::NodeBuilder {
+		self.0.as_kdl()
+	}
 }

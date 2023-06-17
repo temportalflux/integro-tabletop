@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{EntryExt, FromKDL, NodeExt, ValueExt},
+	kdl_ext::{AsKdl, EntryExt, FromKDL, NodeBuilder, NodeExt, ValueExt},
 	utility::InvalidEnumStr,
 };
 use enum_map::{Enum, EnumMap};
@@ -170,6 +170,12 @@ impl FromKDL for BoundValue {
 			BoundKind::Additive => Self::Additive(value),
 			BoundKind::Subtract => Self::Subtract(value),
 		})
+	}
+}
+// TODO AsKdl: from/as tests for BoundValue
+impl AsKdl for BoundValue {
+	fn as_kdl(&self) -> NodeBuilder {
+		NodeBuilder::default().with_entry_typed(*self.value() as i64, self.kind().to_string())
 	}
 }
 

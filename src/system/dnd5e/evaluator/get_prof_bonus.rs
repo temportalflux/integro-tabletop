@@ -1,4 +1,8 @@
-use crate::{kdl_ext::{FromKDL, AsKdl, NodeBuilder}, system::dnd5e::data::character::Character, utility::Evaluator};
+use crate::{
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
+	system::dnd5e::data::character::Character,
+	utility::Evaluator,
+};
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct GetProficiencyBonus;

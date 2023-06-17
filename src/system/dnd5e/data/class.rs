@@ -138,7 +138,7 @@ impl AsKdl for Class {
 		}
 
 		for mutator in &self.mutators {
-			// TODO AsKdl: mutators; node.push_child_t("mutator", mutator);
+			node.push_child_t("mutator", mutator);
 		}
 
 		for (idx, level) in self.levels.iter().enumerate() {
@@ -215,7 +215,7 @@ impl AsKdl for Level {
 		let mut node = NodeBuilder::default();
 
 		for mutator in &self.mutators {
-			// TODO AsKdl: mutators; node.push_child_t("mutator", mutator);
+			node.push_child_t("mutator", mutator);
 		}
 		for feature in &self.features {
 			node.push_child_t("feature", feature);

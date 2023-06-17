@@ -34,7 +34,7 @@ impl Evaluator for Any {
 }
 impl AsKdl for Any {
 	fn as_kdl(&self) -> NodeBuilder {
-		// STUB: Never actually used because this evaluator isn't registered
+		// STUB: Not registered for documents
 		NodeBuilder::default()
 	}
 }

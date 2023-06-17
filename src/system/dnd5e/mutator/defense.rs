@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{FromKDL, NodeExt, ValueExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt, ValueExt},
 	system::dnd5e::data::{character::Character, description, DamageType},
 	utility::{InvalidEnumStr, Mutator},
 };
@@ -105,6 +105,20 @@ impl FromKDL for AddDefense {
 			damage_type,
 			context,
 		})
+	}
+}
+// TODO AsKdl: tests for AddDefense
+impl AsKdl for AddDefense {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		node.push_entry(self.defense.to_string());
+		if let Some(damage_type) = &self.damage_type {
+			node.push_entry_typed(damage_type.to_string(), "DamageType");
+		}
+		if let Some(context) = &self.context {
+			node.push_entry(("context", context.clone()));
+		}
+		node
 	}
 }
 

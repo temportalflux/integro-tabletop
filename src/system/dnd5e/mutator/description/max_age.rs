@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{FromKDL, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
 	system::dnd5e::data::{character::Character, description},
 	utility::Mutator,
 };
@@ -33,5 +33,9 @@ impl FromKDL for AddLifeExpectancy {
 		Ok(Self(node.get_i64_req(ctx.consume_idx())? as i32))
 	}
 }
-
-// TODO: Test AddLifeExpectancy
+// TODO AsKdl: from/as tests for AddLifeExpectancy
+impl AsKdl for AddLifeExpectancy {
+	fn as_kdl(&self) -> NodeBuilder {
+		NodeBuilder::default().with_entry(self.0 as i64)
+	}
+}

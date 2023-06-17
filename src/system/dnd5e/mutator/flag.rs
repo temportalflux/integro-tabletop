@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{FromKDL, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
 	system::dnd5e::data::{bounded::BoundValue, character::Character, description, Ability},
 	utility::{InvalidEnumStr, Mutator},
 };
@@ -66,6 +66,14 @@ impl FromKDL for SetFlag {
 		Ok(Self { flag, value })
 	}
 }
+// TODO AsKdl: tests for SetFlag
+impl AsKdl for SetFlag {
+	fn as_kdl(&self) -> NodeBuilder {
+		NodeBuilder::default()
+			.with_entry(self.flag.to_string())
+			.with_entry(self.value)
+	}
+}
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct ArmorStrengthRequirement {
@@ -107,5 +115,11 @@ impl Mutator for ArmorStrengthRequirement {
 				.speeds_mut()
 				.insert(speed, BoundValue::Subtract(10), parent.to_owned());
 		}
+	}
+}
+impl AsKdl for ArmorStrengthRequirement {
+	fn as_kdl(&self) -> NodeBuilder {
+		// STUB: not available to documents
+		NodeBuilder::default()
 	}
 }

@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{FromKDL, NodeExt, ValueExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt, ValueExt},
 	system::dnd5e::{
 		data::{
 			character::{ActionBudgetKind, Character},
@@ -74,6 +74,15 @@ impl FromKDL for AddToActionBudget {
 			action_kind,
 			amount,
 		})
+	}
+}
+// TODO AsKdl: tests for AddToActionBudget
+impl AsKdl for AddToActionBudget {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		node.push_entry(self.action_kind.to_string());
+		node += self.amount.as_kdl();
+		node
 	}
 }
 

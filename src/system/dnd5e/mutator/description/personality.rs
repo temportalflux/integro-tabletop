@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{DocumentExt, FromKDL, NodeExt},
+	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt},
 	system::dnd5e::data::{
 		character::{Character, PersonalityKind},
 		description,
@@ -52,5 +52,19 @@ impl FromKDL for SuggestedPersonality {
 		Ok(Self { kind, options })
 	}
 }
-
-// TODO: Test SuggestedPersonality
+// TODO AsKdl: from/as tests for SuggestedPersonality
+impl AsKdl for SuggestedPersonality {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		node.push_entry(match &self.kind {
+			PersonalityKind::Trait => "Trait",
+			PersonalityKind::Ideal => "Ideal",
+			PersonalityKind::Bond => "Bond",
+			PersonalityKind::Flaw => "Flaw",
+		});
+		for option in &self.options {
+			node.push_child_opt_t("option", option);
+		}
+		node
+	}
+}

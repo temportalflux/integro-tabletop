@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{FromKDL, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
 	system::dnd5e::data::{bounded::BoundValue, character::Character, description},
 	utility::Mutator,
 };
@@ -49,6 +49,15 @@ impl FromKDL for Sense {
 		let name = node.get_str_req(ctx.consume_idx())?.to_owned();
 		let argument = BoundValue::from_kdl(node, ctx)?;
 		Ok(Self { name, argument })
+	}
+}
+// TODO AsKdl: tests for Sense
+impl AsKdl for Sense {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		node.push_entry(self.name.clone());
+		node += self.argument.as_kdl();
+		node
 	}
 }
 

@@ -1,7 +1,7 @@
 use itertools::Itertools;
 
 use crate::{
-	kdl_ext::{DocumentExt, FromKDL, NodeExt},
+	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt},
 	system::dnd5e::{
 		data::{character::Character, description, Feature},
 		BoxedMutator,
@@ -29,6 +29,16 @@ crate::impl_trait_eq!(PickN);
 crate::impl_kdl_node!(PickN, "pick");
 
 impl PickN {
+	fn id(&self) -> Option<&String> {
+		let Selector::AnyOf { id, .. } = &self.selector else { return None; };
+		id.get_id()
+	}
+
+	fn cannot_match(&self) -> &Vec<IdPath> {
+		let Selector::AnyOf { cannot_match, .. } = &self.selector else { unimplemented!(); };
+		cannot_match
+	}
+
 	fn max_selections(&self) -> usize {
 		let Selector::AnyOf { amount, .. } = &self.selector else { return 0; };
 		*amount
@@ -197,5 +207,41 @@ impl FromKDL for PickN {
 			options,
 			selector,
 		})
+	}
+}
+// TODO AsKdl: tests for PickN
+impl AsKdl for PickN {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+
+		node.push_entry(self.max_selections() as i64);
+
+		node.push_entry(("name", self.name.clone()));
+		if let Some(id) = self.id() {
+			node.push_entry(("id", id.clone()));
+		}
+
+		for cannot_match in self.cannot_match() {
+			let Some(id) = cannot_match.get_id() else { continue; };
+			node.push_child_t("cannot-match", id);
+		}
+
+		for name in self.option_order().unwrap() {
+			let Some(option) = self.options.get(name) else { continue; };
+			let mut node_option = NodeBuilder::default();
+			node_option.push_entry(name.clone());
+			if let Some(desc) = &option.description {
+				node_option.push_child_opt_t("description", desc);
+			}
+			for mutator in &option.mutators {
+				node_option.push_child_t("mutator", mutator);
+			}
+			for feature in &option.features {
+				node_option.push_child_t("feature", feature);
+			}
+			node.push_child(node_option.build("option"));
+		}
+
+		node
 	}
 }

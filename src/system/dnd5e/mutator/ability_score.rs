@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{DocumentExt, FromKDL, NodeExt, ValueExt},
+	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt, ValueExt},
 	system::dnd5e::data::{
 		character::{AbilityScoreBonus, Character},
 		description, Ability,
@@ -139,6 +139,38 @@ impl FromKDL for AbilityScoreChange {
 			ability,
 			operations,
 		})
+	}
+}
+// TODO AsKdl: tests for AbilityScoreChange
+impl AsKdl for AbilityScoreChange {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		node.push_child_t("ability", &self.ability);
+		for operation in &self.operations {
+			match operation {
+				AbilityScoreOp::Bonus {
+					value,
+					max_total_score,
+				} => {
+					node.push_child({
+						let mut node = NodeBuilder::default();
+						node.push_entry(*value as i64);
+						if let Some(score) = max_total_score {
+							node.push_entry(("max-total", *score as i64));
+						}
+						node.build("bonus")
+					});
+				}
+				AbilityScoreOp::IncreaseMax { value } => {
+					node.push_child(
+						NodeBuilder::default()
+							.with_entry(*value as i64)
+							.build("increase-max"),
+					);
+				}
+			}
+		}
+		node
 	}
 }
 

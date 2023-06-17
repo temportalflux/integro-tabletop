@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{DocumentExt, FromKDL, NodeExt},
+	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt},
 	system::dnd5e::data::{character::Character, description, roll::Roll},
 	utility::Mutator,
 };
@@ -117,5 +117,42 @@ impl FromKDL for AddSize {
 		Ok(Self { height, weight })
 	}
 }
-
-// TODO: Test AddSize
+// TODO AsKdl: from/as tests for AddSize
+impl AsKdl for AddSize {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		node.push_child_opt({
+			let mut node = NodeBuilder::default();
+			for formula in &self.height {
+				match formula {
+					FormulaComponent::Base(value) => {
+						node.push_entry(("base", *value as i64));
+					}
+					FormulaComponent::Bonus(roll) => {
+						node.push_entry(("bonus", roll.to_string()));
+					}
+					FormulaComponent::WeightMultiplier(roll) => {
+						node.push_entry(("multiplier", roll.to_string()));
+					}
+				}
+			}
+			node.build("height")
+		});
+		node.push_child_opt({
+			let mut node = NodeBuilder::default();
+			for formula in &self.weight {
+				match formula {
+					FormulaComponent::Base(value) => {
+						node.push_entry(("base", *value as i64));
+					}
+					FormulaComponent::Bonus(roll) => {
+						node.push_entry(("bonus", roll.to_string()));
+					}
+					FormulaComponent::WeightMultiplier(_) => {}
+				}
+			}
+			node.build("weight")
+		});
+		node
+	}
+}
