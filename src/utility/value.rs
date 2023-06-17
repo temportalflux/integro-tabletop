@@ -117,7 +117,7 @@ impl<V: 'static + AsKdl> AsKdl for Value<Character, V> {
 			Self::Evaluated(eval) => {
 				let mut node = NodeBuilder::default();
 				node.push_entry_typed(eval.get_id(), "Evaluator");
-				// TODO AsKdl: evaluators; node += eval.as_kdl();
+				node += eval.as_kdl();
 				node
 			}
 		}

@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{FromKDL, KDLNode, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, KDLNode, NodeBuilder, NodeExt},
 	system::dnd5e::{
 		data::character::{Character, HitPoint},
 		mutator::AddMaxHitPoints,
@@ -22,6 +22,16 @@ impl FromKDL for GetHitPoints {
 		Ok(Self(HitPoint::from_str(
 			node.get_str_req(ctx.consume_idx())?,
 		)?))
+	}
+}
+// TODO AsKdl: tests for GetHitPoints
+impl AsKdl for GetHitPoints {
+	fn as_kdl(&self) -> NodeBuilder {
+		NodeBuilder::default().with_entry(match self.0 {
+			HitPoint::Current => "Current",
+			HitPoint::Temp => "Temp",
+			HitPoint::Max => "Max",
+		})
 	}
 }
 

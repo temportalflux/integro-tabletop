@@ -604,7 +604,7 @@ impl<T: AsKdl> AsKdl for Inventory<T> {
 
 		for id in &self.itemids_by_name {
 			let Some(entry) = self.items_by_id.get(id) else { continue; };
-			node.push_child(entry.build_kdl("item"));
+			node.push_child(entry.as_kdl().build("item"));
 		}
 
 		node

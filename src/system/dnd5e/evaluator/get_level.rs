@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{FromKDL, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
 	system::dnd5e::data::character::Character,
 	utility::Evaluator,
 };
@@ -73,6 +73,24 @@ impl FromKDL for GetLevel {
 			class_name,
 			order_map,
 		})
+	}
+}
+// TODO AsKdl: tests for GetLevel
+impl AsKdl for GetLevel {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		if let Some(class_name) = &self.class_name {
+			node.push_entry(("class", class_name.clone()));
+		}
+		for (level, value) in &self.order_map {
+			node.push_child(
+				NodeBuilder::default()
+					.with_entry(*level as i64)
+					.with_entry(*value as i64)
+					.build("level"),
+			);
+		}
+		node
 	}
 }
 

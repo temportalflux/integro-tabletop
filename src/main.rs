@@ -170,7 +170,7 @@ async fn main() -> anyhow::Result<()> {
 				use dnd5e::data::character::Persistent;
 				use kdl_ext::{AsKdl, FromKDL};
 				let data = Persistent::from_kdl(node, &mut ctx.next_node())?;
-				let exported = data.build_kdl("character");
+				let exported = data.as_kdl().build("character");
 				log::debug!("{}", exported);
 			}
 		}

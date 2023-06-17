@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{FromKDL, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
 	system::dnd5e::data::{character::Character, Ability},
 	utility::{Dependencies, Evaluator},
 };
@@ -37,6 +37,12 @@ impl FromKDL for GetAbilityModifier {
 		Ok(Self(Ability::from_str(
 			node.get_str_req(ctx.consume_idx())?,
 		)?))
+	}
+}
+// TODO AsKdl: tests for GetAbilityModifier
+impl AsKdl for GetAbilityModifier {
+	fn as_kdl(&self) -> NodeBuilder {
+		NodeBuilder::default().with_entry(self.0.long_name())
 	}
 }
 

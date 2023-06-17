@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use crate::{
-	kdl_ext::{DocumentExt, FromKDL, NodeExt},
+	kdl_ext::{DocumentExt, FromKDL, NodeExt, AsKdl, NodeBuilder},
 	system::{
 		core::SourceId,
 		dnd5e::data::{character::Character, Condition},
@@ -81,6 +81,19 @@ impl FromKDL for HasCondition {
 		Ok(Self { inverted, filters })
 	}
 }
+// TODO AsKdl: tests for HasCondition
+impl AsKdl for HasCondition {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		if self.inverted {
+			node.push_entry(("inverted", true));
+		}
+		for filter in &self.filters {
+			node.push_child_t("filter", filter);
+		}
+		node
+	}
+}
 
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct ConditionFilter {
@@ -107,6 +120,24 @@ impl FromKDL for ConditionFilter {
 			properties.push(ConditionProperty::Name(value.to_owned()));
 		}
 		Ok(Self { name, properties })
+	}
+}
+// TODO AsKdl: tests for ConditionFilter
+impl AsKdl for ConditionFilter {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		node.push_entry(("name", self.name.clone()));
+		for property in &self.properties {
+			match property {
+				ConditionProperty::Id(id) => {
+					node.push_child_t("id", id);
+				}
+				ConditionProperty::Name(name) => {
+					node.push_child_t("name", name);
+				}
+			}
+		}
+		node
 	}
 }
 

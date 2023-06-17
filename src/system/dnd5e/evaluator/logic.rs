@@ -1,4 +1,5 @@
 use crate::{
+	kdl_ext::{AsKdl, NodeBuilder},
 	system::dnd5e::{data::character::Character, BoxedEvaluator},
 	utility::{Dependencies, Evaluator},
 };
@@ -29,5 +30,11 @@ impl Evaluator for Any {
 			}
 		}
 		false
+	}
+}
+impl AsKdl for Any {
+	fn as_kdl(&self) -> NodeBuilder {
+		// STUB: Never actually used because this evaluator isn't registered
+		NodeBuilder::default()
 	}
 }

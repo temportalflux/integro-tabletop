@@ -224,7 +224,7 @@ impl Character {
 		use crate::kdl_ext::AsKdl;
 		let mut doc = kdl::KdlDocument::new();
 		doc.nodes_mut()
-			.push(self.persistent().build_kdl("character"));
+			.push(self.persistent().as_kdl().build("character"));
 		doc
 	}
 }

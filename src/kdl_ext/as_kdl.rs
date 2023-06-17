@@ -1,9 +1,5 @@
 pub trait AsKdl {
 	fn as_kdl(&self) -> NodeBuilder;
-
-	fn build_kdl(&self, name: impl Into<kdl::KdlIdentifier>) -> kdl::KdlNode {
-		self.as_kdl().build(name)
-	}
 }
 
 #[derive(Default)]
@@ -67,7 +63,7 @@ impl NodeBuilder {
 	}
 
 	pub fn push_child_t(&mut self, name: impl Into<kdl::KdlIdentifier>, data: &impl AsKdl) {
-		self.push_child(data.build_kdl(name))
+		self.push_child(data.as_kdl().build(name))
 	}
 
 	pub fn push_child_opt(&mut self, node: kdl::KdlNode) {
@@ -78,7 +74,7 @@ impl NodeBuilder {
 	}
 
 	pub fn push_child_opt_t(&mut self, name: impl Into<kdl::KdlIdentifier>, data: &impl AsKdl) {
-		self.push_child_opt(data.build_kdl(name))
+		self.push_child_opt(data.as_kdl().build(name))
 	}
 
 	pub fn with_child(mut self, node: kdl::KdlNode) -> Self {

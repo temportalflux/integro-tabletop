@@ -619,6 +619,6 @@ pub mod test_utils {
 	}
 
 	pub fn as_doc(name: &'static str, data: &impl AsKdl) -> String {
-		data.build_kdl(name).to_string()
+		data.as_kdl().build(name).to_string()
 	}
 }

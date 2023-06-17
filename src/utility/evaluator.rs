@@ -1,9 +1,11 @@
 use super::{AsTraitEq, Dependencies, TraitEq};
-use crate::kdl_ext::KDLNode;
+use crate::kdl_ext::{AsKdl, KDLNode};
 use downcast_rs::{impl_downcast, DowncastSync};
 use std::{fmt::Debug, sync::Arc};
 
-pub trait Evaluator: DowncastSync + Debug + TraitEq + AsTraitEq<dyn TraitEq> + KDLNode {
+pub trait Evaluator:
+	DowncastSync + Debug + TraitEq + AsTraitEq<dyn TraitEq> + KDLNode + AsKdl
+{
 	type Context;
 	type Item;
 
@@ -63,4 +65,10 @@ impl<C, V> std::fmt::Debug for GenericEvaluator<C, V> {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		self.0.fmt(f)
 	}
+}
+
+impl<C, V> AsKdl for GenericEvaluator<C, V> {
+    fn as_kdl(&self) -> crate::kdl_ext::NodeBuilder {
+        self.0.as_kdl()
+    }
 }

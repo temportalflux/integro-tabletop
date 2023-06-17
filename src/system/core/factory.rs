@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{FromKDL, KDLNode, NodeContext},
+	kdl_ext::{AsKdl, FromKDL, KDLNode, NodeContext},
 	utility::{ArcEvaluator, ArcMutator, Evaluator, GenericEvaluator, GenericMutator, Mutator},
 };
 use std::{

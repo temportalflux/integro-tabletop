@@ -1,4 +1,4 @@
-use crate::{kdl_ext::FromKDL, system::dnd5e::data::character::Character, utility::Evaluator};
+use crate::{kdl_ext::{FromKDL, AsKdl, NodeBuilder}, system::dnd5e::data::character::Character, utility::Evaluator};
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct GetProficiencyBonus;
@@ -25,5 +25,10 @@ impl FromKDL for GetProficiencyBonus {
 		_ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
 		Ok(Self)
+	}
+}
+impl AsKdl for GetProficiencyBonus {
+	fn as_kdl(&self) -> NodeBuilder {
+		NodeBuilder::default()
 	}
 }

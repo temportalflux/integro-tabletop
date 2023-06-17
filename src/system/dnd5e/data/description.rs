@@ -448,7 +448,7 @@ impl AsKdl for FormatArgs {
 				entry.set_ty("Signed");
 			}
 			let mut arg_node = NodeBuilder::default().with_entry(entry);
-			// TODO AsKdl: Evaluators; arg_node += arg.evaluator.as_kdl();
+			arg_node += arg.evaluator.as_kdl();
 			node.push_child(arg_node.build("format-arg"));
 		}
 

@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{EntryExt, FromKDL, NodeExt, ValueExt},
+	kdl_ext::{EntryExt, FromKDL, NodeExt, ValueExt, AsKdl, NodeBuilder},
 	system::dnd5e::data::{
 		character::Character, item::weapon, proficiency, Ability, ArmorExtended, Skill,
 		WeaponProficiency,
@@ -87,6 +87,20 @@ impl FromKDL for IsProficientWith {
 				],
 			)
 			.into()),
+		}
+	}
+}
+// TODO AsKdl: tests for IsProficientWith
+impl AsKdl for IsProficientWith {
+	fn as_kdl(&self) -> NodeBuilder {
+		let node = NodeBuilder::default();
+		match self {
+			Self::SavingThrow(ability) => node.with_entry_typed(ability.long_name(), "SavingThrow"),
+			Self::Skill(skill) => node.with_entry_typed(skill.to_string(), "Skill"),
+			Self::Language(lang_name) => node.with_entry_typed(lang_name.clone(), "Language"),
+			Self::Armor(armor_ext) => node.with_entry_typed(armor_ext.to_string(), "Armor"),
+			Self::Weapon(weapon_prof) => node.with_entry_typed(weapon_prof.to_string(), "Weapon"),
+			Self::Tool(tool_name) => node.with_entry_typed(tool_name.clone(), "Tool"),
 		}
 	}
 }
