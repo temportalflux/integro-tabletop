@@ -1,8 +1,9 @@
 use super::{AsTraitEq, Dependencies, TraitEq};
+use crate::kdl_ext::KDLNode;
 use downcast_rs::{impl_downcast, DowncastSync};
 use std::{fmt::Debug, sync::Arc};
 
-pub trait Evaluator: DowncastSync + Debug + TraitEq + AsTraitEq<dyn TraitEq> {
+pub trait Evaluator: DowncastSync + Debug + TraitEq + AsTraitEq<dyn TraitEq> + KDLNode {
 	type Context;
 	type Item;
 

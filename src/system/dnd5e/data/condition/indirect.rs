@@ -1,6 +1,6 @@
 use super::Condition;
 use crate::{
-	kdl_ext::{FromKDL, NodeExt},
+	kdl_ext::{FromKDL, NodeExt, AsKdl, NodeBuilder},
 	system::core::SourceId,
 };
 use anyhow::Context;
@@ -29,6 +29,20 @@ impl FromKDL for IndirectCondition {
 				})?;
 				source_id.set_basis(ctx.id(), false);
 				Ok(Self::Id(source_id))
+			}
+		}
+	}
+}
+// TODO AsKdl: tests for IndirectCondition
+impl AsKdl for IndirectCondition {
+	fn as_kdl(&self) -> NodeBuilder {
+		let node = NodeBuilder::default();
+		match self {
+			Self::Id(id) => node.with_entry(id.to_string()),
+			Self::Custom(condition) => {
+				let mut node = node.with_entry("Custom");
+				node += condition.as_kdl();
+				node
 			}
 		}
 	}

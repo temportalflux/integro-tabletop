@@ -1,6 +1,6 @@
 use super::character::Character;
 use crate::{
-	kdl_ext::{DocumentExt, FromKDL, NodeExt},
+	kdl_ext::{DocumentExt, FromKDL, NodeExt, AsKdl, NodeBuilder},
 	system::{
 		core::SourceId,
 		dnd5e::{BoxedCriteria, BoxedMutator, SystemComponent},
@@ -89,6 +89,31 @@ impl FromKDL for Condition {
 			mutators,
 			criteria,
 		})
+	}
+}
+// TODO AsKdl: tests for Condition
+impl AsKdl for Condition {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+
+		node.push_entry(("name", self.name.clone()));
+
+		if let Some(id) = &self.id {
+			node.push_child_entry("source", id.to_string());
+		}
+
+		if !self.description.is_empty() {
+			node.push_child_entry("description", self.description.clone());
+		}
+
+		if let Some(criteria) = &self.criteria {
+			// TODO AsKdl: evaluator; node.push_child_t("criteria", criteria);
+		}
+		for mutator in &self.mutators {
+			// TODO AsKdl: mutators; node.push_child_t("mutator", mutator);
+		}
+
+		node
 	}
 }
 

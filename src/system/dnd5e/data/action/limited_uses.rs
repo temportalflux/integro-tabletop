@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{DocumentExt, FromKDL, NodeExt, ValueExt},
+	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt, ValueExt},
 	system::dnd5e::{
 		data::{character::Character, Rest},
 		Value,
@@ -102,7 +102,6 @@ impl UseCounterData {
 	}
 
 	fn get_max_uses(&self, character: &Character) -> i32 {
-		use crate::utility::Evaluator;
 		self.max_uses.evaluate(character)
 	}
 
@@ -157,6 +156,28 @@ impl FromKDL for LimitedUses {
 			"Invalid limited uses, expected a max_uses or resource property.".into(),
 		)
 		.into());
+	}
+}
+// TODO AsKdl: tests for LimitedUses
+impl AsKdl for LimitedUses {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		match self {
+			Self::Usage(use_counter) => {
+				node.push_child_t("max_uses", &use_counter.max_uses);
+				if let Some(reset_on) = &use_counter.reset_on {
+					node.push_child_entry("reset_on", reset_on.to_string());
+				}
+				node
+			}
+			Self::Consumer { resource, cost } => {
+				node.push_child_entry("resource", resource.display().to_string());
+				if *cost > 1 {
+					node.push_child_entry("cost", *cost as i64);
+				}
+				node
+			}
+		}
 	}
 }
 

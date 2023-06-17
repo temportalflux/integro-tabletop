@@ -2,7 +2,6 @@ use super::character::Character;
 use crate::{
 	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt, ValueExt},
 	system::dnd5e::Value,
-	utility::Evaluator,
 	GeneralError,
 };
 use enum_map::{Enum, EnumMap};
@@ -255,6 +254,31 @@ impl FromKDL for EvaluatedRoll {
 			}
 		};
 		Ok(Self { amount, die })
+	}
+}
+// TODO AsKdl: from/as tests for EvaluatedRoll
+impl AsKdl for EvaluatedRoll {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		match self {
+			// These first two are when the EvaluatedRoll is a fixed Roll, and thus can be serialized as such
+			Self {
+				amount: Value::Fixed(amt),
+				die: None,
+			} => node.with_entry(format!("{amt}")),
+			Self {
+				amount: Value::Fixed(amt),
+				die: Some(Value::Fixed(die)),
+			} => node.with_entry(format!("{amt}d{die}")),
+			// While this one puts the amount and die into child nodes for evaluator serialization
+			Self { amount, die } => {
+				node.push_child_t("amount", amount);
+				if let Some(die) = die {
+					node.push_child_t("die", die);
+				}
+				node
+			}
+		}
 	}
 }
 

@@ -36,8 +36,29 @@ impl NodeBuilder {
 		self.entries.push(entry.into());
 	}
 
+	pub fn push_entry_typed(
+		&mut self,
+		entry: impl Into<kdl::KdlEntry>,
+		ty: impl Into<kdl::KdlIdentifier>,
+	) {
+		self.entries.push({
+			let mut entry = entry.into();
+			entry.set_ty(ty);
+			entry
+		});
+	}
+
 	pub fn with_entry(mut self, entry: impl Into<kdl::KdlEntry>) -> Self {
 		self.push_entry(entry);
+		self
+	}
+
+	pub fn with_entry_typed(
+		mut self,
+		entry: impl Into<kdl::KdlEntry>,
+		ty: impl Into<kdl::KdlIdentifier>,
+	) -> Self {
+		self.push_entry_typed(entry, ty);
 		self
 	}
 
@@ -72,11 +93,54 @@ impl NodeBuilder {
 	) {
 		self.push_child(Self::default().with_entry(entry.into()).build(name));
 	}
+
+	pub fn push_child_entry_typed(
+		&mut self,
+		name: impl Into<kdl::KdlIdentifier>,
+		ty: impl Into<kdl::KdlIdentifier>,
+		entry: impl Into<kdl::KdlEntry>,
+	) {
+		self.push_child(
+			Self::default()
+				.with_entry_typed(entry.into(), ty)
+				.build(name),
+		);
+	}
 }
 
 impl std::ops::AddAssign for NodeBuilder {
 	fn add_assign(&mut self, mut rhs: Self) {
 		self.entries.append(&mut rhs.entries);
 		self.children.append(&mut rhs.children);
+	}
+}
+
+macro_rules! impl_askdl_entry {
+	($target:ty, $map:expr) => {
+		impl AsKdl for $target {
+			fn as_kdl(&self) -> NodeBuilder {
+				NodeBuilder::default().with_entry(($map)(*self))
+			}
+		}
+	};
+}
+impl_askdl_entry!(bool, |v| v);
+impl_askdl_entry!(u8, |v| v as i64);
+impl_askdl_entry!(i8, |v| v as i64);
+impl_askdl_entry!(u16, |v| v as i64);
+impl_askdl_entry!(i16, |v| v as i64);
+impl_askdl_entry!(u32, |v| v as i64);
+impl_askdl_entry!(i32, |v| v as i64);
+impl_askdl_entry!(u64, |v| v as i64);
+impl_askdl_entry!(i64, |v| v);
+impl_askdl_entry!(u128, |v| v as i64);
+impl_askdl_entry!(i128, |v| v as i64);
+impl_askdl_entry!(usize, |v| v as i64);
+impl_askdl_entry!(isize, |v| v as i64);
+impl_askdl_entry!(f32, |v| v as f64);
+impl_askdl_entry!(f64, |v| v);
+impl AsKdl for String {
+	fn as_kdl(&self) -> NodeBuilder {
+		NodeBuilder::default().with_entry(self.clone())
 	}
 }

@@ -1,6 +1,6 @@
 use super::roll::EvaluatedRoll;
 use crate::{
-	kdl_ext::{DocumentExt, FromKDL, NodeExt},
+	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt},
 	utility::InvalidEnumStr,
 };
 use enumset::EnumSetType;
@@ -32,6 +32,20 @@ impl FromKDL for DamageRoll {
 			damage_type,
 			additional_bonuses: Vec::new(),
 		})
+	}
+}
+// TODO AsKdl: tests for DamageRoll
+impl AsKdl for DamageRoll {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		if self.base_bonus != 0 {
+			node.push_entry(self.base_bonus as i64);
+		}
+		if let Some(roll) = &self.roll {
+			node.push_child_t("roll", roll);
+		}
+		node.push_child_entry_typed("damage_type", "DamageType", self.damage_type.to_string());
+		node
 	}
 }
 

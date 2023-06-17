@@ -7,6 +7,7 @@ use crate::{
 pub struct Any(pub Vec<BoxedEvaluator<bool>>);
 
 crate::impl_trait_eq!(Any);
+crate::impl_kdl_node!(Any, "any");
 impl Evaluator for Any {
 	type Context = Character;
 	type Item = bool;

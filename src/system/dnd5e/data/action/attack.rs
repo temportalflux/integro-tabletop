@@ -1,6 +1,6 @@
 use super::super::{AreaOfEffect, DamageRoll};
 use crate::{
-	kdl_ext::{DocumentExt, FromKDL},
+	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
 	system::dnd5e::data::item::weapon,
 };
 
@@ -46,6 +46,23 @@ impl FromKDL for Attack {
 			damage,
 			weapon_kind: None,
 		})
+	}
+}
+// TODO AsKdl: tests for Attack
+impl AsKdl for Attack {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		if let Some(kind) = &self.kind {
+			node.push_child_t("kind", kind);
+		}
+		node.push_child_t("check", &self.check);
+		if let Some(area_of_effect) = &self.area_of_effect {
+			node.push_child_t("area_of_effect", area_of_effect);
+		}
+		if let Some(damage) = &self.damage {
+			node.push_child_t("damage", damage);
+		}
+		node
 	}
 }
 

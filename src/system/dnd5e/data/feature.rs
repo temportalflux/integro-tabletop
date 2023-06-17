@@ -4,7 +4,7 @@ use super::{
 	description,
 };
 use crate::{
-	kdl_ext::{DocumentExt, FromKDL, NodeExt},
+	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt},
 	system::dnd5e::{BoxedCriteria, BoxedMutator},
 	utility::MutatorGroup,
 };
@@ -141,5 +141,36 @@ impl FromKDL for Feature {
 			absolute_path: Arc::new(RwLock::new(PathBuf::new())),
 			missing_selection_text: None,
 		})
+	}
+}
+// TODO AsKdl: from/as tests for Bundle
+impl AsKdl for Feature {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+
+		node.push_entry(("name", self.name.clone()));
+		if self.description != description::Info::default() {
+			node.push_child_t("description", &self.description);
+		}
+
+		if self.collapsed {
+			node.push_entry(("collapsed", true));
+		}
+		if let Some(parent) = &self.parent {
+			node.push_entry(("parent", parent.display().to_string()));
+		}
+
+		if let Some(criteria) = &self.criteria {
+			// TODO AsKdl: evaluator; node.push_child_t("criteria", criteria);
+		}
+		for mutator in &self.mutators {
+			// TODO AsKdl: mutators; node.push_child_t("mutator", mutator);
+		}
+
+		if let Some(action) = &self.action {
+			node.push_child_t("action", action);
+		}
+
+		node
 	}
 }

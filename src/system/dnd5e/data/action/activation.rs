@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{FromKDL, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
 	utility::NotInList,
 };
 use std::str::FromStr;
@@ -62,6 +62,20 @@ impl FromKDL for ActivationKind {
 				vec!["Action", "Bonus", "Reaction", "Special", "Minute", "Hour"],
 			)
 			.into()),
+		}
+	}
+}
+// TODO AsKdl: from/as tests for ActivationKind
+impl AsKdl for ActivationKind {
+	fn as_kdl(&self) -> NodeBuilder {
+		let node = NodeBuilder::default();
+		match self {
+			Self::Action => node.with_entry("Action"),
+			Self::Bonus => node.with_entry("Bonus"),
+			Self::Reaction => node.with_entry("Reaction"),
+			Self::Special => node.with_entry("Special"),
+			Self::Minute(amt) => node.with_entry("Minute").with_entry(*amt as i64),
+			Self::Hour(amt) => node.with_entry("Hour").with_entry(*amt as i64),
 		}
 	}
 }

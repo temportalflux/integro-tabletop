@@ -1,10 +1,10 @@
 use crate::{
-	kdl_ext::{DocumentExt, FromKDL, NodeExt, ValueExt},
+	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt, ValueExt},
 	system::dnd5e::{
 		data::{character::Character, Ability},
 		Value,
 	},
-	utility::{Evaluator, NotInList},
+	utility::NotInList,
 };
 use std::str::FromStr;
 
@@ -106,6 +106,46 @@ impl FromKDL for AttackCheckKind {
 				})
 			}
 			name => Err(NotInList(name.into(), vec!["AttackRoll", "SavingThrow"]).into()),
+		}
+	}
+}
+// TODO AsKdl: tests for AttackCheckKind
+impl AsKdl for AttackCheckKind {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		match self {
+			Self::AttackRoll {
+				ability,
+				proficient,
+			} => {
+				node.push_entry_typed(ability.long_name(), "Ability");
+				match proficient {
+					Value::Fixed(false) => {}
+					Value::Fixed(true) => node.push_entry(("proficient", true)),
+					value => node += value.as_kdl(),
+				}
+				node
+			}
+			Self::SavingThrow {
+				base,
+				dc_ability,
+				proficient,
+				save_ability,
+			} => {
+				node.push_child({
+					let mut node = NodeBuilder::default();
+					node.push_entry(*base as i64);
+					if let Some(ability) = dc_ability {
+						node.push_child_entry("ability_bonus", ability.long_name());
+					}
+					if *proficient {
+						node.push_child_entry("proficiency_bonus", true);
+					}
+					node.build("difficulty_class")
+				});
+				node.push_child_entry_typed("save_ability", "Ability", save_ability.long_name());
+				node
+			}
 		}
 	}
 }

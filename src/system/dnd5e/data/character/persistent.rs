@@ -243,10 +243,10 @@ impl AsKdl for Persistent {
 		node.push_child_opt_t("spells", &self.selected_spells);
 
 		for bundle in &self.bundles {
-			//node.push_child_opt_t("bundle", &bundle);
+			node.push_child_opt_t("bundle", bundle);
 		}
 		for class in &self.classes {
-			//node.push_child_opt_t("class", &class);
+			// TODO AsKdl: classes; node.push_child_opt_t("class", class);
 		}
 
 		node.push_child_opt({

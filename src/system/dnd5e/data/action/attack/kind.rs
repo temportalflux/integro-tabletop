@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{FromKDL, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
 	utility::NotInList,
 };
 use std::str::FromStr;
@@ -55,6 +55,28 @@ impl FromKDL for AttackKindValue {
 				})
 			}
 			name => Err(NotInList(name.into(), vec!["Melee", "Ranged"]).into()),
+		}
+	}
+}
+// TODO AsKdl: tests for AttackKindValue
+impl AsKdl for AttackKindValue {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		match self {
+			Self::Melee { reach } => {
+				let mut node = node.with_entry("Melee");
+				if *reach != 5 {
+					node.push_entry(("reach", *reach as i64));
+				}
+				node
+			}
+			Self::Ranged {
+				short_dist,
+				long_dist,
+			} => node
+				.with_entry("Ranged")
+				.with_entry(*short_dist as i64)
+				.with_entry(*long_dist as i64),
 		}
 	}
 }
