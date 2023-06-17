@@ -26,6 +26,12 @@ impl NodeBuilder {
 		node
 	}
 
+	pub fn set_first_entry_ty(&mut self, ty: impl Into<kdl::KdlIdentifier>) {
+		if let Some(entry) = self.entries.get_mut(0) {
+			entry.set_ty(ty);
+		}
+	}
+
 	pub fn push_entry(&mut self, entry: impl Into<kdl::KdlEntry>) {
 		self.entries.push(entry.into());
 	}

@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{FromKDL, NodeContext, NodeExt, ValueExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeContext, NodeExt, ValueExt},
 	utility::NotInList,
 };
 
@@ -37,6 +37,25 @@ impl FromKDL for Range {
 				vec!["Self", "Touch", "Sight", "Unlimited"],
 			)
 			.into()),
+		}
+	}
+}
+// TODO AsKdl: from/as tests for spell Range
+impl AsKdl for Range {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		match self {
+			Self::OnlySelf => node.with_entry("Self"),
+			Self::Touch => node.with_entry("Touch"),
+			Self::Sight => node.with_entry("Sight"),
+			Self::Unlimited => node.with_entry("Unlimited"),
+			Self::Unit { distance, unit } => {
+				node.push_entry(*distance as i64);
+				if unit != "Feet" {
+					node.push_entry(unit.clone());
+				}
+				node
+			}
 		}
 	}
 }

@@ -1,4 +1,4 @@
-use crate::kdl_ext::{FromKDL, NodeContext, NodeExt};
+use crate::kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeContext, NodeExt};
 
 #[derive(Default, Clone, PartialEq, Debug)]
 pub struct Duration {
@@ -24,6 +24,16 @@ impl FromKDL for Duration {
 		})
 	}
 }
+// TODO AsKdl: from/as tests for spell duration/kind
+impl AsKdl for Duration {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = self.kind.as_kdl();
+		if self.concentration {
+			node.push_entry(("concentration", true));
+		}
+		node
+	}
+}
 
 impl FromKDL for DurationKind {
 	fn from_kdl(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
@@ -33,6 +43,18 @@ impl FromKDL for DurationKind {
 			unit => {
 				let distance = node.get_i64_req(ctx.consume_idx())? as u64;
 				Ok(Self::Unit(distance, unit.to_owned()))
+			}
+		}
+	}
+}
+impl AsKdl for DurationKind {
+	fn as_kdl(&self) -> NodeBuilder {
+		let node = NodeBuilder::default();
+		match self {
+			Self::Instantaneous => node.with_entry("Instantaneous"),
+			Self::Special => node.with_entry("Special"),
+			Self::Unit(distance, unit) => {
+				node.with_entry(unit.clone()).with_entry(*distance as i64)
 			}
 		}
 	}

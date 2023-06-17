@@ -1,6 +1,6 @@
 use super::{Basis, DefaultLevelMap};
 use crate::{
-	kdl_ext::{EntryExt, NodeExt},
+	kdl_ext::{AsKdl, EntryExt, NodeBuilder, NodeExt},
 	system::dnd5e::{data::character::Character, FromKDL},
 	GeneralError,
 };
@@ -47,6 +47,21 @@ where
 				"Invalid type name {type_name:?}, expected no type or Scaled."
 			))
 			.into()),
+		}
+	}
+}
+impl<T> AsKdl for Value<T>
+where
+	T: Clone + DefaultLevelMap + AsKdl,
+{
+	fn as_kdl(&self) -> NodeBuilder {
+		match self {
+			Self::Fixed(v) => v.as_kdl(),
+			Self::Scaled(basis) => {
+				let mut node = basis.as_kdl();
+				node.set_first_entry_ty("Scaled");
+				node
+			}
 		}
 	}
 }

@@ -11,6 +11,7 @@ use crate::{
 	utility::{MutatorGroup, NotInList},
 };
 use enum_map::EnumMap;
+use itertools::Itertools;
 use std::{
 	collections::{BTreeMap, HashMap},
 	path::Path,
@@ -239,7 +240,7 @@ impl AsKdl for Persistent {
 		node.push_child_entry("inspiration", self.inspiration);
 
 		node.push_child_opt_t("inventory", &self.inventory);
-		//node.push_child_opt_t("spells", &self.selected_spells);
+		node.push_child_opt_t("spells", &self.selected_spells);
 
 		for bundle in &self.bundles {
 			//node.push_child_opt_t("bundle", &bundle);
@@ -486,6 +487,46 @@ impl FromKDL for SelectedSpells {
 			consumed_slots,
 			cache_by_caster,
 		})
+	}
+}
+impl AsKdl for SelectedSpells {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		// Consumed Slots
+		node.push_child_opt({
+			let mut node = NodeBuilder::default();
+			let iter_slots = self.consumed_slots.iter().sorted_by_key(|(slot, _)| *slot);
+			for (slot, consumed) in iter_slots {
+				node.push_child({
+					let mut node = NodeBuilder::default();
+					node.push_entry(*slot as i64);
+					node.push_entry(*consumed as i64);
+					node.build("slot")
+				});
+			}
+			node.build("consumed_slots")
+		});
+		// Casters
+		let iter_casters = self.cache_by_caster.iter();
+		let iter_casters = iter_casters.sorted_by_key(|(name, _)| *name);
+		for (caster_name, selected_spells) in iter_casters {
+			if selected_spells.selections.is_empty() {
+				continue;
+			}
+			let mut node_caster = NodeBuilder::default();
+
+			node_caster.push_entry(caster_name.clone());
+
+			let iter_spells = selected_spells.selections.values();
+			let iter_spells =
+				iter_spells.sorted_by(|a, b| a.rank.cmp(&b.rank).then(a.name.cmp(&b.name)));
+			for spell in iter_spells {
+				node_caster.push_child_t("spell", spell);
+			}
+
+			node.push_child(node_caster.build("caster"));
+		}
+		node
 	}
 }
 impl SelectedSpells {

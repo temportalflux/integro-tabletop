@@ -1,6 +1,6 @@
 use super::{armor::Armor, weapon::Weapon};
 use crate::{
-	kdl_ext::{FromKDL, NodeExt, AsKdl, NodeBuilder},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
 	system::dnd5e::{data::character::Character, BoxedCriteria, BoxedMutator},
 	utility::MutatorGroup,
 };
@@ -113,7 +113,7 @@ impl AsKdl for Equipment {
 		// TODO AsKdl: Criteria
 		// TODO AsKdl: Mutators
 		// TODO AsKdl: Armor
-		
+
 		if let Some(shield) = &self.shield {
 			node.push_child_entry("shield", *shield as i64);
 		}

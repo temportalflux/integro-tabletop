@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{FromKDL, NodeContext, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeContext, NodeExt},
 	system::dnd5e::data::{action::AttackKind, Ability},
 	utility::NotInList,
 };
@@ -23,6 +23,33 @@ impl FromKDL for Check {
 				Ok(Self::SavingThrow(ability, dc))
 			}
 			name => Err(NotInList(name.into(), vec!["AttackRoll", "SavingThrow"]).into()),
+		}
+	}
+}
+// TODO AsKdl: from/as tests for spell checks
+impl AsKdl for Check {
+	fn as_kdl(&self) -> NodeBuilder {
+		match self {
+			Self::AttackRoll(kind) => {
+				NodeBuilder::default()
+					.with_entry("AttackRoll")
+					.with_entry(match kind {
+						AttackKind::Melee => "Melee",
+						AttackKind::Ranged => "Ranged",
+					})
+			}
+			Self::SavingThrow(ability, dc) => {
+				let mut node = NodeBuilder::default().with_entry("SavingThrow");
+				node.push_entry({
+					let mut entry = kdl::KdlEntry::new(ability.long_name());
+					entry.set_ty("Ability");
+					entry
+				});
+				if let Some(dc) = dc {
+					node.push_entry(("dc", *dc as i64));
+				}
+				node
+			}
 		}
 	}
 }

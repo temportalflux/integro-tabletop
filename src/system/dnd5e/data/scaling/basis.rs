@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::NodeExt,
+	kdl_ext::{AsKdl, NodeBuilder, NodeExt},
 	system::dnd5e::{data::character::Character, FromKDL},
 	utility::NotInList,
 };
@@ -68,6 +68,38 @@ where
 				})
 			}
 			name => Err(NotInList(name.into(), vec!["Level"]).into()),
+		}
+	}
+}
+impl<T> AsKdl for Basis<T>
+where
+	T: Clone + DefaultLevelMap + AsKdl,
+{
+	fn as_kdl(&self) -> NodeBuilder {
+		match self {
+			Self::Level {
+				class_name,
+				level_map,
+			} => {
+				let mut node = NodeBuilder::default();
+				node.push_entry("Level");
+				if let Some(class_name) = class_name {
+					node.push_entry(("class", class_name.clone()));
+				}
+				if !level_map.is_empty() {
+					for (threshold, value) in level_map {
+						node.push_child({
+							let mut node = NodeBuilder::default();
+							node.push_entry(*threshold as i64);
+							if let Some(value) = value {
+								node += value.as_kdl();
+							}
+							node.build("level")
+						});
+					}
+				}
+				node
+			}
 		}
 	}
 }

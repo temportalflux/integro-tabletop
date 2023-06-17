@@ -1,6 +1,6 @@
 use super::character::Character;
 use crate::{
-	kdl_ext::{DocumentExt, FromKDL, NodeExt, ValueExt},
+	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt, ValueExt},
 	system::dnd5e::Value,
 	utility::Evaluator,
 	GeneralError,
@@ -85,12 +85,18 @@ impl FromStr for Roll {
 		})
 	}
 }
+// TODO AsKdl: from/as tests for Roll
 impl FromKDL for Roll {
 	fn from_kdl(
 		node: &kdl::KdlNode,
 		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
 		Ok(Self::from_str(node.get_str_req(ctx.consume_idx())?)?)
+	}
+}
+impl AsKdl for Roll {
+	fn as_kdl(&self) -> NodeBuilder {
+		NodeBuilder::default().with_entry(self.to_string())
 	}
 }
 impl Roll {

@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{FromKDL, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
 	utility::NotInList,
 };
 
@@ -40,6 +40,29 @@ impl FromKDL for AreaOfEffect {
 				vec!["Cone", "Cube", "Cylinder", "Line", "Sphere"],
 			)
 			.into()),
+		}
+	}
+}
+// TODO AsKdl: tests for AreaOfEffect
+impl AsKdl for AreaOfEffect {
+	fn as_kdl(&self) -> NodeBuilder {
+		let node = NodeBuilder::default();
+		match self {
+			Self::Cone { length } => node
+				.with_entry("Cone")
+				.with_entry(("length", *length as i64)),
+			Self::Cube { size } => node.with_entry("Cube").with_entry(("size", *size as i64)),
+			Self::Cylinder { radius, height } => node
+				.with_entry("Cylinder")
+				.with_entry(("radius", *radius as i64))
+				.with_entry(("height", *height as i64)),
+			Self::Line { width, length } => node
+				.with_entry("Line")
+				.with_entry(("width", *width as i64))
+				.with_entry(("length", *length as i64)),
+			Self::Sphere { radius } => node
+				.with_entry("Sphere")
+				.with_entry(("radius", *radius as i64)),
 		}
 	}
 }

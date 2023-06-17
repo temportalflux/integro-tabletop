@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{FromKDL, NodeContext, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeContext, NodeExt},
 	system::dnd5e::data::{
 		character::Character,
 		roll::{Roll, RollSet},
@@ -60,5 +60,22 @@ impl FromKDL for Damage {
 			damage_type,
 			upcast,
 		})
+	}
+}
+// TODO AsKdl: from/as tests for spell Damage
+impl AsKdl for Damage {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = self.amount.as_kdl();
+		node.push_entry(self.damage_type.display_name());
+		if self.base != 0 {
+			node.push_entry(("base", self.base as i64));
+		}
+		if self.include_ability_modifier {
+			node.push_entry(("ability", true));
+		}
+		if let Some(upcast) = &self.upcast {
+			node.push_entry(("upcast", upcast.to_string()));
+		}
+		node
 	}
 }

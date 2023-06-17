@@ -5,7 +5,7 @@
 // can have multiple material component entries, which are collected into a vec
 
 use crate::{
-	kdl_ext::{NodeContext, NodeExt},
+	kdl_ext::{AsKdl, NodeBuilder, NodeContext, NodeExt},
 	utility::NotInList,
 };
 
@@ -39,5 +39,29 @@ impl Components {
 			}
 		}
 		Ok(components)
+	}
+}
+// TODO AsKdl: from/as tests for spell components
+impl AsKdl for Components {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		if self.verbal {
+			node.push_child_entry("component", "Verbal");
+		}
+		if self.somatic {
+			node.push_child_entry("component", "Somatic");
+		}
+		for (material, consumed) in &self.materials {
+			node.push_child({
+				let mut node = NodeBuilder::default()
+					.with_entry("Material")
+					.with_entry(material.clone());
+				if *consumed {
+					node.push_entry(("consumes", true));
+				}
+				node.build("component")
+			});
+		}
+		node
 	}
 }
