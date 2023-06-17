@@ -115,7 +115,7 @@ impl AsKdl for Equipment {
 		// TODO AsKdl: Armor
 
 		if let Some(shield) = &self.shield {
-			node.push_child_entry("shield", *shield as i64);
+			node.push_child_t("shield", shield);
 		}
 
 		// TODO AsKdl: Weapon

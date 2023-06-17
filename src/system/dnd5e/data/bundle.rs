@@ -161,9 +161,7 @@ impl AsKdl for Bundle {
 		node.push_entry(("category", self.category.clone()));
 		node.push_entry(("name", self.name.clone()));
 
-		if self.id != SourceId::default() {
-			node.push_child_entry("source", self.id.to_string());
-		}
+		node.push_child_t("source", &self.id);
 
 		for requirement in &self.requirements {
 			let kdl = match requirement {

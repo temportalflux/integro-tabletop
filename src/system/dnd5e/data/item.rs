@@ -174,12 +174,9 @@ impl AsKdl for Item {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 
-		if self.id != SourceId::default() {
-			node.push_child_entry("source", self.id.to_string());
-		}
-
 		node.push_entry(("name", self.name.clone()));
 
+		node.push_child_opt_t("source", &self.id);
 		if let Some(rarity) = &self.rarity {
 			node.push_child_entry("rarity", rarity.to_string());
 		}
@@ -196,11 +193,11 @@ impl AsKdl for Item {
 		node.push_child_opt_t("worth", &self.worth);
 
 		if let Some(notes) = &self.notes {
-			node.push_child_entry("notes", notes.clone());
+			node.push_child_t("notes", notes);
 		}
 
 		for tag in &self.tags {
-			node.push_child_entry("tag", tag.clone());
+			node.push_child_t("tag", tag);
 		}
 
 		if self.kind != ItemKind::default() {
@@ -600,7 +597,7 @@ impl<T: AsKdl> AsKdl for Inventory<T> {
 		if let Some(restriction) = &self.restriction {
 			let mut restriction_node = NodeBuilder::default();
 			for tag in &restriction.tags {
-				restriction_node.push_child_entry("tag", tag.clone());
+				restriction_node.push_child_t("tag", tag);
 			}
 			node.push_child_opt(restriction_node.build("restriction"));
 		}

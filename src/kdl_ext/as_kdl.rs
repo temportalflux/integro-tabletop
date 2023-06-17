@@ -141,6 +141,10 @@ impl_askdl_entry!(f32, |v| v as f64);
 impl_askdl_entry!(f64, |v| v);
 impl AsKdl for String {
 	fn as_kdl(&self) -> NodeBuilder {
-		NodeBuilder::default().with_entry(self.clone())
+		let mut node = NodeBuilder::default();
+		if !self.is_empty() {
+			node.push_entry(self.clone());
+		}
+		node
 	}
 }

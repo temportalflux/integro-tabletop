@@ -1,6 +1,6 @@
 use super::{character::Character, roll::Die, Feature};
 use crate::{
-	kdl_ext::{DocumentExt, FromKDL, NodeContext, NodeExt},
+	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeContext, NodeExt},
 	system::{
 		core::SourceId,
 		dnd5e::{mutator::AddMaxHitPoints, BoxedMutator, SystemComponent, Value},
@@ -120,6 +120,42 @@ impl FromKDL for Class {
 		})
 	}
 }
+// TODO AsKdl: from/as tests for Class, Level, Subclass
+impl AsKdl for Class {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+
+		node.push_entry(("name", self.name.clone()));
+		if self.current_level != 0 {
+			node.push_entry(("level", self.current_level as i64));
+		}
+
+		node.push_child_opt_t("source", &self.id);
+		node.push_child_opt_t("description", &self.description);
+		node.push_child_entry("hit-die", self.hit_die.to_string());
+		if let Some(level) = &self.subclass_selection_level {
+			node.push_child_t("subclass-level", level);
+		}
+
+		for mutator in &self.mutators {
+			// TODO AsKdl: mutators; node.push_child_t("mutator", mutator);
+		}
+
+		for (idx, level) in self.levels.iter().enumerate() {
+			node.push_child({
+				let mut node = NodeBuilder::default().with_entry((idx + 1) as i64);
+				node += level.as_kdl();
+				node.build("level")
+			});
+		}
+
+		if let Some(subclass) = &self.subclass {
+			node.push_child_t("subclass", subclass);
+		}
+
+		node
+	}
+}
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Level {
@@ -172,6 +208,20 @@ impl FromKDL for Level {
 			mutators,
 			features,
 		})
+	}
+}
+impl AsKdl for Level {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+
+		for mutator in &self.mutators {
+			// TODO AsKdl: mutators; node.push_child_t("mutator", mutator);
+		}
+		for feature in &self.features {
+			node.push_child_t("feature", feature);
+		}
+
+		node
 	}
 }
 
@@ -297,5 +347,25 @@ impl FromKDL for Subclass {
 			class_name,
 			levels,
 		})
+	}
+}
+impl AsKdl for Subclass {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+
+		node.push_entry(("class", self.class_name.clone()));
+		node.push_entry(("name", self.name.clone()));
+		node.push_child_opt_t("source", &self.source_id);
+		node.push_child_opt_t("description", &self.description);
+
+		for (idx, level) in self.levels.iter().enumerate() {
+			node.push_child({
+				let mut node = NodeBuilder::default().with_entry((idx + 1) as i64);
+				node += level.as_kdl();
+				node.build("level")
+			});
+		}
+
+		node
 	}
 }

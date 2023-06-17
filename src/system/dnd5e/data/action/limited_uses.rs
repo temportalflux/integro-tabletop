@@ -173,7 +173,7 @@ impl AsKdl for LimitedUses {
 			Self::Consumer { resource, cost } => {
 				node.push_child_entry("resource", resource.display().to_string());
 				if *cost > 1 {
-					node.push_child_entry("cost", *cost as i64);
+					node.push_child_t("cost", cost);
 				}
 				node
 			}

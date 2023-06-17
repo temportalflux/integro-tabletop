@@ -237,7 +237,7 @@ impl AsKdl for Persistent {
 		}
 
 		node.push_child_t("hit_points", &self.hit_points);
-		node.push_child_entry("inspiration", self.inspiration);
+		node.push_child_t("inspiration", &self.inspiration);
 
 		node.push_child_opt_t("inventory", &self.inventory);
 		node.push_child_opt_t("spells", &self.selected_spells);
@@ -246,7 +246,7 @@ impl AsKdl for Persistent {
 			node.push_child_opt_t("bundle", bundle);
 		}
 		for class in &self.classes {
-			// TODO AsKdl: classes; node.push_child_opt_t("class", class);
+			node.push_child_opt_t("class", class);
 		}
 
 		node.push_child_opt({
@@ -293,10 +293,10 @@ impl FromKDL for HitPoints {
 impl AsKdl for HitPoints {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
-		node.push_child_entry("current", self.current as i64);
-		node.push_child_entry("temp", self.temp as i64);
-		node.push_child_entry("failure_saves", self.failure_saves as i64);
-		node.push_child_entry("success_saves", self.success_saves as i64);
+		node.push_child_t("current", &self.current);
+		node.push_child_t("temp", &self.temp);
+		node.push_child_t("failure_saves", &self.failure_saves);
+		node.push_child_t("success_saves", &self.success_saves);
 		node
 	}
 }

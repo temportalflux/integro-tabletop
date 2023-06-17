@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::str::FromStr;
 
+use crate::kdl_ext::{AsKdl, NodeBuilder};
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum ModuleId {
 	Local {
@@ -171,6 +173,16 @@ impl FromStr for SourceId {
 			version,
 			node_idx,
 		})
+	}
+}
+
+impl AsKdl for SourceId {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		if *self != Self::default() {
+			node.push_entry(self.to_string());
+		}
+		node
 	}
 }
 

@@ -125,7 +125,7 @@ impl AsKdl for Info {
 		let mut node = NodeBuilder::default();
 
 		if let Some(short) = &self.short {
-			node.push_child_entry("short", short.clone());
+			node.push_child_t("short", short);
 		}
 
 		for section in &self.sections {

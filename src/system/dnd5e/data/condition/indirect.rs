@@ -1,6 +1,6 @@
 use super::Condition;
 use crate::{
-	kdl_ext::{FromKDL, NodeExt, AsKdl, NodeBuilder},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
 	system::core::SourceId,
 };
 use anyhow::Context;
