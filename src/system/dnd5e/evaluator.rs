@@ -19,3 +19,36 @@ pub use logic::*;
 
 mod math;
 pub use math::*;
+
+#[cfg(test)]
+pub(crate) mod test {
+	macro_rules! eval_test_utils {
+		($eval_ty:ty) => {
+			static NODE_NAME: &str = "evaluator";
+			type Target = crate::utility::GenericEvaluator<
+				<$eval_ty as crate::utility::Evaluator>::Context,
+				<$eval_ty as crate::utility::Evaluator>::Item,
+			>;
+
+			fn node_ctx() -> crate::kdl_ext::NodeContext {
+				crate::kdl_ext::NodeContext::registry(
+					crate::system::core::NodeRegistry::default_with_eval::<$eval_ty>(),
+				)
+			}
+
+			fn from_kdl(
+				node: &::kdl::KdlNode,
+				ctx: &mut crate::kdl_ext::NodeContext,
+			) -> anyhow::Result<Target> {
+				ctx.parse_evaluator_inline(node)
+			}
+
+			fn as_kdl<E: crate::utility::Evaluator>(data: &E) -> crate::kdl_ext::NodeBuilder {
+				crate::kdl_ext::NodeBuilder::default()
+					.with_entry(data.get_id())
+					.with_extension(data.as_kdl())
+			}
+		};
+	}
+	pub(crate) use eval_test_utils;
+}

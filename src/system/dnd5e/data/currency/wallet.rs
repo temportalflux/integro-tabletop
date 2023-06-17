@@ -233,66 +233,49 @@ impl Wallet {
 #[cfg(test)]
 mod test {
 	use super::*;
-	use crate::kdl_ext::test_utils::*;
 
-	static NODE_NAME: &str = "wallet";
-
-	mod from_kdl {
+	mod kdl {
 		use super::*;
+		use crate::kdl_ext::test_utils::*;
+
+		static NODE_NAME: &str = "wallet";
 
 		#[test]
 		fn single() -> anyhow::Result<()> {
 			let doc = "wallet 1 (Currency)\"Copper\"";
-			let parsed: Wallet = from_doc(NODE_NAME, doc)?;
-			let expected = Wallet::from([(1, Kind::Copper)]);
-			assert_eq!(parsed, expected);
+			let data = Wallet::from([(1, Kind::Copper)]);
+			assert_eq_fromkdl!(Wallet, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 
 		#[test]
 		fn multiple() -> anyhow::Result<()> {
-			let doc = "wallet {
-				item 5 (Currency)\"Copper\"
-				item 20 (Currency)\"Silver\"
-				item 3 (Currency)\"Gold\"
-			}";
-			let parsed: Wallet = from_doc(NODE_NAME, doc)?;
-			let expected = Wallet::from([(5, Kind::Copper), (20, Kind::Silver), (3, Kind::Gold)]);
-			assert_eq!(parsed, expected);
+			let doc = "
+				|wallet {
+				|    item 5 (Currency)\"Copper\"
+				|    item 20 (Currency)\"Silver\"
+				|    item 3 (Currency)\"Gold\"
+				|}
+			";
+			let data = Wallet::from([(5, Kind::Copper), (20, Kind::Silver), (3, Kind::Gold)]);
+			assert_eq_fromkdl!(Wallet, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 
 		#[test]
 		fn duplicates() -> anyhow::Result<()> {
-			let doc = "wallet {
-				item 5 (Currency)\"Copper\"
-				item 10 (Currency)\"Silver\"
-				item 3 (Currency)\"Gold\"
-				item 5 (Currency)\"Silver\"
-				item 20 (Currency)\"Copper\"
-			}";
-			let parsed: Wallet = from_doc(NODE_NAME, doc)?;
-			let expected = Wallet::from([(25, Kind::Copper), (15, Kind::Silver), (3, Kind::Gold)]);
-			assert_eq!(parsed, expected);
-			Ok(())
-		}
-	}
-
-	mod as_kdl {
-		use super::*;
-
-		#[test]
-		fn single() -> anyhow::Result<()> {
-			let expected = "wallet 1 (Currency)\"Copper\"";
-			let data = Wallet::from([(1, Kind::Copper)]);
-			let stringified = as_doc(NODE_NAME, &data);
-			assert_eq!(stringified, raw_doc(expected));
-			Ok(())
-		}
-
-		#[test]
-		fn multiple() -> anyhow::Result<()> {
-			let expected = "
+			let doc_in = "
+				|wallet {
+				|    item 5 (Currency)\"Copper\"
+				|    item 10 (Currency)\"Silver\"
+				|    item 3 (Currency)\"Gold\"
+				|    item 5 (Currency)\"Silver\"
+				|    item 20 (Currency)\"Copper\"
+				|}
+			";
+			let doc_out = "
 				|wallet {
 				|    item 25 (Currency)\"Copper\"
 				|    item 15 (Currency)\"Silver\"
@@ -300,8 +283,8 @@ mod test {
 				|}
 			";
 			let data = Wallet::from([(25, Kind::Copper), (15, Kind::Silver), (3, Kind::Gold)]);
-			let stringified = as_doc(NODE_NAME, &data);
-			assert_eq!(stringified, raw_doc(expected));
+			assert_eq_fromkdl!(Wallet, doc_in, data);
+			assert_eq_askdl!(&data, doc_out);
 			Ok(())
 		}
 	}

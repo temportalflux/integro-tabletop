@@ -595,30 +595,54 @@ impl DocumentExt for kdl::KdlNode {
 
 #[cfg(test)]
 pub mod test_utils {
-	use crate::kdl_ext::{AsKdl, FromKDL, NodeContext};
+	use crate::kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeContext};
 
-	pub fn from_doc_ctx<T: FromKDL>(
+	macro_rules! assert_eq_fromkdl {
+		($impl_ty:ty, $doc_str:expr, $expected_data:expr) => {
+			let parsed: $impl_ty = from_doc(NODE_NAME, $doc_str, node_ctx(), from_kdl)?;
+			assert_eq!(parsed, $expected_data);
+		};
+	}
+	pub(crate) use assert_eq_fromkdl;
+
+	macro_rules! assert_eq_askdl {
+		($data:expr, $expected_doc:expr) => {
+			let stringified = as_kdl($data).build(NODE_NAME).to_string();
+			assert_eq!(stringified, raw_doc($expected_doc));
+		};
+	}
+	pub(crate) use assert_eq_askdl;
+
+	pub fn node_ctx() -> NodeContext {
+		NodeContext::default()
+	}
+
+	pub fn from_kdl<T: FromKDL>(node: &::kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<T> {
+		T::from_kdl(node, ctx)
+	}
+
+	pub fn as_kdl(data: &impl AsKdl) -> NodeBuilder {
+		data.as_kdl()
+	}
+
+	pub fn raw_doc(str: &str) -> String {
+		use trim_margin::MarginTrimmable;
+		str.trim_margin().unwrap_or_else(|| str.to_owned())
+	}
+
+	pub fn from_doc<T, F>(
 		name: &'static str,
 		doc: &str,
 		mut ctx: NodeContext,
-	) -> anyhow::Result<T> {
-		let document = doc.parse::<kdl::KdlDocument>()?;
+		from_kdl: F,
+	) -> anyhow::Result<T>
+	where
+		F: Fn(&::kdl::KdlNode, &mut NodeContext) -> anyhow::Result<T>,
+	{
+		let document = raw_doc(doc).parse::<kdl::KdlDocument>()?;
 		let node = document
 			.query(format!("scope() > {name}"))?
 			.expect(&format!("missing {name} node"));
-		T::from_kdl(node, &mut ctx)
-	}
-
-	pub fn from_doc<T: FromKDL>(name: &'static str, doc: &str) -> anyhow::Result<T> {
-		from_doc_ctx::<T>(name, doc, NodeContext::default())
-	}
-
-	pub fn raw_doc(str: &'static str) -> String {
-		use trim_margin::MarginTrimmable;
-		str.trim_margin().unwrap()
-	}
-
-	pub fn as_doc(name: &'static str, data: &impl AsKdl) -> String {
-		data.as_kdl().build(name).to_string()
+		from_kdl(node, &mut ctx)
 	}
 }

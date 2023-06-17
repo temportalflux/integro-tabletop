@@ -1,6 +1,6 @@
 use super::{AsTraitEq, Dependencies, TraitEq};
 use crate::{
-	kdl_ext::{AsKdl, KDLNode, NodeBuilder},
+	kdl_ext::{AsKdl, KDLNode},
 	system::dnd5e::data::description,
 };
 use std::{fmt::Debug, path::Path, sync::Arc};
@@ -70,8 +70,10 @@ impl<T> std::fmt::Debug for GenericMutator<T> {
 }
 
 impl<T> AsKdl for GenericMutator<T> {
-	fn as_kdl(&self) -> NodeBuilder {
-		self.0.as_kdl()
+	fn as_kdl(&self) -> crate::kdl_ext::NodeBuilder {
+		crate::kdl_ext::NodeBuilder::default()
+			.with_entry(self.0.get_id())
+			.with_extension(self.0.as_kdl())
 	}
 }
 

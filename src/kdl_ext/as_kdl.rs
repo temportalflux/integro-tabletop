@@ -28,6 +28,11 @@ impl NodeBuilder {
 		}
 	}
 
+	pub fn with_extension(mut self, node: NodeBuilder) -> Self {
+		self += node;
+		self
+	}
+
 	pub fn append_typed(&mut self, ty: impl Into<kdl::KdlIdentifier>, mut node: NodeBuilder) {
 		node.set_first_entry_ty(ty);
 		*self += node;

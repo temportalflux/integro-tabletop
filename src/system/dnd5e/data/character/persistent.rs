@@ -621,27 +621,8 @@ mod test_hit_points {
 	static NODE_NAME: &str = "hit_points";
 
 	#[test]
-	fn from_kdl() -> anyhow::Result<()> {
-		let doc = "hit_points {
-			current 30
-			temp 5
-			failure_saves 1
-			success_saves 2
-		}";
-		let parsed: HitPoints = from_doc(NODE_NAME, doc)?;
-		let expected = HitPoints {
-			current: 30,
-			temp: 5,
-			failure_saves: 1,
-			success_saves: 2,
-		};
-		assert_eq!(parsed, expected);
-		Ok(())
-	}
-
-	#[test]
-	fn as_kdl() -> anyhow::Result<()> {
-		let expected = "
+	fn kdl() -> anyhow::Result<()> {
+		let doc = "
 			|hit_points {
 			|    current 30
 			|    temp 5
@@ -655,8 +636,8 @@ mod test_hit_points {
 			failure_saves: 1,
 			success_saves: 2,
 		};
-		let stringified = as_doc(NODE_NAME, &data);
-		assert_eq!(stringified, raw_doc(expected));
+		assert_eq_fromkdl!(HitPoints, doc, data);
+		assert_eq_askdl!(&data, doc);
 		Ok(())
 	}
 }

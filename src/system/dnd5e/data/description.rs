@@ -448,7 +448,7 @@ impl AsKdl for FormatArgs {
 				entry.set_ty("Signed");
 			}
 			let mut arg_node = NodeBuilder::default().with_entry(entry);
-			arg_node += arg.evaluator.as_kdl();
+			arg_node.append_typed("Evaluator", arg.evaluator.as_kdl());
 			node.push_child(arg_node.build("format-arg"));
 		}
 
@@ -460,13 +460,9 @@ impl AsKdl for FormatArgs {
 mod test {
 	use super::*;
 
-	static NODE_DESC: &str = "description";
-	static NODE_SECTION: &str = "section";
-
-	// TODO AsKdl: tests for description::Info/Section/FormatArgs
-	mod from_kdl {
+	mod kdl {
 		use super::*;
-		use crate::kdl_ext::test_utils;
+		use crate::kdl_ext::test_utils::*;
 		use crate::{
 			kdl_ext::NodeContext,
 			system::{
@@ -476,96 +472,95 @@ mod test {
 		};
 
 		fn node_ctx() -> NodeContext {
-			let mut reg = NodeRegistry::default();
-			reg.register_evaluator::<GetAbilityModifier>();
-			NodeContext::registry(reg)
-		}
-
-		fn from_doc<T: FromKDL>(name: &'static str, doc: &str) -> anyhow::Result<T> {
-			test_utils::from_doc_ctx(name, doc, node_ctx())
+			NodeContext::registry(NodeRegistry::default_with_eval::<GetAbilityModifier>())
 		}
 
 		mod info {
 			use super::*;
 
+			static NODE_NAME: &str = "description";
+
 			#[test]
 			fn long_only_simple() -> anyhow::Result<()> {
 				let doc = "description \"This is some long description w/o a title\"";
-				assert_eq!(
-					from_doc::<Info>(NODE_DESC, doc)?,
-					Info {
-						short: None,
-						sections: vec![Section {
-							title: None,
-							content: SectionContent::Body(
-								"This is some long description w/o a title".into()
-							),
-							format_args: FormatArgs::default(),
-							children: vec![],
-						}],
+				let data = Info {
+					short: None,
+					sections: vec![Section {
+						title: None,
+						content: SectionContent::Body(
+							"This is some long description w/o a title".into(),
+						),
 						format_args: FormatArgs::default(),
-					}
-				);
+						children: vec![],
+					}],
+					format_args: FormatArgs::default(),
+				};
+				assert_eq_fromkdl!(Info, doc, data);
+				assert_eq_askdl!(&data, doc);
 				Ok(())
 			}
 
 			#[test]
 			fn long_only() -> anyhow::Result<()> {
-				let doc = "description {
-					section \"This is some long description w/o a title\"
-				}";
-				assert_eq!(
-					from_doc::<Info>(NODE_DESC, doc)?,
-					Info {
-						short: None,
-						sections: vec![Section {
-							title: None,
-							content: SectionContent::Body(
-								"This is some long description w/o a title".into()
-							),
-							format_args: FormatArgs::default(),
-							children: vec![],
-						}],
+				let doc_in = "
+					|description {
+					|    section \"This is some long description w/o a title\"
+					|}
+				";
+				let doc_out = "description \"This is some long description w/o a title\"";
+				let data = Info {
+					short: None,
+					sections: vec![Section {
+						title: None,
+						content: SectionContent::Body(
+							"This is some long description w/o a title".into(),
+						),
 						format_args: FormatArgs::default(),
-					}
-				);
+						children: vec![],
+					}],
+					format_args: FormatArgs::default(),
+				};
+				assert_eq_fromkdl!(Info, doc_in, data);
+				assert_eq_askdl!(&data, doc_out);
 				Ok(())
 			}
 
 			#[test]
 			fn short_only() -> anyhow::Result<()> {
-				let doc = "description {
-					short \"This is some short description\"
-				}";
-				assert_eq!(
-					from_doc::<Info>(NODE_DESC, doc)?,
-					Info {
-						short: Some("This is some short description".into()),
-						sections: vec![],
-						format_args: FormatArgs::default(),
-					}
-				);
+				let doc = "
+					|description {
+					|    short \"This is some short description\"
+					|}
+				";
+				let data = Info {
+					short: Some("This is some short description".into()),
+					sections: vec![],
+					format_args: FormatArgs::default(),
+				};
+				assert_eq_fromkdl!(Info, doc, data);
+				assert_eq_askdl!(&data, doc);
 				Ok(())
 			}
 
 			#[test]
 			fn format_args() -> anyhow::Result<()> {
-				let doc = "description {
-					short \"Success against a DC {DC} Wisdom saving throw\"
-					format-arg \"DC\" (Evaluator)\"get_ability_modifier\" (Ability)\"Intelligence\"
-				}";
-				assert_eq!(
-					from_doc::<Info>(NODE_DESC, doc)?,
-					Info {
-						short: Some("Success against a DC {DC} Wisdom saving throw".into()),
-						sections: vec![],
-						format_args: FormatArgs::from(vec![(
-							"DC",
-							GetAbilityModifier(Ability::Intelligence),
-							false,
-						)]),
-					}
-				);
+				let doc = "
+					|description {
+					|    short \"Success against a DC {DC} Wisdom saving throw\"
+					|    format-arg \"DC\" (Evaluator)\"get_ability_modifier\" (Ability)\"Intelligence\"
+					|}
+				";
+				let data = Info {
+					short: Some("Success against a DC {DC} Wisdom saving throw".into()),
+					sections: vec![],
+					format_args: FormatArgs::from(vec![(
+						"DC",
+						GetAbilityModifier(Ability::Intelligence),
+						false,
+					)]),
+				};
+				assert_eq_fromkdl!(Info, doc, data);
+				assert_eq_askdl!(&data, doc);
 				Ok(())
 			}
 		}
@@ -573,111 +568,114 @@ mod test {
 		mod section {
 			use super::*;
 
+			static NODE_NAME: &str = "section";
+
 			#[test]
 			fn body_only() -> anyhow::Result<()> {
 				let doc = "section \"Simple body-only section\"";
-				assert_eq!(
-					from_doc::<Section>(NODE_SECTION, doc)?,
-					Section {
-						title: None,
-						content: SectionContent::Body("Simple body-only section".into()),
-						format_args: FormatArgs::default(),
-						children: vec![],
-					}
-				);
+				let data = Section {
+					title: None,
+					content: SectionContent::Body("Simple body-only section".into()),
+					format_args: FormatArgs::default(),
+					children: vec![],
+				};
+				assert_eq_fromkdl!(Section, doc, data);
+				assert_eq_askdl!(&data, doc);
 				Ok(())
 			}
 
 			#[test]
 			fn titled_body() -> anyhow::Result<()> {
 				let doc = "section (Title)\"Section A\" \"Body with a title!\"";
-				assert_eq!(
-					from_doc::<Section>(NODE_SECTION, doc)?,
-					Section {
-						title: Some("Section A".into()),
-						content: SectionContent::Body("Body with a title!".into()),
-						format_args: FormatArgs::default(),
-						children: vec![],
-					}
-				);
+				let data = Section {
+					title: Some("Section A".into()),
+					content: SectionContent::Body("Body with a title!".into()),
+					format_args: FormatArgs::default(),
+					children: vec![],
+				};
+				assert_eq_fromkdl!(Section, doc, data);
+				assert_eq_askdl!(&data, doc);
 				Ok(())
 			}
 
 			#[test]
 			fn table() -> anyhow::Result<()> {
-				let doc = "section table=true {
-					headers \"Col 1\" \"Col 2\"	\"Col 3\"
-					row \"R1 C1\" \"R1 C2\" \"R1 C3\"
-					row \"R2 C1\" \"R2 C2\" \"R2 C3\"
-				}";
-				assert_eq!(
-					from_doc::<Section>(NODE_SECTION, doc)?,
-					Section {
-						title: None,
-						content: SectionContent::Table {
-							column_count: 3,
-							headers: Some(vec!["Col 1".into(), "Col 2".into(), "Col 3".into()]),
-							rows: vec![
-								vec!["R1 C1".into(), "R1 C2".into(), "R1 C3".into()],
-								vec!["R2 C1".into(), "R2 C2".into(), "R2 C3".into()],
-							]
-						},
-						format_args: FormatArgs::default(),
-						children: vec![],
-					}
-				);
+				let doc = "
+					|section table=true {
+					|    headers \"Col 1\" \"Col 2\" \"Col 3\"
+					|    row \"R1 C1\" \"R1 C2\" \"R1 C3\"
+					|    row \"R2 C1\" \"R2 C2\" \"R2 C3\"
+					|}
+				";
+				let data = Section {
+					title: None,
+					content: SectionContent::Table {
+						column_count: 3,
+						headers: Some(vec!["Col 1".into(), "Col 2".into(), "Col 3".into()]),
+						rows: vec![
+							vec!["R1 C1".into(), "R1 C2".into(), "R1 C3".into()],
+							vec!["R2 C1".into(), "R2 C2".into(), "R2 C3".into()],
+						],
+					},
+					format_args: FormatArgs::default(),
+					children: vec![],
+				};
+				assert_eq_fromkdl!(Section, doc, data);
+				assert_eq_askdl!(&data, doc);
 				Ok(())
 			}
 
 			#[test]
 			fn format_args() -> anyhow::Result<()> {
-				let doc = "section \"Body with {num} format-args\" {
-					format-arg \"num\" (Evaluator)\"get_ability_modifier\" (Ability)\"Intelligence\"
-				}";
-				assert_eq!(
-					from_doc::<Section>(NODE_SECTION, doc)?,
-					Section {
-						title: None,
-						content: SectionContent::Body("Body with {num} format-args".into()),
-						format_args: FormatArgs::from(vec![(
-							"num",
-							GetAbilityModifier(Ability::Intelligence),
-							false,
-						)]),
-						children: vec![],
-					}
-				);
+				let doc = "
+					|section \"Body with {num} format-args\" {
+					|    format-arg \"num\" (Evaluator)\"get_ability_modifier\" (Ability)\"Intelligence\"
+					|}
+				";
+				let data = Section {
+					title: None,
+					content: SectionContent::Body("Body with {num} format-args".into()),
+					format_args: FormatArgs::from(vec![(
+						"num",
+						GetAbilityModifier(Ability::Intelligence),
+						false,
+					)]),
+					children: vec![],
+				};
+				assert_eq_fromkdl!(Section, doc, data);
+				assert_eq_askdl!(&data, doc);
 				Ok(())
 			}
 
 			#[test]
 			fn children() -> anyhow::Result<()> {
-				let doc = "section \"main body\" {
-					section (Title)\"Subsection A\" \"subsection A body\"
-					section \"subsection B body\"
-				}";
-				assert_eq!(
-					from_doc::<Section>(NODE_SECTION, doc)?,
-					Section {
-						title: None,
-						content: SectionContent::Body("main body".into()),
-						format_args: FormatArgs::default(),
-						children: vec![
-							Section {
-								title: Some("Subsection A".into()),
-								content: SectionContent::Body("subsection A body".into()),
-								format_args: FormatArgs::default(),
-								children: vec![],
-							},
-							Section {
-								title: None,
-								content: SectionContent::Body("subsection B body".into()),
-								format_args: FormatArgs::default(),
-								children: vec![],
-							},
-						],
-					}
-				);
+				let doc = "
+					|section \"main body\" {
+					|    section (Title)\"Subsection A\" \"subsection A body\"
+					|    section \"subsection B body\"
+					|}
+				";
+				let data = Section {
+					title: None,
+					content: SectionContent::Body("main body".into()),
+					format_args: FormatArgs::default(),
+					children: vec![
+						Section {
+							title: Some("Subsection A".into()),
+							content: SectionContent::Body("subsection A body".into()),
+							format_args: FormatArgs::default(),
+							children: vec![],
+						},
+						Section {
+							title: None,
+							content: SectionContent::Body("subsection B body".into()),
+							format_args: FormatArgs::default(),
+							children: vec![],
+						},
+					],
+				};
+				assert_eq_fromkdl!(Section, doc, data);
+				assert_eq_askdl!(&data, doc);
 				Ok(())
 			}
 		}
@@ -685,43 +683,46 @@ mod test {
 		mod format_args {
 			use super::*;
 
-			fn from_doc(doc: &str) -> anyhow::Result<FormatArgs> {
-				let document = doc.parse::<kdl::KdlDocument>()?;
-				let node = document
-					.query("scope() > args")?
-					.expect("missing args node");
-				FormatArgs::from_kdl_all(node, &mut node_ctx())
+			static NODE_NAME: &str = "args";
+
+			fn from_kdl(
+				node: &::kdl::KdlNode,
+				ctx: &mut NodeContext,
+			) -> anyhow::Result<FormatArgs> {
+				FormatArgs::from_kdl_all(node, ctx)
 			}
 
 			#[test]
 			fn unsigned() -> anyhow::Result<()> {
-				let doc = "args {
-					format-arg \"DC\" (Evaluator)\"get_ability_modifier\" (Ability)\"Intelligence\"
-				}";
-				assert_eq!(
-					from_doc(doc)?,
-					FormatArgs::from(vec![(
-						"DC",
-						GetAbilityModifier(Ability::Intelligence),
-						false,
-					)]),
-				);
+				let doc = "
+					|args {
+					|    format-arg \"DC\" (Evaluator)\"get_ability_modifier\" (Ability)\"Intelligence\"
+					|}
+				";
+				let data = FormatArgs::from(vec![(
+					"DC",
+					GetAbilityModifier(Ability::Intelligence),
+					false,
+				)]);
+				assert_eq_fromkdl!(FormatArgs, doc, data);
+				assert_eq_askdl!(&data, doc);
 				Ok(())
 			}
 
 			#[test]
 			fn signed() -> anyhow::Result<()> {
-				let doc = "args {
-					format-arg (Signed)\"DC\" (Evaluator)\"get_ability_modifier\" (Ability)\"Intelligence\"
-				}";
-				assert_eq!(
-					from_doc(doc)?,
-					FormatArgs::from(vec![(
-						"DC",
-						GetAbilityModifier(Ability::Intelligence),
-						true,
-					)]),
-				);
+				let doc = "
+					|args {
+					|    format-arg (Signed)\"DC\" (Evaluator)\"get_ability_modifier\" (Ability)\"Intelligence\"
+					|}
+				";
+				let data = FormatArgs::from(vec![(
+					"DC",
+					GetAbilityModifier(Ability::Intelligence),
+					true,
+				)]);
+				assert_eq_fromkdl!(FormatArgs, doc, data);
+				assert_eq_askdl!(&data, doc);
 				Ok(())
 			}
 		}

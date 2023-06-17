@@ -213,99 +213,15 @@ impl FromStr for PersonalityKind {
 mod test {
 	use super::*;
 
-	static NODE_NAME: &str = "description";
-
-	mod from_kdl {
+	mod kdl {
 		use super::*;
 		use crate::kdl_ext::test_utils::*;
 
-		#[test]
-		fn name() -> anyhow::Result<()> {
-			let doc = "description {
-				name \"Alakazam\"
-			}";
-			let parsed: Description = from_doc(NODE_NAME, doc)?;
-			let expected = Description {
-				name: "Alakazam".into(),
-				..Default::default()
-			};
-			assert_eq!(parsed, expected);
-			Ok(())
-		}
-
-		#[test]
-		fn height_weight() -> anyhow::Result<()> {
-			let doc = "description {
-				name \"Alakazam\"
-				height 60
-				weight 90
-			}";
-			let parsed: Description = from_doc(NODE_NAME, doc)?;
-			let expected = Description {
-				name: "Alakazam".into(),
-				height: 60,
-				weight: 90,
-				..Default::default()
-			};
-			assert_eq!(parsed, expected);
-			Ok(())
-		}
-
-		#[test]
-		fn pronouns() -> anyhow::Result<()> {
-			let doc = "description {
-				name \"Alakazam\"
-				pronoun \"he/him\"
-				pronoun \"she/her\"
-				pronoun \"they/them\"
-				pronoun \"xi/xir\"
-			}";
-			let parsed: Description = from_doc(NODE_NAME, doc)?;
-			let expected = Description {
-				name: "Alakazam".into(),
-				pronouns: ["he/him".into(), "she/her".into(), "they/them".into()].into(),
-				custom_pronouns: "xi/xir".into(),
-				..Default::default()
-			};
-			assert_eq!(parsed, expected);
-			Ok(())
-		}
-
-		#[test]
-		fn personality() -> anyhow::Result<()> {
-			let doc = "description {
-				name \"Alakazam\"
-				personality {
-					trait \"Trait 1\"
-					trait \"Trait 2\"
-					ideal \"Ideal A\"
-					bond \"Bond B\"
-					flaw \"Flaw C\"
-				}
-			}";
-			let parsed: Description = from_doc(NODE_NAME, doc)?;
-			let expected = Description {
-				name: "Alakazam".into(),
-				personality: enum_map::enum_map! {
-					PersonalityKind::Trait => vec!["Trait 1".into(), "Trait 2".into()],
-					PersonalityKind::Ideal => vec!["Ideal A".into()],
-					PersonalityKind::Bond => vec!["Bond B".into()],
-					PersonalityKind::Flaw => vec!["Flaw C".into()],
-				},
-				..Default::default()
-			};
-			assert_eq!(parsed, expected);
-			Ok(())
-		}
-	}
-
-	mod as_kdl {
-		use super::*;
-		use crate::kdl_ext::test_utils::*;
+		static NODE_NAME: &str = "description";
 
 		#[test]
 		fn name() -> anyhow::Result<()> {
-			let expected = "
+			let doc = "
 				|description {
 				|    name \"Alakazam\"
 				|}
@@ -314,14 +230,14 @@ mod test {
 				name: "Alakazam".into(),
 				..Default::default()
 			};
-			let stringified = as_doc(NODE_NAME, &data);
-			assert_eq!(stringified, raw_doc(expected));
+			assert_eq_fromkdl!(Description, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 
 		#[test]
 		fn height_weight() -> anyhow::Result<()> {
-			let expected = "
+			let doc = "
 				|description {
 				|    name \"Alakazam\"
 				|    height 60
@@ -334,14 +250,14 @@ mod test {
 				weight: 90,
 				..Default::default()
 			};
-			let stringified = as_doc(NODE_NAME, &data);
-			assert_eq!(stringified, raw_doc(expected));
+			assert_eq_fromkdl!(Description, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 
 		#[test]
 		fn pronouns() -> anyhow::Result<()> {
-			let expected = "
+			let doc = "
 				|description {
 				|    name \"Alakazam\"
 				|    pronoun \"he/him\"
@@ -356,14 +272,14 @@ mod test {
 				custom_pronouns: "xi/xir".into(),
 				..Default::default()
 			};
-			let stringified = as_doc(NODE_NAME, &data);
-			assert_eq!(stringified, raw_doc(expected));
+			assert_eq_fromkdl!(Description, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 
 		#[test]
 		fn personality() -> anyhow::Result<()> {
-			let expected = "
+			let doc = "
 				|description {
 				|    name \"Alakazam\"
 				|    personality {
@@ -385,8 +301,8 @@ mod test {
 				},
 				..Default::default()
 			};
-			let stringified = as_doc(NODE_NAME, &data);
-			assert_eq!(stringified, raw_doc(expected));
+			assert_eq_fromkdl!(Description, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 	}

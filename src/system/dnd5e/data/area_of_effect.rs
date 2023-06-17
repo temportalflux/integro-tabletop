@@ -43,7 +43,6 @@ impl FromKDL for AreaOfEffect {
 		}
 	}
 }
-// TODO AsKdl: tests for AreaOfEffect
 impl AsKdl for AreaOfEffect {
 	fn as_kdl(&self) -> NodeBuilder {
 		let node = NodeBuilder::default();
@@ -70,61 +69,61 @@ impl AsKdl for AreaOfEffect {
 #[cfg(test)]
 mod test {
 	use super::*;
-	mod from_kdl {
-		use super::*;
-		use crate::kdl_ext::NodeContext;
 
-		fn from_doc(doc: &str) -> anyhow::Result<AreaOfEffect> {
-			let document = doc.parse::<kdl::KdlDocument>()?;
-			let node = document
-				.query("scope() > area_of_effect")?
-				.expect("missing area_of_effect node");
-			AreaOfEffect::from_kdl(node, &mut NodeContext::default())
-		}
+	mod kdl {
+		use super::*;
+		use crate::kdl_ext::test_utils::*;
+
+		static NODE_NAME: &str = "area_of_effect";
 
 		#[test]
 		fn cone() -> anyhow::Result<()> {
 			let doc = "area_of_effect \"Cone\" length=30";
-			let expected = AreaOfEffect::Cone { length: 30 };
-			assert_eq!(from_doc(doc)?, expected);
+			let data = AreaOfEffect::Cone { length: 30 };
+			assert_eq_fromkdl!(AreaOfEffect, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 
 		#[test]
 		fn cube() -> anyhow::Result<()> {
 			let doc = "area_of_effect \"Cube\" size=10";
-			let expected = AreaOfEffect::Cube { size: 10 };
-			assert_eq!(from_doc(doc)?, expected);
+			let data = AreaOfEffect::Cube { size: 10 };
+			assert_eq_fromkdl!(AreaOfEffect, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 
 		#[test]
 		fn cylinder() -> anyhow::Result<()> {
 			let doc = "area_of_effect \"Cylinder\" radius=10 height=40";
-			let expected = AreaOfEffect::Cylinder {
+			let data = AreaOfEffect::Cylinder {
 				radius: 10,
 				height: 40,
 			};
-			assert_eq!(from_doc(doc)?, expected);
+			assert_eq_fromkdl!(AreaOfEffect, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 
 		#[test]
 		fn line() -> anyhow::Result<()> {
 			let doc = "area_of_effect \"Line\" width=5 length=60";
-			let expected = AreaOfEffect::Line {
+			let data = AreaOfEffect::Line {
 				width: 5,
 				length: 60,
 			};
-			assert_eq!(from_doc(doc)?, expected);
+			assert_eq_fromkdl!(AreaOfEffect, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 
 		#[test]
 		fn sphere() -> anyhow::Result<()> {
 			let doc = "area_of_effect \"Sphere\" radius=20";
-			let expected = AreaOfEffect::Sphere { radius: 20 };
-			assert_eq!(from_doc(doc)?, expected);
+			let data = AreaOfEffect::Sphere { radius: 20 };
+			assert_eq_fromkdl!(AreaOfEffect, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 	}
