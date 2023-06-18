@@ -66,7 +66,7 @@ impl FromKDL for SetFlag {
 		Ok(Self { flag, value })
 	}
 }
-// TODO AsKdl: from/as tests for SetFlag
+
 impl AsKdl for SetFlag {
 	fn as_kdl(&self) -> NodeBuilder {
 		NodeBuilder::default()
@@ -121,5 +121,29 @@ impl AsKdl for ArmorStrengthRequirement {
 	fn as_kdl(&self) -> NodeBuilder {
 		// STUB: not available to documents
 		NodeBuilder::default()
+	}
+}
+
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	mod kdl {
+		use super::*;
+		use crate::{kdl_ext::test_utils::*, system::dnd5e::mutator::test::test_utils};
+
+		test_utils!(SetFlag);
+
+		#[test]
+		fn armor_strength_requirement() -> anyhow::Result<()> {
+			let doc = "mutator \"flag\" \"ArmorStrengthRequirement\" false";
+			let data = SetFlag {
+				flag: Flag::ArmorStrengthRequirement,
+				value: false,
+			};
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
+			Ok(())
+		}
 	}
 }

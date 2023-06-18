@@ -382,9 +382,7 @@ mod test {
 				options: options(),
 				selector: Selector::AnyOf {
 					id: IdPath::from("speedA"),
-					cannot_match: vec![
-						IdPath::from("speedB")
-					],
+					cannot_match: vec![IdPath::from("speedB")],
 					amount: 1,
 					options: vec!["Climbing".into(), "Swimming".into()],
 				},
