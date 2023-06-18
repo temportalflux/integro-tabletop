@@ -15,7 +15,6 @@ pub enum CastingDuration {
 	Unit(u64, String),
 }
 
-// TODO AsKdl: from/as tests for CastingTime & Duration
 impl FromKDL for CastingTime {
 	fn from_kdl(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
 		let duration = CastingDuration::from_kdl(node, ctx)?;
@@ -23,6 +22,7 @@ impl FromKDL for CastingTime {
 		Ok(Self { duration, ritual })
 	}
 }
+
 impl AsKdl for CastingTime {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = self.duration.as_kdl();
@@ -48,6 +48,7 @@ impl FromKDL for CastingDuration {
 		}
 	}
 }
+
 impl AsKdl for CastingDuration {
 	fn as_kdl(&self) -> NodeBuilder {
 		let node = NodeBuilder::default();
@@ -75,5 +76,97 @@ impl CastingDuration {
 			Self::Unit(_, _) => "other",
 		}
 		.into()
+	}
+}
+
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	mod kdl {
+		use super::*;
+
+		mod time {
+			use super::*;
+			use crate::kdl_ext::test_utils::*;
+
+			static NODE_NAME: &str = "casting-time";
+
+			#[test]
+			fn duration() -> anyhow::Result<()> {
+				let doc = "casting-time \"Action\"";
+				let data = CastingTime {
+					duration: CastingDuration::Action,
+					ritual: false,
+				};
+				assert_eq_fromkdl!(CastingTime, doc, data);
+				assert_eq_askdl!(&data, doc);
+				Ok(())
+			}
+
+			#[test]
+			fn ritual() -> anyhow::Result<()> {
+				let doc = "casting-time \"Action\" ritual=true";
+				let data = CastingTime {
+					duration: CastingDuration::Action,
+					ritual: true,
+				};
+				assert_eq_fromkdl!(CastingTime, doc, data);
+				assert_eq_askdl!(&data, doc);
+				Ok(())
+			}
+		}
+
+		mod duration {
+			use super::*;
+			use crate::kdl_ext::test_utils::*;
+
+			static NODE_NAME: &str = "duration";
+
+			#[test]
+			fn action() -> anyhow::Result<()> {
+				let doc = "duration \"Action\"";
+				let data = CastingDuration::Action;
+				assert_eq_fromkdl!(CastingDuration, doc, data);
+				assert_eq_askdl!(&data, doc);
+				Ok(())
+			}
+
+			#[test]
+			fn bonus() -> anyhow::Result<()> {
+				let doc = "duration \"Bonus\"";
+				let data = CastingDuration::Bonus;
+				assert_eq_fromkdl!(CastingDuration, doc, data);
+				assert_eq_askdl!(&data, doc);
+				Ok(())
+			}
+
+			#[test]
+			fn reaction() -> anyhow::Result<()> {
+				let doc = "duration \"Reaction\"";
+				let data = CastingDuration::Reaction(None);
+				assert_eq_fromkdl!(CastingDuration, doc, data);
+				assert_eq_askdl!(&data, doc);
+				Ok(())
+			}
+
+			#[test]
+			fn reaction_context() -> anyhow::Result<()> {
+				let doc = "duration \"Reaction\" \"when falling\"";
+				let data = CastingDuration::Reaction(Some("when falling".into()));
+				assert_eq_fromkdl!(CastingDuration, doc, data);
+				assert_eq_askdl!(&data, doc);
+				Ok(())
+			}
+
+			#[test]
+			fn unit() -> anyhow::Result<()> {
+				let doc = "duration \"Minute\" 10";
+				let data = CastingDuration::Unit(10, "Minute".into());
+				assert_eq_fromkdl!(CastingDuration, doc, data);
+				assert_eq_askdl!(&data, doc);
+				Ok(())
+			}
+		}
 	}
 }

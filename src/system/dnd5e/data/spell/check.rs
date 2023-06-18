@@ -26,7 +26,7 @@ impl FromKDL for Check {
 		}
 	}
 }
-// TODO AsKdl: from/as tests for spell checks
+
 impl AsKdl for Check {
 	fn as_kdl(&self) -> NodeBuilder {
 		match self {
@@ -50,6 +50,54 @@ impl AsKdl for Check {
 				}
 				node
 			}
+		}
+	}
+}
+
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	mod kdl {
+		use super::*;
+		use crate::kdl_ext::test_utils::*;
+
+		static NODE_NAME: &str = "check";
+
+		#[test]
+		fn attack_melee() -> anyhow::Result<()> {
+			let doc = "check \"AttackRoll\" \"Melee\"";
+			let data = Check::AttackRoll(AttackKind::Melee);
+			assert_eq_fromkdl!(Check, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
+
+		#[test]
+		fn attack_ranged() -> anyhow::Result<()> {
+			let doc = "check \"AttackRoll\" \"Ranged\"";
+			let data = Check::AttackRoll(AttackKind::Ranged);
+			assert_eq_fromkdl!(Check, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
+
+		#[test]
+		fn save() -> anyhow::Result<()> {
+			let doc = "check \"SavingThrow\" (Ability)\"Dexterity\"";
+			let data = Check::SavingThrow(Ability::Dexterity, None);
+			assert_eq_fromkdl!(Check, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
+
+		#[test]
+		fn save_fixed_dc() -> anyhow::Result<()> {
+			let doc = "check \"SavingThrow\" (Ability)\"Dexterity\" dc=15";
+			let data = Check::SavingThrow(Ability::Dexterity, Some(15));
+			assert_eq_fromkdl!(Check, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
 		}
 	}
 }

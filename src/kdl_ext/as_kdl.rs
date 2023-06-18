@@ -46,6 +46,18 @@ impl NodeBuilder {
 		}
 	}
 
+	pub fn without_type(mut self) -> Self {
+		if let Some(entry) = self.entries.get_mut(0) {
+			if entry.ty().is_some() {
+				*entry = match entry.name() {
+					None => kdl::KdlEntry::new(entry.value().clone()),
+					Some(name) => kdl::KdlEntry::new_prop(name.clone(), entry.value().clone()),
+				};
+			}
+		}
+		self
+	}
+
 	pub fn with_extension(mut self, node: NodeBuilder) -> Self {
 		self += node;
 		self

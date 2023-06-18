@@ -40,7 +40,7 @@ impl FromKDL for Range {
 		}
 	}
 }
-// TODO AsKdl: from/as tests for spell Range
+
 impl AsKdl for Range {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
@@ -56,6 +56,78 @@ impl AsKdl for Range {
 				}
 				node
 			}
+		}
+	}
+}
+
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	mod kdl {
+		use super::*;
+		use crate::kdl_ext::test_utils::*;
+
+		static NODE_NAME: &str = "range";
+
+		#[test]
+		fn only_self() -> anyhow::Result<()> {
+			let doc = "range \"Self\"";
+			let data = Range::OnlySelf;
+			assert_eq_fromkdl!(Range, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
+
+		#[test]
+		fn touch() -> anyhow::Result<()> {
+			let doc = "range \"Touch\"";
+			let data = Range::Touch;
+			assert_eq_fromkdl!(Range, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
+
+		#[test]
+		fn sight() -> anyhow::Result<()> {
+			let doc = "range \"Sight\"";
+			let data = Range::Sight;
+			assert_eq_fromkdl!(Range, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
+
+		#[test]
+		fn unlimited() -> anyhow::Result<()> {
+			let doc = "range \"Unlimited\"";
+			let data = Range::Unlimited;
+			assert_eq_fromkdl!(Range, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
+
+		#[test]
+		fn unit_feet() -> anyhow::Result<()> {
+			let doc = "range 60";
+			let data = Range::Unit {
+				distance: 60,
+				unit: "Feet".into(),
+			};
+			assert_eq_fromkdl!(Range, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
+
+		#[test]
+		fn unit_other() -> anyhow::Result<()> {
+			let doc = "range 5 \"Miles\"";
+			let data = Range::Unit {
+				distance: 5,
+				unit: "Miles".into(),
+			};
+			assert_eq_fromkdl!(Range, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
 		}
 	}
 }

@@ -90,7 +90,7 @@ impl FromKDL for IsProficientWith {
 		}
 	}
 }
-// TODO AsKdl: tests for IsProficientWith
+
 impl AsKdl for IsProficientWith {
 	fn as_kdl(&self) -> NodeBuilder {
 		let node = NodeBuilder::default();

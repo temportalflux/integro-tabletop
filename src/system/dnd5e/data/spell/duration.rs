@@ -24,7 +24,7 @@ impl FromKDL for Duration {
 		})
 	}
 }
-// TODO AsKdl: from/as tests for spell duration/kind
+
 impl AsKdl for Duration {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = self.kind.as_kdl();
@@ -47,6 +47,7 @@ impl FromKDL for DurationKind {
 		}
 	}
 }
+
 impl AsKdl for DurationKind {
 	fn as_kdl(&self) -> NodeBuilder {
 		let node = NodeBuilder::default();
@@ -67,5 +68,65 @@ impl DurationKind {
 			Self::Special | Self::Unit(_, _) => "other",
 		}
 		.into()
+	}
+}
+
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	mod kdl {
+		use super::*;
+		use crate::kdl_ext::test_utils::*;
+
+		static NODE_NAME: &str = "duration";
+
+		#[test]
+		fn instant() -> anyhow::Result<()> {
+			let doc = "duration \"Instantaneous\"";
+			let data = Duration {
+				kind: DurationKind::Instantaneous,
+				concentration: false,
+			};
+			assert_eq_fromkdl!(Duration, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
+
+		#[test]
+		fn instant_concentration() -> anyhow::Result<()> {
+			let doc = "duration \"Instantaneous\" concentration=true";
+			let data = Duration {
+				kind: DurationKind::Instantaneous,
+				concentration: true,
+			};
+			assert_eq_fromkdl!(Duration, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
+
+		#[test]
+		fn special() -> anyhow::Result<()> {
+			let doc = "duration \"Special\"";
+			let data = Duration {
+				kind: DurationKind::Special,
+				concentration: false,
+			};
+			assert_eq_fromkdl!(Duration, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
+
+		#[test]
+		fn unit() -> anyhow::Result<()> {
+			let doc = "duration \"Minute\" 10";
+			let data = Duration {
+				kind: DurationKind::Unit(10, "Minute".into()),
+				concentration: false,
+			};
+			assert_eq_fromkdl!(Duration, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
 	}
 }
