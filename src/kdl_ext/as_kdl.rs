@@ -9,6 +9,10 @@ pub struct NodeBuilder {
 }
 
 impl NodeBuilder {
+	pub fn is_empty(&self) -> bool {
+		self.entries.is_empty() && self.children.is_empty()
+	}
+
 	pub fn build(self, name: impl Into<kdl::KdlIdentifier>) -> kdl::KdlNode {
 		let Self {
 			mut entries,

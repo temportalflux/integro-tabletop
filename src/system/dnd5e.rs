@@ -1,6 +1,6 @@
 use self::data::character::Character;
 use crate::{
-	kdl_ext::{FromKDL, KDLNode, NodeContext},
+	kdl_ext::{AsKdl, FromKDL, KDLNode, NodeContext},
 	system::core::NodeRegistry,
 };
 use std::{collections::HashMap, sync::Arc};
@@ -21,18 +21,26 @@ type FnMetadataFromKdl = Box<
 		+ Send
 		+ Sync,
 >;
+type FnReserializeKdl = Box<
+	dyn Fn(&kdl::KdlNode, &NodeContext) -> anyhow::Result<kdl::KdlNode> + 'static + Send + Sync,
+>;
 pub struct ComponentFactory {
 	metadata_from_kdl: FnMetadataFromKdl,
+	reserialize_kdl: FnReserializeKdl,
 }
 impl ComponentFactory {
 	fn new<T>() -> Self
 	where
-		T: FromKDL + SystemComponent + 'static + Send + Sync,
+		T: FromKDL + AsKdl + SystemComponent + 'static + Send + Sync,
 	{
 		Self {
 			metadata_from_kdl: Box::new(|node, context| {
 				let value = T::from_kdl(node, &mut context.next_node())?;
 				Ok(T::to_metadata(value))
+			}),
+			reserialize_kdl: Box::new(|node, context| {
+				let value = T::from_kdl(node, &mut context.next_node())?;
+				Ok(value.as_kdl().build(node.name().value()))
 			}),
 		}
 	}
@@ -44,13 +52,21 @@ impl ComponentFactory {
 	) -> anyhow::Result<serde_json::Value> {
 		(*self.metadata_from_kdl)(node, ctx)
 	}
+
+	pub fn reserialize_kdl(
+		&self,
+		node: &kdl::KdlNode,
+		ctx: &NodeContext,
+	) -> anyhow::Result<kdl::KdlNode> {
+		(*self.reserialize_kdl)(node, ctx)
+	}
 }
 #[derive(Default)]
 pub struct ComponentRegistry(HashMap<&'static str, Arc<ComponentFactory>>);
 impl ComponentRegistry {
 	pub fn register<T>(&mut self)
 	where
-		T: FromKDL + KDLNode + SystemComponent + 'static + Send + Sync,
+		T: FromKDL + KDLNode + AsKdl + SystemComponent + 'static + Send + Sync,
 	{
 		assert!(!self.0.contains_key(T::id()));
 		self.0.insert(T::id(), ComponentFactory::new::<T>().into());
@@ -77,7 +93,6 @@ pub fn component_registry() -> ComponentRegistry {
 	registry.register::<data::Condition>();
 	registry.register::<data::item::Item>();
 	registry.register::<data::Spell>();
-	registry.register::<data::Feat>();
 	registry
 }
 

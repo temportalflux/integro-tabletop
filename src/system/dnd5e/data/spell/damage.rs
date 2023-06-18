@@ -66,7 +66,7 @@ impl FromKDL for Damage {
 impl AsKdl for Damage {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = self.amount.as_kdl();
-		node.push_entry(self.damage_type.display_name());
+		node.push_entry_typed(self.damage_type.display_name(), "DamageType");
 		if self.base != 0 {
 			node.push_entry(("base", self.base as i64));
 		}
@@ -92,7 +92,7 @@ mod test {
 
 		#[test]
 		fn fixed_roll() -> anyhow::Result<()> {
-			let doc = "damage \"2d6\" \"Force\"";
+			let doc = "damage \"2d6\" (DamageType)\"Force\"";
 			let data = Damage {
 				amount: scaling::Value::Fixed(Roll::from((2, Die::D6))),
 				damage_type: DamageType::Force,
@@ -107,7 +107,7 @@ mod test {
 
 		#[test]
 		fn varying_roll() -> anyhow::Result<()> {
-			let doc = "damage (Scaled)\"Level\" \"Force\"";
+			let doc = "damage (Scaled)\"Level\" (DamageType)\"Force\"";
 			let data = Damage {
 				amount: scaling::Value::Scaled(scaling::Basis::Level {
 					class_name: None,
@@ -125,7 +125,7 @@ mod test {
 
 		#[test]
 		fn with_base() -> anyhow::Result<()> {
-			let doc = "damage \"2d6\" \"Force\" base=2";
+			let doc = "damage \"2d6\" (DamageType)\"Force\" base=2";
 			let data = Damage {
 				amount: scaling::Value::Fixed(Roll::from((2, Die::D6))),
 				damage_type: DamageType::Force,
@@ -140,7 +140,7 @@ mod test {
 
 		#[test]
 		fn with_ability_mod() -> anyhow::Result<()> {
-			let doc = "damage \"2d6\" \"Force\" ability=true";
+			let doc = "damage \"2d6\" (DamageType)\"Force\" ability=true";
 			let data = Damage {
 				amount: scaling::Value::Fixed(Roll::from((2, Die::D6))),
 				damage_type: DamageType::Force,
@@ -155,7 +155,7 @@ mod test {
 
 		#[test]
 		fn with_upcast() -> anyhow::Result<()> {
-			let doc = "damage \"2d6\" \"Force\" upcast=\"1d6\"";
+			let doc = "damage \"2d6\" (DamageType)\"Force\" upcast=\"1d6\"";
 			let data = Damage {
 				amount: scaling::Value::Fixed(Roll::from((2, Die::D6))),
 				damage_type: DamageType::Force,

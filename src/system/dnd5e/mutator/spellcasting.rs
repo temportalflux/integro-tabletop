@@ -338,7 +338,7 @@ impl FromKDL for Spellcasting {
 					}
 				};
 
-				let limited_uses = match node.query_opt("scope() > limited_use")? {
+				let limited_uses = match node.query_opt("scope() > limited_uses")? {
 					None => None,
 					Some(node) => Some(LimitedUses::from_kdl(node, &mut ctx.next_node())?),
 				};
@@ -360,7 +360,7 @@ impl FromKDL for Spellcasting {
 impl AsKdl for Spellcasting {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
-		node.push_entry(self.ability.long_name());
+		node.push_entry(("ability", self.ability.long_name()));
 		match &self.operation {
 			Operation::Caster(caster) => {
 				node.push_entry(("class", caster.class_name.clone()));
@@ -402,7 +402,11 @@ impl AsKdl for Spellcasting {
 					match &caster.spell_capacity {
 						SpellCapacity::Prepared(eval) => {
 							node.push_entry("Prepared");
-							node.push_child_t("capacity", eval);
+							node.push_child({
+								let mut node = NodeBuilder::default();
+								node.append_typed("Evaluator", eval.as_kdl());
+								node.build("capacity")
+							});
 						}
 						SpellCapacity::Known(level_map) => {
 							node.push_entry("Known");
@@ -480,7 +484,7 @@ impl AsKdl for Spellcasting {
 				}
 
 				if let Some(limited_uses) = limited_uses {
-					node.push_child_t("limited_use", limited_uses);
+					node.push_child_t("limited_uses", limited_uses);
 				}
 
 				node

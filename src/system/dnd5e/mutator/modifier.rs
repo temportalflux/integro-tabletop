@@ -206,9 +206,6 @@ impl AsKdl for AddModifier {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 		node.push_entry(self.modifier.to_string());
-		if let Some(context) = &self.context {
-			node.push_entry(("context", context.clone()));
-		}
 		match &self.kind {
 			ModifierKind::Ability(ability) => {
 				node.append_typed("Ability", ability.as_kdl());
@@ -225,6 +222,9 @@ impl AsKdl for AddModifier {
 			ModifierKind::Initiative => {
 				node.push_entry_typed("", "Initiative");
 			}
+		}
+		if let Some(context) = &self.context {
+			node.push_entry(("context", context.clone()));
 		}
 		node
 	}

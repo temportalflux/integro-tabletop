@@ -21,6 +21,7 @@ pub struct Class {
 	pub levels: Vec<Level>,
 	pub subclass_selection_level: Option<usize>,
 	pub subclass: Option<Subclass>,
+	// TODO: `multiclass-req` data node (already in data, just not in structures yet)
 }
 
 impl Class {
@@ -142,11 +143,16 @@ impl AsKdl for Class {
 		}
 
 		for (idx, level) in self.levels.iter().enumerate() {
-			node.push_child({
-				let mut node = NodeBuilder::default().with_entry((idx + 1) as i64);
-				node += level.as_kdl();
-				node.build("level")
-			});
+			let level_node = level.as_kdl();
+			if level_node.is_empty() {
+				continue;
+			}
+			node.push_child(
+				NodeBuilder::default()
+					.with_entry((idx + 1) as i64)
+					.with_extension(level_node)
+					.build("level"),
+			);
 		}
 
 		if let Some(subclass) = &self.subclass {
@@ -359,11 +365,16 @@ impl AsKdl for Subclass {
 		node.push_child_opt_t("description", &self.description);
 
 		for (idx, level) in self.levels.iter().enumerate() {
-			node.push_child({
-				let mut node = NodeBuilder::default().with_entry((idx + 1) as i64);
-				node += level.as_kdl();
-				node.build("level")
-			});
+			let level_node = level.as_kdl();
+			if level_node.is_empty() {
+				continue;
+			}
+			node.push_child(
+				NodeBuilder::default()
+					.with_entry((idx + 1) as i64)
+					.with_extension(level_node)
+					.build("level"),
+			);
 		}
 
 		node
