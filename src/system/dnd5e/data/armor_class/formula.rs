@@ -61,14 +61,15 @@ impl FromKDL for ArmorClassFormula {
 		Ok(Self { base, bonuses })
 	}
 }
-// TODO AsKdl: tests for ArmorClassFormula
+
 impl AsKdl for ArmorClassFormula {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
-		node.push_entry(self.base as i64);
+		node.push_entry(("base", self.base as i64));
 		for bonus in &self.bonuses {
 			node.push_child({
-				let mut node = NodeBuilder::default().with_entry(bonus.ability.long_name());
+				let mut node =
+					NodeBuilder::default().with_entry_typed(bonus.ability.long_name(), "Ability");
 				if let Some(min) = &bonus.min {
 					node.push_entry(("min", *min as i64));
 				}
@@ -101,35 +102,32 @@ mod test {
 		);
 	}
 
-	mod from_kdl {
+	mod kdl {
 		use super::*;
-		use crate::kdl_ext::NodeContext;
+		use crate::kdl_ext::test_utils::*;
 
-		fn from_doc(doc: &str) -> anyhow::Result<ArmorClassFormula> {
-			let document = doc.parse::<kdl::KdlDocument>()?;
-			let node = document
-				.query("scope() > formula")?
-				.expect("missing formula node");
-			ArmorClassFormula::from_kdl(node, &mut NodeContext::default())
-		}
+		static NODE_NAME: &str = "formula";
 
 		#[test]
 		fn base_only() -> anyhow::Result<()> {
 			let doc = "formula base=12";
-			let expected = ArmorClassFormula {
+			let data = ArmorClassFormula {
 				base: 12,
 				bonuses: vec![],
 			};
-			assert_eq!(from_doc(doc)?, expected);
+			assert_eq_fromkdl!(ArmorClassFormula, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 
 		#[test]
 		fn one_bonus_unbounded() -> anyhow::Result<()> {
-			let doc = "formula base=12 {
-				bonus \"Dexterity\"
-			}";
-			let expected = ArmorClassFormula {
+			let doc = "
+			|formula base=12 {
+			|    bonus (Ability)\"Dexterity\"
+			|}
+			";
+			let data = ArmorClassFormula {
 				base: 12,
 				bonuses: vec![BoundedAbility {
 					ability: Ability::Dexterity,
@@ -137,16 +135,19 @@ mod test {
 					max: None,
 				}],
 			};
-			assert_eq!(from_doc(doc)?, expected);
+			assert_eq_fromkdl!(ArmorClassFormula, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 
 		#[test]
 		fn one_bonus_bounded() -> anyhow::Result<()> {
-			let doc = "formula base=15 {
-				bonus \"Dexterity\" max=2
-			}";
-			let expected = ArmorClassFormula {
+			let doc = "
+				|formula base=15 {
+				|    bonus (Ability)\"Dexterity\" max=2
+				|}
+			";
+			let data = ArmorClassFormula {
 				base: 15,
 				bonuses: vec![BoundedAbility {
 					ability: Ability::Dexterity,
@@ -154,17 +155,20 @@ mod test {
 					max: Some(2),
 				}],
 			};
-			assert_eq!(from_doc(doc)?, expected);
+			assert_eq_fromkdl!(ArmorClassFormula, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 
 		#[test]
 		fn multiple_bonus() -> anyhow::Result<()> {
-			let doc = "formula base=10 {
-				bonus \"Dexterity\"
-				bonus \"Wisdom\"
-			}";
-			let expected = ArmorClassFormula {
+			let doc = "
+				|formula base=10 {
+				|    bonus (Ability)\"Dexterity\"
+				|    bonus (Ability)\"Wisdom\"
+				|}
+			";
+			let data = ArmorClassFormula {
 				base: 10,
 				bonuses: vec![
 					BoundedAbility {
@@ -179,7 +183,8 @@ mod test {
 					},
 				],
 			};
-			assert_eq!(from_doc(doc)?, expected);
+			assert_eq_fromkdl!(ArmorClassFormula, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 	}

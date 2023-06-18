@@ -105,7 +105,7 @@ impl FromKDL for Equipment {
 		})
 	}
 }
-// TODO AsKdl: Equipment tests
+
 impl AsKdl for Equipment {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
@@ -114,7 +114,11 @@ impl AsKdl for Equipment {
 			node.push_child_t("armor", armor);
 		}
 		if let Some(shield) = &self.shield {
-			node.push_child_t("shield", shield);
+			node.push_child(
+				NodeBuilder::default()
+					.with_entry(("bonus", *shield as i64))
+					.build("shield"),
+			);
 		}
 		if let Some(weapon) = &self.weapon {
 			node.push_child_t("weapon", weapon);
@@ -143,10 +147,10 @@ pub struct Attunement {
 mod test {
 	use super::*;
 
-	mod from_kdl {
+	mod kdl {
 		use super::*;
 		use crate::{
-			kdl_ext::NodeContext,
+			kdl_ext::{test_utils::*, NodeContext},
 			system::{
 				core::NodeRegistry,
 				dnd5e::{
@@ -161,25 +165,24 @@ mod test {
 			utility::Selector,
 		};
 
-		fn from_doc(doc: &str) -> anyhow::Result<Equipment> {
-			let mut ctx = NodeContext::registry(NodeRegistry::default_with_mut::<AddModifier>());
-			let document = doc.parse::<kdl::KdlDocument>()?;
-			let node = document
-				.query("scope() > equipment")?
-				.expect("missing equipment node");
-			Equipment::from_kdl(node, &mut ctx)
+		static NODE_NAME: &str = "equipment";
+
+		fn node_ctx() -> NodeContext {
+			NodeContext::registry(NodeRegistry::default_with_mut::<AddModifier>())
 		}
 
 		#[test]
 		fn armor() -> anyhow::Result<()> {
-			let doc = "equipment {
-				armor \"Heavy\" {
-					formula base=18
-					min-strength 15
-				}
-				mutator \"add_modifier\" \"Disadvantage\" (Skill)\"Specific\" \"Stealth\"
-			}";
-			let expected = Equipment {
+			let doc = "
+				|equipment {
+				|    armor \"Heavy\" {
+				|        formula base=18
+				|        min-strength 15
+				|    }
+				|    mutator \"add_modifier\" \"Disadvantage\" (Skill)\"Specific\" \"Stealth\"
+				|}
+			";
+			let data = Equipment {
 				criteria: None,
 				mutators: vec![AddModifier {
 					modifier: Modifier::Disadvantage,
@@ -199,20 +202,23 @@ mod test {
 				weapon: None,
 				attunement: None,
 			};
-			assert_eq!(from_doc(doc)?, expected);
+			assert_eq_fromkdl!(Equipment, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 
 		#[test]
 		fn weapon() -> anyhow::Result<()> {
-			let doc = "equipment {
-				weapon \"Martial\" class=\"Maul\" {
-					damage \"Bludgeoning\" roll=\"2d6\"
-					property \"Heavy\"
-					property \"TwoHanded\"
-				}
-			}";
-			let expected = Equipment {
+			let doc = "
+				|equipment {
+				|    weapon \"Martial\" class=\"Maul\" {
+				|        damage \"Bludgeoning\" roll=\"2d6\"
+				|        property \"Heavy\"
+				|        property \"TwoHanded\"
+				|    }
+				|}
+			";
+			let data = Equipment {
 				criteria: None,
 				mutators: vec![],
 				armor: None,
@@ -230,16 +236,19 @@ mod test {
 				}),
 				attunement: None,
 			};
-			assert_eq!(from_doc(doc)?, expected);
+			assert_eq_fromkdl!(Equipment, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 
 		#[test]
 		fn shield() -> anyhow::Result<()> {
-			let doc = "equipment {
-				shield bonus=2
-			}";
-			let expected = Equipment {
+			let doc = "
+				|equipment {
+				|    shield bonus=2
+				|}
+			";
+			let data = Equipment {
 				criteria: None,
 				mutators: vec![],
 				armor: None,
@@ -247,7 +256,8 @@ mod test {
 				weapon: None,
 				attunement: None,
 			};
-			assert_eq!(from_doc(doc)?, expected);
+			assert_eq_fromkdl!(Equipment, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 	}

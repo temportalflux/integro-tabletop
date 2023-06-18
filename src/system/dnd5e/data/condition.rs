@@ -91,7 +91,7 @@ impl FromKDL for Condition {
 		})
 	}
 }
-// TODO AsKdl: tests for Condition
+
 impl AsKdl for Condition {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
@@ -104,7 +104,11 @@ impl AsKdl for Condition {
 		node.push_child_opt_t("description", &self.description);
 
 		if let Some(criteria) = &self.criteria {
-			node.push_child_t("criteria", criteria);
+			node.push_child({
+				let mut node = criteria.as_kdl();
+				node.set_first_entry_ty("Evaluator");
+				node.build("criteria")
+			});
 		}
 		for mutator in &self.mutators {
 			node.push_child_t("mutator", mutator);
@@ -117,51 +121,54 @@ impl AsKdl for Condition {
 #[cfg(test)]
 mod test {
 	use super::*;
-	mod from_kdl {
+
+	mod kdl {
 		use super::*;
 		use crate::{
-			kdl_ext::NodeContext,
+			kdl_ext::{test_utils::*, NodeContext},
 			system::{
 				core::NodeRegistry,
 				dnd5e::{data::bounded::BoundValue, evaluator::HasArmorEquipped, mutator::Speed},
 			},
 		};
 
-		fn from_doc(doc: &str) -> anyhow::Result<Condition> {
-			let mut ctx = NodeContext::registry({
+		static NODE_NAME: &str = "condition";
+
+		fn node_ctx() -> NodeContext {
+			NodeContext::registry({
 				let mut reg = NodeRegistry::default();
 				reg.register_mutator::<Speed>();
 				reg.register_evaluator::<HasArmorEquipped>();
 				reg
-			});
-			let document = doc.parse::<kdl::KdlDocument>()?;
-			let node = document
-				.query("scope() > condition")?
-				.expect("missing condition node");
-			Condition::from_kdl(node, &mut ctx)
+			})
 		}
 
 		#[test]
 		fn basic() -> anyhow::Result<()> {
-			let doc = "condition name=\"Expedient\" {
-			description \"You are particularly quick.\"
-		}";
-			let expected = Condition {
+			let doc = "
+				|condition name=\"Expedient\" {
+				|    description \"You are particularly quick.\"
+				|}
+			";
+			let data = Condition {
 				name: "Expedient".into(),
 				description: "You are particularly quick.".into(),
 				..Default::default()
 			};
-			assert_eq!(from_doc(doc)?, expected);
+			assert_eq_fromkdl!(Condition, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 
 		#[test]
 		fn mutators() -> anyhow::Result<()> {
-			let doc = "condition name=\"Expedient\" {
-			description \"You are particularly quick.\"
-			mutator \"speed\" \"Walking\" (Additive)15
-		}";
-			let expected = Condition {
+			let doc = "
+				|condition name=\"Expedient\" {
+				|    description \"You are particularly quick.\"
+				|    mutator \"speed\" \"Walking\" (Additive)15
+				|}
+			";
+			let data = Condition {
 				name: "Expedient".into(),
 				description: "You are particularly quick.".into(),
 				mutators: vec![Speed {
@@ -171,18 +178,21 @@ mod test {
 				.into()],
 				..Default::default()
 			};
-			assert_eq!(from_doc(doc)?, expected);
+			assert_eq_fromkdl!(Condition, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 
 		#[test]
 		fn criteria() -> anyhow::Result<()> {
-			let doc = "condition name=\"Expedient\" {
-			description \"You are particularly quick, when not wearing armor.\"
-			mutator \"speed\" \"Walking\" (Additive)15
-			criteria (Evaluator)\"has_armor_equipped\" inverted=true
-		}";
-			let expected = Condition {
+			let doc = "
+				|condition name=\"Expedient\" {
+				|    description \"You are particularly quick, when not wearing armor.\"
+				|    criteria (Evaluator)\"has_armor_equipped\" inverted=true
+				|    mutator \"speed\" \"Walking\" (Additive)15
+				|}
+			";
+			let data = Condition {
 				name: "Expedient".into(),
 				description: "You are particularly quick, when not wearing armor.".into(),
 				mutators: vec![Speed {
@@ -199,7 +209,8 @@ mod test {
 				),
 				..Default::default()
 			};
-			assert_eq!(from_doc(doc)?, expected);
+			assert_eq_fromkdl!(Condition, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 	}

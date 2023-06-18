@@ -153,12 +153,12 @@ impl FromKDL for Weapon {
 		})
 	}
 }
-// TODO AsKdl: Weapon tests
+
 impl AsKdl for Weapon {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 		node.push_entry(self.kind.to_string());
-		node.push_entry(self.classification.clone());
+		node.push_entry(("class", self.classification.clone()));
 		if let Some(damage) = &self.damage {
 			node.push_child_t("damage", damage);
 		}
@@ -178,32 +178,28 @@ mod test {
 
 	// TODO: Tests for generating an attack from a weapon
 
-	mod from_kdl {
+	mod kdl {
 		use super::*;
 		use crate::{
-			kdl_ext::NodeContext,
+			kdl_ext::test_utils::*,
 			system::dnd5e::data::{
 				roll::{Die, Roll},
 				DamageType,
 			},
 		};
 
-		fn from_doc(doc: &str) -> anyhow::Result<Weapon> {
-			let document = doc.parse::<kdl::KdlDocument>()?;
-			let node = document
-				.query("scope() > weapon")?
-				.expect("missing weapon node");
-			Weapon::from_kdl(node, &mut NodeContext::default())
-		}
+		static NODE_NAME: &str = "weapon";
 
 		#[test]
 		fn simple() -> anyhow::Result<()> {
-			let doc = "weapon \"Simple\" class=\"Handaxe\" {
-				damage \"Slashing\" roll=\"1d6\"
-				property \"Light\"
-				property \"Thrown\" 20 60
-			}";
-			let expected = Weapon {
+			let doc = "
+				|weapon \"Simple\" class=\"Handaxe\" {
+				|    damage \"Slashing\" roll=\"1d6\"
+				|    property \"Light\"
+				|    property \"Thrown\" 20 60
+				|}
+			";
+			let data = Weapon {
 				kind: Kind::Simple,
 				classification: "Handaxe".into(),
 				damage: Some(WeaponDamage {
@@ -214,17 +210,20 @@ mod test {
 				properties: vec![Property::Light, Property::Thrown(20, 60)],
 				range: None,
 			};
-			assert_eq!(from_doc(doc)?, expected);
+			assert_eq_fromkdl!(Weapon, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 
 		#[test]
 		fn martial() -> anyhow::Result<()> {
-			let doc = "weapon \"Martial\" class=\"Rapier\" {
-				damage \"Piercing\" roll=\"1d8\"
-				property \"Finesse\"
-			}";
-			let expected = Weapon {
+			let doc = "
+				|weapon \"Martial\" class=\"Rapier\" {
+				|    damage \"Piercing\" roll=\"1d8\"
+				|    property \"Finesse\"
+				|}
+			";
+			let data = Weapon {
 				kind: Kind::Martial,
 				classification: "Rapier".into(),
 				damage: Some(WeaponDamage {
@@ -235,21 +234,24 @@ mod test {
 				properties: vec![Property::Finesse],
 				range: None,
 			};
-			assert_eq!(from_doc(doc)?, expected);
+			assert_eq_fromkdl!(Weapon, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 
 		#[test]
 		fn ranged() -> anyhow::Result<()> {
-			let doc = "weapon \"Martial\" class=\"CrossbowHand\" {
-				damage \"Piercing\" roll=\"1d6\"
-				property \"Light\"
-				range 30 120 {
-					ammunition
-					loading
-				}
-			}";
-			let expected = Weapon {
+			let doc = "
+				|weapon \"Martial\" class=\"CrossbowHand\" {
+				|    damage \"Piercing\" roll=\"1d6\"
+				|    property \"Light\"
+				|    range 30 120 {
+				|        ammunition
+				|        loading
+				|    }
+				|}
+			";
+			let data = Weapon {
 				kind: Kind::Martial,
 				classification: "CrossbowHand".into(),
 				damage: Some(WeaponDamage {
@@ -265,7 +267,8 @@ mod test {
 					requires_loading: true,
 				}),
 			};
-			assert_eq!(from_doc(doc)?, expected);
+			assert_eq_fromkdl!(Weapon, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 	}

@@ -1,4 +1,7 @@
-use crate::utility::NotInList;
+use crate::{
+	kdl_ext::{AsKdl, NodeBuilder},
+	utility::NotInList,
+};
 use enum_map::Enum;
 use enumset::EnumSetType;
 use std::str::FromStr;
@@ -280,6 +283,12 @@ impl FromStr for Ability {
 			.get(s.to_lowercase().as_str())
 			.cloned()
 			.ok_or_else(|| NotInList(s.to_owned(), LOOKUP.keys().cloned().collect()))
+	}
+}
+
+impl AsKdl for Ability {
+	fn as_kdl(&self) -> NodeBuilder {
+		NodeBuilder::default().with_entry(self.long_name())
 	}
 }
 

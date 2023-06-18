@@ -79,7 +79,13 @@ impl FromStr for BoundKind {
 }
 impl ToString for BoundKind {
 	fn to_string(&self) -> String {
-		self.display_name().into()
+		match self {
+			Self::Minimum => "Minimum",
+			Self::Base => "Base",
+			Self::Additive => "Additive",
+			Self::Subtract => "Subtract",
+		}
+		.into()
 	}
 }
 impl BoundKind {

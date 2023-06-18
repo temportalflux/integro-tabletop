@@ -53,9 +53,9 @@ mod test {
 
 	mod kdl {
 		use super::*;
-		use crate::{kdl_ext::test_utils::*, system::dnd5e::evaluator::test::eval_test_utils};
+		use crate::{kdl_ext::test_utils::*, system::dnd5e::evaluator::test::test_utils};
 
-		eval_test_utils!(GetAbilityModifier);
+		test_utils!(GetAbilityModifier);
 
 		#[test]
 		fn ability_str() -> anyhow::Result<()> {

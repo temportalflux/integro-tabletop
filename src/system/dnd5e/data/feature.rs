@@ -161,7 +161,11 @@ impl AsKdl for Feature {
 		}
 
 		if let Some(criteria) = &self.criteria {
-			node.push_child_t("criteria", criteria);
+			node.push_child({
+				let mut node = criteria.as_kdl();
+				node.set_first_entry_ty("Evaluator");
+				node.build("criteria")
+			});
 		}
 		for mutator in &self.mutators {
 			node.push_child_t("mutator", mutator);
@@ -272,7 +276,7 @@ mod test {
 		fn criteria() -> anyhow::Result<()> {
 			let doc = "
 				|feature name=\"Test Feature\" {
-				|    criteria \"has_armor_equipped\"
+				|    criteria (Evaluator)\"has_armor_equipped\"
 				|}
 			";
 			let data = Feature {

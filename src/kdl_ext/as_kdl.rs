@@ -15,7 +15,25 @@ impl NodeBuilder {
 			mut children,
 		} = self;
 		let mut node = kdl::KdlNode::new(name);
-		node.entries_mut().append(&mut entries);
+
+		node.entries_mut().reserve(entries.len());
+
+		// Push all of the unnamed/values first
+		// unstable:drain_filter
+		let mut i = 0;
+		while i < entries.len() {
+			if entries[i].name().is_none() {
+				let val = entries.remove(i);
+				node.entries_mut().push(val);
+			} else {
+				i += 1;
+			}
+		}
+		// Then push all of the named properties
+		if !entries.is_empty() {
+			node.entries_mut().append(&mut entries);
+		}
+
 		if !children.is_empty() {
 			node.ensure_children().nodes_mut().append(&mut children);
 		}

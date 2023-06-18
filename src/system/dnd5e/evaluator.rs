@@ -22,7 +22,7 @@ pub use math::*;
 
 #[cfg(test)]
 pub(crate) mod test {
-	macro_rules! eval_test_utils {
+	macro_rules! test_utils {
 		($eval_ty:ty) => {
 			static NODE_NAME: &str = "evaluator";
 			type Target = crate::utility::GenericEvaluator<
@@ -50,5 +50,5 @@ pub(crate) mod test {
 			}
 		};
 	}
-	pub(crate) use eval_test_utils;
+	pub(crate) use test_utils;
 }

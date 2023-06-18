@@ -1,5 +1,8 @@
 use super::Ability;
-use crate::utility::InvalidEnumStr;
+use crate::{
+	kdl_ext::{AsKdl, NodeBuilder},
+	utility::InvalidEnumStr,
+};
 use enum_map::Enum;
 use enumset::EnumSetType;
 use serde::{Deserialize, Serialize};
@@ -223,5 +226,11 @@ impl FromStr for Skill {
 			"survival" => Ok(Self::Survival),
 			_ => Err(InvalidEnumStr::from(s)),
 		}
+	}
+}
+
+impl AsKdl for Skill {
+	fn as_kdl(&self) -> NodeBuilder {
+		NodeBuilder::default().with_entry(self.to_string())
 	}
 }

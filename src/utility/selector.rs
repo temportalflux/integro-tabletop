@@ -151,9 +151,42 @@ where
 		}
 	}
 }
-impl<T: ToString + FromStr> AsKdl for Selector<T> {
+impl<T: ToString + FromStr + AsKdl> AsKdl for Selector<T> {
 	fn as_kdl(&self) -> NodeBuilder {
-		NodeBuilder::default()
+		let node = NodeBuilder::default();
+		match self {
+			Self::Specific(value) => node.with_entry("Specific").with_extension(value.as_kdl()),
+			Self::AnyOf {
+				id,
+				cannot_match,
+				amount: _,
+				options,
+			} => {
+				let mut node = node.with_entry("AnyOf");
+				if let Some(id) = id.get_id() {
+					node.push_entry(("id", id.clone()));
+				}
+				for cannot_match in cannot_match {
+					let Some(id) = cannot_match.get_id() else { continue; };
+					node.push_child_entry("cannot-match", id.clone());
+				}
+				for option in options {
+					node.push_child_t("option", option);
+				}
+				node
+			}
+			Self::Any { id, cannot_match } => {
+				let mut node = node.with_entry("Any");
+				if let Some(id) = id.get_id() {
+					node.push_entry(("id", id.clone()));
+				}
+				for cannot_match in cannot_match {
+					let Some(id) = cannot_match.get_id() else { continue; };
+					node.push_child_entry("cannot-match", id.clone());
+				}
+				node
+			}
+		}
 	}
 }
 

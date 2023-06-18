@@ -36,14 +36,14 @@ impl FromKDL for Armor {
 		})
 	}
 }
-// TODO AsKdl: Armor tests
+
 impl AsKdl for Armor {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 		node.push_entry(self.kind.to_string());
 		node.push_child_t("formula", &self.formula);
 		if let Some(score) = &self.min_strength_score {
-			node.push_entry(("min-strength", *score as i64));
+			node.push_child_entry("min-strength", *score as i64);
 		}
 		node
 	}
@@ -95,80 +95,87 @@ impl MutatorGroup for Armor {
 #[cfg(test)]
 mod test {
 	use super::*;
-	use crate::{
-		kdl_ext::NodeContext,
-		system::dnd5e::data::{Ability, BoundedAbility},
-	};
 
-	fn from_doc(doc: &str) -> anyhow::Result<Armor> {
-		let document = doc.parse::<kdl::KdlDocument>()?;
-		let node = document
-			.query("scope() > armor")?
-			.expect("missing armor node");
-		Armor::from_kdl(node, &mut NodeContext::default())
-	}
-
-	#[test]
-	fn light() -> anyhow::Result<()> {
-		let doc = "armor \"Light\" {
-			formula base=11 {
-				bonus (Ability)\"Dexterity\"
-			}
-		}";
-		let expected = Armor {
-			kind: Kind::Light,
-			formula: ArmorClassFormula {
-				base: 11,
-				bonuses: vec![BoundedAbility {
-					ability: Ability::Dexterity,
-					min: None,
-					max: None,
-				}],
-			},
-			min_strength_score: None,
+	mod kdl {
+		use super::*;
+		use crate::{
+			kdl_ext::test_utils::*,
+			system::dnd5e::data::{Ability, BoundedAbility},
 		};
-		assert_eq!(from_doc(doc)?, expected);
-		Ok(())
-	}
 
-	#[test]
-	fn medium() -> anyhow::Result<()> {
-		let doc = "armor \"Medium\" {
-			formula base=13 {
-				bonus (Ability)\"Dexterity\" max=2
-			}
-		}";
-		let expected = Armor {
-			kind: Kind::Medium,
-			formula: ArmorClassFormula {
-				base: 13,
-				bonuses: vec![BoundedAbility {
-					ability: Ability::Dexterity,
-					min: None,
-					max: Some(2),
-				}],
-			},
-			min_strength_score: None,
-		};
-		assert_eq!(from_doc(doc)?, expected);
-		Ok(())
-	}
+		static NODE_NAME: &str = "armor";
 
-	#[test]
-	fn heavy() -> anyhow::Result<()> {
-		let doc = "armor \"Heavy\" {
-			formula base=18
-			min-strength 15
-		}";
-		let expected = Armor {
-			kind: Kind::Heavy,
-			formula: ArmorClassFormula {
-				base: 18,
-				bonuses: vec![],
-			},
-			min_strength_score: Some(15),
-		};
-		assert_eq!(from_doc(doc)?, expected);
-		Ok(())
+		#[test]
+		fn light() -> anyhow::Result<()> {
+			let doc = "
+			|armor \"Light\" {
+			|    formula base=11 {
+			|        bonus (Ability)\"Dexterity\"
+			|    }
+			|}
+		";
+			let data = Armor {
+				kind: Kind::Light,
+				formula: ArmorClassFormula {
+					base: 11,
+					bonuses: vec![BoundedAbility {
+						ability: Ability::Dexterity,
+						min: None,
+						max: None,
+					}],
+				},
+				min_strength_score: None,
+			};
+			assert_eq_fromkdl!(Armor, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
+
+		#[test]
+		fn medium() -> anyhow::Result<()> {
+			let doc = "
+			|armor \"Medium\" {
+			|    formula base=13 {
+			|        bonus (Ability)\"Dexterity\" max=2
+			|    }
+			|}
+		";
+			let data = Armor {
+				kind: Kind::Medium,
+				formula: ArmorClassFormula {
+					base: 13,
+					bonuses: vec![BoundedAbility {
+						ability: Ability::Dexterity,
+						min: None,
+						max: Some(2),
+					}],
+				},
+				min_strength_score: None,
+			};
+			assert_eq_fromkdl!(Armor, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
+
+		#[test]
+		fn heavy() -> anyhow::Result<()> {
+			let doc = "
+			|armor \"Heavy\" {
+			|    formula base=18
+			|    min-strength 15
+			|}
+		";
+			let data = Armor {
+				kind: Kind::Heavy,
+				formula: ArmorClassFormula {
+					base: 18,
+					bonuses: vec![],
+				},
+				min_strength_score: Some(15),
+			};
+			assert_eq_fromkdl!(Armor, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
 	}
 }

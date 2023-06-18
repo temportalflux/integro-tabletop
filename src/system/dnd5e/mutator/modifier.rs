@@ -201,7 +201,7 @@ impl FromKDL for AddModifier {
 		})
 	}
 }
-// TODO AsKdl: tests for AddModifier
+
 impl AsKdl for AddModifier {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
@@ -234,83 +234,76 @@ impl AsKdl for AddModifier {
 mod test {
 	use super::*;
 
-	mod from_kdl {
+	mod kdl {
 		use super::*;
-		use crate::system::{core::NodeRegistry, dnd5e::BoxedMutator};
+		use crate::{kdl_ext::test_utils::*, system::dnd5e::mutator::test::test_utils};
 
-		fn from_doc(doc: &str) -> anyhow::Result<BoxedMutator> {
-			NodeRegistry::defaultmut_parse_kdl::<AddModifier>(doc)
-		}
+		test_utils!(AddModifier);
 
 		#[test]
 		fn ability_specific_noctx() -> anyhow::Result<()> {
-			let doc = "mutator \"add_modifier\" \"Advantage\" (Ability)\"Specific\" \"Dexterity\"";
-			assert_eq!(
-				from_doc(doc)?,
-				AddModifier {
-					modifier: roll::Modifier::Advantage,
-					context: None,
-					kind: ModifierKind::Ability(Selector::Specific(Ability::Dexterity)),
-				}
-				.into()
-			);
+			let doc = "mutator \"add_modifier\" \
+			\"Advantage\" (Ability)\"Specific\" \"Dexterity\"";
+			let data = AddModifier {
+				modifier: roll::Modifier::Advantage,
+				context: None,
+				kind: ModifierKind::Ability(Selector::Specific(Ability::Dexterity)),
+			};
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn ability_anyof_ctx() -> anyhow::Result<()> {
-			let doc = "mutator \"add_modifier\" \"Advantage\" (Ability)\"AnyOf\" context=\"which use smell\" {
-				option \"Strength\"	
-				option \"Wisdom\"	
-			}";
-			assert_eq!(
-				from_doc(doc)?,
-				AddModifier {
-					modifier: roll::Modifier::Advantage,
-					context: Some("which use smell".into()),
-					kind: ModifierKind::Ability(Selector::AnyOf {
-						id: Default::default(),
-						options: vec![Ability::Strength, Ability::Wisdom],
-						cannot_match: Default::default(),
-						amount: 1,
-					}),
-				}
-				.into()
-			);
+			let doc = "
+				|mutator \"add_modifier\" \"Advantage\" (Ability)\"AnyOf\" context=\"which use smell\" {
+				|    option \"Strength\"
+				|    option \"Wisdom\"
+				|}
+			";
+			let data = AddModifier {
+				modifier: roll::Modifier::Advantage,
+				context: Some("which use smell".into()),
+				kind: ModifierKind::Ability(Selector::AnyOf {
+					id: Default::default(),
+					options: vec![Ability::Strength, Ability::Wisdom],
+					cannot_match: Default::default(),
+					amount: 1,
+				}),
+			};
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn saving_throw_all() -> anyhow::Result<()> {
-			let doc =
-				"mutator \"add_modifier\" \"Advantage\" (SavingThrow)\"All\" context=\"Magic\"";
-			assert_eq!(
-				from_doc(doc)?,
-				AddModifier {
-					modifier: roll::Modifier::Advantage,
-					context: Some("Magic".into()),
-					kind: ModifierKind::SavingThrow(None),
-				}
-				.into()
-			);
+			let doc = "mutator \"add_modifier\" \
+			\"Advantage\" (SavingThrow)\"All\" context=\"Magic\"";
+			let data = AddModifier {
+				modifier: roll::Modifier::Advantage,
+				context: Some("Magic".into()),
+				kind: ModifierKind::SavingThrow(None),
+			};
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn saving_throw_any_selected() -> anyhow::Result<()> {
 			let doc = "mutator \"add_modifier\" \"Advantage\" (SavingThrow)\"Any\"";
-			assert_eq!(
-				from_doc(doc)?,
-				AddModifier {
-					modifier: roll::Modifier::Advantage,
-					context: None,
-					kind: ModifierKind::SavingThrow(Some(Selector::Any {
-						id: Default::default(),
-						cannot_match: vec![]
-					})),
-				}
-				.into()
-			);
+			let data = AddModifier {
+				modifier: roll::Modifier::Advantage,
+				context: None,
+				kind: ModifierKind::SavingThrow(Some(Selector::Any {
+					id: Default::default(),
+					cannot_match: vec![],
+				})),
+			};
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
@@ -318,15 +311,13 @@ mod test {
 		fn skill() -> anyhow::Result<()> {
 			let doc = "mutator \"add_modifier\" \"Advantage\" \
 			(Skill)\"Specific\" \"Perception\" context=\"using smell\"";
-			assert_eq!(
-				from_doc(doc)?,
-				AddModifier {
-					modifier: roll::Modifier::Advantage,
-					context: Some("using smell".into()),
-					kind: ModifierKind::Skill(Selector::Specific(Skill::Perception)),
-				}
-				.into()
-			);
+			let data = AddModifier {
+				modifier: roll::Modifier::Advantage,
+				context: Some("using smell".into()),
+				kind: ModifierKind::Skill(Selector::Specific(Skill::Perception)),
+			};
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 	}
