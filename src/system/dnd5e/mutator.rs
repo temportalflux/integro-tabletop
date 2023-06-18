@@ -49,15 +49,19 @@ pub use spellcasting::*;
 #[cfg(test)]
 pub(crate) mod test {
 	macro_rules! test_utils {
-		($eval_ty:ty) => {
+		($mut_ty:ty) => {
+			test_utils!(
+				$mut_ty,
+				crate::system::core::NodeRegistry::default_with_mut::<$mut_ty>()
+			);
+		};
+		($mut_ty:ty, $node_reg:expr) => {
 			static NODE_NAME: &str = "mutator";
 			type Target =
-				crate::utility::GenericMutator<<$eval_ty as crate::utility::Mutator>::Target>;
+				crate::utility::GenericMutator<<$mut_ty as crate::utility::Mutator>::Target>;
 
 			fn node_ctx() -> crate::kdl_ext::NodeContext {
-				crate::kdl_ext::NodeContext::registry(
-					crate::system::core::NodeRegistry::default_with_mut::<$eval_ty>(),
-				)
+				crate::kdl_ext::NodeContext::registry($node_reg)
 			}
 
 			fn from_kdl(

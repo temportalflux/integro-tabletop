@@ -75,7 +75,7 @@ impl FromKDL for GetLevel {
 		})
 	}
 }
-// TODO AsKdl: tests for GetLevel
+
 impl AsKdl for GetLevel {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
@@ -97,31 +97,29 @@ impl AsKdl for GetLevel {
 #[cfg(test)]
 mod test {
 	use super::*;
-	use crate::{
-		system::{core::NodeRegistry, dnd5e::data::character::Persistent},
-		utility::GenericEvaluator,
-	};
+	use crate::system::dnd5e::data::character::Persistent;
 
-	fn from_doc(doc: &str) -> anyhow::Result<GenericEvaluator<Character, i32>> {
-		NodeRegistry::defaulteval_parse_kdl::<GetLevel>(doc)
-	}
-
-	mod from_kdl {
+	mod kdl {
 		use super::*;
+		use crate::{kdl_ext::test_utils::*, system::dnd5e::evaluator::test::test_utils};
+
+		test_utils!(GetLevel);
 
 		#[test]
 		fn character_level() -> anyhow::Result<()> {
 			let doc = "evaluator \"get_level\"";
-			let expected = GetLevel::default();
-			assert_eq!(from_doc(doc)?, expected.into());
+			let data = GetLevel::default();
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn class_level() -> anyhow::Result<()> {
 			let doc = "evaluator \"get_level\" class=\"Wizard\"";
-			let expected = GetLevel::from(Some("Wizard"));
-			assert_eq!(from_doc(doc)?, expected.into());
+			let data = GetLevel::from(Some("Wizard"));
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 	}

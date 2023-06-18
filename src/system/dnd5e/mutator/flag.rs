@@ -66,7 +66,7 @@ impl FromKDL for SetFlag {
 		Ok(Self { flag, value })
 	}
 }
-// TODO AsKdl: tests for SetFlag
+// TODO AsKdl: from/as tests for SetFlag
 impl AsKdl for SetFlag {
 	fn as_kdl(&self) -> NodeBuilder {
 		NodeBuilder::default()

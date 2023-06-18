@@ -76,7 +76,7 @@ impl FromKDL for AddToActionBudget {
 		})
 	}
 }
-// TODO AsKdl: tests for AddToActionBudget
+
 impl AsKdl for AddToActionBudget {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
@@ -90,55 +90,57 @@ impl AsKdl for AddToActionBudget {
 mod test {
 	use super::*;
 
-	mod from_kdl {
+	mod kdl {
 		use super::*;
-		use crate::system::{core::NodeRegistry, dnd5e::BoxedMutator};
+		use crate::{kdl_ext::test_utils::*, system::dnd5e::mutator::test::test_utils};
 
-		fn from_doc(doc: &str) -> anyhow::Result<BoxedMutator> {
-			NodeRegistry::defaultmut_parse_kdl::<AddToActionBudget>(doc)
-		}
+		test_utils!(AddToActionBudget);
 
 		#[test]
 		fn action() -> anyhow::Result<()> {
 			let doc = "mutator \"add_to_action_budget\" \"Action\" 1";
-			let expected = AddToActionBudget {
+			let data = AddToActionBudget {
 				action_kind: ActionBudgetKind::Action,
 				amount: Value::Fixed(1),
 			};
-			assert_eq!(from_doc(doc)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn attack() -> anyhow::Result<()> {
 			let doc = "mutator \"add_to_action_budget\" \"Attack\" 1";
-			let expected = AddToActionBudget {
+			let data = AddToActionBudget {
 				action_kind: ActionBudgetKind::Attack,
 				amount: Value::Fixed(1),
 			};
-			assert_eq!(from_doc(doc)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn bonus() -> anyhow::Result<()> {
 			let doc = "mutator \"add_to_action_budget\" \"Bonus\" 1";
-			let expected = AddToActionBudget {
+			let data = AddToActionBudget {
 				action_kind: ActionBudgetKind::Bonus,
 				amount: Value::Fixed(1),
 			};
-			assert_eq!(from_doc(doc)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn reaction() -> anyhow::Result<()> {
 			let doc = "mutator \"add_to_action_budget\" \"Reaction\" 1";
-			let expected = AddToActionBudget {
+			let data = AddToActionBudget {
 				action_kind: ActionBudgetKind::Reaction,
 				amount: Value::Fixed(1),
 			};
-			assert_eq!(from_doc(doc)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 	}

@@ -51,7 +51,7 @@ impl FromKDL for Sense {
 		Ok(Self { name, argument })
 	}
 }
-// TODO AsKdl: tests for Sense
+
 impl AsKdl for Sense {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
@@ -65,33 +65,33 @@ impl AsKdl for Sense {
 mod test {
 	use super::*;
 
-	mod from_kdl {
+	mod kdl {
 		use super::*;
-		use crate::system::{core::NodeRegistry, dnd5e::BoxedMutator};
+		use crate::{kdl_ext::test_utils::*, system::dnd5e::mutator::test::test_utils};
 
-		fn from_doc(doc: &str) -> anyhow::Result<BoxedMutator> {
-			NodeRegistry::defaultmut_parse_kdl::<Sense>(doc)
-		}
+		test_utils!(Sense);
 
 		#[test]
 		fn minimum() -> anyhow::Result<()> {
 			let doc = "mutator \"sense\" \"Darkvision\" (Minimum)60";
-			let expected = Sense {
+			let data = Sense {
 				name: "Darkvision".into(),
 				argument: BoundValue::Minimum(60),
 			};
-			assert_eq!(from_doc(doc)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn additive() -> anyhow::Result<()> {
 			let doc = "mutator \"sense\" \"Darkvision\" (Additive)60";
-			let expected = Sense {
+			let data = Sense {
 				name: "Darkvision".into(),
 				argument: BoundValue::Additive(60),
 			};
-			assert_eq!(from_doc(doc)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 	}

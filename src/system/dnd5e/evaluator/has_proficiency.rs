@@ -113,84 +113,90 @@ mod test {
 		item::armor,
 	};
 
-	mod from_kdl {
+	mod kdl {
 		use super::*;
-		use crate::{system::core::NodeRegistry, utility::GenericEvaluator};
+		use crate::{kdl_ext::test_utils::*, system::dnd5e::evaluator::test::test_utils};
 
-		fn from_doc(doc: &str) -> anyhow::Result<GenericEvaluator<Character, bool>> {
-			NodeRegistry::defaulteval_parse_kdl::<IsProficientWith>(doc)
-		}
+		test_utils!(IsProficientWith);
 
 		#[test]
 		fn saving_throw() -> anyhow::Result<()> {
-			let doc = "evaluator \"is_proficient_with\" (SavingThrow)\"CHA\"";
-			let expected = IsProficientWith::SavingThrow(Ability::Charisma);
-			assert_eq!(from_doc(doc)?, expected.into());
+			let doc = "evaluator \"is_proficient_with\" (SavingThrow)\"Charisma\"";
+			let data = IsProficientWith::SavingThrow(Ability::Charisma);
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn skill() -> anyhow::Result<()> {
 			let doc = "evaluator \"is_proficient_with\" (Skill)\"Acrobatics\"";
-			let expected = IsProficientWith::Skill(Skill::Acrobatics);
-			assert_eq!(from_doc(doc)?, expected.into());
+			let data = IsProficientWith::Skill(Skill::Acrobatics);
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn language() -> anyhow::Result<()> {
 			let doc = "evaluator \"is_proficient_with\" (Language)\"Wongle\"";
-			let expected = IsProficientWith::Language("Wongle".into());
-			assert_eq!(from_doc(doc)?, expected.into());
+			let data = IsProficientWith::Language("Wongle".into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn armor_kind() -> anyhow::Result<()> {
 			let doc = "evaluator \"is_proficient_with\" (Armor)\"Light\"";
-			let expected = IsProficientWith::Armor(ArmorExtended::Kind(armor::Kind::Light));
-			assert_eq!(from_doc(doc)?, expected.into());
+			let data = IsProficientWith::Armor(ArmorExtended::Kind(armor::Kind::Light));
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn armor_shield() -> anyhow::Result<()> {
 			let doc = "evaluator \"is_proficient_with\" (Armor)\"Shield\"";
-			let expected = IsProficientWith::Armor(ArmorExtended::Shield);
-			assert_eq!(from_doc(doc)?, expected.into());
+			let data = IsProficientWith::Armor(ArmorExtended::Shield);
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn weapon_kind_simple() -> anyhow::Result<()> {
 			let doc = "evaluator \"is_proficient_with\" (Weapon)\"Simple\"";
-			let expected = IsProficientWith::Weapon(WeaponProficiency::Kind(weapon::Kind::Simple));
-			assert_eq!(from_doc(doc)?, expected.into());
+			let data = IsProficientWith::Weapon(WeaponProficiency::Kind(weapon::Kind::Simple));
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn weapon_kind_martial() -> anyhow::Result<()> {
 			let doc = "evaluator \"is_proficient_with\" (Weapon)\"Martial\"";
-			let expected = IsProficientWith::Weapon(WeaponProficiency::Kind(weapon::Kind::Martial));
-			assert_eq!(from_doc(doc)?, expected.into());
+			let data = IsProficientWith::Weapon(WeaponProficiency::Kind(weapon::Kind::Martial));
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn weapon_class() -> anyhow::Result<()> {
 			let doc = "evaluator \"is_proficient_with\" (Weapon)\"Net\"";
-			let expected =
-				IsProficientWith::Weapon(WeaponProficiency::Classification("Net".into()));
-			assert_eq!(from_doc(doc)?, expected.into());
+			let data = IsProficientWith::Weapon(WeaponProficiency::Classification("Net".into()));
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn tool() -> anyhow::Result<()> {
 			let doc = "evaluator \"is_proficient_with\" (Tool)\"Cook's Supplies\"";
-			let expected = IsProficientWith::Tool("Cook's Supplies".into());
-			assert_eq!(from_doc(doc)?, expected.into());
+			let data = IsProficientWith::Tool("Cook's Supplies".into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 	}

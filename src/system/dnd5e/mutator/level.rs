@@ -102,7 +102,7 @@ impl FromKDL for GrantByLevel {
 		Ok(Self { class_name, levels })
 	}
 }
-// TODO AsKdl: tests for GrantByLevel
+// TODO AsKdl: from/as tests for GrantByLevel
 impl AsKdl for GrantByLevel {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();

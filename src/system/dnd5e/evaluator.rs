@@ -24,6 +24,12 @@ pub use math::*;
 pub(crate) mod test {
 	macro_rules! test_utils {
 		($eval_ty:ty) => {
+			test_utils!(
+				$eval_ty,
+				crate::system::core::NodeRegistry::default_with_eval::<$eval_ty>()
+			);
+		};
+		($eval_ty:ty, $node_reg:expr) => {
 			static NODE_NAME: &str = "evaluator";
 			type Target = crate::utility::GenericEvaluator<
 				<$eval_ty as crate::utility::Evaluator>::Context,
@@ -31,9 +37,7 @@ pub(crate) mod test {
 			>;
 
 			fn node_ctx() -> crate::kdl_ext::NodeContext {
-				crate::kdl_ext::NodeContext::registry(
-					crate::system::core::NodeRegistry::default_with_eval::<$eval_ty>(),
-				)
+				crate::kdl_ext::NodeContext::registry($node_reg)
 			}
 
 			fn from_kdl(

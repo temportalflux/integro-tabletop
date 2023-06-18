@@ -93,7 +93,7 @@ impl FromKDL for Math {
 		})
 	}
 }
-// TODO AsKdl: tests for Math
+
 impl AsKdl for Math {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
@@ -209,34 +209,38 @@ impl Evaluator for Math {
 mod test {
 	use super::*;
 
-	mod from_kdl {
+	mod kdl {
 		use super::*;
 		use crate::{
+			kdl_ext::test_utils::*,
 			system::{
 				core::NodeRegistry,
 				dnd5e::{
 					data::Ability,
-					evaluator::{GetAbilityModifier, GetLevel},
+					evaluator::{test::test_utils, GetAbilityModifier, GetLevel},
 				},
 			},
-			utility::GenericEvaluator,
 		};
 
-		fn from_doc(doc: &str) -> anyhow::Result<GenericEvaluator<Character, i32>> {
-			let mut reg = NodeRegistry::default();
-			reg.register_evaluator::<Math>();
-			reg.register_evaluator::<GetAbilityModifier>();
-			reg.register_evaluator::<GetLevel>();
-			reg.parse_kdl_evaluator(doc)
+		test_utils!(Math, node_reg());
+
+		fn node_reg() -> NodeRegistry {
+			let mut node_reg = NodeRegistry::default();
+			node_reg.register_evaluator::<Math>();
+			node_reg.register_evaluator::<GetAbilityModifier>();
+			node_reg.register_evaluator::<GetLevel>();
+			node_reg
 		}
 
 		#[test]
 		fn add() -> anyhow::Result<()> {
-			let doc = "evaluator \"math\" \"Add\" max=15 {
-				value 10
-				value (Evaluator)\"get_ability_modifier\" (Ability)\"Strength\"
-			}";
-			let expected = Math {
+			let doc = "
+				|evaluator \"math\" \"Add\" max=15 {
+				|    value 10
+				|    value (Evaluator)\"get_ability_modifier\" (Ability)\"Strength\"
+				|}
+			";
+			let data = Math {
 				operation: MathOp::Add,
 				minimum: None,
 				maximum: Some(15),
@@ -245,17 +249,20 @@ mod test {
 					Value::Evaluated(GetAbilityModifier(Ability::Strength).into()),
 				],
 			};
-			assert_eq!(from_doc(doc)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn subtract() -> anyhow::Result<()> {
-			let doc = "evaluator \"math\" \"Subtract\" min=0 {
-				value (Evaluator)\"get_level\"
-				value 10
-			}";
-			let expected = Math {
+			let doc = "
+				|evaluator \"math\" \"Subtract\" min=0 {
+				|    value (Evaluator)\"get_level\"
+				|    value 10
+				|}
+			";
+			let data = Math {
 				operation: MathOp::Subtract,
 				minimum: Some(0),
 				maximum: None,
@@ -264,17 +271,20 @@ mod test {
 					Value::Fixed(10),
 				],
 			};
-			assert_eq!(from_doc(doc)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn multiply() -> anyhow::Result<()> {
-			let doc = "evaluator \"math\" \"Multiply\" {
-				value (Evaluator)\"get_ability_modifier\" (Ability)\"Constitution\"
-				value (Evaluator)\"get_level\"
-			}";
-			let expected = Math {
+			let doc = "
+				|evaluator \"math\" \"Multiply\" {
+				|    value (Evaluator)\"get_ability_modifier\" (Ability)\"Constitution\"
+				|    value (Evaluator)\"get_level\"
+				|}
+			";
+			let data = Math {
 				operation: MathOp::Multiply,
 				minimum: None,
 				maximum: None,
@@ -283,17 +293,20 @@ mod test {
 					Value::Evaluated(GetLevel::default().into()),
 				],
 			};
-			assert_eq!(from_doc(doc)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn divide() -> anyhow::Result<()> {
-			let doc = "evaluator \"math\" \"Divide\" round=\"floor\" min=1 {
-				value (Evaluator)\"get_level\"
-				value 2
-			}";
-			let expected = Math {
+			let doc = "
+				|evaluator \"math\" \"Divide\" round=\"floor\" min=1 {
+				|    value (Evaluator)\"get_level\"
+				|    value 2
+				|}
+			";
+			let data = Math {
 				operation: MathOp::Divide {
 					round: Rounding::Floor,
 				},
@@ -304,7 +317,8 @@ mod test {
 					Value::Fixed(2),
 				],
 			};
-			assert_eq!(from_doc(doc)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 	}

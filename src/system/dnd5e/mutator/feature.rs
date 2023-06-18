@@ -37,7 +37,7 @@ impl FromKDL for AddFeature {
 		Ok(Self(Feature::from_kdl(node, ctx)?))
 	}
 }
-// TODO AsKdl: tests for AddFeature
+
 impl AsKdl for AddFeature {
 	fn as_kdl(&self) -> NodeBuilder {
 		self.0.as_kdl()
@@ -48,22 +48,21 @@ impl AsKdl for AddFeature {
 mod test {
 	use super::*;
 
-	mod from_kdl {
+	mod kdl {
 		use super::*;
-		use crate::system::{core::NodeRegistry, dnd5e::BoxedMutator};
+		use crate::{kdl_ext::test_utils::*, system::dnd5e::mutator::test::test_utils};
 
-		fn from_doc(doc: &str) -> anyhow::Result<BoxedMutator> {
-			NodeRegistry::defaultmut_parse_kdl::<AddFeature>(doc)
-		}
+		test_utils!(AddFeature);
 
 		#[test]
 		fn base_only() -> anyhow::Result<()> {
 			let doc = "mutator \"feature\" name=\"Mutator Feature\"";
-			let expected = AddFeature(Feature {
+			let data = AddFeature(Feature {
 				name: "Mutator Feature".into(),
 				..Default::default()
 			});
-			assert_eq!(from_doc(doc)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 	}
