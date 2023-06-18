@@ -73,7 +73,7 @@ impl FromKDL for Spell {
 			.query_str_opt("scope() > school", 0)?
 			.map(str::to_owned);
 
-		let components = Components::from_kdl_all(node, ctx)?;
+		let components = Components::from_kdl(node, ctx)?;
 		let casting_time = node.query_req("scope() > casting-time")?;
 		let casting_time = CastingTime::from_kdl(casting_time, &mut ctx.next_node())?;
 		let range = node.query_req("scope() > range")?;

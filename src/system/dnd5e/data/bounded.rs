@@ -189,11 +189,11 @@ impl AsKdl for BoundValue {
 #[cfg(test)]
 mod test {
 	use super::*;
-	
+
 	mod kdl {
 		use super::*;
 		use crate::kdl_ext::test_utils::*;
-		
+
 		static NODE_NAME: &str = "bound";
 
 		#[test]

@@ -5,7 +5,7 @@
 // can have multiple material component entries, which are collected into a vec
 
 use crate::{
-	kdl_ext::{AsKdl, NodeBuilder, NodeContext, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeContext, NodeExt},
 	utility::NotInList,
 };
 
@@ -16,10 +16,10 @@ pub struct Components {
 	pub materials: Vec<(String, /*consumes on cast*/ bool)>,
 }
 
-impl Components {
+impl FromKDL for Components {
 	/// Queries the children of `parent` for any nodes named `component`,
 	/// and extends the default `Components` with all identified children.
-	pub fn from_kdl_all(parent: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
+	fn from_kdl(parent: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
 		let mut components = Self::default();
 		for node in parent.query_all("scope() > component")? {
 			let mut ctx = ctx.next_node();
@@ -41,7 +41,7 @@ impl Components {
 		Ok(components)
 	}
 }
-// TODO AsKdl: from/as tests for spell components
+
 impl AsKdl for Components {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
@@ -63,5 +63,85 @@ impl AsKdl for Components {
 			});
 		}
 		node
+	}
+}
+
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	mod kdl {
+		use super::*;
+		use crate::kdl_ext::test_utils::*;
+
+		static NODE_NAME: &str = "list";
+
+		#[test]
+		fn verbal() -> anyhow::Result<()> {
+			let doc = "
+				|list {
+				|    component \"Verbal\"
+				|}
+			";
+			let data = Components {
+				verbal: true,
+				somatic: false,
+				materials: vec![],
+			};
+			assert_eq_fromkdl!(Components, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
+
+		#[test]
+		fn somatic() -> anyhow::Result<()> {
+			let doc = "
+				|list {
+				|    component \"Somatic\"
+				|}
+			";
+			let data = Components {
+				verbal: false,
+				somatic: true,
+				materials: vec![],
+			};
+			assert_eq_fromkdl!(Components, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
+
+		#[test]
+		fn material() -> anyhow::Result<()> {
+			let doc = "
+				|list {
+				|    component \"Material\" \"a swatch of wool\"
+				|}
+			";
+			let data = Components {
+				verbal: false,
+				somatic: false,
+				materials: vec![("a swatch of wool".into(), false)],
+			};
+			assert_eq_fromkdl!(Components, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
+
+		#[test]
+		fn material_consumed() -> anyhow::Result<()> {
+			let doc = "
+				|list {
+				|    component \"Material\" \"a swatch of wool\" consumes=true
+				|}
+			";
+			let data = Components {
+				verbal: false,
+				somatic: false,
+				materials: vec![("a swatch of wool".into(), true)],
+			};
+			assert_eq_fromkdl!(Components, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
 	}
 }

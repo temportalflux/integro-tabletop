@@ -209,7 +209,7 @@ impl FromKDL for PickN {
 		})
 	}
 }
-// TODO AsKdl: from/as tests for PickN
+
 impl AsKdl for PickN {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
@@ -243,5 +243,155 @@ impl AsKdl for PickN {
 		}
 
 		node
+	}
+}
+
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	mod kdl {
+		use super::*;
+		use crate::{
+			kdl_ext::test_utils::*,
+			system::{
+				core::NodeRegistry,
+				dnd5e::{
+					data::bounded::BoundValue,
+					mutator::{test::test_utils, Speed},
+				},
+			},
+		};
+
+		test_utils!(PickN, node_reg());
+
+		fn node_reg() -> NodeRegistry {
+			let mut node_reg = NodeRegistry::default();
+			node_reg.register_mutator::<PickN>();
+			node_reg.register_mutator::<Speed>();
+			node_reg
+		}
+
+		fn options() -> HashMap<String, PickOption> {
+			[
+				(
+					"Climbing".into(),
+					PickOption {
+						description: None,
+						mutators: vec![Speed {
+							name: "Climbing".into(),
+							argument: BoundValue::Base(15),
+						}
+						.into()],
+						features: vec![],
+					},
+				),
+				(
+					"Swimming".into(),
+					PickOption {
+						description: Some(description::Section {
+							content: description::SectionContent::Body(
+								"You have a swimming speed of 15".into(),
+							),
+							..Default::default()
+						}),
+						mutators: vec![Speed {
+							name: "Swimming".into(),
+							argument: BoundValue::Base(15),
+						}
+						.into()],
+						features: vec![],
+					},
+				),
+			]
+			.into()
+		}
+
+		#[test]
+		fn basic() -> anyhow::Result<()> {
+			let doc = "
+				|mutator \"pick\" 1 name=\"Default Speed\" {
+				|    option \"Climbing\" {
+				|        mutator \"speed\" \"Climbing\" (Base)15
+				|    }
+				|    option \"Swimming\" {
+				|        description \"You have a swimming speed of 15\"
+				|        mutator \"speed\" \"Swimming\" (Base)15
+				|    }
+				|}
+			";
+			let data = PickN {
+				name: "Default Speed".into(),
+				options: options(),
+				selector: Selector::AnyOf {
+					id: IdPath::default(),
+					cannot_match: vec![],
+					amount: 1,
+					options: vec!["Climbing".into(), "Swimming".into()],
+				},
+			};
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
+			Ok(())
+		}
+
+		#[test]
+		fn with_id() -> anyhow::Result<()> {
+			let doc = "
+				|mutator \"pick\" 1 name=\"Default Speed\" id=\"speedA\" {
+				|    option \"Climbing\" {
+				|        mutator \"speed\" \"Climbing\" (Base)15
+				|    }
+				|    option \"Swimming\" {
+				|        description \"You have a swimming speed of 15\"
+				|        mutator \"speed\" \"Swimming\" (Base)15
+				|    }
+				|}
+			";
+			let data = PickN {
+				name: "Default Speed".into(),
+				options: options(),
+				selector: Selector::AnyOf {
+					id: IdPath::from("speedA"),
+					cannot_match: vec![],
+					amount: 1,
+					options: vec!["Climbing".into(), "Swimming".into()],
+				},
+			};
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
+			Ok(())
+		}
+
+		#[test]
+		fn with_cannot_match() -> anyhow::Result<()> {
+			let doc = "
+				|mutator \"pick\" 1 name=\"Default Speed\" id=\"speedA\" {
+				|    cannot-match \"speedB\"
+				|    option \"Climbing\" {
+				|        mutator \"speed\" \"Climbing\" (Base)15
+				|    }
+				|    option \"Swimming\" {
+				|        description \"You have a swimming speed of 15\"
+				|        mutator \"speed\" \"Swimming\" (Base)15
+				|    }
+				|}
+			";
+			let data = PickN {
+				name: "Default Speed".into(),
+				options: options(),
+				selector: Selector::AnyOf {
+					id: IdPath::from("speedA"),
+					cannot_match: vec![
+						IdPath::from("speedB")
+					],
+					amount: 1,
+					options: vec!["Climbing".into(), "Swimming".into()],
+				},
+			};
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
+			Ok(())
+		}
 	}
 }

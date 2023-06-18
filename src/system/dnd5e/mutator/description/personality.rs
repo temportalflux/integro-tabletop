@@ -52,7 +52,7 @@ impl FromKDL for SuggestedPersonality {
 		Ok(Self { kind, options })
 	}
 }
-// TODO AsKdl: from/as tests for SuggestedPersonality
+
 impl AsKdl for SuggestedPersonality {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
@@ -66,5 +66,81 @@ impl AsKdl for SuggestedPersonality {
 			node.push_child_opt_t("option", option);
 		}
 		node
+	}
+}
+
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	mod kdl {
+		use super::*;
+		use crate::{kdl_ext::test_utils::*, system::dnd5e::mutator::test::test_utils};
+
+		test_utils!(SuggestedPersonality);
+
+		#[test]
+		fn kind_trait() -> anyhow::Result<()> {
+			let doc = "
+				|mutator \"suggested_personality\" \"Trait\" {
+				|    option \"Some option\"
+				|}
+			";
+			let data = SuggestedPersonality {
+				kind: PersonalityKind::Trait,
+				options: vec!["Some option".into()],
+			};
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
+			Ok(())
+		}
+
+		#[test]
+		fn kind_ideal() -> anyhow::Result<()> {
+			let doc = "
+				|mutator \"suggested_personality\" \"Ideal\" {
+				|    option \"Some option\"
+				|}
+			";
+			let data = SuggestedPersonality {
+				kind: PersonalityKind::Ideal,
+				options: vec!["Some option".into()],
+			};
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
+			Ok(())
+		}
+
+		#[test]
+		fn kind_bond() -> anyhow::Result<()> {
+			let doc = "
+				|mutator \"suggested_personality\" \"Bond\" {
+				|    option \"Some option\"
+				|}
+			";
+			let data = SuggestedPersonality {
+				kind: PersonalityKind::Bond,
+				options: vec!["Some option".into()],
+			};
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
+			Ok(())
+		}
+
+		#[test]
+		fn kind_flaw() -> anyhow::Result<()> {
+			let doc = "
+				|mutator \"suggested_personality\" \"Flaw\" {
+				|    option \"Some option\"
+				|}
+			";
+			let data = SuggestedPersonality {
+				kind: PersonalityKind::Flaw,
+				options: vec!["Some option".into()],
+			};
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
+			Ok(())
+		}
 	}
 }

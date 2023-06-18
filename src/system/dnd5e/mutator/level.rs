@@ -102,7 +102,7 @@ impl FromKDL for GrantByLevel {
 		Ok(Self { class_name, levels })
 	}
 }
-// TODO AsKdl: from/as tests for GrantByLevel
+
 impl AsKdl for GrantByLevel {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
@@ -119,5 +119,123 @@ impl AsKdl for GrantByLevel {
 			})
 		}
 		node
+	}
+}
+
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	mod kdl {
+		use super::*;
+		use crate::{
+			kdl_ext::test_utils::*,
+			system::{
+				core::NodeRegistry,
+				dnd5e::{
+					data::bounded::BoundValue,
+					mutator::{test::test_utils, Speed},
+				},
+			},
+		};
+
+		test_utils!(GrantByLevel, node_reg());
+
+		fn node_reg() -> NodeRegistry {
+			let mut node_reg = NodeRegistry::default();
+			node_reg.register_mutator::<GrantByLevel>();
+			node_reg.register_mutator::<Speed>();
+			node_reg
+		}
+
+		#[test]
+		fn empty() -> anyhow::Result<()> {
+			let doc = "mutator \"by_level\"";
+			let data = GrantByLevel {
+				class_name: None,
+				levels: [].into(),
+			};
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
+			Ok(())
+		}
+
+		#[test]
+		fn character_level() -> anyhow::Result<()> {
+			let doc = "
+				|mutator \"by_level\" {
+				|    level 3 {
+				|        mutator \"speed\" \"Climbing\" (Base)30
+				|    }
+				|    level 5 {
+				|        mutator \"speed\" \"Climbing\" (Additive)10
+				|    }
+				|}
+			";
+			let data = GrantByLevel {
+				class_name: None,
+				levels: [
+					(
+						3,
+						vec![Speed {
+							name: "Climbing".into(),
+							argument: BoundValue::Base(30),
+						}
+						.into()],
+					),
+					(
+						5,
+						vec![Speed {
+							name: "Climbing".into(),
+							argument: BoundValue::Additive(10),
+						}
+						.into()],
+					),
+				]
+				.into(),
+			};
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
+			Ok(())
+		}
+
+		#[test]
+		fn class_level() -> anyhow::Result<()> {
+			let doc = "
+				|mutator \"by_level\" class=\"Barbarian\" {
+				|    level 3 {
+				|        mutator \"speed\" \"Climbing\" (Base)30
+				|    }
+				|    level 5 {
+				|        mutator \"speed\" \"Climbing\" (Additive)10
+				|    }
+				|}
+			";
+			let data = GrantByLevel {
+				class_name: Some("Barbarian".into()),
+				levels: [
+					(
+						3,
+						vec![Speed {
+							name: "Climbing".into(),
+							argument: BoundValue::Base(30),
+						}
+						.into()],
+					),
+					(
+						5,
+						vec![Speed {
+							name: "Climbing".into(),
+							argument: BoundValue::Additive(10),
+						}
+						.into()],
+					),
+				]
+				.into(),
+			};
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
+			Ok(())
+		}
 	}
 }
