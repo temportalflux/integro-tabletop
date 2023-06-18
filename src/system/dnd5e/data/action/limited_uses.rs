@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{DocumentExt, FromKDL, NodeExt, ValueExt},
+	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt, ValueExt},
 	system::dnd5e::{
 		data::{character::Character, Rest},
 		Value,
@@ -102,7 +102,6 @@ impl UseCounterData {
 	}
 
 	fn get_max_uses(&self, character: &Character) -> i32 {
-		use crate::utility::Evaluator;
 		self.max_uses.evaluate(character)
 	}
 
@@ -160,69 +159,97 @@ impl FromKDL for LimitedUses {
 	}
 }
 
+impl AsKdl for LimitedUses {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		match self {
+			Self::Usage(use_counter) => {
+				node.push_child_t("max_uses", &use_counter.max_uses);
+				if let Some(reset_on) = &use_counter.reset_on {
+					node.push_child_entry("reset_on", reset_on.to_string());
+				}
+				node
+			}
+			Self::Consumer { resource, cost } => {
+				node.push_child_entry("resource", resource.display().to_string());
+				if *cost > 1 {
+					node.push_child_t("cost", cost);
+				}
+				node
+			}
+		}
+	}
+}
+
 #[cfg(test)]
 mod test {
 	use super::*;
-	mod from_kdl {
+
+	mod kdl {
 		use super::*;
 		use crate::{
-			kdl_ext::NodeContext,
+			kdl_ext::{test_utils::*, NodeContext},
 			system::{
 				core::NodeRegistry,
 				dnd5e::{data::Rest, evaluator::GetLevel},
 			},
 		};
 
-		fn from_doc(doc: &str) -> anyhow::Result<LimitedUses> {
-			let mut ctx = NodeContext::registry(NodeRegistry::default_with_eval::<GetLevel>());
-			let document = doc.parse::<kdl::KdlDocument>()?;
-			let node = document
-				.query("scope() > limited_uses")?
-				.expect("missing limited_uses node");
-			LimitedUses::from_kdl(node, &mut ctx)
+		static NODE_NAME: &str = "limited_uses";
+
+		fn node_ctx() -> NodeContext {
+			NodeContext::registry(NodeRegistry::default_with_eval::<GetLevel>())
 		}
 
 		#[test]
 		fn fixed_uses_permanent() -> anyhow::Result<()> {
-			let doc = "limited_uses {
-				max_uses 2
-			}";
-			let expected = LimitedUses::Usage(UseCounterData {
+			let doc = "
+				|limited_uses {
+				|    max_uses 2
+				|}
+			";
+			let data = LimitedUses::Usage(UseCounterData {
 				max_uses: Value::Fixed(2),
 				..Default::default()
 			});
-			assert_eq!(from_doc(doc)?, expected);
+			assert_eq_fromkdl!(LimitedUses, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 
 		#[test]
 		fn fixed_uses_reset() -> anyhow::Result<()> {
-			let doc = "limited_uses {
-				max_uses 2
-				reset_on \"Short\"
-			}";
-			let expected = LimitedUses::Usage(UseCounterData {
+			let doc = "
+				|limited_uses {
+				|    max_uses 2
+				|    reset_on \"Short\"
+				|}
+			";
+			let data = LimitedUses::Usage(UseCounterData {
 				max_uses: Value::Fixed(2),
 				reset_on: Some(Rest::Short),
 				..Default::default()
 			});
-			assert_eq!(from_doc(doc)?, expected);
+			assert_eq_fromkdl!(LimitedUses, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 
 		#[test]
 		fn scaling_uses_reset() -> anyhow::Result<()> {
-			let doc = "limited_uses {
-				max_uses (Evaluator)\"get_level\" class=\"SpecificClass\" {
-					level 2 1
-					level 5 2
-					level 10 4
-					level 14 5
-					level 20 -1
-				}
-				reset_on \"Long\"
-			}";
-			let expected = LimitedUses::Usage(UseCounterData {
+			let doc = "
+				|limited_uses {
+				|    max_uses (Evaluator)\"get_level\" class=\"SpecificClass\" {
+				|        level 2 1
+				|        level 5 2
+				|        level 10 4
+				|        level 14 5
+				|        level 20 -1
+				|    }
+				|    reset_on \"Long\"
+				|}
+			";
+			let data = LimitedUses::Usage(UseCounterData {
 				max_uses: Value::Evaluated(
 					GetLevel {
 						class_name: Some("SpecificClass".into()),
@@ -233,34 +260,41 @@ mod test {
 				reset_on: Some(Rest::Long),
 				..Default::default()
 			});
-			assert_eq!(from_doc(doc)?, expected);
+			assert_eq_fromkdl!(LimitedUses, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 
 		#[test]
 		fn resource_simple() -> anyhow::Result<()> {
-			let doc = "limited_uses {
-				resource \"Cleric/level02/Channel Divinity\"
-			}";
-			let expected = LimitedUses::Consumer {
+			let doc = "
+				|limited_uses {
+				|    resource \"Cleric/level02/Channel Divinity\"
+				|}
+			";
+			let data = LimitedUses::Consumer {
 				resource: "Cleric/level02/Channel Divinity".into(),
 				cost: 1,
 			};
-			assert_eq!(from_doc(doc)?, expected);
+			assert_eq_fromkdl!(LimitedUses, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 
 		#[test]
 		fn resource_with_cost() -> anyhow::Result<()> {
-			let doc = "limited_uses {
-				resource \"Cleric/level02/Channel Divinity\"
-				cost 4
-			}";
-			let expected = LimitedUses::Consumer {
+			let doc = "
+				|limited_uses {
+				|    resource \"Cleric/level02/Channel Divinity\"
+				|    cost 4
+				|}
+			";
+			let data = LimitedUses::Consumer {
 				resource: "Cleric/level02/Channel Divinity".into(),
 				cost: 4,
 			};
-			assert_eq!(from_doc(doc)?, expected);
+			assert_eq_fromkdl!(LimitedUses, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 	}

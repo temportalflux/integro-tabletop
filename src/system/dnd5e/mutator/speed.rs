@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{FromKDL, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
 	system::dnd5e::data::{bounded::BoundValue, character::Character, description},
 	utility::Mutator,
 };
@@ -51,37 +51,46 @@ impl FromKDL for Speed {
 	}
 }
 
+impl AsKdl for Speed {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		node.push_entry(self.name.clone());
+		node += self.argument.as_kdl();
+		node
+	}
+}
+
 #[cfg(test)]
 mod test {
 	use super::*;
 
-	mod from_kdl {
+	mod kdl {
 		use super::*;
-		use crate::system::{core::NodeRegistry, dnd5e::BoxedMutator};
+		use crate::{kdl_ext::test_utils::*, system::dnd5e::mutator::test::test_utils};
 
-		fn from_doc(doc: &str) -> anyhow::Result<BoxedMutator> {
-			NodeRegistry::defaultmut_parse_kdl::<Speed>(doc)
-		}
+		test_utils!(Speed);
 
 		#[test]
 		fn minimum() -> anyhow::Result<()> {
 			let doc = "mutator \"speed\" \"Walking\" (Minimum)30";
-			let expected = Speed {
+			let data = Speed {
 				name: "Walking".into(),
 				argument: BoundValue::Minimum(30),
 			};
-			assert_eq!(from_doc(doc)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn additive() -> anyhow::Result<()> {
 			let doc = "mutator \"speed\" \"Walking\" (Additive)30";
-			let expected = Speed {
+			let data = Speed {
 				name: "Walking".into(),
 				argument: BoundValue::Additive(30),
 			};
-			assert_eq!(from_doc(doc)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 	}

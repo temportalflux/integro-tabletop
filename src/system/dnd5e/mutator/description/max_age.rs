@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{FromKDL, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
 	system::dnd5e::data::{character::Character, description},
 	utility::Mutator,
 };
@@ -34,4 +34,29 @@ impl FromKDL for AddLifeExpectancy {
 	}
 }
 
-// TODO: Test AddLifeExpectancy
+impl AsKdl for AddLifeExpectancy {
+	fn as_kdl(&self) -> NodeBuilder {
+		NodeBuilder::default().with_entry(self.0 as i64)
+	}
+}
+
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	mod kdl {
+		use super::*;
+		use crate::{kdl_ext::test_utils::*, system::dnd5e::mutator::test::test_utils};
+
+		test_utils!(AddLifeExpectancy);
+
+		#[test]
+		fn basic() -> anyhow::Result<()> {
+			let doc = "mutator \"extend_life_expectancy\" 100";
+			let data = AddLifeExpectancy(100);
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
+			Ok(())
+		}
+	}
+}

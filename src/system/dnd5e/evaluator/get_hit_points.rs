@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{FromKDL, KDLNode, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, KDLNode, NodeBuilder, NodeExt},
 	system::dnd5e::{
 		data::character::{Character, HitPoint},
 		mutator::AddMaxHitPoints,
@@ -22,6 +22,16 @@ impl FromKDL for GetHitPoints {
 		Ok(Self(HitPoint::from_str(
 			node.get_str_req(ctx.consume_idx())?,
 		)?))
+	}
+}
+
+impl AsKdl for GetHitPoints {
+	fn as_kdl(&self) -> NodeBuilder {
+		NodeBuilder::default().with_entry(match self.0 {
+			HitPoint::Current => "Current",
+			HitPoint::Temp => "Temp",
+			HitPoint::Max => "Max",
+		})
 	}
 }
 
@@ -56,35 +66,36 @@ impl Evaluator for GetHitPoints {
 mod test {
 	use super::*;
 
-	mod from_kdl {
+	mod kdl {
 		use super::*;
-		use crate::{system::core::NodeRegistry, utility::GenericEvaluator};
+		use crate::{kdl_ext::test_utils::*, system::dnd5e::evaluator::test::test_utils};
 
-		fn from_doc(doc: &str) -> anyhow::Result<GenericEvaluator<Character, i32>> {
-			NodeRegistry::defaulteval_parse_kdl::<GetHitPoints>(doc)
-		}
+		test_utils!(GetHitPoints);
 
 		#[test]
 		fn current() -> anyhow::Result<()> {
 			let doc = "evaluator \"get_hit_points\" \"Current\"";
-			let expected = GetHitPoints(HitPoint::Current);
-			assert_eq!(from_doc(doc)?, expected.into());
+			let data = GetHitPoints(HitPoint::Current);
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn temp() -> anyhow::Result<()> {
 			let doc = "evaluator \"get_hit_points\" \"Temp\"";
-			let expected = GetHitPoints(HitPoint::Temp);
-			assert_eq!(from_doc(doc)?, expected.into());
+			let data = GetHitPoints(HitPoint::Temp);
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn max() -> anyhow::Result<()> {
 			let doc = "evaluator \"get_hit_points\" \"Max\"";
-			let expected = GetHitPoints(HitPoint::Max);
-			assert_eq!(from_doc(doc)?, expected.into());
+			let data = GetHitPoints(HitPoint::Max);
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 	}

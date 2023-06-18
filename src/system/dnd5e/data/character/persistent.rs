@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{DocumentExt, FromKDL, NodeContext, NodeExt},
+	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeContext, NodeExt},
 	path_map::PathMap,
 	system::{
 		core::SourceId,
@@ -11,6 +11,7 @@ use crate::{
 	utility::{MutatorGroup, NotInList},
 };
 use enum_map::EnumMap;
+use itertools::Itertools;
 use std::{
 	collections::{BTreeMap, HashMap},
 	path::Path,
@@ -219,6 +220,54 @@ impl FromKDL for Persistent {
 		})
 	}
 }
+impl AsKdl for Persistent {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+
+		node.push_child_t("description", &self.description);
+		self.settings.export_as_kdl(&mut node);
+
+		for (ability, score) in self.ability_scores {
+			node.push_child(
+				NodeBuilder::default()
+					.with_entry(ability.long_name())
+					.with_entry(score as i64)
+					.build("ability"),
+			);
+		}
+
+		node.push_child_t("hit_points", &self.hit_points);
+		node.push_child_t("inspiration", &self.inspiration);
+
+		node.push_child_opt_t("inventory", &self.inventory);
+		node.push_child_opt_t("spells", &self.selected_spells);
+
+		for bundle in &self.bundles {
+			node.push_child_opt_t("bundle", bundle);
+		}
+		for class in &self.classes {
+			node.push_child_opt_t("class", class);
+		}
+
+		node.push_child_opt({
+			let mut node = NodeBuilder::default();
+			for (path, value) in self.selected_values.as_vec() {
+				node.push_child(
+					NodeBuilder::default()
+						.with_entry({
+							let path_str = path.display().to_string();
+							path_str.replace("\\", "/")
+						})
+						.with_entry(value.clone())
+						.build("value"),
+				);
+			}
+			node.build("selections")
+		});
+
+		node
+	}
+}
 
 #[derive(Clone, Copy, PartialEq, Default, Debug)]
 pub struct HitPoints {
@@ -239,6 +288,16 @@ impl FromKDL for HitPoints {
 			failure_saves,
 			success_saves,
 		})
+	}
+}
+impl AsKdl for HitPoints {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		node.push_child_t("current", &self.current);
+		node.push_child_t("temp", &self.temp);
+		node.push_child_t("failure_saves", &self.failure_saves);
+		node.push_child_t("success_saves", &self.success_saves);
+		node
 	}
 }
 impl HitPoints {
@@ -376,6 +435,15 @@ impl Settings {
 		}
 		Ok(())
 	}
+
+	fn export_as_kdl(&self, nodes: &mut NodeBuilder) {
+		nodes.push_child(
+			NodeBuilder::default()
+				.with_entry("currency_auto_exchange")
+				.with_entry(self.currency_auto_exchange)
+				.build("setting"),
+		);
+	}
 }
 
 #[derive(Clone, PartialEq, Default, Debug)]
@@ -419,6 +487,46 @@ impl FromKDL for SelectedSpells {
 			consumed_slots,
 			cache_by_caster,
 		})
+	}
+}
+impl AsKdl for SelectedSpells {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		// Consumed Slots
+		node.push_child_opt({
+			let mut node = NodeBuilder::default();
+			let iter_slots = self.consumed_slots.iter().sorted_by_key(|(slot, _)| *slot);
+			for (slot, consumed) in iter_slots {
+				node.push_child({
+					let mut node = NodeBuilder::default();
+					node.push_entry(*slot as i64);
+					node.push_entry(*consumed as i64);
+					node.build("slot")
+				});
+			}
+			node.build("consumed_slots")
+		});
+		// Casters
+		let iter_casters = self.cache_by_caster.iter();
+		let iter_casters = iter_casters.sorted_by_key(|(name, _)| *name);
+		for (caster_name, selected_spells) in iter_casters {
+			if selected_spells.selections.is_empty() {
+				continue;
+			}
+			let mut node_caster = NodeBuilder::default();
+
+			node_caster.push_entry(caster_name.clone());
+
+			let iter_spells = selected_spells.selections.values();
+			let iter_spells =
+				iter_spells.sorted_by(|a, b| a.rank.cmp(&b.rank).then(a.name.cmp(&b.name)));
+			for spell in iter_spells {
+				node_caster.push_child_t("spell", spell);
+			}
+
+			node.push_child(node_caster.build("caster"));
+		}
+		node
 	}
 }
 impl SelectedSpells {
@@ -502,5 +610,34 @@ impl SelectedSpellsData {
 
 	pub fn len(&self) -> usize {
 		self.selections.len()
+	}
+}
+
+#[cfg(test)]
+mod test_hit_points {
+	use super::*;
+	use crate::kdl_ext::test_utils::*;
+
+	static NODE_NAME: &str = "hit_points";
+
+	#[test]
+	fn kdl() -> anyhow::Result<()> {
+		let doc = "
+			|hit_points {
+			|    current 30
+			|    temp 5
+			|    failure_saves 1
+			|    success_saves 2
+			|}
+		";
+		let data = HitPoints {
+			current: 30,
+			temp: 5,
+			failure_saves: 1,
+			success_saves: 2,
+		};
+		assert_eq_fromkdl!(HitPoints, doc, data);
+		assert_eq_askdl!(&data, doc);
+		Ok(())
 	}
 }

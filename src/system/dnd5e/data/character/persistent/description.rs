@@ -1,10 +1,11 @@
 use crate::{
-	kdl_ext::{DocumentExt, FromKDL},
+	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
 	system::dnd5e::data::Size,
 	utility::NotInList,
 };
 use enum_map::{Enum, EnumMap};
 use enumset::EnumSetType;
+use itertools::Itertools;
 use std::{collections::HashSet, str::FromStr};
 
 #[derive(Clone, PartialEq, Default, Debug)]
@@ -75,6 +76,35 @@ impl FromKDL for Description {
 			weight,
 			personality,
 		})
+	}
+}
+
+impl AsKdl for Description {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		node.push_child_t("name", &self.name);
+		for pronoun in self.pronouns.iter().sorted() {
+			node.push_child_t("pronoun", pronoun);
+		}
+		if !self.custom_pronouns.is_empty() {
+			node.push_child_t("pronoun", &self.custom_pronouns);
+		}
+		if self.height != 0 {
+			node.push_child_t("height", &self.height);
+		}
+		if self.weight != 0 {
+			node.push_child_t("weight", &self.weight);
+		}
+		node.push_child_opt({
+			let mut node = NodeBuilder::default();
+			for (kind, items) in &self.personality {
+				for item in items {
+					node.push_child_t(kind.node_id(), item);
+				}
+			}
+			node.build("personality")
+		});
+		node
 	}
 }
 
@@ -175,6 +205,105 @@ impl FromStr for PersonalityKind {
 			"Bond" => Ok(Self::Bond),
 			"Flaw" => Ok(Self::Flaw),
 			_ => Err(NotInList(s.into(), vec!["Trait", "Ideal", "Bond", "Flaw"])),
+		}
+	}
+}
+
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	mod kdl {
+		use super::*;
+		use crate::kdl_ext::test_utils::*;
+
+		static NODE_NAME: &str = "description";
+
+		#[test]
+		fn name() -> anyhow::Result<()> {
+			let doc = "
+				|description {
+				|    name \"Alakazam\"
+				|}
+			";
+			let data = Description {
+				name: "Alakazam".into(),
+				..Default::default()
+			};
+			assert_eq_fromkdl!(Description, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
+
+		#[test]
+		fn height_weight() -> anyhow::Result<()> {
+			let doc = "
+				|description {
+				|    name \"Alakazam\"
+				|    height 60
+				|    weight 90
+				|}
+			";
+			let data = Description {
+				name: "Alakazam".into(),
+				height: 60,
+				weight: 90,
+				..Default::default()
+			};
+			assert_eq_fromkdl!(Description, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
+
+		#[test]
+		fn pronouns() -> anyhow::Result<()> {
+			let doc = "
+				|description {
+				|    name \"Alakazam\"
+				|    pronoun \"he/him\"
+				|    pronoun \"she/her\"
+				|    pronoun \"they/them\"
+				|    pronoun \"xi/xir\"
+				|}
+			";
+			let data = Description {
+				name: "Alakazam".into(),
+				pronouns: ["he/him".into(), "she/her".into(), "they/them".into()].into(),
+				custom_pronouns: "xi/xir".into(),
+				..Default::default()
+			};
+			assert_eq_fromkdl!(Description, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
+
+		#[test]
+		fn personality() -> anyhow::Result<()> {
+			let doc = "
+				|description {
+				|    name \"Alakazam\"
+				|    personality {
+				|        trait \"Trait 1\"
+				|        trait \"Trait 2\"
+				|        ideal \"Ideal A\"
+				|        bond \"Bond B\"
+				|        flaw \"Flaw C\"
+				|    }
+				|}
+			";
+			let data = Description {
+				name: "Alakazam".into(),
+				personality: enum_map::enum_map! {
+					PersonalityKind::Trait => vec!["Trait 1".into(), "Trait 2".into()],
+					PersonalityKind::Ideal => vec!["Ideal A".into()],
+					PersonalityKind::Bond => vec!["Bond B".into()],
+					PersonalityKind::Flaw => vec!["Flaw C".into()],
+				},
+				..Default::default()
+			};
+			assert_eq_fromkdl!(Description, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
 		}
 	}
 }

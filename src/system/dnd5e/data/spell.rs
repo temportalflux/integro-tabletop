@@ -1,6 +1,6 @@
 use super::{description, AreaOfEffect};
 use crate::{
-	kdl_ext::{DocumentExt, FromKDL, NodeContext, NodeExt},
+	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeContext, NodeExt},
 	system::{core::SourceId, dnd5e::SystemComponent},
 };
 
@@ -73,7 +73,7 @@ impl FromKDL for Spell {
 			.query_str_opt("scope() > school", 0)?
 			.map(str::to_owned);
 
-		let components = Components::from_kdl_all(node, ctx)?;
+		let components = Components::from_kdl(node, ctx)?;
 		let casting_time = node.query_req("scope() > casting-time")?;
 		let casting_time = CastingTime::from_kdl(casting_time, &mut ctx.next_node())?;
 		let range = node.query_req("scope() > range")?;
@@ -113,5 +113,42 @@ impl FromKDL for Spell {
 			duration,
 			tags,
 		})
+	}
+}
+// TODO AsKdl: from/as tests for Spell
+impl AsKdl for Spell {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+
+		node.push_entry(("name", self.name.clone()));
+		node.push_child_opt_t("source", &self.id);
+
+		if let Some(school) = &self.school_tag {
+			node.push_child_opt_t("school", school);
+		}
+		for tag in &self.tags {
+			node.push_child_opt_t("tag", tag);
+		}
+		node.push_child_t("rank", &self.rank);
+
+		node.push_child_t("casting-time", &self.casting_time);
+		node.push_child_t("range", &self.range);
+		if let Some(area_of_effect) = &self.area_of_effect {
+			node.push_child_t("area_of_effect", area_of_effect);
+		}
+
+		node += self.components.as_kdl();
+
+		node.push_child_t("duration", &self.duration);
+		if let Some(check) = &self.check {
+			node.push_child_t("check", check);
+		}
+		if let Some(damage) = &self.damage {
+			node.push_child_t("damage", damage);
+		}
+
+		node.push_child_opt_t("description", &self.description);
+
+		node
 	}
 }

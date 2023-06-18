@@ -66,7 +66,17 @@ pub enum ActionBudgetKind {
 	Bonus,
 	Reaction,
 }
-
+impl ToString for ActionBudgetKind {
+	fn to_string(&self) -> String {
+		match self {
+			Self::Action => "Action",
+			Self::Attack => "Attack",
+			Self::Bonus => "Bonus",
+			Self::Reaction => "Reaction",
+		}
+		.into()
+	}
+}
 impl FromStr for ActionBudgetKind {
 	type Err = NotInList;
 

@@ -1,5 +1,5 @@
 use super::IndirectCondition;
-use crate::kdl_ext::{DocumentExt, FromKDL, NodeExt};
+use crate::kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt};
 use std::str::FromStr;
 
 mod activation;
@@ -56,6 +56,24 @@ impl FromKDL for Action {
 	}
 }
 
+impl AsKdl for Action {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = self.activation_kind.as_kdl();
+
+		if let Some(attack) = &self.attack {
+			node.push_child_t("attack", attack);
+		}
+		if let Some(limited_uses) = &self.limited_uses {
+			node.push_child_t("limited_uses", limited_uses);
+		}
+		for condition in &self.conditions_to_apply {
+			node.push_child_t("condition", condition);
+		}
+
+		node
+	}
+}
+
 #[derive(thiserror::Error, Debug)]
 #[error("Action node is missing activation property: {0:?}")]
 pub struct MissingActivation(String);
@@ -64,8 +82,9 @@ pub struct MissingActivation(String);
 mod test {
 	use super::*;
 
-	mod from_kdl {
+	mod kdl {
 		use super::*;
+		use crate::kdl_ext::test_utils::*;
 		use crate::{
 			kdl_ext::NodeContext,
 			system::{
@@ -82,44 +101,41 @@ mod test {
 			utility,
 		};
 
-		fn from_doc(doc: &str) -> anyhow::Result<Action> {
-			let mut ctx = NodeContext::registry(NodeRegistry::default_with_eval::<GetLevel>());
-			let document = doc.parse::<kdl::KdlDocument>()?;
-			let node = document
-				.query("scope() > action")?
-				.expect("missing action node");
-			Action::from_kdl(node, &mut ctx)
+		static NODE_NAME: &str = "action";
+
+		fn node_ctx() -> NodeContext {
+			NodeContext::registry(NodeRegistry::default_with_eval::<GetLevel>())
 		}
 
 		#[test]
 		fn basic() -> anyhow::Result<()> {
-			let doc = "action {
-				activation \"Action\"
-			}";
-			let expected = Action {
+			let doc = "action \"Action\"";
+			let data = Action {
 				activation_kind: ActivationKind::Action,
 				attack: None,
 				limited_uses: None,
 				conditions_to_apply: Vec::new(),
 			};
-			assert_eq!(from_doc(doc)?, expected);
+			assert_eq_fromkdl!(Action, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 
 		#[test]
 		fn attack() -> anyhow::Result<()> {
-			let doc = "action {
-				activation \"Action\"
-				attack {
-					kind \"Melee\"
-					check \"AttackRoll\" (Ability)\"Dexterity\" proficient=true
-					damage base=1 {
-						roll (Roll)\"2d6\"
-						damage_type (DamageType)\"Fire\"
-					}
-				}
-			}";
-			let expected = Action {
+			let doc = "
+				|action \"Action\" {
+				|    attack {
+				|        kind \"Melee\"
+				|        check \"AttackRoll\" (Ability)\"Dexterity\" proficient=true
+				|        damage base=1 {
+				|            roll (Roll)\"2d6\"
+				|            damage_type \"Fire\"
+				|        }
+				|    }
+				|}
+			";
+			let data = Action {
 				activation_kind: ActivationKind::Action,
 				attack: Some(Attack {
 					kind: Some(AttackKindValue::Melee { reach: 5 }),
@@ -139,20 +155,22 @@ mod test {
 				limited_uses: None,
 				conditions_to_apply: Vec::new(),
 			};
-			assert_eq!(from_doc(doc)?, expected);
+			assert_eq_fromkdl!(Action, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 
 		#[test]
 		fn limited_uses_fixed() -> anyhow::Result<()> {
-			let doc = "action {
-				activation \"Action\"
-				limited_uses {
-					max_uses 1
-					reset_on \"Long\"
-				}
-			}";
-			let expected = Action {
+			let doc = "
+				|action \"Action\" {
+				|    limited_uses {
+				|        max_uses 1
+				|        reset_on \"Long\"
+				|    }
+				|}
+			";
+			let data = Action {
 				activation_kind: ActivationKind::Action,
 				attack: None,
 				limited_uses: Some(LimitedUses::Usage(UseCounterData {
@@ -162,26 +180,28 @@ mod test {
 				})),
 				conditions_to_apply: Vec::new(),
 			};
-			assert_eq!(from_doc(doc)?, expected);
+			assert_eq_fromkdl!(Action, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 
 		#[test]
 		fn limited_uses_scaling() -> anyhow::Result<()> {
-			let doc = "action {
-				activation \"Action\"
-				limited_uses {
-					max_uses (Evaluator)\"get_level\" {
-						level 2 1
-						level 5 2
-						level 10 4
-						level 14 5
-						level 20 -1
-					}
-					reset_on \"Long\"
-				}
-			}";
-			let expected = Action {
+			let doc = "
+				|action \"Action\" {
+				|    limited_uses {
+				|        max_uses (Evaluator)\"get_level\" {
+				|            level 2 1
+				|            level 5 2
+				|            level 10 4
+				|            level 14 5
+				|            level 20 -1
+				|        }
+				|        reset_on \"Long\"
+				|    }
+				|}
+			";
+			let data = Action {
 				activation_kind: ActivationKind::Action,
 				attack: None,
 				limited_uses: Some(LimitedUses::Usage(UseCounterData {
@@ -197,18 +217,20 @@ mod test {
 				})),
 				conditions_to_apply: Vec::new(),
 			};
-			assert_eq!(from_doc(doc)?, expected);
+			assert_eq_fromkdl!(Action, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 
 		#[test]
 		fn condition_by_id() -> anyhow::Result<()> {
-			let doc = "action {
-				activation \"Action\"
-				condition \"condition/invisible.kdl\"
-				condition \"condition/unconscious.kdl\"
-			}";
-			let expected = Action {
+			let doc = "
+				|action \"Action\" {
+				|    condition \"condition/invisible.kdl\"
+				|    condition \"condition/unconscious.kdl\"
+				|}
+			";
+			let data = Action {
 				activation_kind: ActivationKind::Action,
 				attack: None,
 				limited_uses: None,
@@ -223,17 +245,19 @@ mod test {
 					}),
 				],
 			};
-			assert_eq!(from_doc(doc)?, expected);
+			assert_eq_fromkdl!(Action, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 
 		#[test]
 		fn condition_custom() -> anyhow::Result<()> {
-			let doc = "action {
-				activation \"Action\"
-				condition \"Custom\" name=\"Slippery\"
-			}";
-			let expected = Action {
+			let doc = "
+				|action \"Action\" {
+				|    condition \"Custom\" name=\"Slippery\"
+				|}
+			";
+			let data = Action {
 				activation_kind: ActivationKind::Action,
 				attack: None,
 				limited_uses: None,
@@ -242,7 +266,8 @@ mod test {
 					..Default::default()
 				})],
 			};
-			assert_eq!(from_doc(doc)?, expected);
+			assert_eq_fromkdl!(Action, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 	}

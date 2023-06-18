@@ -1,10 +1,10 @@
 use crate::{
-	kdl_ext::{FromKDL, NodeExt, ValueExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt, ValueExt},
 	system::dnd5e::{
 		data::{character::Character, description},
 		Value,
 	},
-	utility::{Dependencies, Evaluator, Mutator},
+	utility::{Dependencies, Mutator},
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -64,59 +64,80 @@ impl FromKDL for AddMaxHitPoints {
 	}
 }
 
+impl AsKdl for AddMaxHitPoints {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		if let Some(id) = &self.id {
+			node.push_entry(("id", id.clone()));
+		}
+		node += self.value.as_kdl();
+		node
+	}
+}
+
 #[cfg(test)]
 mod test {
 	use super::*;
 
-	mod from_kdl {
+	mod kdl {
 		use super::*;
-		use crate::system::{
-			core::NodeRegistry,
-			dnd5e::{
-				data::Ability,
-				evaluator::{GetAbilityModifier, GetLevel, Math, MathOp},
-				BoxedMutator,
+		use crate::{
+			kdl_ext::test_utils::*,
+			system::{
+				core::NodeRegistry,
+				dnd5e::{
+					data::Ability,
+					evaluator::{GetAbilityModifier, GetLevel, Math, MathOp},
+					mutator::test::test_utils,
+				},
 			},
 		};
 
-		fn from_doc(doc: &str) -> anyhow::Result<BoxedMutator> {
+		test_utils!(AddMaxHitPoints, node_reg());
+
+		fn node_reg() -> NodeRegistry {
 			let mut node_reg = NodeRegistry::default();
 			node_reg.register_mutator::<AddMaxHitPoints>();
 			node_reg.register_evaluator::<GetAbilityModifier>();
 			node_reg.register_evaluator::<GetLevel>();
 			node_reg.register_evaluator::<Math>();
-			node_reg.parse_kdl_mutator(doc)
+			node_reg
 		}
 
 		#[test]
 		fn value() -> anyhow::Result<()> {
 			let doc = "mutator \"add_max_hit_points\" 5";
-			let expected = AddMaxHitPoints {
+			let data = AddMaxHitPoints {
 				id: None,
 				value: Value::Fixed(5),
 			};
-			assert_eq!(from_doc(doc)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn evaluator() -> anyhow::Result<()> {
-			let doc = "mutator \"add_max_hit_points\" (Evaluator)\"get_ability_modifier\" \"CON\"";
-			let expected = AddMaxHitPoints {
+			let doc = "mutator \"add_max_hit_points\" \
+			(Evaluator)\"get_ability_modifier\" (Ability)\"Constitution\"";
+			let data = AddMaxHitPoints {
 				id: None,
 				value: Value::Evaluated(GetAbilityModifier(Ability::Constitution).into()),
 			};
-			assert_eq!(from_doc(doc)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn evaluator_math() -> anyhow::Result<()> {
-			let doc = "mutator \"add_max_hit_points\" (Evaluator)\"math\" \"Multiply\" id=\"Constitution x Levels\" {
-				value (Evaluator)\"get_ability_modifier\" (Ability)\"Constitution\"
-				value (Evaluator)\"get_level\"
-			}";
-			let expected = AddMaxHitPoints {
+			let doc = "
+				|mutator \"add_max_hit_points\" (Evaluator)\"math\" \"Multiply\" id=\"Constitution x Levels\" {
+				|    value (Evaluator)\"get_ability_modifier\" (Ability)\"Constitution\"
+				|    value (Evaluator)\"get_level\"
+				|}
+			";
+			let data = AddMaxHitPoints {
 				id: Some("Constitution x Levels".into()),
 				value: Value::Evaluated(
 					Math {
@@ -131,7 +152,8 @@ mod test {
 					.into(),
 				),
 			};
-			assert_eq!(from_doc(doc)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 	}

@@ -1,6 +1,6 @@
 use super::{currency::Wallet, description, Rarity};
 use crate::{
-	kdl_ext::{DocumentExt, FromKDL, NodeContext, NodeExt},
+	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeContext, NodeExt},
 	system::{
 		core::SourceId,
 		dnd5e::{data::character::Character, SystemComponent},
@@ -170,6 +170,47 @@ impl FromKDL for Item {
 		})
 	}
 }
+impl AsKdl for Item {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+
+		node.push_entry(("name", self.name.clone()));
+
+		node.push_child_opt_t("source", &self.id);
+		if let Some(rarity) = &self.rarity {
+			node.push_child_entry("rarity", rarity.to_string());
+		}
+
+		if self.weight > 0.0 {
+			let mut stack_weight = self.weight as f64;
+			if let ItemKind::Simple { count } = &self.kind {
+				stack_weight *= *count as f64;
+			}
+			node.push_entry(("weight", stack_weight));
+		}
+
+		node.push_child_opt_t("description", &self.description);
+		node.push_child_opt_t("worth", &self.worth);
+
+		if let Some(notes) = &self.notes {
+			node.push_child_t("notes", notes);
+		}
+
+		for tag in &self.tags {
+			node.push_child_t("tag", tag);
+		}
+
+		if self.kind != ItemKind::default() {
+			node.push_child_t("kind", &self.kind);
+		}
+
+		if let Some(items) = &self.items {
+			node.push_child_t("items", items);
+		}
+
+		node
+	}
+}
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum ItemKind {
@@ -196,6 +237,24 @@ impl FromKDL for ItemKind {
 			}
 			value => Err(NotInList(value.into(), vec!["Simple", "Equipment"]).into()),
 		}
+	}
+}
+impl AsKdl for ItemKind {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		match self {
+			Self::Simple { count } => {
+				node.push_entry("Simple");
+				if *count > 1 {
+					node.push_entry(("count", *count as i64));
+				}
+			}
+			Self::Equipment(equipment) => {
+				node.push_entry("Equipment");
+				node += equipment.as_kdl();
+			}
+		}
+		node
 	}
 }
 
@@ -340,13 +399,13 @@ impl<T: AsItem> Inventory<T> {
 		Some(item)
 	}
 
-	pub fn push(&mut self, item: Item) -> Uuid {
+	fn push_entry(&mut self, entry: T) -> Uuid {
 		let id = Uuid::new_v4();
 		let search = self.itemids_by_name.binary_search_by(|id| {
 			let Some(entry_item) = self.get_item(id) else {
 				return std::cmp::Ordering::Less;
 			};
-			entry_item.name.cmp(&item.name)
+			entry_item.name.cmp(&entry.as_item().name)
 		});
 		let idx = match search {
 			// an item with the same name already exists at this index
@@ -355,8 +414,12 @@ impl<T: AsItem> Inventory<T> {
 			Err(idx) => idx,
 		};
 		self.itemids_by_name.insert(idx, id.clone());
-		self.items_by_id.insert(id.clone(), T::from_item(item));
+		self.items_by_id.insert(id.clone(), entry);
 		id
+	}
+
+	pub fn push(&mut self, item: Item) -> Uuid {
+		self.push_entry(T::from_item(item))
 	}
 
 	pub fn insert(&mut self, item: Item) -> Uuid {
@@ -462,7 +525,7 @@ pub struct ItemContainerCapacity {
 	pub volume: Option<f64>,
 }
 
-impl<T: AsItem> FromKDL for Inventory<T> {
+impl<T: AsItem + FromKDL> FromKDL for Inventory<T> {
 	fn from_kdl(
 		node: &kdl::KdlNode,
 		ctx: &mut crate::kdl_ext::NodeContext,
@@ -504,11 +567,67 @@ impl<T: AsItem> FromKDL for Inventory<T> {
 		};
 
 		for node in node.query_all("scope() > item")? {
-			let item = Item::from_kdl(node, &mut ctx.next_node())?;
-			inventory.push(item);
+			let item = T::from_kdl(node, &mut ctx.next_node())?;
+			inventory.push_entry(item);
 		}
 
 		Ok(inventory)
+	}
+}
+impl<T: AsKdl> AsKdl for Inventory<T> {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+
+		node.push_child_opt_t("wallet", &self.wallet);
+
+		node.push_child_opt({
+			let mut node = NodeBuilder::default();
+			if let Some(count) = &self.capacity.count {
+				node.push_entry(("count", *count as i64));
+			}
+			if let Some(weight) = &self.capacity.weight {
+				node.push_entry(("weight", *weight as i64));
+			}
+			if let Some(volume) = &self.capacity.volume {
+				node.push_entry(("volume", *volume as i64));
+			}
+			node.build("capacity")
+		});
+
+		if let Some(restriction) = &self.restriction {
+			let mut restriction_node = NodeBuilder::default();
+			for tag in &restriction.tags {
+				restriction_node.push_child_t("tag", tag);
+			}
+			node.push_child_opt(restriction_node.build("restriction"));
+		}
+
+		for id in &self.itemids_by_name {
+			let Some(entry) = self.items_by_id.get(id) else { continue; };
+			node.push_child(entry.as_kdl().build("item"));
+		}
+
+		node
+	}
+}
+
+impl FromKDL for EquipableEntry {
+	fn from_kdl(
+		node: &kdl::KdlNode,
+		ctx: &mut crate::kdl_ext::NodeContext,
+	) -> anyhow::Result<Self> {
+		let item = Item::from_kdl(node, ctx)?;
+		let is_equipped = node.get_bool_opt("equipped")?.unwrap_or_default();
+		Ok(Self { is_equipped, item })
+	}
+}
+impl AsKdl for EquipableEntry {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = self.item.as_kdl();
+		if self.is_equipped {
+			node.push_entry(("equipped", true));
+		}
+		node
 	}
 }
 

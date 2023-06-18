@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{EntryExt, FromKDL, NodeExt, ValueExt},
+	kdl_ext::{AsKdl, EntryExt, FromKDL, NodeBuilder, NodeExt, ValueExt},
 	utility::InvalidEnumStr,
 };
 use enum_map::{Enum, EnumMap};
@@ -79,7 +79,13 @@ impl FromStr for BoundKind {
 }
 impl ToString for BoundKind {
 	fn to_string(&self) -> String {
-		self.display_name().into()
+		match self {
+			Self::Minimum => "Minimum",
+			Self::Base => "Base",
+			Self::Additive => "Additive",
+			Self::Subtract => "Subtract",
+		}
+		.into()
 	}
 }
 impl BoundKind {
@@ -173,10 +179,59 @@ impl FromKDL for BoundValue {
 	}
 }
 
+impl AsKdl for BoundValue {
+	fn as_kdl(&self) -> NodeBuilder {
+		NodeBuilder::default().with_entry_typed(*self.value() as i64, self.kind().to_string())
+	}
+}
+
 // TODO: Tests for BoundValue::Subtract
 #[cfg(test)]
 mod test {
 	use super::*;
+
+	mod kdl {
+		use super::*;
+		use crate::kdl_ext::test_utils::*;
+
+		static NODE_NAME: &str = "bound";
+
+		#[test]
+		fn minimum() -> anyhow::Result<()> {
+			let doc = "bound (Minimum)20";
+			let data = BoundValue::Minimum(20);
+			assert_eq_fromkdl!(BoundValue, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
+
+		#[test]
+		fn base() -> anyhow::Result<()> {
+			let doc = "bound (Base)30";
+			let data = BoundValue::Base(30);
+			assert_eq_fromkdl!(BoundValue, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
+
+		#[test]
+		fn additive() -> anyhow::Result<()> {
+			let doc = "bound (Additive)10";
+			let data = BoundValue::Additive(10);
+			assert_eq_fromkdl!(BoundValue, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
+
+		#[test]
+		fn subtract() -> anyhow::Result<()> {
+			let doc = "bound (Subtract)5";
+			let data = BoundValue::Subtract(5);
+			assert_eq_fromkdl!(BoundValue, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
+	}
 
 	#[test]
 	fn insert_minimum() {

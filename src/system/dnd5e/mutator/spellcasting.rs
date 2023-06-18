@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{DocumentExt, FromKDL, KDLNode, NodeExt},
+	kdl_ext::{AsKdl, DocumentExt, FromKDL, KDLNode, NodeBuilder, NodeExt},
 	system::{
 		core::SourceId,
 		dnd5e::data::{
@@ -18,6 +18,7 @@ use crate::{
 	},
 	utility::{Mutator, NotInList, ObjectSelector, SelectorMetaVec},
 };
+use itertools::Itertools;
 use std::{
 	collections::{BTreeMap, HashSet},
 	str::FromStr,
@@ -290,6 +291,7 @@ impl FromKDL for Spellcasting {
 				for s in node.query_str_all("scope() > spell", 0)? {
 					spells.push(SourceId::from_str(s)?.with_basis(ctx.id(), false));
 				}
+				// TODO: Store the spell ids in the mutator
 				Operation::AddSource
 			}
 			Some("add_prepared") => {
@@ -336,7 +338,7 @@ impl FromKDL for Spellcasting {
 					}
 				};
 
-				let limited_uses = match node.query_opt("scope() > limited_use")? {
+				let limited_uses = match node.query_opt("scope() > limited_uses")? {
 					None => None,
 					Some(node) => Some(LimitedUses::from_kdl(node, &mut ctx.next_node())?),
 				};
@@ -352,6 +354,142 @@ impl FromKDL for Spellcasting {
 			}
 		};
 		Ok(Self { ability, operation })
+	}
+}
+// TODO AsKdl: tests for Spellcasting
+impl AsKdl for Spellcasting {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		node.push_entry(("ability", self.ability.long_name()));
+		match &self.operation {
+			Operation::Caster(caster) => {
+				node.push_entry(("class", caster.class_name.clone()));
+				node.push_child({
+					let mut node = NodeBuilder::default();
+					for tag in &caster.restriction.tags {
+						node.push_child_t("tag", tag);
+					}
+					node.build("restriction")
+				});
+				if let Some(ritual_cap) = &caster.ritual_capability {
+					node.push_child({
+						let mut node = NodeBuilder::default();
+						if ritual_cap.available_spells {
+							node.push_child(NodeBuilder::default().build("available-spells"));
+						}
+						if ritual_cap.selected_spells {
+							node.push_child(NodeBuilder::default().build("selected-spells"));
+						}
+						node.build("ritual")
+					});
+				}
+				if let Some(level_map) = &caster.cantrip_capacity {
+					node.push_child_opt({
+						let mut node = NodeBuilder::default();
+						for (level, amt) in level_map {
+							node.push_child(
+								NodeBuilder::default()
+									.with_entry(*level as i64)
+									.with_entry(*amt as i64)
+									.build("level"),
+							);
+						}
+						node.build("cantrips")
+					});
+				}
+				node.push_child({
+					let mut node = NodeBuilder::default();
+					match &caster.spell_capacity {
+						SpellCapacity::Prepared(eval) => {
+							node.push_entry("Prepared");
+							node.push_child({
+								let mut node = NodeBuilder::default();
+								node.append_typed("Evaluator", eval.as_kdl());
+								node.build("capacity")
+							});
+						}
+						SpellCapacity::Known(level_map) => {
+							node.push_entry("Known");
+							node.push_child_opt({
+								let mut node = NodeBuilder::default();
+								for (level, amt) in level_map {
+									node.push_child(
+										NodeBuilder::default()
+											.with_entry(*level as i64)
+											.with_entry(*amt as i64)
+											.build("level"),
+									);
+								}
+								node.build("cantrips")
+							});
+						}
+					}
+					node.build("kind")
+				});
+				node.push_child_t("slots", &caster.slots);
+				node
+			}
+			Operation::AddSource => {
+				node.push_entry("add_source");
+				let spell_ids = Vec::<SourceId>::new(); // TODO: actually read from mutator
+				for spell_id in &spell_ids {
+					// TODO: Dont encode the basis that was applied during from_kdl
+					node.push_child_t("spell", spell_id);
+				}
+				node
+			}
+			Operation::AddPrepared {
+				classified_as,
+				specific_spells,
+				selectable_spells,
+				limited_uses,
+			} => {
+				node.push_entry("add_prepared");
+				if let Some(class_name) = classified_as {
+					node.push_entry(("classified_as", class_name.clone()));
+				}
+
+				for (spell_id, prepared_info) in specific_spells {
+					node.push_child({
+						let mut node = NodeBuilder::default();
+						// TODO: Dont encode the basis that was applied during from_kdl
+						node.push_entry(spell_id.to_string());
+						node += prepared_info.as_kdl();
+						node.build("spell")
+					});
+				}
+
+				if let Some(selectable) = selectable_spells {
+					node.push_child({
+						let mut node = NodeBuilder::default();
+						node.push_entry(selectable.selector.count() as i64);
+						node += selectable.prepared.as_kdl();
+						if let Some(filter) = &selectable.selector.spell_filter {
+							node.push_child({
+								let mut node = NodeBuilder::default();
+								if let Some(can_cast) = &filter.can_cast {
+									node.push_entry(("can_cast", can_cast.clone()));
+								}
+								for rank in filter.ranks.iter().sorted() {
+									node.push_child_t("rank", rank);
+								}
+								for tag in filter.tags.iter().sorted() {
+									node.push_child_t("tag", tag);
+								}
+								node.build("filter")
+							});
+						}
+						node.build("options")
+					});
+				}
+
+				if let Some(limited_uses) = limited_uses {
+					node.push_child_t("limited_uses", limited_uses);
+				}
+
+				node
+			}
+		}
 	}
 }
 
@@ -371,5 +509,21 @@ impl FromKDL for PreparedInfo {
 			range,
 			cast_at_rank,
 		})
+	}
+}
+// TODO AsKdl: tests for PreparedInfo
+impl AsKdl for PreparedInfo {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		if self.can_cast_through_slot {
+			node.push_entry(("use_slot", true));
+		}
+		if let Some(rank) = &self.cast_at_rank {
+			node.push_entry(("rank", *rank as i64));
+		}
+		if let Some(range) = &self.range {
+			node.push_child_t("range", range);
+		}
+		node
 	}
 }

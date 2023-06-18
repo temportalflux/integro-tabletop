@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{DocumentExt, FromKDL, NodeExt},
+	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt},
 	system::{
 		core::SourceId,
 		dnd5e::{
@@ -151,5 +151,46 @@ impl FromKDL for Bundle {
 			mutators,
 			features,
 		})
+	}
+}
+// TODO AsKdl: from/as tests for Bundle
+impl AsKdl for Bundle {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+
+		node.push_entry(("category", self.category.clone()));
+		node.push_entry(("name", self.name.clone()));
+
+		node.push_child_t("source", &self.id);
+
+		for requirement in &self.requirements {
+			let kdl = match requirement {
+				BundleRequirement::Bundle { category, name } => NodeBuilder::default()
+					.with_entry("Bundle")
+					.with_entry(category.clone())
+					.with_entry(name.clone()),
+				BundleRequirement::Ability(ability, score) => NodeBuilder::default()
+					.with_entry("Ability")
+					.with_entry(ability.long_name())
+					.with_entry(*score as i64),
+			};
+			node.push_child(kdl.build("requirement"));
+		}
+
+		if self.description != description::Section::default() {
+			node.push_child_t("description", &self.description);
+		}
+		if self.limit > 1 {
+			node.push_entry(("limit", self.limit as i64));
+		}
+
+		for mutator in &self.mutators {
+			node.push_child_t("mutator", mutator);
+		}
+		for feature in &self.features {
+			node.push_child_t("feature", feature);
+		}
+
+		node
 	}
 }

@@ -44,6 +44,12 @@ impl crate::utility::Mutator for FinalizeAbilityScores {
 		stats.ability_scores_mut().finalize();
 	}
 }
+impl crate::kdl_ext::AsKdl for FinalizeAbilityScores {
+	fn as_kdl(&self) -> crate::kdl_ext::NodeBuilder {
+		// STUB: Not registered for documents
+		crate::kdl_ext::NodeBuilder::default()
+	}
+}
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct AbilityScore {

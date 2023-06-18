@@ -35,5 +35,3 @@ mod proficiencies;
 pub use proficiencies::*;
 pub mod spell;
 pub use spell::Spell;
-mod feat;
-pub use feat::*;

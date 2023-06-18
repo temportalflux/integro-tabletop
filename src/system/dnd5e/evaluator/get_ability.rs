@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{FromKDL, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
 	system::dnd5e::data::{character::Character, Ability},
 	utility::{Dependencies, Evaluator},
 };
@@ -9,6 +9,8 @@ use std::str::FromStr;
 pub struct GetAbilityModifier(pub Ability);
 
 crate::impl_trait_eq!(GetAbilityModifier);
+crate::impl_kdl_node!(GetAbilityModifier, "get_ability_modifier");
+
 impl Evaluator for GetAbilityModifier {
 	type Context = Character;
 	type Item = i32;
@@ -27,8 +29,6 @@ impl Evaluator for GetAbilityModifier {
 	}
 }
 
-crate::impl_kdl_node!(GetAbilityModifier, "get_ability_modifier");
-
 impl FromKDL for GetAbilityModifier {
 	fn from_kdl(
 		node: &kdl::KdlNode,
@@ -40,67 +40,77 @@ impl FromKDL for GetAbilityModifier {
 	}
 }
 
+impl AsKdl for GetAbilityModifier {
+	fn as_kdl(&self) -> NodeBuilder {
+		NodeBuilder::default().with_entry_typed(self.0.long_name(), "Ability")
+	}
+}
+
 #[cfg(test)]
 mod test {
 	use super::*;
-	use crate::{
-		system::{core::NodeRegistry, dnd5e::data::character::Persistent},
-		utility::GenericEvaluator,
-	};
+	use crate::system::dnd5e::data::character::Persistent;
 
-	fn from_doc(doc: &str) -> anyhow::Result<GenericEvaluator<Character, i32>> {
-		NodeRegistry::defaulteval_parse_kdl::<GetAbilityModifier>(doc)
-	}
-
-	mod from_kdl {
+	mod kdl {
 		use super::*;
-		use crate::system::dnd5e::evaluator::GetAbilityModifier;
+		use crate::{kdl_ext::test_utils::*, system::dnd5e::evaluator::test::test_utils};
+
+		test_utils!(GetAbilityModifier);
 
 		#[test]
 		fn ability_str() -> anyhow::Result<()> {
 			let doc = "evaluator \"get_ability_modifier\" (Ability)\"Strength\"";
-			let expected = GetAbilityModifier(Ability::Strength);
-			assert_eq!(from_doc(doc)?, expected.into());
+			let data = GetAbilityModifier(Ability::Strength);
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn ability_dex() -> anyhow::Result<()> {
-			let doc = "evaluator \"get_ability_modifier\" (Ability)\"DEX\"";
-			let expected = GetAbilityModifier(Ability::Dexterity);
-			assert_eq!(from_doc(doc)?, expected.into());
+			let doc_in = "evaluator \"get_ability_modifier\" (Ability)\"DEX\"";
+			let doc_out = "evaluator \"get_ability_modifier\" (Ability)\"Dexterity\"";
+			let data = GetAbilityModifier(Ability::Dexterity);
+			assert_eq_askdl!(&data, doc_out);
+			assert_eq_fromkdl!(Target, doc_in, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn ability_con() -> anyhow::Result<()> {
-			let doc = "evaluator \"get_ability_modifier\" (Ability)\"con\"";
-			let expected = GetAbilityModifier(Ability::Constitution);
-			assert_eq!(from_doc(doc)?, expected.into());
+			let doc_in = "evaluator \"get_ability_modifier\" (Ability)\"con\"";
+			let doc_out = "evaluator \"get_ability_modifier\" (Ability)\"Constitution\"";
+			let data = GetAbilityModifier(Ability::Constitution);
+			assert_eq_askdl!(&data, doc_out);
+			assert_eq_fromkdl!(Target, doc_in, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn ability_int() -> anyhow::Result<()> {
-			let doc = "evaluator \"get_ability_modifier\" (Ability)\"Int\"";
-			let expected = GetAbilityModifier(Ability::Intelligence);
-			assert_eq!(from_doc(doc)?, expected.into());
+			let doc_in = "evaluator \"get_ability_modifier\" (Ability)\"Int\"";
+			let doc_out = "evaluator \"get_ability_modifier\" (Ability)\"Intelligence\"";
+			let data = GetAbilityModifier(Ability::Intelligence);
+			assert_eq_askdl!(&data, doc_out);
+			assert_eq_fromkdl!(Target, doc_in, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn ability_wis() -> anyhow::Result<()> {
 			let doc = "evaluator \"get_ability_modifier\" (Ability)\"Wisdom\"";
-			let expected = GetAbilityModifier(Ability::Wisdom);
-			assert_eq!(from_doc(doc)?, expected.into());
+			let data = GetAbilityModifier(Ability::Wisdom);
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn ability_cha() -> anyhow::Result<()> {
 			let doc = "evaluator \"get_ability_modifier\" (Ability)\"Charisma\"";
-			let expected = GetAbilityModifier(Ability::Charisma);
-			assert_eq!(from_doc(doc)?, expected.into());
+			let data = GetAbilityModifier(Ability::Charisma);
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 	}

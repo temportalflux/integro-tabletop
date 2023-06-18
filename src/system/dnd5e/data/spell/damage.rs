@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{FromKDL, NodeContext, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeContext, NodeExt},
 	system::dnd5e::data::{
 		character::Character,
 		roll::{Roll, RollSet},
@@ -60,5 +60,112 @@ impl FromKDL for Damage {
 			damage_type,
 			upcast,
 		})
+	}
+}
+
+impl AsKdl for Damage {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = self.amount.as_kdl();
+		node.push_entry_typed(self.damage_type.display_name(), "DamageType");
+		if self.base != 0 {
+			node.push_entry(("base", self.base as i64));
+		}
+		if self.include_ability_modifier {
+			node.push_entry(("ability", true));
+		}
+		if let Some(upcast) = &self.upcast {
+			node.push_entry(("upcast", upcast.to_string()));
+		}
+		node
+	}
+}
+
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	mod kdl {
+		use super::*;
+		use crate::{kdl_ext::test_utils::*, system::dnd5e::data::roll::Die};
+
+		static NODE_NAME: &str = "damage";
+
+		#[test]
+		fn fixed_roll() -> anyhow::Result<()> {
+			let doc = "damage \"2d6\" (DamageType)\"Force\"";
+			let data = Damage {
+				amount: scaling::Value::Fixed(Roll::from((2, Die::D6))),
+				damage_type: DamageType::Force,
+				base: 0,
+				include_ability_modifier: false,
+				upcast: None,
+			};
+			assert_eq_fromkdl!(Damage, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
+
+		#[test]
+		fn varying_roll() -> anyhow::Result<()> {
+			let doc = "damage (Scaled)\"Level\" (DamageType)\"Force\"";
+			let data = Damage {
+				amount: scaling::Value::Scaled(scaling::Basis::Level {
+					class_name: None,
+					level_map: [].into(),
+				}),
+				damage_type: DamageType::Force,
+				base: 0,
+				include_ability_modifier: false,
+				upcast: None,
+			};
+			assert_eq_fromkdl!(Damage, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
+
+		#[test]
+		fn with_base() -> anyhow::Result<()> {
+			let doc = "damage \"2d6\" (DamageType)\"Force\" base=2";
+			let data = Damage {
+				amount: scaling::Value::Fixed(Roll::from((2, Die::D6))),
+				damage_type: DamageType::Force,
+				base: 2,
+				include_ability_modifier: false,
+				upcast: None,
+			};
+			assert_eq_fromkdl!(Damage, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
+
+		#[test]
+		fn with_ability_mod() -> anyhow::Result<()> {
+			let doc = "damage \"2d6\" (DamageType)\"Force\" ability=true";
+			let data = Damage {
+				amount: scaling::Value::Fixed(Roll::from((2, Die::D6))),
+				damage_type: DamageType::Force,
+				base: 0,
+				include_ability_modifier: true,
+				upcast: None,
+			};
+			assert_eq_fromkdl!(Damage, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
+
+		#[test]
+		fn with_upcast() -> anyhow::Result<()> {
+			let doc = "damage \"2d6\" (DamageType)\"Force\" upcast=\"1d6\"";
+			let data = Damage {
+				amount: scaling::Value::Fixed(Roll::from((2, Die::D6))),
+				damage_type: DamageType::Force,
+				base: 0,
+				include_ability_modifier: false,
+				upcast: Some(Roll::from((1, Die::D6))),
+			};
+			assert_eq_fromkdl!(Damage, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
 	}
 }

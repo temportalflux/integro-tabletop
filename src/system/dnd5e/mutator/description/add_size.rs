@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{DocumentExt, FromKDL, NodeExt},
+	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt},
 	system::dnd5e::data::{character::Character, description, roll::Roll},
 	utility::Mutator,
 };
@@ -118,4 +118,136 @@ impl FromKDL for AddSize {
 	}
 }
 
-// TODO: Test AddSize
+impl AsKdl for AddSize {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		node.push_child_opt({
+			let mut node = NodeBuilder::default();
+			for formula in &self.height {
+				match formula {
+					FormulaComponent::Base(value) => {
+						node.push_entry(("base", *value as i64));
+					}
+					FormulaComponent::Bonus(roll) => {
+						node.push_entry(("bonus", roll.to_string()));
+					}
+					FormulaComponent::WeightMultiplier(_) => {}
+				}
+			}
+			node.build("height")
+		});
+		node.push_child_opt({
+			let mut node = NodeBuilder::default();
+			for formula in &self.weight {
+				match formula {
+					FormulaComponent::Base(value) => {
+						node.push_entry(("base", *value as i64));
+					}
+					FormulaComponent::Bonus(roll) => {
+						node.push_entry(("bonus", roll.to_string()));
+					}
+					FormulaComponent::WeightMultiplier(roll) => {
+						node.push_entry(("multiplier", roll.to_string()));
+					}
+				}
+			}
+			node.build("weight")
+		});
+		node
+	}
+}
+
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	mod kdl {
+		use super::*;
+		use crate::{
+			kdl_ext::test_utils::*,
+			system::dnd5e::{data::roll::Die, mutator::test::test_utils},
+		};
+
+		test_utils!(AddSize);
+
+		#[test]
+		fn height_base() -> anyhow::Result<()> {
+			let doc = "
+				|mutator \"add_size\" {
+				|    height base=60
+				|}
+			";
+			let data = AddSize {
+				height: vec![FormulaComponent::Base(60)],
+				weight: vec![],
+			};
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
+			Ok(())
+		}
+
+		#[test]
+		fn height_bonus() -> anyhow::Result<()> {
+			let doc = "
+				|mutator \"add_size\" {
+				|    height bonus=\"3d8\"
+				|}
+			";
+			let data = AddSize {
+				height: vec![FormulaComponent::Bonus(Roll::from((3, Die::D8)))],
+				weight: vec![],
+			};
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
+			Ok(())
+		}
+
+		#[test]
+		fn weight_base() -> anyhow::Result<()> {
+			let doc = "
+				|mutator \"add_size\" {
+				|    weight base=60
+				|}
+			";
+			let data = AddSize {
+				height: vec![],
+				weight: vec![FormulaComponent::Base(60)],
+			};
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
+			Ok(())
+		}
+
+		#[test]
+		fn weight_bonus() -> anyhow::Result<()> {
+			let doc = "
+				|mutator \"add_size\" {
+				|    weight bonus=\"3d8\"
+				|}
+			";
+			let data = AddSize {
+				height: vec![],
+				weight: vec![FormulaComponent::Bonus(Roll::from((3, Die::D8)))],
+			};
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
+			Ok(())
+		}
+
+		#[test]
+		fn weight_multiplier() -> anyhow::Result<()> {
+			let doc = "
+				|mutator \"add_size\" {
+				|    weight multiplier=\"1d4\"
+				|}
+			";
+			let data = AddSize {
+				height: vec![],
+				weight: vec![FormulaComponent::WeightMultiplier(Roll::from((1, Die::D4)))],
+			};
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
+			Ok(())
+		}
+	}
+}

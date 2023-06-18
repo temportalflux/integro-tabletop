@@ -151,6 +151,7 @@ async fn main() -> anyhow::Result<()> {
 		let document = content
 			.parse::<kdl::KdlDocument>()
 			.with_context(|| format!("Invalid KDL format in {:?}", source_id.to_string()))?;
+		let mut reserialized_nodes = Vec::with_capacity(document.nodes().len());
 		for (idx, node) in document.nodes().iter().enumerate() {
 			source_id.node_idx = idx;
 			let node_name = node.name().value();
@@ -166,6 +167,24 @@ async fn main() -> anyhow::Result<()> {
 				log::debug!("{}", metadata.to_string());
 			}
 			*/
+			
+			// NOTE: This will re-write the local data using the re-serialized node.
+			// Do not enable unless you are specifically testing input vs output on documents.
+			// reserialized_nodes.push(comp_factory.reserialize_kdl(node, &ctx)?);
+		}
+		if !reserialized_nodes.is_empty() {
+			let Some(ModuleId::Local { name: module_name }) = &source_id.module else { continue; };
+			let Some(system) = &source_id.system else { continue; };
+			let dest_path = std::path::PathBuf::from(format!("./modules/{module_name}/{system}"))
+				.join(&source_id.path);
+			let mut doc = kdl::KdlDocument::new();
+			doc.nodes_mut().append(&mut reserialized_nodes);
+			let out_str = doc.to_string();
+			let out_str = out_str.replace("\\r", "");
+			let out_str = out_str.replace("\\n", "\n");
+			let out_str = out_str.replace("\\t", "\t");
+			let out_str = out_str.replace("    ", "\t");
+			let _ = std::fs::write(dest_path, out_str);
 		}
 	}
 

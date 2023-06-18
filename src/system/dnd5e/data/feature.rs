@@ -4,7 +4,7 @@ use super::{
 	description,
 };
 use crate::{
-	kdl_ext::{DocumentExt, FromKDL, NodeExt},
+	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt},
 	system::dnd5e::{BoxedCriteria, BoxedMutator},
 	utility::MutatorGroup,
 };
@@ -141,5 +141,193 @@ impl FromKDL for Feature {
 			absolute_path: Arc::new(RwLock::new(PathBuf::new())),
 			missing_selection_text: None,
 		})
+	}
+}
+
+impl AsKdl for Feature {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+
+		node.push_entry(("name", self.name.clone()));
+		if self.description != description::Info::default() {
+			node.push_child_t("description", &self.description);
+		}
+
+		if self.collapsed {
+			node.push_entry(("collapsed", true));
+		}
+		if let Some(parent) = &self.parent {
+			node.push_entry(("parent", parent.display().to_string()));
+		}
+
+		if let Some(criteria) = &self.criteria {
+			node.push_child({
+				let mut node = criteria.as_kdl();
+				node.set_first_entry_ty("Evaluator");
+				node.build("criteria")
+			});
+		}
+		for mutator in &self.mutators {
+			node.push_child_t("mutator", mutator);
+		}
+
+		if let Some(action) = &self.action {
+			node.push_child_t("action", action);
+		}
+
+		node
+	}
+}
+
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	mod kdl {
+		use super::*;
+		use crate::{
+			kdl_ext::{test_utils::*, NodeContext},
+			system::{
+				core::NodeRegistry,
+				dnd5e::{
+					data::{action::ActivationKind, character::ActionBudgetKind},
+					evaluator::HasArmorEquipped,
+					mutator::AddToActionBudget,
+					Value,
+				},
+			},
+		};
+
+		static NODE_NAME: &str = "feature";
+
+		fn node_ctx() -> NodeContext {
+			let mut registry = NodeRegistry::default();
+			registry.register_evaluator::<HasArmorEquipped>();
+			registry.register_mutator::<AddToActionBudget>();
+			NodeContext::registry(registry)
+		}
+
+		#[test]
+		fn name_only() -> anyhow::Result<()> {
+			let doc = "feature name=\"Test Feature\"";
+			let data = Feature {
+				name: "Test Feature".into(),
+				..Default::default()
+			};
+			assert_eq_fromkdl!(Feature, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
+
+		#[test]
+		fn description() -> anyhow::Result<()> {
+			let doc = "
+				|feature name=\"Test Feature\" {
+				|    description {
+				|        short \"This is some short desc\"
+				|        section \"And a long desc entry\"
+				|    }
+				|}
+			";
+			let data = Feature {
+				name: "Test Feature".into(),
+				description: description::Info {
+					short: Some("This is some short desc".into()),
+					sections: vec![description::Section {
+						content: description::SectionContent::Body("And a long desc entry".into()),
+						..Default::default()
+					}],
+					..Default::default()
+				},
+				..Default::default()
+			};
+			assert_eq_fromkdl!(Feature, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
+
+		#[test]
+		fn collapsed() -> anyhow::Result<()> {
+			let doc = "feature name=\"Test Feature\" collapsed=true";
+			let data = Feature {
+				name: "Test Feature".into(),
+				collapsed: true,
+				..Default::default()
+			};
+			assert_eq_fromkdl!(Feature, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
+
+		#[test]
+		fn with_parent() -> anyhow::Result<()> {
+			let doc = "feature name=\"Test Feature\" parent=\"Bundle/FeatureName\"";
+			let data = Feature {
+				name: "Test Feature".into(),
+				parent: Some("Bundle/FeatureName".into()),
+				..Default::default()
+			};
+			assert_eq_fromkdl!(Feature, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
+
+		#[test]
+		fn criteria() -> anyhow::Result<()> {
+			let doc = "
+				|feature name=\"Test Feature\" {
+				|    criteria (Evaluator)\"has_armor_equipped\"
+				|}
+			";
+			let data = Feature {
+				name: "Test Feature".into(),
+				criteria: Some(HasArmorEquipped::default().into()),
+				..Default::default()
+			};
+			assert_eq_fromkdl!(Feature, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
+
+		#[test]
+		fn mutator() -> anyhow::Result<()> {
+			let doc = "
+				|feature name=\"Test Feature\" {
+				|    mutator \"add_to_action_budget\" \"Action\" 1
+				|}
+			";
+			let data = Feature {
+				name: "Test Feature".into(),
+				mutators: vec![AddToActionBudget {
+					action_kind: ActionBudgetKind::Action,
+					amount: Value::Fixed(1),
+				}
+				.into()],
+				..Default::default()
+			};
+			assert_eq_fromkdl!(Feature, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
+
+		#[test]
+		fn action() -> anyhow::Result<()> {
+			let doc = "
+				|feature name=\"Test Feature\" {
+				|    action \"Action\"
+				|}
+			";
+			let data = Feature {
+				name: "Test Feature".into(),
+				action: Some(Action {
+					activation_kind: ActivationKind::Action,
+					..Default::default()
+				}),
+				..Default::default()
+			};
+			assert_eq_fromkdl!(Feature, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
 	}
 }

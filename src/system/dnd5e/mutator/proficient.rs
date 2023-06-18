@@ -1,7 +1,7 @@
 use enumset::EnumSet;
 
 use crate::{
-	kdl_ext::{EntryExt, FromKDL, NodeExt, ValueExt},
+	kdl_ext::{AsKdl, EntryExt, FromKDL, NodeBuilder, NodeExt, ValueExt},
 	system::dnd5e::data::{
 		character::Character, description, item::weapon, proficiency, Ability, ArmorExtended,
 		Skill, WeaponProficiency,
@@ -257,135 +257,185 @@ impl FromKDL for AddProficiency {
 	}
 }
 
+impl AsKdl for AddProficiency {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		match self {
+			Self::Ability(ability, level) => {
+				node.append_typed("Ability", ability.as_kdl());
+				if *level != proficiency::Level::Full {
+					node.push_entry(("level", level.to_string()));
+				}
+				node
+			}
+			Self::SavingThrow(ability) => node.with_entry_typed(ability.long_name(), "SavingThrow"),
+			Self::Skill(skill, level) => {
+				node.append_typed("Skill", skill.as_kdl());
+				if *level != proficiency::Level::Full {
+					node.push_entry(("level", level.to_string()));
+				}
+				node
+			}
+			Self::Language(lang_name) => {
+				node.append_typed("Language", lang_name.as_kdl());
+				node
+			}
+			Self::Armor(armor_ext, context) => {
+				node.push_entry_typed(armor_ext.to_string(), "Armor");
+				if let Some(context) = context {
+					node.push_entry(context.clone());
+				}
+				node
+			}
+			Self::Weapon(weapon_prof) => node.with_entry_typed(weapon_prof.to_string(), "Weapon"),
+			Self::Tool(tool_name) => {
+				node.append_typed("Tool", tool_name.as_kdl());
+				node
+			}
+		}
+	}
+}
+
 #[cfg(test)]
 mod test {
 	use super::*;
 	use crate::system::dnd5e::data::item::{armor, weapon};
 
-	mod from_kdl {
+	mod kdl {
 		use super::*;
-		use crate::system::{core::NodeRegistry, dnd5e::BoxedMutator};
+		use crate::{kdl_ext::test_utils::*, system::dnd5e::mutator::test::test_utils};
 
-		fn from_doc(doc: &str) -> anyhow::Result<BoxedMutator> {
-			NodeRegistry::defaultmut_parse_kdl::<AddProficiency>(doc)
-		}
+		test_utils!(AddProficiency);
 
 		#[test]
 		fn ability_specific_nolevel() -> anyhow::Result<()> {
-			let doc = "mutator \"add_proficiency\" (Ability)\"Specific\" \"Intelligence\"";
-			let expected = AddProficiency::Ability(
+			let doc = "mutator \"add_proficiency\" \
+				(Ability)\"Specific\" \"Intelligence\"";
+			let data = AddProficiency::Ability(
 				Selector::Specific(Ability::Intelligence),
 				proficiency::Level::Full,
 			);
-			assert_eq!(from_doc(doc)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn ability_specific_withlevel() -> anyhow::Result<()> {
-			let doc =
-				"mutator \"add_proficiency\" (Ability)\"Specific\" \"Wisdom\" level=\"Double\"";
-			let expected = AddProficiency::Ability(
+			let doc = "mutator \"add_proficiency\" \
+				(Ability)\"Specific\" \"Wisdom\" level=\"Double\"";
+			let data = AddProficiency::Ability(
 				Selector::Specific(Ability::Wisdom),
 				proficiency::Level::Double,
 			);
-			assert_eq!(from_doc(doc)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn ability_any_nolevel() -> anyhow::Result<()> {
-			let doc = "mutator \"add_proficiency\" (Ability)\"Any\" id=\"MutatorSelect\"";
-			let expected = AddProficiency::Ability(
+			let doc = "mutator \"add_proficiency\" \
+				(Ability)\"Any\" id=\"MutatorSelect\"";
+			let data = AddProficiency::Ability(
 				Selector::Any {
 					id: Some("MutatorSelect").into(),
 					cannot_match: Default::default(),
 				},
 				proficiency::Level::Full,
 			);
-			assert_eq!(from_doc(doc)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn saving_throw() -> anyhow::Result<()> {
 			let doc = "mutator \"add_proficiency\" (SavingThrow)\"Constitution\"";
-			let expected = AddProficiency::SavingThrow(Ability::Constitution);
-			assert_eq!(from_doc(doc)?, expected.into());
+			let data = AddProficiency::SavingThrow(Ability::Constitution);
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn skill_specific_nolevel() -> anyhow::Result<()> {
 			let doc = "mutator \"add_proficiency\" (Skill)\"Specific\" \"Insight\"";
-			let expected =
+			let data =
 				AddProficiency::Skill(Selector::Specific(Skill::Insight), proficiency::Level::Full);
-			assert_eq!(from_doc(doc)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn skill_specific_withlevel() -> anyhow::Result<()> {
-			let doc =
-				"mutator \"add_proficiency\" (Skill)\"Specific\" \"Religion\" level=\"Double\"";
-			let expected = AddProficiency::Skill(
+			let doc = "mutator \"add_proficiency\" \
+				(Skill)\"Specific\" \"Religion\" level=\"Double\"";
+			let data = AddProficiency::Skill(
 				Selector::Specific(Skill::Religion),
 				proficiency::Level::Double,
 			);
-			assert_eq!(from_doc(doc)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn skill_any_nolevel() -> anyhow::Result<()> {
 			let doc = "mutator \"add_proficiency\" (Skill)\"Any\" id=\"MutatorSelect\"";
-			let expected = AddProficiency::Skill(
+			let data = AddProficiency::Skill(
 				Selector::Any {
 					id: Some("MutatorSelect").into(),
 					cannot_match: Default::default(),
 				},
 				proficiency::Level::Full,
 			);
-			assert_eq!(from_doc(doc)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn skill_any_nolevel_noid() -> anyhow::Result<()> {
 			let doc = "mutator \"add_proficiency\" (Skill)\"Any\"";
-			let expected = AddProficiency::Skill(
+			let data = AddProficiency::Skill(
 				Selector::Any {
 					id: Default::default(),
 					cannot_match: Default::default(),
 				},
 				proficiency::Level::Full,
 			);
-			assert_eq!(from_doc(doc)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn skill_any_withlevel() -> anyhow::Result<()> {
-			let doc =
-				"mutator \"add_proficiency\" (Skill)\"Any\" id=\"MutatorSelect\" level=\"HalfDown\"";
-			let expected = AddProficiency::Skill(
+			let doc = "mutator \"add_proficiency\" \
+				(Skill)\"Any\" id=\"MutatorSelect\" level=\"HalfDown\"";
+			let data = AddProficiency::Skill(
 				Selector::Any {
 					id: Some("MutatorSelect").into(),
 					cannot_match: Default::default(),
 				},
 				proficiency::Level::HalfDown,
 			);
-			assert_eq!(from_doc(doc)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn skill_anyof_nolevel() -> anyhow::Result<()> {
-			let doc = "mutator \"add_proficiency\" (Skill)\"AnyOf\" id=\"MutatorSelect\" {
-				option \"Insight\"
-				option \"AnimalHandling\"
-			}";
-			let expected = AddProficiency::Skill(
+			let doc = "
+				|mutator \"add_proficiency\" (Skill)\"AnyOf\" id=\"MutatorSelect\" {
+				|    option \"Insight\"
+				|    option \"AnimalHandling\"
+				|}
+			";
+			let data = AddProficiency::Skill(
 				Selector::AnyOf {
 					id: Some("MutatorSelect").into(),
 					options: vec![Skill::Insight, Skill::AnimalHandling],
@@ -394,17 +444,20 @@ mod test {
 				},
 				proficiency::Level::Full,
 			);
-			assert_eq!(from_doc(doc)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn skill_anyof_withlevel_noid() -> anyhow::Result<()> {
-			let doc = "mutator \"add_proficiency\" (Skill)\"AnyOf\" level=\"Double\" {
-				option \"Insight\"
-				option \"AnimalHandling\"
-			}";
-			let expected = AddProficiency::Skill(
+			let doc = "
+				|mutator \"add_proficiency\" (Skill)\"AnyOf\" level=\"Double\" {
+				|    option \"Insight\"
+				|    option \"AnimalHandling\"
+				|}
+			";
+			let data = AddProficiency::Skill(
 				Selector::AnyOf {
 					id: Default::default(),
 					options: vec![Skill::Insight, Skill::AnimalHandling],
@@ -413,129 +466,146 @@ mod test {
 				},
 				proficiency::Level::Double,
 			);
-			assert_eq!(from_doc(doc)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn language_specific() -> anyhow::Result<()> {
 			let doc = "mutator \"add_proficiency\" (Language)\"Specific\" \"Gibberish\"";
-			let expected = AddProficiency::Language(Selector::Specific("Gibberish".into()));
-			assert_eq!(from_doc(doc)?, expected.into());
+			let data = AddProficiency::Language(Selector::Specific("Gibberish".into()));
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn language_any() -> anyhow::Result<()> {
 			let doc = "mutator \"add_proficiency\" (Language)\"Any\"";
-			let expected = AddProficiency::Language(Selector::Any {
+			let data = AddProficiency::Language(Selector::Any {
 				id: Default::default(),
 				cannot_match: Default::default(),
 			});
-			assert_eq!(from_doc(doc)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn language_anyof() -> anyhow::Result<()> {
-			let doc = "mutator \"add_proficiency\" (Language)\"AnyOf\" {
-				option \"Dwarven\"
-				option \"Giant\"
-			}";
-			let expected = AddProficiency::Language(Selector::AnyOf {
+			let doc = "
+				|mutator \"add_proficiency\" (Language)\"AnyOf\" {
+				|    option \"Dwarven\"
+				|    option \"Giant\"
+				|}
+			";
+			let data = AddProficiency::Language(Selector::AnyOf {
 				id: Default::default(),
 				options: vec!["Dwarven".into(), "Giant".into()],
 				cannot_match: Default::default(),
 				amount: 1,
 			});
-			assert_eq!(from_doc(doc)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn armor_kind() -> anyhow::Result<()> {
 			let doc = "mutator \"add_proficiency\" (Armor)\"Medium\"";
-			let expected = AddProficiency::Armor(ArmorExtended::Kind(armor::Kind::Medium), None);
-			assert_eq!(from_doc(doc)?, expected.into());
+			let data = AddProficiency::Armor(ArmorExtended::Kind(armor::Kind::Medium), None);
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn armor_kind_ctx() -> anyhow::Result<()> {
 			let doc = "mutator \"add_proficiency\" (Armor)\"Medium\" \"nonmetal\"";
-			let expected = AddProficiency::Armor(
+			let data = AddProficiency::Armor(
 				ArmorExtended::Kind(armor::Kind::Medium),
 				Some("nonmetal".into()),
 			);
-			assert_eq!(from_doc(doc)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn armor_shield() -> anyhow::Result<()> {
 			let doc = "mutator \"add_proficiency\" (Armor)\"Shield\"";
-			let expected = AddProficiency::Armor(ArmorExtended::Shield, None);
-			assert_eq!(from_doc(doc)?, expected.into());
+			let data = AddProficiency::Armor(ArmorExtended::Shield, None);
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn weapon_simple() -> anyhow::Result<()> {
 			let doc = "mutator \"add_proficiency\" (Weapon)\"Simple\"";
-			let expected = AddProficiency::Weapon(WeaponProficiency::Kind(weapon::Kind::Simple));
-			assert_eq!(from_doc(doc)?, expected.into());
+			let data = AddProficiency::Weapon(WeaponProficiency::Kind(weapon::Kind::Simple));
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn weapon_martial() -> anyhow::Result<()> {
 			let doc = "mutator \"add_proficiency\" (Weapon)\"Martial\"";
-			let expected = AddProficiency::Weapon(WeaponProficiency::Kind(weapon::Kind::Martial));
-			assert_eq!(from_doc(doc)?, expected.into());
+			let data = AddProficiency::Weapon(WeaponProficiency::Kind(weapon::Kind::Martial));
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn weapon_class() -> anyhow::Result<()> {
 			let doc = "mutator \"add_proficiency\" (Weapon)\"Club\"";
-			let expected = AddProficiency::Weapon(WeaponProficiency::Classification("Club".into()));
-			assert_eq!(from_doc(doc)?, expected.into());
+			let data = AddProficiency::Weapon(WeaponProficiency::Classification("Club".into()));
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn tool_specific() -> anyhow::Result<()> {
 			let doc = "mutator \"add_proficiency\" (Tool)\"Specific\" \"Dragonchess Set\"";
-			let expected = AddProficiency::Tool(Selector::Specific("Dragonchess Set".into()));
-			assert_eq!(from_doc(doc)?, expected.into());
+			let data = AddProficiency::Tool(Selector::Specific("Dragonchess Set".into()));
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn tool_any() -> anyhow::Result<()> {
 			let doc = "mutator \"add_proficiency\" (Tool)\"Any\"";
-			let expected = AddProficiency::Tool(Selector::Any {
+			let data = AddProficiency::Tool(Selector::Any {
 				id: Default::default(),
 				cannot_match: Default::default(),
 			});
-			assert_eq!(from_doc(doc)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn tool_anyof() -> anyhow::Result<()> {
-			let doc = "mutator \"add_proficiency\" (Tool)\"AnyOf\" {
-				option \"Dice set\"
-				option \"Playing card set\"
-				option \"Flute\"
-			}";
-			let expected = AddProficiency::Tool(Selector::AnyOf {
+			let doc = "
+				|mutator \"add_proficiency\" (Tool)\"AnyOf\" {
+				|    option \"Dice set\"
+				|    option \"Playing card set\"
+				|    option \"Flute\"
+				|}
+			";
+			let data = AddProficiency::Tool(Selector::AnyOf {
 				id: Default::default(),
 				options: vec!["Dice set".into(), "Playing card set".into(), "Flute".into()],
 				cannot_match: Default::default(),
 				amount: 1,
 			});
-			assert_eq!(from_doc(doc)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 	}
@@ -545,7 +615,7 @@ mod test {
 		use crate::{
 			path_map::PathMap,
 			system::dnd5e::data::{
-				character::{Character, Persistent, AttributedValue},
+				character::{AttributedValue, Character, Persistent},
 				Bundle,
 			},
 		};
@@ -575,8 +645,9 @@ mod test {
 			);
 			let exepected_prof: AttributedValue<proficiency::Level> = (
 				proficiency::Level::Full,
-				vec![("AddProficiency".into(), proficiency::Level::Full)]
-			).into();
+				vec![("AddProficiency".into(), proficiency::Level::Full)],
+			)
+				.into();
 			for skill in EnumSet::<Skill>::all() {
 				if skill.ability() != Ability::Intelligence {
 					continue;

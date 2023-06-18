@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{FromKDL, NodeExt, ValueExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt, ValueExt},
 	system::dnd5e::data::{character::Character, description, DamageType},
 	utility::{InvalidEnumStr, Mutator},
 };
@@ -108,51 +108,59 @@ impl FromKDL for AddDefense {
 	}
 }
 
+impl AsKdl for AddDefense {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		node.push_entry(self.defense.to_string());
+		if let Some(damage_type) = &self.damage_type {
+			node.push_entry_typed(damage_type.to_string(), "DamageType");
+		}
+		if let Some(context) = &self.context {
+			node.push_entry(("context", context.clone()));
+		}
+		node
+	}
+}
+
 #[cfg(test)]
 mod test {
-	use super::{AddDefense, Defense};
-	use crate::system::{
-		core::NodeRegistry,
-		dnd5e::{
-			data::{
-				character::{Character, DefenseEntry, Persistent},
-				Bundle, DamageType,
-			},
-			BoxedMutator,
-		},
+	use super::*;
+	use crate::system::dnd5e::data::{
+		character::{Character, DefenseEntry, Persistent},
+		Bundle, DamageType,
 	};
 
-	fn from_doc(doc: &str) -> anyhow::Result<BoxedMutator> {
-		let mut node_reg = NodeRegistry::default();
-		node_reg.register_mutator::<AddDefense>();
-		node_reg.parse_kdl_mutator(doc)
-	}
-
-	mod from_kdl {
+	mod kdl {
 		use super::*;
+		use crate::{kdl_ext::test_utils::*, system::dnd5e::mutator::test::test_utils};
+
+		test_utils!(AddDefense);
 
 		#[test]
 		fn no_args() -> anyhow::Result<()> {
-			let doc =
-				"mutator \"add_defense\" (Defense)\"Resistance\" context=\"nonmagical attacks\"";
-			let expected = AddDefense {
+			let doc = "mutator \"add_defense\" \
+				\"Resistance\" context=\"nonmagical attacks\"";
+			let data = AddDefense {
 				defense: Defense::Resistance,
 				damage_type: None,
 				context: Some("nonmagical attacks".into()),
 			};
-			assert_eq!(from_doc(doc)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn damage_type() -> anyhow::Result<()> {
-			let doc = "mutator \"add_defense\" (Defense)\"Resistance\" (DamageType)\"Cold\"";
-			let expected = AddDefense {
+			let doc = "mutator \"add_defense\" \
+				\"Resistance\" (DamageType)\"Cold\"";
+			let data = AddDefense {
 				defense: Defense::Resistance,
 				damage_type: Some(DamageType::Cold),
 				context: None,
 			};
-			assert_eq!(from_doc(doc)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 	}

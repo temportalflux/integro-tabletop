@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{DocumentExt, FromKDL, NodeExt, ValueExt},
+	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt, ValueExt},
 	system::dnd5e::data::{
 		character::{AbilityScoreBonus, Character},
 		description, Ability,
@@ -142,42 +142,77 @@ impl FromKDL for AbilityScoreChange {
 	}
 }
 
+impl AsKdl for AbilityScoreChange {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		node.push_child_t("ability", &self.ability);
+		for operation in &self.operations {
+			match operation {
+				AbilityScoreOp::Bonus {
+					value,
+					max_total_score,
+				} => {
+					node.push_child({
+						let mut node = NodeBuilder::default();
+						node.push_entry(*value as i64);
+						if let Some(score) = max_total_score {
+							node.push_entry(("max-total", *score as i64));
+						}
+						node.build("bonus")
+					});
+				}
+				AbilityScoreOp::IncreaseMax { value } => {
+					node.push_child(
+						NodeBuilder::default()
+							.with_entry(*value as i64)
+							.build("increase-max"),
+					);
+				}
+			}
+		}
+		node
+	}
+}
+
 #[cfg(test)]
 mod test {
 	use super::*;
 
-	mod from_kdl {
+	mod kdl {
 		use super::*;
-		use crate::system::{core::NodeRegistry, dnd5e::BoxedMutator};
+		use crate::{kdl_ext::test_utils::*, system::dnd5e::mutator::test::test_utils};
 
-		fn from_doc(doc: &str) -> anyhow::Result<BoxedMutator> {
-			NodeRegistry::defaultmut_parse_kdl::<AbilityScoreChange>(doc)
-		}
+		test_utils!(AbilityScoreChange);
 
 		#[test]
 		fn specific() -> anyhow::Result<()> {
-			let doc = "mutator \"ability_score\" {
-				ability \"Specific\" \"Dex\"
-				bonus 2
-			}";
-			let expected = AbilityScoreChange {
+			let doc = "
+				|mutator \"ability_score\" {
+				|    ability \"Specific\" \"Dexterity\"
+				|    bonus 2
+				|}
+			";
+			let data = AbilityScoreChange {
 				ability: Selector::Specific(Ability::Dexterity),
 				operations: vec![AbilityScoreOp::Bonus {
 					value: 2,
 					max_total_score: None,
 				}],
 			};
-			assert_eq!(from_doc(doc)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn any() -> anyhow::Result<()> {
-			let doc = "mutator \"ability_score\" {
-				ability \"Any\" id=\"skillA\"
-				bonus 1
-			}";
-			let expected = AbilityScoreChange {
+			let doc = "
+				|mutator \"ability_score\" {
+				|    ability \"Any\" id=\"skillA\"
+				|    bonus 1
+				|}
+			";
+			let data = AbilityScoreChange {
 				ability: Selector::Any {
 					id: Some("skillA").into(),
 					cannot_match: Default::default(),
@@ -187,19 +222,22 @@ mod test {
 					max_total_score: None,
 				}],
 			};
-			assert_eq!(from_doc(doc)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn cannot_match() -> anyhow::Result<()> {
-			let doc = "mutator \"ability_score\" {
-				ability \"Any\" id=\"skillA\" {
-					cannot-match \"skillB\"
-				}
-				bonus 3
-			}";
-			let expected = AbilityScoreChange {
+			let doc = "
+				|mutator \"ability_score\" {
+				|    ability \"Any\" id=\"skillA\" {
+				|        cannot-match \"skillB\"
+				|    }
+				|    bonus 3
+				|}
+			";
+			let data = AbilityScoreChange {
 				ability: Selector::Any {
 					id: Some("skillA").into(),
 					cannot_match: vec!["skillB".into()],
@@ -209,49 +247,58 @@ mod test {
 					max_total_score: None,
 				}],
 			};
-			assert_eq!(from_doc(doc)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn max_total_score() -> anyhow::Result<()> {
-			let doc = "mutator \"ability_score\" {
-				ability \"Specific\" \"Con\"
-				bonus 3 max-total=12
-			}";
-			let expected = AbilityScoreChange {
+			let doc = "
+				|mutator \"ability_score\" {
+				|    ability \"Specific\" \"Constitution\"
+				|    bonus 3 max-total=12
+				|}
+			";
+			let data = AbilityScoreChange {
 				ability: Selector::Specific(Ability::Constitution),
 				operations: vec![AbilityScoreOp::Bonus {
 					value: 3,
 					max_total_score: Some(12),
 				}],
 			};
-			assert_eq!(from_doc(doc)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn increase_max() -> anyhow::Result<()> {
-			let doc = "mutator \"ability_score\" {
-				ability \"Specific\" \"Con\"
-				increase-max 24
-			}";
-			let expected = AbilityScoreChange {
+			let doc = "
+				|mutator \"ability_score\" {
+				|    ability \"Specific\" \"Constitution\"
+				|    increase-max 24
+				|}
+			";
+			let data = AbilityScoreChange {
 				ability: Selector::Specific(Ability::Constitution),
 				operations: vec![AbilityScoreOp::IncreaseMax { value: 24 }],
 			};
-			assert_eq!(from_doc(doc)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn multiple_operations() -> anyhow::Result<()> {
-			let doc = "mutator \"ability_score\" {
-				ability \"Specific\" \"Strength\"
-				bonus 4 max-total=17
-				increase-max 24
-			}";
-			let expected = AbilityScoreChange {
+			let doc = "
+				|mutator \"ability_score\" {
+				|    ability \"Specific\" \"Strength\"
+				|    bonus 4 max-total=17
+				|    increase-max 24
+				|}
+			";
+			let data = AbilityScoreChange {
 				ability: Selector::Specific(Ability::Strength),
 				operations: vec![
 					AbilityScoreOp::Bonus {
@@ -261,7 +308,8 @@ mod test {
 					AbilityScoreOp::IncreaseMax { value: 24 },
 				],
 			};
-			assert_eq!(from_doc(doc)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 	}

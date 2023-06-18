@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{DocumentExt, FromKDL, NodeExt},
+	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt},
 	system::dnd5e::data::{
 		character::Character,
 		item::{EquipableEntry, ItemKind},
@@ -99,87 +99,107 @@ impl FromKDL for HasArmorEquipped {
 	}
 }
 
+impl AsKdl for HasArmorEquipped {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		if self.inverted {
+			node.push_entry(("inverted", true));
+		}
+		for armor_ext in &self.kinds {
+			node.push_child_entry("kind", armor_ext.to_string());
+		}
+		node
+	}
+}
+
 #[cfg(test)]
 mod test {
 	use super::*;
 	use crate::{
-		system::{
-			core::NodeRegistry,
-			dnd5e::data::{
-				character::Persistent,
-				item::{
-					armor::{self, Armor},
-					equipment::Equipment,
-					Item,
-				},
+		system::dnd5e::data::{
+			character::Persistent,
+			item::{
+				armor::{self, Armor},
+				equipment::Equipment,
+				Item,
 			},
 		},
-		utility::{Evaluator, GenericEvaluator},
+		utility::Evaluator,
 	};
 
-	fn from_doc(doc: &str) -> anyhow::Result<GenericEvaluator<Character, Result<(), String>>> {
-		NodeRegistry::defaulteval_parse_kdl::<HasArmorEquipped>(doc)
-	}
-
-	mod from_kdl {
+	mod kdl {
 		use super::*;
+		use crate::{kdl_ext::test_utils::*, system::dnd5e::evaluator::test::test_utils};
+
+		test_utils!(HasArmorEquipped);
 
 		#[test]
 		fn simple() -> anyhow::Result<()> {
-			let doc_str = "evaluator \"has_armor_equipped\"";
-			let expected = HasArmorEquipped::default();
-			assert_eq!(from_doc(doc_str)?, expected.into());
+			let doc = "evaluator \"has_armor_equipped\"";
+			let data = HasArmorEquipped::default();
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn inverted() -> anyhow::Result<()> {
-			let doc_str = "evaluator \"has_armor_equipped\" inverted=true";
-			let expected = HasArmorEquipped {
+			let doc = "evaluator \"has_armor_equipped\" inverted=true";
+			let data = HasArmorEquipped {
 				inverted: true,
 				..Default::default()
 			};
-			assert_eq!(from_doc(doc_str)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn with_kinds() -> anyhow::Result<()> {
-			let doc_str = "evaluator \"has_armor_equipped\" {
-				kind \"Light\"
-			}";
-			let expected = HasArmorEquipped {
+			let doc = "
+				|evaluator \"has_armor_equipped\" {
+				|    kind \"Light\"
+				|}
+			";
+			let data = HasArmorEquipped {
 				kinds: [ArmorExtended::Kind(armor::Kind::Light)].into(),
 				..Default::default()
 			};
-			assert_eq!(from_doc(doc_str)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn with_not_kinds() -> anyhow::Result<()> {
-			let doc_str = "evaluator \"has_armor_equipped\" inverted=true {
-				kind \"Heavy\"
-			}";
-			let expected = HasArmorEquipped {
+			let doc = "
+				|evaluator \"has_armor_equipped\" inverted=true {
+				|    kind \"Heavy\"
+				|}
+			";
+			let data = HasArmorEquipped {
 				inverted: true,
 				kinds: [ArmorExtended::Kind(armor::Kind::Heavy)].into(),
 				..Default::default()
 			};
-			assert_eq!(from_doc(doc_str)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn with_shield() -> anyhow::Result<()> {
-			let doc_str = "evaluator \"has_armor_equipped\" {
-				kind \"Shield\"
-			}";
-			let expected = HasArmorEquipped {
+			let doc = "
+				|evaluator \"has_armor_equipped\" {
+				|    kind \"Shield\"
+				|}
+			";
+			let data = HasArmorEquipped {
 				kinds: [ArmorExtended::Shield].into(),
 				..Default::default()
 			};
-			assert_eq!(from_doc(doc_str)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 	}

@@ -1,6 +1,6 @@
 use super::super::{AreaOfEffect, DamageRoll};
 use crate::{
-	kdl_ext::{DocumentExt, FromKDL},
+	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
 	system::dnd5e::data::item::weapon,
 };
 
@@ -49,13 +49,31 @@ impl FromKDL for Attack {
 	}
 }
 
+impl AsKdl for Attack {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		if let Some(kind) = &self.kind {
+			node.push_child_t("kind", kind);
+		}
+		node.push_child_t("check", &self.check);
+		if let Some(area_of_effect) = &self.area_of_effect {
+			node.push_child_t("area_of_effect", area_of_effect);
+		}
+		if let Some(damage) = &self.damage {
+			node.push_child_t("damage", damage);
+		}
+		node
+	}
+}
+
 #[cfg(test)]
 mod test {
 	use super::*;
-	mod from_kdl {
+
+	mod kdl {
 		use super::*;
 		use crate::{
-			kdl_ext::NodeContext,
+			kdl_ext::test_utils::*,
 			system::dnd5e::data::{
 				roll::{Die, EvaluatedRoll},
 				Ability, DamageType,
@@ -63,25 +81,21 @@ mod test {
 			utility,
 		};
 
-		fn from_doc(doc: &str) -> anyhow::Result<Attack> {
-			let document = doc.parse::<kdl::KdlDocument>()?;
-			let node = document
-				.query("scope() > attack")?
-				.expect("missing attack node");
-			Attack::from_kdl(node, &mut NodeContext::default())
-		}
+		static NODE_NAME: &str = "attack";
 
 		#[test]
 		fn melee_attackroll_damage() -> anyhow::Result<()> {
-			let doc = "attack {
-				kind \"Melee\"
-				check \"AttackRoll\" (Ability)\"Dexterity\" proficient=true
-				damage base=1 {
-					roll (Roll)\"2d6\"
-					damage_type (DamageType)\"Fire\"
-				}
-			}";
-			let expected = Attack {
+			let doc = "
+				|attack {
+				|    kind \"Melee\"
+				|    check \"AttackRoll\" (Ability)\"Dexterity\" proficient=true
+				|    damage base=1 {
+				|        roll (Roll)\"2d6\"
+				|        damage_type \"Fire\"
+				|    }
+				|}
+			";
+			let data = Attack {
 				kind: Some(AttackKindValue::Melee { reach: 5 }),
 				check: AttackCheckKind::AttackRoll {
 					ability: Ability::Dexterity,
@@ -96,25 +110,28 @@ mod test {
 				}),
 				weapon_kind: None,
 			};
-			assert_eq!(from_doc(doc)?, expected);
+			assert_eq_fromkdl!(Attack, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 
 		#[test]
 		fn ranged_savingthrow_aoe_damage() -> anyhow::Result<()> {
-			let doc = "attack {
-				kind \"Ranged\" 20 60
-				check \"SavingThrow\" {
-					difficulty_class 8
-					save_ability \"CON\"
-				}
-				area_of_effect \"Sphere\" radius=10
-				damage base=1 {
-					roll (Roll)\"2d6\"
-					damage_type (DamageType)\"Fire\"
-				}
-			}";
-			let expected = Attack {
+			let doc = "
+				|attack {
+				|    kind \"Ranged\" 20 60
+				|    check \"SavingThrow\" {
+				|        difficulty_class 8
+				|        save_ability (Ability)\"Constitution\"
+				|    }
+				|    area_of_effect \"Sphere\" radius=10
+				|    damage base=1 {
+				|        roll (Roll)\"2d6\"
+				|        damage_type \"Fire\"
+				|    }
+				|}
+			";
+			let data = Attack {
 				kind: Some(AttackKindValue::Ranged {
 					short_dist: 20,
 					long_dist: 60,
@@ -134,7 +151,8 @@ mod test {
 				}),
 				weapon_kind: None,
 			};
-			assert_eq!(from_doc(doc)?, expected);
+			assert_eq_fromkdl!(Attack, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 	}

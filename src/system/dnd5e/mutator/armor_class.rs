@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::FromKDL,
+	kdl_ext::{AsKdl, FromKDL},
 	system::dnd5e::data::{character::Character, description, ArmorClassFormula},
 	utility::Mutator,
 };
@@ -58,41 +58,48 @@ impl FromKDL for AddArmorClassFormula {
 	}
 }
 
+impl AsKdl for AddArmorClassFormula {
+	fn as_kdl(&self) -> crate::kdl_ext::NodeBuilder {
+		self.0.as_kdl()
+	}
+}
+
 #[cfg(test)]
 mod test {
 	use super::*;
 
-	mod from_kdl {
+	mod kdl {
 		use super::*;
-		use crate::system::{
-			core::NodeRegistry,
-			dnd5e::{
+		use crate::{
+			kdl_ext::test_utils::*,
+			system::dnd5e::{
 				data::{Ability, BoundedAbility},
-				BoxedMutator,
+				mutator::test::test_utils,
 			},
 		};
 
-		fn from_doc(doc: &str) -> anyhow::Result<BoxedMutator> {
-			NodeRegistry::defaultmut_parse_kdl::<AddArmorClassFormula>(doc)
-		}
+		test_utils!(AddArmorClassFormula);
 
 		#[test]
 		fn base_only() -> anyhow::Result<()> {
 			let doc = "mutator \"add_armor_class_formula\" base=12";
-			let expected = AddArmorClassFormula(ArmorClassFormula {
+			let data = AddArmorClassFormula(ArmorClassFormula {
 				base: 12,
 				bonuses: vec![],
 			});
-			assert_eq!(from_doc(doc)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn one_bonus_unbounded() -> anyhow::Result<()> {
-			let doc = "mutator \"add_armor_class_formula\" base=12 {
-				bonus \"Dexterity\"
-			}";
-			let expected = AddArmorClassFormula(ArmorClassFormula {
+			let doc = "
+				|mutator \"add_armor_class_formula\" base=12 {
+				|    bonus (Ability)\"Dexterity\"
+				|}
+			";
+			let data = AddArmorClassFormula(ArmorClassFormula {
 				base: 12,
 				bonuses: vec![BoundedAbility {
 					ability: Ability::Dexterity,
@@ -100,16 +107,19 @@ mod test {
 					max: None,
 				}],
 			});
-			assert_eq!(from_doc(doc)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn one_bonus_bounded() -> anyhow::Result<()> {
-			let doc = "mutator \"add_armor_class_formula\" base=15 {
-				bonus \"Dexterity\" max=2
-			}";
-			let expected = AddArmorClassFormula(ArmorClassFormula {
+			let doc = "
+				|mutator \"add_armor_class_formula\" base=15 {
+				|    bonus (Ability)\"Dexterity\" max=2
+				|}
+			";
+			let data = AddArmorClassFormula(ArmorClassFormula {
 				base: 15,
 				bonuses: vec![BoundedAbility {
 					ability: Ability::Dexterity,
@@ -117,17 +127,20 @@ mod test {
 					max: Some(2),
 				}],
 			});
-			assert_eq!(from_doc(doc)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn multiple_bonus() -> anyhow::Result<()> {
-			let doc = "mutator \"add_armor_class_formula\" base=10 {
-				bonus \"Dexterity\"
-				bonus \"Wisdom\"
-			}";
-			let expected = AddArmorClassFormula(ArmorClassFormula {
+			let doc = "
+				|mutator \"add_armor_class_formula\" base=10 {
+				|    bonus (Ability)\"Dexterity\"
+				|    bonus (Ability)\"Wisdom\"
+				|}
+			";
+			let data = AddArmorClassFormula(ArmorClassFormula {
 				base: 10,
 				bonuses: vec![
 					BoundedAbility {
@@ -142,7 +155,8 @@ mod test {
 					},
 				],
 			});
-			assert_eq!(from_doc(doc)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 	}

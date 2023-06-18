@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use super::Kind;
-use crate::kdl_ext::{FromKDL, NodeContext, NodeExt};
+use crate::kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeContext, NodeExt};
 use enum_map::EnumMap;
 use itertools::Itertools;
 
@@ -196,6 +196,32 @@ impl FromKDL for Wallet {
 		Ok(wallet)
 	}
 }
+impl AsKdl for Wallet {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut rows = Vec::new();
+		for (kind, amt) in &self.0 {
+			if *amt <= 0 {
+				continue;
+			}
+			rows.push(NodeBuilder::default().with_entry(*amt as i64).with_entry({
+				let mut currency = kdl::KdlEntry::new(kind.to_string());
+				currency.set_ty("Currency");
+				currency
+			}));
+		}
+		if rows.is_empty() {
+			NodeBuilder::default()
+		} else if rows.len() == 1 {
+			rows.into_iter().next().unwrap()
+		} else {
+			let mut node = NodeBuilder::default();
+			for row in rows {
+				node.push_child(row.build("item"));
+			}
+			node
+		}
+	}
+}
 impl Wallet {
 	fn from_row(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
 		let amt = node.get_i64_req(ctx.consume_idx())? as u64;
@@ -208,49 +234,57 @@ impl Wallet {
 mod test {
 	use super::*;
 
-	mod from_kdl {
+	mod kdl {
 		use super::*;
-		use crate::kdl_ext::NodeContext;
+		use crate::kdl_ext::test_utils::*;
 
-		fn from_doc(doc: &str) -> anyhow::Result<Wallet> {
-			let document = doc.parse::<kdl::KdlDocument>()?;
-			let node = document
-				.query("scope() > wallet")?
-				.expect("missing wallet node");
-			Wallet::from_kdl(node, &mut NodeContext::default())
-		}
+		static NODE_NAME: &str = "wallet";
 
 		#[test]
 		fn single() -> anyhow::Result<()> {
 			let doc = "wallet 1 (Currency)\"Copper\"";
-			let expected = Wallet::from([(1, Kind::Copper)]);
-			assert_eq!(from_doc(doc)?, expected);
+			let data = Wallet::from([(1, Kind::Copper)]);
+			assert_eq_fromkdl!(Wallet, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 
 		#[test]
 		fn multiple() -> anyhow::Result<()> {
-			let doc = "wallet {
-				item 5 (Currency)\"Copper\"
-				item 20 (Currency)\"Silver\"
-				item 3 (Currency)\"Gold\"
-			}";
-			let expected = Wallet::from([(5, Kind::Copper), (20, Kind::Silver), (3, Kind::Gold)]);
-			assert_eq!(from_doc(doc)?, expected);
+			let doc = "
+				|wallet {
+				|    item 5 (Currency)\"Copper\"
+				|    item 20 (Currency)\"Silver\"
+				|    item 3 (Currency)\"Gold\"
+				|}
+			";
+			let data = Wallet::from([(5, Kind::Copper), (20, Kind::Silver), (3, Kind::Gold)]);
+			assert_eq_fromkdl!(Wallet, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 
 		#[test]
 		fn duplicates() -> anyhow::Result<()> {
-			let doc = "wallet {
-				item 5 (Currency)\"Copper\"
-				item 10 (Currency)\"Silver\"
-				item 3 (Currency)\"Gold\"
-				item 5 (Currency)\"Silver\"
-				item 20 (Currency)\"Copper\"
-			}";
-			let expected = Wallet::from([(25, Kind::Copper), (15, Kind::Silver), (3, Kind::Gold)]);
-			assert_eq!(from_doc(doc)?, expected);
+			let doc_in = "
+				|wallet {
+				|    item 5 (Currency)\"Copper\"
+				|    item 10 (Currency)\"Silver\"
+				|    item 3 (Currency)\"Gold\"
+				|    item 5 (Currency)\"Silver\"
+				|    item 20 (Currency)\"Copper\"
+				|}
+			";
+			let doc_out = "
+				|wallet {
+				|    item 25 (Currency)\"Copper\"
+				|    item 15 (Currency)\"Silver\"
+				|    item 3 (Currency)\"Gold\"
+				|}
+			";
+			let data = Wallet::from([(25, Kind::Copper), (15, Kind::Silver), (3, Kind::Gold)]);
+			assert_eq_fromkdl!(Wallet, doc_in, data);
+			assert_eq_askdl!(&data, doc_out);
 			Ok(())
 		}
 	}

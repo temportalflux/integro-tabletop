@@ -30,7 +30,7 @@ pub fn Proficiencies() -> Html {
 						{make_proficiencies_section_long("Armor", &proficiencies.armor, |(value, context)| {
 							format!("{}{}", value.to_string(), context.as_ref().map(|s| format!(" ({s})")).unwrap_or_default())
 						})}
-						{make_proficiencies_section_long("Weapons", &proficiencies.weapons, WeaponProficiency::to_string)}
+						{make_proficiencies_section_long("Weapons", &proficiencies.weapons, WeaponProficiency::display_name)}
 						{make_proficiencies_section_long("Tools", &proficiencies.tools, String::to_string)}
 					</div>
 				</>},
@@ -46,7 +46,7 @@ pub fn Proficiencies() -> Html {
 				{make_proficiencies_section("Armor", &proficiencies.armor, |(value, context)| {
 					format!("{}{}", value.to_string(), context.as_ref().map(|s| format!(" ({s})")).unwrap_or_default())
 				})}
-				{make_proficiencies_section("Weapons", &proficiencies.weapons, WeaponProficiency::to_string)}
+				{make_proficiencies_section("Weapons", &proficiencies.weapons, WeaponProficiency::display_name)}
 				{make_proficiencies_section("Tools", &proficiencies.tools, String::to_string)}
 			</div>
 		</div>

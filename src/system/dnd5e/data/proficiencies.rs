@@ -50,6 +50,14 @@ pub enum WeaponProficiency {
 impl ToString for WeaponProficiency {
 	fn to_string(&self) -> String {
 		match self {
+			Self::Kind(kind) => kind.to_string(),
+			Self::Classification(name) => name.clone(),
+		}
+	}
+}
+impl WeaponProficiency {
+	pub fn display_name(&self) -> String {
+		match self {
 			Self::Kind(weapon::Kind::Simple) => "Simple Weapons".into(),
 			Self::Kind(weapon::Kind::Martial) => "Martial Weapons".into(),
 			Self::Classification(name) => name.clone(),

@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use crate::{
-	kdl_ext::{DocumentExt, FromKDL, NodeExt},
+	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt},
 	system::{
 		core::SourceId,
 		dnd5e::data::{character::Character, Condition},
@@ -82,6 +82,19 @@ impl FromKDL for HasCondition {
 	}
 }
 
+impl AsKdl for HasCondition {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		if self.inverted {
+			node.push_entry(("inverted", true));
+		}
+		for filter in &self.filters {
+			node.push_child_t("filter", filter);
+		}
+		node
+	}
+}
+
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct ConditionFilter {
 	name: String,
@@ -107,6 +120,24 @@ impl FromKDL for ConditionFilter {
 			properties.push(ConditionProperty::Name(value.to_owned()));
 		}
 		Ok(Self { name, properties })
+	}
+}
+
+impl AsKdl for ConditionFilter {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		node.push_entry(("name", self.name.clone()));
+		for property in &self.properties {
+			match property {
+				ConditionProperty::Id(id) => {
+					node.push_child_t("id", id);
+				}
+				ConditionProperty::Name(name) => {
+					node.push_child_t("name", name);
+				}
+			}
+		}
+		node
 	}
 }
 
@@ -136,41 +167,43 @@ impl ConditionProperty {
 mod test {
 	use super::*;
 
-	mod from_kdl {
+	mod kdl {
 		use super::*;
-		use crate::{system::core::NodeRegistry, utility::GenericEvaluator};
+		use crate::{kdl_ext::test_utils::*, system::dnd5e::evaluator::test::test_utils};
 
-		fn from_doc(doc: &str) -> anyhow::Result<GenericEvaluator<Character, Result<(), String>>> {
-			NodeRegistry::defaulteval_parse_kdl::<HasCondition>(doc)
-		}
+		test_utils!(HasCondition);
 
 		#[test]
 		fn has_any() -> anyhow::Result<()> {
-			let doc_str = "evaluator \"has_condition\"";
-			let expected = HasCondition::default();
-			assert_eq!(from_doc(doc_str)?, expected.into());
+			let doc = "evaluator \"has_condition\"";
+			let data = HasCondition::default();
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn has_none() -> anyhow::Result<()> {
-			let doc_str = "evaluator \"has_condition\" inverted=true";
-			let expected = HasCondition {
+			let doc = "evaluator \"has_condition\" inverted=true";
+			let data = HasCondition {
 				inverted: true,
 				..Default::default()
 			};
-			assert_eq!(from_doc(doc_str)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn has_some_id() -> anyhow::Result<()> {
-			let doc_str = "evaluator \"has_condition\" {
-				filter name=\"ConditionA\" {
-					id \"path/to/condition.kdl\"
-				}
-			}";
-			let expected = HasCondition {
+			let doc = "
+				|evaluator \"has_condition\" {
+				|    filter name=\"ConditionA\" {
+				|        id \"path/to/condition.kdl\"
+				|    }
+				|}
+			";
+			let data = HasCondition {
 				filters: vec![ConditionFilter {
 					name: "ConditionA".into(),
 					properties: vec![ConditionProperty::Id(SourceId {
@@ -180,25 +213,29 @@ mod test {
 				}],
 				..Default::default()
 			};
-			assert_eq!(from_doc(doc_str)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 
 		#[test]
 		fn has_some_name() -> anyhow::Result<()> {
-			let doc_str = "evaluator \"has_condition\" {
-				filter name=\"ConditionA\" {
-					name \"CustomCondition\"
-				}
-			}";
-			let expected = HasCondition {
+			let doc = "
+				|evaluator \"has_condition\" {
+				|    filter name=\"ConditionA\" {
+				|        name \"CustomCondition\"
+				|    }
+				|}
+			";
+			let data = HasCondition {
 				filters: vec![ConditionFilter {
 					name: "ConditionA".into(),
 					properties: vec![ConditionProperty::Name("CustomCondition".into())],
 				}],
 				..Default::default()
 			};
-			assert_eq!(from_doc(doc_str)?, expected.into());
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
 	}

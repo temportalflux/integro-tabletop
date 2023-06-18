@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{FromKDL, NodeContext, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeContext, NodeExt},
 	system::dnd5e::data::roll::Roll,
 	GeneralError,
 };
@@ -78,6 +78,101 @@ impl FromKDL for Property {
 				Ok(Self::Versatile(roll))
 			}
 			name => Err(GeneralError(format!("Unrecognized weapon property {name:?}")).into()),
+		}
+	}
+}
+
+impl AsKdl for Property {
+	fn as_kdl(&self) -> NodeBuilder {
+		let node = NodeBuilder::default();
+		match self {
+			Self::Light => node.with_entry("Light"),
+			Self::Finesse => node.with_entry("Finesse"),
+			Self::Heavy => node.with_entry("Heavy"),
+			Self::Reach => node.with_entry("Reach"),
+			Self::TwoHanded => node.with_entry("TwoHanded"),
+			Self::Thrown(short, long) => node
+				.with_entry("Thrown")
+				.with_entry(*short as i64)
+				.with_entry(*long as i64),
+			Self::Versatile(roll) => node
+				.with_entry("Versatile")
+				.with_entry_typed(roll.to_string(), "Roll"),
+		}
+	}
+}
+
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	mod kdl {
+		use super::*;
+		use crate::{kdl_ext::test_utils::*, system::dnd5e::data::roll::Die};
+
+		static NODE_NAME: &str = "property";
+
+		#[test]
+		fn light() -> anyhow::Result<()> {
+			let doc = "property \"Light\"";
+			let data = Property::Light;
+			assert_eq_fromkdl!(Property, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
+
+		#[test]
+		fn finesse() -> anyhow::Result<()> {
+			let doc = "property \"Finesse\"";
+			let data = Property::Finesse;
+			assert_eq_fromkdl!(Property, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
+
+		#[test]
+		fn heavy() -> anyhow::Result<()> {
+			let doc = "property \"Heavy\"";
+			let data = Property::Heavy;
+			assert_eq_fromkdl!(Property, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
+
+		#[test]
+		fn reach() -> anyhow::Result<()> {
+			let doc = "property \"Reach\"";
+			let data = Property::Reach;
+			assert_eq_fromkdl!(Property, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
+
+		#[test]
+		fn two_handed() -> anyhow::Result<()> {
+			let doc = "property \"TwoHanded\"";
+			let data = Property::TwoHanded;
+			assert_eq_fromkdl!(Property, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
+
+		#[test]
+		fn thrown() -> anyhow::Result<()> {
+			let doc = "property \"Thrown\" 20 60";
+			let data = Property::Thrown(20, 60);
+			assert_eq_fromkdl!(Property, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
+
+		#[test]
+		fn versatile() -> anyhow::Result<()> {
+			let doc = "property \"Versatile\" (Roll)\"2d6\"";
+			let data = Property::Versatile(Roll::from((2, Die::D6)));
+			assert_eq_fromkdl!(Property, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
 		}
 	}
 }

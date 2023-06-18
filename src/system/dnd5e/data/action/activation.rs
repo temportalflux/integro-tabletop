@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{FromKDL, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
 	utility::NotInList,
 };
 use std::str::FromStr;
@@ -62,6 +62,86 @@ impl FromKDL for ActivationKind {
 				vec!["Action", "Bonus", "Reaction", "Special", "Minute", "Hour"],
 			)
 			.into()),
+		}
+	}
+}
+
+impl AsKdl for ActivationKind {
+	fn as_kdl(&self) -> NodeBuilder {
+		let node = NodeBuilder::default();
+		match self {
+			Self::Action => node.with_entry("Action"),
+			Self::Bonus => node.with_entry("Bonus"),
+			Self::Reaction => node.with_entry("Reaction"),
+			Self::Special => node.with_entry("Special"),
+			Self::Minute(amt) => node.with_entry("Minute").with_entry(*amt as i64),
+			Self::Hour(amt) => node.with_entry("Hour").with_entry(*amt as i64),
+		}
+	}
+}
+
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	mod kdl {
+		use super::*;
+		use crate::kdl_ext::test_utils::*;
+
+		static NODE_NAME: &str = "kind";
+
+		#[test]
+		fn action() -> anyhow::Result<()> {
+			let doc = "kind \"Action\"";
+			let data = ActivationKind::Action;
+			assert_eq_fromkdl!(ActivationKind, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
+
+		#[test]
+		fn bonus() -> anyhow::Result<()> {
+			let doc = "kind \"Bonus\"";
+			let data = ActivationKind::Bonus;
+			assert_eq_fromkdl!(ActivationKind, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
+
+		#[test]
+		fn reaction() -> anyhow::Result<()> {
+			let doc = "kind \"Reaction\"";
+			let data = ActivationKind::Reaction;
+			assert_eq_fromkdl!(ActivationKind, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
+
+		#[test]
+		fn special() -> anyhow::Result<()> {
+			let doc = "kind \"Special\"";
+			let data = ActivationKind::Special;
+			assert_eq_fromkdl!(ActivationKind, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
+
+		#[test]
+		fn minute() -> anyhow::Result<()> {
+			let doc = "kind \"Minute\" 5";
+			let data = ActivationKind::Minute(5);
+			assert_eq_fromkdl!(ActivationKind, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
+
+		#[test]
+		fn hour() -> anyhow::Result<()> {
+			let doc = "kind \"Hour\" 1";
+			let data = ActivationKind::Hour(1);
+			assert_eq_fromkdl!(ActivationKind, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
 		}
 	}
 }

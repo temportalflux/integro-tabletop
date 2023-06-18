@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{FromKDL, NodeContext, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeContext, NodeExt},
 	system::dnd5e::data::{roll::Roll, DamageType},
 };
 use std::str::FromStr;
@@ -27,64 +27,80 @@ impl FromKDL for WeaponDamage {
 	}
 }
 
+impl AsKdl for WeaponDamage {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		node.push_entry(self.damage_type.to_string());
+		if let Some(roll) = &self.roll {
+			node.push_entry(("roll", roll.to_string()));
+		}
+		if self.bonus != 0 {
+			node.push_entry(("base", self.bonus as i64));
+		}
+		node
+	}
+}
+
 #[cfg(test)]
 mod test {
 	use super::*;
-	use crate::{kdl_ext::NodeContext, system::dnd5e::data::roll::Die};
 
-	fn from_doc(doc: &str) -> anyhow::Result<WeaponDamage> {
-		let document = doc.parse::<kdl::KdlDocument>()?;
-		let node = document
-			.query("scope() > damage")?
-			.expect("missing damage node");
-		WeaponDamage::from_kdl(node, &mut NodeContext::default())
-	}
+	mod kdl {
+		use super::*;
+		use crate::{kdl_ext::test_utils::*, system::dnd5e::data::roll::Die};
 
-	#[test]
-	fn empty() -> anyhow::Result<()> {
-		let doc = "damage \"Slashing\"";
-		let expected = WeaponDamage {
-			roll: None,
-			bonus: 0,
-			damage_type: DamageType::Slashing,
-		};
-		assert_eq!(from_doc(doc)?, expected);
-		Ok(())
-	}
+		static NODE_NAME: &str = "damage";
 
-	#[test]
-	fn fixed() -> anyhow::Result<()> {
-		let doc = "damage \"Slashing\" base=5";
-		let expected = WeaponDamage {
-			roll: None,
-			bonus: 5,
-			damage_type: DamageType::Slashing,
-		};
-		assert_eq!(from_doc(doc)?, expected);
-		Ok(())
-	}
+		#[test]
+		fn empty() -> anyhow::Result<()> {
+			let doc = "damage \"Slashing\"";
+			let data = WeaponDamage {
+				roll: None,
+				bonus: 0,
+				damage_type: DamageType::Slashing,
+			};
+			assert_eq_fromkdl!(WeaponDamage, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
 
-	#[test]
-	fn roll() -> anyhow::Result<()> {
-		let doc = "damage \"Slashing\" roll=\"2d4\"";
-		let expected = WeaponDamage {
-			roll: Some(Roll::from((2, Die::D4))),
-			bonus: 0,
-			damage_type: DamageType::Slashing,
-		};
-		assert_eq!(from_doc(doc)?, expected);
-		Ok(())
-	}
+		#[test]
+		fn fixed() -> anyhow::Result<()> {
+			let doc = "damage \"Slashing\" base=5";
+			let data = WeaponDamage {
+				roll: None,
+				bonus: 5,
+				damage_type: DamageType::Slashing,
+			};
+			assert_eq_fromkdl!(WeaponDamage, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
 
-	#[test]
-	fn combined() -> anyhow::Result<()> {
-		let doc = "damage \"Slashing\" roll=\"1d6\" base=2";
-		let expected = WeaponDamage {
-			roll: Some(Roll::from((1, Die::D6))),
-			bonus: 2,
-			damage_type: DamageType::Slashing,
-		};
-		assert_eq!(from_doc(doc)?, expected);
-		Ok(())
+		#[test]
+		fn roll() -> anyhow::Result<()> {
+			let doc = "damage \"Slashing\" roll=\"2d4\"";
+			let data = WeaponDamage {
+				roll: Some(Roll::from((2, Die::D4))),
+				bonus: 0,
+				damage_type: DamageType::Slashing,
+			};
+			assert_eq_fromkdl!(WeaponDamage, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
+
+		#[test]
+		fn combined() -> anyhow::Result<()> {
+			let doc = "damage \"Slashing\" roll=\"1d6\" base=2";
+			let data = WeaponDamage {
+				roll: Some(Roll::from((1, Die::D6))),
+				bonus: 2,
+				damage_type: DamageType::Slashing,
+			};
+			assert_eq_fromkdl!(WeaponDamage, doc, data);
+			assert_eq_askdl!(&data, doc);
+			Ok(())
+		}
 	}
 }

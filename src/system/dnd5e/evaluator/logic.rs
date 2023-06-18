@@ -1,4 +1,5 @@
 use crate::{
+	kdl_ext::{AsKdl, NodeBuilder},
 	system::dnd5e::{data::character::Character, BoxedEvaluator},
 	utility::{Dependencies, Evaluator},
 };
@@ -7,6 +8,7 @@ use crate::{
 pub struct Any(pub Vec<BoxedEvaluator<bool>>);
 
 crate::impl_trait_eq!(Any);
+crate::impl_kdl_node!(Any, "any");
 impl Evaluator for Any {
 	type Context = Character;
 	type Item = bool;
@@ -28,5 +30,11 @@ impl Evaluator for Any {
 			}
 		}
 		false
+	}
+}
+impl AsKdl for Any {
+	fn as_kdl(&self) -> NodeBuilder {
+		// STUB: Not registered for documents
+		NodeBuilder::default()
 	}
 }

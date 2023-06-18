@@ -1,6 +1,6 @@
 use super::Condition;
 use crate::{
-	kdl_ext::{FromKDL, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
 	system::core::SourceId,
 };
 use anyhow::Context;
@@ -34,40 +34,51 @@ impl FromKDL for IndirectCondition {
 	}
 }
 
+impl AsKdl for IndirectCondition {
+	fn as_kdl(&self) -> NodeBuilder {
+		let node = NodeBuilder::default();
+		match self {
+			Self::Id(id) => node.with_entry(id.to_string()),
+			Self::Custom(condition) => {
+				let mut node = node.with_entry("Custom");
+				node += condition.as_kdl();
+				node
+			}
+		}
+	}
+}
+
 #[cfg(test)]
 mod test {
 	use super::*;
-	mod from_kdl {
-		use super::*;
-		use crate::kdl_ext::NodeContext;
 
-		fn from_doc(doc: &str) -> anyhow::Result<IndirectCondition> {
-			let document = doc.parse::<kdl::KdlDocument>()?;
-			let node = document
-				.query("scope() > condition")?
-				.expect("missing condition node");
-			IndirectCondition::from_kdl(node, &mut NodeContext::default())
-		}
+	mod kdl {
+		use super::*;
+		use crate::kdl_ext::test_utils::*;
+
+		static NODE_NAME: &str = "condition";
 
 		#[test]
 		fn id() -> anyhow::Result<()> {
 			let doc = "condition \"condition/invisible.kdl\"";
-			let expected = IndirectCondition::Id(SourceId {
+			let data = IndirectCondition::Id(SourceId {
 				path: "condition/invisible.kdl".into(),
 				..Default::default()
 			});
-			assert_eq!(from_doc(doc)?, expected);
+			assert_eq_fromkdl!(IndirectCondition, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 
 		#[test]
 		fn custom() -> anyhow::Result<()> {
 			let doc = "condition \"Custom\" name=\"Slippery\"";
-			let expected = IndirectCondition::Custom(Condition {
+			let data = IndirectCondition::Custom(Condition {
 				name: "Slippery".into(),
 				..Default::default()
 			});
-			assert_eq!(from_doc(doc)?, expected);
+			assert_eq_fromkdl!(IndirectCondition, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 	}

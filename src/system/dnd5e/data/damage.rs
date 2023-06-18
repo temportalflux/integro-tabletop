@@ -1,6 +1,6 @@
 use super::roll::EvaluatedRoll;
 use crate::{
-	kdl_ext::{DocumentExt, FromKDL, NodeExt},
+	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt},
 	utility::InvalidEnumStr,
 };
 use enumset::EnumSetType;
@@ -32,6 +32,19 @@ impl FromKDL for DamageRoll {
 			damage_type,
 			additional_bonuses: Vec::new(),
 		})
+	}
+}
+impl AsKdl for DamageRoll {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		if self.base_bonus != 0 {
+			node.push_entry(("base", self.base_bonus as i64));
+		}
+		if let Some(roll) = &self.roll {
+			node.push_child_t("roll", roll);
+		}
+		node.push_child_entry("damage_type", self.damage_type.to_string());
+		node
 	}
 }
 
@@ -131,77 +144,83 @@ impl DamageType {
 mod test {
 	use super::*;
 
-	mod from_kdl {
+	mod kdl {
 		use super::*;
-		use crate::{kdl_ext::NodeContext, system::dnd5e::data::roll::Die};
+		use crate::{kdl_ext::test_utils::*, system::dnd5e::data::roll::Die};
 
-		fn from_doc(doc: &str) -> anyhow::Result<DamageRoll> {
-			let document = doc.parse::<kdl::KdlDocument>()?;
-			let node = document
-				.query("scope() > damage")?
-				.expect("missing damage node");
-			DamageRoll::from_kdl(node, &mut NodeContext::default())
-		}
+		static NODE_NAME: &str = "damage";
 
 		#[test]
 		fn empty() -> anyhow::Result<()> {
-			let doc = "damage {
-				damage_type \"Force\"
-			}";
-			let expected = DamageRoll {
+			let doc = "
+				|damage {
+				|    damage_type \"Force\"
+				|}
+			";
+			let data = DamageRoll {
 				roll: None,
 				base_bonus: 0,
 				damage_type: DamageType::Force,
 				additional_bonuses: vec![],
 			};
-			assert_eq!(from_doc(doc)?, expected);
+			assert_eq_fromkdl!(DamageRoll, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 
 		#[test]
 		fn flat_damage() -> anyhow::Result<()> {
-			let doc = "damage base=5 {
-				damage_type \"Force\"
-			}";
-			let expected = DamageRoll {
+			let doc = "
+				|damage base=5 {
+				|    damage_type \"Force\"
+				|}
+			";
+			let data = DamageRoll {
 				roll: None,
 				base_bonus: 5,
 				damage_type: DamageType::Force,
 				additional_bonuses: vec![],
 			};
-			assert_eq!(from_doc(doc)?, expected);
+			assert_eq_fromkdl!(DamageRoll, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 
 		#[test]
 		fn roll_only() -> anyhow::Result<()> {
-			let doc = "damage {
-				roll (Roll)\"2d4\"
-				damage_type \"Force\"
-			}";
-			let expected = DamageRoll {
+			let doc = "
+				|damage {
+				|    roll (Roll)\"2d4\"
+				|    damage_type \"Force\"
+				|}
+			";
+			let data = DamageRoll {
 				roll: Some(EvaluatedRoll::from((2, Die::D4))),
 				base_bonus: 0,
 				damage_type: DamageType::Force,
 				additional_bonuses: vec![],
 			};
-			assert_eq!(from_doc(doc)?, expected);
+			assert_eq_fromkdl!(DamageRoll, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 
 		#[test]
 		fn combined() -> anyhow::Result<()> {
-			let doc = "damage base=2 {
-				roll (Roll)\"1d6\"
-				damage_type \"Bludgeoning\"
-			}";
-			let expected = DamageRoll {
+			let doc = "
+				|damage base=2 {
+				|    roll (Roll)\"1d6\"
+				|    damage_type \"Bludgeoning\"
+				|}
+			";
+			let data = DamageRoll {
 				roll: Some(EvaluatedRoll::from((1, Die::D6))),
 				base_bonus: 2,
 				damage_type: DamageType::Bludgeoning,
 				additional_bonuses: vec![],
 			};
-			assert_eq!(from_doc(doc)?, expected);
+			assert_eq_fromkdl!(DamageRoll, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 	}

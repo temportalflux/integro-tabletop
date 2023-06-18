@@ -1,6 +1,6 @@
 use super::Character;
 use crate::{
-	kdl_ext::FromKDL,
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::{
 		core::SourceId,
 		dnd5e::{data::Feature, BoxedMutator, SystemComponent},
@@ -67,3 +67,18 @@ impl FromKDL for DefaultsBlock {
 		})
 	}
 }
+
+impl AsKdl for DefaultsBlock {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		for mutator in &self.mutators {
+			node.push_child_t("mutator", mutator);
+		}
+		for feature in &self.features {
+			node.push_child_t("feature", feature);
+		}
+		node
+	}
+}
+
+// TODO AsKdl: from/as tests for defaults block

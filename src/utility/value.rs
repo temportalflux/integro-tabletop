@@ -1,10 +1,9 @@
-use anyhow::Context;
-
-use super::{Evaluator, GenericEvaluator};
+use super::GenericEvaluator;
 use crate::{
-	kdl_ext::{EntryExt, ValueExt},
+	kdl_ext::{AsKdl, EntryExt, NodeBuilder, ValueExt},
 	system::dnd5e::data::character::Character,
 };
+use anyhow::Context;
 use std::{collections::HashSet, fmt::Debug, ops::Deref};
 
 #[derive(Clone)]
@@ -58,29 +57,26 @@ where
 	}
 }
 
-impl<C, V> Evaluator for Value<C, V>
+impl<C, V> Value<C, V>
 where
 	C: 'static + Send + Sync,
 	V: 'static + Clone + Send + Sync + Debug + PartialEq + ToString,
 {
-	type Context = C;
-	type Item = V;
-
-	fn dependencies(&self) -> Dependencies {
+	pub fn dependencies(&self) -> Dependencies {
 		match self {
 			Self::Fixed(_) => Dependencies::default(),
 			Self::Evaluated(evaluator) => evaluator.dependencies(),
 		}
 	}
 
-	fn description(&self) -> Option<String> {
+	pub fn description(&self) -> Option<String> {
 		match self {
 			Value::Fixed(value) => Some(value.to_string()),
 			Value::Evaluated(eval) => eval.description(),
 		}
 	}
 
-	fn evaluate(&self, state: &Self::Context) -> Self::Item {
+	pub fn evaluate(&self, state: &C) -> V {
 		match self {
 			Self::Fixed(value) => value.clone(),
 			Self::Evaluated(evaluator) => evaluator.evaluate(state),
@@ -88,7 +84,7 @@ where
 	}
 }
 
-// TODO: Test Value::from_kdl
+// TODO: Test Value::from_kdl/as_kdl
 impl<V> Value<Character, V>
 where
 	V: 'static,
@@ -111,6 +107,18 @@ where
 				))
 			}
 			_ => Ok(Self::Fixed(map_value(entry.value())?)),
+		}
+	}
+}
+impl<V: 'static + AsKdl> AsKdl for Value<Character, V> {
+	fn as_kdl(&self) -> NodeBuilder {
+		match self {
+			Self::Fixed(value) => value.as_kdl(),
+			Self::Evaluated(eval) => {
+				let mut node = eval.as_kdl();
+				node.set_first_entry_ty("Evaluator");
+				node
+			}
 		}
 	}
 }
