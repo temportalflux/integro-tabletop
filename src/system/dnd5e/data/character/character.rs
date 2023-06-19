@@ -1,18 +1,21 @@
 use super::{spellcasting, DefaultsBlock, Features, HitPoint, HitPoints, Spellcasting};
 use crate::{
 	path_map::PathMap,
-	system::dnd5e::{
-		data::{
-			action::{Action, AttackCheckKind},
-			character::{
-				AbilityScores, Defenses, Derived, DerivedDescription, MaxHitPoints, Persistent,
-				SavingThrows, Senses, Skills, Speeds,
+	system::{
+		core::SourceId,
+		dnd5e::{
+			data::{
+				action::{Action, AttackCheckKind},
+				character::{
+					AbilityScores, Defenses, Derived, DerivedDescription, MaxHitPoints, Persistent,
+					SavingThrows, Senses, Skills, Speeds,
+				},
+				item::{self, weapon},
+				proficiency, Ability, ArmorClass, Feature, OtherProficiencies,
 			},
-			item::{self, weapon},
-			proficiency, Ability, ArmorClass, Feature, OtherProficiencies,
+			mutator::Flag,
+			BoxedCriteria, BoxedMutator,
 		},
-		mutator::Flag,
-		BoxedCriteria, BoxedMutator,
 	},
 	utility::{Dependencies, MutatorGroup, Selector},
 };
@@ -256,6 +259,10 @@ impl Character {
 
 	pub fn persistent_mut(&mut self) -> &mut Persistent {
 		&mut self.character
+	}
+
+	pub fn id(&self) -> &SourceId {
+		&self.character.id
 	}
 
 	pub fn flags(&self) -> &EnumMap<Flag, bool> {

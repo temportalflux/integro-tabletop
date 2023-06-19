@@ -1,14 +1,21 @@
 use crate::{
+	auth,
 	components::{Nav, NavDisplay, TabContent},
-	system::dnd5e::{
-		components::{
-			ability, panel, ArmorClass, ConditionsCard, DefensesCard, HitPointMgmtCard,
-			InitiativeBonus, Inspiration, ProfBonus, Proficiencies, SpeedAndSenses,
+	database::app::{Database, Entry},
+	system::{
+		core::{ModuleId, SourceId},
+		dnd5e::{
+			components::{
+				ability, panel, ArmorClass, CharacterHandle, ConditionsCard, DefensesCard,
+				HitPointMgmtCard, InitiativeBonus, Inspiration, ProfBonus, Proficiencies,
+				SpeedAndSenses,
+			},
+			data::Ability,
 		},
-		data::Ability,
 	},
 };
 use yew::prelude::*;
+use yewdux::prelude::use_store;
 
 mod header;
 use header::*;
@@ -20,12 +27,67 @@ pub struct SheetDisplayProps {
 
 #[function_component]
 pub fn SheetDisplay(SheetDisplayProps { open_editor }: &SheetDisplayProps) -> Html {
+	let database = use_context::<Database>().unwrap();
+	let state = use_context::<CharacterHandle>().unwrap();
+	let (auth_status, _dispatch) = use_store::<auth::Status>();
+	let task_dispatch = use_context::<crate::task::Dispatch>().unwrap();
+	let save_to_storage = Callback::from({
+		let id = state.id().unversioned();
+		move |_| {
+			let Some(client) = auth_status.storage() else {
+				log::debug!("no storage client");
+				return;
+			};
+			let SourceId { module: Some(ModuleId::Github { user_org, repository }), system, path, ..} = &id else {
+				log::debug!("non-github source id");
+				return;
+			};
+			let path = match system {
+				None => path.clone(),
+				Some(system) => std::path::Path::new(&system).join(&path),
+			};
+			let message = format!("Manually save character");
+			let content = {
+				let doc = state.export_as_kdl();
+				let doc = doc.to_string();
+				let doc = doc.replace("\\r", "");
+				let doc = doc.replace("\\n", "\n");
+				let doc = doc.replace("\\t", "\t");
+				let doc = doc.replace("    ", "\t");
+				doc
+			};
+			let id_str = id.to_string();
+			let repo_org = user_org.clone();
+			let repo_name = repository.clone();
+			let database = database.clone();
+			task_dispatch.spawn("Update File", None, async move {
+				let Some(Entry { file_id: Some(file_id), .. }) = database.get::<Entry>(id_str).await? else {
+						log::debug!("missing file id");
+						return Ok(());
+					};
+				let args = crate::storage::github::CreateOrUpdateFileArgs {
+					repo_org: &repo_org,
+					repo_name: &repo_name,
+					path_in_repo: &path,
+					commit_message: &message,
+					content: &content,
+					file_id: Some(&file_id),
+					branch: None,
+				};
+				log::debug!("executing update character request");
+				client.create_or_update_file(args).await?;
+				log::debug!("finished update character request");
+				Ok(()) as anyhow::Result<()>
+			});
+		}
+	});
 	html! {
 		<div class="container overflow-hidden">
 			<div class="d-flex border-bottom-theme-muted mt-1 mb-2 px-3 pb-1">
 				<Header />
 				<div class="ms-auto">
 					<a class="icon forge" onclick={open_editor.reform(|_| ())} />
+					<button class="btn btn-success btn-xs" onclick={save_to_storage}>{"Save"}</button>
 				</div>
 			</div>
 			<div class="row" style="--bs-gutter-x: 10px;">

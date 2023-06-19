@@ -26,6 +26,7 @@ pub use description::*;
 /// from which the derived data can be compiled.
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct Persistent {
+	pub id: SourceId,
 	pub classes: Vec<Class>,
 	pub bundles: Vec<Bundle>,
 	pub description: Description,
@@ -137,6 +138,7 @@ impl SystemComponent for Persistent {
 }
 impl FromKDL for Persistent {
 	fn from_kdl(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
+		let id = ctx.id().clone();
 		ctx.set_inheiret_source(false);
 
 		let description = Description::from_kdl(
@@ -206,6 +208,7 @@ impl FromKDL for Persistent {
 		}
 
 		Ok(Self {
+			id,
 			description,
 			settings,
 			ability_scores,

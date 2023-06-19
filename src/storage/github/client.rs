@@ -1,8 +1,11 @@
+use std::path::Path;
+
 use super::{
 	queries::{FindOrgs, SearchForRepos, ViewerInfo},
 	GraphQLQueryExt, QueryError, QueryStream, RepositoryMetadata,
 };
 use futures_util::future::LocalBoxFuture;
+use reqwest::StatusCode;
 use serde::Deserialize;
 
 static GITHUB_API: &'static str = "https://api.github.com";
@@ -136,6 +139,7 @@ impl GithubClient {
 		})
 	}
 }
+
 pub struct SetRepoTopicsArgs<'a> {
 	pub owner: &'a str,
 	pub repo: &'a str,
@@ -180,11 +184,11 @@ pub struct FilesChangedArgs<'a> {
 }
 impl GithubClient {
 	/// Queries github for the list of files that have changed between two commits.
-	/// The list of file paths within the repository are returned when the request is successful.
+	/// The list of file path + file ids (sha) within the repository are returned when the request is successful.
 	pub fn get_files_changed(
 		&self,
 		request: FilesChangedArgs<'_>,
-	) -> LocalBoxFuture<'static, reqwest::Result<Vec<String>>> {
+	) -> LocalBoxFuture<'static, reqwest::Result<Vec<(String, String)>>> {
 		use serde_json::Value;
 		// https://docs.github.com/en/rest/commits/commits?apiVersion=2022-11-28#compare-two-commits
 		// https://www.git-scm.com/docs/gitrevisions#_dotted_range_notations
@@ -200,8 +204,9 @@ impl GithubClient {
 			let mut paths_changed = Vec::with_capacity(entries.len());
 			for entry in entries {
 				let Value::Object(map) = entry else { continue; };
+				let Some(Value::String(file_id)) = map.get("sha") else { continue; };
 				let Some(Value::String(path)) = map.get("filename") else { continue; };
-				paths_changed.push(path.clone());
+				paths_changed.push((path.clone(), file_id.clone()));
 			}
 			Ok(paths_changed)
 		})
@@ -216,14 +221,18 @@ pub struct GetTreeArgs<'a> {
 #[derive(Debug)]
 pub struct TreeEntry {
 	pub path: String,
-	/// if non-none, then this entry is a directory/tree with some tree_id identifying how to get its contents.
-	pub tree_id: Option<String>,
+	/// The sha of the entry.
+	/// If this is a tree/dir, this is used to get the contents of the dir.
+	/// If this is a file, this is the file id / sha used to update contents.
+	pub id: String,
+	pub is_tree: bool,
 }
 impl GithubClient {
 	pub fn get_tree(
 		&self,
 		request: GetTreeArgs<'_>,
 	) -> LocalBoxFuture<'static, reqwest::Result<Vec<TreeEntry>>> {
+		// https://docs.github.com/en/rest/git/trees?apiVersion=2022-11-28#get-a-tree
 		let builder = self.0.get(format!(
 			"{GITHUB_API}/repos/{}/{}/git/trees/{}",
 			request.owner, request.repo, request.tree_id
@@ -245,13 +254,10 @@ impl GithubClient {
 			let data = response.json::<Tree>().await?;
 			let mut entries = Vec::with_capacity(data.tree.len());
 			for entry in data.tree {
-				let tree_id = match entry.type_.as_str() {
-					"tree" => Some(entry.sha),
-					_ => None,
-				};
 				entries.push(TreeEntry {
 					path: entry.path,
-					tree_id,
+					is_tree: entry.type_.as_str() == "tree",
+					id: entry.sha,
 				});
 			}
 			Ok(entries)
@@ -282,6 +288,99 @@ impl GithubClient {
 		Box::pin(async move {
 			let response = builder.send().await?;
 			Ok(response.text().await?)
+		})
+	}
+}
+
+pub struct CreateOrUpdateFileArgs<'a> {
+	pub repo_org: &'a str,
+	pub repo_name: &'a str,
+	pub path_in_repo: &'a Path,
+	pub commit_message: &'a str,
+	/// The raw content to be uploaded.
+	/// Will be base64 encoded before transmitting.
+	pub content: &'a str,
+	/// If updating a file, this must be some.
+	pub file_id: Option<&'a str>,
+	/// If omitted, operation will be performed on the default branch.
+	pub branch: Option<&'a str>,
+}
+#[derive(thiserror::Error, Debug)]
+pub enum CreateOrUpdateFileError {
+	#[error("Requested resource to update was not found.")]
+	ResourceNotFound,
+	#[error("Requested resource has a merge conflict with the updated content.")]
+	FileConflict,
+}
+impl GithubClient {
+	pub fn create_or_update_file(
+		&self,
+		args: CreateOrUpdateFileArgs<'_>,
+	) -> LocalBoxFuture<'static, anyhow::Result<()>> {
+		use base64::{engine::general_purpose, Engine as _};
+		use serde_json::{Map, Value};
+
+		// https://docs.github.com/en/rest/repos/contents?apiVersion=2022-11-28#create-or-update-file-contents
+		let CreateOrUpdateFileArgs {
+			repo_org,
+			repo_name,
+			path_in_repo,
+			commit_message,
+			content,
+			file_id,
+			branch,
+		} = args;
+
+		let path_str = path_in_repo
+			.as_os_str()
+			.to_str()
+			.unwrap()
+			.replace("\\", "/");
+		let url = format!("{GITHUB_API}/repos/{repo_org}/{repo_name}/contents/{path_str}");
+
+		let encoded_content: String = general_purpose::STANDARD_NO_PAD.encode(content.as_bytes());
+
+		let builder = self.0.put(url);
+		let builder = self.insert_rest_headers(builder, None);
+		let builder = builder.body({
+			let mut entries = vec![
+				("message".into(), commit_message.to_owned().into()),
+				("content".into(), encoded_content.into()),
+			];
+			if let Some(sha) = file_id {
+				entries.push(("sha".into(), sha.to_owned().into()));
+			}
+			if let Some(branch) = branch {
+				entries.push(("branch".into(), branch.to_owned().into()));
+			}
+			let object = Value::Object(entries.into_iter().collect::<Map<String, Value>>());
+			serde_json::to_string(&object).unwrap()
+		});
+		log::debug!("{builder:?}");
+		Box::pin(async move {
+			let response = builder.send().await?;
+			if response.status() != StatusCode::OK {
+				match response.status().as_u16() {
+					201 => {
+						// file was created
+					}
+					404 => {
+						return Err(CreateOrUpdateFileError::ResourceNotFound.into());
+					}
+					409 => {
+						return Err(CreateOrUpdateFileError::FileConflict.into());
+					}
+					422 => {
+						log::warn!("create_or_update_file is being spammed");
+					}
+					code => {
+						log::warn!(
+							"create_or_update_file encountered unknown response code: {code}"
+						);
+					}
+				}
+			}
+			Ok(())
 		})
 	}
 }

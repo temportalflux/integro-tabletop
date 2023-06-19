@@ -16,13 +16,26 @@ pub enum Status {
 	None,
 	Authorizing,
 	Successful {
+		provider: OAuthProvider,
 		token: String,
 	},
 	Failed {
 		error: String,
 	},
 }
+impl Status {
+	pub fn storage(&self) -> Option<crate::storage::github::GithubClient> {
+		match self {
+			Status::Successful {
+				provider: OAuthProvider::Github,
+				token,
+			} => crate::storage::github::GithubClient::new(token).ok(),
+			_ => None,
+		}
+	}
+}
 
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub enum OAuthProvider {
 	Github,
 }
@@ -73,7 +86,7 @@ pub fn ActionProvider(ChildrenProps { children }: &ChildrenProps) -> Html {
 		(),
 	);
 	let login = Callback::from(move |provider| match &*auth_status {
-		Status::Successful { token: _ } => {}
+		Status::Successful { .. } => {}
 		Status::Authorizing | Status::None | Status::Failed { error: _ } => {
 			if let Some(auth_state) = PendingAuthState::authenticate(
 				provider,
@@ -212,6 +225,7 @@ impl PendingAuthState {
 			let Some(auth_token) = data.get("token") else { return None; };
 			let Some(token) = auth_token.as_str() else { return None; };
 			self.auth_status.set(Status::Successful {
+				provider: self.provider,
 				token: token.to_owned(),
 			});
 		} else if let Some(error_data) = data_state.strip_prefix("error:") {

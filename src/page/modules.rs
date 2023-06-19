@@ -1,4 +1,9 @@
-use crate::{auth, database::app::Database, storage::github::GithubClient, system, task};
+use crate::{
+	auth::{self, OAuthProvider},
+	database::app::Database,
+	storage::github::GithubClient,
+	system, task,
+};
 use yew::prelude::*;
 use yewdux::prelude::*;
 
@@ -16,7 +21,11 @@ pub fn ModulesLanding() -> Html {
 		let database = database.clone();
 		let task_dispatch = task_dispatch.clone();
 		move |_| {
-			let auth::Status::Successful { token } = &*auth_status else { return; };
+			let auth::Status::Successful { provider, token } = &*auth_status else { return; };
+			if *provider != OAuthProvider::Github {
+				log::error!("Currently authenticated with {provider:?}, but no storage system is hooked up for anything but github.");
+				return;
+			}
 			let Ok(client) = GithubClient::new(token) else {
 				return;
 			};

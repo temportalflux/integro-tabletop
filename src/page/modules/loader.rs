@@ -212,8 +212,8 @@ impl Loader {
 						for entry in client.get_tree(args).await? {
 							let full_path = tree_path.join(&entry.path);
 							// if the entry is a directory, put it in the queue to be scanned
-							if let Some(tree_id) = entry.tree_id {
-								tree_ids.push_back((full_path, tree_id));
+							if entry.is_tree {
+								tree_ids.push_back((full_path, entry.id));
 								scan_progress.inc_max(1);
 							} else {
 								// only record content files (kdl extension)
@@ -229,7 +229,7 @@ impl Loader {
 								}
 								let system = Self::get_system_in_file_path(&full_path).unwrap();
 								let path_str = full_path.display().to_string().replace("\\", "/");
-								file_paths.push((system, path_str));
+								file_paths.push((system, path_str, entry.id));
 							}
 						}
 						scan_progress.inc(1);
@@ -255,7 +255,7 @@ impl Loader {
 						0,
 						file_paths.len() as u32,
 					);
-					for (system, file_path) in file_paths {
+					for (system, file_path, file_id) in file_paths {
 						let args = FileContentArgs {
 							owner: repo.owner.as_str(),
 							repo: repo.name.as_str(),
@@ -270,6 +270,7 @@ impl Loader {
 							&module_id,
 							system,
 							file_path,
+							file_id,
 							content,
 						);
 						db_entries.extend(entries);
@@ -335,7 +336,7 @@ impl Loader {
 					progress.inc_max(changed_file_paths.len() as u32);
 					let mut new_entries = Vec::with_capacity(changed_file_paths.len());
 
-					for file_path in changed_file_paths {
+					for (file_path, file_id) in changed_file_paths {
 						// Getting the content of each changed file
 						let content = client
 							.get_file_content(FileContentArgs {
@@ -355,6 +356,7 @@ impl Loader {
 							&module_id,
 							system,
 							file_path,
+							file_id,
 							content,
 						);
 						new_entries.extend(entries);
@@ -392,6 +394,7 @@ impl Loader {
 		module_id: &ModuleId,
 		system: String,
 		file_path: String,
+		file_id: String,
 		content: String,
 	) -> Vec<crate::database::app::Entry> {
 		let Some(system_reg) = system_depot.get(&system) else { return Vec::new(); };
@@ -438,6 +441,7 @@ impl Loader {
 				version: Some(repo.version.clone()),
 				metadata,
 				kdl: node.to_string(),
+				file_id: Some(file_id.clone()),
 			};
 			entries.push(record);
 		}
