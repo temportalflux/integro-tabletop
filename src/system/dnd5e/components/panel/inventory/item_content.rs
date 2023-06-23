@@ -5,7 +5,7 @@ use crate::{
 			validate_uint_only, CharacterHandle, FormulaInline, WalletInline,
 		},
 		data::{
-			item::{Item, ItemKind},
+			item::{self, Item},
 			ArmorExtended, WeaponProficiency,
 		},
 		evaluator::IsProficientWith,
@@ -56,7 +56,7 @@ pub fn item_body(item: &Item, state: &CharacterHandle, props: Option<ItemBodyPro
 		});
 	}
 	match &item.kind {
-		ItemKind::Simple { count } => {
+		item::Kind::Simple { count } => {
 			let inner = match (props.on_quantity_changed, item.can_stack()) {
 				(None, _) | (Some(_), false) => html! { <span>{count}</span> },
 				(Some(on_changed), true) => {
@@ -102,7 +102,7 @@ pub fn item_body(item: &Item, state: &CharacterHandle, props: Option<ItemBodyPro
 				</div>
 			});
 		}
-		ItemKind::Equipment(equipment) => {
+		item::Kind::Equipment(equipment) => {
 			let mut equip_sections = Vec::new();
 			if let Some(on_equipped) = props.set_equipped {
 				let onchange = Callback::from({

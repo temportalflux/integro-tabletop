@@ -18,7 +18,7 @@ use crate::{
 			data::{
 				character::Persistent,
 				currency::Wallet,
-				item::{Item, ItemKind},
+				item::{self, Item},
 			},
 			DnD5e,
 		},
@@ -214,7 +214,7 @@ fn BrowsedItemCard(props: &GeneralProp<Item>) -> Html {
 		}
 	);
 	let batch_size = match &item.kind {
-		ItemKind::Simple { count } => Some(*count),
+		item::Kind::Simple { count } => Some(*count),
 		_ => None,
 	};
 	html! {
@@ -266,7 +266,7 @@ fn AddItemActions(
 		state.new_dispatch(Box::new({
 			move |args: (Item, AddItemArgs), persistent: &mut Persistent| {
 				let (mut item, (amount, cost, container_id)) = args;
-				let items = if let ItemKind::Simple { count } = &mut item.kind {
+				let items = if let item::Kind::Simple { count } = &mut item.kind {
 					*count *= amount;
 					vec![item]
 				} else {

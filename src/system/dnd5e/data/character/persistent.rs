@@ -4,7 +4,10 @@ use crate::{
 	system::{
 		core::SourceId,
 		dnd5e::{
-			data::{character::Character, item, Ability, Bundle, Class, Condition, Spell},
+			data::{
+				character::Character, item::container::Inventory, Ability, Bundle, Class,
+				Condition, Spell,
+			},
 			SystemComponent,
 		},
 	},
@@ -33,7 +36,7 @@ pub struct Persistent {
 	pub ability_scores: EnumMap<Ability, u32>,
 	pub selected_values: PathMap<String>,
 	pub selected_spells: SelectedSpells,
-	pub inventory: item::Inventory<item::EquipableEntry>,
+	pub inventory: Inventory,
 	pub conditions: Conditions,
 	pub hit_points: HitPoints,
 	pub inspiration: bool,
@@ -174,10 +177,8 @@ impl FromKDL for Persistent {
 			conditions.insert(condition);
 		}
 
-		let inventory = item::Inventory::from_kdl(
-			node.query_req("scope() > inventory")?,
-			&mut ctx.next_node(),
-		)?;
+		let inventory =
+			Inventory::from_kdl(node.query_req("scope() > inventory")?, &mut ctx.next_node())?;
 
 		let selected_spells = match node.query_opt("scope() > spells")? {
 			Some(node) => SelectedSpells::from_kdl(node, &mut ctx.next_node())?,

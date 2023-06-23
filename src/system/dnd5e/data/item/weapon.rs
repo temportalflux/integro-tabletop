@@ -1,9 +1,9 @@
-use super::EquipableEntry;
 use crate::{
 	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
 	system::dnd5e::{
 		data::{
 			action::{Action, ActivationKind, Attack, AttackCheckKind, AttackKindValue},
+			item::container::EquipableEntry,
 			roll::EvaluatedRoll,
 			Ability, DamageRoll, Feature, WeaponProficiency,
 		},

@@ -1,10 +1,6 @@
 use crate::{
 	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt},
-	system::dnd5e::data::{
-		character::Character,
-		item::{EquipableEntry, ItemKind},
-		ArmorExtended,
-	},
+	system::dnd5e::data::{character::Character, item, ArmorExtended},
 };
 use std::{collections::HashSet, str::FromStr};
 
@@ -49,11 +45,12 @@ impl crate::utility::Evaluator for HasArmorEquipped {
 	}
 
 	fn evaluate(&self, character: &Self::Context) -> Result<(), String> {
-		for EquipableEntry { item, is_equipped } in character.inventory().entries() {
+		for item::container::EquipableEntry { item, is_equipped } in character.inventory().entries()
+		{
 			if !item.is_equipable() || !is_equipped {
 				continue;
 			}
-			let ItemKind::Equipment(equipment) = &item.kind else { continue; };
+			let item::Kind::Equipment(equipment) = &item.kind else { continue; };
 
 			let mut in_filter = false;
 			if let Some(armor) = &equipment.armor {
@@ -267,7 +264,7 @@ mod test {
 			for (kind, equipped) in kinds {
 				let id = persistent.inventory.insert(Item {
 					name: format!("Armor{}", kind.to_string()),
-					kind: ItemKind::Equipment(Equipment {
+					kind: item::Kind::Equipment(Equipment {
 						armor: Some(Armor {
 							kind: *kind,
 							formula: Default::default(),
@@ -282,7 +279,7 @@ mod test {
 			if let Some(equipped) = shield {
 				let id = persistent.inventory.insert(Item {
 					name: format!("Shield"),
-					kind: ItemKind::Equipment(Equipment {
+					kind: item::Kind::Equipment(Equipment {
 						shield: Some(2),
 						..Default::default()
 					}),

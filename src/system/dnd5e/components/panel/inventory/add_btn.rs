@@ -1,4 +1,4 @@
-use crate::system::dnd5e::components::CharacterHandle;
+use crate::system::dnd5e::{components::CharacterHandle, data::item::container::AsItem};
 use uuid::Uuid;
 use yew::prelude::*;
 
@@ -31,7 +31,6 @@ pub fn AddItemButton(props: &AddItemButtonProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 
 	let item_containers = {
-		use crate::system::dnd5e::data::item::AsItem;
 		let iter = state.inventory().iter_by_name();
 		let iter = iter.filter(|(_, entry)| entry.as_item().items.is_some());
 		let iter = iter.map(|(id, entry)| (id, entry.as_item()));

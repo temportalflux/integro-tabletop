@@ -10,7 +10,7 @@ use crate::{
 			},
 			CharacterHandle,
 		},
-		data::item::{Item, ItemKind},
+		data::item::{self, Item},
 	},
 };
 use uuid::Uuid;
@@ -111,12 +111,12 @@ pub fn ItemModal(InventoryItemProps { id_path }: &InventoryItemProps) -> Html {
 	});
 	let mut item_props = ItemBodyProps::default();
 	match &item.kind {
-		ItemKind::Simple { .. } => {
+		item::Kind::Simple { .. } => {
 			item_props.on_quantity_changed = Some(state.new_dispatch({
 				let id_path = id_path.clone();
 				move |amt, persistent| {
 					if let Some(item) = persistent.inventory.get_mut_at_path(&id_path) {
-						if let ItemKind::Simple { count } = &mut item.kind {
+						if let item::Kind::Simple { count } = &mut item.kind {
 							*count = amt;
 						}
 					}
@@ -124,7 +124,7 @@ pub fn ItemModal(InventoryItemProps { id_path }: &InventoryItemProps) -> Html {
 				}
 			}));
 		}
-		ItemKind::Equipment(_equipment) => {
+		item::Kind::Equipment(_equipment) => {
 			if id_path.len() == 1 {
 				item_props.is_equipped = state.inventory().is_equipped(&id_path[0]);
 				item_props.set_equipped = Some(state.new_dispatch({

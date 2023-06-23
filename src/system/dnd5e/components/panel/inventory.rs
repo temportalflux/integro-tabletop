@@ -4,7 +4,7 @@ use crate::{
 		core::SourceId,
 		dnd5e::{
 			components::{CharacterHandle, WalletInlineButton},
-			data::item::AsItem,
+			data::item::container::AsItem,
 		},
 	},
 };

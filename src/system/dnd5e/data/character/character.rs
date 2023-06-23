@@ -10,7 +10,7 @@ use crate::{
 					AbilityScores, Defenses, Derived, DerivedDescription, MaxHitPoints, Persistent,
 					SavingThrows, Senses, Skills, Speeds,
 				},
-				item::{self, weapon},
+				item::{container::Inventory, weapon},
 				proficiency, Ability, ArmorClass, Feature, OtherProficiencies,
 			},
 			mutator::Flag,
@@ -406,11 +406,11 @@ impl Character {
 		&mut self.derived.features
 	}
 
-	pub fn inventory(&self) -> &item::Inventory<item::EquipableEntry> {
+	pub fn inventory(&self) -> &Inventory {
 		&self.character.inventory
 	}
 
-	pub fn inventory_mut(&mut self) -> &mut item::Inventory<item::EquipableEntry> {
+	pub fn inventory_mut(&mut self) -> &mut Inventory {
 		&mut self.character.inventory
 	}
 
