@@ -46,6 +46,9 @@ pub use speed::*;
 mod spellcasting;
 pub use spellcasting::*;
 
+mod starting_equipment;
+pub use starting_equipment::*;
+
 #[cfg(test)]
 pub(crate) mod test {
 	macro_rules! test_utils {
