@@ -490,12 +490,12 @@ impl Character {
 		self.spellcasting().cantrip_capacity(&self.character)
 	}
 
-	pub fn starting_equipment(&self) -> &Vec<StartingEquipment> {
+	pub fn starting_equipment(&self) -> &Vec<(Vec<StartingEquipment>, PathBuf)> {
 		&self.derived.starting_equipment
 	}
 
-	pub fn add_starting_equipment(&mut self, entries: &Vec<StartingEquipment>, _source: &Path) {
-		self.derived.starting_equipment.append(&mut entries.clone());
+	pub fn add_starting_equipment(&mut self, entries: &Vec<StartingEquipment>, source: &Path) {
+		self.derived.starting_equipment.push((entries.clone(), source.to_owned()));
 	}
 }
 

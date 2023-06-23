@@ -43,7 +43,7 @@ pub struct Derived {
 	pub description: DerivedDescription,
 	pub flags: EnumMap<Flag, bool>,
 	pub spellcasting: Spellcasting,
-	pub starting_equipment: Vec<StartingEquipment>,
+	pub starting_equipment: Vec<(Vec<StartingEquipment>, PathBuf)>,
 }
 
 impl Default for Derived {

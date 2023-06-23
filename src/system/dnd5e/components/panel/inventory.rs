@@ -46,6 +46,10 @@ pub fn Inventory() -> Html {
 		})
 	});
 
+	// TODO: If the player's persistent inventory is empty,
+	// show an option to add items based on their StartingEquipment.
+	log::debug!(target: "inventory", "{:?}", state.starting_equipment());
+
 	// TODO: Implement search-inventory functionality
 	// TODO: tag buttons to browse item containers
 	let containers = state
