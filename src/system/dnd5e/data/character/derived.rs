@@ -20,6 +20,8 @@ mod speed;
 pub use speed::*;
 pub mod spellcasting;
 pub use spellcasting::Spellcasting;
+mod starting_equipment;
+pub use starting_equipment::*;
 
 /// Data derived from the `Persistent`, such as bonuses to abilities/skills,
 /// proficiencies, and actions. This data all lives within `Persistent` in
@@ -41,6 +43,7 @@ pub struct Derived {
 	pub description: DerivedDescription,
 	pub flags: EnumMap<Flag, bool>,
 	pub spellcasting: Spellcasting,
+	pub starting_equipment: Vec<StartingEquipment>,
 }
 
 impl Default for Derived {
@@ -62,6 +65,7 @@ impl Default for Derived {
 				Flag::ArmorStrengthRequirement => true,
 			},
 			spellcasting: Default::default(),
+			starting_equipment: Default::default(),
 		}
 	}
 }
