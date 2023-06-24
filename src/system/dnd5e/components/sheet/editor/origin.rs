@@ -1,21 +1,18 @@
 use crate::{
 	components::{
-		database::{
-			use_query_all_typed, use_query_entries, use_typed_fetch_callback, QueryAllArgs,
-			QueryStatus,
-		},
-		modal, Spinner,
+		database::{use_query_all_typed, use_typed_fetch_callback, QueryAllArgs, QueryStatus},
+		modal,
+		object_browser::{self, ObjectSelectorList},
+		Spinner,
 	},
 	database::app::Criteria,
 	page::characters::sheet::MutatorImpact,
 	system::{
-		core::{SourceId, System},
+		core::System,
 		dnd5e::{
 			components::{CharacterHandle, GeneralProp},
 			data::{
-				bundle::BundleRequirement,
-				character::{spellcasting::SpellEntry, Persistent},
-				description, Bundle, Feature, Spell,
+				bundle::BundleRequirement, character::Persistent, description, Bundle, Feature,
 			},
 			DnD5e,
 		},
@@ -28,7 +25,7 @@ use crate::{
 use convert_case::{Case, Casing};
 use multimap::MultiMap;
 
-use std::{collections::HashSet, str::FromStr, sync::Arc};
+use std::{collections::HashSet, sync::Arc};
 use yew::prelude::*;
 
 static HELP_TEXT: &'static str = "Lineages and Upbingings are a replacement for races. \
@@ -716,24 +713,15 @@ fn SelectorField(
 			count: capacity,
 			criteria,
 		} => {
-			let browse = modal_dispatcher.callback({
-				let data_path = data_path.clone();
-				let category: AttrValue = category.clone().into();
-				let capacity = *capacity;
-				let criteria = criteria.clone();
-				move |_| {
-					let data_path = data_path.clone();
-					let category = category.clone();
-					let criteria = criteria.clone();
-					modal::Action::Open(modal::Props {
-						centered: true,
-						scrollable: true,
-						root_classes: classes!("browse", "objects"),
-						content: html! {<ModalObjectBrowser {data_path} {category} {capacity} {criteria} />},
-						..Default::default()
-					})
-				}
-			});
+			let browse = object_browser::open_modal(
+				&modal_dispatcher,
+				object_browser::ModalProps {
+					data_path: data_path.clone(),
+					category: category.clone().into(),
+					capacity: *capacity,
+					criteria: criteria.clone(),
+				},
+			);
 			let btn_classes = classes!("btn", "btn-outline-theme", "btn-xs", missing_value);
 			let selection_count = state
 				.get_selections_at(data_path)
@@ -757,172 +745,5 @@ fn SelectorField(
 			<span class="input-group-text">{name.clone()}</span>
 			{inner}
 		</div>
-	}
-}
-
-#[function_component]
-fn ObjectSelectorList(props: &GeneralProp<std::path::PathBuf>) -> Html {
-	let state = use_context::<CharacterHandle>().unwrap();
-	let fetched_entries = use_query_entries();
-	use_effect_with_deps(
-		{
-			let data_path = props.value.clone();
-			let fetched_entries = fetched_entries.clone();
-			move |state: &CharacterHandle| {
-				let Some(values) = state.get_selections_at(&data_path) else {
-					fetched_entries.clear();
-					return;
-				};
-				let mut ids = Vec::with_capacity(values.len());
-				for value in values {
-					let Ok(id) = SourceId::from_str(value.as_str()) else { continue; };
-					ids.push(id.into_unversioned());
-				}
-				fetched_entries.run(ids);
-			}
-		},
-		state.clone(),
-	);
-
-	match fetched_entries.status() {
-		QueryStatus::Pending => html!(<Spinner />),
-		QueryStatus::Empty | QueryStatus::Failed(_) => html!("No selections"),
-		QueryStatus::Success((ids, items)) => {
-			html! {
-				<ul class="mb-0">
-					{ids.iter().filter_map(|id| items.get(id)).map(|entry| html! {
-						<li>{entry.name().unwrap_or("Unknown")}</li>
-					}).collect::<Vec<_>>()}
-				</ul>
-			}
-		}
-	}
-}
-
-#[derive(Clone, PartialEq, Properties)]
-struct ModalObjectBrowserProps {
-	data_path: std::path::PathBuf,
-	category: AttrValue,
-	capacity: usize,
-	criteria: Option<Criteria>,
-}
-#[function_component]
-fn ModalObjectBrowser(props: &ModalObjectBrowserProps) -> Html {
-	use crate::system::dnd5e::components::panel::{AvailableSpellList, HeaderAddon};
-
-	// TODO: This modal should query the database and check for objects with provided category that meet the provided criteria,
-	// checking against database metadata instead of the actual parsed objects.
-	if props.category.as_str() != "spell" {
-		return html! {<>
-			<div class="modal-header">
-				<h1 class="modal-title fs-4">{"Unsupported object category"}</h1>
-				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
-			</div>
-		</>};
-	}
-
-	let header_addon = HeaderAddon::from({
-		let data_path = props.data_path.clone();
-		let capacity = props.capacity;
-		move |spell: &Spell| -> Html {
-			html! {
-				<ObjectSelectorEntryButton
-					data_path={data_path.clone()}
-					id={spell.id.clone()}
-					{capacity}
-				/>
-			}
-		}
-	});
-	// TODO: Somehow generate the spell entry for the feature's selector data
-	let spell_entry = SpellEntry {
-		ability: crate::system::dnd5e::data::Ability::Charisma,
-		source: std::path::PathBuf::new(),
-		classified_as: None,
-		cast_via_slot: false,
-		cast_via_uses: None,
-		range: None,
-		forced_rank: None,
-	};
-	html! {<>
-		<div class="modal-header">
-			<h1 class="modal-title fs-4">{"Browse Spells"}</h1>
-			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
-		</div>
-		<div class="modal-body spell-list">
-			<AvailableSpellList
-				{header_addon}
-				criteria={props.criteria.clone()}
-				entry={spell_entry}
-			/>
-		</div>
-	</>}
-}
-
-#[derive(Clone, PartialEq, Properties)]
-struct ObjectSelectorEntryButtonProps {
-	data_path: std::path::PathBuf,
-	id: SourceId,
-	capacity: usize,
-}
-#[function_component]
-fn ObjectSelectorEntryButton(props: &ObjectSelectorEntryButtonProps) -> Html {
-	let state = use_context::<CharacterHandle>().unwrap();
-
-	let props_id = props.id.to_string();
-	let mut selected_idx = None;
-	let mut can_select_more = props.capacity > 0;
-
-	if let Some(entries) = state.get_selections_at(&props.data_path) {
-		can_select_more = entries.len() < props.capacity;
-		for (idx, id_str) in entries.iter().enumerate() {
-			if id_str.as_str() == props_id.as_str() {
-				selected_idx = Some(idx);
-				break;
-			}
-		}
-	}
-
-	let is_selected = selected_idx.is_some();
-	let onclick = state.new_dispatch({
-		let data_path = props.data_path.clone();
-		move |evt: MouseEvent, persistent| {
-			evt.stop_propagation();
-			match selected_idx {
-				None => {
-					persistent.insert_selection(&data_path, props_id.clone());
-				}
-				Some(idx) => {
-					persistent.remove_selection(&data_path, idx);
-				}
-			}
-			// recompile required because mutators which have object selections
-			// probably need to use those selections to affect derived data
-			// (e.g. spellcasting add_prepared)
-			MutatorImpact::Recompile
-		}
-	});
-
-	let mut classes = classes!("btn", "btn-xs");
-	let disabled = !is_selected && !can_select_more;
-	classes.push(match is_selected {
-		true => "btn-outline-theme",
-		false => match can_select_more {
-			true => "btn-theme",
-			false => "btn-outline-secondary",
-		},
-	});
-
-	html! {
-		<button
-			type="button" class={classes}
-			style={"margin-left: auto; width: 85px;"}
-			{disabled} {onclick}
-		>
-			{match is_selected {
-				true => "Selected",
-				false => "Select",
-			}}
-		</button>
 	}
 }

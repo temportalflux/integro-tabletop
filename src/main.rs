@@ -33,12 +33,15 @@ fn App() -> Html {
 
 #[function_component]
 fn ProviderChain(props: &html::ChildrenProps) -> Html {
+	use crate::components::object_browser;
 	html! {
 		<auth::ActionProvider>
 			<task::Provider>
 				<system::Provider>
 					<DatabaseProvider>
-						{props.children.clone()}
+						<object_browser::Provider>
+							{props.children.clone()}
+						</object_browser::Provider>
 					</DatabaseProvider>
 				</system::Provider>
 			</task::Provider>
