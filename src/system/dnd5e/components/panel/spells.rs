@@ -42,7 +42,7 @@ pub fn Spells() -> Html {
 	let mut sections = SpellSections::default();
 	sections.insert_slots(&state);
 	sections.insert_selected_spells(&state);
-	sections.insert_derived_spells(&state);
+	sections.insert_permaprepared_spells(&state);
 	sections.insert_available_ritual_spells(&state);
 
 	let sections = {
@@ -223,7 +223,7 @@ impl<'c> SpellSections<'c> {
 		}
 	}
 
-	fn insert_derived_spells(&mut self, state: &'c CharacterHandle) {
+	fn insert_permaprepared_spells(&mut self, state: &'c CharacterHandle) {
 		for (_id, spell_entry) in state.spellcasting().prepared_spells() {
 			let Some(spell) = &spell_entry.spell else { continue; };
 			for (source, entry) in &spell_entry.entries {
@@ -658,7 +658,11 @@ fn ManagerCasterModal(CasterNameProps { caster_id }: &CasterNameProps) -> Html {
 
 	let max_cantrips = caster.cantrip_capacity(state.persistent());
 	let max_spells = caster.spell_capacity(&state);
-	let filter = caster.spell_filter(state.persistent());
+	let filter = state
+		.spellcasting()
+		.get_filter(caster.name(), state.persistent())
+		.unwrap_or_default();
+
 	let mut num_cantrips = 0;
 	let mut num_spells = 0;
 	let mut num_all_selections = 0;

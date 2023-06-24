@@ -1,6 +1,6 @@
 use crate::{database::Record, system::core::SourceId};
 use serde::{Deserialize, Serialize};
-use std::str::FromStr;
+use std::{str::FromStr, sync::Arc};
 
 mod module_system;
 pub use module_system::*;
@@ -43,5 +43,19 @@ impl Entry {
 
 	pub fn name(&self) -> Option<&str> {
 		self.get_meta_str("name")
+	}
+
+	pub fn parse_kdl<T: crate::kdl_ext::FromKDL>(
+		&self,
+		node_reg: Arc<crate::system::core::NodeRegistry>,
+	) -> Option<T> {
+		// Parse the entry's kdl string:
+		// kdl string to document
+		let Ok(document) = self.kdl.parse::<kdl::KdlDocument>() else { return None; };
+		// document to first (and hopefully only) node
+		let Some(node) = document.nodes().get(0) else { return None; };
+		let mut ctx = crate::kdl_ext::NodeContext::new(Arc::new(self.source_id(true)), node_reg);
+		let Ok(value) = T::from_kdl(node, &mut ctx) else { return None; };
+		Some(value)
 	}
 }

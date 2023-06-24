@@ -1,9 +1,5 @@
 use super::Entry;
-use crate::{
-	database::Cursor,
-	kdl_ext::{FromKDL, NodeContext},
-	system::core::NodeRegistry,
-};
+use crate::{database::Cursor, kdl_ext::FromKDL, system::core::NodeRegistry};
 use futures_util::StreamExt;
 use std::{pin::Pin, sync::Arc, task::Poll};
 
@@ -158,14 +154,7 @@ where
 			// Get the next database entry based on the query and underlying cursor
 			let Poll::Ready(entry) = self.query.poll_next_unpin(cx) else { return Poll::Pending };
 			let Some(entry) = entry else { return Poll::Ready(None); };
-			// Parse the entry's kdl string:
-			// kdl string to document
-			let Ok(document) = entry.kdl.parse::<kdl::KdlDocument>() else { continue; };
-			// document to first (and hopefully only) node
-			let Some(node) = document.nodes().get(0) else { continue; };
-			// node to value based on the expected type
-			let mut ctx = NodeContext::new(Arc::new(entry.source_id(true)), self.node_reg.clone());
-			let Ok(value) = Output::from_kdl(node, &mut ctx) else { continue; };
+			let Some(value) = entry.parse_kdl::<Output>(self.node_reg.clone()) else { continue; };
 			// we found a sucessful value! we can return it
 			return Poll::Ready(Some(value));
 		}

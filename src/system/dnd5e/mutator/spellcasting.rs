@@ -22,10 +22,7 @@ use std::{
 };
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Spellcasting {
-	pub ability: Ability,
-	pub operation: Operation,
-}
+pub struct Spellcasting(Operation);
 
 crate::impl_trait_eq!(Spellcasting);
 crate::impl_kdl_node!(Spellcasting, "spellcasting");
@@ -34,11 +31,16 @@ crate::impl_kdl_node!(Spellcasting, "spellcasting");
 pub enum Operation {
 	Caster(Caster),
 	/// Spells added to the list of spells that a caster can know or prepare.
-	/// These DO count against the character's known/prepared spell capacity limits.
-	AddSource,
+	/// These DO count against the character's known/prepared spell capacity limits,
+	/// because the user has to select them to know/prepare them (this just makes the spells available to be selected).
+	AddSource {
+		class_name: String,
+		spell_ids: Vec<SourceId>,
+	},
 	/// Spells that are always available to be cast, and
 	/// DO NOT count against the character's known/prepared spell capacity limits.
 	AddPrepared {
+		ability: Ability,
 		/// TODO: prepared spells can be treated as spells for a given class
 		/// If provided, the specified spells are treated as tho they were prepared using this caster class.
 		classified_as: Option<String>,
@@ -72,7 +74,7 @@ impl Mutator for Spellcasting {
 	type Target = Character;
 
 	fn description(&self, _state: Option<&Character>) -> description::Section {
-		match &self.operation {
+		match &self.0 {
 			Operation::Caster(caster) => description::Section {
 				title: Some("Spellcasting".into()),
 				content: format!(
@@ -84,6 +86,7 @@ impl Mutator for Spellcasting {
 				..Default::default()
 			},
 			Operation::AddPrepared {
+				ability,
 				selectable_spells, ..
 			} => {
 				let mut selectors = SelectorMetaVec::default();
@@ -94,23 +97,30 @@ impl Mutator for Spellcasting {
 					title: Some("Spellcasting: Always Preppared Spells".into()),
 					content: format!(
 						"Add spells which are always prepared, using {}.",
-						self.ability.long_name()
+						ability.long_name()
 					)
 					.into(),
 					children: vec![selectors.into()],
 					..Default::default()
 				}
 			}
-			Operation::AddSource => description::Section {
+			Operation::AddSource {
+				class_name,
+				spell_ids,
+			} => description::Section {
 				title: Some("Spellcasting: Expanded Spell List".into()),
-				content: format!("Add spells you can select from for the TODO class.").into(),
+				content: format!(
+					"Adds {} spells you can select from for the {class_name} class.",
+					spell_ids.len()
+				)
+				.into(),
 				..Default::default()
 			},
 		}
 	}
 
 	fn set_data_path(&self, parent: &std::path::Path) {
-		match &self.operation {
+		match &self.0 {
 			Operation::AddPrepared {
 				selectable_spells,
 				limited_uses,
@@ -128,12 +138,20 @@ impl Mutator for Spellcasting {
 	}
 
 	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
-		match &self.operation {
+		match &self.0 {
 			Operation::Caster(caster) => {
 				stats.spellcasting_mut().add_caster(caster.clone());
 			}
-			Operation::AddSource => {}
+			Operation::AddSource {
+				class_name,
+				spell_ids,
+			} => {
+				stats
+					.spellcasting_mut()
+					.add_spell_access(class_name, spell_ids, parent);
+			}
 			Operation::AddPrepared {
+				ability,
 				classified_as,
 				specific_spells,
 				selectable_spells,
@@ -161,7 +179,7 @@ impl Mutator for Spellcasting {
 				}
 				for (id, prepared_info) in all_spells {
 					let entry = SpellEntry {
-						ability: self.ability,
+						ability: *ability,
 						source: parent.to_owned(),
 						classified_as: classified_as.clone(),
 						cast_via_slot: prepared_info.can_cast_through_slot,
@@ -181,9 +199,9 @@ impl FromKDL for Spellcasting {
 		node: &kdl::KdlNode,
 		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
-		let ability = Ability::from_str(node.get_str_req("ability")?)?;
 		let operation = match node.get_str_opt(ctx.consume_idx())? {
 			None => {
+				let ability = Ability::from_str(node.get_str_req("ability")?)?;
 				let class_name = node.get_str_req("class")?.to_owned();
 				let restriction = {
 					let node = node.query_req("scope() > restriction")?;
@@ -284,14 +302,18 @@ impl FromKDL for Spellcasting {
 				})
 			}
 			Some("add_source") => {
-				let mut spells = Vec::new();
+				let class_name = node.get_str_req("class")?.to_owned();
+				let mut spell_ids = Vec::new();
 				for s in node.query_str_all("scope() > spell", 0)? {
-					spells.push(SourceId::from_str(s)?.with_basis(ctx.id(), false));
+					spell_ids.push(SourceId::from_str(s)?.with_basis(ctx.id(), false));
 				}
-				// TODO: Store the spell ids in the mutator
-				Operation::AddSource
+				Operation::AddSource {
+					class_name,
+					spell_ids,
+				}
 			}
 			Some("add_prepared") => {
+				let ability = Ability::from_str(node.get_str_req("ability")?)?;
 				let classified_as = node.get_str_opt("classified_as")?.map(str::to_owned);
 
 				let mut specific_spells = Vec::new();
@@ -312,7 +334,6 @@ impl FromKDL for Spellcasting {
 						let mut selector = ObjectSelector::new(Spell::id(), count);
 						if let Some(node) = node.query_opt("scope() > filter")? {
 							selector.spell_filter = {
-								let can_cast = node.get_str_opt("can_cast")?.map(str::to_owned);
 								let ranks = node.query_i64_all("scope() > rank", 0)?;
 								let ranks =
 									ranks.into_iter().map(|v| v as u8).collect::<HashSet<_>>();
@@ -320,11 +341,9 @@ impl FromKDL for Spellcasting {
 								let tags =
 									tags.into_iter().map(str::to_owned).collect::<HashSet<_>>();
 								Some(spellcasting::Filter {
-									can_cast,
 									ranks,
 									tags,
-									max_rank: None,
-									ritual: None,
+									..Default::default()
 								})
 							};
 						}
@@ -340,6 +359,7 @@ impl FromKDL for Spellcasting {
 					Some(node) => Some(LimitedUses::from_kdl(node, &mut ctx.next_node())?),
 				};
 				Operation::AddPrepared {
+					ability,
 					classified_as,
 					specific_spells,
 					selectable_spells,
@@ -350,16 +370,16 @@ impl FromKDL for Spellcasting {
 				return Err(NotInList(name.into(), vec!["add_source", "add_prepared"]).into())
 			}
 		};
-		Ok(Self { ability, operation })
+		Ok(Self(operation))
 	}
 }
 // TODO AsKdl: tests for Spellcasting
 impl AsKdl for Spellcasting {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
-		node.push_entry(("ability", self.ability.long_name()));
-		match &self.operation {
+		match &self.0 {
 			Operation::Caster(caster) => {
+				node.push_entry(("ability", caster.ability.long_name()));
 				node.push_entry(("class", caster.class_name.clone()));
 				node.push_child({
 					let mut node = NodeBuilder::default();
@@ -426,21 +446,26 @@ impl AsKdl for Spellcasting {
 				node.push_child_t("slots", &caster.slots);
 				node
 			}
-			Operation::AddSource => {
+			Operation::AddSource {
+				class_name,
+				spell_ids,
+			} => {
 				node.push_entry("add_source");
-				let spell_ids = Vec::<SourceId>::new(); // TODO: actually read from mutator
-				for spell_id in &spell_ids {
-					// TODO: Dont encode the basis that was applied during from_kdl
+				node.push_entry(("class", class_name.clone()));
+				for spell_id in spell_ids {
+					// TODO: SourceId should be provided the context of the module which is serializing them, so basis can be removed.
 					node.push_child_t("spell", spell_id);
 				}
 				node
 			}
 			Operation::AddPrepared {
+				ability,
 				classified_as,
 				specific_spells,
 				selectable_spells,
 				limited_uses,
 			} => {
+				node.push_entry(("ability", ability.long_name()));
 				node.push_entry("add_prepared");
 				if let Some(class_name) = classified_as {
 					node.push_entry(("classified_as", class_name.clone()));
@@ -464,9 +489,6 @@ impl AsKdl for Spellcasting {
 						if let Some(filter) = &selectable.selector.spell_filter {
 							node.push_child({
 								let mut node = NodeBuilder::default();
-								if let Some(can_cast) = &filter.can_cast {
-									node.push_entry(("can_cast", can_cast.clone()));
-								}
 								for rank in filter.ranks.iter().sorted() {
 									node.push_child_t("rank", rank);
 								}

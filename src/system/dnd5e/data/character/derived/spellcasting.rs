@@ -7,7 +7,7 @@ use crate::system::{
 };
 use multimap::MultiMap;
 use std::{
-	collections::{BTreeMap, HashMap},
+	collections::{BTreeMap, HashMap, HashSet},
 	path::PathBuf,
 };
 
@@ -24,15 +24,29 @@ pub use slots::*;
 
 #[derive(Clone, Default, PartialEq, Debug)]
 pub struct Spellcasting {
-	// Output goals:
-	// - cantrip capacity
-	// - cantrips prepared
-	// - spell slot map (rank to slot capacity and number used)
-	// - spell capacity (number of spells that can be prepared/known)
-	// - spells prepared (or known)
+	/// The spellcasting features available to a character.
+	/// Each feature contains things like the spellcasting ability,
+	/// ritual casting, cantrip capacity, leveled-spell capacity, slot scaling, etc.
+	/// Keyed by the Caster's name/id.
 	casters: HashMap<String, Caster>,
+	/// Any additional spells that are available to a particular casting feature/class.
+	/// Each entry is a list of additional Spell SourceIds, and the feature which granted that access.
+	/// Spells in this list are made available to be selected (known or prepared) by casters,
+	/// even if that spell is not tagged with this caster/class name.
+	/// When these spells are selected, they are treated as if they are spells that class/caster can traditionally cast.
+	/// Keyed by the Caster's name/id.
+	additional_caster_spells: AdditionalAccess,
+	/// Map of Spell SourceIds to the cached spell and the sources+entries which granted access.
+	/// Spells in this list are always castable/prepared.
 	always_prepared: HashMap<SourceId, AlwaysPreparedSpell>,
+	/// A cache of spells queried from the data provider which casters can ritual cast.
 	ritual_spells: RitualSpellCache,
+}
+
+#[derive(Clone, Default, PartialEq, Debug)]
+pub struct AdditionalAccess {
+	by_caster: MultiMap<String, SourceId>,
+	sources: MultiMap<SourceId, PathBuf>,
 }
 
 #[derive(Clone, Default, PartialEq, Debug)]
@@ -50,6 +64,22 @@ pub struct RitualSpellCache {
 impl Spellcasting {
 	pub fn add_caster(&mut self, caster: Caster) {
 		self.casters.insert(caster.name().clone(), caster);
+	}
+
+	pub fn add_spell_access(
+		&mut self,
+		caster_name: &String,
+		spell_ids: &Vec<SourceId>,
+		source: &std::path::Path,
+	) {
+		for spell_id in spell_ids {
+			self.additional_caster_spells
+				.by_caster
+				.insert(caster_name.clone(), spell_id.clone());
+			self.additional_caster_spells
+				.sources
+				.insert(spell_id.clone(), source.to_owned());
+		}
 	}
 
 	pub fn add_prepared(&mut self, spell_id: &SourceId, entry: SpellEntry) {
@@ -93,6 +123,7 @@ impl Spellcasting {
 		persistent: &Persistent,
 	) -> anyhow::Result<RitualSpellCache> {
 		use crate::database::app::Criteria;
+		use crate::kdl_ext::KDLNode;
 		use crate::system::{core::System, dnd5e::DnD5e};
 		use futures_util::StreamExt;
 
@@ -106,26 +137,36 @@ impl Spellcasting {
 				continue;
 			}
 
-			let mut filter = caster.spell_filter(persistent);
+			let mut filter = self
+				.get_filter(caster.name(), persistent)
+				.unwrap_or_default();
 			// each spell the filter matches must be a ritual
 			filter.ritual = Some(true);
 
-			caster_query_criteria.push(filter.as_criteria());
-			caster_filters.insert(caster.name(), filter);
+			let criteria = filter.as_criteria();
+			caster_query_criteria.push(criteria.clone());
+			caster_filters.insert(caster.name(), criteria);
 		}
 		let criteria = Criteria::Any(caster_query_criteria);
 
 		let db = provider.database.clone();
-		let depot = provider.system_depot.clone();
-		let query_async = db.query_typed::<Spell>(DnD5e::id(), depot, Some(criteria.into()));
+		let node_reg = {
+			let system_reg = provider
+				.system_depot
+				.get(&DnD5e::id())
+				.expect("Missing system dnd5e in depot");
+			system_reg.node()
+		};
+		let query_async = db.query_entries(DnD5e::id(), Spell::id(), Some(criteria.into()));
 		let query_stream_res = query_async.await;
 		let mut query_stream = query_stream_res.map_err(crate::database::Error::from)?;
 
 		let mut ritual_spell_cache = HashMap::new();
 		let mut caster_ritual_list_cache = MultiMap::new();
-		while let Some(spell) = query_stream.next().await {
-			for (caster_id, filter) in &caster_filters {
-				if filter.spell_matches(&spell) {
+		while let Some(entry) = query_stream.next().await {
+			let Some(spell) = entry.parse_kdl::<Spell>(node_reg.clone()) else { continue; };
+			for (caster_id, criteria) in &caster_filters {
+				if criteria.is_relevant(&entry.metadata) {
 					caster_ritual_list_cache.insert((*caster_id).clone(), spell.id.unversioned());
 				}
 			}
@@ -241,5 +282,19 @@ impl Spellcasting {
 
 	pub fn get_ritual(&self, spell_id: &SourceId) -> Option<&Spell> {
 		self.ritual_spells.spells.get(spell_id)
+	}
+
+	pub fn get_filter(&self, id: &str, persistent: &Persistent) -> Option<Filter> {
+		let Some(caster) = self.get_caster(id) else { return None; };
+		let additional_ids = match self.additional_caster_spells.by_caster.get_vec(id) {
+			None => HashSet::new(),
+			Some(entries) => entries.iter().cloned().collect::<HashSet<_>>(),
+		};
+		Some(Filter {
+			tags: caster.restriction.tags.iter().cloned().collect(),
+			max_rank: caster.max_spell_rank(persistent),
+			additional_ids,
+			..Default::default()
+		})
 	}
 }

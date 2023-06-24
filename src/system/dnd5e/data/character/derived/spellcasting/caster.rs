@@ -1,4 +1,4 @@
-use super::{Filter, Slots, SpellEntry};
+use super::{Slots, SpellEntry};
 use crate::system::dnd5e::{
 	data::{
 		character::{Character, Persistent},
@@ -106,14 +106,5 @@ impl Caster {
 			max_rank = rank_to_count.keys().max().cloned();
 		}
 		max_rank
-	}
-
-	pub fn spell_filter(&self, persistent: &Persistent) -> Filter {
-		Filter {
-			can_cast: Some(self.name().clone()),
-			//tags: caster.restriction.tags.iter().cloned().collect(),
-			max_rank: self.max_spell_rank(persistent),
-			..Default::default()
-		}
 	}
 }

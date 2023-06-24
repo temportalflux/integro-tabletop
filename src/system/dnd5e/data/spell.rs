@@ -39,6 +39,7 @@ crate::impl_kdl_node!(Spell, "spell");
 impl SystemComponent for Spell {
 	fn to_metadata(self) -> serde_json::Value {
 		serde_json::json!({
+			"id": self.id.unversioned().to_string(),
 			"name": self.name.clone(),
 			"tags": self.tags.clone(),
 			"rank": self.rank,
