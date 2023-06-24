@@ -513,6 +513,19 @@ input.slot[type="checkbox"]:checked:before {
 		margin-top: 3px;
 	}
 }
+.modal.browse.objects .list > .section > .header {
+	display: inline-flex;
+	width: 100%;
+
+	> button.collapse_trigger::before {
+		margin-top: 3px;
+	}
+
+	> button.select {
+		margin-left: auto;
+		width: 85px;
+	}
+}
 button.collapse_trigger {
 	border: 0;
 	padding: 0;

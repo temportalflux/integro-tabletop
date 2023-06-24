@@ -1,5 +1,5 @@
-use crate::{database::app::Criteria, kdl_ext::KDLNode, system::dnd5e::components::GeneralProp};
-use std::{collections::HashMap, path::PathBuf, rc::Rc, str::FromStr};
+use crate::{database::app::Criteria, system::dnd5e::components::GeneralProp};
+use std::{collections::HashMap, path::PathBuf, rc::Rc, str::FromStr, sync::Arc};
 use yew::prelude::*;
 
 use super::modal;
@@ -19,10 +19,8 @@ pub struct Registry(Rc<HashMap<String, Box<dyn ObjectBrowser>>>);
 impl Registry {
 	fn new() -> Self {
 		let mut registry = HashMap::<_, Box<dyn ObjectBrowser>>::new();
-		registry.insert(
-			crate::system::dnd5e::data::Spell::id().to_owned(),
-			Box::new(SpellBrowser),
-		);
+		registry.insert(SpellBrowser::id().to_owned(), Box::new(SpellBrowser));
+		registry.insert(BundleBrowser::id().to_owned(), Box::new(BundleBrowser));
 		Self(Rc::new(registry))
 	}
 
@@ -37,6 +35,10 @@ impl PartialEq for Registry {
 }
 
 trait ObjectBrowser {
+	fn id() -> &'static str
+	where
+		Self: Sized;
+
 	fn modal(&self, props: &ModalProps) -> Html;
 }
 
@@ -77,6 +79,11 @@ fn Modal(props: &ModalProps) -> Html {
 
 struct SpellBrowser;
 impl ObjectBrowser for SpellBrowser {
+	fn id() -> &'static str {
+		use crate::kdl_ext::KDLNode;
+		crate::system::dnd5e::data::Spell::id()
+	}
+
 	fn modal(&self, props: &ModalProps) -> Html {
 		use crate::system::dnd5e::{
 			components::panel::{AvailableSpellList, HeaderAddon},
@@ -122,6 +129,96 @@ impl ObjectBrowser for SpellBrowser {
 				/>
 			</div>
 		</>}
+	}
+}
+
+struct BundleBrowser;
+impl ObjectBrowser for BundleBrowser {
+	fn id() -> &'static str {
+		use crate::kdl_ext::KDLNode;
+		crate::system::dnd5e::data::Bundle::id()
+	}
+
+	fn modal(&self, props: &ModalProps) -> Html {
+		html! {<>
+			<div class="modal-header">
+				<h1 class="modal-title fs-4">{"Browse Bundles"}</h1>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
+			</div>
+			<div class="modal-body list">
+				<BundleList
+					data_path={props.data_path.clone()}
+					capacity={props.capacity}
+					criteria={props.criteria.clone()}
+				/>
+			</div>
+		</>}
+	}
+}
+
+#[derive(Clone, PartialEq, Properties)]
+struct BundleListProps {
+	data_path: PathBuf,
+	capacity: usize,
+	criteria: Option<Criteria>,
+}
+#[function_component]
+fn BundleList(props: &BundleListProps) -> Html {
+	use crate::{
+		components::database::{use_query_all_typed, QueryAllArgs, QueryStatus},
+		system::{
+			core::System,
+			dnd5e::{components::editor::bundle_content, data::Bundle, DnD5e},
+		},
+	};
+
+	let fetch_bundles = use_query_all_typed::<Bundle>(
+		true,
+		Some(QueryAllArgs::<Bundle> {
+			system: DnD5e::id().into(),
+			criteria: props.criteria.clone().map(Box::new),
+			adjust_listings: Some(Arc::new(|mut bundles| {
+				bundles.sort_by(|a, b| a.name.cmp(&b.name));
+				bundles
+			})),
+			max_limit: None,
+		}),
+	);
+	match fetch_bundles.status() {
+		QueryStatus::Pending => html!(<crate::components::Spinner />),
+		QueryStatus::Empty | QueryStatus::Failed(_) => html!("No bundles available"),
+		QueryStatus::Success(bundles) => {
+			let mut htmls = Vec::new();
+			for bundle in bundles {
+				let collapse_id = format!("{}", bundle.id.ref_id());
+				htmls.push(html! {
+					<div class="section mb-1">
+						<div class="header mb-1">
+							<button
+								role="button" class={"collapse_trigger arrow_left collapsed"}
+								data-bs-toggle="collapse"
+								data-bs-target={format!("#{collapse_id}")}
+							>
+								{bundle.name.clone()}
+							</button>
+							<ObjectSelectorEntryButton
+								data_path={props.data_path.clone()}
+								id={bundle.id.unversioned()}
+								capacity={props.capacity}
+							/>
+						</div>
+						<div class="collapse mb-2" id={collapse_id}>
+							<div class="card">
+								<div class="card-body px-2 py-1">
+									{bundle_content(bundle)}
+								</div>
+							</div>
+						</div>
+					</div>
+				});
+			}
+			html!(<>{htmls}</>)
+		}
 	}
 }
 
@@ -213,7 +310,7 @@ fn ObjectSelectorEntryButton(props: &ObjectSelectorEntryButtonProps) -> Html {
 		}
 	});
 
-	let mut classes = classes!("btn", "btn-xs");
+	let mut classes = classes!("btn", "btn-xs", "select");
 	let disabled = !is_selected && !can_select_more;
 	classes.push(match is_selected {
 		true => "btn-outline-theme",
@@ -226,7 +323,6 @@ fn ObjectSelectorEntryButton(props: &ObjectSelectorEntryButtonProps) -> Html {
 	html! {
 		<button
 			type="button" class={classes}
-			style={"margin-left: auto; width: 85px;"}
 			{disabled} {onclick}
 		>
 			{match is_selected {
