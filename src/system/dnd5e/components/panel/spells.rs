@@ -11,7 +11,7 @@ use crate::{
 				CharacterHandle,
 			},
 			data::{
-				character::spellcasting::{CasterKind, RitualCapability, SpellEntry, SpellFilter},
+				character::spellcasting::{self, CasterKind, RitualCapability, SpellEntry},
 				proficiency, spell, Spell,
 			},
 			DnD5e,
@@ -1101,7 +1101,7 @@ fn spell_content(spell: &Spell, entry: &SpellEntry, state: &CharacterHandle) -> 
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct AvailableSpellListProps {
-	pub filter: SpellFilter,
+	pub filter: spellcasting::Filter,
 	pub entry: SpellEntry,
 	pub header_addon: HeaderAddon,
 }
@@ -1191,7 +1191,11 @@ struct FindRelevantSpells {
 	query: Option<QueryDeserialize<Spell>>,
 }
 impl FindRelevantSpells {
-	fn new(database: Database, system_depot: &system::Depot, filter: &SpellFilter) -> Self {
+	fn new(
+		database: Database,
+		system_depot: &system::Depot,
+		filter: &spellcasting::Filter,
+	) -> Self {
 		use crate::system::core::System;
 		let pending_query = database.query_typed::<Spell>(
 			DnD5e::id(),

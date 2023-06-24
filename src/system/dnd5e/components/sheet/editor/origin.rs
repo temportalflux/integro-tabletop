@@ -15,7 +15,7 @@ use crate::{
 			data::{
 				bundle::BundleRequirement,
 				character::{
-					spellcasting::{SpellEntry, SpellFilter},
+					spellcasting::{self, SpellEntry},
 					Persistent,
 				},
 				description, Bundle, Feature, Spell,
@@ -807,7 +807,7 @@ struct ModalObjectBrowserProps {
 	data_path: std::path::PathBuf,
 	category: AttrValue,
 	capacity: usize,
-	filter: Option<SpellFilter>,
+	filter: Option<spellcasting::Filter>,
 }
 #[function_component]
 fn ModalObjectBrowser(props: &ModalObjectBrowserProps) -> Html {

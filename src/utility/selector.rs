@@ -219,7 +219,7 @@ pub struct ObjectSelector {
 	category: String,
 	count: usize,
 	// TEMPORARY: Will need something more generic at some point
-	pub spell_filter: Option<crate::system::dnd5e::data::character::spellcasting::SpellFilter>,
+	pub spell_filter: Option<crate::system::dnd5e::data::character::spellcasting::Filter>,
 }
 impl ObjectSelector {
 	pub fn new(category: impl Into<String>, count: usize) -> Self {
@@ -315,7 +315,7 @@ pub enum SelectorOptions {
 		count: usize,
 		category: String,
 		// TEMPORARY
-		spell_filter: Option<crate::system::dnd5e::data::character::spellcasting::SpellFilter>,
+		spell_filter: Option<crate::system::dnd5e::data::character::spellcasting::Filter>,
 	},
 }
 

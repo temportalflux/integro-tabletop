@@ -5,10 +5,7 @@ use crate::{
 		dnd5e::data::{
 			action::LimitedUses,
 			character::{
-				spellcasting::{
-					Caster, Restriction, RitualCapability, Slots, SpellCapacity, SpellEntry,
-					SpellFilter,
-				},
+				spellcasting::{self, Caster, Restriction, RitualCapability, Slots, SpellEntry},
 				Character,
 			},
 			description,
@@ -228,7 +225,7 @@ impl FromKDL for Spellcasting {
 								let node = node.query_req("scope() > capacity")?;
 								ctx.parse_evaluator::<Character, i32>(node)?
 							};
-							SpellCapacity::Prepared(capacity)
+							spellcasting::Capacity::Prepared(capacity)
 						}
 						"Known" => {
 							let capacity = {
@@ -243,7 +240,7 @@ impl FromKDL for Spellcasting {
 								}
 								capacity
 							};
-							SpellCapacity::Known(capacity)
+							spellcasting::Capacity::Known(capacity)
 						}
 						name => {
 							return Err(NotInList(name.into(), vec!["Known", "Prepared"]).into());
@@ -322,7 +319,7 @@ impl FromKDL for Spellcasting {
 								let tags = node.query_str_all("scope() > tag", 0)?;
 								let tags =
 									tags.into_iter().map(str::to_owned).collect::<HashSet<_>>();
-								Some(SpellFilter {
+								Some(spellcasting::Filter {
 									can_cast,
 									ranks,
 									tags,
@@ -400,7 +397,7 @@ impl AsKdl for Spellcasting {
 				node.push_child({
 					let mut node = NodeBuilder::default();
 					match &caster.spell_capacity {
-						SpellCapacity::Prepared(eval) => {
+						spellcasting::Capacity::Prepared(eval) => {
 							node.push_entry("Prepared");
 							node.push_child({
 								let mut node = NodeBuilder::default();
@@ -408,7 +405,7 @@ impl AsKdl for Spellcasting {
 								node.build("capacity")
 							});
 						}
-						SpellCapacity::Known(level_map) => {
+						spellcasting::Capacity::Known(level_map) => {
 							node.push_entry("Known");
 							node.push_child_opt({
 								let mut node = NodeBuilder::default();

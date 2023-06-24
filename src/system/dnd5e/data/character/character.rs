@@ -495,7 +495,9 @@ impl Character {
 	}
 
 	pub fn add_starting_equipment(&mut self, entries: &Vec<StartingEquipment>, source: &Path) {
-		self.derived.starting_equipment.push((entries.clone(), source.to_owned()));
+		self.derived
+			.starting_equipment
+			.push((entries.clone(), source.to_owned()));
 	}
 }
 
