@@ -96,11 +96,11 @@ impl Spellcasting {
 
 	pub async fn fetch_spell_objects(
 		&mut self,
-		provider: ObjectCacheProvider,
+		provider: &ObjectCacheProvider,
 		persistent: &Persistent,
 	) -> anyhow::Result<()> {
-		self.fetch_always_prepared(&provider).await?;
-		self.ritual_spells = self.fetch_rituals(&provider, persistent).await?;
+		self.fetch_always_prepared(provider).await?;
+		self.ritual_spells = self.fetch_rituals(provider, persistent).await?;
 		Ok(())
 	}
 

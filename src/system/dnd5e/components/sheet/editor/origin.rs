@@ -54,19 +54,7 @@ pub fn OriginTab() -> Html {
 		</div>
 	};
 
-	// STUB: remove after testing (i.e. when I add the bundle selector mutator)
-	use crate::kdl_ext::KDLNode;
 	html! {<>
-		<SelectorField meta={SelectorMeta {
-			name: "Test Bundle Selector".into(),
-			data_path: std::path::PathBuf::from("BundleTest"),
-			options: SelectorOptions::Object {
-				count: 1,
-				category: Bundle::id().into(),
-				criteria: Some(Criteria::contains_prop("category", Criteria::exact("Feat"))),
-			},
-		}} />
-
 		{lineages_switch}
 		<CharacterContent />
 		<CategoryBrowser use_lineages={*use_lineages} />
@@ -360,6 +348,7 @@ fn AvailableBundle(GeneralProp { value: bundle }: &GeneralProp<Bundle>) -> Html 
 	}
 }
 pub fn bundle_content(bundle: &Bundle) -> Html {
+	// TODO: Show the requirements in the description
 	html! {<>
 		<div class="text-block">
 			<DescriptionSection section={bundle.description.clone()} show_selectors={false} />

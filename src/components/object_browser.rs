@@ -189,6 +189,7 @@ fn BundleList(props: &BundleListProps) -> Html {
 		QueryStatus::Empty | QueryStatus::Failed(_) => html!("No bundles available"),
 		QueryStatus::Success(bundles) => {
 			let mut htmls = Vec::new();
+			// TODO: Disable bundles whose requirements are not met
 			for bundle in bundles {
 				let collapse_id = format!("{}", bundle.id.ref_id());
 				htmls.push(html! {

@@ -58,12 +58,11 @@ fn use_character(id: SourceId) -> CharacterHandle {
 				let default_blocks = defaults_stream.all().await;
 
 				let mut character = Character::new(persistent, default_blocks);
-				character.recompile();
 				let provider = ObjectCacheProvider {
 					database: handle.database.clone(),
 					system_depot: handle.system_depot.clone(),
 				};
-				if let Err(err) = character.update_cached_objects(provider).await {
+				if let Err(err) = character.recompile(provider).await {
 					log::warn!("Encountered error updating cached character objects: {err:?}");
 				}
 				handle.state.set(CharacterState::Loaded(character));
@@ -193,12 +192,11 @@ impl CharacterHandle {
 		let signal = self
 			.task_dispatch
 			.spawn("Recompile Character", None, async move {
-				character.recompile();
 				let provider = ObjectCacheProvider {
 					database: handle.database.clone(),
 					system_depot: handle.system_depot.clone(),
 				};
-				if let Err(err) = character.update_cached_objects(provider).await {
+				if let Err(err) = character.recompile(provider).await {
 					log::warn!("Encountered error updating cached character objects: {err:?}");
 				}
 				handle.state.set(CharacterState::Loaded(character));

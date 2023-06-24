@@ -4,6 +4,9 @@ pub use ability_score::*;
 mod action_budget;
 pub use action_budget::*;
 
+mod add_bundle;
+pub use add_bundle::*;
+
 mod armor_class;
 pub use armor_class::*;
 

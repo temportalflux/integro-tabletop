@@ -58,7 +58,7 @@ impl From<Persistent> for Character {
 			derived: Derived::default(),
 			mutators: Vec::new(),
 		};
-		character.recompile();
+		character.recompile_minimal();
 		character
 	}
 }
@@ -77,26 +77,54 @@ impl Character {
 		self.mutators.clear();
 	}
 
-	pub fn recompile(&mut self) {
+	#[cfg(test)]
+	fn recompile_minimal(&mut self) {
+		self.initiaize_recompile();
+		self.insert_mutators();
+		self.apply_cached_mutators();
+	}
+
+	fn initiaize_recompile(&mut self) {
 		self.character.set_data_path(&PathBuf::new());
-		self.derived = Derived::default();
-		self.mutators.clear();
+		self.clear_derived();
+	}
+
+	fn insert_mutators(&mut self) {
 		for defaults in self.default_blocks.clone() {
 			self.apply_from(&defaults, &PathBuf::new());
 		}
 		self.apply_from(&self.character.clone(), &PathBuf::new());
-		self.apply_cached_mutators();
 	}
 
 	// TODO: Decouple database+system_depot from dnd data - there can be an abstraction/trait
 	// which specifies the minimal API for getting a cached object from a database of content
-	pub async fn update_cached_objects(
-		&mut self,
-		provider: ObjectCacheProvider,
-	) -> anyhow::Result<()> {
+	pub async fn recompile(&mut self, provider: ObjectCacheProvider) -> anyhow::Result<()> {
+		self.initiaize_recompile();
+		self.insert_mutators();
+
+		let mut cache_loops = 0usize;
+		let mut cache = super::AdditionalBundleCache::default();
+		while self.derived.additional_bundles.has_pending_objects() {
+			if cache_loops > 3 {
+				log::error!(target: "derived",
+					"Hit max number of recursive bundle processing loops. \
+					There is likely a recursive loop of bundles and mutators adding each \
+					other causing excessive adding of additional bundles."
+				);
+				break;
+			}
+			cache += std::mem::take(&mut self.derived.additional_bundles);
+			cache.update_objects(&provider).await?;
+			cache.apply_mutators(self);
+			cache_loops += 1;
+		}
+		self.derived.additional_bundles = cache;
+
+		self.apply_cached_mutators();
+
 		self.derived
 			.spellcasting
-			.fetch_spell_objects(provider, &self.character)
+			.fetch_spell_objects(&provider, &self.character)
 			.await?;
 		Ok(())
 	}
@@ -390,6 +418,12 @@ impl Character {
 
 	pub fn other_proficiencies_mut(&mut self) -> &mut OtherProficiencies {
 		&mut self.derived.other_proficiencies
+	}
+
+	pub fn add_bundles(&mut self, bundle_ids: Vec<SourceId>, parent_path: &Path) {
+		self.derived
+			.additional_bundles
+			.insert(bundle_ids, parent_path);
 	}
 
 	pub fn add_feature(&mut self, feature: &Feature, parent_path: &Path) {

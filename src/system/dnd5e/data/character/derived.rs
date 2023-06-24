@@ -12,6 +12,8 @@ mod ability_score;
 pub use ability_score::*;
 mod actions;
 pub use actions::*;
+mod bundle_cache;
+pub use bundle_cache::*;
 mod sense;
 pub use sense::*;
 mod size;
@@ -44,6 +46,7 @@ pub struct Derived {
 	pub flags: EnumMap<Flag, bool>,
 	pub spellcasting: Spellcasting,
 	pub starting_equipment: Vec<(Vec<StartingEquipment>, PathBuf)>,
+	pub additional_bundles: AdditionalBundleCache,
 }
 
 impl Default for Derived {
@@ -66,6 +69,7 @@ impl Default for Derived {
 			},
 			spellcasting: Default::default(),
 			starting_equipment: Default::default(),
+			additional_bundles: Default::default(),
 		}
 	}
 }
