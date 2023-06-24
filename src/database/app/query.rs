@@ -3,7 +3,7 @@ use crate::{database::Cursor, kdl_ext::FromKDL, system::core::NodeRegistry};
 use futures_util::StreamExt;
 use std::{pin::Pin, sync::Arc, task::Poll};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Criteria {
 	/// Passes if the value being evaluated is equal to an expected value.
 	Exact(serde_json::Value),

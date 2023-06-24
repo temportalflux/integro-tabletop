@@ -218,8 +218,7 @@ pub struct ObjectSelector {
 	id: IdPath,
 	category: String,
 	count: usize,
-	// TEMPORARY: Will need something more generic at some point
-	pub spell_filter: Option<crate::system::dnd5e::data::character::spellcasting::Filter>,
+	criteria: Option<crate::database::app::Criteria>,
 }
 impl ObjectSelector {
 	pub fn new(category: impl Into<String>, count: usize) -> Self {
@@ -227,7 +226,7 @@ impl ObjectSelector {
 			id: IdPath::default(),
 			category: category.into(),
 			count,
-			spell_filter: None,
+			criteria: None,
 		}
 	}
 
@@ -241,6 +240,14 @@ impl ObjectSelector {
 
 	pub fn count(&self) -> usize {
 		self.count
+	}
+
+	pub fn set_criteria(&mut self, criteria: crate::database::app::Criteria) {
+		self.criteria = Some(criteria);
+	}
+
+	pub fn criteria(&self) -> Option<&crate::database::app::Criteria> {
+		self.criteria.as_ref()
 	}
 }
 
@@ -314,8 +321,7 @@ pub enum SelectorOptions {
 	Object {
 		count: usize,
 		category: String,
-		// TEMPORARY
-		spell_filter: Option<crate::system::dnd5e::data::character::spellcasting::Filter>,
+		criteria: Option<crate::database::app::Criteria>,
 	},
 }
 
@@ -389,7 +395,7 @@ impl SelectorOptions {
 		Some(Self::Object {
 			count: selector.count(),
 			category: selector.category.clone(),
-			spell_filter: selector.spell_filter.clone(),
+			criteria: selector.criteria.clone(),
 		})
 	}
 }

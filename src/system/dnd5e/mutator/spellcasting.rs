@@ -65,6 +65,7 @@ pub struct PreparedInfo {
 }
 #[derive(Clone, Debug, PartialEq)]
 pub struct SelectableSpells {
+	pub filter: Option<spellcasting::Filter>,
 	/// For all prepared spells which allow the user to select them, this is the selector that is used.
 	pub selector: ObjectSelector,
 	pub prepared: PreparedInfo,
@@ -87,7 +88,8 @@ impl Mutator for Spellcasting {
 			},
 			Operation::AddPrepared {
 				ability,
-				selectable_spells, ..
+				selectable_spells,
+				..
 			} => {
 				let mut selectors = SelectorMetaVec::default();
 				if let Some(selectable) = selectable_spells {
@@ -331,23 +333,27 @@ impl FromKDL for Spellcasting {
 						let mut ctx = ctx.next_node();
 						let count = node.get_i64_req(ctx.consume_idx())? as usize;
 						let info = PreparedInfo::from_kdl(node, &mut ctx)?;
+						let mut filter = None;
 						let mut selector = ObjectSelector::new(Spell::id(), count);
 						if let Some(node) = node.query_opt("scope() > filter")? {
-							selector.spell_filter = {
+							let spell_filter = {
 								let ranks = node.query_i64_all("scope() > rank", 0)?;
 								let ranks =
 									ranks.into_iter().map(|v| v as u8).collect::<HashSet<_>>();
 								let tags = node.query_str_all("scope() > tag", 0)?;
 								let tags =
 									tags.into_iter().map(str::to_owned).collect::<HashSet<_>>();
-								Some(spellcasting::Filter {
+								spellcasting::Filter {
 									ranks,
 									tags,
 									..Default::default()
-								})
+								}
 							};
+							selector.set_criteria(spell_filter.as_criteria());
+							filter = Some(spell_filter);
 						}
 						Some(SelectableSpells {
+							filter,
 							selector,
 							prepared: info,
 						})
@@ -486,7 +492,7 @@ impl AsKdl for Spellcasting {
 						let mut node = NodeBuilder::default();
 						node.push_entry(selectable.selector.count() as i64);
 						node += selectable.prepared.as_kdl();
-						if let Some(filter) = &selectable.selector.spell_filter {
+						if let Some(filter) = &selectable.filter {
 							node.push_child({
 								let mut node = NodeBuilder::default();
 								for rank in filter.ranks.iter().sorted() {

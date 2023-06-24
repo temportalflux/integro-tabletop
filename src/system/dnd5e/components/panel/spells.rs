@@ -11,7 +11,7 @@ use crate::{
 				CharacterHandle,
 			},
 			data::{
-				character::spellcasting::{self, CasterKind, RitualCapability, SpellEntry},
+				character::spellcasting::{CasterKind, RitualCapability, SpellEntry},
 				proficiency, spell, Spell,
 			},
 			DnD5e,
@@ -733,7 +733,7 @@ fn ManagerCasterModal(CasterNameProps { caster_id }: &CasterNameProps) -> Html {
 								}
 							}
 						})}
-						filter={filter.clone()}
+						criteria={filter.as_criteria()}
 						entry={caster.spell_entry.clone()}
 					/>
 				</CollapsableCard>
@@ -1105,7 +1105,7 @@ fn spell_content(spell: &Spell, entry: &SpellEntry, state: &CharacterHandle) -> 
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct AvailableSpellListProps {
-	pub filter: spellcasting::Filter,
+	pub criteria: Option<crate::database::app::Criteria>,
 	pub entry: SpellEntry,
 	pub header_addon: HeaderAddon,
 }
@@ -1134,7 +1134,7 @@ pub fn AvailableSpellList(props: &AvailableSpellListProps) -> Html {
 	let load_data = use_async_with_options(
 		{
 			let AvailableSpellListProps {
-				filter,
+				criteria,
 				entry,
 				header_addon,
 			} = props.clone();
@@ -1150,7 +1150,8 @@ pub fn AvailableSpellList(props: &AvailableSpellListProps) -> Html {
 				let mut htmls = Vec::new();
 
 				//let parsing_time = wasm_timer::Instant::now();
-				let mut stream = FindRelevantSpells::new(database.clone(), &system_depot, &filter);
+				let mut stream =
+					FindRelevantSpells::new(database.clone(), &system_depot, criteria.clone());
 				while let Some(spell) = stream.next().await {
 					// Insertion sort by rank & name
 					let idx = sorted_info
@@ -1198,13 +1199,13 @@ impl FindRelevantSpells {
 	fn new(
 		database: Database,
 		system_depot: &system::Depot,
-		filter: &spellcasting::Filter,
+		criteria: Option<crate::database::app::Criteria>,
 	) -> Self {
 		use crate::system::core::System;
 		let pending_query = database.query_typed::<Spell>(
 			DnD5e::id(),
 			system_depot.clone(),
-			Some(filter.as_criteria().into()),
+			criteria.map(|criteria| criteria.into()),
 		);
 		Self {
 			pending_query: Some(Box::pin(pending_query)),

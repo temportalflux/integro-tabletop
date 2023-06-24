@@ -14,10 +14,7 @@ use crate::{
 			components::{CharacterHandle, GeneralProp},
 			data::{
 				bundle::BundleRequirement,
-				character::{
-					spellcasting::{self, SpellEntry},
-					Persistent,
-				},
+				character::{spellcasting::SpellEntry, Persistent},
 				description, Bundle, Feature, Spell,
 			},
 			DnD5e,
@@ -717,22 +714,22 @@ fn SelectorField(
 		SelectorOptions::Object {
 			category,
 			count: capacity,
-			spell_filter,
+			criteria,
 		} => {
 			let browse = modal_dispatcher.callback({
 				let data_path = data_path.clone();
 				let category: AttrValue = category.clone().into();
 				let capacity = *capacity;
-				let spell_filter = spell_filter.clone();
+				let criteria = criteria.clone();
 				move |_| {
 					let data_path = data_path.clone();
 					let category = category.clone();
-					let filter = spell_filter.clone();
+					let criteria = criteria.clone();
 					modal::Action::Open(modal::Props {
 						centered: true,
 						scrollable: true,
 						root_classes: classes!("browse", "objects"),
-						content: html! {<ModalObjectBrowser {data_path} {category} {capacity} {filter} />},
+						content: html! {<ModalObjectBrowser {data_path} {category} {capacity} {criteria} />},
 						..Default::default()
 					})
 				}
@@ -807,7 +804,7 @@ struct ModalObjectBrowserProps {
 	data_path: std::path::PathBuf,
 	category: AttrValue,
 	capacity: usize,
-	filter: Option<spellcasting::Filter>,
+	criteria: Option<Criteria>,
 }
 #[function_component]
 fn ModalObjectBrowser(props: &ModalObjectBrowserProps) -> Html {
@@ -855,7 +852,7 @@ fn ModalObjectBrowser(props: &ModalObjectBrowserProps) -> Html {
 		<div class="modal-body spell-list">
 			<AvailableSpellList
 				{header_addon}
-				filter={props.filter.clone().unwrap_or_default()}
+				criteria={props.criteria.clone()}
 				entry={spell_entry}
 			/>
 		</div>
