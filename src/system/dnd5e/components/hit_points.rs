@@ -122,8 +122,8 @@ pub fn HitPointMgmtCard() -> Html {
 	});
 	let current_hp = state.get_hp(HitPoint::Current);
 	html! {
-		<div class="card m-1 hit-points" style="height: 80px;">
-			<div class="card-body" style="padding: 5px 5px;">
+		<div class="card m-1 hit-points">
+			<div class="card-body">
 				{match current_hp > 0 {
 					true => html! { <HitPointsBody {on_open_modal} /> },
 					false => html! { <DeathSavesBody {on_open_modal} /> },

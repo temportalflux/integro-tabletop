@@ -1,6 +1,6 @@
 use crate::{
 	auth,
-	components::{Nav, NavDisplay, TabContent},
+	components::{use_media_query, Nav, NavDisplay, TabContent},
 	database::app::{Database, Entry},
 	system::{
 		core::{ModuleId, SourceId},
@@ -81,6 +81,39 @@ pub fn SheetDisplay(SheetDisplayProps { open_editor }: &SheetDisplayProps) -> Ht
 			});
 		}
 	});
+
+	let is_large_page = use_media_query("(min-width: 1400px)");
+	let above_panels_content = html! {<>
+		<div class="row m-0" style="--bs-gutter-x: 0;">
+			<div class="col-auto col-xxl">
+				<div class="d-flex align-items-center justify-content-around" style="height: 100%;">
+					{is_large_page.then(|| html!(<ProfBonus />)).unwrap_or_default()}
+					<InitiativeBonus />
+					<ArmorClass />
+					<Inspiration />
+				</div>
+			</div>
+			<div class="col">
+				<HitPointMgmtCard />
+			</div>
+		</div>
+		<div class="row m-0" style="--bs-gutter-x: 0;">
+			{(!*is_large_page).then(|| html! {
+				<div class="col-auto">
+					<div class="d-flex align-items-center" style="height: 100%;">
+						<ProfBonus />
+					</div>
+				</div>
+			}).unwrap_or_default()}
+			<div class="col">
+				<DefensesCard />
+			</div>
+			<div class="col">
+				<ConditionsCard />
+			</div>
+		</div>
+	</>};
+
 	html! {
 		<div class="container overflow-hidden">
 			<div class="d-flex border-bottom-theme-muted mt-1 mb-2 px-3 pb-1">
@@ -124,31 +157,7 @@ pub fn SheetDisplay(SheetDisplayProps { open_editor }: &SheetDisplayProps) -> Ht
 
 				</div>
 				<div class="col">
-					<div class="row m-0" style="--bs-gutter-x: 0;">
-						<div class="col-auto">
-							<div class="d-flex align-items-center" style="height: 100%;">
-								<InitiativeBonus />
-								<ArmorClass />
-								<Inspiration />
-							</div>
-						</div>
-						<div class="col">
-							<HitPointMgmtCard />
-						</div>
-					</div>
-					<div class="row m-0" style="--bs-gutter-x: 0;">
-						<div class="col-auto">
-							<div class="d-flex align-items-center" style="height: 100%;">
-								<ProfBonus />
-							</div>
-						</div>
-						<div class="col">
-							<DefensesCard />
-						</div>
-						<div class="col">
-							<ConditionsCard />
-						</div>
-					</div>
+					{above_panels_content}
 
 					<div class="card m-1" style="height: 550px;">
 						<div class="card-body" style="padding: 5px;">

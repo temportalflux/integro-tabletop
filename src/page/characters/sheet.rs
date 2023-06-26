@@ -1,5 +1,5 @@
 use crate::{
-	components::{modal, Spinner},
+	components::{modal, use_media_query, Spinner},
 	database::app::{Database, FetchError},
 	system::{
 		self,
@@ -238,9 +238,21 @@ impl CharacterHandle {
 	}
 }
 
+#[derive(Clone, Copy, PartialEq)]
+enum SheetPresentation {
+	OneSheet,
+	Pages,
+}
+
 #[function_component]
 pub fn Sheet(props: &GeneralProp<SourceId>) -> Html {
 	let character = use_character(props.value.clone());
+
+	let is_full_page = use_media_query("(min-width: 1200px)");
+	let presentation = match *is_full_page {
+		true => SheetPresentation::OneSheet,
+		false => SheetPresentation::Pages,
+	};
 
 	let show_editor = use_state_eq(|| false);
 	let open_viewer = Callback::from({
@@ -256,15 +268,19 @@ pub fn Sheet(props: &GeneralProp<SourceId>) -> Html {
 		return html!(<Spinner />);
 	}
 
+	let content = match presentation {
+		SheetPresentation::OneSheet => match *show_editor {
+			true => html! { <system::dnd5e::components::editor::SheetEditor {open_viewer} /> },
+			false => html! { <system::dnd5e::components::SheetDisplay {open_editor} /> },
+		},
+		SheetPresentation::Pages => html!("Paged content!"),
+	};
 	html! {<>
 		<ContextProvider<CharacterHandle> context={character.clone()}>
 			<div style="--theme-frame-color: #BA90CB; --theme-frame-color-muted: #BA90CB80; --theme-roll-modifier: #ffffff;">
 				<modal::Provider>
 					<modal::GeneralPurpose />
-					{match *show_editor {
-						true => html! { <system::dnd5e::components::editor::SheetEditor {open_viewer} /> },
-						false => html! { <system::dnd5e::components::SheetDisplay {open_editor} /> },
-					}}
+					{content}
 				</modal::Provider>
 			</div>
 		</ContextProvider<CharacterHandle>>

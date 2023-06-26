@@ -64,7 +64,7 @@ pub fn AnnotatedNumberCard(
 	}: &AnnotatedNumberCardProps,
 ) -> Html {
 	html! {
-		<div class="card m-1" style="width: 90px; height: 80px" onclick={on_click.as_ref().map(|callback| callback.reform(|_| ()))}>
+		<div class="card m-1 m-xxl-0" style="width: 90px; height: 80px" onclick={on_click.as_ref().map(|callback| callback.reform(|_| ()))}>
 			<div class="card-body text-center" style="padding: 5px 5px;">
 				<h6 class="card-title" style="font-size: 0.8rem;">{header.clone()}</h6>
 				<div style="font-size: 26px; font-weight: 500; margin: -8px 0;">

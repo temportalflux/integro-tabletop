@@ -51,7 +51,7 @@ pub fn ConditionsCard() -> Html {
 		})
 		.collect::<Vec<_>>();
 	html! {
-		<div class="card m-1" style="height: 85px;" {onclick}>
+		<div class="card m-1" style="height: 80px;" {onclick}>
 			<div class="card-body text-center" style="padding: 5px 5px;">
 				<h6 class="card-title mb-1" style="font-size: 0.8rem;">{"Conditions"}</h6>
 				<div class="d-flex justify-content-center pe-1" style="overflow: scroll; height: 53px;">

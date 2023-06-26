@@ -9,6 +9,19 @@
 	color: #adb5bd75;
 }
 
+// Scroll Bar
+::-webkit-scrollbar {
+	height: 5px;
+	width: 5px;
+}
+::-webkit-scrollbar-track, ::-webkit-scrollbar-corner {
+	background-color: rgba(0, 0, 0, 0.15);
+}
+::-webkit-scrollbar-thumb {
+	background-color: rgba(20, 20, 20, 1);
+	border-radius: 10px;
+}
+
 .text-block {
 	white-space: pre-line;
 }
@@ -330,6 +343,13 @@ button.sub:before {
 .death-save-label {
 	color: var(--bs-heading-color);
 	font-weight: 500;
+}
+.card.hit-points {
+	height: 80px;
+	
+	> .card-body {
+		padding: 5px 5px;
+	}
 }
 .card.hit-points .death-saves input[type="checkbox"] {
 	width: 20px;

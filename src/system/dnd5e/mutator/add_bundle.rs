@@ -3,11 +3,7 @@ use crate::{
 	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
 	system::{
 		core::SourceId,
-		dnd5e::data::{
-			character::Character,
-			description,
-			Bundle,
-		},
+		dnd5e::data::{character::Character, description, Bundle},
 	},
 	utility::{Mutator, ObjectSelector, SelectorMetaVec},
 };
