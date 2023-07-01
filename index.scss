@@ -776,3 +776,15 @@ button.collapse_trigger.arrow_right.collapsed::after {
 .panel.spells:has(> .caster-stats) > .sections {
 	height: 400px;
 }
+
+// All pages are always hidden
+.paged-display > .page {
+	display: none;
+}
+// unless the page is selected in the dropdown
+$Pages: Abilities, Proficiencies, Combat, Features, Spells, Inventory, Description;
+@each $Page in $Pages {
+	.paged-display:has(> select > option[value="#{$Page}"][selected="selected"]) > .page##{$Page} {
+		display: block;
+	}
+}

@@ -1,5 +1,5 @@
 use crate::{
-	components::{modal, use_media_query, Spinner},
+	components::{mobile, modal, Spinner},
 	system::{core::SourceId, dnd5e::components::GeneralProp},
 };
 use yew::prelude::*;
@@ -9,11 +9,6 @@ pub use handle::*;
 pub mod joined;
 pub mod paged;
 
-#[derive(Clone, Copy, PartialEq)]
-enum Presentation {
-	Joined,
-	Paged,
-}
 #[derive(Clone, Copy, PartialEq)]
 enum View {
 	Display,
@@ -29,11 +24,7 @@ pub struct ViewProps {
 pub fn Sheet(props: &GeneralProp<SourceId>) -> Html {
 	let character = use_character(props.value.clone());
 
-	let is_full_page = use_media_query("(min-width: 1200px)");
-	let presentation = match *is_full_page {
-		true => Presentation::Joined,
-		false => Presentation::Paged,
-	};
+	let screen_size = mobile::use_mobile_kind();
 	let view_handle = use_state_eq(|| View::Display);
 	let swap_view = Callback::from({
 		let view_handle = view_handle.clone();
@@ -49,17 +40,17 @@ pub fn Sheet(props: &GeneralProp<SourceId>) -> Html {
 		return html!(<Spinner />);
 	}
 
-	let content = match (presentation, *view_handle) {
-		(Presentation::Joined, View::Display) => {
+	let content = match (screen_size, *view_handle) {
+		(mobile::Kind::Desktop, View::Display) => {
 			html!(<joined::Display {swap_view} />)
 		}
-		(Presentation::Joined, View::Editor) => {
+		(mobile::Kind::Desktop, View::Editor) => {
 			html!(<joined::editor::Editor {swap_view} />)
 		}
-		(Presentation::Paged, View::Display) => {
+		(mobile::Kind::Mobile, View::Display) => {
 			html!(<paged::Display {swap_view} />)
 		}
-		(Presentation::Paged, View::Editor) => {
+		(mobile::Kind::Mobile, View::Editor) => {
 			html!("Paged Editor TODO")
 		}
 	};

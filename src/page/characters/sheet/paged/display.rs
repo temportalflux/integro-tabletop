@@ -1,9 +1,10 @@
-use std::str::FromStr;
-
 use crate::{
-	page::characters::sheet::ViewProps, system::dnd5e::components::GeneralProp, utility::{NotInList, InputExt},
+	page::characters::sheet::ViewProps,
+	system::dnd5e::components::GeneralProp,
+	utility::{InputExt, NotInList},
 };
 use enumset::{EnumSet, EnumSetType};
+use std::str::FromStr;
 use yew::prelude::*;
 
 /*
@@ -35,6 +36,8 @@ Mobile-First Pages:
 - Description
 */
 
+pub mod abilities;
+
 #[derive(EnumSetType, Default)]
 enum Page {
 	#[default]
@@ -56,6 +59,18 @@ impl Page {
 			Self::Spells => "Spells",
 			Self::Inventory => "Inventory",
 			Self::Description => "Description",
+		}
+	}
+
+	fn page_html(&self) -> Html {
+		match self {
+			Self::Abilities => html!(<abilities::Page />),
+			Self::Proficiencies => html!(),
+			Self::Combat => html!(),
+			Self::Features => html!(),
+			Self::Spells => html!(),
+			Self::Inventory => html!(),
+			Self::Description => html!(),
 		}
 	}
 }
@@ -106,7 +121,10 @@ fn PageSelect(props: &GeneralProp<UseStateHandle<Page>>) -> Html {
 	let onchange = Callback::from({
 		let handle = props.value.clone();
 		move |evt: web_sys::Event| {
-			let value = evt.select_value().map(|s| Page::from_str(&s).ok()).flatten();
+			let value = evt
+				.select_value()
+				.map(|s| Page::from_str(&s).ok())
+				.flatten();
 			handle.set(value.unwrap_or_default());
 		}
 	});
@@ -120,14 +138,17 @@ fn PageSelect(props: &GeneralProp<UseStateHandle<Page>>) -> Html {
 }
 
 #[function_component]
-pub fn Display(ViewProps { swap_view }: &ViewProps) -> Html {
+pub fn Display(ViewProps { swap_view: _ }: &ViewProps) -> Html {
 	let page_handle = use_state_eq(|| Page::default());
 
 	html! {
-		<div>
-			{"Paged Display"}
+		<div class="m-1 paged-display">
 			<PageSelect value={page_handle.clone()} />
-			{page_handle.display_name()}
+			{EnumSet::<Page>::all().into_iter().map(|page| html! {
+				<div class="page" id={page.to_string()}>
+					{page.page_html()}
+				</div>
+			}).collect::<Vec<_>>()}
 		</div>
 	}
 }

@@ -1,6 +1,9 @@
 use crate::{
-	bootstrap::components::Tooltip, components::modal, page::characters::sheet::CharacterHandle,
-	system::dnd5e::components::roll::ModifierIcon, system::dnd5e::data::Ability,
+	bootstrap::components::Tooltip,
+	components::modal,
+	page::characters::sheet::CharacterHandle,
+	system::dnd5e::components::roll::ModifierIcon,
+	system::dnd5e::data::{character::ModifierMapItem, roll::Modifier, Ability},
 };
 use enumset::EnumSet;
 use yew::prelude::*;
@@ -43,7 +46,7 @@ pub fn SavingThrow(
 	}: &SavingThrowProps,
 ) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let proficiency = &state.saving_throws().get_prof(*ability);
+	let proficiency = state.saving_throws().get_prof(*ability);
 	let modifier = state.ability_modifier(*ability, Some(*proficiency.value()));
 	let mod_sign = match modifier >= 0 {
 		true => "+",
@@ -74,7 +77,6 @@ pub fn SavingThrow(
 
 #[function_component]
 pub fn SavingThrowContainer() -> Html {
-	let state = use_context::<CharacterHandle>().unwrap();
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 
 	let on_click = modal_dispatcher.callback({
@@ -113,27 +115,73 @@ pub fn SavingThrowContainer() -> Html {
 						</table>
 					</div>
 				</div>
-				<div style="font-size: 11px;">
-					{state.saving_throws().iter_modifiers().map(|(ability, modifier, item)| {
-						let style="height: 14px; margin-right: 2px; margin-top: -2px; width: 14px; vertical-align: middle;";
-						html! {
-							<Tooltip content={crate::data::as_feature_path_text(&item.source)}>
-								<span class="d-inline-flex" aria-label="Advantage" {style}>
-									<ModifierIcon value={modifier} />
-								</span>
-								{ability.map(|ability| html! {
-									<span>{"on "}{ability.abbreviated_name().to_uppercase()}</span>
-								}).unwrap_or_default()}
-								<span>
-									{item.context.as_ref().map(|target| format!(" against {target}")).unwrap_or_default()}
-								</span>
-							</Tooltip>
-						}
-					}).collect::<Vec<_>>()}
-				</div>
+				<SavingThrowModifiers show_tooltip={true} />
 			</div>
 		</div>
 	}
+}
+
+#[derive(Clone, PartialEq, Properties)]
+pub struct ModifiersProps {
+	#[prop_or_default]
+	pub show_tooltip: bool,
+	#[prop_or_default]
+	pub show_none_label: bool,
+}
+
+#[function_component]
+pub fn SavingThrowModifiers(
+	ModifiersProps {
+		show_tooltip,
+		show_none_label,
+	}: &ModifiersProps,
+) -> Html {
+	let state = use_context::<CharacterHandle>().unwrap();
+	let modifiers = state
+		.saving_throws()
+		.iter_modifiers()
+		.map(|(ability, modifier, item)| {
+			let entry = saving_throw_modifier(ability, modifier, item);
+			if !*show_tooltip {
+				return html!(<div>{entry}</div>);
+			}
+			html! {
+				<Tooltip content={crate::data::as_feature_path_text(&item.source)}>
+					{entry}
+				</Tooltip>
+			}
+		})
+		.collect::<Vec<_>>();
+	let content = match (modifiers.is_empty(), *show_none_label) {
+		(false, _) => html! {<>{modifiers}</>},
+		(true, false) => html!(),
+		(true, true) => html!("None"),
+	};
+	html! {
+		<div style="font-size: 11px;">
+			{content}
+		</div>
+	}
+}
+
+pub fn saving_throw_modifier(
+	ability: Option<Ability>,
+	modifier: Modifier,
+	item: &ModifierMapItem,
+) -> Html {
+	let style =
+		"height: 14px; margin-right: 2px; margin-top: -2px; width: 14px; vertical-align: middle;";
+	html! {<>
+		<span class="d-inline-flex" aria-label="Advantage" {style}>
+			<ModifierIcon value={modifier} />
+		</span>
+		{ability.map(|ability| html! {
+			<span>{"on "}{ability.abbreviated_name().to_uppercase()}</span>
+		}).unwrap_or_default()}
+		<span>
+			{item.context.as_ref().map(|target| format!(" against {target}")).unwrap_or_default()}
+		</span>
+	</>}
 }
 
 #[function_component]

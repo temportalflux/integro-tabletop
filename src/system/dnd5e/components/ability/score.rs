@@ -1,9 +1,9 @@
 use crate::{
 	bootstrap::components::Tooltip,
-	components::{modal, AnnotatedNumber},
+	components::{mobile, modal, AnnotatedNumber},
 	page::characters::sheet::CharacterHandle,
 	system::dnd5e::{
-		components::ability::AbilityGlyph,
+		components::{ability::AbilityGlyph, roll::ModifierIcon},
 		data::{Ability, Skill},
 	},
 };
@@ -19,6 +19,7 @@ pub struct ScoreProps {
 pub fn Score(ScoreProps { ability }: &ScoreProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();
+	let screen_size = mobile::use_mobile_kind();
 
 	// TODO: Display roll modifiers for ability checks.
 	// Data is stored in `state.skills().iter_ability_modifiers()`
@@ -54,22 +55,111 @@ pub fn Score(ScoreProps { ability }: &ScoreProps) -> Html {
 			)
 		)
 	});
-	html! {
-		<div class="card ability-card m-1" style="border-color: var(--theme-frame-color-muted);">
-			<div class="card-body text-center" {onclick}>
-				<h6 class="card-title">{ability.long_name()}</h6>
-				<div class="primary-stat">
-					<AnnotatedNumber value={ability_score.score().modifier()} show_sign={true} />
+	let score_modifier = html! {
+		<AnnotatedNumber
+			value={ability_score.score().modifier()}
+			show_sign={true}
+		/>
+	};
+	match screen_size {
+		mobile::Kind::Desktop => html! {
+			<div class="card ability-card m-1" style="border-color: var(--theme-frame-color-muted);">
+				<div class="card-body text-center" {onclick}>
+					<h6 class="card-title">{ability.long_name()}</h6>
+					<div class="primary-stat">
+						{score_modifier}
+					</div>
+					<Tooltip classes={"secondary-stat"} content={tooltip} use_html={true}>
+						{*ability_score.score()}
+					</Tooltip>
 				</div>
-				<Tooltip classes={"secondary-stat"} content={tooltip} use_html={true}>{*ability_score.score()}</Tooltip>
 			</div>
-		</div>
+		},
+		mobile::Kind::Mobile => {
+			let saving_throw_prof = state.saving_throws().get_prof(*ability);
+			let saving_throw_modifier =
+				state.ability_modifier(*ability, Some(*saving_throw_prof.value()));
+
+			html! {
+				<div class="p-1 text-center" {onclick}>
+					<div class="row" style="--bs-gutter-x: 0;">
+						<div class="col">
+							<h5>{ability.long_name()}</h5>
+						</div>
+						<div class="col-3">
+							<h5>
+								{match ability_score.score().modifier() >= 0 {
+									true => "+",
+									false => "-",
+								}}
+								{ability_score.score().modifier().abs()}
+							</h5>
+						</div>
+					</div>
+					<div class="row" style="--bs-gutter-x: 0;">
+						<div class="col">
+							<div style="font-size: 0.75rem;">{"Score"}</div>
+						</div>
+						<div class="col-3">
+							<div>{*ability_score.score()}</div>
+						</div>
+					</div>
+					<div class="row align-items-center" style="--bs-gutter-x: 0;">
+						<div class="col-auto" style="font-size: 0.75rem;">
+							{*saving_throw_prof.value()}
+						</div>
+						<div class="col">
+							<div style="font-size: 0.75rem;">{"Saving Throw"}</div>
+						</div>
+						<div class="col-3">
+							{match saving_throw_modifier >= 0 {
+								true => "+",
+								false => "-",
+							}}
+							{saving_throw_modifier.abs()}
+						</div>
+					</div>
+				</div>
+			}
+		}
 	}
 }
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct AbilityProps {
 	pub ability: Ability,
+}
+
+#[function_component]
+pub fn AbilityModifiers() -> Html {
+	let style =
+		"height: 14px; margin-right: 2px; margin-top: -2px; width: 14px; vertical-align: middle;";
+	let state = use_context::<CharacterHandle>().unwrap();
+	let mut modifiers = Vec::new();
+	for ability in EnumSet::<Ability>::all() {
+		for (modifier, items) in state.skills().iter_ability_modifiers(ability) {
+			for item in items {
+				modifiers.push(html! {<div>
+					<span class="d-inline-flex" aria-label="Advantage" {style}>
+						<ModifierIcon value={modifier} />
+					</span>
+					<span>{"on "}{ability.abbreviated_name().to_uppercase()}{" checks"}</span>
+					<span>
+						{item.context.as_ref().map(|target| format!(" when {target}")).unwrap_or_default()}
+					</span>
+				</div>});
+			}
+		}
+	}
+	let content = match modifiers.is_empty() {
+		false => html! {<>{modifiers}</>},
+		true => html!("None"),
+	};
+	html! {
+		<div style="font-size: 11px;">
+			{content}
+		</div>
+	}
 }
 
 #[function_component]

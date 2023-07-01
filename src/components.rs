@@ -5,6 +5,7 @@ pub mod auth;
 pub mod database;
 mod media_query;
 pub use media_query::*;
+pub mod mobile;
 pub mod modal;
 mod nav;
 pub use nav::*;
