@@ -1,6 +1,6 @@
 use crate::{
-	page::characters::sheet::MutatorImpact,
-	system::dnd5e::{components::CharacterHandle, data::character::Persistent},
+	page::characters::sheet::{CharacterHandle, MutatorImpact},
+	system::dnd5e::data::character::Persistent,
 	utility::InputExt,
 };
 use yew::prelude::*;

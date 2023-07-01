@@ -166,9 +166,10 @@ struct BundleListProps {
 fn BundleList(props: &BundleListProps) -> Html {
 	use crate::{
 		components::database::{use_query_all_typed, QueryAllArgs, QueryStatus},
+		page::characters::sheet::joined::editor::bundle_content,
 		system::{
 			core::System,
-			dnd5e::{components::editor::bundle_content, data::Bundle, DnD5e},
+			dnd5e::{data::Bundle, DnD5e},
 		},
 	};
 
@@ -227,7 +228,8 @@ fn BundleList(props: &BundleListProps) -> Html {
 pub fn ObjectSelectorList(props: &GeneralProp<std::path::PathBuf>) -> Html {
 	use crate::{
 		components::database::{use_query_entries, QueryStatus},
-		system::{core::SourceId, dnd5e::components::CharacterHandle},
+		page::characters::sheet::CharacterHandle,
+		system::core::SourceId,
 	};
 
 	let state = use_context::<CharacterHandle>().unwrap();
@@ -275,7 +277,7 @@ struct ObjectSelectorEntryButtonProps {
 }
 #[function_component]
 fn ObjectSelectorEntryButton(props: &ObjectSelectorEntryButtonProps) -> Html {
-	let state = use_context::<crate::system::dnd5e::components::CharacterHandle>().unwrap();
+	let state = use_context::<crate::page::characters::sheet::CharacterHandle>().unwrap();
 
 	let props_id = props.id.to_string();
 	let mut selected_idx = None;

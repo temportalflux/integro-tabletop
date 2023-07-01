@@ -1,13 +1,10 @@
-use std::{collections::BTreeMap, path::PathBuf};
-
 use crate::{
 	components::modal,
-	system::dnd5e::{
-		components::CharacterHandle,
-		data::bounded::{BoundKind, BoundedValue},
-	},
+	page::characters::sheet::CharacterHandle,
+	system::dnd5e::data::bounded::{BoundKind, BoundedValue},
 };
 use enumset::EnumSet;
+use std::{collections::BTreeMap, path::PathBuf};
 use yew::prelude::*;
 
 #[derive(Clone, PartialEq, Properties)]

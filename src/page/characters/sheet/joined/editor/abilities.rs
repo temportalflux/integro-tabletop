@@ -1,7 +1,7 @@
 use crate::{
-	page::characters::sheet::MutatorImpact,
+	page::characters::sheet::{CharacterHandle, MutatorImpact},
 	system::dnd5e::{
-		components::{ability, validate_uint_only, CharacterHandle},
+		components::{ability, validate_uint_only},
 		data::{character::Persistent, Ability},
 	},
 	utility::InputExt,

@@ -3,14 +3,13 @@ use crate::{
 		database::{use_query_typed, QueryStatus},
 		*,
 	},
+	page::characters::sheet::joined::editor::{description, mutator_list},
+	page::characters::sheet::CharacterHandle,
 	page::characters::sheet::MutatorImpact,
 	system::{
 		core::SourceId,
 		dnd5e::{
-			components::{
-				editor::{description, mutator_list},
-				CharacterHandle, UsesCounter,
-			},
+			components::UsesCounter,
 			data::{
 				action::{ActivationKind, AttackCheckKind, AttackKindValue},
 				character::{ActionBudgetKind, Persistent},

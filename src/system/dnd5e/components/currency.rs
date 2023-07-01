@@ -1,8 +1,10 @@
 use crate::{
 	components::modal,
+	page::characters::sheet::joined::editor::AutoExchangeSwitch,
+	page::characters::sheet::CharacterHandle,
 	page::characters::sheet::MutatorImpact,
 	system::dnd5e::{
-		components::{editor::AutoExchangeSwitch, validate_uint_only, CharacterHandle},
+		components::validate_uint_only,
 		data::{
 			character::Persistent,
 			currency::{self, Wallet},

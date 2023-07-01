@@ -1,10 +1,8 @@
 use crate::{
 	bootstrap::components::Tooltip,
 	components::modal,
-	system::dnd5e::{
-		components::CharacterHandle,
-		data::{AttributedValueMap, WeaponProficiency},
-	},
+	page::characters::sheet::CharacterHandle,
+	system::dnd5e::data::{AttributedValueMap, WeaponProficiency},
 };
 use yew::prelude::*;
 

@@ -1,10 +1,9 @@
 use crate::{
 	components::{Tag, Tags},
+	page::characters::sheet::joined::editor::description,
+	page::characters::sheet::CharacterHandle,
 	path_map::PathMap,
-	system::dnd5e::{
-		components::{editor::description, CharacterHandle},
-		data::Feature,
-	},
+	system::dnd5e::data::Feature,
 };
 use std::path::{Path, PathBuf};
 use yew::prelude::*;

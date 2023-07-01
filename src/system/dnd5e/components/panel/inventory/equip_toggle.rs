@@ -1,9 +1,7 @@
 use crate::{
-	bootstrap::components::Tooltip,
-	components::stop_propagation,
-	page::characters::sheet::MutatorImpact,
-	system::dnd5e::{components::CharacterHandle, data::character::Persistent},
-	utility::InputExt,
+	bootstrap::components::Tooltip, components::stop_propagation,
+	page::characters::sheet::CharacterHandle, page::characters::sheet::MutatorImpact,
+	system::dnd5e::data::character::Persistent, utility::InputExt,
 };
 use uuid::Uuid;
 use yew::prelude::*;

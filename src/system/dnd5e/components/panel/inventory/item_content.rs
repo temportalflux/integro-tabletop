@@ -1,9 +1,8 @@
 use crate::{
+	page::characters::sheet::joined::editor::{description, mutator_list},
+	page::characters::sheet::CharacterHandle,
 	system::dnd5e::{
-		components::{
-			editor::{description, mutator_list},
-			validate_uint_only, CharacterHandle, FormulaInline, WalletInline,
-		},
+		components::{validate_uint_only, FormulaInline, WalletInline},
 		data::{
 			item::{self, Item},
 			ArmorExtended, WeaponProficiency,

@@ -1,6 +1,7 @@
 use crate::{
 	components::{modal, AnnotatedNumber, AnnotatedNumberCard},
-	system::dnd5e::{components::CharacterHandle, data::Ability},
+	page::characters::sheet::CharacterHandle,
+	system::dnd5e::data::Ability,
 };
 use yew::prelude::*;
 

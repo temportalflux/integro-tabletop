@@ -1,7 +1,8 @@
 use crate::{
 	bootstrap::components::Tooltip,
 	components::{modal, Tag, Tags},
-	system::dnd5e::{components::CharacterHandle, mutator::Defense},
+	page::characters::sheet::CharacterHandle,
+	system::dnd5e::mutator::Defense,
 };
 use yew::prelude::*;
 

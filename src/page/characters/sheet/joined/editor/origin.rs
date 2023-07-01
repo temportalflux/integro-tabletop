@@ -6,11 +6,11 @@ use crate::{
 		Spinner,
 	},
 	database::app::Criteria,
-	page::characters::sheet::MutatorImpact,
+	page::characters::sheet::{CharacterHandle, MutatorImpact},
 	system::{
 		core::System,
 		dnd5e::{
-			components::{CharacterHandle, GeneralProp},
+			components::GeneralProp,
 			data::{
 				bundle::BundleRequirement, character::Persistent, description, Bundle, Feature,
 			},

@@ -1,8 +1,6 @@
 use crate::{
-	bootstrap::components::Tooltip,
-	components::modal,
-	system::dnd5e::components::{roll::ModifierIcon, CharacterHandle},
-	system::dnd5e::data::Ability,
+	bootstrap::components::Tooltip, components::modal, page::characters::sheet::CharacterHandle,
+	system::dnd5e::components::roll::ModifierIcon, system::dnd5e::data::Ability,
 };
 use enumset::EnumSet;
 use yew::prelude::*;

@@ -1,14 +1,12 @@
 use super::InventoryItemProps;
 use crate::{
 	components::modal,
+	page::characters::sheet::CharacterHandle,
 	page::characters::sheet::MutatorImpact,
 	system::dnd5e::{
-		components::{
-			panel::{
-				inventory::equip_toggle::ItemRowEquipBox, item_body, AddItemButton,
-				AddItemOperation, ItemBodyProps,
-			},
-			CharacterHandle,
+		components::panel::{
+			inventory::equip_toggle::ItemRowEquipBox, item_body, AddItemButton, AddItemOperation,
+			ItemBodyProps,
 		},
 		data::item::{self, Item},
 	},

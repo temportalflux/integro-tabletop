@@ -1,6 +1,6 @@
-use super::CharacterHandle;
 use crate::{
 	components::stop_propagation,
+	page::characters::sheet::CharacterHandle,
 	page::characters::sheet::MutatorImpact,
 	system::dnd5e::data::{action::LimitedUses, character::Persistent},
 	utility::InputExt,

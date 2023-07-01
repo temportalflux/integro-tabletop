@@ -1,4 +1,4 @@
-use crate::{page::characters::sheet::MutatorImpact, system::dnd5e::components::CharacterHandle};
+use crate::{page::characters::sheet::CharacterHandle, page::characters::sheet::MutatorImpact};
 use yew::prelude::*;
 
 #[function_component]

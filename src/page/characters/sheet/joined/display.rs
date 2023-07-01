@@ -2,13 +2,13 @@ use crate::{
 	auth,
 	components::{use_media_query, Nav, NavDisplay, TabContent},
 	database::app::{Database, Entry},
+	page::characters::sheet::{CharacterHandle, ViewProps},
 	system::{
 		core::{ModuleId, SourceId},
 		dnd5e::{
 			components::{
-				ability, panel, ArmorClass, CharacterHandle, ConditionsCard, DefensesCard,
-				HitPointMgmtCard, InitiativeBonus, Inspiration, ProfBonus, Proficiencies,
-				SpeedAndSenses,
+				ability, panel, ArmorClass, ConditionsCard, DefensesCard, HitPointMgmtCard,
+				InitiativeBonus, Inspiration, ProfBonus, Proficiencies, SpeedAndSenses,
 			},
 			data::Ability,
 		},
@@ -20,13 +20,8 @@ use yewdux::prelude::use_store;
 mod header;
 use header::*;
 
-#[derive(Clone, PartialEq, Properties)]
-pub struct SheetDisplayProps {
-	pub open_editor: Callback<()>,
-}
-
 #[function_component]
-pub fn SheetDisplay(SheetDisplayProps { open_editor }: &SheetDisplayProps) -> Html {
+pub fn Display(ViewProps { swap_view }: &ViewProps) -> Html {
 	let database = use_context::<Database>().unwrap();
 	let state = use_context::<CharacterHandle>().unwrap();
 	let (auth_status, _dispatch) = use_store::<auth::Status>();
@@ -119,7 +114,7 @@ pub fn SheetDisplay(SheetDisplayProps { open_editor }: &SheetDisplayProps) -> Ht
 			<div class="d-flex border-bottom-theme-muted mt-1 mb-2 px-3 pb-1">
 				<Header />
 				<div class="ms-auto">
-					<a class="icon forge" onclick={open_editor.reform(|_| ())} />
+					<a class="icon forge" onclick={swap_view.reform(|_| ())} />
 					<button class="btn btn-success btn-xs" onclick={save_to_storage}>{"Save"}</button>
 				</div>
 			</div>

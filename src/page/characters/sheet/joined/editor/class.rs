@@ -3,12 +3,11 @@ use crate::{
 		database::{use_query_all_typed, use_typed_fetch_callback, QueryAllArgs, QueryStatus},
 		Spinner,
 	},
-	page::characters::sheet::MutatorImpact,
+	page::characters::sheet::{
+		joined::editor::{feature, mutator_list},
+		CharacterHandle, MutatorImpact,
+	},
 	system::dnd5e::{
-		components::{
-			editor::{feature, mutator_list},
-			CharacterHandle,
-		},
 		data::{character::Persistent, roll::Die, Class, Level},
 		DnD5e,
 	},

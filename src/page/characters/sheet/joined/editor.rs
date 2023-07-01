@@ -1,4 +1,7 @@
-use crate::components::{Nav, NavDisplay, TabContent};
+use crate::{
+	components::{Nav, NavDisplay, TabContent},
+	page::characters::sheet::ViewProps,
+};
 use yew::prelude::*;
 
 mod abilities;
@@ -12,16 +15,11 @@ pub use home::*;
 mod origin;
 pub use origin::*;
 
-#[derive(Clone, PartialEq, Properties)]
-pub struct SheetEditorProps {
-	pub open_viewer: Callback<()>,
-}
-
 #[function_component]
-pub fn SheetEditor(SheetEditorProps { open_viewer }: &SheetEditorProps) -> Html {
+pub fn Editor(ViewProps { swap_view }: &ViewProps) -> Html {
 	let floating_exit_btn = html! {
 		<div class="ms-auto">
-			<a class="icon sheet mt-1" onclick={open_viewer.reform(|_| ())} />
+			<a class="icon sheet mt-1" onclick={swap_view.reform(|_| ())} />
 		</div>
 	};
 	html! {

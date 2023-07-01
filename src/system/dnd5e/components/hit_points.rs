@@ -1,10 +1,8 @@
 use crate::{
 	components::{modal, stop_propagation},
+	page::characters::sheet::CharacterHandle,
 	page::characters::sheet::MutatorImpact,
-	system::dnd5e::{
-		components::CharacterHandle,
-		data::character::{HitPoint, Persistent},
-	},
+	system::dnd5e::data::character::{HitPoint, Persistent},
 	utility::InputExt,
 };
 use std::cmp::Ordering;

@@ -1,15 +1,13 @@
 use crate::{
 	components::{database::use_typed_fetch_callback, modal, stop_propagation, Spinner},
 	database::app::{Database, QueryDeserialize},
+	page::characters::sheet::joined::editor::{CollapsableCard, DescriptionSection},
+	page::characters::sheet::CharacterHandle,
 	page::characters::sheet::MutatorImpact,
 	system::{
 		self,
 		core::{ModuleId, SourceId},
 		dnd5e::{
-			components::{
-				editor::{CollapsableCard, DescriptionSection},
-				CharacterHandle,
-			},
 			data::{
 				character::spellcasting::{CasterKind, RitualCapability, SpellEntry},
 				proficiency, spell, Spell,

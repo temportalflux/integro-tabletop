@@ -1,8 +1,9 @@
 use crate::{
 	bootstrap::components::Tooltip,
 	components::{modal, AnnotatedNumber},
+	page::characters::sheet::CharacterHandle,
 	system::dnd5e::{
-		components::{ability::AbilityGlyph, CharacterHandle},
+		components::ability::AbilityGlyph,
 		data::{Ability, Skill},
 	},
 };

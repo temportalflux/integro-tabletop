@@ -6,14 +6,15 @@ use crate::{
 		Spinner,
 	},
 	database::app::Criteria,
+	page::characters::sheet::joined::editor::CollapsableCard,
+	page::characters::sheet::CharacterHandle,
 	page::characters::sheet::MutatorImpact,
 	system::{
 		core::{ModuleId, SourceId, System},
 		dnd5e::{
 			components::{
-				editor::CollapsableCard,
 				panel::{item_body, AddItemButton, AddItemOperation},
-				validate_uint_only, CharacterHandle, GeneralProp, WalletInline,
+				validate_uint_only, GeneralProp, WalletInline,
 			},
 			data::{
 				character::Persistent,

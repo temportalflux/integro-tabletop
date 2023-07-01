@@ -1,4 +1,4 @@
-use crate::system::dnd5e::components::CharacterHandle;
+use crate::page::characters::sheet::CharacterHandle;
 use itertools::Itertools;
 use yew::prelude::*;
 

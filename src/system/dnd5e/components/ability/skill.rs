@@ -1,8 +1,9 @@
 use crate::{
 	bootstrap::components::Tooltip,
 	components::modal,
+	page::characters::sheet::CharacterHandle,
 	system::dnd5e::{
-		components::{roll::ModifierIcon, CharacterHandle},
+		components::roll::ModifierIcon,
 		data::{Ability, Skill},
 	},
 };

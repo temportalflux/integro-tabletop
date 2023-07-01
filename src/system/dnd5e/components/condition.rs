@@ -3,14 +3,12 @@ use crate::{
 		database::{use_query_all_typed, use_typed_fetch_callback, QueryAllArgs, QueryStatus},
 		modal, Spinner, Tag, Tags,
 	},
+	page::characters::sheet::joined::editor::{mutator_list, CollapsableCard},
+	page::characters::sheet::CharacterHandle,
 	page::characters::sheet::MutatorImpact,
 	system::{
 		core::SourceId,
 		dnd5e::{
-			components::{
-				editor::{mutator_list, CollapsableCard},
-				CharacterHandle,
-			},
 			data::{character::Persistent, Condition},
 			DnD5e,
 		},
