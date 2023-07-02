@@ -217,7 +217,7 @@ mod test {
 				core::NodeRegistry,
 				dnd5e::{
 					data::Ability,
-					evaluator::{test::test_utils, GetAbilityModifier, GetLevel},
+					evaluator::{test::test_utils, GetAbilityModifier, GetLevelInt},
 				},
 			},
 		};
@@ -228,7 +228,7 @@ mod test {
 			let mut node_reg = NodeRegistry::default();
 			node_reg.register_evaluator::<Math>();
 			node_reg.register_evaluator::<GetAbilityModifier>();
-			node_reg.register_evaluator::<GetLevel>();
+			node_reg.register_evaluator::<GetLevelInt>();
 			node_reg
 		}
 
@@ -267,7 +267,7 @@ mod test {
 				minimum: Some(0),
 				maximum: None,
 				values: vec![
-					Value::Evaluated(GetLevel::default().into()),
+					Value::Evaluated(GetLevelInt::default().into()),
 					Value::Fixed(10),
 				],
 			};
@@ -290,7 +290,7 @@ mod test {
 				maximum: None,
 				values: vec![
 					Value::Evaluated(GetAbilityModifier(Ability::Constitution).into()),
-					Value::Evaluated(GetLevel::default().into()),
+					Value::Evaluated(GetLevelInt::default().into()),
 				],
 			};
 			assert_eq_askdl!(&data, doc);
@@ -313,7 +313,7 @@ mod test {
 				minimum: Some(1),
 				maximum: None,
 				values: vec![
-					Value::Evaluated(GetLevel::default().into()),
+					Value::Evaluated(GetLevelInt::default().into()),
 					Value::Fixed(2),
 				],
 			};

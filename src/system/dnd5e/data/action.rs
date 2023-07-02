@@ -94,7 +94,7 @@ mod test {
 						roll::{Die, EvaluatedRoll},
 						Ability, Condition, DamageRoll, DamageType, Rest,
 					},
-					evaluator::GetLevel,
+					evaluator::GetLevelInt,
 					Value,
 				},
 			},
@@ -104,7 +104,7 @@ mod test {
 		static NODE_NAME: &str = "action";
 
 		fn node_ctx() -> NodeContext {
-			NodeContext::registry(NodeRegistry::default_with_eval::<GetLevel>())
+			NodeContext::registry(NodeRegistry::default_with_eval::<GetLevelInt>())
 		}
 
 		#[test]
@@ -206,7 +206,7 @@ mod test {
 				attack: None,
 				limited_uses: Some(LimitedUses::Usage(UseCounterData {
 					max_uses: Value::Evaluated(
-						GetLevel {
+						GetLevelInt {
 							class_name: None,
 							order_map: [(2, 1), (5, 2), (10, 4), (14, 5), (20, -1)].into(),
 						}

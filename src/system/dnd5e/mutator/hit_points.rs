@@ -87,7 +87,7 @@ mod test {
 				core::NodeRegistry,
 				dnd5e::{
 					data::Ability,
-					evaluator::{GetAbilityModifier, GetLevel, Math, MathOp},
+					evaluator::{GetAbilityModifier, GetLevelInt, Math, MathOp},
 					mutator::test::test_utils,
 				},
 			},
@@ -99,7 +99,7 @@ mod test {
 			let mut node_reg = NodeRegistry::default();
 			node_reg.register_mutator::<AddMaxHitPoints>();
 			node_reg.register_evaluator::<GetAbilityModifier>();
-			node_reg.register_evaluator::<GetLevel>();
+			node_reg.register_evaluator::<GetLevelInt>();
 			node_reg.register_evaluator::<Math>();
 			node_reg
 		}
@@ -146,7 +146,7 @@ mod test {
 						maximum: None,
 						values: vec![
 							Value::Evaluated(GetAbilityModifier(Ability::Constitution).into()),
-							Value::Evaluated(GetLevel::default().into()),
+							Value::Evaluated(GetLevelInt::default().into()),
 						],
 					}
 					.into(),

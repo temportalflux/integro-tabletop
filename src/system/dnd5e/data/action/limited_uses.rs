@@ -191,14 +191,14 @@ mod test {
 			kdl_ext::{test_utils::*, NodeContext},
 			system::{
 				core::NodeRegistry,
-				dnd5e::{data::Rest, evaluator::GetLevel},
+				dnd5e::{data::Rest, evaluator::GetLevelInt},
 			},
 		};
 
 		static NODE_NAME: &str = "limited_uses";
 
 		fn node_ctx() -> NodeContext {
-			NodeContext::registry(NodeRegistry::default_with_eval::<GetLevel>())
+			NodeContext::registry(NodeRegistry::default_with_eval::<GetLevelInt>())
 		}
 
 		#[test]
@@ -251,7 +251,7 @@ mod test {
 			";
 			let data = LimitedUses::Usage(UseCounterData {
 				max_uses: Value::Evaluated(
-					GetLevel {
+					GetLevelInt {
 						class_name: Some("SpecificClass".into()),
 						order_map: [(2, 1), (5, 2), (10, 4), (14, 5), (20, -1)].into(),
 					}

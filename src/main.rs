@@ -175,7 +175,7 @@ async fn main() -> anyhow::Result<()> {
 
 			// NOTE: This will re-write the local data using the re-serialized node.
 			// Do not enable unless you are specifically testing input vs output on documents.
-			// reserialized_nodes.push(comp_factory.reserialize_kdl(node, &ctx)?);
+			//reserialized_nodes.push(comp_factory.reserialize_kdl(node, &ctx)?);
 		}
 		if !reserialized_nodes.is_empty() {
 			let Some(ModuleId::Local { name: module_name }) = &source_id.module else { continue; };

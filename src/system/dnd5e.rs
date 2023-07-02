@@ -124,7 +124,8 @@ pub fn node_registry() -> NodeRegistry {
 	registry.register_evaluator::<GetAbilityModifier>();
 	registry.register_evaluator::<GetProficiencyBonus>();
 	registry.register_evaluator::<GetHitPoints>();
-	registry.register_evaluator::<GetLevel>();
+	registry.register_evaluator::<GetLevelInt>();
+	registry.register_evaluator::<GetLevelStr>();
 	registry.register_evaluator::<HasArmorEquipped>();
 	registry.register_evaluator::<HasCondition>();
 	registry.register_evaluator::<IsProficientWith>();

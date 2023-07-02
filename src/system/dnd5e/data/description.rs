@@ -2,7 +2,7 @@ use super::character::Character;
 use crate::{
 	kdl_ext::{AsKdl, DocumentExt, EntryExt, FromKDL, NodeBuilder, NodeContext, NodeExt, ValueExt},
 	system::dnd5e::BoxedEvaluator,
-	utility::SelectorMetaVec,
+	utility::{NotInList, SelectorMetaVec},
 };
 use std::{
 	collections::{BTreeMap, HashMap},
@@ -370,9 +370,9 @@ impl AsKdl for SectionContent {
 pub struct FormatArgs(BTreeMap<String, Arg>);
 
 #[derive(Clone, PartialEq, Debug)]
-struct Arg {
-	evaluator: BoxedEvaluator<i32>,
-	signed: bool,
+enum Arg {
+	Number(BoxedEvaluator<i32>, bool),
+	String(BoxedEvaluator<String>),
 }
 
 impl<K, V> From<Vec<(K, V, bool)>> for FormatArgs
@@ -383,10 +383,21 @@ where
 	fn from(values: Vec<(K, V, bool)>) -> Self {
 		let mut map = BTreeMap::new();
 		for (key, value, signed) in values {
-			let arg = Arg {
-				evaluator: value.into(),
-				signed,
-			};
+			let arg = Arg::Number(value.into(), signed);
+			map.insert(key.into(), arg);
+		}
+		Self(map)
+	}
+}
+impl<K, V> From<Vec<(K, V)>> for FormatArgs
+where
+	K: Into<String>,
+	V: Into<BoxedEvaluator<String>>,
+{
+	fn from(values: Vec<(K, V)>) -> Self {
+		let mut map = BTreeMap::new();
+		for (key, value) in values {
+			let arg = Arg::String(value.into());
 			map.insert(key.into(), arg);
 		}
 		Self(map)
@@ -404,10 +415,15 @@ impl FormatArgs {
 	fn evaluate(&self, state: &Character) -> HashMap<Rc<String>, Rc<String>> {
 		let mut evaluated = HashMap::default();
 		for (key, arg) in &self.0 {
-			let value = arg.evaluator.evaluate(state);
-			let value = match arg.signed {
-				true => format!("{value:+}"),
-				false => format!("{value}"),
+			let value = match arg {
+				Arg::Number(eval, signed) => {
+					let value = eval.evaluate(state);
+					match *signed {
+						true => format!("{value:+}"),
+						false => format!("{value}"),
+					}
+				}
+				Arg::String(eval) => eval.evaluate(state),
 			};
 			evaluated.insert(format!("{{{key}}}").into(), value.into());
 		}
@@ -428,11 +444,16 @@ impl FormatArgs {
 		let mut args = BTreeMap::new();
 		for node in node.query_all("scope() > format-arg")? {
 			let mut ctx = ctx.next_node();
-			let key_entry = node.entry_req(ctx.consume_idx())?;
-			let key = key_entry.as_str_req()?.to_owned();
-			let signed = key_entry.type_opt() == Some("Signed");
-			let evaluator = ctx.parse_evaluator_inline(node)?;
-			let arg = Arg { evaluator, signed };
+			let key = node.get_str_req(ctx.consume_idx())?.to_owned();
+			let eval_type_entry = node.entry_req(ctx.consume_idx())?;
+			let arg = match eval_type_entry.as_str_req()? {
+				"int" => {
+					let signed = eval_type_entry.type_opt() == Some("Signed");
+					Arg::Number(ctx.parse_evaluator_inline(node)?, signed)
+				}
+				"str" => Arg::String(ctx.parse_evaluator_inline(node)?),
+				_type => return Err(NotInList(_type.into(), vec!["int", "str"]).into()),
+			};
 			args.insert(key, arg);
 		}
 		Ok(Self(args))
@@ -443,12 +464,22 @@ impl AsKdl for FormatArgs {
 		let mut node = NodeBuilder::default();
 
 		for (key, arg) in &self.0 {
-			let mut entry = kdl::KdlEntry::new(key.clone());
-			if arg.signed {
-				entry.set_ty("Signed");
-			}
-			let mut arg_node = NodeBuilder::default().with_entry(entry);
-			arg_node.append_typed("Evaluator", arg.evaluator.as_kdl());
+			let mut arg_node = NodeBuilder::default().with_entry(key.clone());
+			let eval_kdl = match arg {
+				Arg::Number(eval, signed) => {
+					let mut entry = kdl::KdlEntry::new("int");
+					if *signed {
+						entry.set_ty("Signed");
+					}
+					arg_node.push_entry(entry);
+					eval.as_kdl()
+				}
+				Arg::String(eval) => {
+					arg_node.push_entry("str");
+					eval.as_kdl()
+				}
+			};
+			arg_node.append_typed("Evaluator", eval_kdl);
 			node.push_child(arg_node.build("format-arg"));
 		}
 
@@ -696,7 +727,7 @@ mod test {
 			fn unsigned() -> anyhow::Result<()> {
 				let doc = "
 					|args {
-					|    format-arg \"DC\" (Evaluator)\"get_ability_modifier\" (Ability)\"Intelligence\"
+					|    format-arg \"DC\" \"int\" (Evaluator)\"get_ability_modifier\" (Ability)\"Intelligence\"
 					|}
 				";
 				let data = FormatArgs::from(vec![(
@@ -713,7 +744,7 @@ mod test {
 			fn signed() -> anyhow::Result<()> {
 				let doc = "
 					|args {
-					|    format-arg (Signed)\"DC\" (Evaluator)\"get_ability_modifier\" (Ability)\"Intelligence\"
+					|    format-arg \"DC\" (Signed)\"int\" (Evaluator)\"get_ability_modifier\" (Ability)\"Intelligence\"
 					|}
 				";
 				let data = FormatArgs::from(vec![(
