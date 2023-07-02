@@ -83,6 +83,12 @@ component "Material" {
 - (action) check for updates; query for any new revisions/commits
 - (action) clone module from its source to a user's own homebrew
 
+## Documentation
+- README w/ feature comparison against other character sheet apps
+- mdbook on content syntax, mutators, etc (for creating content by hand)
+- walkthrough embedded in site showing users how character sheets work
+- mdbook on the tech stack & functionality of the app
+
 ## Future Features
 
 ### Mailbox
