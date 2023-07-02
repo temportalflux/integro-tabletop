@@ -774,7 +774,7 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 				};
 				// TODO: Show damage roll bonuses inline, when the bonuses themselves can be rolls
 				//let additional_bonus: i32 = additional_damage.iter().map(|(v, _damage_type, _source)| *v).sum();
-				let bonus = base_bonus + ability_bonus;// + additional_bonus;
+				let bonus = base_bonus + ability_bonus; // + additional_bonus;
 				let roll_str = match &roll {
 					None => None,
 					Some(roll_value) => Some(roll_value.evaluate(&state).to_string()),

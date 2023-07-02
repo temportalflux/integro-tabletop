@@ -3,7 +3,7 @@ use crate::{
 	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::{
 		core::SourceId,
-		dnd5e::{data::Feature, BoxedMutator, SystemComponent},
+		dnd5e::{BoxedMutator, SystemComponent},
 	},
 	utility::MutatorGroup,
 };
@@ -14,7 +14,6 @@ use std::path::Path;
 pub struct DefaultsBlock {
 	pub source_id: Option<SourceId>,
 	pub mutators: Vec<BoxedMutator>,
-	pub features: Vec<Feature>,
 }
 
 crate::impl_kdl_node!(DefaultsBlock, "defaults");
@@ -32,17 +31,11 @@ impl MutatorGroup for DefaultsBlock {
 		for mutator in &self.mutators {
 			mutator.set_data_path(parent);
 		}
-		for feature in &self.features {
-			feature.set_data_path(parent);
-		}
 	}
 
 	fn apply_mutators(&self, stats: &mut Character, parent: &Path) {
 		for mutator in &self.mutators {
 			stats.apply(mutator, parent);
-		}
-		for feat in &self.features {
-			stats.add_feature(feat, parent);
 		}
 	}
 }
@@ -56,14 +49,9 @@ impl FromKDL for DefaultsBlock {
 		for entry_node in node.query_all("scope() > mutator")? {
 			mutators.push(ctx.parse_mutator(entry_node)?);
 		}
-		let mut features = Vec::new();
-		for entry_node in node.query_all("scope() > feature")? {
-			features.push(Feature::from_kdl(entry_node, &mut ctx.next_node())?.into());
-		}
 		Ok(Self {
 			source_id: None,
 			mutators,
-			features,
 		})
 	}
 }
@@ -73,9 +61,6 @@ impl AsKdl for DefaultsBlock {
 		let mut node = NodeBuilder::default();
 		for mutator in &self.mutators {
 			node.push_child_t("mutator", mutator);
-		}
-		for feature in &self.features {
-			node.push_child_t("feature", feature);
 		}
 		node
 	}

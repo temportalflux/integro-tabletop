@@ -4,7 +4,7 @@ use crate::{
 	utility::InvalidEnumStr,
 };
 use enumset::EnumSetType;
-use std::{path::PathBuf, str::FromStr};
+use std::str::FromStr;
 
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct DamageRoll {

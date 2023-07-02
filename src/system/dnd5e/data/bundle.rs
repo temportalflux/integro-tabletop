@@ -3,7 +3,7 @@ use crate::{
 	system::{
 		core::SourceId,
 		dnd5e::{
-			data::{character::Character, description, Ability, Feature},
+			data::{character::Character, description, Ability},
 			BoxedMutator, SystemComponent,
 		},
 	},
@@ -23,7 +23,6 @@ pub struct Bundle {
 	/// The number of times this bundle can be added to a character.
 	pub limit: usize,
 	pub mutators: Vec<BoxedMutator>,
-	pub features: Vec<Feature>,
 }
 
 // TODO: Could bundle requirements just be a criteria/bool-evaluator?
@@ -43,18 +42,12 @@ impl MutatorGroup for Bundle {
 		for mutator in &self.mutators {
 			mutator.set_data_path(&path_to_self);
 		}
-		for feature in &self.features {
-			feature.set_data_path(&path_to_self);
-		}
 	}
 
 	fn apply_mutators(&self, stats: &mut Character, parent: &Path) {
 		let path_to_self = parent.join(&self.name);
 		for mutator in &self.mutators {
 			stats.apply(mutator, &path_to_self);
-		}
-		for feat in &self.features {
-			stats.add_feature(feat, &path_to_self);
 		}
 	}
 }
@@ -136,11 +129,6 @@ impl FromKDL for Bundle {
 			mutators.push(ctx.parse_mutator(entry_node)?);
 		}
 
-		let mut features = Vec::new();
-		for entry_node in node.query_all("scope() > feature")? {
-			features.push(Feature::from_kdl(entry_node, &mut ctx.next_node())?.into());
-		}
-
 		Ok(Self {
 			id,
 			name,
@@ -149,7 +137,6 @@ impl FromKDL for Bundle {
 			requirements,
 			limit,
 			mutators,
-			features,
 		})
 	}
 }
@@ -186,9 +173,6 @@ impl AsKdl for Bundle {
 
 		for mutator in &self.mutators {
 			node.push_child_t("mutator", mutator);
-		}
-		for feature in &self.features {
-			node.push_child_t("feature", feature);
 		}
 
 		node

@@ -3,10 +3,10 @@ use itertools::Itertools;
 use crate::{
 	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt},
 	system::dnd5e::{
-		data::{character::Character, description, Feature},
+		data::{character::Character, description},
 		BoxedMutator,
 	},
-	utility::{IdPath, Mutator, MutatorGroup, Selector, SelectorMetaVec},
+	utility::{IdPath, Mutator, Selector, SelectorMetaVec},
 };
 use std::collections::{HashMap, HashSet};
 
@@ -22,7 +22,6 @@ pub struct PickN {
 struct PickOption {
 	description: Option<description::Section>,
 	mutators: Vec<BoxedMutator>,
-	features: Vec<Feature>,
 }
 
 crate::impl_trait_eq!(PickN);
@@ -93,9 +92,6 @@ impl Mutator for PickN {
 				}
 				option_children.push(section);
 			}
-			for feature in &option.features {
-				option_children.extend(feature.description.sections.iter().cloned());
-			}
 			children.push(description::Section {
 				title: Some(key.clone()),
 				content,
@@ -127,9 +123,6 @@ impl Mutator for PickN {
 			for mutator in &option.mutators {
 				mutator.set_data_path(&path_to_option);
 			}
-			for feature in &option.features {
-				feature.set_data_path(&path_to_option);
-			}
 		}
 	}
 
@@ -145,9 +138,6 @@ impl Mutator for PickN {
 		for option in selected_options {
 			for mutator in &option.mutators {
 				stats.apply(mutator, parent);
-			}
-			for feature in &option.features {
-				stats.add_feature(feature, parent);
 			}
 		}
 	}
@@ -180,17 +170,11 @@ impl FromKDL for PickN {
 				mutators.push(ctx.parse_mutator(entry_node)?);
 			}
 
-			let mut features = Vec::new();
-			for entry_node in node.query_all("scope() > feature")? {
-				features.push(Feature::from_kdl(entry_node, &mut ctx.next_node())?.into());
-			}
-
 			options.insert(
 				name,
 				PickOption {
 					description,
 					mutators,
-					features,
 				},
 			);
 		}
@@ -236,9 +220,6 @@ impl AsKdl for PickN {
 			for mutator in &option.mutators {
 				node_option.push_child_t("mutator", mutator);
 			}
-			for feature in &option.features {
-				node_option.push_child_t("feature", feature);
-			}
 			node.push_child(node_option.build("option"));
 		}
 
@@ -283,7 +264,6 @@ mod test {
 							argument: BoundValue::Base(15),
 						}
 						.into()],
-						features: vec![],
 					},
 				),
 				(
@@ -300,7 +280,6 @@ mod test {
 							argument: BoundValue::Base(15),
 						}
 						.into()],
-						features: vec![],
 					},
 				),
 			]

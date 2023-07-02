@@ -4,7 +4,6 @@
 ## Cleanup
 - proficiency level and its html should be separate functions
 - kdl NodeReader to combine KdlNode and NodeContext (mainly for consume_idx and next_node)
-- Convert `feature` block to a `mutator-todo "feature"` block, features are granted using mutators. FromKDL structs which accept both mutators and features now only accept mutators.
 - Convert `criteria` into a `mutator "only_if"` (or similar name) which accepts a single criteria and any number of submutators. Submutations are only applied if the criteria passes. This CAN replace the usage of `criteria` in features and conditions, but not entirely b/c features with criteria should still show up in UI (and just be marked as inactive/criteria not met).
 
 ## DnD5e Features

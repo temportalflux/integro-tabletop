@@ -3,10 +3,7 @@ use crate::{
 		database::{use_query_all_typed, use_typed_fetch_callback, QueryAllArgs, QueryStatus},
 		Spinner,
 	},
-	page::characters::sheet::{
-		joined::editor::{feature, mutator_list},
-		CharacterHandle, MutatorImpact,
-	},
+	page::characters::sheet::{joined::editor::mutator_list, CharacterHandle, MutatorImpact},
 	system::dnd5e::{
 		data::{character::Persistent, roll::Die, Class, Level},
 		DnD5e,
@@ -358,7 +355,6 @@ pub fn CollapsableCard(props: &CollapsableCardProps) -> Html {
 fn level_body(value: &Level, state: Option<&CharacterHandle>) -> Html {
 	html! {<>
 		{mutator_list(&value.mutators, state)}
-		{value.features.iter().map(|f| feature(f, state)).collect::<Vec<_>>()}
 	</>}
 }
 

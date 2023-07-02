@@ -266,7 +266,6 @@ fn selected_bundle(
 				<DescriptionSection section={bundle.description.clone()} show_selectors={true} />
 			</div>
 			{mutator_list(&bundle.mutators, Some(state))}
-			{bundle.features.iter().map(|f| feature(f,  Some(state))).collect::<Vec<_>>()}
 		</ContentItem>
 	}
 }
@@ -354,7 +353,6 @@ pub fn bundle_content(bundle: &Bundle) -> Html {
 			<DescriptionSection section={bundle.description.clone()} show_selectors={false} />
 		</div>
 		{mutator_list(&bundle.mutators, None::<&CharacterHandle>)}
-		{bundle.features.iter().map(|f| feature(f,  None)).collect::<Vec<_>>()}
 	</>}
 }
 

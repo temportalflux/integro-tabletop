@@ -1,4 +1,4 @@
-use super::{character::Character, roll::Die, Feature};
+use super::{character::Character, roll::Die};
 use crate::{
 	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeContext, NodeExt},
 	system::{
@@ -167,7 +167,6 @@ impl AsKdl for Class {
 pub struct Level {
 	pub hit_points: Selector<u32>,
 	pub mutators: Vec<BoxedMutator>,
-	pub features: Vec<Feature>,
 }
 
 impl Default for Level {
@@ -178,14 +177,13 @@ impl Default for Level {
 				cannot_match: Default::default(),
 			},
 			mutators: Default::default(),
-			features: Default::default(),
 		}
 	}
 }
 
 impl Level {
 	pub fn is_empty(&self) -> bool {
-		self.mutators.is_empty() && self.features.is_empty()
+		self.mutators.is_empty()
 	}
 }
 
@@ -204,29 +202,18 @@ impl FromKDL for Level {
 			mutators.push(ctx.parse_mutator(entry_node)?);
 		}
 
-		let mut features = Vec::new();
-		for entry_node in node.query_all("scope() > feature")? {
-			features.push(Feature::from_kdl(entry_node, &mut ctx.next_node())?.into());
-		}
-
 		Ok(Self {
 			hit_points,
 			mutators,
-			features,
 		})
 	}
 }
 impl AsKdl for Level {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
-
 		for mutator in &self.mutators {
 			node.push_child_t("mutator", mutator);
 		}
-		for feature in &self.features {
-			node.push_child_t("feature", feature);
-		}
-
 		node
 	}
 }
@@ -256,9 +243,6 @@ impl<'a> MutatorGroup for LevelWithIndex<'a> {
 		for mutator in &self.1.mutators {
 			mutator.set_data_path(&path_to_self);
 		}
-		for feature in &self.1.features {
-			feature.set_data_path(&path_to_self);
-		}
 	}
 
 	fn apply_mutators(&self, stats: &mut Character, parent: &Path) {
@@ -272,9 +256,6 @@ impl<'a> MutatorGroup for LevelWithIndex<'a> {
 		}
 		for mutator in &self.1.mutators {
 			stats.apply(mutator, &path_to_self);
-		}
-		for feature in &self.1.features {
-			stats.add_feature(feature, &path_to_self);
 		}
 	}
 }

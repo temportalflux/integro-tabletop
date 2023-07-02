@@ -14,8 +14,10 @@ impl Mutator for AddFeature {
 	type Target = Character;
 
 	fn description(&self, _state: Option<&Character>) -> description::Section {
-		// TODO: Description of mutator is the feature itself
 		description::Section {
+			title: Some(self.0.name.clone()),
+			format_args: self.0.description.format_args.clone(),
+			children: self.0.description.sections.clone(),
 			..Default::default()
 		}
 	}
