@@ -13,13 +13,17 @@ crate::impl_kdl_node!(AddFeature, "feature");
 impl Mutator for AddFeature {
 	type Target = Character;
 
-	fn description(&self, _state: Option<&Character>) -> description::Section {
-		description::Section {
+	fn description(&self, state: Option<&Character>) -> description::Section {
+		let mut section = description::Section {
 			title: Some(self.0.name.clone()),
 			format_args: self.0.description.format_args.clone(),
 			children: self.0.description.sections.clone(),
 			..Default::default()
+		};
+		for mutator in &self.0.mutators {
+			section.children.push(mutator.description(state));
 		}
+		section
 	}
 
 	fn set_data_path(&self, parent: &std::path::Path) {

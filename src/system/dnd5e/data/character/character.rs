@@ -8,12 +8,11 @@ use crate::{
 		core::SourceId,
 		dnd5e::{
 			data::{
-				action::{Action, AttackCheckKind},
 				character::{
 					AbilityScores, Defenses, Derived, DerivedDescription, MaxHitPoints, Persistent,
 					SavingThrows, Senses, Skills, Speeds,
 				},
-				item::{container::Inventory, weapon},
+				item::container::Inventory,
 				proficiency, Ability, ArmorClass, Feature, OtherProficiencies,
 			},
 			mutator::Flag,
@@ -457,61 +456,6 @@ impl Character {
 
 	pub fn inventory_mut(&mut self) -> &mut Inventory {
 		&mut self.character.inventory
-	}
-
-	pub fn iter_actions_mut_for(
-		&mut self,
-		restriction: &Option<weapon::Restriction>,
-	) -> Vec<&mut Action> {
-		let mut actions = self
-			.derived
-			.features
-			.path_map
-			.iter_values_mut()
-			.filter_map(|feature| feature.action.as_mut())
-			.collect::<Vec<_>>();
-		if let Some(weapon::Restriction {
-			weapon_kind,
-			attack_kind,
-			ability,
-			properties: _,
-		}) = restriction
-		{
-			if !weapon_kind.is_empty() {
-				actions = actions
-					.into_iter()
-					.filter_map(|action| {
-						let Some(attack) = &action.attack else {
-							return None;
-						};
-						let Some(kind) = &attack.weapon_kind else {
-							return None;
-						};
-						weapon_kind.contains(kind).then_some(action)
-					})
-					.collect();
-			}
-
-			if !attack_kind.is_empty() {
-				actions = actions
-					.into_iter()
-					.filter_map(|action| {
-						let Some(attack) = &action.attack else { return None; };
-						let Some(atk_kind) = &attack.kind else { return None; };
-						attack_kind.contains(&atk_kind.kind()).then_some(action)
-					})
-					.collect();
-			}
-
-			if !ability.is_empty() {
-				actions = actions.into_iter().filter_map(|action| {
-					let Some(attack) = &action.attack else { return None; };
-					let AttackCheckKind::AttackRoll { ability: atk_roll_ability, .. } = &attack.check else { return None; };
-					ability.contains(atk_roll_ability).then_some(action)
-				}).collect();
-			}
-		}
-		actions
 	}
 
 	pub fn derived_description(&self) -> &DerivedDescription {

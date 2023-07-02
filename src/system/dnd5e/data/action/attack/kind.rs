@@ -2,9 +2,10 @@ use crate::{
 	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
 	utility::NotInList,
 };
+use enumset::EnumSetType;
 use std::str::FromStr;
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(EnumSetType, PartialOrd, Ord, Hash, Debug)]
 pub enum AttackKind {
 	Melee,
 	Ranged,

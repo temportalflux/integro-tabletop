@@ -1,6 +1,6 @@
 use crate::{
 	kdl_ext::{DocumentExt, FromKDL, NodeBuilder, NodeExt},
-	system::dnd5e::data::{character::Character, item::weapon, roll::EvaluatedRoll, DamageType},
+	system::dnd5e::data::{character::Character, item::weapon, roll::EvaluatedRoll, DamageType, description},
 	utility::{Dependencies, Mutator, NotInList},
 };
 use std::str::FromStr;
@@ -27,6 +27,11 @@ crate::impl_kdl_node!(Bonus, "bonus");
 
 impl Mutator for Bonus {
 	type Target = Character;
+	
+	fn description(&self, _state: Option<&Self::Target>) -> description::Section {
+		// TODO: Bonus description
+		description::Section::default()
+	}
 
 	fn dependencies(&self) -> Dependencies {
 		use crate::kdl_ext::KDLNode;
@@ -223,8 +228,8 @@ mod test {
 					damage: EvaluatedRoll::from(5),
 					damage_type: None,
 					restriction: Some(weapon::Restriction {
-						weapon_kind: [weapon::Kind::Martial, weapon::Kind::Simple].into(),
-						attack_kind: [AttackKind::Melee].into(),
+						weapon_kind: weapon::Kind::Martial | weapon::Kind::Simple,
+						attack_kind: AttackKind::Melee.into(),
 						ability: [Ability::Strength].into(),
 						properties: [(weapon::Property::TwoHanded, false)].into(),
 					}),
@@ -307,7 +312,7 @@ mod test {
 				let data = Bonus::WeaponAttackRoll {
 					bonus: 5,
 					restriction: Some(weapon::Restriction {
-						attack_kind: [AttackKind::Ranged].into(),
+						attack_kind: AttackKind::Ranged.into(),
 						..Default::default()
 					}),
 				};

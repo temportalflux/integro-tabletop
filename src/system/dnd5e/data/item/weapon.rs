@@ -2,7 +2,9 @@ use crate::{
 	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
 	system::dnd5e::{
 		data::{
-			action::{Action, ActivationKind, Attack, AttackCheckKind, AttackKindValue},
+			action::{
+				Action, ActivationKind, Attack, AttackCheckKind, AttackKind, AttackKindValue,
+			},
 			item::container::EquipableEntry,
 			roll::EvaluatedRoll,
 			Ability, DamageRoll, Feature, WeaponProficiency,
@@ -64,6 +66,20 @@ impl Weapon {
 		}
 	}
 
+	pub fn attack_kind(&self) -> AttackKind {
+		match &self.range {
+			None => AttackKind::Melee,
+			Some(_) => AttackKind::Ranged,
+		}
+	}
+
+	pub fn attack_ability(&self) -> Ability {
+		match self.attack_kind() {
+			AttackKind::Melee => Ability::Strength,
+			AttackKind::Ranged => Ability::Dexterity,
+		}
+	}
+
 	pub fn attack_action(&self, entry: &EquipableEntry) -> Feature {
 		// TODO: Attack should have properties for both melee and range to support the thrown property
 		let attack_kind = match self.range {
@@ -82,10 +98,7 @@ impl Weapon {
 		// TODO: The ability modifier used for a melee weapon attack is Strength,
 		// and the ability modifier used for a ranged weapon attack is Dexterity.
 		// Weapons that have the finesse or thrown property break this rule.
-		let attack_ability = match attack_kind {
-			AttackKindValue::Melee { .. } => Ability::Strength,
-			AttackKindValue::Ranged { .. } => Ability::Dexterity,
-		};
+		let attack_ability = self.attack_ability();
 		Feature {
 			name: entry.item.name.clone(),
 			action: Some(Action {

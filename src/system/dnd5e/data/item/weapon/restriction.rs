@@ -1,5 +1,4 @@
-use itertools::Itertools;
-
+use super::Weapon;
 use crate::{
 	kdl_ext::{DocumentExt, NodeBuilder, NodeExt, ValueExt},
 	system::dnd5e::data::{
@@ -8,17 +7,112 @@ use crate::{
 		Ability,
 	},
 };
+use enumset::EnumSet;
+use itertools::Itertools;
 use std::{collections::HashSet, str::FromStr};
 
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct Restriction {
-	pub weapon_kind: HashSet<weapon::Kind>,
-	pub attack_kind: HashSet<AttackKind>,
+	pub weapon_kind: EnumSet<weapon::Kind>,
+	pub attack_kind: EnumSet<AttackKind>,
 	pub ability: HashSet<Ability>,
 	pub properties: Vec<(weapon::Property, bool)>,
 }
 
+impl std::fmt::Display for Restriction {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		let mut entries = Vec::new();
+
+		if !self.weapon_kind.is_empty() {
+			let desc = if self.weapon_kind == EnumSet::all() {
+				let weapon_kinds = self
+					.weapon_kind
+					.iter()
+					.sorted()
+					.map(|kind| kind.to_string())
+					.collect::<Vec<_>>();
+				let desc = crate::utility::list_as_english(weapon_kinds, "or").unwrap_or_default();
+				format!("is a {desc} weapon")
+			} else {
+				format!("is a weapon")
+			};
+			entries.push(desc);
+		}
+
+		if !self.attack_kind.is_empty() && self.attack_kind != EnumSet::all() {
+			let attack_kinds = self
+				.attack_kind
+				.iter()
+				.sorted()
+				.map(|kind| kind.to_string())
+				.collect::<Vec<_>>();
+			let attack_kinds = crate::utility::list_as_english(attack_kinds, "or");
+			entries.push(format!("is a {} attack", attack_kinds.unwrap_or_default()));
+		}
+
+		let abilities = self
+			.ability
+			.iter()
+			.sorted()
+			.map(Ability::long_name)
+			.map(str::to_owned)
+			.collect::<Vec<_>>();
+		let abilities = crate::utility::list_as_english(abilities, "or");
+		if let Some(desc) = abilities {
+			entries.push(format!("uses the {desc} ability"));
+		}
+
+		for (property, required_or_barred) in &self.properties {
+			if *required_or_barred {
+				entries.push(format!("has the {} property", property.display_name()));
+			} else {
+				entries.push(format!(
+					"does not have the {} property",
+					property.display_name()
+				));
+			}
+		}
+
+		write!(
+			f,
+			"{}",
+			crate::utility::list_as_english(entries, "and").unwrap_or_default()
+		)
+	}
+}
+
 impl Restriction {
+	pub fn does_weapon_meet(&self, weapon: &Weapon) -> bool {
+		// the action must be an attack which is one of the provided weapon kinds
+		if !self.weapon_kind.is_empty() {
+			if !self.weapon_kind.contains(weapon.kind) {
+				return false;
+			}
+		}
+		// the action must be an attack which is one of the provided attack kinds
+		if !self.attack_kind.is_empty() {
+			if !self.attack_kind.contains(weapon.attack_kind()) {
+				return false;
+			}
+		}
+		// the action must be an attack which uses one of the provided abilities
+		if !self.ability.is_empty() {
+			if !self.ability.contains(&weapon.attack_ability()) {
+				return false;
+			}
+		}
+		// the action must be an attack which has or doesn't have specific weapon properties
+		if !self.properties.is_empty() {
+			for (property, required_else_barred) in &self.properties {
+				let has_property = weapon.properties.contains(property);
+				if has_property != *required_else_barred {
+					return false;
+				}
+			}
+		}
+		true
+	}
+
 	pub fn does_action_meet(&self, action: &Action) -> bool {
 		// the action must be an attack which is one of the provided weapon kinds
 		if !self.weapon_kind.is_empty() {
@@ -28,7 +122,7 @@ impl Restriction {
 			let Some(kind) = &attack.weapon_kind else {
 				return false;
 			};
-			if !self.weapon_kind.contains(kind) {
+			if !self.weapon_kind.contains(*kind) {
 				return false;
 			}
 		}
@@ -36,7 +130,7 @@ impl Restriction {
 		if !self.attack_kind.is_empty() {
 			let Some(attack) = &action.attack else { return false; };
 			let Some(atk_kind) = &attack.kind else { return false; };
-			if !self.attack_kind.contains(&atk_kind.kind()) {
+			if !self.attack_kind.contains(atk_kind.kind()) {
 				return false;
 			}
 		}
@@ -68,9 +162,9 @@ impl crate::kdl_ext::FromKDL for Restriction {
 		ctx: &mut crate::kdl_ext::NodeContext,
 	) -> anyhow::Result<Self> {
 		let weapon_kind = match node.query_opt("scope() > weapon")? {
-			None => HashSet::default(),
+			None => EnumSet::empty(),
 			Some(node) => {
-				let mut allowed_kinds = HashSet::default();
+				let mut allowed_kinds = EnumSet::empty();
 				for entry in node.entries() {
 					allowed_kinds.insert(weapon::Kind::from_str(entry.value().as_str_req()?)?);
 				}
@@ -78,9 +172,9 @@ impl crate::kdl_ext::FromKDL for Restriction {
 			}
 		};
 		let attack_kind = match node.query_opt("scope() > attack")? {
-			None => HashSet::default(),
+			None => EnumSet::empty(),
 			Some(node) => {
-				let mut allowed_kinds = HashSet::default();
+				let mut allowed_kinds = EnumSet::empty();
 				for entry in node.entries() {
 					allowed_kinds.insert(AttackKind::from_str(entry.value().as_str_req()?)?);
 				}
