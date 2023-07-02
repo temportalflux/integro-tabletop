@@ -34,14 +34,16 @@ crate::impl_kdl_node!(GetLevelStr, "get_level_str");
 
 trait GetLevelTy {
 	fn from_level(level: usize) -> Self;
-	fn from_kdl(entry: &kdl::KdlEntry) -> anyhow::Result<Self> where Self: Sized;
+	fn from_kdl(entry: &kdl::KdlEntry) -> anyhow::Result<Self>
+	where
+		Self: Sized;
 	fn to_kdl(&self) -> kdl::KdlEntry;
 }
 impl GetLevelTy for i32 {
 	fn from_level(level: usize) -> Self {
 		level as i32
 	}
-	
+
 	fn from_kdl(entry: &kdl::KdlEntry) -> anyhow::Result<Self> {
 		Ok(entry.value().as_i64_req()? as i32)
 	}
@@ -54,7 +56,7 @@ impl GetLevelTy for String {
 	fn from_level(level: usize) -> Self {
 		level.to_string()
 	}
-	
+
 	fn from_kdl(entry: &kdl::KdlEntry) -> anyhow::Result<Self> {
 		Ok(entry.value().as_str_req()?.to_owned())
 	}

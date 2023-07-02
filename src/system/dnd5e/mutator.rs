@@ -10,8 +10,8 @@ pub use add_bundle::*;
 mod armor_class;
 pub use armor_class::*;
 
-mod bonus_damage;
-pub use bonus_damage::*;
+mod bonus;
+pub use bonus::*;
 
 mod description;
 pub use description::*;

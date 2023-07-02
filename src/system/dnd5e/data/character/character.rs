@@ -1,5 +1,6 @@
 use super::{
-	spellcasting, DefaultsBlock, Features, HitPoint, HitPoints, Spellcasting, StartingEquipment,
+	spellcasting, AttackBonuses, DefaultsBlock, Features, HitPoint, HitPoints, Spellcasting,
+	StartingEquipment,
 };
 use crate::{
 	path_map::PathMap,
@@ -404,6 +405,14 @@ impl Character {
 		self.character.hit_points_mut()
 	}
 
+	pub fn attack_bonuses(&self) -> &AttackBonuses {
+		&self.derived.attack_bonuses
+	}
+
+	pub fn attack_bonuses_mut(&mut self) -> &mut AttackBonuses {
+		&mut self.derived.attack_bonuses
+	}
+
 	pub fn defenses(&self) -> &Defenses {
 		&self.derived.defenses
 	}
@@ -465,6 +474,7 @@ impl Character {
 			weapon_kind,
 			attack_kind,
 			ability,
+			properties: _,
 		}) = restriction
 		{
 			if !weapon_kind.is_empty() {

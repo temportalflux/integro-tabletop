@@ -86,7 +86,6 @@ impl Weapon {
 			AttackKindValue::Melee { .. } => Ability::Strength,
 			AttackKindValue::Ranged { .. } => Ability::Dexterity,
 		};
-		// TODO: Handle weapon properties
 		Feature {
 			name: entry.item.name.clone(),
 			action: Some(Action {
@@ -114,6 +113,7 @@ impl Weapon {
 						..Default::default()
 					}),
 					weapon_kind: Some(self.kind),
+					properties: self.properties.clone(),
 				}),
 				..Default::default()
 			}),

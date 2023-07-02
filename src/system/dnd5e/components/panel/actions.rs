@@ -195,11 +195,12 @@ pub fn Actions() -> Html {
 										AttackCheckKind::AttackRoll { ability, .. } => state.ability_modifier(*ability, None),
 										_ => 0,
 									};
+									//let additional_damage = state.attack_bonuses().get_weapon_damage(action);
 									match &attack.damage {
-										// TODO: tooltip for where bonus come from
-										Some(DamageRoll { roll, base_bonus, damage_type: _, additional_bonuses }) => {
-											let additional_bonus: i32 = additional_bonuses.iter().map(|(v, _)| *v).sum();
-											let bonus = base_bonus + ability_bonus + additional_bonus;
+										Some(DamageRoll { roll, base_bonus, damage_type: _ }) => {
+											// TODO: Showing bonuses when a bonus is a roll with an optional damage type
+											//let additional_bonus: i32 = additional_damage.iter().map(|(v, _)| *v).sum();
+											let bonus = base_bonus + ability_bonus;// + additional_bonus;
 											let roll_str = match &roll {
 												None => None,
 												Some(roll_value) => Some(roll_value.evaluate(&state).to_string()),
@@ -758,11 +759,11 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 				});
 			}
 
+			//let additional_damage = state.attack_bonuses().get_weapon_damage(action);
 			if let Some(DamageRoll {
 				roll,
 				base_bonus,
 				damage_type,
-				additional_bonuses,
 			}) = &attack.damage
 			{
 				let (check_ability, ability_bonus) = match &attack.check {
@@ -771,8 +772,9 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 					}
 					_ => (None, 0),
 				};
-				let additional_bonus: i32 = additional_bonuses.iter().map(|(v, _)| *v).sum();
-				let bonus = base_bonus + ability_bonus + additional_bonus;
+				// TODO: Show damage roll bonuses inline, when the bonuses themselves can be rolls
+				//let additional_bonus: i32 = additional_damage.iter().map(|(v, _damage_type, _source)| *v).sum();
+				let bonus = base_bonus + ability_bonus;// + additional_bonus;
 				let roll_str = match &roll {
 					None => None,
 					Some(roll_value) => Some(roll_value.evaluate(&state).to_string()),
@@ -784,18 +786,19 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 						(Some(roll), 1..=i32::MAX) => html! {<>{roll}{" + "}{bonus}</>},
 						(Some(roll), i32::MIN..=-1) => html! {<>{roll}{" - "}{bonus.abs()}</>},
 					};
+				let additional_damage_html = html!() /*additional_damage.iter().map(|(value, _damage_type, source)| html! {
+					<span>
+						{match *value >= 0 { true => "+", false => "-" }}
+						{value.abs()}
+						{"("}{crate::data::as_feature_path_text(source).unwrap_or_default()}{")"}
+					</span>
+				}).collect::<Vec<_>>()*/;
 				let suffix_info = (bonus > 0 && bonus != *base_bonus).then(|| html! {
 					<span style="color: var(--bs-gray-600);">
 						{" ("}
 						{concat_roll_bonus(&roll_str, *base_bonus)}
 						{check_ability.map(|ability| html! { {format!(" + {} modifier", ability.long_name())} }).unwrap_or_default()}
-						{additional_bonuses.iter().map(|(value, source)| html! {
-							<span>
-								{match *value >= 0 { true => "+", false => "-" }}
-								{value.abs()}
-								{"("}{crate::data::as_feature_path_text(source).unwrap_or_default()}{")"}
-							</span>
-						}).collect::<Vec<_>>()}
+						{additional_damage_html}
 						{")"}
 					</span>
 				});

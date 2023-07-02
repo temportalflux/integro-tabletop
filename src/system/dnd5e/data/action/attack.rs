@@ -18,6 +18,7 @@ pub struct Attack {
 	pub area_of_effect: Option<AreaOfEffect>,
 	pub damage: Option<DamageRoll>,
 	pub weapon_kind: Option<weapon::Kind>,
+	pub properties: Vec<weapon::Property>,
 }
 
 impl FromKDL for Attack {
@@ -45,6 +46,7 @@ impl FromKDL for Attack {
 			area_of_effect,
 			damage,
 			weapon_kind: None,
+			properties: Vec::new(),
 		})
 	}
 }
@@ -106,9 +108,9 @@ mod test {
 					roll: Some(EvaluatedRoll::from((2, Die::D6))),
 					base_bonus: 1,
 					damage_type: DamageType::Fire,
-					additional_bonuses: Vec::new(),
 				}),
 				weapon_kind: None,
+				properties: Vec::new(),
 			};
 			assert_eq_fromkdl!(Attack, doc, data);
 			assert_eq_askdl!(&data, doc);
@@ -147,9 +149,9 @@ mod test {
 					roll: Some(EvaluatedRoll::from((2, Die::D6))),
 					base_bonus: 1,
 					damage_type: DamageType::Fire,
-					additional_bonuses: Vec::new(),
 				}),
 				weapon_kind: None,
+				properties: Vec::new(),
 			};
 			assert_eq_fromkdl!(Attack, doc, data);
 			assert_eq_askdl!(&data, doc);

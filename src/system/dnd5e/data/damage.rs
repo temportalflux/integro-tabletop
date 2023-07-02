@@ -11,8 +11,6 @@ pub struct DamageRoll {
 	pub roll: Option<EvaluatedRoll>,
 	pub base_bonus: i32,
 	pub damage_type: DamageType,
-	// generated (see BonusDamage mutator)
-	pub additional_bonuses: Vec<(i32, PathBuf)>,
 }
 
 impl FromKDL for DamageRoll {
@@ -30,7 +28,6 @@ impl FromKDL for DamageRoll {
 			roll,
 			base_bonus,
 			damage_type,
-			additional_bonuses: Vec::new(),
 		})
 	}
 }
@@ -161,7 +158,6 @@ mod test {
 				roll: None,
 				base_bonus: 0,
 				damage_type: DamageType::Force,
-				additional_bonuses: vec![],
 			};
 			assert_eq_fromkdl!(DamageRoll, doc, data);
 			assert_eq_askdl!(&data, doc);
@@ -179,7 +175,6 @@ mod test {
 				roll: None,
 				base_bonus: 5,
 				damage_type: DamageType::Force,
-				additional_bonuses: vec![],
 			};
 			assert_eq_fromkdl!(DamageRoll, doc, data);
 			assert_eq_askdl!(&data, doc);
@@ -198,7 +193,6 @@ mod test {
 				roll: Some(EvaluatedRoll::from((2, Die::D4))),
 				base_bonus: 0,
 				damage_type: DamageType::Force,
-				additional_bonuses: vec![],
 			};
 			assert_eq_fromkdl!(DamageRoll, doc, data);
 			assert_eq_askdl!(&data, doc);
@@ -217,7 +211,6 @@ mod test {
 				roll: Some(EvaluatedRoll::from((1, Die::D6))),
 				base_bonus: 2,
 				damage_type: DamageType::Bludgeoning,
-				additional_bonuses: vec![],
 			};
 			assert_eq_fromkdl!(DamageRoll, doc, data);
 			assert_eq_askdl!(&data, doc);

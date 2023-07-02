@@ -578,7 +578,7 @@ mod test {
 				let doc = "
 					|description {
 					|    short \"Success against a DC {DC} Wisdom saving throw\"
-					|    format-arg \"DC\" (Evaluator)\"get_ability_modifier\" (Ability)\"Intelligence\"
+					|    format-arg \"DC\" \"int\" (Evaluator)\"get_ability_modifier\" (Ability)\"Intelligence\"
 					|}
 				";
 				let data = Info {
@@ -660,7 +660,7 @@ mod test {
 			fn format_args() -> anyhow::Result<()> {
 				let doc = "
 					|section \"Body with {num} format-args\" {
-					|    format-arg \"num\" (Evaluator)\"get_ability_modifier\" (Ability)\"Intelligence\"
+					|    format-arg \"num\" \"int\" (Evaluator)\"get_ability_modifier\" (Ability)\"Intelligence\"
 					|}
 				";
 				let data = Section {

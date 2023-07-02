@@ -102,9 +102,10 @@ fn Modal() -> Html {
 		let rows = state
 			.armor_class()
 			.iter_bonuses()
-			.map(|(bonus, source)| {
+			.map(|(bonus, context, source)| {
 				html! {<tr>
 					<td class="text-center">{match *bonus >= 0 { true => "+", false => "-" }}{bonus.abs()}</td>
+					<td>{context.clone().unwrap_or_default()}</td>
 					<td>{crate::data::as_feature_path_text(source).unwrap_or_default()}</td>
 				</tr>}
 			})
@@ -116,6 +117,7 @@ fn Modal() -> Html {
 					<thead>
 						<tr class="text-center" style="color: var(--bs-heading-color);">
 							<th scope="col">{"Bonus"}</th>
+							<th scope="col">{"Context"}</th>
 							<th scope="col">{"Source"}</th>
 						</tr>
 					</thead>

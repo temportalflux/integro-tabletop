@@ -1,12 +1,18 @@
 use super::{AttributedValue, PersonalityKind};
 use crate::system::dnd5e::{
 	data::{
-		proficiency, roll::Modifier, Ability, ArmorClass, DamageType, OtherProficiencies, Skill,
+		item::weapon,
+		proficiency,
+		roll::{Modifier, Roll},
+		Ability, ArmorClass, DamageType, OtherProficiencies, Skill,
 	},
 	mutator::{Defense, Flag},
 };
 use enum_map::{enum_map, EnumMap};
-use std::{collections::BTreeMap, path::PathBuf};
+use std::{
+	collections::BTreeMap,
+	path::{Path, PathBuf},
+};
 
 mod ability_score;
 pub use ability_score::*;
@@ -40,6 +46,7 @@ pub struct Derived {
 	pub senses: Senses,
 	pub defenses: Defenses,
 	pub max_hit_points: MaxHitPoints,
+	pub attack_bonuses: AttackBonuses,
 	pub armor_class: ArmorClass,
 	pub features: Features,
 	pub description: DerivedDescription,
@@ -61,6 +68,7 @@ impl Default for Derived {
 			senses: Default::default(),
 			defenses: Default::default(),
 			max_hit_points: Default::default(),
+			attack_bonuses: Default::default(),
 			armor_class: Default::default(),
 			features: Default::default(),
 			description: Default::default(),
@@ -285,7 +293,6 @@ pub struct DerivedDescription {
 	pub life_expectancy: i32,
 	pub size_formula: SizeFormula,
 	pub personality_suggestions: EnumMap<PersonalityKind, Vec<String>>,
-	// TODO: Starter equipment here
 }
 
 #[derive(Clone, Default, PartialEq, Debug)]
@@ -302,5 +309,87 @@ impl MaxHitPoints {
 
 	pub fn sources(&self) -> &BTreeMap<PathBuf, i32> {
 		&self.1
+	}
+}
+
+#[derive(Clone, Default, PartialEq, Debug)]
+pub struct AttackBonuses {
+	weapon_attack_roll: Vec<WeaponAttackRollBonus>,
+	weapon_damage: Vec<WeaponDamageBonus>,
+}
+#[derive(Clone, PartialEq, Debug)]
+struct WeaponAttackRollBonus {
+	bonus: i32,
+	restriction: Option<weapon::Restriction>,
+	source: PathBuf,
+}
+#[derive(Clone, PartialEq, Debug)]
+struct WeaponDamageBonus {
+	amount: Roll,
+	damage_type: Option<DamageType>,
+	restriction: Option<weapon::Restriction>,
+	source: PathBuf,
+}
+impl AttackBonuses {
+	pub fn add_to_weapon_attacks(
+		&mut self,
+		bonus: i32,
+		restriction: Option<weapon::Restriction>,
+		source: PathBuf,
+	) {
+		self.weapon_attack_roll.push(WeaponAttackRollBonus {
+			bonus,
+			restriction,
+			source,
+		});
+	}
+
+	pub fn add_to_weapon_damage(
+		&mut self,
+		amount: Roll,
+		damage_type: Option<DamageType>,
+		restriction: Option<weapon::Restriction>,
+		source: PathBuf,
+	) {
+		self.weapon_damage.push(WeaponDamageBonus {
+			amount,
+			damage_type,
+			restriction,
+			source,
+		});
+	}
+
+	pub fn get_weapon_attack(
+		&self,
+		action: &crate::system::dnd5e::data::action::Action,
+	) -> Vec<(i32, &Path)> {
+		let mut bonuses = Vec::new();
+		for bonus in &self.weapon_attack_roll {
+			// Filter out any bonuses which do not meet the restriction
+			if let Some(restriction) = &bonus.restriction {
+				if !restriction.does_action_meet(action) {
+					continue;
+				}
+			}
+			bonuses.push((bonus.bonus, bonus.source.as_path()));
+		}
+		bonuses
+	}
+
+	pub fn get_weapon_damage(
+		&self,
+		action: &crate::system::dnd5e::data::action::Action,
+	) -> Vec<(&Roll, &Option<DamageType>, &Path)> {
+		let mut bonuses = Vec::new();
+		for bonus in &self.weapon_damage {
+			// Filter out any bonuses which do not meet the restriction
+			if let Some(restriction) = &bonus.restriction {
+				if !restriction.does_action_meet(action) {
+					continue;
+				}
+			}
+			bonuses.push((&bonus.amount, &bonus.damage_type, bonus.source.as_path()));
+		}
+		bonuses
 	}
 }

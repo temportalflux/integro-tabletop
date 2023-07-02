@@ -4,10 +4,20 @@ use crate::{
 };
 use std::str::FromStr;
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub enum AttackKind {
 	Melee,
 	Ranged,
+}
+
+impl ToString for AttackKind {
+	fn to_string(&self) -> String {
+		match self {
+			Self::Melee => "Melee",
+			Self::Ranged => "Ranged",
+		}
+		.into()
+	}
 }
 
 impl FromStr for AttackKind {
