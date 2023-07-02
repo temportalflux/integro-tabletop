@@ -1,42 +1,39 @@
 # Backlog
 -----
 
-## IndexedDB
-- force refresh button to forcibly reload one or more modules by wiping those entries from the database and refetching them from source
-
-## UI Backlog
-- UI components for rendering features, conditions, mutators, etc which is used for all presentations (mutators / features in origin & item browsers, condition cards, feature/action modals, etc)
-
-## Unify mutators, criteria, and features
+## Cleanup
 - Convert `feature` block to a `mutator-todo "feature"` block, features are granted using mutators. FromKDL structs which accept both mutators and features now only accept mutators.
 - Convert `criteria` into a `mutator "only_if"` (or similar name) which accepts a single criteria and any number of submutators. Submutations are only applied if the criteria passes. This CAN replace the usage of `criteria` in features and conditions, but not entirely b/c features with criteria should still show up in UI (and just be marked as inactive/criteria not met).
 
-## Conditions
-- degrees (like exhaustion): these are stages of the same condition, which add more mutators the higher the degree.
-
-## Attunement UI
-- 3 slots to which attunable items can be "equipped"
-- must be in the top-level inventory (equipment)
-
-## Rest
-- Short and Long rest buttons with functionality
-- Things that get updated on rest
-	- anything with `LimitedUses` where `reset_on` is specified (features/actions, always-prepared spellcasting)
-	- hit points
-	- spell slots
-- Rest modal should tell the user what all is changing for a given rest (things affected get registered on the character)
-- hit points UI should track hit dice (for usage during short rest or when features specify like Wither and Bloom)
-
-## Spellcasting
-- Spell panel rows for selected spells
-	- cast vs use buttons
-- non-stub search functionality in main panel
-- Spell management
-	- search available spells to be selected
-- focus functionality
-- limited uses for add_prepared (self-defined, using another feature, or charges)
-- add_prepared spells cost (at-will vs requires_slot vs limited_use)
+## DnD5e Features
+- Rest
+	- Short and Long rest buttons with functionality
+	- Things that get updated on rest
+		- anything with `LimitedUses` where `reset_on` is specified (features/actions, always-prepared spellcasting)
+		- hit points
+		- spell slots
+	- Rest modal should tell the user what all is changing for a given rest (things affected get registered on the character)
+	- hit points UI should track hit dice (for usage during short rest or when features specify like Wither and Bloom)
+- Condition degrees (like exhaustion): these are stages of the same condition, which add more mutators the higher the degree.
+- Attunement; 3 slots per character, can select attunable items in the character's equipment
+- Item Charges
+- Sheet inventory search bar functionality
+- Customizations;
+	- Allow users to create new entries
+		- Features & Actions
+		- Conditions
+		- Saving Throw Modifiers
+		- Skills
+		- Other Proficiencies
+		- Defenses
+		- Feats
+	- Homebrew; Users can duplicate any existing entry to their homebrew content, which can then be editted
+- Character Modules
+	- Each character has a list of modules that are used
+	- Populated with defaults specified in the user's settings when a new character is created
+	- Can add or remove modules in the editor for a character
 - Spell Components
+	- how do Foci fit into this?
 	- items can have the `SpellComponent` tag
 	- spells which have spell components specify the name, an optional gold amount, and if there is a gold amount, optionally consume it
 	- spells with material components are displayed in the spell ui
@@ -50,54 +47,32 @@
 		}
 	}
 	```
+- Spell Containers
+	- Preparation Source (can spells be prepared from here, i.e. spellbook for wizard)
+	- Max Spell Count (optional); max number of spells this container can hold (e.g. spell gems & scrolls only hold one)
+	- Max Level Per Spell (optional); max level any spell in this container can be (e.g. spell gems have a cap on the tier of spell)
+	- Max Total Level (optional): max value of the sum of all spell levels in this container (e.g. ring of spell storing has a general cap on all stored spells)
+	- Entries (list of spells)
+	- Some spell containers can only be transcribed from, never prepare or cast from
 
-## Spell Containers
-- Preparation Source (can spells be prepared from here, i.e. spellbook for wizard)
-- Max Spell Count (optional); max number of spells this container can hold (e.g. spell gems & scrolls only hold one)
-- Max Level Per Spell (optional); max level any spell in this container can be (e.g. spell gems have a cap on the tier of spell)
-- Max Total Level (optional): max value of the sum of all spell levels in this container (e.g. ring of spell storing has a general cap on all stored spells)
-- Entries (list of spells)
-- Some spell containers can only be transcribed from, never prepare or cast from
+## App Features
+- Modules page
+	- view all locally installed modules
+	- (action) force refresh to delete installation and reinstall (per module or all)
+	- (action) check for updates; query for any new revisions/commits
+	- (action) clone module from its source to a user's own homebrew
 
-## Inventory
-- non-stub search functionality
+## Future Features
 
-## Performance
-- When a character is loaded, it shouldnt require any extra data from modules, it should be able to be fully self contained
-	- known problem areas: features which grant innate spellcasting
-- load spells and items in the background after the character is loaded
-- dont load feature groups (class, race, background, lineage, etc) unless the character needs access to editor. Once a character is created, the user doesn't usually need access to any of the other components that arent inlined into their character data.
-
-## Customizations
-Allow users to create new elements
-- Actions
-- Conditions
-- Saving Throw Modifiers
-- Skills
-- Other Proficiencies
-- Defenses
-- Feats
-
-## Save Data
-- Save persistent data to session storage while character is open
-- eventually have this all query against github repos where classes, subclasses, backgrounds, lineages, upbringings, items, & spells all have a `repo`+`path` tuple which describes from where to fetch data updates from
-- modules can be added to the user's profile to be loaded when the application starts up (by querying the repos)
-
-## Mailbox
+### Mailbox
 - Pull requests are used to send items between characters
 - Characters in other repos can be added as friends (so mail can be sent)
 
-## Write Modules
-written in kdl, hosted in github
-- D&D Basic Rules
-- Elf and an Orc had a little baby (v2?)
-- Other Official D&D Content
-
-## User-Written Modules
+### User-Written Modules
 - users can create new modules, saved to github (or other backend servicer)
 - modules are querried from backend(s) on app load, and opt-in able for any given character
 - modules have permissions (based on backend) and user access can be added by the module owner via the app
 - App has interface support for editing modules (adding/removing content, updating content with versioning)
 
-## Standalone app?
+### Standalone app?
 - maybe run wasm in a winit window via https://docs.wasmtime.dev/
