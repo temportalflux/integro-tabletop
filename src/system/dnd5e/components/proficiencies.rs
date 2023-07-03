@@ -2,9 +2,28 @@ use crate::{
 	bootstrap::components::Tooltip,
 	components::modal,
 	page::characters::sheet::CharacterHandle,
-	system::dnd5e::data::{AttributedValueMap, WeaponProficiency},
+	system::dnd5e::{
+		components::GeneralProp,
+		data::{proficiency, AttributedValueMap, WeaponProficiency},
+	},
 };
 use yew::prelude::*;
+
+#[function_component]
+pub fn ProficiencyLevelIcon(GeneralProp { value }: &GeneralProp<proficiency::Level>) -> Html {
+	match value {
+		proficiency::Level::None => html! { <i class="bi bi-circle" /> },
+		proficiency::Level::HalfDown | proficiency::Level::HalfUp => {
+			html! { <i class="bi bi-circle-half" style="color: var(--theme-frame-color);" /> }
+		}
+		proficiency::Level::Full => {
+			html! { <i class="bi bi-circle-fill" style="color: var(--theme-frame-color);" /> }
+		}
+		proficiency::Level::Double => {
+			html! { <i class="bi bi-record-circle" style="color: var(--theme-frame-color);" /> }
+		}
+	}
+}
 
 #[function_component]
 pub fn Proficiencies() -> Html {

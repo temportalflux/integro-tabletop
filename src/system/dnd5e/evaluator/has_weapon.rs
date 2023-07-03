@@ -104,7 +104,10 @@ mod test {
 
 	mod kdl {
 		use super::*;
-		use crate::{kdl_ext::test_utils::*, system::dnd5e::{evaluator::test::test_utils, data::action::AttackKind}};
+		use crate::{
+			kdl_ext::test_utils::*,
+			system::dnd5e::{data::action::AttackKind, evaluator::test::test_utils},
+		};
 
 		test_utils!(HasWeaponEquipped);
 

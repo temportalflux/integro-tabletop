@@ -3,7 +3,7 @@ use crate::{
 	components::modal,
 	page::characters::sheet::CharacterHandle,
 	system::dnd5e::{
-		components::roll::ModifierIcon,
+		components::{roll::ModifierIcon, ProficiencyLevelIcon},
 		data::{Ability, Skill},
 	},
 };
@@ -201,7 +201,7 @@ fn Row(
 	let mut table_data = vec![
 		html! {
 			<Tooltip tag={"td"} classes={"text-center"} content={prof_tooltip} use_html={true}>
-				{*proficiency.value()}
+				<ProficiencyLevelIcon value={*proficiency.value()} />
 			</Tooltip>
 		},
 		html! { <td>
@@ -267,7 +267,7 @@ fn SkillModal(SkillModalProps { skill }: &SkillModalProps) -> Html {
 					html! {
 						<tr>
 							<td class="d-flex align-items-center">
-								{*value}
+								<ProficiencyLevelIcon value={*value} />
 								<span class="flex-grow-1 text-center" style="margin-left: 5px;">{value.as_display_name()}</span>
 							</td>
 							<td>{source_text}</td>

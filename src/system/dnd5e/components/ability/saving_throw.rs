@@ -3,7 +3,7 @@ use crate::{
 	components::modal,
 	page::characters::sheet::CharacterHandle,
 	system::dnd5e::components::roll::ModifierIcon,
-	system::dnd5e::data::{character::ModifierMapItem, roll::Modifier, Ability},
+	system::dnd5e::{data::{character::ModifierMapItem, roll::Modifier, Ability}, components::ProficiencyLevelIcon},
 };
 use enumset::EnumSet;
 use yew::prelude::*;
@@ -56,7 +56,7 @@ pub fn SavingThrow(
 		<Tooltip tag={"td"} classes={"text-center"} use_html={true} content={abbreviated.then(|| {
 			crate::data::as_feature_paths_html(proficiency.sources().iter().map(|(path, _)| path))
 		}).flatten()}>
-			{*proficiency.value()}
+			<ProficiencyLevelIcon value={*proficiency.value()} />
 		</Tooltip>
 		<td class={"text-center"}>{match *abbreviated {
 			true => ability.abbreviated_name().to_uppercase(),

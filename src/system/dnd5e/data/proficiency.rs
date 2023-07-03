@@ -35,9 +35,10 @@ impl Level {
 			Self::Double => "Expertise",
 		}
 	}
+}
 
-	// TODO: ToString impl conflicts with Into<Html>
-	pub fn to_string(&self) -> String {
+impl ToString for Level {
+	fn to_string(&self) -> String {
 		match self {
 			Self::None => "None",
 			Self::HalfDown => "HalfDown",
@@ -62,25 +63,6 @@ impl FromStr for Level {
 			_ => Err(GeneralError(format!(
 				"Invalid proficiency level {s:?}, expected None, Half, Full, or Double"
 			))),
-		}
-	}
-}
-
-// TODO: Move into components
-impl Into<yew::prelude::Html> for Level {
-	fn into(self) -> yew::prelude::Html {
-		use yew::prelude::*;
-		match self {
-			Self::None => html! { <i class="bi bi-circle" /> },
-			Self::HalfDown | Self::HalfUp => {
-				html! { <i class="bi bi-circle-half" style="color: var(--theme-frame-color);" /> }
-			}
-			Self::Full => {
-				html! { <i class="bi bi-circle-fill" style="color: var(--theme-frame-color);" /> }
-			}
-			Self::Double => {
-				html! { <i class="bi bi-record-circle" style="color: var(--theme-frame-color);" /> }
-			}
 		}
 	}
 }

@@ -1,6 +1,8 @@
 use crate::{
 	kdl_ext::{DocumentExt, FromKDL, NodeBuilder, NodeExt},
-	system::dnd5e::data::{character::Character, item::weapon, roll::EvaluatedRoll, DamageType, description},
+	system::dnd5e::data::{
+		character::Character, description, item::weapon, roll::EvaluatedRoll, DamageType,
+	},
 	utility::{Dependencies, Mutator, NotInList},
 };
 use std::str::FromStr;
@@ -27,7 +29,7 @@ crate::impl_kdl_node!(Bonus, "bonus");
 
 impl Mutator for Bonus {
 	type Target = Character;
-	
+
 	fn description(&self, _state: Option<&Self::Target>) -> description::Section {
 		// TODO: Bonus description
 		description::Section::default()
