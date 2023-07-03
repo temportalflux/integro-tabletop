@@ -50,7 +50,7 @@ impl EvaluatedRoll {
 }
 
 impl FromKDL for EvaluatedRoll {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		if let Some(entry) = node.next_opt() {
 			return Ok(Self::from(Roll::from_kdl_value(entry.value())?));
 		}

@@ -119,7 +119,7 @@ impl ApplyIf {
 }
 
 impl FromKDL for ApplyIf {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let op = match node.next_str_opt()? {
 			None => LogicOp::default(),
 			Some(str) => LogicOp::from_str(str)?,

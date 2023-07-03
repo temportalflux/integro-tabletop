@@ -28,7 +28,7 @@ impl Mutator for AddStartingEquipment {
 }
 
 impl FromKDL for AddStartingEquipment {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		Ok(Self(StartingEquipment::from_kdl_vec(node)?))
 	}
 }

@@ -48,7 +48,7 @@ impl StartingEquipment {
 		let mut entries = Vec::new();
 		if let Some(children) = node.children() {
 			for mut node in children {
-				entries.push(Self::from_kdl_reader(&mut node)?);
+				entries.push(Self::from_kdl(&mut node)?);
 			}
 		}
 		Ok(entries)
@@ -64,9 +64,9 @@ impl StartingEquipment {
 }
 
 impl FromKDL for StartingEquipment {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		match node.name().value() {
-			"currency" => Ok(Self::Currency(Wallet::from_kdl_reader(node)?)),
+			"currency" => Ok(Self::Currency(Wallet::from_kdl(node)?)),
 			"group" => {
 				let entries = StartingEquipment::from_kdl_vec(node)?;
 				let pick = node.get_i64_opt("pick")?.map(|v| v as usize);
@@ -77,8 +77,8 @@ impl FromKDL for StartingEquipment {
 					let id = SourceId::from_str(node.next_str_req()?)?;
 					Ok(Self::SpecificItem(id.with_basis(node.id(), false)))
 				}
-				"Custom" => Ok(Self::CustomItem(Item::from_kdl_reader(node)?)),
-				"Select" => Ok(Self::SelectItem(ItemFilter::from_kdl_reader(node)?)),
+				"Custom" => Ok(Self::CustomItem(Item::from_kdl(node)?)),
+				"Select" => Ok(Self::SelectItem(ItemFilter::from_kdl(node)?)),
 				kind => Err(NotInList(kind.into(), vec!["Specific", "Custom", "Select"]).into()),
 			},
 			name => {
@@ -112,7 +112,7 @@ impl AsKdl for StartingEquipment {
 }
 
 impl FromKDL for ItemFilter {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let tags = node
 			.query_str_all("scope() > tag", 0)?
 			.into_iter()
@@ -120,7 +120,7 @@ impl FromKDL for ItemFilter {
 			.collect::<Vec<_>>();
 		let weapon = match node.query_opt("scope() > weapon")? {
 			None => None,
-			Some(mut node) => Some(WeaponFilter::from_kdl_reader(&mut node)?),
+			Some(mut node) => Some(WeaponFilter::from_kdl(&mut node)?),
 		};
 		Ok(Self { tags, weapon })
 	}
@@ -139,7 +139,7 @@ impl AsKdl for ItemFilter {
 }
 
 impl FromKDL for WeaponFilter {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let kind = match node.get_str_opt("kind")? {
 			None => None,
 			Some(str) => Some(weapon::Kind::from_str(str)?),

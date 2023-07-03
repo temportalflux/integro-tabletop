@@ -622,7 +622,7 @@ pub mod test_utils {
 	}
 
 	pub fn from_kdl<'doc, T: FromKDL>(mut node: NodeReader<'doc>) -> anyhow::Result<T> {
-		T::from_kdl_reader(&mut node)
+		T::from_kdl(&mut node)
 	}
 
 	pub fn as_kdl(data: &impl AsKdl) -> NodeBuilder {

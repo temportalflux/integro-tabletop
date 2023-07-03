@@ -14,10 +14,10 @@ pub struct DamageRoll {
 }
 
 impl FromKDL for DamageRoll {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let roll = match node.query_opt("scope() > roll")? {
 			None => None,
-			Some(mut node) => Some(EvaluatedRoll::from_kdl_reader(&mut node)?),
+			Some(mut node) => Some(EvaluatedRoll::from_kdl(&mut node)?),
 		};
 		let base_bonus = node.get_i64_opt("base")?.unwrap_or(0) as i32;
 		let damage_type = DamageType::from_str(node.query_str_req("scope() > damage_type", 0)?)?;

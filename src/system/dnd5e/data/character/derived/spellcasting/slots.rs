@@ -35,7 +35,7 @@ impl Slots {
 }
 
 impl FromKDL for Slots {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let multiclass_half_caster = match node.get_str_opt("multiclass")? {
 			None | Some("Full") => false,
 			Some("Half") => true,

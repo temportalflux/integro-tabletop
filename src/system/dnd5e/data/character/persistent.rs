@@ -140,12 +140,12 @@ impl SystemComponent for Persistent {
 	}
 }
 impl FromKDL for Persistent {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let id = node.id().clone();
 		node.set_inheiret_source(false);
 
 		let description =
-			Description::from_kdl_reader(&mut node.query_req("scope() > description")?)?;
+			Description::from_kdl(&mut node.query_req("scope() > description")?)?;
 
 		let mut settings = Settings::default();
 		for node in node.query_all("scope() > setting")? {
@@ -159,7 +159,7 @@ impl FromKDL for Persistent {
 			ability_scores[ability] = score;
 		}
 
-		let hit_points = HitPoints::from_kdl_reader(&mut node.query_req("scope() > hit_points")?)?;
+		let hit_points = HitPoints::from_kdl(&mut node.query_req("scope() > hit_points")?)?;
 
 		let inspiration = node
 			.query_bool_opt("scope() > inspiration", 0)?
@@ -167,26 +167,26 @@ impl FromKDL for Persistent {
 
 		let mut conditions = Conditions::default();
 		for mut node in node.query_all("scope() > condition")? {
-			let condition = Condition::from_kdl_reader(&mut node)?;
+			let condition = Condition::from_kdl(&mut node)?;
 			conditions.insert(condition);
 		}
 
-		let inventory = Inventory::from_kdl_reader(&mut node.query_req("scope() > inventory")?)?;
+		let inventory = Inventory::from_kdl(&mut node.query_req("scope() > inventory")?)?;
 
 		let selected_spells = match node.query_opt("scope() > spells")? {
-			Some(mut node) => SelectedSpells::from_kdl_reader(&mut node)?,
+			Some(mut node) => SelectedSpells::from_kdl(&mut node)?,
 			None => SelectedSpells::default(),
 		};
 
 		let mut bundles = Vec::new();
 		for mut node in node.query_all("scope() > bundle")? {
-			let bundle = Bundle::from_kdl_reader(&mut node)?;
+			let bundle = Bundle::from_kdl(&mut node)?;
 			bundles.push(bundle);
 		}
 
 		let mut classes = Vec::new();
 		for mut node in node.query_all("scope() > class")? {
-			let class = Class::from_kdl_reader(&mut node)?;
+			let class = Class::from_kdl(&mut node)?;
 			classes.push(class);
 		}
 
@@ -272,7 +272,7 @@ pub struct HitPoints {
 	pub success_saves: u8,
 }
 impl FromKDL for HitPoints {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let current = node.query_i64_req("scope() > current", 0)? as u32;
 		let temp = node.query_i64_req("scope() > temp", 0)? as u32;
 		let failure_saves = node.query_i64_req("scope() > failure_saves", 0)? as u8;
@@ -454,7 +454,7 @@ pub struct SelectedSpellsData {
 	selections: HashMap<SourceId, Spell>,
 }
 impl FromKDL for SelectedSpells {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let mut consumed_slots = HashMap::new();
 		if let Some(node) = node.query_opt("scope() > consumed_slots")? {
 			for mut node in node.query_all("scope() > slot")? {
@@ -469,7 +469,7 @@ impl FromKDL for SelectedSpells {
 			let caster_name = node.next_str_req()?;
 			let mut selection_data = SelectedSpellsData::default();
 			for mut node in node.query_all("scope() > spell")? {
-				let spell = Spell::from_kdl_reader(&mut node)?;
+				let spell = Spell::from_kdl(&mut node)?;
 				selection_data.insert(spell);
 			}
 			cache_by_caster.insert(caster_name.to_owned(), selection_data);

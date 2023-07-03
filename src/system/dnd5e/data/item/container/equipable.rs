@@ -60,8 +60,8 @@ impl MutatorGroup for EquipableEntry {
 }
 
 impl FromKDL for EquipableEntry {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
-		let item = Item::from_kdl_reader(node)?;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let item = Item::from_kdl(node)?;
 		let is_equipped = node.get_bool_opt("equipped")?.unwrap_or_default();
 		Ok(Self { is_equipped, item })
 	}

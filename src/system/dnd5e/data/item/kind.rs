@@ -17,14 +17,14 @@ impl Default for Kind {
 }
 
 impl FromKDL for Kind {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		match node.next_str_req()? {
 			"Simple" => {
 				let count = node.get_i64_opt("count")?.unwrap_or(1) as u32;
 				Ok(Self::Simple { count })
 			}
 			"Equipment" => {
-				let equipment = Equipment::from_kdl_reader(node)?;
+				let equipment = Equipment::from_kdl(node)?;
 				Ok(Self::Equipment(equipment))
 			}
 			value => Err(NotInList(value.into(), vec!["Simple", "Equipment"]).into()),

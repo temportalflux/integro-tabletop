@@ -163,7 +163,7 @@ impl BoundValue {
 }
 
 impl FromKDL for BoundValue {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let entry = node.next_req()?;
 		let kind = BoundKind::from_str(entry.type_req()?)?;
 		let value = entry.as_i64_req()? as i32;

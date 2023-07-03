@@ -197,7 +197,7 @@ impl Mutator for Spellcasting {
 }
 
 impl FromKDL for Spellcasting {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let operation = match node.next_str_opt()? {
 			None => {
 				let ability = Ability::from_str(node.get_str_req("ability")?)?;
@@ -225,7 +225,7 @@ impl FromKDL for Spellcasting {
 					}
 				};
 
-				let slots = Slots::from_kdl_reader(&mut node.query_req("scope() > slots")?)?;
+				let slots = Slots::from_kdl(&mut node.query_req("scope() > slots")?)?;
 
 				let spell_capacity = {
 					let mut node = node.query_req("scope() > kind")?;
@@ -310,7 +310,7 @@ impl FromKDL for Spellcasting {
 				for mut node in node.query_all("scope() > spell")? {
 					let id = node.next_str_req()?;
 					let id = SourceId::from_str(id)?.with_basis(node.id(), false);
-					let info = PreparedInfo::from_kdl_reader(&mut node)?;
+					let info = PreparedInfo::from_kdl(&mut node)?;
 					specific_spells.push((id, info));
 				}
 
@@ -318,7 +318,7 @@ impl FromKDL for Spellcasting {
 					None => None,
 					Some(mut node) => {
 						let count = node.next_i64_req()? as usize;
-						let info = PreparedInfo::from_kdl_reader(&mut node)?;
+						let info = PreparedInfo::from_kdl(&mut node)?;
 						let mut filter = None;
 						let mut selector = ObjectSelector::new(Spell::id(), count);
 						if let Some(node) = node.query_opt("scope() > filter")? {
@@ -348,7 +348,7 @@ impl FromKDL for Spellcasting {
 
 				let limited_uses = match node.query_opt("scope() > limited_uses")? {
 					None => None,
-					Some(mut node) => Some(LimitedUses::from_kdl_reader(&mut node)?),
+					Some(mut node) => Some(LimitedUses::from_kdl(&mut node)?),
 				};
 				Operation::AddPrepared {
 					ability,
@@ -505,12 +505,12 @@ impl AsKdl for Spellcasting {
 }
 
 impl FromKDL for PreparedInfo {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let can_cast_through_slot = node.get_bool_opt("use_slot")?.unwrap_or_default();
 		let cast_at_rank = node.get_i64_opt("rank")?.map(|v| v as u8);
 		let range = match node.query_opt("scope() > range")? {
 			None => None,
-			Some(mut node) => Some(spell::Range::from_kdl_reader(&mut node)?),
+			Some(mut node) => Some(spell::Range::from_kdl(&mut node)?),
 		};
 		Ok(PreparedInfo {
 			can_cast_through_slot,

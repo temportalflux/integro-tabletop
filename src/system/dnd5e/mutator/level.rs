@@ -78,7 +78,7 @@ impl Mutator for GrantByLevel {
 }
 
 impl FromKDL for GrantByLevel {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let class_name = node.get_str_opt("class")?.map(str::to_owned);
 
 		let mut levels = BTreeMap::new();

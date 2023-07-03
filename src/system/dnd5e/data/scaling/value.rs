@@ -36,10 +36,10 @@ impl<T> FromKDL for Value<T>
 where
 	T: Clone + DefaultLevelMap + FromKDL,
 {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		match node.peak_req()?.type_opt() {
-			None => Ok(Self::Fixed(T::from_kdl_reader(node)?)),
-			Some("Scaled") => Ok(Self::Scaled(Basis::from_kdl_reader(node)?)),
+			None => Ok(Self::Fixed(T::from_kdl(node)?)),
+			Some("Scaled") => Ok(Self::Scaled(Basis::from_kdl(node)?)),
 			Some(type_name) => Err(GeneralError(format!(
 				"Invalid type name {type_name:?}, expected no type or Scaled."
 			))

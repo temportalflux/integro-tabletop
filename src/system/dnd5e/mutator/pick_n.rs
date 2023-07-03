@@ -144,7 +144,7 @@ impl Mutator for PickN {
 }
 
 impl FromKDL for PickN {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let max_selections = node.next_i64_req()? as usize;
 		let name = node.get_str_req("name")?.to_owned();
 
@@ -158,7 +158,7 @@ impl FromKDL for PickN {
 
 			let description = match node.query_opt("scope() > description")? {
 				None => None,
-				Some(mut node) => Some(description::Section::from_kdl_reader(&mut node)?),
+				Some(mut node) => Some(description::Section::from_kdl(&mut node)?),
 			};
 
 			let mut mutators = Vec::new();

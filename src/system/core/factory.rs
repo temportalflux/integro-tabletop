@@ -104,7 +104,7 @@ impl MutatorFactory {
 				std::any::type_name::<M::Target>(),
 			),
 			fn_from_kdl: Box::new(|mut node| {
-				let arc_eval: ArcMutator<M::Target> = Arc::new(M::from_kdl_reader(&mut node)?);
+				let arc_eval: ArcMutator<M::Target> = Arc::new(M::from_kdl(&mut node)?);
 				Ok(Box::new(arc_eval))
 			}),
 		}
@@ -163,7 +163,7 @@ impl EvaluatorFactory {
 			item_type_info: (TypeId::of::<E::Item>(), std::any::type_name::<E::Item>()),
 			fn_from_kdl: Box::new(|node| {
 				let arc_eval: ArcEvaluator<E::Context, E::Item> =
-					Arc::new(E::from_kdl_reader(node)?);
+					Arc::new(E::from_kdl(node)?);
 				Ok(Box::new(arc_eval))
 			}),
 		}

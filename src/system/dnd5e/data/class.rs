@@ -75,7 +75,7 @@ impl SystemComponent for Class {
 crate::impl_kdl_node!(Class, "class");
 
 impl FromKDL for Class {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let id = node.parse_source_req()?;
 
 		let name = node.get_str_req("name")?.to_owned();
@@ -96,7 +96,7 @@ impl FromKDL for Class {
 			.map(|v| v as usize);
 		let subclass = match node.query_opt("scope() > subclass")? {
 			None => None,
-			Some(mut node) => Some(Subclass::from_kdl_reader(&mut node)?),
+			Some(mut node) => Some(Subclass::from_kdl(&mut node)?),
 		};
 
 		let mut levels = Vec::with_capacity(20);
@@ -104,7 +104,7 @@ impl FromKDL for Class {
 		for mut node in node.query_all("scope() > level")? {
 			let order = node.next_i64_req()? as usize;
 			let idx = order - 1;
-			levels[idx] = Level::from_kdl_reader(&mut node)?;
+			levels[idx] = Level::from_kdl(&mut node)?;
 		}
 
 		Ok(Self {
@@ -187,7 +187,7 @@ impl Level {
 }
 
 impl FromKDL for Level {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let hit_points = Selector::Any {
 			id: Some("hit_points").into(),
 			cannot_match: Default::default(),
@@ -303,7 +303,7 @@ impl MutatorGroup for Subclass {
 }
 
 impl FromKDL for Subclass {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let name = node.get_str_req("name")?.to_owned();
 		let class_name = node.get_str_req("class")?.to_owned();
 		let description = node
@@ -316,7 +316,7 @@ impl FromKDL for Subclass {
 		for mut node in node.query_all("scope() > level")? {
 			let order = node.next_i64_req()? as usize;
 			let idx = order - 1;
-			levels[idx] = Level::from_kdl_reader(&mut node)?;
+			levels[idx] = Level::from_kdl(&mut node)?;
 		}
 
 		Ok(Self {

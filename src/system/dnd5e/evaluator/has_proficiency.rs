@@ -58,7 +58,7 @@ impl Evaluator for IsProficientWith {
 crate::impl_kdl_node!(IsProficientWith, "is_proficient_with");
 
 impl FromKDL for IsProficientWith {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let entry = node.next_req()?;
 		match entry.type_req()? {
 			"SavingThrow" => Ok(Self::SavingThrow(Ability::from_str(entry.as_str_req()?)?)),

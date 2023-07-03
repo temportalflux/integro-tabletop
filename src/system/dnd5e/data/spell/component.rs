@@ -19,7 +19,7 @@ pub struct Components {
 impl FromKDL for Components {
 	/// Queries the children of `parent` for any nodes named `component`,
 	/// and extends the default `Components` with all identified children.
-	fn from_kdl_reader<'doc>(
+	fn from_kdl<'doc>(
 		parent: &mut crate::kdl_ext::NodeReader<'doc>,
 	) -> anyhow::Result<Self> {
 		let mut components = Self::default();

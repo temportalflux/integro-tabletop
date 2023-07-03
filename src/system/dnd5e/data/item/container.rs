@@ -172,9 +172,9 @@ impl<T: AsItem> Container<T> {
 }
 
 impl<T: AsItem + FromKDL> FromKDL for Container<T> {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let wallet = match node.query_opt("scope() > wallet")? {
-			Some(mut node) => Wallet::from_kdl_reader(&mut node)?,
+			Some(mut node) => Wallet::from_kdl(&mut node)?,
 			None => Default::default(),
 		};
 
@@ -210,7 +210,7 @@ impl<T: AsItem + FromKDL> FromKDL for Container<T> {
 		};
 
 		for mut node in node.query_all("scope() > item")? {
-			let item = T::from_kdl_reader(&mut node)?;
+			let item = T::from_kdl(&mut node)?;
 			inventory.push_entry(item);
 		}
 

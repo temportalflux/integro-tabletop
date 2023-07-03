@@ -160,7 +160,7 @@ impl Mutator for AddModifier {
 }
 
 impl FromKDL for AddModifier {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let modifier = roll::Modifier::from_str(node.next_str_req()?)?;
 		let context = node.get_str_opt("context")?.map(str::to_owned);
 		let entry = node.next_req()?;

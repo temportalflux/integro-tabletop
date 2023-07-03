@@ -57,7 +57,7 @@ impl Mutator for SetFlag {
 }
 
 impl FromKDL for SetFlag {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let flag = Flag::from_str(node.next_str_req()?)?;
 		let value = node.next_bool_req()?;
 		Ok(Self { flag, value })

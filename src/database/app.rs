@@ -102,7 +102,7 @@ impl Database {
 			system_reg.node()
 		};
 		let ctx = crate::kdl_ext::NodeContext::new(Arc::new(entry.source_id(true)), node_reg);
-		let Ok(value) = T::from_kdl_reader(&mut crate::kdl_ext::NodeReader::new(node, ctx)) else {
+		let Ok(value) = T::from_kdl(&mut crate::kdl_ext::NodeReader::new(node, ctx)) else {
 			return Err(FetchError::FailedToParse(node.to_string(), T::id()));
 		};
 		Ok(Some(value))

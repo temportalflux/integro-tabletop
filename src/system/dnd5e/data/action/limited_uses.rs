@@ -111,7 +111,7 @@ impl UseCounterData {
 }
 
 impl FromKDL for LimitedUses {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		if let Some(mut node_max_uses) = node.query_opt("scope() > max_uses")? {
 			let entry = node_max_uses.next_req()?;
 			let max_uses = {

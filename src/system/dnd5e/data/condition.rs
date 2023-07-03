@@ -52,7 +52,7 @@ impl SystemComponent for Condition {
 }
 
 impl FromKDL for Condition {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let id = node.parse_source_opt()?;
 
 		let name = node.get_str_req("name")?.to_owned();

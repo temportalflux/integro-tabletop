@@ -16,8 +16,8 @@ pub enum CastingDuration {
 }
 
 impl FromKDL for CastingTime {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
-		let duration = CastingDuration::from_kdl_reader(node)?;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let duration = CastingDuration::from_kdl(node)?;
 		let ritual = node.get_bool_opt("ritual")?.unwrap_or_default();
 		Ok(Self { duration, ritual })
 	}
@@ -34,7 +34,7 @@ impl AsKdl for CastingTime {
 }
 
 impl FromKDL for CastingDuration {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		match node.next_str_req()? {
 			"Action" => Ok(Self::Action),
 			"Bonus" => Ok(Self::Bonus),

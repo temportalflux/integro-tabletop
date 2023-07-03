@@ -60,39 +60,39 @@ impl SystemComponent for Spell {
 }
 
 impl FromKDL for Spell {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		// TODO: all system components need to check if the node has a source field
 		let id = node.parse_source_req()?;
 
 		let name = node.get_str_req("name")?.to_owned();
 		let description = match node.query_opt("scope() > description")? {
 			None => description::Info::default(),
-			Some(mut node) => description::Info::from_kdl_reader(&mut node)?,
+			Some(mut node) => description::Info::from_kdl(&mut node)?,
 		};
 		let rank = node.query_i64_req("scope() > rank", 0)? as u8;
 		let school_tag = node
 			.query_str_opt("scope() > school", 0)?
 			.map(str::to_owned);
 
-		let components = Components::from_kdl_reader(node)?;
+		let components = Components::from_kdl(node)?;
 		let mut casting_time = node.query_req("scope() > casting-time")?;
-		let casting_time = CastingTime::from_kdl_reader(&mut casting_time)?;
+		let casting_time = CastingTime::from_kdl(&mut casting_time)?;
 		let mut range = node.query_req("scope() > range")?;
-		let range = Range::from_kdl_reader(&mut range)?;
+		let range = Range::from_kdl(&mut range)?;
 		let area_of_effect = match node.query_opt("scope() > area_of_effect")? {
 			None => None,
-			Some(mut node) => Some(AreaOfEffect::from_kdl_reader(&mut node)?),
+			Some(mut node) => Some(AreaOfEffect::from_kdl(&mut node)?),
 		};
 		let mut duration = node.query_req("scope() > duration")?;
-		let duration = Duration::from_kdl_reader(&mut duration)?;
+		let duration = Duration::from_kdl(&mut duration)?;
 
 		let check = match node.query_opt("scope() > check")? {
 			None => None,
-			Some(mut node) => Some(Check::from_kdl_reader(&mut node)?),
+			Some(mut node) => Some(Check::from_kdl(&mut node)?),
 		};
 		let damage = match node.query_opt("scope() > damage")? {
 			None => None,
-			Some(mut node) => Some(Damage::from_kdl_reader(&mut node)?),
+			Some(mut node) => Some(Damage::from_kdl(&mut node)?),
 		};
 
 		let mut tags = node.query_str_all("scope() > tag", 0)?;

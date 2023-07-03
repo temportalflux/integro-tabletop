@@ -35,11 +35,11 @@ impl ComponentFactory {
 	{
 		Self {
 			metadata_from_kdl: Box::new(|mut node| {
-				let value = T::from_kdl_reader(&mut node)?;
+				let value = T::from_kdl(&mut node)?;
 				Ok(T::to_metadata(value))
 			}),
 			reserialize_kdl: Box::new(|mut node| {
-				let value = T::from_kdl_reader(&mut node)?;
+				let value = T::from_kdl(&mut node)?;
 				Ok(value.as_kdl().build(node.name().value()))
 			}),
 		}

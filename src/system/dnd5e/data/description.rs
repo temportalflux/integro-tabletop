@@ -90,11 +90,11 @@ impl Info {
 }
 
 impl FromKDL for Info {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		// If there are no children, this can be treated as a single-section block,
 		// where the section is the long description.
 		if node.children().is_none() {
-			let section = Section::from_kdl_reader(node)?;
+			let section = Section::from_kdl(node)?;
 			return Ok(Self {
 				short: None,
 				sections: vec![section],
@@ -106,7 +106,7 @@ impl FromKDL for Info {
 
 		let mut sections = Vec::new();
 		for mut node in node.query_all("scope() > section")? {
-			sections.push(Section::from_kdl_reader(&mut node)?);
+			sections.push(Section::from_kdl(&mut node)?);
 		}
 
 		let format_args = FormatArgs::from_kdl_all(&node)?;
@@ -206,7 +206,7 @@ impl From<SelectorMetaVec> for Section {
 }
 
 impl FromKDL for Section {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		// Check if the first entry is a title.
 		// There may not be a first entry (e.g. table) or the first entry might not be a title (title-less body),
 		// so we cannot consume the first value in the node.
@@ -222,14 +222,14 @@ impl FromKDL for Section {
 
 		// Now parse the remaining values as the content.
 		// This could be a body (using the next value) or a table (which checks properties and uses child nodes).
-		let content = SectionContent::from_kdl_reader(node)?;
+		let content = SectionContent::from_kdl(node)?;
 
 		// Finally, read format args (if any exist) and any subsections/children.
 		let format_args = FormatArgs::from_kdl_all(&node)?;
 
 		let mut children = Vec::new();
 		for mut node in node.query_all("scope() > section")? {
-			children.push(Section::from_kdl_reader(&mut node)?);
+			children.push(Section::from_kdl(&mut node)?);
 		}
 
 		Ok(Self {
@@ -287,7 +287,7 @@ impl From<String> for SectionContent {
 }
 
 impl FromKDL for SectionContent {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let is_table = node.get_bool_opt("table")?.unwrap_or_default();
 		match is_table {
 			// Take note that we never return Self::Selectors.

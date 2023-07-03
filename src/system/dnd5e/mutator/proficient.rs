@@ -193,7 +193,7 @@ impl Mutator for AddProficiency {
 }
 
 impl FromKDL for AddProficiency {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let entry = node.next_req()?;
 		match entry.type_req()? {
 			"Ability" => {

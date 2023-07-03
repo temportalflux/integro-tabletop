@@ -12,7 +12,7 @@ pub struct WeaponDamage {
 }
 
 impl FromKDL for WeaponDamage {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let roll = match node.get_str_opt("roll")? {
 			Some(roll_str) => Some(Roll::from_str(roll_str)?),
 			None => None,

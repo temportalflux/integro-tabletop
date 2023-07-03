@@ -80,18 +80,18 @@ impl Mutator for Bonus {
 }
 
 impl FromKDL for Bonus {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		match node.next_str_req()? {
 			"WeaponDamage" => {
 				let damage =
-					EvaluatedRoll::from_kdl_reader(&mut node.query_req("scope() > damage")?)?;
+					EvaluatedRoll::from_kdl(&mut node.query_req("scope() > damage")?)?;
 				let damage_type = match node.query_str_opt("scope() > damage_type", 0)? {
 					None => None,
 					Some(str) => Some(DamageType::from_str(str)?),
 				};
 				let restriction = match node.query_opt("scope() > restriction")? {
 					None => None,
-					Some(mut node) => Some(weapon::Restriction::from_kdl_reader(&mut node)?),
+					Some(mut node) => Some(weapon::Restriction::from_kdl(&mut node)?),
 				};
 				Ok(Self::WeaponDamage {
 					damage,
@@ -103,7 +103,7 @@ impl FromKDL for Bonus {
 				let bonus = node.query_i64_req("scope() > bonus", 0)? as i32;
 				let restriction = match node.query_opt("scope() > restriction")? {
 					None => None,
-					Some(mut node) => Some(weapon::Restriction::from_kdl_reader(&mut node)?),
+					Some(mut node) => Some(weapon::Restriction::from_kdl(&mut node)?),
 				};
 				Ok(Self::WeaponAttackRoll { bonus, restriction })
 			}

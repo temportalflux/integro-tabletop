@@ -157,7 +157,7 @@ impl Restriction {
 }
 
 impl crate::kdl_ext::FromKDL for Restriction {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let weapon_kind = match node.query_opt("scope() > weapon")? {
 			None => EnumSet::empty(),
 			Some(node) => {
@@ -191,7 +191,7 @@ impl crate::kdl_ext::FromKDL for Restriction {
 
 		let mut properties = Vec::new();
 		for mut node in node.query_all("scope() > property")? {
-			let property = weapon::Property::from_kdl_reader(&mut node)?;
+			let property = weapon::Property::from_kdl(&mut node)?;
 			let required = node.next_bool_req()?;
 			properties.push((property, required));
 		}

@@ -69,11 +69,11 @@ impl crate::utility::Evaluator for HasCondition {
 }
 
 impl FromKDL for HasCondition {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let inverted = node.get_bool_opt("inverted")?.unwrap_or_default();
 		let mut filters = Vec::new();
 		for mut node in node.query_all("scope() > filter")? {
-			filters.push(ConditionFilter::from_kdl_reader(&mut node)?);
+			filters.push(ConditionFilter::from_kdl(&mut node)?);
 		}
 		Ok(Self { inverted, filters })
 	}
@@ -104,7 +104,7 @@ pub enum ConditionProperty {
 }
 
 impl FromKDL for ConditionFilter {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let name = node.get_str_req("name")?.to_owned();
 		let mut properties = Vec::new();
 		if let Some(value) = node.query_str_opt("scope() > id", 0)? {

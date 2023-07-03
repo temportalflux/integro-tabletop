@@ -87,11 +87,11 @@ impl MutatorGroup for Feature {
 }
 
 impl FromKDL for Feature {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let name = node.get_str_req("name")?.to_owned();
 		let description = match node.query_opt("scope() > description")? {
 			None => description::Info::default(),
-			Some(mut node) => description::Info::from_kdl_reader(&mut node)?,
+			Some(mut node) => description::Info::from_kdl(&mut node)?,
 		};
 
 		let collapsed = node.get_bool_opt("collapsed")?.unwrap_or_default();
@@ -109,7 +109,7 @@ impl FromKDL for Feature {
 
 		let action = match node.query_opt("scope() > action")? {
 			None => None,
-			Some(mut node) => Some(Action::from_kdl_reader(&mut node)?),
+			Some(mut node) => Some(Action::from_kdl(&mut node)?),
 		};
 
 		Ok(Self {

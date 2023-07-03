@@ -60,7 +60,7 @@ impl Equipment {
 }
 
 impl FromKDL for Equipment {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let criteria = match node.query_opt("scope() > criteria")? {
 			None => None,
 			Some(node) => Some(node.parse_evaluator::<Character, Result<(), String>>()?),
@@ -73,7 +73,7 @@ impl FromKDL for Equipment {
 
 		let armor = match node.query_opt("scope() > armor")? {
 			None => None,
-			Some(mut node) => Some(Armor::from_kdl_reader(&mut node)?),
+			Some(mut node) => Some(Armor::from_kdl(&mut node)?),
 		};
 		let shield = match node.query_opt("scope() > shield")? {
 			None => None,
@@ -81,7 +81,7 @@ impl FromKDL for Equipment {
 		};
 		let weapon = match node.query_opt("scope() > weapon")? {
 			None => None,
-			Some(mut node) => Some(Weapon::from_kdl_reader(&mut node)?),
+			Some(mut node) => Some(Weapon::from_kdl(&mut node)?),
 		};
 		let attunement = match node.query_opt("scope() > attunement")? {
 			None => None,

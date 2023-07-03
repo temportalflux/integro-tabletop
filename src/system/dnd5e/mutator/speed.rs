@@ -41,9 +41,9 @@ impl Mutator for Speed {
 }
 
 impl FromKDL for Speed {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let name = node.next_str_req()?.to_owned();
-		let argument = BoundValue::from_kdl_reader(node)?;
+		let argument = BoundValue::from_kdl(node)?;
 		Ok(Self { name, argument })
 	}
 }

@@ -79,7 +79,7 @@ impl Mutator for AddSize {
 }
 
 impl FromKDL for AddSize {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let height = match node.query_opt("scope() > height")? {
 			None => Vec::new(),
 			Some(node) => {

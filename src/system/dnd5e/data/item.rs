@@ -108,7 +108,7 @@ impl SystemComponent for Item {
 }
 
 impl FromKDL for Item {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		// TODO: Items can have empty ids if they are completely custom in the sheet
 		let id = node.parse_source_opt()?.unwrap_or_default();
 
@@ -120,11 +120,11 @@ impl FromKDL for Item {
 		let mut weight = node.get_f64_opt("weight")?.unwrap_or(0.0) as f32;
 		let description = match node.query_opt("scope() > description")? {
 			None => description::Info::default(),
-			Some(mut node) => description::Info::from_kdl_reader(&mut node)?,
+			Some(mut node) => description::Info::from_kdl(&mut node)?,
 		};
 
 		let worth = match node.query_opt("scope() > worth")? {
-			Some(mut node) => Wallet::from_kdl_reader(&mut node)?,
+			Some(mut node) => Wallet::from_kdl(&mut node)?,
 			None => Wallet::default(),
 		};
 
@@ -137,13 +137,13 @@ impl FromKDL for Item {
 			tags
 		};
 		let kind = match node.query_opt("scope() > kind")? {
-			Some(mut node) => Kind::from_kdl_reader(&mut node)?,
+			Some(mut node) => Kind::from_kdl(&mut node)?,
 			None => Kind::default(),
 		};
 
 		let items = match node.query_opt("scope() > items")? {
 			None => None,
-			Some(mut node) => Some(container::Container::<Item>::from_kdl_reader(&mut node)?),
+			Some(mut node) => Some(container::Container::<Item>::from_kdl(&mut node)?),
 		};
 
 		// Items are defined with the weight being representative of the stack,

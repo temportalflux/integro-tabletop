@@ -69,10 +69,10 @@ impl Evaluator for HasWeaponEquipped {
 }
 
 impl FromKDL for HasWeaponEquipped {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let min = node.get_i64_opt("min")?.unwrap_or(1) as usize;
 		let max = node.get_i64_opt("max")?.map(|v| v as usize);
-		let restriction = weapon::Restriction::from_kdl_reader(node)?;
+		let restriction = weapon::Restriction::from_kdl(node)?;
 		Ok(Self {
 			min,
 			max,

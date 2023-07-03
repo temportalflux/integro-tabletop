@@ -88,7 +88,7 @@ impl SystemComponent for Bundle {
 }
 
 impl FromKDL for Bundle {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let name = node.get_str_req("name")?.to_owned();
 		let category = node.get_str_req("category")?.to_owned();
 
@@ -98,7 +98,7 @@ impl FromKDL for Bundle {
 		};
 
 		let description = match node.query_opt("scope() > description")? {
-			Some(mut node) => description::Section::from_kdl_reader(&mut node)?,
+			Some(mut node) => description::Section::from_kdl(&mut node)?,
 			None => description::Section::default(),
 		};
 		let limit = node.get_i64_opt("limit")?.unwrap_or(1) as usize;

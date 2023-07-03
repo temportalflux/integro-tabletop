@@ -17,7 +17,7 @@ pub enum Range {
 }
 
 impl FromKDL for Range {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let entry = node.next_req()?;
 		match entry.value().as_string() {
 			None => {

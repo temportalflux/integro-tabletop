@@ -9,7 +9,7 @@ pub struct Range {
 }
 
 impl FromKDL for Range {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let short_range = node.next_i64_req()? as u32;
 		let long_range = node.next_i64_req()? as u32;
 		let requires_ammunition = node.query_opt("scope() > ammunition")?.is_some();

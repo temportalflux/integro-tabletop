@@ -464,7 +464,7 @@ macro_rules! impl_kdl_node {
 }
 
 pub trait FromKDL {
-	fn from_kdl_reader<'doc>(node: &mut NodeReader<'doc>) -> anyhow::Result<Self>
+	fn from_kdl<'doc>(node: &mut NodeReader<'doc>) -> anyhow::Result<Self>
 	where
 		Self: Sized;
 }
@@ -472,7 +472,7 @@ pub trait FromKDL {
 macro_rules! impl_fromkdl {
 	($target:ty, $method:ident, $map:expr) => {
 		impl FromKDL for $target {
-			fn from_kdl_reader<'doc>(node: &mut NodeReader<'doc>) -> anyhow::Result<Self> {
+			fn from_kdl<'doc>(node: &mut NodeReader<'doc>) -> anyhow::Result<Self> {
 				Ok(node.$method().map($map)?)
 			}
 		}
@@ -494,7 +494,7 @@ impl_fromkdl!(isize, next_i64_req, |v| v as isize);
 impl_fromkdl!(f32, next_f64_req, |v| v as f32);
 impl_fromkdl!(f64, next_f64_req, |v| v);
 impl FromKDL for String {
-	fn from_kdl_reader<'doc>(node: &mut NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut NodeReader<'doc>) -> anyhow::Result<Self> {
 		Ok(node.next_str_req()?.to_string())
 	}
 }
@@ -503,10 +503,10 @@ impl<T> FromKDL for Option<T>
 where
 	T: FromKDL,
 {
-	fn from_kdl_reader<'doc>(node: &mut NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut NodeReader<'doc>) -> anyhow::Result<Self> {
 		// Instead of consuming the next-idx, just peek to see if there is a value there or not.
 		match node.peak_opt() {
-			Some(_) => T::from_kdl_reader(node).map(|v| Some(v)),
+			Some(_) => T::from_kdl(node).map(|v| Some(v)),
 			None => Ok(None),
 		}
 	}

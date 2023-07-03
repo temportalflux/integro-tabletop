@@ -20,28 +20,28 @@ pub struct Action {
 }
 
 impl FromKDL for Action {
-	fn from_kdl_reader<'doc>(node: &mut NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut NodeReader<'doc>) -> anyhow::Result<Self> {
 		let activation_kind = match (
 			node.next_str_opt()?,
 			node.query_opt("scope() > activation")?,
 		) {
 			(Some(str), None) => ActivationKind::from_str(str)?,
-			(None, Some(mut node)) => ActivationKind::from_kdl_reader(&mut node)?,
+			(None, Some(mut node)) => ActivationKind::from_kdl(&mut node)?,
 			_ => return Err(MissingActivation(node.to_string()).into()),
 		};
 
 		let attack = match node.query_opt("scope() > attack")? {
 			None => None,
-			Some(mut node) => Some(Attack::from_kdl_reader(&mut node)?),
+			Some(mut node) => Some(Attack::from_kdl(&mut node)?),
 		};
 		let limited_uses = match node.query_opt("scope() > limited_uses")? {
 			None => None,
-			Some(mut node) => Some(LimitedUses::from_kdl_reader(&mut node)?),
+			Some(mut node) => Some(LimitedUses::from_kdl(&mut node)?),
 		};
 
 		let mut conditions_to_apply = Vec::new();
 		for mut node in node.query_all("scope() > condition")? {
-			conditions_to_apply.push(IndirectCondition::from_kdl_reader(&mut node)?);
+			conditions_to_apply.push(IndirectCondition::from_kdl(&mut node)?);
 		}
 
 		Ok(Self {

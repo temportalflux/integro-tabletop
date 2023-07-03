@@ -13,11 +13,11 @@ pub enum IndirectCondition {
 }
 
 impl FromKDL for IndirectCondition {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		match node.next_str_req()? {
 			"Custom" => {
 				// this is a custom condition node, parse it as a condition struct
-				let condition = Condition::from_kdl_reader(node)?;
+				let condition = Condition::from_kdl(node)?;
 				Ok(Self::Custom(condition))
 			}
 			source_id_str => {

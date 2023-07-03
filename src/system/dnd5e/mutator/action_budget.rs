@@ -62,7 +62,7 @@ impl Mutator for AddToActionBudget {
 }
 
 impl FromKDL for AddToActionBudget {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let action_kind = ActionBudgetKind::from_str(node.next_str_req()?)?;
 		let entry = node.next_req()?;
 		let amount = Value::from_kdl(node, entry, |value| Ok(value.as_i64_req()? as i32))?;

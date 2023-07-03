@@ -22,19 +22,19 @@ pub struct Attack {
 }
 
 impl FromKDL for Attack {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let kind = match node.query_opt("scope() > kind")? {
 			None => None,
-			Some(mut node) => Some(AttackKindValue::from_kdl_reader(&mut node)?),
+			Some(mut node) => Some(AttackKindValue::from_kdl(&mut node)?),
 		};
-		let check = AttackCheckKind::from_kdl_reader(&mut node.query_req("scope() > check")?)?;
+		let check = AttackCheckKind::from_kdl(&mut node.query_req("scope() > check")?)?;
 		let area_of_effect = match node.query_opt("scope() > area_of_effect")? {
 			None => None,
-			Some(mut node) => Some(AreaOfEffect::from_kdl_reader(&mut node)?),
+			Some(mut node) => Some(AreaOfEffect::from_kdl(&mut node)?),
 		};
 		let damage = match node.query_opt("scope() > damage")? {
 			None => None,
-			Some(mut node) => Some(DamageRoll::from_kdl_reader(&mut node)?),
+			Some(mut node) => Some(DamageRoll::from_kdl(&mut node)?),
 		};
 		Ok(Self {
 			kind,

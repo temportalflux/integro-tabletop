@@ -15,8 +15,8 @@ pub enum DurationKind {
 }
 
 impl FromKDL for Duration {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
-		let kind = DurationKind::from_kdl_reader(node)?;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let kind = DurationKind::from_kdl(node)?;
 		let concentration = node.get_bool_opt("concentration")?.unwrap_or_default();
 		Ok(Self {
 			concentration,
@@ -36,7 +36,7 @@ impl AsKdl for Duration {
 }
 
 impl FromKDL for DurationKind {
-	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		match node.next_str_req()? {
 			"Instantaneous" => Ok(Self::Instantaneous),
 			"Special" => Ok(Self::Special),
