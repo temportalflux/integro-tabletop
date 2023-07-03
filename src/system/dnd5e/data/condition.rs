@@ -21,7 +21,6 @@ pub struct Condition {
 	pub name: String,
 	pub description: String,
 	pub mutators: Vec<BoxedMutator>,
-	pub criteria: Option<BoxedCriteria>,
 }
 
 crate::impl_kdl_node!(Condition, "condition");
@@ -38,12 +37,6 @@ impl MutatorGroup for Condition {
 
 	fn apply_mutators(&self, stats: &mut Character, parent: &Path) {
 		let path_to_self = parent.join(&self.name);
-		if let Some(criteria) = &self.criteria {
-			// TODO: Somehow save the error text for display in feature UI
-			if stats.evaluate(criteria).is_err() {
-				return;
-			}
-		}
 		for mutator in &self.mutators {
 			stats.apply(mutator, &path_to_self);
 		}
@@ -75,19 +68,11 @@ impl FromKDL for Condition {
 			mutators.push(ctx.parse_mutator(entry_node)?);
 		}
 
-		let criteria = match node.query("scope() > criteria")? {
-			None => None,
-			Some(entry_node) => {
-				Some(ctx.parse_evaluator::<Character, Result<(), String>>(entry_node)?)
-			}
-		};
-
 		Ok(Self {
 			id,
 			name,
 			description,
 			mutators,
-			criteria,
 		})
 	}
 }
@@ -103,13 +88,6 @@ impl AsKdl for Condition {
 		}
 		node.push_child_opt_t("description", &self.description);
 
-		if let Some(criteria) = &self.criteria {
-			node.push_child({
-				let mut node = criteria.as_kdl();
-				node.set_first_entry_ty("Evaluator");
-				node.build("criteria")
-			});
-		}
 		for mutator in &self.mutators {
 			node.push_child_t("mutator", mutator);
 		}
@@ -176,37 +154,6 @@ mod test {
 					argument: BoundValue::Additive(15),
 				}
 				.into()],
-				..Default::default()
-			};
-			assert_eq_fromkdl!(Condition, doc, data);
-			assert_eq_askdl!(&data, doc);
-			Ok(())
-		}
-
-		#[test]
-		fn criteria() -> anyhow::Result<()> {
-			let doc = "
-				|condition name=\"Expedient\" {
-				|    description \"You are particularly quick, when not wearing armor.\"
-				|    criteria (Evaluator)\"has_armor_equipped\" inverted=true
-				|    mutator \"speed\" \"Walking\" (Additive)15
-				|}
-			";
-			let data = Condition {
-				name: "Expedient".into(),
-				description: "You are particularly quick, when not wearing armor.".into(),
-				mutators: vec![Speed {
-					name: "Walking".into(),
-					argument: BoundValue::Additive(15),
-				}
-				.into()],
-				criteria: Some(
-					HasArmorEquipped {
-						inverted: true,
-						..Default::default()
-					}
-					.into(),
-				),
 				..Default::default()
 			};
 			assert_eq_fromkdl!(Condition, doc, data);

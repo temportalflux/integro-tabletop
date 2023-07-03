@@ -31,7 +31,6 @@ pub struct Feature {
 	pub parent: Option<PathBuf>,
 
 	pub mutators: Vec<BoxedMutator>,
-	pub criteria: Option<BoxedCriteria>,
 	pub action: Option<Action>,
 
 	#[derivative(PartialEq = "ignore")]
@@ -73,12 +72,6 @@ impl MutatorGroup for Feature {
 
 	fn apply_mutators(&self, stats: &mut Character, parent: &Path) {
 		let path_to_self = parent.join(&self.name);
-		if let Some(criteria) = &self.criteria {
-			// TODO: Somehow save the error text for display in feature UI
-			if stats.evaluate(criteria).is_err() {
-				return;
-			}
-		}
 		if let Some(action) = &self.action {
 			if let Some(uses) = &action.limited_uses {
 				if let LimitedUses::Usage(data) = uses {
@@ -112,13 +105,6 @@ impl FromKDL for Feature {
 		// TODO: Unimplemented
 		let _is_unique = node.get_bool_opt("unique")?.unwrap_or_default();
 
-		let criteria = match node.query("scope() > criteria")? {
-			None => None,
-			Some(entry_node) => {
-				Some(ctx.parse_evaluator::<Character, Result<(), String>>(entry_node)?)
-			}
-		};
-
 		let mut mutators = Vec::new();
 		for entry_node in node.query_all("scope() > mutator")? {
 			mutators.push(ctx.parse_mutator(entry_node)?);
@@ -135,7 +121,6 @@ impl FromKDL for Feature {
 			collapsed,
 			parent,
 			mutators,
-			criteria,
 			action,
 			// Generated data
 			absolute_path: Arc::new(RwLock::new(PathBuf::new())),
@@ -160,13 +145,6 @@ impl AsKdl for Feature {
 			node.push_entry(("parent", parent.display().to_string()));
 		}
 
-		if let Some(criteria) = &self.criteria {
-			node.push_child({
-				let mut node = criteria.as_kdl();
-				node.set_first_entry_ty("Evaluator");
-				node.build("criteria")
-			});
-		}
 		for mutator in &self.mutators {
 			node.push_child_t("mutator", mutator);
 		}
@@ -265,23 +243,6 @@ mod test {
 			let data = Feature {
 				name: "Test Feature".into(),
 				parent: Some("Bundle/FeatureName".into()),
-				..Default::default()
-			};
-			assert_eq_fromkdl!(Feature, doc, data);
-			assert_eq_askdl!(&data, doc);
-			Ok(())
-		}
-
-		#[test]
-		fn criteria() -> anyhow::Result<()> {
-			let doc = "
-				|feature name=\"Test Feature\" {
-				|    criteria (Evaluator)\"has_armor_equipped\"
-				|}
-			";
-			let data = Feature {
-				name: "Test Feature".into(),
-				criteria: Some(HasArmorEquipped::default().into()),
 				..Default::default()
 			};
 			assert_eq_fromkdl!(Feature, doc, data);

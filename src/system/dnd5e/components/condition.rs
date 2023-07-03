@@ -36,11 +36,6 @@ pub fn ConditionsCard() -> Html {
 		.conditions
 		.iter()
 		.map(|condition| {
-			// TODO: Show which conditions are disabled in the card
-			let _disabled = match &condition.criteria {
-				None => false,
-				Some(criteria) => criteria.evaluate(&state).is_ok(),
-			};
 			html! {
 				<Tag>
 					{condition.name.clone()}
@@ -170,15 +165,6 @@ fn Modal() -> Html {
 							}}
 						>
 							<div class="text-block">{condition.description.clone()}</div>
-							{match &condition.criteria {
-								None => html! {},
-								Some(criteria) => html! {
-									<div class="property">
-										<strong>{"Criteria:"}</strong>
-										<span>{criteria.description().unwrap_or_else(|| format!("criteria missing description"))}</span>
-									</div>
-								},
-							}}
 							{mutator_list(&condition.mutators, Some(&state))}
 						</CollapsableCard>
 					}

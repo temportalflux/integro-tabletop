@@ -121,6 +121,7 @@ pub fn node_registry() -> NodeRegistry {
 	registry.register_mutator::<AddStartingEquipment>();
 	registry.register_mutator::<AddBundle>();
 	registry.register_mutator::<Bonus>();
+	registry.register_mutator::<ApplyIf>();
 
 	registry.register_evaluator::<GetAbilityModifier>();
 	registry.register_evaluator::<GetProficiencyBonus>();

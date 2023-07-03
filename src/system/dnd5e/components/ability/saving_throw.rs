@@ -3,7 +3,10 @@ use crate::{
 	components::modal,
 	page::characters::sheet::CharacterHandle,
 	system::dnd5e::components::roll::ModifierIcon,
-	system::dnd5e::{data::{character::ModifierMapItem, roll::Modifier, Ability}, components::ProficiencyLevelIcon},
+	system::dnd5e::{
+		components::ProficiencyLevelIcon,
+		data::{character::ModifierMapItem, roll::Modifier, Ability},
+	},
 };
 use enumset::EnumSet;
 use yew::prelude::*;

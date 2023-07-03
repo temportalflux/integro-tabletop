@@ -878,14 +878,6 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 										{mutator_list(&condition.mutators, Some(&state))}
 									</div>
 								</div>
-								{condition.criteria.as_ref().map(|evaluator| {
-									html! {
-										<div>
-											<strong class="me-2">{"Only If:"}</strong>
-											{format!("TODO: missing description for {:?}", evaluator)}
-										</div>
-									}
-								})}
 							</div>
 						}
 					});
@@ -906,15 +898,6 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 
 	let desc = feature.description.clone().evaluate(&state);
 	sections.push(description(&desc, false));
-
-	if let Some(criteria) = &feature.criteria {
-		sections.push(html! {
-			<div class="property">
-				<strong>{"Criteria:"}</strong>
-				<span>{criteria.description().unwrap_or_else(|| format!("criteria missing description"))}</span>
-			</div>
-		});
-	}
 
 	if !feature.mutators.is_empty() {
 		sections.push(html! {

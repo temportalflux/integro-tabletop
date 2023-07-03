@@ -457,25 +457,11 @@ pub fn feature(value: &Feature, state: Option<&CharacterHandle>) -> Html {
 		(None, desc) => desc,
 	};
 
-	let criteria = {
-		let criteria = value.criteria.as_ref();
-		let desc = criteria.map(|eval| eval.description()).flatten();
-		desc.map(|text| {
-			html! {
-				<div class="property">
-					<strong>{"Criteria"}</strong>
-					{text}
-				</div>
-			}
-		})
-	};
-
 	html! {
 		<div class="my-2">
 			<h5>{value.name.clone()}</h5>
 			{description(&desc, false)}
 			{mutator_list(&value.mutators, state)}
-			{criteria.unwrap_or_default()}
 		</div>
 	}
 }
