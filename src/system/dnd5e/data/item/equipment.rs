@@ -1,6 +1,6 @@
 use super::{armor::Armor, weapon::Weapon};
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::dnd5e::{data::character::Character, BoxedCriteria, BoxedMutator},
 	utility::MutatorGroup,
 };

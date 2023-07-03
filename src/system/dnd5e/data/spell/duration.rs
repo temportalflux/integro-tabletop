@@ -1,4 +1,4 @@
-use crate::kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt};
+use crate::kdl_ext::{AsKdl, FromKDL, NodeBuilder};
 
 #[derive(Default, Clone, PartialEq, Debug)]
 pub struct Duration {

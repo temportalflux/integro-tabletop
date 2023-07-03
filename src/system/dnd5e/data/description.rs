@@ -1,8 +1,6 @@
 use super::character::Character;
 use crate::{
-	kdl_ext::{
-		AsKdl, DocumentExt, DocumentQueryExt, EntryExt, FromKDL, NodeBuilder, NodeExt, ValueExt,
-	},
+	kdl_ext::{AsKdl, DocumentExt, EntryExt, FromKDL, NodeBuilder, ValueExt},
 	system::dnd5e::BoxedEvaluator,
 	utility::{NotInList, SelectorMetaVec},
 };
@@ -103,12 +101,7 @@ impl FromKDL for Info {
 		}
 
 		let short = node.query_str_opt("scope() > short", 0)?.map(str::to_owned);
-
-		let mut sections = Vec::new();
-		for mut node in &mut node.query_all("scope() > section")? {
-			sections.push(Section::from_kdl(&mut node)?);
-		}
-
+		let sections = node.query_all_t::<Section>("scope() > section")?;
 		let format_args = FormatArgs::from_kdl_all(&node)?;
 
 		Ok(Self {
@@ -444,7 +437,7 @@ impl FormatArgs {
 	/// parsing each as a named evaluator argument for the list.
 	pub fn from_kdl_all<'doc>(node: &crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let mut args = BTreeMap::new();
-		for mut node in &mut node.query_all("scope() > format-arg")? {
+		for node in &mut node.query_all("scope() > format-arg")? {
 			let key = node.next_str_req()?.to_owned();
 			let eval_type_entry = node.next_req()?;
 			let arg = match eval_type_entry.as_str_req()? {

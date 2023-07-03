@@ -1,6 +1,6 @@
 use super::Weapon;
 use crate::{
-	kdl_ext::{DocumentQueryExt, NodeBuilder, ValueExt},
+	kdl_ext::{NodeBuilder, ValueExt},
 	system::dnd5e::data::{
 		action::{Action, AttackCheckKind, AttackKind},
 		item::weapon,

@@ -162,8 +162,7 @@ impl EvaluatorFactory {
 			),
 			item_type_info: (TypeId::of::<E::Item>(), std::any::type_name::<E::Item>()),
 			fn_from_kdl: Box::new(|node| {
-				let arc_eval: ArcEvaluator<E::Context, E::Item> =
-					Arc::new(E::from_kdl(node)?);
+				let arc_eval: ArcEvaluator<E::Context, E::Item> = Arc::new(E::from_kdl(node)?);
 				Ok(Box::new(arc_eval))
 			}),
 		}

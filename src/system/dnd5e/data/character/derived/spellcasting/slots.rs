@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::dnd5e::data::Rest,
 	utility::NotInList,
 };
@@ -50,9 +50,9 @@ impl FromKDL for Slots {
 			.into_iter()
 			.map(|level| (level, BTreeMap::new()))
 			.collect::<BTreeMap<usize, BTreeMap<u8, usize>>>();
-		for mut node in &mut node.query_all("scope() > rank")? {
+		for node in &mut node.query_all("scope() > rank")? {
 			let rank = node.next_i64_req()? as u8;
-			for mut node in &mut node.query_all("scope() > level")? {
+			for node in &mut node.query_all("scope() > level")? {
 				let level = node.next_i64_req()? as usize;
 				let amount = node.next_i64_req()? as usize;
 				for lvl in level..=MAX_LEVEL {

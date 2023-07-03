@@ -148,14 +148,15 @@ impl<'doc> NodeReader<'doc> {
 
 	pub fn children(&self) -> Option<Vec<Self>> {
 		let Some(doc) = self.node.children() else { return None; };
-		Some(Self::iter_from(
-			&self.ctx,
-			doc.nodes().iter()
-		))
+		Some(Self::iter_from(&self.ctx, doc.nodes().iter()))
 	}
 
-	fn iter_from(ctx: &NodeContext, iter: impl Iterator<Item=&'doc kdl::KdlNode> + 'doc) -> Vec<Self> {
-		iter.map(|node| NodeReader::new(node, ctx.next_node())).collect()
+	fn iter_from(
+		ctx: &NodeContext,
+		iter: impl Iterator<Item = &'doc kdl::KdlNode> + 'doc,
+	) -> Vec<Self> {
+		iter.map(|node| NodeReader::new(node, ctx.next_node()))
+			.collect()
 	}
 
 	fn next_node(&self, node: &'doc kdl::KdlNode) -> Self {
@@ -280,14 +281,8 @@ impl<'doc> NodeReader<'doc> {
 	pub fn query_req(&self, query: impl AsRef<str>) -> Result<Self, super::QueryError> {
 		Ok(self.next_node(self.node.query_req(query)?))
 	}
-	pub fn query_all(
-		&self,
-		query: impl kdl::IntoKdlQuery,
-	) -> Result<Vec<Self>, kdl::KdlError> {
-		Ok(Self::iter_from(
-			&self.ctx,
-			self.node.query_all(query)?
-		))
+	pub fn query_all(&self, query: impl kdl::IntoKdlQuery) -> Result<Vec<Self>, kdl::KdlError> {
+		Ok(Self::iter_from(&self.ctx, self.node.query_all(query)?))
 	}
 	pub fn query_get_all(
 		&self,
@@ -295,6 +290,25 @@ impl<'doc> NodeReader<'doc> {
 		key: impl Into<kdl::NodeKey>,
 	) -> Result<impl Iterator<Item = &kdl::KdlValue>, kdl::KdlError> {
 		self.node.query_get_all(query, key)
+	}
+}
+impl<'doc> NodeReader<'doc> {
+	pub fn query_opt_t<T: FromKDL>(&self, query: impl AsRef<str>) -> anyhow::Result<Option<T>> {
+		let Some(mut node) = self.query_opt(query)? else { return Ok(None); };
+		Ok(Some(T::from_kdl(&mut node)?))
+	}
+
+	pub fn query_req_t<T: FromKDL>(&self, query: impl AsRef<str>) -> anyhow::Result<T> {
+		Ok(T::from_kdl(&mut self.query_req(query)?)?)
+	}
+
+	pub fn query_all_t<T: FromKDL>(&self, query: impl kdl::IntoKdlQuery) -> anyhow::Result<Vec<T>> {
+		let nodes = self.query_all(query)?;
+		let mut vec = Vec::with_capacity(nodes.len());
+		for mut node in nodes {
+			vec.push(T::from_kdl(&mut node)?);
+		}
+		Ok(vec)
 	}
 }
 impl<'doc> DocumentExt for NodeReader<'doc> {

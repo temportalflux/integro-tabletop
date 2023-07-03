@@ -1,5 +1,5 @@
 use super::NotInList;
-use crate::kdl_ext::{AsKdl, DocumentExt, NodeBuilder, NodeExt, ValueExt};
+use crate::kdl_ext::{AsKdl, DocumentExt, NodeBuilder, ValueExt};
 use anyhow::Context;
 use derivative::Derivative;
 use enumset::{EnumSet, EnumSetType};

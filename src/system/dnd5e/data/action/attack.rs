@@ -1,6 +1,6 @@
 use super::super::{AreaOfEffect, DamageRoll};
 use crate::{
-	kdl_ext::{AsKdl, DocumentQueryExt, FromKDL, NodeBuilder},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::dnd5e::data::item::weapon,
 };
 

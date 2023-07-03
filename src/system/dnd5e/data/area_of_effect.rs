@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	utility::NotInList,
 };
 

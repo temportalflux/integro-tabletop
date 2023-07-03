@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, DocumentQueryExt, FromKDL, NodeBuilder},
+	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
 	path_map::PathMap,
 	system::{
 		core::SourceId,
@@ -144,8 +144,7 @@ impl FromKDL for Persistent {
 		let id = node.id().clone();
 		node.set_inheiret_source(false);
 
-		let description =
-			Description::from_kdl(&mut node.query_req("scope() > description")?)?;
+		let description = node.query_req_t::<Description>("scope() > description")?;
 
 		let mut settings = Settings::default();
 		for node in &mut node.query_all("scope() > setting")? {
@@ -153,42 +152,31 @@ impl FromKDL for Persistent {
 		}
 
 		let mut ability_scores = EnumMap::default();
-		for mut node in &mut node.query_all("scope() > ability")? {
+		for node in &mut node.query_all("scope() > ability")? {
 			let ability = Ability::from_str(node.next_str_req()?)?;
 			let score = node.next_i64_req()? as u32;
 			ability_scores[ability] = score;
 		}
 
-		let hit_points = HitPoints::from_kdl(&mut node.query_req("scope() > hit_points")?)?;
+		let hit_points = node.query_req_t::<HitPoints>("scope() > hit_points")?;
 
 		let inspiration = node
 			.query_bool_opt("scope() > inspiration", 0)?
 			.unwrap_or_default();
 
 		let mut conditions = Conditions::default();
-		for mut node in &mut node.query_all("scope() > condition")? {
-			let condition = Condition::from_kdl(&mut node)?;
+		for condition in node.query_all_t::<Condition>("scope() > condition")? {
 			conditions.insert(condition);
 		}
 
-		let inventory = Inventory::from_kdl(&mut node.query_req("scope() > inventory")?)?;
+		let inventory = node.query_req_t::<Inventory>("scope() > inventory")?;
 
-		let selected_spells = match node.query_opt("scope() > spells")? {
-			Some(mut node) => SelectedSpells::from_kdl(&mut node)?,
-			None => SelectedSpells::default(),
-		};
+		let selected_spells = node
+			.query_opt_t::<SelectedSpells>("scope() > spells")?
+			.unwrap_or_default();
 
-		let mut bundles = Vec::new();
-		for mut node in &mut node.query_all("scope() > bundle")? {
-			let bundle = Bundle::from_kdl(&mut node)?;
-			bundles.push(bundle);
-		}
-
-		let mut classes = Vec::new();
-		for mut node in &mut node.query_all("scope() > class")? {
-			let class = Class::from_kdl(&mut node)?;
-			classes.push(class);
-		}
+		let bundles = node.query_all_t::<Bundle>("scope() > bundle")?;
+		let classes = node.query_all_t::<Class>("scope() > class")?;
 
 		let mut selected_values = PathMap::<String>::default();
 		if let Some(selections) = node.query_opt("scope() > selections")? {
@@ -457,7 +445,7 @@ impl FromKDL for SelectedSpells {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let mut consumed_slots = HashMap::new();
 		if let Some(node) = node.query_opt("scope() > consumed_slots")? {
-			for mut node in &mut node.query_all("scope() > slot")? {
+			for node in &mut node.query_all("scope() > slot")? {
 				let slot = node.next_i64_req()? as u8;
 				let consumed = node.next_i64_req()? as usize;
 				consumed_slots.insert(slot, consumed);
@@ -465,7 +453,7 @@ impl FromKDL for SelectedSpells {
 		}
 
 		let mut cache_by_caster = HashMap::new();
-		for mut node in &mut node.query_all("scope() > caster")? {
+		for node in &mut node.query_all("scope() > caster")? {
 			let caster_name = node.next_str_req()?;
 			let mut selection_data = SelectedSpellsData::default();
 			for mut node in &mut node.query_all("scope() > spell")? {

@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, DocumentQueryExt, FromKDL, KDLNode, NodeBuilder, NodeExt},
+	kdl_ext::{AsKdl, DocumentExt, FromKDL, KDLNode, NodeBuilder},
 	system::{
 		core::SourceId,
 		dnd5e::data::{
@@ -216,7 +216,7 @@ impl FromKDL for Spellcasting {
 					None => None,
 					Some(node) => {
 						let mut level_map = BTreeMap::new();
-						for mut node in &mut node.query_all("scope() > level")? {
+						for node in &mut node.query_all("scope() > level")? {
 							let level = node.next_i64_req()? as usize;
 							let capacity = node.next_i64_req()? as usize;
 							level_map.insert(level, capacity);
@@ -241,7 +241,7 @@ impl FromKDL for Spellcasting {
 							let capacity = {
 								let node = node.query_req("scope() > capacity")?;
 								let mut capacity = BTreeMap::new();
-								for mut node in &mut node.query_all("scope() > level")? {
+								for node in &mut node.query_all("scope() > level")? {
 									let level = node.next_i64_req()? as usize;
 									let amount = node.next_i64_req()? as usize;
 									capacity.insert(level, amount);

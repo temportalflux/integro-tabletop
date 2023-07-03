@@ -4,7 +4,7 @@ use super::{
 	description,
 };
 use crate::{
-	kdl_ext::{AsKdl, DocumentQueryExt, FromKDL, NodeBuilder, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::dnd5e::BoxedMutator,
 	utility::MutatorGroup,
 };

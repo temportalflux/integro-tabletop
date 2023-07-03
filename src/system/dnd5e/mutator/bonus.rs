@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{DocumentExt, DocumentQueryExt, FromKDL, NodeBuilder, NodeExt},
+	kdl_ext::{DocumentExt, FromKDL, NodeBuilder},
 	system::dnd5e::data::{
 		character::Character, description, item::weapon, roll::EvaluatedRoll, DamageType,
 	},
@@ -83,8 +83,7 @@ impl FromKDL for Bonus {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		match node.next_str_req()? {
 			"WeaponDamage" => {
-				let damage =
-					EvaluatedRoll::from_kdl(&mut node.query_req("scope() > damage")?)?;
+				let damage = EvaluatedRoll::from_kdl(&mut node.query_req("scope() > damage")?)?;
 				let damage_type = match node.query_str_opt("scope() > damage_type", 0)? {
 					None => None,
 					Some(str) => Some(DamageType::from_str(str)?),

@@ -101,9 +101,7 @@ where
 					.context("Evaluator values must be a string containing the evaluator id")?;
 				let node_reg = node.node_reg().clone();
 				let factory = node_reg.get_evaluator_factory(eval_id)?;
-				Ok(Self::Evaluated(
-					factory.from_kdl::<'doc, Character, V>(node)?,
-				))
+				Ok(Self::Evaluated(factory.from_kdl::<Character, V>(node)?))
 			}
 			_ => Ok(Self::Fixed(map_value(entry.value())?)),
 		}

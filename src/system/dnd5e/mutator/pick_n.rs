@@ -1,7 +1,7 @@
 use itertools::Itertools;
 
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, DocumentQueryExt, FromKDL, NodeBuilder, NodeExt},
+	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
 	system::dnd5e::{
 		data::{character::Character, description},
 		BoxedMutator,
@@ -153,7 +153,7 @@ impl FromKDL for PickN {
 		let cannot_match = cannot_match.into_iter().map(IdPath::from).collect();
 
 		let mut options = HashMap::new();
-		for mut node in &mut node.query_all("scope() > option")? {
+		for node in &mut node.query_all("scope() > option")? {
 			let name = node.next_str_req()?.to_owned();
 
 			let description = match node.query_opt("scope() > description")? {

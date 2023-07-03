@@ -39,10 +39,7 @@ impl FromKDL for Action {
 			Some(mut node) => Some(LimitedUses::from_kdl(&mut node)?),
 		};
 
-		let mut conditions_to_apply = Vec::new();
-		for mut node in &mut node.query_all("scope() > condition")? {
-			conditions_to_apply.push(IndirectCondition::from_kdl(&mut node)?);
-		}
+		let conditions_to_apply = node.query_all_t::<IndirectCondition>("scope() > condition")?;
 
 		Ok(Self {
 			activation_kind,

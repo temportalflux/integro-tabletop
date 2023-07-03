@@ -1,6 +1,6 @@
 use crate::{
 	database::app::Criteria,
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::{
 		core::SourceId,
 		dnd5e::data::{character::Character, description, Bundle},

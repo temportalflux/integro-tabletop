@@ -1,14 +1,13 @@
+use crate::{
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
+	utility::NotInList,
+};
+
 // Components:
 // Verbal
 // Somatic
 // Material (string + consumes=bool)
 // can have multiple material component entries, which are collected into a vec
-
-use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
-	utility::NotInList,
-};
-
 #[derive(Default, Clone, PartialEq, Debug)]
 pub struct Components {
 	pub verbal: bool,
@@ -19,9 +18,7 @@ pub struct Components {
 impl FromKDL for Components {
 	/// Queries the children of `parent` for any nodes named `component`,
 	/// and extends the default `Components` with all identified children.
-	fn from_kdl<'doc>(
-		parent: &mut crate::kdl_ext::NodeReader<'doc>,
-	) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(parent: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let mut components = Self::default();
 		for mut node in parent.query_all("scope() > component")? {
 			match node.next_str_req()? {

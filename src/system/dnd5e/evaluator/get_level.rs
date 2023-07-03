@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt, ValueExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder, ValueExt},
 	system::dnd5e::data::character::Character,
 	utility::Evaluator,
 };
@@ -103,7 +103,7 @@ impl<T: GetLevelTy> FromKDL for GetLevel<T> {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let class_name = node.get_str_opt("class")?.map(ToString::to_string);
 		let mut order_map = BTreeMap::new();
-		for mut node in &mut node.query_all("scope() > level")? {
+		for node in &mut node.query_all("scope() > level")? {
 			let level = node.next_i64_req()? as usize;
 			let value = T::from_kdl(node.next_req()?)?;
 			order_map.insert(level, value);

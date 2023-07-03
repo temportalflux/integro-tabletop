@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{AsKdl, DocumentQueryExt, FromKDL, NodeBuilder, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::{
 		core::SourceId,
 		dnd5e::{
@@ -104,7 +104,7 @@ impl FromKDL for Bundle {
 		let limit = node.get_i64_opt("limit")?.unwrap_or(1) as usize;
 
 		let mut requirements = Vec::new();
-		for mut node in &mut node.query_all("scope() > requirement")? {
+		for node in &mut node.query_all("scope() > requirement")? {
 			match node.next_str_req()? {
 				"Bundle" => {
 					let category = node.next_str_req()?.to_owned();
