@@ -90,7 +90,7 @@ impl NodeContext {
 		let mut ctx = self.next_node();
 		let id = node.get_str_req(ctx.consume_idx())?;
 		let factory = self.node_registry.get_mutator_factory(id)?;
-		factory.from_kdl::<'doc, T>(NodeReader::new(node, ctx))
+		factory.from_kdl::<T>(NodeReader::new(node, ctx))
 	}
 
 	pub fn parse_evaluator<C, V>(
@@ -146,12 +146,16 @@ impl<'doc> NodeReader<'doc> {
 		self.node.entries()
 	}
 
-	pub fn children(&self) -> Option<NodeReaderIterator<'doc>> {
+	pub fn children(&self) -> Option<Vec<Self>> {
 		let Some(doc) = self.node.children() else { return None; };
-		Some(NodeReaderIterator::<'doc>(
-			self.ctx.clone(),
-			Box::new(doc.nodes().iter()),
+		Some(Self::iter_from(
+			&self.ctx,
+			doc.nodes().iter()
 		))
+	}
+
+	fn iter_from(ctx: &NodeContext, iter: impl Iterator<Item=&'doc kdl::KdlNode> + 'doc) -> Vec<Self> {
+		iter.map(|node| NodeReader::new(node, ctx.next_node())).collect()
 	}
 
 	fn next_node(&self, node: &'doc kdl::KdlNode) -> Self {
@@ -279,10 +283,10 @@ impl<'doc> NodeReader<'doc> {
 	pub fn query_all(
 		&self,
 		query: impl kdl::IntoKdlQuery,
-	) -> Result<NodeReaderIterator<'doc>, kdl::KdlError> {
-		Ok(NodeReaderIterator::<'doc>(
-			self.ctx.clone(),
-			Box::new(self.node.query_all(query)?),
+	) -> Result<Vec<Self>, kdl::KdlError> {
+		Ok(Self::iter_from(
+			&self.ctx,
+			self.node.query_all(query)?
 		))
 	}
 	pub fn query_get_all(
@@ -379,20 +383,6 @@ impl<'doc> DocumentExt for NodeReader<'doc> {
 		key: impl Into<kdl::NodeKey>,
 	) -> Result<Vec<&str>, super::QueryError> {
 		self.node.query_str_all(query, key)
-	}
-}
-pub struct NodeReaderIterator<'doc>(
-	NodeContext,
-	Box<dyn Iterator<Item = &'doc kdl::KdlNode> + 'doc>,
-);
-impl<'doc> Iterator for NodeReaderIterator<'doc> {
-	type Item = NodeReader<'doc>;
-
-	fn next(&mut self) -> Option<Self::Item> {
-		self.1.next().map(|node| NodeReader {
-			node,
-			ctx: self.0.next_node(),
-		})
 	}
 }
 impl<'doc> NodeReader<'doc> {

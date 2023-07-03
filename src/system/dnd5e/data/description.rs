@@ -105,7 +105,7 @@ impl FromKDL for Info {
 		let short = node.query_str_opt("scope() > short", 0)?.map(str::to_owned);
 
 		let mut sections = Vec::new();
-		for mut node in node.query_all("scope() > section")? {
+		for mut node in &mut node.query_all("scope() > section")? {
 			sections.push(Section::from_kdl(&mut node)?);
 		}
 
@@ -228,7 +228,7 @@ impl FromKDL for Section {
 		let format_args = FormatArgs::from_kdl_all(&node)?;
 
 		let mut children = Vec::new();
-		for mut node in node.query_all("scope() > section")? {
+		for mut node in &mut node.query_all("scope() > section")? {
 			children.push(Section::from_kdl(&mut node)?);
 		}
 
@@ -309,7 +309,7 @@ impl FromKDL for SectionContent {
 				};
 				let mut max_columns_in_rows = 0;
 				let mut rows = Vec::new();
-				for node in node.query_all("scope() > row")? {
+				for node in &mut node.query_all("scope() > row")? {
 					let col_count = node.entries().len();
 					max_columns_in_rows = max_columns_in_rows.max(col_count);
 					let mut columns = Vec::with_capacity(col_count);
@@ -444,7 +444,7 @@ impl FormatArgs {
 	/// parsing each as a named evaluator argument for the list.
 	pub fn from_kdl_all<'doc>(node: &crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let mut args = BTreeMap::new();
-		for mut node in node.query_all("scope() > format-arg")? {
+		for mut node in &mut node.query_all("scope() > format-arg")? {
 			let key = node.next_str_req()?.to_owned();
 			let eval_type_entry = node.next_req()?;
 			let arg = match eval_type_entry.as_str_req()? {

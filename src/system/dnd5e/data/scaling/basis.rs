@@ -50,7 +50,7 @@ where
 			"Level" => {
 				let class_name = node.get_str_opt("class")?.map(str::to_owned);
 				let mut level_map = BTreeMap::new();
-				for mut node in node.query_all("scope() > level")? {
+				for mut node in &mut node.query_all("scope() > level")? {
 					let threshold = node.next_i64_req()? as usize;
 					let value = match node.peak_opt().is_some() {
 						false => None,

@@ -61,7 +61,7 @@ impl FromKDL for Condition {
 			.unwrap_or_default()
 			.to_owned();
 		let mut mutators = Vec::new();
-		for node in node.query_all("scope() > mutator")? {
+		for node in &mut node.query_all("scope() > mutator")? {
 			mutators.push(node.parse_mutator()?);
 		}
 

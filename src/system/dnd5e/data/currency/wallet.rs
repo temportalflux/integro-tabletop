@@ -190,7 +190,7 @@ impl FromKDL for Wallet {
 		if !node.entries().is_empty() {
 			wallet += Self::from_row(node)?;
 		}
-		for mut node in node.query_all("scope() > item")? {
+		for mut node in &mut node.query_all("scope() > item")? {
 			wallet += Self::from_row(&mut node)?;
 		}
 		Ok(wallet)

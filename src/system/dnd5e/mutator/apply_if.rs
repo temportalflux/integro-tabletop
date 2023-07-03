@@ -125,11 +125,11 @@ impl FromKDL for ApplyIf {
 			Some(str) => LogicOp::from_str(str)?,
 		};
 		let mut criteria = Vec::new();
-		for node in node.query_all("scope() > criteria")? {
+		for node in &mut node.query_all("scope() > criteria")? {
 			criteria.push(node.parse_evaluator()?);
 		}
 		let mut mutators = Vec::new();
-		for node in node.query_all("scope() > mutator")? {
+		for node in &mut node.query_all("scope() > mutator")? {
 			mutators.push(node.parse_mutator()?);
 		}
 		Ok(Self {

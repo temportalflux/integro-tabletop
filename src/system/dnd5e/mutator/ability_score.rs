@@ -117,7 +117,7 @@ impl FromKDL for AbilityScoreChange {
 			})?
 		};
 		let mut operations = Vec::new();
-		for mut node in node.query_all("scope() > bonus")? {
+		for mut node in &mut node.query_all("scope() > bonus")? {
 			let value = node.next_i64_req()? as u32;
 			let max_total_score = node.get_i64_opt("max-total")?.map(|v| v as u32);
 			operations.push(AbilityScoreOp::Bonus {
@@ -125,7 +125,7 @@ impl FromKDL for AbilityScoreChange {
 				max_total_score,
 			});
 		}
-		for mut node in node.query_all("scope() > increase-max")? {
+		for mut node in &mut node.query_all("scope() > increase-max")? {
 			let value = node.next_i64_req()? as u32;
 			operations.push(AbilityScoreOp::IncreaseMax { value });
 		}

@@ -145,7 +145,7 @@ impl FromKDL for Weapon {
 		};
 		let properties = {
 			let mut props = Vec::new();
-			for mut node in node.query_all("scope() > property")? {
+			for mut node in &mut node.query_all("scope() > property")? {
 				props.push(Property::from_kdl(&mut node)?);
 			}
 			props

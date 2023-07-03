@@ -72,7 +72,7 @@ impl FromKDL for HasCondition {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let inverted = node.get_bool_opt("inverted")?.unwrap_or_default();
 		let mut filters = Vec::new();
-		for mut node in node.query_all("scope() > filter")? {
+		for mut node in &mut node.query_all("scope() > filter")? {
 			filters.push(ConditionFilter::from_kdl(&mut node)?);
 		}
 		Ok(Self { inverted, filters })

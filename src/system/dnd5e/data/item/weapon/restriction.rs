@@ -190,7 +190,7 @@ impl crate::kdl_ext::FromKDL for Restriction {
 		};
 
 		let mut properties = Vec::new();
-		for mut node in node.query_all("scope() > property")? {
+		for mut node in &mut node.query_all("scope() > property")? {
 			let property = weapon::Property::from_kdl(&mut node)?;
 			let required = node.next_bool_req()?;
 			properties.push((property, required));

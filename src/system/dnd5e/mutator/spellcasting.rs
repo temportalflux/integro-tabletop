@@ -216,7 +216,7 @@ impl FromKDL for Spellcasting {
 					None => None,
 					Some(node) => {
 						let mut level_map = BTreeMap::new();
-						for mut node in node.query_all("scope() > level")? {
+						for mut node in &mut node.query_all("scope() > level")? {
 							let level = node.next_i64_req()? as usize;
 							let capacity = node.next_i64_req()? as usize;
 							level_map.insert(level, capacity);
@@ -241,7 +241,7 @@ impl FromKDL for Spellcasting {
 							let capacity = {
 								let node = node.query_req("scope() > capacity")?;
 								let mut capacity = BTreeMap::new();
-								for mut node in node.query_all("scope() > level")? {
+								for mut node in &mut node.query_all("scope() > level")? {
 									let level = node.next_i64_req()? as usize;
 									let amount = node.next_i64_req()? as usize;
 									capacity.insert(level, amount);
@@ -307,7 +307,7 @@ impl FromKDL for Spellcasting {
 				let classified_as = node.get_str_opt("classified_as")?.map(str::to_owned);
 
 				let mut specific_spells = Vec::new();
-				for mut node in node.query_all("scope() > spell")? {
+				for mut node in &mut node.query_all("scope() > spell")? {
 					let id = node.next_str_req()?;
 					let id = SourceId::from_str(id)?.with_basis(node.id(), false);
 					let info = PreparedInfo::from_kdl(&mut node)?;

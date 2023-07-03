@@ -87,7 +87,7 @@ impl FromKDL for Class {
 		let current_level = node.get_i64_opt("level")?.unwrap_or_default() as usize;
 
 		let mut mutators = Vec::new();
-		for node in node.query_all("scope() > mutator")? {
+		for node in &mut node.query_all("scope() > mutator")? {
 			mutators.push(node.parse_mutator()?);
 		}
 
@@ -101,7 +101,7 @@ impl FromKDL for Class {
 
 		let mut levels = Vec::with_capacity(20);
 		levels.resize_with(20, Default::default);
-		for mut node in node.query_all("scope() > level")? {
+		for mut node in &mut node.query_all("scope() > level")? {
 			let order = node.next_i64_req()? as usize;
 			let idx = order - 1;
 			levels[idx] = Level::from_kdl(&mut node)?;
@@ -194,7 +194,7 @@ impl FromKDL for Level {
 		};
 
 		let mut mutators = Vec::new();
-		for node in node.query_all("scope() > mutator")? {
+		for node in &mut node.query_all("scope() > mutator")? {
 			mutators.push(node.parse_mutator()?);
 		}
 
@@ -313,7 +313,7 @@ impl FromKDL for Subclass {
 
 		let mut levels = Vec::with_capacity(20);
 		levels.resize_with(20, Default::default);
-		for mut node in node.query_all("scope() > level")? {
+		for mut node in &mut node.query_all("scope() > level")? {
 			let order = node.next_i64_req()? as usize;
 			let idx = order - 1;
 			levels[idx] = Level::from_kdl(&mut node)?;

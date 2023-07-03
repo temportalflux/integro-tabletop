@@ -82,11 +82,11 @@ impl FromKDL for GrantByLevel {
 		let class_name = node.get_str_opt("class")?.map(str::to_owned);
 
 		let mut levels = BTreeMap::new();
-		for mut node in node.query_all("scope() > level")? {
+		for mut node in &mut node.query_all("scope() > level")? {
 			let level = node.next_i64_req()? as usize;
 
 			let mut mutators = Vec::new();
-			for node in node.query_all("scope() > mutator")? {
+			for node in &mut node.query_all("scope() > mutator")? {
 				mutators.push(node.parse_mutator()?);
 			}
 

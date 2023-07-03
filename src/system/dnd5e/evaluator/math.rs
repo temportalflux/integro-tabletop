@@ -66,7 +66,7 @@ impl FromKDL for Math {
 		let maximum = node.get_i64_opt("max")?.map(|v| v as i32);
 
 		let mut values = Vec::new();
-		for mut node in node.query_all("scope() > value")? {
+		for mut node in &mut node.query_all("scope() > value")? {
 			let entry = node.next_req()?;
 			values.push(Value::from_kdl(&mut node, entry, |value| {
 				Ok(value.as_i64_req()? as i32)

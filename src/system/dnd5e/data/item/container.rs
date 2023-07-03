@@ -209,7 +209,7 @@ impl<T: AsItem + FromKDL> FromKDL for Container<T> {
 			itemids_by_name: Vec::new(),
 		};
 
-		for mut node in node.query_all("scope() > item")? {
+		for mut node in &mut node.query_all("scope() > item")? {
 			let item = T::from_kdl(&mut node)?;
 			inventory.push_entry(item);
 		}

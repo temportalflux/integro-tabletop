@@ -104,7 +104,7 @@ impl FromKDL for Bundle {
 		let limit = node.get_i64_opt("limit")?.unwrap_or(1) as usize;
 
 		let mut requirements = Vec::new();
-		for mut node in node.query_all("scope() > requirement")? {
+		for mut node in &mut node.query_all("scope() > requirement")? {
 			match node.next_str_req()? {
 				"Bundle" => {
 					let category = node.next_str_req()?.to_owned();
@@ -121,7 +121,7 @@ impl FromKDL for Bundle {
 		}
 
 		let mut mutators = Vec::new();
-		for node in node.query_all("scope() > mutator")? {
+		for node in &mut node.query_all("scope() > mutator")? {
 			mutators.push(node.parse_mutator()?);
 		}
 

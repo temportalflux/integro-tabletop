@@ -153,7 +153,7 @@ impl FromKDL for PickN {
 		let cannot_match = cannot_match.into_iter().map(IdPath::from).collect();
 
 		let mut options = HashMap::new();
-		for mut node in node.query_all("scope() > option")? {
+		for mut node in &mut node.query_all("scope() > option")? {
 			let name = node.next_str_req()?.to_owned();
 
 			let description = match node.query_opt("scope() > description")? {
@@ -162,7 +162,7 @@ impl FromKDL for PickN {
 			};
 
 			let mut mutators = Vec::new();
-			for node in node.query_all("scope() > mutator")? {
+			for node in &mut node.query_all("scope() > mutator")? {
 				mutators.push(node.parse_mutator()?);
 			}
 

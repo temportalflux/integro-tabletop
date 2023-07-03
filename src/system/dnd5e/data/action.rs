@@ -40,7 +40,7 @@ impl FromKDL for Action {
 		};
 
 		let mut conditions_to_apply = Vec::new();
-		for mut node in node.query_all("scope() > condition")? {
+		for mut node in &mut node.query_all("scope() > condition")? {
 			conditions_to_apply.push(IndirectCondition::from_kdl(&mut node)?);
 		}
 
