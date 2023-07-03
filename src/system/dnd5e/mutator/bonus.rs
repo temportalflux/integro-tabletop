@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{DocumentExt, FromKDL, NodeBuilder, NodeExt},
+	kdl_ext::{DocumentExt, DocumentQueryExt, FromKDL, NodeBuilder, NodeExt},
 	system::dnd5e::data::{
 		character::Character, description, item::weapon, roll::EvaluatedRoll, DamageType,
 	},
@@ -80,23 +80,18 @@ impl Mutator for Bonus {
 }
 
 impl FromKDL for Bonus {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		match node.get_str_req(ctx.consume_idx())? {
+	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		match node.next_str_req()? {
 			"WeaponDamage" => {
-				let damage = EvaluatedRoll::from_kdl(
-					node.query_req("scope() > damage")?,
-					&mut ctx.next_node(),
-				)?;
+				let damage =
+					EvaluatedRoll::from_kdl_reader(&mut node.query_req("scope() > damage")?)?;
 				let damage_type = match node.query_str_opt("scope() > damage_type", 0)? {
 					None => None,
 					Some(str) => Some(DamageType::from_str(str)?),
 				};
 				let restriction = match node.query_opt("scope() > restriction")? {
 					None => None,
-					Some(node) => Some(weapon::Restriction::from_kdl(node, &mut ctx.next_node())?),
+					Some(mut node) => Some(weapon::Restriction::from_kdl_reader(&mut node)?),
 				};
 				Ok(Self::WeaponDamage {
 					damage,
@@ -108,12 +103,12 @@ impl FromKDL for Bonus {
 				let bonus = node.query_i64_req("scope() > bonus", 0)? as i32;
 				let restriction = match node.query_opt("scope() > restriction")? {
 					None => None,
-					Some(node) => Some(weapon::Restriction::from_kdl(node, &mut ctx.next_node())?),
+					Some(mut node) => Some(weapon::Restriction::from_kdl_reader(&mut node)?),
 				};
 				Ok(Self::WeaponAttackRoll { bonus, restriction })
 			}
 			"ArmorClass" => {
-				let bonus = node.get_i64_req(ctx.consume_idx())? as i32;
+				let bonus = node.next_i64_req()? as i32;
 				let context = node.get_str_opt("context")?.map(str::to_owned);
 				Ok(Self::ArmorClass { bonus, context })
 			}

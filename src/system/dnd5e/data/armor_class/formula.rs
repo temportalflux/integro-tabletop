@@ -45,15 +45,11 @@ impl ArmorClassFormula {
 }
 
 impl FromKDL for ArmorClassFormula {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
+	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let base = node.get_i64_req("base")? as u32;
 		let mut bonuses = Vec::new();
-		for node in node.query_all("scope() > bonus")? {
-			let mut ctx = ctx.next_node();
-			let ability = Ability::from_str(node.get_str_req(ctx.consume_idx())?)?;
+		for mut node in node.query_all("scope() > bonus")? {
+			let ability = Ability::from_str(node.next_str_req()?)?;
 			let min = node.get_i64_opt("min")?.map(|v| v as i32);
 			let max = node.get_i64_opt("max")?.map(|v| v as i32);
 			bonuses.push(BoundedAbility { ability, min, max });

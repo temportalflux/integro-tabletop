@@ -1,6 +1,6 @@
 use super::super::{AreaOfEffect, DamageRoll};
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
+	kdl_ext::{AsKdl, DocumentQueryExt, FromKDL, NodeBuilder},
 	system::dnd5e::data::item::weapon,
 };
 
@@ -22,23 +22,19 @@ pub struct Attack {
 }
 
 impl FromKDL for Attack {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
+	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let kind = match node.query_opt("scope() > kind")? {
 			None => None,
-			Some(node) => Some(AttackKindValue::from_kdl(node, &mut ctx.next_node())?),
+			Some(mut node) => Some(AttackKindValue::from_kdl_reader(&mut node)?),
 		};
-		let check =
-			AttackCheckKind::from_kdl(node.query_req("scope() > check")?, &mut ctx.next_node())?;
-		let area_of_effect = match node.query("scope() > area_of_effect")? {
+		let check = AttackCheckKind::from_kdl_reader(&mut node.query_req("scope() > check")?)?;
+		let area_of_effect = match node.query_opt("scope() > area_of_effect")? {
 			None => None,
-			Some(node) => Some(AreaOfEffect::from_kdl(node, &mut ctx.next_node())?),
+			Some(mut node) => Some(AreaOfEffect::from_kdl_reader(&mut node)?),
 		};
-		let damage = match node.query("scope() > damage")? {
+		let damage = match node.query_opt("scope() > damage")? {
 			None => None,
-			Some(node) => Some(DamageRoll::from_kdl(node, &mut ctx.next_node())?),
+			Some(mut node) => Some(DamageRoll::from_kdl_reader(&mut node)?),
 		};
 		Ok(Self {
 			kind,

@@ -1,6 +1,6 @@
 use self::data::character::Character;
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, KDLNode, NodeContext},
+	kdl_ext::{AsKdl, FromKDL, KDLNode},
 	system::core::NodeRegistry,
 };
 use std::{collections::HashMap, sync::Arc};
@@ -16,13 +16,13 @@ pub type BoxedMutator = crate::utility::GenericMutator<Character>;
 pub type Value<T> = crate::utility::Value<Character, T>;
 
 type FnMetadataFromKdl = Box<
-	dyn Fn(&kdl::KdlNode, &NodeContext) -> anyhow::Result<serde_json::Value>
+	dyn Fn(crate::kdl_ext::NodeReader<'_>) -> anyhow::Result<serde_json::Value>
 		+ 'static
 		+ Send
 		+ Sync,
 >;
 type FnReserializeKdl = Box<
-	dyn Fn(&kdl::KdlNode, &NodeContext) -> anyhow::Result<kdl::KdlNode> + 'static + Send + Sync,
+	dyn Fn(crate::kdl_ext::NodeReader<'_>) -> anyhow::Result<kdl::KdlNode> + 'static + Send + Sync,
 >;
 pub struct ComponentFactory {
 	metadata_from_kdl: FnMetadataFromKdl,
@@ -34,31 +34,29 @@ impl ComponentFactory {
 		T: FromKDL + AsKdl + SystemComponent + 'static + Send + Sync,
 	{
 		Self {
-			metadata_from_kdl: Box::new(|node, context| {
-				let value = T::from_kdl(node, &mut context.next_node())?;
+			metadata_from_kdl: Box::new(|mut node| {
+				let value = T::from_kdl_reader(&mut node)?;
 				Ok(T::to_metadata(value))
 			}),
-			reserialize_kdl: Box::new(|node, context| {
-				let value = T::from_kdl(node, &mut context.next_node())?;
+			reserialize_kdl: Box::new(|mut node| {
+				let value = T::from_kdl_reader(&mut node)?;
 				Ok(value.as_kdl().build(node.name().value()))
 			}),
 		}
 	}
 
-	pub fn metadata_from_kdl(
+	pub fn metadata_from_kdl<'doc>(
 		&self,
-		node: &kdl::KdlNode,
-		ctx: &NodeContext,
+		node: crate::kdl_ext::NodeReader<'doc>,
 	) -> anyhow::Result<serde_json::Value> {
-		(*self.metadata_from_kdl)(node, ctx)
+		(*self.metadata_from_kdl)(node)
 	}
 
-	pub fn reserialize_kdl(
+	pub fn reserialize_kdl<'doc>(
 		&self,
-		node: &kdl::KdlNode,
-		ctx: &NodeContext,
+		node: crate::kdl_ext::NodeReader<'doc>,
 	) -> anyhow::Result<kdl::KdlNode> {
-		(*self.reserialize_kdl)(node, ctx)
+		(*self.reserialize_kdl)(node)
 	}
 }
 #[derive(Default)]

@@ -1,6 +1,8 @@
 use super::character::Character;
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, EntryExt, FromKDL, NodeBuilder, NodeContext, NodeExt, ValueExt},
+	kdl_ext::{
+		AsKdl, DocumentExt, DocumentQueryExt, EntryExt, FromKDL, NodeBuilder, NodeExt, ValueExt,
+	},
 	system::dnd5e::BoxedEvaluator,
 	utility::{NotInList, SelectorMetaVec},
 };
@@ -88,11 +90,11 @@ impl Info {
 }
 
 impl FromKDL for Info {
-	fn from_kdl(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
+	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		// If there are no children, this can be treated as a single-section block,
 		// where the section is the long description.
 		if node.children().is_none() {
-			let section = Section::from_kdl(node, ctx)?;
+			let section = Section::from_kdl_reader(node)?;
 			return Ok(Self {
 				short: None,
 				sections: vec![section],
@@ -103,11 +105,11 @@ impl FromKDL for Info {
 		let short = node.query_str_opt("scope() > short", 0)?.map(str::to_owned);
 
 		let mut sections = Vec::new();
-		for node in node.query_all("scope() > section")? {
-			sections.push(Section::from_kdl(node, &mut ctx.next_node())?);
+		for mut node in node.query_all("scope() > section")? {
+			sections.push(Section::from_kdl_reader(&mut node)?);
 		}
 
-		let format_args = FormatArgs::from_kdl_all(node, ctx)?;
+		let format_args = FormatArgs::from_kdl_all(&node)?;
 
 		Ok(Self {
 			short,
@@ -204,30 +206,30 @@ impl From<SelectorMetaVec> for Section {
 }
 
 impl FromKDL for Section {
-	fn from_kdl(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
+	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		// Check if the first entry is a title.
 		// There may not be a first entry (e.g. table) or the first entry might not be a title (title-less body),
 		// so we cannot consume the first value in the node.
-		let has_title = match node.entry_opt(ctx.peak_idx()) {
+		let has_title = match node.peak_opt() {
 			Some(entry) => entry.type_opt() == Some("Title"),
 			None => false,
 		};
 		// If the first value IS a title, read it and consume the entry.
 		let title = match has_title {
-			true => Some(node.get_str_req(ctx.consume_idx())?.to_owned()),
+			true => Some(node.next_str_req()?.to_owned()),
 			false => None,
 		};
 
 		// Now parse the remaining values as the content.
 		// This could be a body (using the next value) or a table (which checks properties and uses child nodes).
-		let content = SectionContent::from_kdl(node, ctx)?;
+		let content = SectionContent::from_kdl_reader(node)?;
 
 		// Finally, read format args (if any exist) and any subsections/children.
-		let format_args = FormatArgs::from_kdl_all(node, ctx)?;
+		let format_args = FormatArgs::from_kdl_all(&node)?;
 
 		let mut children = Vec::new();
-		for node in node.query_all("scope() > section")? {
-			children.push(Section::from_kdl(node, &mut ctx.next_node())?);
+		for mut node in node.query_all("scope() > section")? {
+			children.push(Section::from_kdl_reader(&mut node)?);
 		}
 
 		Ok(Self {
@@ -285,13 +287,13 @@ impl From<String> for SectionContent {
 }
 
 impl FromKDL for SectionContent {
-	fn from_kdl(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
+	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let is_table = node.get_bool_opt("table")?.unwrap_or_default();
 		match is_table {
 			// Take note that we never return Self::Selectors.
 			// That type is reserved specifically for hard/in-code descriptions (e.g. from mutators).
 			false => {
-				let content = node.get_str_req(ctx.consume_idx())?.to_owned();
+				let content = node.next_str_req()?.to_owned();
 				Ok(Self::Body(content))
 			}
 			true => {
@@ -440,18 +442,17 @@ impl FormatArgs {
 
 	/// Queries `node` for all child nodes with the name `format-arg`,
 	/// parsing each as a named evaluator argument for the list.
-	pub fn from_kdl_all(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
+	pub fn from_kdl_all<'doc>(node: &crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let mut args = BTreeMap::new();
-		for node in node.query_all("scope() > format-arg")? {
-			let mut ctx = ctx.next_node();
-			let key = node.get_str_req(ctx.consume_idx())?.to_owned();
-			let eval_type_entry = node.entry_req(ctx.consume_idx())?;
+		for mut node in node.query_all("scope() > format-arg")? {
+			let key = node.next_str_req()?.to_owned();
+			let eval_type_entry = node.next_req()?;
 			let arg = match eval_type_entry.as_str_req()? {
 				"int" => {
 					let signed = eval_type_entry.type_opt() == Some("Signed");
-					Arg::Number(ctx.parse_evaluator_inline(node)?, signed)
+					Arg::Number(node.parse_evaluator_inline()?, signed)
 				}
-				"str" => Arg::String(ctx.parse_evaluator_inline(node)?),
+				"str" => Arg::String(node.parse_evaluator_inline()?),
 				_type => return Err(NotInList(_type.into(), vec!["int", "str"]).into()),
 			};
 			args.insert(key, arg);
@@ -716,11 +717,10 @@ mod test {
 
 			static NODE_NAME: &str = "args";
 
-			fn from_kdl(
-				node: &::kdl::KdlNode,
-				ctx: &mut NodeContext,
+			fn from_kdl<'doc>(
+				node: crate::kdl_ext::NodeReader<'doc>,
 			) -> anyhow::Result<FormatArgs> {
-				FormatArgs::from_kdl_all(node, ctx)
+				FormatArgs::from_kdl_all(&node)
 			}
 
 			#[test]

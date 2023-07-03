@@ -73,11 +73,8 @@ pub(crate) mod test {
 				crate::kdl_ext::NodeContext::registry($node_reg)
 			}
 
-			fn from_kdl(
-				node: &::kdl::KdlNode,
-				ctx: &mut crate::kdl_ext::NodeContext,
-			) -> anyhow::Result<Target> {
-				ctx.parse_mutator(node)
+			fn from_kdl<'doc>(node: crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Target> {
+				node.parse_mutator()
 			}
 
 			fn as_kdl<E: crate::utility::Mutator>(data: &E) -> crate::kdl_ext::NodeBuilder {

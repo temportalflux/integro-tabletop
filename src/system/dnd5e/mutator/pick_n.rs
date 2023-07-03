@@ -1,7 +1,7 @@
 use itertools::Itertools;
 
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt},
+	kdl_ext::{AsKdl, DocumentExt, DocumentQueryExt, FromKDL, NodeBuilder, NodeExt},
 	system::dnd5e::{
 		data::{character::Character, description},
 		BoxedMutator,
@@ -144,11 +144,8 @@ impl Mutator for PickN {
 }
 
 impl FromKDL for PickN {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		let max_selections = node.get_i64_req(ctx.consume_idx())? as usize;
+	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let max_selections = node.next_i64_req()? as usize;
 		let name = node.get_str_req("name")?.to_owned();
 
 		let id = IdPath::from(node.get_str_opt("id")?);
@@ -156,18 +153,17 @@ impl FromKDL for PickN {
 		let cannot_match = cannot_match.into_iter().map(IdPath::from).collect();
 
 		let mut options = HashMap::new();
-		for node in node.query_all("scope() > option")? {
-			let mut ctx = ctx.next_node();
-			let name = node.get_str_req(ctx.consume_idx())?.to_owned();
+		for mut node in node.query_all("scope() > option")? {
+			let name = node.next_str_req()?.to_owned();
 
 			let description = match node.query_opt("scope() > description")? {
 				None => None,
-				Some(node) => Some(description::Section::from_kdl(node, &mut ctx.next_node())?),
+				Some(mut node) => Some(description::Section::from_kdl_reader(&mut node)?),
 			};
 
 			let mut mutators = Vec::new();
-			for entry_node in node.query_all("scope() > mutator")? {
-				mutators.push(ctx.parse_mutator(entry_node)?);
+			for node in node.query_all("scope() > mutator")? {
+				mutators.push(node.parse_mutator()?);
 			}
 
 			options.insert(

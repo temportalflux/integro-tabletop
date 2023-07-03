@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt},
+	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
 	system::dnd5e::data::{
 		character::{Character, PersonalityKind},
 		description,
@@ -34,11 +34,8 @@ impl Mutator for SuggestedPersonality {
 }
 
 impl FromKDL for SuggestedPersonality {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		let kind = match node.get_str_req(ctx.consume_idx())? {
+	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let kind = match node.next_str_req()? {
 			"Trait" => PersonalityKind::Trait,
 			"Ideal" => PersonalityKind::Ideal,
 			"Bond" => PersonalityKind::Bond,

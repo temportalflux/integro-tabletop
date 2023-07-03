@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::dnd5e::{
 		data::{character::Character, description},
 		BoxedCriteria, BoxedMutator,
@@ -52,7 +52,10 @@ impl Mutator for ApplyIf {
 		let mut criteria_desc = Vec::new();
 		for criteria in &self.criteria {
 			if let Some(desc) = criteria.description() {
-				criteria_desc.push(description::Section { content: desc.into(), ..Default::default() });
+				criteria_desc.push(description::Section {
+					content: desc.into(),
+					..Default::default()
+				});
 			}
 		}
 		let mut mutator_desc = Vec::new();
@@ -116,21 +119,18 @@ impl ApplyIf {
 }
 
 impl FromKDL for ApplyIf {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		let op = match node.get_str_opt(ctx.consume_idx())? {
+	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let op = match node.next_str_opt()? {
 			None => LogicOp::default(),
 			Some(str) => LogicOp::from_str(str)?,
 		};
 		let mut criteria = Vec::new();
 		for node in node.query_all("scope() > criteria")? {
-			criteria.push(ctx.parse_evaluator(node)?);
+			criteria.push(node.parse_evaluator()?);
 		}
 		let mut mutators = Vec::new();
 		for node in node.query_all("scope() > mutator")? {
-			mutators.push(ctx.parse_mutator(node)?);
+			mutators.push(node.parse_mutator()?);
 		}
 		Ok(Self {
 			op,
@@ -171,10 +171,13 @@ mod test {
 		use super::*;
 		use crate::{
 			kdl_ext::test_utils::*,
-			system::{dnd5e::{
-				evaluator::HasArmorEquipped,
-				mutator::{test::test_utils, Bonus},
-			}, core::NodeRegistry},
+			system::{
+				core::NodeRegistry,
+				dnd5e::{
+					evaluator::HasArmorEquipped,
+					mutator::{test::test_utils, Bonus},
+				},
+			},
 		};
 
 		test_utils!(ApplyIf, node_reg());

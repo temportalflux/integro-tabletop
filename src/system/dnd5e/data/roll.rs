@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	GeneralError,
 };
 use std::str::FromStr;
@@ -96,11 +96,8 @@ impl FromStr for Roll {
 }
 
 impl FromKDL for Roll {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		Ok(Self::from_str(node.get_str_req(ctx.consume_idx())?)?)
+	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		Ok(Self::from_str(node.next_str_req()?)?)
 	}
 }
 

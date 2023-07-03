@@ -1,6 +1,6 @@
 use super::Weapon;
 use crate::{
-	kdl_ext::{DocumentExt, NodeBuilder, NodeExt, ValueExt},
+	kdl_ext::{DocumentQueryExt, NodeBuilder, ValueExt},
 	system::dnd5e::data::{
 		action::{Action, AttackCheckKind, AttackKind},
 		item::weapon,
@@ -157,10 +157,7 @@ impl Restriction {
 }
 
 impl crate::kdl_ext::FromKDL for Restriction {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
+	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let weapon_kind = match node.query_opt("scope() > weapon")? {
 			None => EnumSet::empty(),
 			Some(node) => {
@@ -193,10 +190,9 @@ impl crate::kdl_ext::FromKDL for Restriction {
 		};
 
 		let mut properties = Vec::new();
-		for node in node.query_all("scope() > property")? {
-			let mut ctx = ctx.next_node();
-			let property = weapon::Property::from_kdl(node, &mut ctx)?;
-			let required = node.get_bool_req(ctx.consume_idx())?;
+		for mut node in node.query_all("scope() > property")? {
+			let property = weapon::Property::from_kdl_reader(&mut node)?;
+			let required = node.next_bool_req()?;
 			properties.push((property, required));
 		}
 

@@ -45,20 +45,16 @@ impl<T> FromKDL for Basis<T>
 where
 	T: Clone + DefaultLevelMap + FromKDL,
 {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		match node.get_str_req(ctx.consume_idx())? {
+	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		match node.next_str_req()? {
 			"Level" => {
 				let class_name = node.get_str_opt("class")?.map(str::to_owned);
 				let mut level_map = BTreeMap::new();
-				for node in node.query_all("scope() > level")? {
-					let mut ctx = ctx.next_node();
-					let threshold = node.get_i64_req(ctx.consume_idx())? as usize;
-					let value = match node.get(ctx.peak_idx()).is_some() {
+				for mut node in node.query_all("scope() > level")? {
+					let threshold = node.next_i64_req()? as usize;
+					let value = match node.peak_opt().is_some() {
 						false => None,
-						true => Some(T::from_kdl(node, &mut ctx)?),
+						true => Some(T::from_kdl_reader(&mut node)?),
 					};
 					level_map.insert(threshold, value);
 				}

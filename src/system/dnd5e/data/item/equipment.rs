@@ -60,37 +60,32 @@ impl Equipment {
 }
 
 impl FromKDL for Equipment {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		let criteria = match node.query("scope() > criteria")? {
+	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let criteria = match node.query_opt("scope() > criteria")? {
 			None => None,
-			Some(entry_node) => {
-				Some(ctx.parse_evaluator::<Character, Result<(), String>>(entry_node)?)
-			}
+			Some(node) => Some(node.parse_evaluator::<Character, Result<(), String>>()?),
 		};
 
 		let mut mutators = Vec::new();
-		for entry_node in node.query_all("scope() > mutator")? {
-			mutators.push(ctx.parse_mutator(entry_node)?);
+		for node in node.query_all("scope() > mutator")? {
+			mutators.push(node.parse_mutator()?);
 		}
 
-		let armor = match node.query("scope() > armor")? {
+		let armor = match node.query_opt("scope() > armor")? {
 			None => None,
-			Some(node) => Some(Armor::from_kdl(node, &mut ctx.next_node())?),
+			Some(mut node) => Some(Armor::from_kdl_reader(&mut node)?),
 		};
-		let shield = match node.query("scope() > shield")? {
+		let shield = match node.query_opt("scope() > shield")? {
 			None => None,
 			Some(node) => Some(node.get_i64_req("bonus")? as i32),
 		};
-		let weapon = match node.query("scope() > weapon")? {
+		let weapon = match node.query_opt("scope() > weapon")? {
 			None => None,
-			Some(node) => Some(Weapon::from_kdl(node, &mut ctx.next_node())?),
+			Some(mut node) => Some(Weapon::from_kdl_reader(&mut node)?),
 		};
-		let attunement = match node.query("scope() > attunement")? {
+		let attunement = match node.query_opt("scope() > attunement")? {
 			None => None,
-			Some(_node) => {
+			Some(mut _node) => {
 				None // TODO: Some(Attunement::from_kdl(node, &mut ctx.next_node())?)
 			}
 		};

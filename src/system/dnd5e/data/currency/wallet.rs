@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use super::Kind;
-use crate::kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeContext, NodeExt};
+use crate::kdl_ext::{AsKdl, FromKDL, NodeBuilder};
 use enum_map::EnumMap;
 use itertools::Itertools;
 
@@ -185,13 +185,13 @@ impl Wallet {
 }
 
 impl FromKDL for Wallet {
-	fn from_kdl(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
+	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let mut wallet = Self::default();
 		if !node.entries().is_empty() {
-			wallet += Self::from_row(node, ctx)?;
+			wallet += Self::from_row(node)?;
 		}
-		for node in node.query_all("scope() > item")? {
-			wallet += Self::from_row(node, &mut ctx.next_node())?;
+		for mut node in node.query_all("scope() > item")? {
+			wallet += Self::from_row(&mut node)?;
 		}
 		Ok(wallet)
 	}
@@ -223,9 +223,9 @@ impl AsKdl for Wallet {
 	}
 }
 impl Wallet {
-	fn from_row(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
-		let amt = node.get_i64_req(ctx.consume_idx())? as u64;
-		let kind = Kind::from_str(node.get_str_req(ctx.consume_idx())?)?;
+	fn from_row<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let amt = node.next_i64_req()? as u64;
+		let kind = Kind::from_str(node.next_str_req()?)?;
 		Ok(Wallet::from([(amt, kind)]))
 	}
 }

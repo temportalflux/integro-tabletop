@@ -193,14 +193,11 @@ impl Mutator for AddProficiency {
 }
 
 impl FromKDL for AddProficiency {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		let entry = node.entry_req(ctx.consume_idx())?;
+	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let entry = node.next_req()?;
 		match entry.type_req()? {
 			"Ability" => {
-				let ability = Selector::from_kdl(node, entry, ctx, |kdl| {
+				let ability = Selector::from_kdl(node, entry, |kdl| {
 					Ok(Ability::from_str(kdl.as_str_req()?)?)
 				})?;
 				let level = match node.get_str_opt("level")? {
@@ -211,9 +208,8 @@ impl FromKDL for AddProficiency {
 			}
 			"SavingThrow" => Ok(Self::SavingThrow(Ability::from_str(entry.as_str_req()?)?)),
 			"Skill" => {
-				let skill = Selector::from_kdl(node, entry, ctx, |kdl| {
-					Ok(Skill::from_str(kdl.as_str_req()?)?)
-				})?;
+				let skill =
+					Selector::from_kdl(node, entry, |kdl| Ok(Skill::from_str(kdl.as_str_req()?)?))?;
 				let level = match node.get_str_opt("level")? {
 					Some(str) => proficiency::Level::from_str(str)?,
 					None => proficiency::Level::Full,
@@ -222,12 +218,12 @@ impl FromKDL for AddProficiency {
 			}
 			"Language" => {
 				let language =
-					Selector::from_kdl(node, entry, ctx, |kdl| Ok(kdl.as_str_req()?.to_owned()))?;
+					Selector::from_kdl(node, entry, |kdl| Ok(kdl.as_str_req()?.to_owned()))?;
 				Ok(Self::Language(language))
 			}
 			"Armor" => {
 				let kind = ArmorExtended::from_str(entry.as_str_req()?)?;
-				let context = node.get_str_opt(ctx.consume_idx())?.map(str::to_owned);
+				let context = node.next_str_opt()?.map(str::to_owned);
 				Ok(Self::Armor(kind, context))
 			}
 			"Weapon" => Ok(Self::Weapon(match entry.as_str_req()? {
@@ -237,8 +233,7 @@ impl FromKDL for AddProficiency {
 				classification => WeaponProficiency::Classification(classification.to_owned()),
 			})),
 			"Tool" => {
-				let tool =
-					Selector::from_kdl(node, entry, ctx, |kdl| Ok(kdl.as_str_req()?.to_owned()))?;
+				let tool = Selector::from_kdl(node, entry, |kdl| Ok(kdl.as_str_req()?.to_owned()))?;
 				Ok(Self::Tool(tool))
 			}
 			name => Err(NotInList(

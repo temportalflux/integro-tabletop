@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt},
+	kdl_ext::{AsKdl, DocumentExt, DocumentQueryExt, FromKDL, NodeBuilder},
 	system::dnd5e::{
 		data::{character::Character, ArmorClassFormula},
 		mutator::ArmorStrengthRequirement,
@@ -19,13 +19,10 @@ pub struct Armor {
 }
 
 impl FromKDL for Armor {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		let kind = Kind::from_str(node.get_str_req(ctx.consume_idx())?)?;
-		let formula = node.query_req("scope() > formula")?;
-		let formula = ArmorClassFormula::from_kdl(formula, &mut ctx.next_node())?;
+	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let kind = Kind::from_str(node.next_str_req()?)?;
+		let mut formula = node.query_req("scope() > formula")?;
+		let formula = ArmorClassFormula::from_kdl_reader(&mut formula)?;
 		let min_strength_score = node
 			.query_i64_opt("scope() > min-strength", 0)?
 			.map(|v| v as u32);

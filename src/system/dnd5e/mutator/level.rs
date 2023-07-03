@@ -78,22 +78,16 @@ impl Mutator for GrantByLevel {
 }
 
 impl FromKDL for GrantByLevel {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
+	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let class_name = node.get_str_opt("class")?.map(str::to_owned);
 
 		let mut levels = BTreeMap::new();
-		for node in node.query_all("scope() > level")? {
-			let mut ctx = ctx.next_node();
-
-			let level = node.get_i64_req(ctx.consume_idx())? as usize;
+		for mut node in node.query_all("scope() > level")? {
+			let level = node.next_i64_req()? as usize;
 
 			let mut mutators = Vec::new();
 			for node in node.query_all("scope() > mutator")? {
-				let ctx = ctx.next_node();
-				mutators.push(ctx.parse_mutator(node)?);
+				mutators.push(node.parse_mutator()?);
 			}
 
 			levels.insert(level, mutators);

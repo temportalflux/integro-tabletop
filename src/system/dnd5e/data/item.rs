@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt},
+	kdl_ext::{AsKdl, DocumentExt, DocumentQueryExt, FromKDL, NodeBuilder, NodeExt},
 	system::{
 		core::SourceId,
 		dnd5e::{
@@ -108,12 +108,9 @@ impl SystemComponent for Item {
 }
 
 impl FromKDL for Item {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
+	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		// TODO: Items can have empty ids if they are completely custom in the sheet
-		let id = ctx.parse_source_opt(node)?.unwrap_or_default();
+		let id = node.parse_source_opt()?.unwrap_or_default();
 
 		let name = node.get_str_req("name")?.to_owned();
 		let rarity = match node.query_str_opt("scope() > rarity", 0)? {
@@ -123,11 +120,11 @@ impl FromKDL for Item {
 		let mut weight = node.get_f64_opt("weight")?.unwrap_or(0.0) as f32;
 		let description = match node.query_opt("scope() > description")? {
 			None => description::Info::default(),
-			Some(node) => description::Info::from_kdl(node, &mut ctx.next_node())?,
+			Some(mut node) => description::Info::from_kdl_reader(&mut node)?,
 		};
 
-		let worth = match node.query("scope() > worth")? {
-			Some(node) => Wallet::from_kdl(node, &mut ctx.next_node())?,
+		let worth = match node.query_opt("scope() > worth")? {
+			Some(mut node) => Wallet::from_kdl_reader(&mut node)?,
 			None => Wallet::default(),
 		};
 
@@ -139,17 +136,14 @@ impl FromKDL for Item {
 			}
 			tags
 		};
-		let kind = match node.query("scope() > kind")? {
-			Some(node) => Kind::from_kdl(node, &mut ctx.next_node())?,
+		let kind = match node.query_opt("scope() > kind")? {
+			Some(mut node) => Kind::from_kdl_reader(&mut node)?,
 			None => Kind::default(),
 		};
 
 		let items = match node.query_opt("scope() > items")? {
 			None => None,
-			Some(node) => Some(container::Container::<Item>::from_kdl(
-				node,
-				&mut ctx.next_node(),
-			)?),
+			Some(mut node) => Some(container::Container::<Item>::from_kdl_reader(&mut node)?),
 		};
 
 		// Items are defined with the weight being representative of the stack,
@@ -231,61 +225,56 @@ mod test {
 	mod item {
 		use super::*;
 		use crate::{
-			kdl_ext::NodeContext,
-			system::{
-				core::NodeRegistry,
-				dnd5e::{
-					data::{
-						currency,
-						item::{armor::Armor, equipment::Equipment},
-						roll::Modifier,
-						ArmorClassFormula, Skill,
-					},
-					mutator::{AddModifier, ModifierKind},
+			kdl_ext::test_utils::*,
+			system::dnd5e::{
+				data::{
+					currency,
+					item::{armor::Armor, equipment::Equipment},
+					roll::Modifier,
+					ArmorClassFormula, Skill,
 				},
+				mutator::{AddModifier, ModifierKind},
 			},
 			utility::Selector,
 		};
 
-		fn from_doc(doc: &str) -> anyhow::Result<Item> {
-			let mut ctx = NodeContext::registry(NodeRegistry::default_with_mut::<AddModifier>());
-			let document = doc.parse::<kdl::KdlDocument>()?;
-			let node = document
-				.query("scope() > item")?
-				.expect("missing item node");
-			Item::from_kdl(node, &mut ctx)
-		}
+		static NODE_NAME: &str = "item";
 
 		#[test]
 		fn simple() -> anyhow::Result<()> {
-			let doc = "item name=\"Torch\" weight=1.0 {
-				worth 1 (Currency)\"Copper\"
-				kind \"Simple\" count=5
-			}";
-			let expected = Item {
+			let doc = "
+				|item name=\"Torch\" weight=1.0 {
+				|    worth 1 (Currency)\"Copper\"
+				|    kind \"Simple\" count=5
+				|}
+			";
+			let data = Item {
 				name: "Torch".into(),
 				weight: 0.2,
 				worth: Wallet::from([(1, currency::Kind::Copper)]),
 				kind: Kind::Simple { count: 5 },
 				..Default::default()
 			};
-			assert_eq!(from_doc(doc)?, expected);
+			assert_eq_fromkdl!(Item, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 
 		#[test]
 		fn equipment() -> anyhow::Result<()> {
-			let doc = "item name=\"Plate Armor\" weight=65.0 {
-				worth 1500 (Currency)\"Gold\"
-				kind \"Equipment\" {
-					armor \"Heavy\" {
-						formula base=18
-						min-strength 15
-					}
-					mutator \"add_modifier\" \"Disadvantage\" (Skill)\"Specific\" \"Stealth\"
-				}
-			}";
-			let expected = Item {
+			let doc = "
+				|item name=\"Plate Armor\" weight=65.0 {
+				|    worth 1500 (Currency)\"Gold\"
+				|    kind \"Equipment\" {
+				|        armor \"Heavy\" {
+				|            formula base=18
+				|            min-strength 15
+				|        }
+				|        mutator \"add_modifier\" \"Disadvantage\" (Skill)\"Specific\" \"Stealth\"
+				|    }
+				|}
+			";
+			let data = Item {
 				name: "Plate Armor".into(),
 				weight: 65.0,
 				worth: Wallet::from([(1500, currency::Kind::Gold)]),
@@ -311,7 +300,8 @@ mod test {
 				}),
 				..Default::default()
 			};
-			assert_eq!(from_doc(doc)?, expected);
+			assert_eq_fromkdl!(Item, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 	}

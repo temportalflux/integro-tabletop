@@ -89,10 +89,9 @@ impl<V> Value<Character, V>
 where
 	V: 'static,
 {
-	pub fn from_kdl(
-		node: &kdl::KdlNode,
+	pub fn from_kdl<'doc>(
+		node: &mut crate::kdl_ext::NodeReader<'doc>,
 		entry: &kdl::KdlEntry,
-		ctx: &mut crate::kdl_ext::NodeContext,
 		map_value: impl Fn(&kdl::KdlValue) -> anyhow::Result<V>,
 	) -> anyhow::Result<Self> {
 		match entry.type_opt() {
@@ -100,10 +99,10 @@ where
 				let eval_id = entry
 					.as_str_req()
 					.context("Evaluator values must be a string containing the evaluator id")?;
-				let node_reg = ctx.node_reg().clone();
+				let node_reg = node.node_reg().clone();
 				let factory = node_reg.get_evaluator_factory(eval_id)?;
 				Ok(Self::Evaluated(
-					factory.from_kdl::<Character, V>(node, ctx)?,
+					factory.from_kdl::<'doc, Character, V>(node)?,
 				))
 			}
 			_ => Ok(Self::Fixed(map_value(entry.value())?)),

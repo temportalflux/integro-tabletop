@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeContext, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
 	system::dnd5e::data::{
 		character::Character,
 		roll::{Roll, RollSet},
@@ -44,9 +44,9 @@ impl Damage {
 }
 
 impl FromKDL for Damage {
-	fn from_kdl(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
-		let amount = scaling::Value::from_kdl(node, ctx)?;
-		let damage_type = DamageType::from_str(node.get_str_req(ctx.consume_idx())?)?;
+	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let amount = scaling::Value::from_kdl_reader(node)?;
+		let damage_type = DamageType::from_str(node.next_str_req()?)?;
 		let base = node.get_i64_opt("base")?.unwrap_or_default() as i32;
 		let ability = node.get_bool_opt("ability")?.unwrap_or_default();
 		let upcast = match node.get_str_opt("upcast")? {

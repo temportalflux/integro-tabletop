@@ -136,26 +136,23 @@ impl Weapon {
 }
 
 impl FromKDL for Weapon {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		let kind = Kind::from_str(node.get_str_req(ctx.consume_idx())?)?;
+	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let kind = Kind::from_str(node.next_str_req()?)?;
 		let classification = node.get_str_req("class")?.to_owned();
-		let damage = match node.query("scope() > damage")? {
+		let damage = match node.query_opt("scope() > damage")? {
 			None => None,
-			Some(node) => Some(WeaponDamage::from_kdl(node, &mut ctx.next_node())?),
+			Some(mut node) => Some(WeaponDamage::from_kdl_reader(&mut node)?),
 		};
 		let properties = {
 			let mut props = Vec::new();
-			for node in node.query_all("scope() > property")? {
-				props.push(Property::from_kdl(node, &mut ctx.next_node())?);
+			for mut node in node.query_all("scope() > property")? {
+				props.push(Property::from_kdl_reader(&mut node)?);
 			}
 			props
 		};
-		let range = match node.query("scope() > range")? {
+		let range = match node.query_opt("scope() > range")? {
 			None => None,
-			Some(node) => Some(Range::from_kdl(node, &mut ctx.next_node())?),
+			Some(mut node) => Some(Range::from_kdl_reader(&mut node)?),
 		};
 		Ok(Self {
 			kind,

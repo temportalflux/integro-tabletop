@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt, ValueExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder, ValueExt},
 	system::dnd5e::{
 		data::{
 			character::{ActionBudgetKind, Character},
@@ -62,14 +62,10 @@ impl Mutator for AddToActionBudget {
 }
 
 impl FromKDL for AddToActionBudget {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		let action_kind = ActionBudgetKind::from_str(node.get_str_req(ctx.consume_idx())?)?;
-		let amount = Value::from_kdl(node, node.entry_req(ctx.consume_idx())?, ctx, |value| {
-			Ok(value.as_i64_req()? as i32)
-		})?;
+	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let action_kind = ActionBudgetKind::from_str(node.next_str_req()?)?;
+		let entry = node.next_req()?;
+		let amount = Value::from_kdl(node, entry, |value| Ok(value.as_i64_req()? as i32))?;
 		Ok(Self {
 			action_kind,
 			amount,

@@ -233,14 +233,16 @@ impl NodeExt for kdl::KdlNode {
 	}
 }
 
-pub trait DocumentExt {
+pub trait DocumentQueryExt {
 	/// Queries the document for a descendent that matches the given query.
 	/// Returns None if no descendent is found.
 	fn query_opt(&self, query: impl AsRef<str>) -> Result<Option<&kdl::KdlNode>, kdl::KdlError>;
 	/// Queries the document for a descendent that matches the given query.
 	/// Returns an error if no descendent is found.
 	fn query_req(&self, query: impl AsRef<str>) -> Result<&kdl::KdlNode, QueryError>;
+}
 
+pub trait DocumentExt {
 	/// Queries the document for a descendent that matches the given query. If no descendent is found, None is returned.
 	/// The descedent is then searched for an entry which matches the given key. If no entry is found, None is returned.
 	/// If the entry is not a bool, an error is returned.
@@ -341,7 +343,7 @@ pub trait DocumentExt {
 	) -> Result<Vec<&str>, QueryError>;
 }
 
-impl DocumentExt for kdl::KdlDocument {
+impl DocumentQueryExt for kdl::KdlDocument {
 	fn query_opt(&self, query: impl AsRef<str>) -> Result<Option<&kdl::KdlNode>, kdl::KdlError> {
 		self.query(query.as_ref())
 	}
@@ -351,7 +353,8 @@ impl DocumentExt for kdl::KdlDocument {
 			.query_opt(query.as_ref())?
 			.ok_or(QueryMissing(self.clone(), query.as_ref().to_owned()))?)
 	}
-
+}
+impl DocumentExt for kdl::KdlDocument {
 	fn query_bool_opt(
 		&self,
 		query: impl AsRef<str>,
@@ -473,7 +476,7 @@ impl DocumentExt for kdl::KdlDocument {
 	}
 }
 
-impl DocumentExt for kdl::KdlNode {
+impl DocumentQueryExt for kdl::KdlNode {
 	fn query_opt(&self, query: impl AsRef<str>) -> Result<Option<&kdl::KdlNode>, kdl::KdlError> {
 		let Some(doc) = self.children() else { return Ok(None); };
 		doc.query_opt(query)
@@ -483,7 +486,8 @@ impl DocumentExt for kdl::KdlNode {
 		let doc = self.children().ok_or(NoChildren(self.clone()))?;
 		doc.query_req(query)
 	}
-
+}
+impl DocumentExt for kdl::KdlNode {
 	fn query_bool_opt(
 		&self,
 		query: impl AsRef<str>,
@@ -595,7 +599,7 @@ impl DocumentExt for kdl::KdlNode {
 
 #[cfg(test)]
 pub mod test_utils {
-	use crate::kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeContext};
+	use crate::kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeContext, NodeReader};
 
 	macro_rules! assert_eq_fromkdl {
 		($impl_ty:ty, $doc_str:expr, $expected_data:expr) => {
@@ -617,8 +621,8 @@ pub mod test_utils {
 		NodeContext::default()
 	}
 
-	pub fn from_kdl<T: FromKDL>(node: &::kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<T> {
-		T::from_kdl(node, ctx)
+	pub fn from_kdl<'doc, T: FromKDL>(mut node: NodeReader<'doc>) -> anyhow::Result<T> {
+		T::from_kdl_reader(&mut node)
 	}
 
 	pub fn as_kdl(data: &impl AsKdl) -> NodeBuilder {
@@ -633,16 +637,16 @@ pub mod test_utils {
 	pub fn from_doc<T, F>(
 		name: &'static str,
 		doc: &str,
-		mut ctx: NodeContext,
+		ctx: NodeContext,
 		from_kdl: F,
 	) -> anyhow::Result<T>
 	where
-		F: Fn(&::kdl::KdlNode, &mut NodeContext) -> anyhow::Result<T>,
+		F: Fn(NodeReader<'_>) -> anyhow::Result<T>,
 	{
 		let document = raw_doc(doc).parse::<kdl::KdlDocument>()?;
 		let node = document
 			.query(format!("scope() > {name}"))?
 			.expect(&format!("missing {name} node"));
-		from_kdl(node, &mut ctx)
+		from_kdl(NodeReader::new(node, ctx))
 	}
 }

@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeContext, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
 	system::dnd5e::data::{action::AttackKind, Ability},
 	utility::NotInList,
 };
@@ -12,13 +12,13 @@ pub enum Check {
 }
 
 impl FromKDL for Check {
-	fn from_kdl(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
-		match node.get_str_req(ctx.consume_idx())? {
+	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		match node.next_str_req()? {
 			"AttackRoll" => Ok(Self::AttackRoll(AttackKind::from_str(
-				node.get_str_req(ctx.consume_idx())?,
+				node.next_str_req()?,
 			)?)),
 			"SavingThrow" => {
-				let ability = Ability::from_str(node.get_str_req(ctx.consume_idx())?)?;
+				let ability = Ability::from_str(node.next_str_req()?)?;
 				let dc = node.get_i64_opt("dc")?.map(|v| v as u8);
 				Ok(Self::SavingThrow(ability, dc))
 			}

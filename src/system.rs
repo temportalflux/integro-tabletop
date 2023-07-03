@@ -55,7 +55,7 @@ impl Registration {
 		};
 		let ctx = crate::kdl_ext::NodeContext::new(Arc::new(source_id.clone()), self.node.clone());
 		let metadata = comp_factory
-			.metadata_from_kdl(node, &ctx)
+			.metadata_from_kdl(crate::kdl_ext::NodeReader::new(node, ctx))
 			.with_context(|| format!("Failed to parse {:?}", source_id.to_string()))?;
 		match metadata {
 			serde_json::Value::Null => Ok(serde_json::Value::Null),

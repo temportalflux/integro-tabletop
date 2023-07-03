@@ -160,16 +160,13 @@ impl Mutator for AddModifier {
 }
 
 impl FromKDL for AddModifier {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		let modifier = roll::Modifier::from_str(node.get_str_req(ctx.consume_idx())?)?;
+	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let modifier = roll::Modifier::from_str(node.next_str_req()?)?;
 		let context = node.get_str_opt("context")?.map(str::to_owned);
-		let entry = node.entry_req(ctx.consume_idx())?;
+		let entry = node.next_req()?;
 		let kind = match entry.type_req()? {
 			"Ability" => {
-				let ability = Selector::from_kdl(node, entry, ctx, |kdl| {
+				let ability = Selector::from_kdl(node, entry, |kdl| {
 					Ok(Ability::from_str(kdl.as_str_req()?)?)
 				})?;
 				ModifierKind::Ability(ability)
@@ -177,16 +174,15 @@ impl FromKDL for AddModifier {
 			"SavingThrow" => {
 				let ability = match entry.as_str_req()? {
 					"All" => None,
-					_ => Some(Selector::from_kdl(node, entry, ctx, |kdl| {
+					_ => Some(Selector::from_kdl(node, entry, |kdl| {
 						Ok(Ability::from_str(kdl.as_str_req()?)?)
 					})?),
 				};
 				ModifierKind::SavingThrow(ability)
 			}
 			"Skill" => {
-				let skill = Selector::from_kdl(node, entry, ctx, |kdl| {
-					Ok(Skill::from_str(kdl.as_str_req()?)?)
-				})?;
+				let skill =
+					Selector::from_kdl(node, entry, |kdl| Ok(Skill::from_str(kdl.as_str_req()?)?))?;
 				ModifierKind::Skill(skill)
 			}
 			"Initiative" => ModifierKind::Initiative,

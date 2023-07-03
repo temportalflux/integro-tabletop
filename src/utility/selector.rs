@@ -1,5 +1,5 @@
 use super::NotInList;
-use crate::kdl_ext::{AsKdl, DocumentExt, NodeBuilder, NodeContext, NodeExt, ValueExt};
+use crate::kdl_ext::{AsKdl, DocumentExt, NodeBuilder, NodeExt, ValueExt};
 use anyhow::Context;
 use derivative::Derivative;
 use enumset::{EnumSet, EnumSetType};
@@ -107,10 +107,9 @@ where
 		self.id_path().map(|id_path| id_path.as_path()).flatten()
 	}
 
-	pub fn from_kdl(
-		node: &kdl::KdlNode,
+	pub fn from_kdl<'doc>(
+		node: &mut crate::kdl_ext::NodeReader<'doc>,
 		entry: &kdl::KdlEntry,
-		ctx: &mut NodeContext,
 		map_value: impl Fn(&kdl::KdlValue) -> anyhow::Result<T>,
 	) -> anyhow::Result<Self> {
 		let key = entry
@@ -118,11 +117,8 @@ where
 			.context("Selector keys must be a string with the selector name")?;
 		match key {
 			"Specific" => {
-				let idx = ctx.consume_idx();
-				let value = node
-					.get(idx)
-					.ok_or(crate::kdl_ext::EntryMissing(node.clone(), idx.into()))?;
-				Ok(Self::Specific(map_value(value)?))
+				let entry = node.next_req()?;
+				Ok(Self::Specific(map_value(entry.value())?))
 			}
 			"AnyOf" => {
 				let id = node.get_str_opt("id")?.into();

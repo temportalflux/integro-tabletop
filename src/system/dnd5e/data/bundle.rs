@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt},
+	kdl_ext::{AsKdl, DocumentQueryExt, FromKDL, NodeBuilder, NodeExt},
 	system::{
 		core::SourceId,
 		dnd5e::{
@@ -88,36 +88,32 @@ impl SystemComponent for Bundle {
 }
 
 impl FromKDL for Bundle {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
+	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let name = node.get_str_req("name")?.to_owned();
 		let category = node.get_str_req("category")?.to_owned();
 
 		let id = match category.as_str() {
-			"Feat" => ctx.parse_source_opt(node)?.unwrap_or_default(),
-			_ => ctx.parse_source_req(node)?,
+			"Feat" => node.parse_source_opt()?.unwrap_or_default(),
+			_ => node.parse_source_req()?,
 		};
 
 		let description = match node.query_opt("scope() > description")? {
-			Some(node) => description::Section::from_kdl(node, &mut ctx.next_node())?,
+			Some(mut node) => description::Section::from_kdl_reader(&mut node)?,
 			None => description::Section::default(),
 		};
 		let limit = node.get_i64_opt("limit")?.unwrap_or(1) as usize;
 
 		let mut requirements = Vec::new();
-		for node in node.query_all("scope() > requirement")? {
-			let mut ctx = ctx.next_node();
-			match node.get_str_req(ctx.consume_idx())? {
+		for mut node in node.query_all("scope() > requirement")? {
+			match node.next_str_req()? {
 				"Bundle" => {
-					let category = node.get_str_req(ctx.consume_idx())?.to_owned();
-					let name = node.get_str_req(ctx.consume_idx())?.to_owned();
+					let category = node.next_str_req()?.to_owned();
+					let name = node.next_str_req()?.to_owned();
 					requirements.push(BundleRequirement::Bundle { category, name });
 				}
 				"Ability" => {
-					let ability = Ability::from_str(node.get_str_req(ctx.consume_idx())?)?;
-					let score = node.get_i64_req(ctx.consume_idx())? as u32;
+					let ability = Ability::from_str(node.next_str_req()?)?;
+					let score = node.next_i64_req()? as u32;
 					requirements.push(BundleRequirement::Ability(ability, score));
 				}
 				kind => return Err(NotInList(kind.into(), vec!["Bundle", "Ability"]).into()),
@@ -125,8 +121,8 @@ impl FromKDL for Bundle {
 		}
 
 		let mut mutators = Vec::new();
-		for entry_node in node.query_all("scope() > mutator")? {
-			mutators.push(ctx.parse_mutator(entry_node)?);
+		for node in node.query_all("scope() > mutator")? {
+			mutators.push(node.parse_mutator()?);
 		}
 
 		Ok(Self {

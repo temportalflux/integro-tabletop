@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeContext, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
 	system::dnd5e::data::{roll::Roll, DamageType},
 };
 use std::str::FromStr;
@@ -12,13 +12,13 @@ pub struct WeaponDamage {
 }
 
 impl FromKDL for WeaponDamage {
-	fn from_kdl(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
+	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let roll = match node.get_str_opt("roll")? {
 			Some(roll_str) => Some(Roll::from_str(roll_str)?),
 			None => None,
 		};
 		let base = node.get_i64_opt("base")?.unwrap_or(0) as i32;
-		let damage_type = DamageType::from_str(node.get_str_req(ctx.consume_idx())?)?;
+		let damage_type = DamageType::from_str(node.next_str_req()?)?;
 		Ok(Self {
 			roll,
 			bonus: base,

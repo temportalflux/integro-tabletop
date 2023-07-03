@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
+	kdl_ext::{AsKdl, DocumentExt, DocumentQueryExt, FromKDL, NodeBuilder},
 	system::dnd5e::data::Size,
 	utility::NotInList,
 };
@@ -28,10 +28,7 @@ impl Description {
 }
 
 impl FromKDL for Description {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		_ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
+	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let name = node.query_str_req("scope() > name", 0)?.to_owned();
 
 		let mut pronouns = HashSet::new();

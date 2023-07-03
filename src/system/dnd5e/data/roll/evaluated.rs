@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt, ValueExt},
+	kdl_ext::{AsKdl, DocumentQueryExt, FromKDL, NodeBuilder, ValueExt},
 	system::dnd5e::{
 		data::character::Character,
 		data::roll::{Die, Roll},
@@ -50,33 +50,22 @@ impl EvaluatedRoll {
 }
 
 impl FromKDL for EvaluatedRoll {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		if let Some(entry) = node.entry_opt(ctx.consume_idx()) {
+	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		if let Some(entry) = node.next_opt() {
 			return Ok(Self::from(Roll::from_kdl_value(entry.value())?));
 		}
 		let amount = {
-			let node = node.query_req("scope() > amount")?;
-			let mut ctx = ctx.next_node();
-			Value::from_kdl(
-				node,
-				node.entry_req(ctx.consume_idx())?,
-				&mut ctx,
-				|value| Ok(value.as_i64_req()? as i32),
-			)?
+			let mut node = node.query_req("scope() > amount")?;
+			let entry = node.next_req()?;
+			Value::from_kdl(&mut node, entry, |value| Ok(value.as_i64_req()? as i32))?
 		};
 		let die = match node.query_opt("scope() > die")? {
 			None => None,
-			Some(node) => {
-				let mut ctx = ctx.next_node();
-				Some(Value::from_kdl(
-					node,
-					node.entry_req(ctx.consume_idx())?,
-					&mut ctx,
-					|value| Ok(value.as_i64_req()? as i32),
-				)?)
+			Some(mut node) => {
+				let entry = node.next_req()?;
+				Some(Value::from_kdl(&mut node, entry, |value| {
+					Ok(value.as_i64_req()? as i32)
+				})?)
 			}
 		};
 		Ok(Self { amount, die })

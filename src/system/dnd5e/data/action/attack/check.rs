@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt, ValueExt},
+	kdl_ext::{AsKdl, DocumentExt, DocumentQueryExt, FromKDL, NodeBuilder, NodeExt, ValueExt},
 	system::dnd5e::{
 		data::{character::Character, Ability},
 		Value,
@@ -53,27 +53,19 @@ impl AttackCheckKind {
 }
 
 impl FromKDL for AttackCheckKind {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		match node.get_str_req(ctx.consume_idx())? {
+	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		match node.next_str_req()? {
 			"AttackRoll" => {
-				let ability = Ability::from_str(node.get_str_req(ctx.consume_idx())?)?;
+				let ability = Ability::from_str(node.next_str_req()?)?;
 				let proficient = match (
 					node.get_bool_opt("proficient")?,
-					node.query("scope() > proficient")?,
+					node.query_opt("scope() > proficient")?,
 				) {
 					(None, None) => Value::Fixed(false),
 					(Some(prof), None) => Value::Fixed(prof),
-					(_, Some(node)) => {
-						let mut ctx = ctx.next_node();
-						Value::from_kdl(
-							node,
-							node.entry_req(ctx.consume_idx())?,
-							&mut ctx,
-							|value| Ok(value.as_bool_req()?),
-						)?
+					(_, Some(mut node)) => {
+						let entry = node.next_req()?;
+						Value::from_kdl(&mut node, entry, |value| Ok(value.as_bool_req()?))?
 					}
 				};
 				Ok(Self::AttackRoll {
@@ -84,9 +76,8 @@ impl FromKDL for AttackCheckKind {
 			"SavingThrow" => {
 				// TODO: The difficulty class should be its own struct (which impls evaluator)
 				let (base, dc_ability, proficient) = {
-					let node = node.query_req("scope() > difficulty_class")?;
-					let mut ctx = ctx.next_node();
-					let base = node.get_i64_req(ctx.consume_idx())? as i32;
+					let mut node = node.query_req("scope() > difficulty_class")?;
+					let base = node.next_i64_req()? as i32;
 					let ability = match node.query_str_opt("scope() > ability_bonus", 0)? {
 						None => None,
 						Some(str) => Some(Ability::from_str(str)?),

@@ -101,8 +101,8 @@ impl Database {
 				.expect("Missing system {system:?} in depot");
 			system_reg.node()
 		};
-		let mut ctx = crate::kdl_ext::NodeContext::new(Arc::new(entry.source_id(true)), node_reg);
-		let Ok(value) = T::from_kdl(node, &mut ctx) else {
+		let ctx = crate::kdl_ext::NodeContext::new(Arc::new(entry.source_id(true)), node_reg);
+		let Ok(value) = T::from_kdl_reader(&mut crate::kdl_ext::NodeReader::new(node, ctx)) else {
 			return Err(FetchError::FailedToParse(node.to_string(), T::id()));
 		};
 		Ok(Some(value))

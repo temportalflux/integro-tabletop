@@ -24,10 +24,7 @@ impl Evaluator for GetProficiencyBonus {
 crate::impl_kdl_node!(GetProficiencyBonus, "get_proficiency_bonus");
 
 impl FromKDL for GetProficiencyBonus {
-	fn from_kdl(
-		_node: &kdl::KdlNode,
-		_ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
+	fn from_kdl_reader<'doc>(_node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		Ok(Self)
 	}
 }

@@ -1,6 +1,6 @@
 use super::equipment::Equipment;
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeContext, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
 	utility::NotInList,
 };
 
@@ -17,14 +17,14 @@ impl Default for Kind {
 }
 
 impl FromKDL for Kind {
-	fn from_kdl(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
-		match node.get_str_req(ctx.consume_idx())? {
+	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		match node.next_str_req()? {
 			"Simple" => {
 				let count = node.get_i64_opt("count")?.unwrap_or(1) as u32;
 				Ok(Self::Simple { count })
 			}
 			"Equipment" => {
-				let equipment = Equipment::from_kdl(node, ctx)?;
+				let equipment = Equipment::from_kdl_reader(node)?;
 				Ok(Self::Equipment(equipment))
 			}
 			value => Err(NotInList(value.into(), vec!["Simple", "Equipment"]).into()),

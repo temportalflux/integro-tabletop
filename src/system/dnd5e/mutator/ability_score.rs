@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt, ValueExt},
+	kdl_ext::{AsKdl, DocumentQueryExt, FromKDL, NodeBuilder, NodeExt, ValueExt},
 	system::dnd5e::data::{
 		character::{AbilityScoreBonus, Character},
 		description, Ability,
@@ -108,31 +108,25 @@ impl Mutator for AbilityScoreChange {
 }
 
 impl FromKDL for AbilityScoreChange {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
+	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let ability = {
-			let mut ctx = ctx.next_node();
-			let node = node.query_req("scope() > ability")?;
-			let entry = node.entry_req(ctx.consume_idx())?;
-			Selector::from_kdl(node, entry, &mut ctx, |kdl| {
+			let mut node = node.query_req("scope() > ability")?;
+			let entry = node.next_req()?;
+			Selector::from_kdl(&mut node, entry, |kdl| {
 				Ok(Ability::from_str(kdl.as_str_req()?)?)
 			})?
 		};
 		let mut operations = Vec::new();
-		for node in node.query_all("scope() > bonus")? {
-			let mut ctx = ctx.next_node();
-			let value = node.get_i64_req(ctx.consume_idx())? as u32;
+		for mut node in node.query_all("scope() > bonus")? {
+			let value = node.next_i64_req()? as u32;
 			let max_total_score = node.get_i64_opt("max-total")?.map(|v| v as u32);
 			operations.push(AbilityScoreOp::Bonus {
 				value,
 				max_total_score,
 			});
 		}
-		for node in node.query_all("scope() > increase-max")? {
-			let mut ctx = ctx.next_node();
-			let value = node.get_i64_req(ctx.consume_idx())? as u32;
+		for mut node in node.query_all("scope() > increase-max")? {
+			let value = node.next_i64_req()? as u32;
 			operations.push(AbilityScoreOp::IncreaseMax { value });
 		}
 		Ok(Self {

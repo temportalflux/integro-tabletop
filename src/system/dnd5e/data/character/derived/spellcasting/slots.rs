@@ -35,10 +35,7 @@ impl Slots {
 }
 
 impl FromKDL for Slots {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
+	fn from_kdl_reader<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let multiclass_half_caster = match node.get_str_opt("multiclass")? {
 			None | Some("Full") => false,
 			Some("Half") => true,
@@ -53,13 +50,11 @@ impl FromKDL for Slots {
 			.into_iter()
 			.map(|level| (level, BTreeMap::new()))
 			.collect::<BTreeMap<usize, BTreeMap<u8, usize>>>();
-		for node in node.query_all("scope() > rank")? {
-			let mut ctx = ctx.next_node();
-			let rank = node.get_i64_req(ctx.consume_idx())? as u8;
-			for node in node.query_all("scope() > level")? {
-				let mut ctx = ctx.next_node();
-				let level = node.get_i64_req(ctx.consume_idx())? as usize;
-				let amount = node.get_i64_req(ctx.consume_idx())? as usize;
+		for mut node in node.query_all("scope() > rank")? {
+			let rank = node.next_i64_req()? as u8;
+			for mut node in node.query_all("scope() > level")? {
+				let level = node.next_i64_req()? as usize;
+				let amount = node.next_i64_req()? as usize;
 				for lvl in level..=MAX_LEVEL {
 					let ranks = slots_capacity.get_mut(&lvl).unwrap();
 					ranks.insert(rank, amount);
