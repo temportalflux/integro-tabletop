@@ -118,10 +118,7 @@ impl FromKDL for ItemFilter {
 			.into_iter()
 			.map(str::to_owned)
 			.collect::<Vec<_>>();
-		let weapon = match node.query_opt("scope() > weapon")? {
-			None => None,
-			Some(mut node) => Some(WeaponFilter::from_kdl(&mut node)?),
-		};
+		let weapon = node.query_opt_t::<WeaponFilter>("scope() > weapon")?;
 		Ok(Self { tags, weapon })
 	}
 }

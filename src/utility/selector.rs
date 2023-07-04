@@ -106,19 +106,21 @@ where
 	pub fn get_data_path(&self) -> Option<PathBuf> {
 		self.id_path().map(|id_path| id_path.as_path()).flatten()
 	}
-
-	pub fn from_kdl<'doc>(
-		node: &mut crate::kdl_ext::NodeReader<'doc>,
-		entry: &kdl::KdlEntry,
-		map_value: impl Fn(&kdl::KdlValue) -> anyhow::Result<T>,
-	) -> anyhow::Result<Self> {
+}
+impl<T> crate::kdl_ext::FromKDL for Selector<T>
+where
+	T: ToString + FromStr,
+	T::Err: std::error::Error + Send + Sync + 'static,
+{
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let entry = node.next_req()?;
 		let key = entry
 			.as_str_req()
 			.context("Selector keys must be a string with the selector name")?;
 		match key {
 			"Specific" => {
 				let entry = node.next_req()?;
-				Ok(Self::Specific(map_value(entry.value())?))
+				Ok(Self::Specific(T::from_str(entry.value().as_str_req()?)?))
 			}
 			"AnyOf" => {
 				let id = node.get_str_opt("id")?.into();
@@ -128,7 +130,7 @@ where
 
 				let mut options = Vec::new();
 				for kdl_value in node.query_get_all("scope() > option", 0)? {
-					options.push(map_value(kdl_value)?);
+					options.push(T::from_str(kdl_value.as_str_req()?)?);
 				}
 				Ok(Self::AnyOf {
 					id,

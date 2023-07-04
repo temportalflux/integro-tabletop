@@ -156,10 +156,7 @@ impl FromKDL for PickN {
 		for node in &mut node.query_all("scope() > option")? {
 			let name = node.next_str_req()?.to_owned();
 
-			let description = match node.query_opt("scope() > description")? {
-				None => None,
-				Some(mut node) => Some(description::Section::from_kdl(&mut node)?),
-			};
+			let description = node.query_opt_t::<description::Section>("scope() > description")?;
 
 			let mut mutators = Vec::new();
 			for node in &mut node.query_all("scope() > mutator")? {

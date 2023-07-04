@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, ValueExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::dnd5e::{
 		data::{character::Character, description},
 		Value,
@@ -54,8 +54,7 @@ impl Mutator for AddMaxHitPoints {
 impl FromKDL for AddMaxHitPoints {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let id = node.get_str_opt("id")?.map(str::to_owned);
-		let entry = node.next_req()?;
-		let value = Value::from_kdl(node, entry, |value| Ok(value.as_i64_req()? as i32))?;
+		let value = Value::from_kdl(node)?;
 		Ok(Self { id, value })
 	}
 }

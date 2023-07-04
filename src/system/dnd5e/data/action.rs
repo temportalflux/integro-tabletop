@@ -30,14 +30,8 @@ impl FromKDL for Action {
 			_ => return Err(MissingActivation(node.to_string()).into()),
 		};
 
-		let attack = match node.query_opt("scope() > attack")? {
-			None => None,
-			Some(mut node) => Some(Attack::from_kdl(&mut node)?),
-		};
-		let limited_uses = match node.query_opt("scope() > limited_uses")? {
-			None => None,
-			Some(mut node) => Some(LimitedUses::from_kdl(&mut node)?),
-		};
+		let attack = node.query_opt_t::<Attack>("scope() > attack")?;
+		let limited_uses = node.query_opt_t::<LimitedUses>("scope() > limited_uses")?;
 
 		let conditions_to_apply = node.query_all_t::<IndirectCondition>("scope() > condition")?;
 

@@ -89,11 +89,9 @@ impl MutatorGroup for Feature {
 impl FromKDL for Feature {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let name = node.get_str_req("name")?.to_owned();
-		let description = match node.query_opt("scope() > description")? {
-			None => description::Info::default(),
-			Some(mut node) => description::Info::from_kdl(&mut node)?,
-		};
-
+		let description = node
+			.query_opt_t::<description::Info>("scope() > description")?
+			.unwrap_or_default();
 		let collapsed = node.get_bool_opt("collapsed")?.unwrap_or_default();
 		let parent = node.get_str_opt("parent")?.map(PathBuf::from);
 
@@ -107,10 +105,7 @@ impl FromKDL for Feature {
 			mutators.push(node.parse_mutator()?);
 		}
 
-		let action = match node.query_opt("scope() > action")? {
-			None => None,
-			Some(mut node) => Some(Action::from_kdl(&mut node)?),
-		};
+		let action = node.query_opt_t::<Action>("scope() > action")?;
 
 		Ok(Self {
 			name,

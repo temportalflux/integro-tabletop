@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, ValueExt},
+	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
 	system::dnd5e::{
 		data::{character::Character, Rest},
 		Value,
@@ -112,13 +112,7 @@ impl UseCounterData {
 
 impl FromKDL for LimitedUses {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
-		if let Some(mut node_max_uses) = node.query_opt("scope() > max_uses")? {
-			let entry = node_max_uses.next_req()?;
-			let max_uses = {
-				Value::from_kdl(&mut node_max_uses, entry, |value| {
-					Ok(value.as_i64_req()? as i32)
-				})?
-			};
+		if let Some(max_uses) = node.query_opt_t::<Value<i32>>("scope() > max_uses")? {
 			let reset_on = match node.query_str_opt("scope() > reset_on", 0)? {
 				None => None,
 				Some(str) => Some(Rest::from_str(str)?),

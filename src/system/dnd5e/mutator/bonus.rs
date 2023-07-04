@@ -5,7 +5,6 @@ use crate::{
 	},
 	utility::{Dependencies, Mutator, NotInList},
 };
-use std::str::FromStr;
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum Bonus {
@@ -83,15 +82,10 @@ impl FromKDL for Bonus {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		match node.next_str_req()? {
 			"WeaponDamage" => {
-				let damage = EvaluatedRoll::from_kdl(&mut node.query_req("scope() > damage")?)?;
-				let damage_type = match node.query_str_opt("scope() > damage_type", 0)? {
-					None => None,
-					Some(str) => Some(DamageType::from_str(str)?),
-				};
-				let restriction = match node.query_opt("scope() > restriction")? {
-					None => None,
-					Some(mut node) => Some(weapon::Restriction::from_kdl(&mut node)?),
-				};
+				let damage = node.query_req_t::<EvaluatedRoll>("scope() > damage")?;
+				let damage_type = node.query_str_opt_t::<DamageType>("scope() > damage_type", 0)?;
+				let restriction =
+					node.query_opt_t::<weapon::Restriction>("scope() > restriction")?;
 				Ok(Self::WeaponDamage {
 					damage,
 					damage_type,
@@ -100,10 +94,8 @@ impl FromKDL for Bonus {
 			}
 			"WeaponAttackRoll" => {
 				let bonus = node.query_i64_req("scope() > bonus", 0)? as i32;
-				let restriction = match node.query_opt("scope() > restriction")? {
-					None => None,
-					Some(mut node) => Some(weapon::Restriction::from_kdl(&mut node)?),
-				};
+				let restriction =
+					node.query_opt_t::<weapon::Restriction>("scope() > restriction")?;
 				Ok(Self::WeaponAttackRoll { bonus, restriction })
 			}
 			"ArmorClass" => {

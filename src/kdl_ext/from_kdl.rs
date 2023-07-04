@@ -1,9 +1,9 @@
-use super::{DocumentExt, DocumentQueryExt, NodeExt};
+use super::{DocumentExt, DocumentQueryExt, EntryExt, NodeExt};
 use crate::{
 	system::core::{NodeRegistry, SourceId},
 	utility::{GenericEvaluator, GenericMutator},
 };
-use std::sync::Arc;
+use std::{str::FromStr, sync::Arc};
 
 #[derive(Default, Clone)]
 pub struct NodeContext {
@@ -68,7 +68,6 @@ impl NodeContext {
 	}
 
 	pub fn parse_source_opt(&self, node: &kdl::KdlNode) -> anyhow::Result<Option<SourceId>> {
-		use std::str::FromStr;
 		match node.query_str_opt("scope() > source", 0)? {
 			Some(id_str) => Ok(Some(SourceId::from_str(id_str)?)),
 			None if self.inheiret_source => Ok(Some(self.id().clone())),
@@ -293,6 +292,10 @@ impl<'doc> NodeReader<'doc> {
 	}
 }
 impl<'doc> NodeReader<'doc> {
+	pub fn peak_type_req(&self) -> anyhow::Result<&str> {
+		Ok(self.peak_req()?.type_req()?)
+	}
+
 	pub fn query_opt_t<T: FromKDL>(&self, query: impl AsRef<str>) -> anyhow::Result<Option<T>> {
 		let Some(mut node) = self.query_opt(query)? else { return Ok(None); };
 		Ok(Some(T::from_kdl(&mut node)?))
@@ -309,6 +312,31 @@ impl<'doc> NodeReader<'doc> {
 			vec.push(T::from_kdl(&mut node)?);
 		}
 		Ok(vec)
+	}
+
+	pub fn query_str_opt_t<T>(
+		&self,
+		query: impl AsRef<str>,
+		key: impl Into<kdl::NodeKey>,
+	) -> anyhow::Result<Option<T>>
+	where
+		T: FromStr,
+		T::Err: std::error::Error + Send + Sync + 'static,
+	{
+		let Some(str) = self.query_str_opt(query, key)? else { return Ok(None); };
+		Ok(Some(T::from_str(str)?))
+	}
+
+	pub fn query_str_req_t<T>(
+		&self,
+		query: impl AsRef<str>,
+		key: impl Into<kdl::NodeKey>,
+	) -> anyhow::Result<T>
+	where
+		T: FromStr,
+		T::Err: std::error::Error + Send + Sync + 'static,
+	{
+		Ok(T::from_str(self.query_str_req(query, key)?)?)
 	}
 }
 impl<'doc> DocumentExt for NodeReader<'doc> {

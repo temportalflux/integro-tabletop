@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, ValueExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::dnd5e::{data::character::Character, Value},
 	utility::{Dependencies, Evaluator, NotInList},
 };
@@ -65,13 +65,7 @@ impl FromKDL for Math {
 		let minimum = node.get_i64_opt("min")?.map(|v| v as i32);
 		let maximum = node.get_i64_opt("max")?.map(|v| v as i32);
 
-		let mut values = Vec::new();
-		for mut node in &mut node.query_all("scope() > value")? {
-			let entry = node.next_req()?;
-			values.push(Value::from_kdl(&mut node, entry, |value| {
-				Ok(value.as_i64_req()? as i32)
-			})?);
-		}
+		let values = node.query_all_t::<Value<i32>>("scope() > value")?;
 		match (&operation, values.len()) {
 			(MathOp::Divide { .. }, len) if len > 2 => {
 				return Err(DivideTooManyOps(len).into());

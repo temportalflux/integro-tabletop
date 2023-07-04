@@ -173,10 +173,9 @@ impl<T: AsItem> Container<T> {
 
 impl<T: AsItem + FromKDL> FromKDL for Container<T> {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
-		let wallet = match node.query_opt("scope() > wallet")? {
-			Some(mut node) => Wallet::from_kdl(&mut node)?,
-			None => Default::default(),
-		};
+		let wallet = node
+			.query_opt_t::<Wallet>("scope() > wallet")?
+			.unwrap_or_default();
 
 		let capacity = match node.query_opt("scope() > capacity")? {
 			Some(node) => {

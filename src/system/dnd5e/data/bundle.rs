@@ -97,10 +97,9 @@ impl FromKDL for Bundle {
 			_ => node.parse_source_req()?,
 		};
 
-		let description = match node.query_opt("scope() > description")? {
-			Some(mut node) => description::Section::from_kdl(&mut node)?,
-			None => description::Section::default(),
-		};
+		let description = node
+			.query_opt_t::<description::Section>("scope() > description")?
+			.unwrap_or_default();
 		let limit = node.get_i64_opt("limit")?.unwrap_or(1) as usize;
 
 		let mut requirements = Vec::new();

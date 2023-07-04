@@ -1,13 +1,12 @@
-use enumset::EnumSet;
-
 use crate::{
-	kdl_ext::{AsKdl, EntryExt, FromKDL, NodeBuilder, ValueExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder, ValueExt},
 	system::dnd5e::data::{
 		character::Character, description, item::weapon, proficiency, Ability, ArmorExtended,
 		Skill, WeaponProficiency,
 	},
 	utility::{Mutator, NotInList, Selector, SelectorMetaVec},
 };
+use enumset::EnumSet;
 use std::str::FromStr;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -194,48 +193,40 @@ impl Mutator for AddProficiency {
 
 impl FromKDL for AddProficiency {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
-		let entry = node.next_req()?;
-		match entry.type_req()? {
+		match node.peak_type_req()? {
 			"Ability" => {
-				let ability = Selector::from_kdl(node, entry, |kdl| {
-					Ok(Ability::from_str(kdl.as_str_req()?)?)
-				})?;
+				let ability = Selector::from_kdl(node)?;
 				let level = match node.get_str_opt("level")? {
 					Some(str) => proficiency::Level::from_str(str)?,
 					None => proficiency::Level::Full,
 				};
 				Ok(Self::Ability(ability, level))
 			}
-			"SavingThrow" => Ok(Self::SavingThrow(Ability::from_str(entry.as_str_req()?)?)),
+			"SavingThrow" => Ok(Self::SavingThrow(Ability::from_str(node.next_str_req()?)?)),
 			"Skill" => {
-				let skill =
-					Selector::from_kdl(node, entry, |kdl| Ok(Skill::from_str(kdl.as_str_req()?)?))?;
+				let skill = Selector::from_kdl(node)?;
 				let level = match node.get_str_opt("level")? {
 					Some(str) => proficiency::Level::from_str(str)?,
 					None => proficiency::Level::Full,
 				};
 				Ok(Self::Skill(skill, level))
 			}
-			"Language" => {
-				let language =
-					Selector::from_kdl(node, entry, |kdl| Ok(kdl.as_str_req()?.to_owned()))?;
-				Ok(Self::Language(language))
-			}
+			"Language" => Ok(Self::Language(Selector::from_kdl(node)?)),
 			"Armor" => {
-				let kind = ArmorExtended::from_str(entry.as_str_req()?)?;
+				let kind = ArmorExtended::from_str(node.next_str_req()?)?;
 				let context = node.next_str_opt()?.map(str::to_owned);
 				Ok(Self::Armor(kind, context))
 			}
-			"Weapon" => Ok(Self::Weapon(match entry.as_str_req()? {
-				kind if kind == "Simple" || kind == "Martial" => {
-					WeaponProficiency::Kind(weapon::Kind::from_str(kind)?)
-				}
-				classification => WeaponProficiency::Classification(classification.to_owned()),
-			})),
-			"Tool" => {
-				let tool = Selector::from_kdl(node, entry, |kdl| Ok(kdl.as_str_req()?.to_owned()))?;
-				Ok(Self::Tool(tool))
+			"Weapon" => {
+				let entry = node.next_req()?;
+				Ok(Self::Weapon(match entry.as_str_req()? {
+					kind if kind == "Simple" || kind == "Martial" => {
+						WeaponProficiency::Kind(weapon::Kind::from_str(kind)?)
+					}
+					classification => WeaponProficiency::Classification(classification.to_owned()),
+				}))
 			}
+			"Tool" => Ok(Self::Tool(Selector::from_kdl(node)?)),
 			name => Err(NotInList(
 				name.into(),
 				vec![

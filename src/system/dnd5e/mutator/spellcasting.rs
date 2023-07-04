@@ -225,7 +225,7 @@ impl FromKDL for Spellcasting {
 					}
 				};
 
-				let slots = Slots::from_kdl(&mut node.query_req("scope() > slots")?)?;
+				let slots = node.query_req_t::<Slots>("scope() > slots")?;
 
 				let spell_capacity = {
 					let mut node = node.query_req("scope() > kind")?;
@@ -346,10 +346,7 @@ impl FromKDL for Spellcasting {
 					}
 				};
 
-				let limited_uses = match node.query_opt("scope() > limited_uses")? {
-					None => None,
-					Some(mut node) => Some(LimitedUses::from_kdl(&mut node)?),
-				};
+				let limited_uses = node.query_opt_t::<LimitedUses>("scope() > limited_uses")?;
 				Operation::AddPrepared {
 					ability,
 					classified_as,
@@ -508,10 +505,7 @@ impl FromKDL for PreparedInfo {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let can_cast_through_slot = node.get_bool_opt("use_slot")?.unwrap_or_default();
 		let cast_at_rank = node.get_i64_opt("rank")?.map(|v| v as u8);
-		let range = match node.query_opt("scope() > range")? {
-			None => None,
-			Some(mut node) => Some(spell::Range::from_kdl(&mut node)?),
-		};
+		let range = node.query_opt_t::<spell::Range>("scope() > range")?;
 		Ok(PreparedInfo {
 			can_cast_through_slot,
 			range,

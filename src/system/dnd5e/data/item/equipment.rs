@@ -71,18 +71,12 @@ impl FromKDL for Equipment {
 			mutators.push(node.parse_mutator()?);
 		}
 
-		let armor = match node.query_opt("scope() > armor")? {
-			None => None,
-			Some(mut node) => Some(Armor::from_kdl(&mut node)?),
-		};
+		let armor = node.query_opt_t::<Armor>("scope() > armor")?;
 		let shield = match node.query_opt("scope() > shield")? {
 			None => None,
 			Some(node) => Some(node.get_i64_req("bonus")? as i32),
 		};
-		let weapon = match node.query_opt("scope() > weapon")? {
-			None => None,
-			Some(mut node) => Some(Weapon::from_kdl(&mut node)?),
-		};
+		let weapon = node.query_opt_t::<Weapon>("scope() > weapon")?;
 		let attunement = match node.query_opt("scope() > attunement")? {
 			None => None,
 			Some(mut _node) => {

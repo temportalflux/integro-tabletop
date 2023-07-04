@@ -94,10 +94,7 @@ impl FromKDL for Class {
 		let subclass_selection_level = node
 			.query_i64_opt("scope() > subclass-level", 0)?
 			.map(|v| v as usize);
-		let subclass = match node.query_opt("scope() > subclass")? {
-			None => None,
-			Some(mut node) => Some(Subclass::from_kdl(&mut node)?),
-		};
+		let subclass = node.query_opt_t::<Subclass>("scope() > subclass")?;
 
 		let mut levels = Vec::with_capacity(20);
 		levels.resize_with(20, Default::default);

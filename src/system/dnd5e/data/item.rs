@@ -123,10 +123,9 @@ impl FromKDL for Item {
 			Some(mut node) => description::Info::from_kdl(&mut node)?,
 		};
 
-		let worth = match node.query_opt("scope() > worth")? {
-			Some(mut node) => Wallet::from_kdl(&mut node)?,
-			None => Wallet::default(),
-		};
+		let worth = node
+			.query_opt_t::<Wallet>("scope() > worth")?
+			.unwrap_or_default();
 
 		let notes = node.query_str_opt("scope() > notes", 0)?.map(str::to_owned);
 		let tags = {
@@ -136,15 +135,10 @@ impl FromKDL for Item {
 			}
 			tags
 		};
-		let kind = match node.query_opt("scope() > kind")? {
-			Some(mut node) => Kind::from_kdl(&mut node)?,
-			None => Kind::default(),
-		};
-
-		let items = match node.query_opt("scope() > items")? {
-			None => None,
-			Some(mut node) => Some(container::Container::<Item>::from_kdl(&mut node)?),
-		};
+		let kind = node
+			.query_opt_t::<Kind>("scope() > kind")?
+			.unwrap_or_default();
+		let items = node.query_opt_t::<container::Container<Item>>("scope() > items")?;
 
 		// Items are defined with the weight being representative of the stack,
 		// but are used as the weight being representative of a single item

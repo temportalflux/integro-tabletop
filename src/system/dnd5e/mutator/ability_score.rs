@@ -1,12 +1,11 @@
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, ValueExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::dnd5e::data::{
 		character::{AbilityScoreBonus, Character},
 		description, Ability,
 	},
 	utility::{Mutator, Selector, SelectorMetaVec},
 };
-use std::str::FromStr;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AbilityScoreChange {
@@ -109,13 +108,7 @@ impl Mutator for AbilityScoreChange {
 
 impl FromKDL for AbilityScoreChange {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
-		let ability = {
-			let mut node = node.query_req("scope() > ability")?;
-			let entry = node.next_req()?;
-			Selector::from_kdl(&mut node, entry, |kdl| {
-				Ok(Ability::from_str(kdl.as_str_req()?)?)
-			})?
-		};
+		let ability = node.query_req_t::<Selector<Ability>>("scope() > ability")?;
 		let mut operations = Vec::new();
 		for node in &mut node.query_all("scope() > bonus")? {
 			let value = node.next_i64_req()? as u32;

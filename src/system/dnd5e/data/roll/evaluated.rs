@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, ValueExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::dnd5e::{
 		data::character::Character,
 		data::roll::{Die, Roll},
@@ -54,20 +54,8 @@ impl FromKDL for EvaluatedRoll {
 		if let Some(entry) = node.next_opt() {
 			return Ok(Self::from(Roll::from_kdl_value(entry.value())?));
 		}
-		let amount = {
-			let mut node = node.query_req("scope() > amount")?;
-			let entry = node.next_req()?;
-			Value::from_kdl(&mut node, entry, |value| Ok(value.as_i64_req()? as i32))?
-		};
-		let die = match node.query_opt("scope() > die")? {
-			None => None,
-			Some(mut node) => {
-				let entry = node.next_req()?;
-				Some(Value::from_kdl(&mut node, entry, |value| {
-					Ok(value.as_i64_req()? as i32)
-				})?)
-			}
-		};
+		let amount = node.query_req_t::<Value<i32>>("scope() > amount")?;
+		let die = node.query_opt_t::<Value<i32>>("scope() > die")?;
 		Ok(Self { amount, die })
 	}
 }

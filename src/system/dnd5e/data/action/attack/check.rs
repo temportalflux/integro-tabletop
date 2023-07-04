@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, ValueExt},
+	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
 	system::dnd5e::{
 		data::{character::Character, Ability},
 		Value,
@@ -59,14 +59,11 @@ impl FromKDL for AttackCheckKind {
 				let ability = Ability::from_str(node.next_str_req()?)?;
 				let proficient = match (
 					node.get_bool_opt("proficient")?,
-					node.query_opt("scope() > proficient")?,
+					node.query_opt_t::<Value<bool>>("scope() > proficient")?,
 				) {
 					(None, None) => Value::Fixed(false),
 					(Some(prof), None) => Value::Fixed(prof),
-					(_, Some(mut node)) => {
-						let entry = node.next_req()?;
-						Value::from_kdl(&mut node, entry, |value| Ok(value.as_bool_req()?))?
-					}
+					(_, Some(value)) => value,
 				};
 				Ok(Self::AttackRoll {
 					ability,
@@ -78,17 +75,13 @@ impl FromKDL for AttackCheckKind {
 				let (base, dc_ability, proficient) = {
 					let mut node = node.query_req("scope() > difficulty_class")?;
 					let base = node.next_i64_req()? as i32;
-					let ability = match node.query_str_opt("scope() > ability_bonus", 0)? {
-						None => None,
-						Some(str) => Some(Ability::from_str(str)?),
-					};
+					let ability = node.query_str_opt_t::<Ability>("scope() > ability_bonus", 0)?;
 					let proficient = node
 						.query_bool_opt("scope() > proficiency_bonus", 0)?
 						.unwrap_or(false);
 					(base, ability, proficient)
 				};
-				let save_ability =
-					Ability::from_str(node.query_str_req("scope() > save_ability", 0)?)?;
+				let save_ability = node.query_str_req_t::<Ability>("scope() > save_ability", 0)?;
 				Ok(Self::SavingThrow {
 					base,
 					dc_ability,
