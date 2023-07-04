@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeContext, NodeExt},
+	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
 	path_map::PathMap,
 	system::{
 		core::SourceId,
@@ -18,7 +18,6 @@ use itertools::Itertools;
 use std::{
 	collections::{BTreeMap, HashMap},
 	path::Path,
-	str::FromStr,
 	sync::Arc,
 };
 
@@ -140,70 +139,48 @@ impl SystemComponent for Persistent {
 	}
 }
 impl FromKDL for Persistent {
-	fn from_kdl(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
-		let id = ctx.id().clone();
-		ctx.set_inheiret_source(false);
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let id = node.id().clone();
 
-		let description = Description::from_kdl(
-			node.query_req("scope() > description")?,
-			&mut ctx.next_node(),
-		)?;
+		let description = node.query_req_t::<Description>("scope() > description")?;
 
 		let mut settings = Settings::default();
-		for node in node.query_all("scope() > setting")? {
-			settings.insert_from_kdl(node, &mut ctx.next_node())?;
+		for node in &mut node.query_all("scope() > setting")? {
+			settings.insert_from_kdl(node)?;
 		}
 
 		let mut ability_scores = EnumMap::default();
-		for node in node.query_all("scope() > ability")? {
-			let mut ctx = ctx.next_node();
-			let ability = Ability::from_str(node.get_str_req(ctx.consume_idx())?)?;
-			let score = node.get_i64_req(ctx.consume_idx())? as u32;
+		for node in &mut node.query_all("scope() > ability")? {
+			let ability = node.next_str_req_t::<Ability>()?;
+			let score = node.next_i64_req()? as u32;
 			ability_scores[ability] = score;
 		}
 
-		let hit_points = HitPoints::from_kdl(
-			node.query_req("scope() > hit_points")?,
-			&mut ctx.next_node(),
-		)?;
+		let hit_points = node.query_req_t::<HitPoints>("scope() > hit_points")?;
 
 		let inspiration = node
 			.query_bool_opt("scope() > inspiration", 0)?
 			.unwrap_or_default();
 
 		let mut conditions = Conditions::default();
-		for node in node.query_all("scope() > condition")? {
-			let condition = Condition::from_kdl(node, &mut ctx.next_node())?;
+		for condition in node.query_all_t::<Condition>("scope() > condition")? {
 			conditions.insert(condition);
 		}
 
-		let inventory =
-			Inventory::from_kdl(node.query_req("scope() > inventory")?, &mut ctx.next_node())?;
+		let inventory = node.query_req_t::<Inventory>("scope() > inventory")?;
 
-		let selected_spells = match node.query_opt("scope() > spells")? {
-			Some(node) => SelectedSpells::from_kdl(node, &mut ctx.next_node())?,
-			None => SelectedSpells::default(),
-		};
+		let selected_spells = node
+			.query_opt_t::<SelectedSpells>("scope() > spells")?
+			.unwrap_or_default();
 
-		let mut bundles = Vec::new();
-		for node in node.query_all("scope() > bundle")? {
-			let mut ctx = ctx.next_node();
-			let bundle = Bundle::from_kdl(node, &mut ctx)?;
-			bundles.push(bundle);
-		}
-
-		let mut classes = Vec::new();
-		for node in node.query_all("scope() > class")? {
-			let class = Class::from_kdl(node, &mut ctx.next_node())?;
-			classes.push(class);
-		}
+		let bundles = node.query_all_t::<Bundle>("scope() > bundle")?;
+		let classes = node.query_all_t::<Class>("scope() > class")?;
 
 		let mut selected_values = PathMap::<String>::default();
 		if let Some(selections) = node.query_opt("scope() > selections")? {
-			for node in selections.query_all("scope() > value")? {
-				let mut ctx = ctx.next_node();
-				let key_str = node.get_str_req(ctx.consume_idx())?;
-				let value = node.get_str_req(ctx.consume_idx())?.to_owned();
+			for mut node in selections.query_all("scope() > value")? {
+				let key_str = node.next_str_req()?;
+				let value = node.next_str_req()?.to_owned();
 				selected_values.insert(Path::new(key_str), value);
 			}
 		}
@@ -281,7 +258,7 @@ pub struct HitPoints {
 	pub success_saves: u8,
 }
 impl FromKDL for HitPoints {
-	fn from_kdl(node: &kdl::KdlNode, _ctx: &mut NodeContext) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let current = node.query_i64_req("scope() > current", 0)? as u32;
 		let temp = node.query_i64_req("scope() > temp", 0)? as u32;
 		let failure_saves = node.query_i64_req("scope() > failure_saves", 0)? as u8;
@@ -424,14 +401,13 @@ pub struct Settings {
 }
 
 impl Settings {
-	fn insert_from_kdl(
+	fn insert_from_kdl<'doc>(
 		&mut self,
-		node: &kdl::KdlNode,
-		ctx: &mut NodeContext,
+		node: &mut crate::kdl_ext::NodeReader<'doc>,
 	) -> anyhow::Result<()> {
-		match node.get_str_req(ctx.consume_idx())? {
+		match node.next_str_req()? {
 			"currency_auto_exchange" => {
-				self.currency_auto_exchange = node.get_bool_req(ctx.consume_idx())?;
+				self.currency_auto_exchange = node.next_bool_req()?;
 			}
 			key => {
 				return Err(NotInList(key.into(), vec!["currency_auto_exchange"]).into());
@@ -464,24 +440,22 @@ pub struct SelectedSpellsData {
 	selections: HashMap<SourceId, Spell>,
 }
 impl FromKDL for SelectedSpells {
-	fn from_kdl(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let mut consumed_slots = HashMap::new();
 		if let Some(node) = node.query_opt("scope() > consumed_slots")? {
-			for node in node.query_all("scope() > slot")? {
-				let mut ctx = ctx.next_node();
-				let slot = node.get_i64_req(ctx.consume_idx())? as u8;
-				let consumed = node.get_i64_req(ctx.consume_idx())? as usize;
+			for node in &mut node.query_all("scope() > slot")? {
+				let slot = node.next_i64_req()? as u8;
+				let consumed = node.next_i64_req()? as usize;
 				consumed_slots.insert(slot, consumed);
 			}
 		}
 
 		let mut cache_by_caster = HashMap::new();
-		for node in node.query_all("scope() > caster")? {
-			let mut ctx = ctx.next_node();
-			let caster_name = node.get_str_req(ctx.consume_idx())?;
+		for node in &mut node.query_all("scope() > caster")? {
+			let caster_name = node.next_str_req()?;
 			let mut selection_data = SelectedSpellsData::default();
-			for node in node.query_all("scope() > spell")? {
-				let spell = Spell::from_kdl(node, &mut ctx.next_node())?;
+			for mut node in &mut node.query_all("scope() > spell")? {
+				let spell = Spell::from_kdl(&mut node)?;
 				selection_data.insert(spell);
 			}
 			cache_by_caster.insert(caster_name.to_owned(), selection_data);

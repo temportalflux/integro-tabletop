@@ -4,8 +4,8 @@ use super::{
 	description,
 };
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt},
-	system::dnd5e::{BoxedCriteria, BoxedMutator},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
+	system::dnd5e::BoxedMutator,
 	utility::MutatorGroup,
 };
 use derivative::Derivative;
@@ -87,16 +87,11 @@ impl MutatorGroup for Feature {
 }
 
 impl FromKDL for Feature {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let name = node.get_str_req("name")?.to_owned();
-		let description = match node.query_opt("scope() > description")? {
-			None => description::Info::default(),
-			Some(node) => description::Info::from_kdl(node, &mut ctx.next_node())?,
-		};
-
+		let description = node
+			.query_opt_t::<description::Info>("scope() > description")?
+			.unwrap_or_default();
 		let collapsed = node.get_bool_opt("collapsed")?.unwrap_or_default();
 		let parent = node.get_str_opt("parent")?.map(PathBuf::from);
 
@@ -105,15 +100,9 @@ impl FromKDL for Feature {
 		// TODO: Unimplemented
 		let _is_unique = node.get_bool_opt("unique")?.unwrap_or_default();
 
-		let mut mutators = Vec::new();
-		for entry_node in node.query_all("scope() > mutator")? {
-			mutators.push(ctx.parse_mutator(entry_node)?);
-		}
+		let mutators = node.query_all_t("scope() > mutator")?;
 
-		let action = match node.query_opt("scope() > action")? {
-			None => None,
-			Some(node) => Some(Action::from_kdl(node, &mut ctx.next_node())?),
-		};
+		let action = node.query_opt_t::<Action>("scope() > action")?;
 
 		Ok(Self {
 			name,

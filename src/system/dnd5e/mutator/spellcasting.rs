@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, KDLNode, NodeBuilder, NodeExt},
+	kdl_ext::{AsKdl, DocumentExt, FromKDL, KDLNode, NodeBuilder},
 	system::{
 		core::SourceId,
 		dnd5e::data::{
@@ -197,17 +197,13 @@ impl Mutator for Spellcasting {
 }
 
 impl FromKDL for Spellcasting {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		let operation = match node.get_str_opt(ctx.consume_idx())? {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let operation = match node.next_str_opt()? {
 			None => {
-				let ability = Ability::from_str(node.get_str_req("ability")?)?;
+				let ability = node.get_str_req_t::<Ability>("ability")?;
 				let class_name = node.get_str_req("class")?.to_owned();
 				let restriction = {
 					let node = node.query_req("scope() > restriction")?;
-					let _ctx = ctx.next_node();
 					let tags = node
 						.query_str_all("scope() > tag", 0)?
 						.into_iter()
@@ -219,43 +215,32 @@ impl FromKDL for Spellcasting {
 				let cantrip_capacity = match node.query_opt("scope() > cantrips")? {
 					None => None,
 					Some(node) => {
-						let ctx = ctx.next_node();
-
 						let mut level_map = BTreeMap::new();
-						for node in node.query_all("scope() > level")? {
-							let mut ctx = ctx.next_node();
-							let level = node.get_i64_req(ctx.consume_idx())? as usize;
-							let capacity = node.get_i64_req(ctx.consume_idx())? as usize;
+						for node in &mut node.query_all("scope() > level")? {
+							let level = node.next_i64_req()? as usize;
+							let capacity = node.next_i64_req()? as usize;
 							level_map.insert(level, capacity);
 						}
-
 						Some(level_map)
 					}
 				};
 
-				let slots =
-					Slots::from_kdl(node.query_req("scope() > slots")?, &mut ctx.next_node())?;
+				let slots = node.query_req_t::<Slots>("scope() > slots")?;
 
 				let spell_capacity = {
-					let node = node.query_req("scope() > kind")?;
-					let mut ctx = ctx.next_node();
-					match node.get_str_req(ctx.consume_idx())? {
+					let mut node = node.query_req("scope() > kind")?;
+					match node.next_str_req()? {
 						"Prepared" => {
-							let capacity = {
-								let node = node.query_req("scope() > capacity")?;
-								ctx.parse_evaluator::<Character, i32>(node)?
-							};
+							let capacity = node.query_req_t("scope() > capacity")?;
 							spellcasting::Capacity::Prepared(capacity)
 						}
 						"Known" => {
 							let capacity = {
 								let node = node.query_req("scope() > capacity")?;
-								let ctx = ctx.next_node();
 								let mut capacity = BTreeMap::new();
-								for node in node.query_all("scope() > level")? {
-									let mut ctx = ctx.next_node();
-									let level = node.get_i64_req(ctx.consume_idx())? as usize;
-									let amount = node.get_i64_req(ctx.consume_idx())? as usize;
+								for node in &mut node.query_all("scope() > level")? {
+									let level = node.next_i64_req()? as usize;
+									let amount = node.next_i64_req()? as usize;
 									capacity.insert(level, amount);
 								}
 								capacity
@@ -307,7 +292,7 @@ impl FromKDL for Spellcasting {
 				let class_name = node.get_str_req("class")?.to_owned();
 				let mut spell_ids = Vec::new();
 				for s in node.query_str_all("scope() > spell", 0)? {
-					spell_ids.push(SourceId::from_str(s)?.with_basis(ctx.id(), false));
+					spell_ids.push(SourceId::from_str(s)?.with_basis(node.id(), false));
 				}
 				Operation::AddSource {
 					class_name,
@@ -315,24 +300,22 @@ impl FromKDL for Spellcasting {
 				}
 			}
 			Some("add_prepared") => {
-				let ability = Ability::from_str(node.get_str_req("ability")?)?;
+				let ability = node.get_str_req_t::<Ability>("ability")?;
 				let classified_as = node.get_str_opt("classified_as")?.map(str::to_owned);
 
 				let mut specific_spells = Vec::new();
-				for node in node.query_all("scope() > spell")? {
-					let mut ctx = ctx.next_node();
-					let id = node.get_str_req(ctx.consume_idx())?;
-					let id = SourceId::from_str(id)?.with_basis(ctx.id(), false);
-					let info = PreparedInfo::from_kdl(node, &mut ctx)?;
+				for mut node in &mut node.query_all("scope() > spell")? {
+					let id = node.next_str_req()?;
+					let id = SourceId::from_str(id)?.with_basis(node.id(), false);
+					let info = PreparedInfo::from_kdl(&mut node)?;
 					specific_spells.push((id, info));
 				}
 
 				let selectable_spells = match node.query_opt("scope() > options")? {
 					None => None,
-					Some(node) => {
-						let mut ctx = ctx.next_node();
-						let count = node.get_i64_req(ctx.consume_idx())? as usize;
-						let info = PreparedInfo::from_kdl(node, &mut ctx)?;
+					Some(mut node) => {
+						let count = node.next_i64_req()? as usize;
+						let info = PreparedInfo::from_kdl(&mut node)?;
 						let mut filter = None;
 						let mut selector = ObjectSelector::new(Spell::id(), count);
 						if let Some(node) = node.query_opt("scope() > filter")? {
@@ -360,10 +343,7 @@ impl FromKDL for Spellcasting {
 					}
 				};
 
-				let limited_uses = match node.query_opt("scope() > limited_uses")? {
-					None => None,
-					Some(node) => Some(LimitedUses::from_kdl(node, &mut ctx.next_node())?),
-				};
+				let limited_uses = node.query_opt_t::<LimitedUses>("scope() > limited_uses")?;
 				Operation::AddPrepared {
 					ability,
 					classified_as,
@@ -459,7 +439,6 @@ impl AsKdl for Spellcasting {
 				node.push_entry("add_source");
 				node.push_entry(("class", class_name.clone()));
 				for spell_id in spell_ids {
-					// TODO: SourceId should be provided the context of the module which is serializing them, so basis can be removed.
 					node.push_child_t("spell", spell_id);
 				}
 				node
@@ -480,8 +459,10 @@ impl AsKdl for Spellcasting {
 				for (spell_id, prepared_info) in specific_spells {
 					node.push_child({
 						let mut node = NodeBuilder::default();
-						// TODO: Dont encode the basis that was applied during from_kdl
-						node.push_entry(spell_id.to_string());
+						let spell_id = spell_id.as_kdl();
+						if !spell_id.is_empty() {
+							node += spell_id;
+						}
 						node += prepared_info.as_kdl();
 						node.build("spell")
 					});
@@ -519,16 +500,10 @@ impl AsKdl for Spellcasting {
 }
 
 impl FromKDL for PreparedInfo {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let can_cast_through_slot = node.get_bool_opt("use_slot")?.unwrap_or_default();
 		let cast_at_rank = node.get_i64_opt("rank")?.map(|v| v as u8);
-		let range = match node.query_opt("scope() > range")? {
-			None => None,
-			Some(node) => Some(spell::Range::from_kdl(node, &mut ctx.next_node())?),
-		};
+		let range = node.query_opt_t::<spell::Range>("scope() > range")?;
 		Ok(PreparedInfo {
 			can_cast_through_slot,
 			range,

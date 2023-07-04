@@ -1,9 +1,8 @@
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeContext, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::dnd5e::data::roll::Roll,
 	GeneralError,
 };
-use std::str::FromStr;
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum Property {
@@ -61,20 +60,20 @@ impl Property {
 }
 
 impl FromKDL for Property {
-	fn from_kdl(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
-		match node.get_str_req(ctx.consume_idx())? {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		match node.next_str_req()? {
 			"Light" => Ok(Self::Light),
 			"Finesse" => Ok(Self::Finesse),
 			"Heavy" => Ok(Self::Heavy),
 			"Reach" => Ok(Self::Reach),
 			"TwoHanded" => Ok(Self::TwoHanded),
 			"Thrown" => {
-				let short = node.get_i64_req(ctx.consume_idx())? as u32;
-				let long = node.get_i64_req(ctx.consume_idx())? as u32;
+				let short = node.next_i64_req()? as u32;
+				let long = node.next_i64_req()? as u32;
 				Ok(Self::Thrown(short, long))
 			}
 			"Versatile" => {
-				let roll = Roll::from_str(node.get_str_req(ctx.consume_idx())?)?;
+				let roll = node.next_str_req_t::<Roll>()?;
 				Ok(Self::Versatile(roll))
 			}
 			name => Err(GeneralError(format!("Unrecognized weapon property {name:?}")).into()),

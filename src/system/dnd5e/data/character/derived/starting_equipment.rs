@@ -1,4 +1,4 @@
-use crate::kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt};
+use crate::kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder};
 use crate::system::{
 	core::SourceId,
 	dnd5e::data::{
@@ -12,7 +12,7 @@ use std::str::FromStr;
 #[derive(Clone, Debug, PartialEq)]
 pub enum StartingEquipment {
 	Currency(Wallet),
-	SpecificItem(SourceId),
+	SpecificItem(SourceId, usize),
 	CustomItem(Item),
 	SelectItem(ItemFilter),
 	Group {
@@ -37,19 +37,18 @@ impl StartingEquipment {
 	fn node_name(&self) -> &'static str {
 		match self {
 			Self::Currency(_) => "currency",
-			Self::SpecificItem(_) | Self::CustomItem(_) | Self::SelectItem(_) => "item",
+			Self::SpecificItem(_, _) | Self::CustomItem(_) | Self::SelectItem(_) => "item",
 			Self::Group { .. } => "group",
 		}
 	}
 
-	pub fn from_kdl_vec(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
+	pub fn from_kdl_vec<'doc>(
+		node: &mut crate::kdl_ext::NodeReader<'doc>,
 	) -> anyhow::Result<Vec<Self>> {
 		let mut entries = Vec::new();
 		if let Some(children) = node.children() {
-			for node in children.nodes() {
-				entries.push(Self::from_kdl(node, &mut ctx.next_node())?);
+			for mut node in children {
+				entries.push(Self::from_kdl(&mut node)?);
 			}
 		}
 		Ok(entries)
@@ -65,24 +64,23 @@ impl StartingEquipment {
 }
 
 impl FromKDL for StartingEquipment {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		match node.name().value() {
-			"currency" => Ok(Self::Currency(Wallet::from_kdl(node, ctx)?)),
+			"currency" => Ok(Self::Currency(Wallet::from_kdl(node)?)),
 			"group" => {
-				let entries = StartingEquipment::from_kdl_vec(node, ctx)?;
+				let entries = StartingEquipment::from_kdl_vec(node)?;
 				let pick = node.get_i64_opt("pick")?.map(|v| v as usize);
 				Ok(Self::Group { entries, pick })
 			}
-			"item" => match node.get_str_req(ctx.consume_idx())? {
+			"item" => match node.next_str_req()? {
 				"Specific" => {
-					let id = SourceId::from_str(node.get_str_req(ctx.consume_idx())?)?;
-					Ok(Self::SpecificItem(id.with_basis(ctx.id(), false)))
+					let id = node.next_str_req_t::<SourceId>()?;
+					let id = id.with_basis(node.id(), false);
+					let count = node.next_i64_opt()?.unwrap_or(1) as usize;
+					Ok(Self::SpecificItem(id, count))
 				}
-				"Custom" => Ok(Self::CustomItem(Item::from_kdl(node, ctx)?)),
-				"Select" => Ok(Self::SelectItem(ItemFilter::from_kdl(node, ctx)?)),
+				"Custom" => Ok(Self::CustomItem(Item::from_kdl(node)?)),
+				"Select" => Ok(Self::SelectItem(ItemFilter::from_kdl(node)?)),
 				kind => Err(NotInList(kind.into(), vec!["Specific", "Custom", "Select"]).into()),
 			},
 			name => {
@@ -95,9 +93,17 @@ impl AsKdl for StartingEquipment {
 	fn as_kdl(&self) -> NodeBuilder {
 		match self {
 			Self::Currency(wallet) => wallet.as_kdl(),
-			Self::SpecificItem(id) => NodeBuilder::default()
-				.with_entry("Specific")
-				.with_entry(id.to_string()),
+			Self::SpecificItem(id, count) => {
+				let mut node = NodeBuilder::default().with_entry("Specific");
+				let kdl = id.as_kdl();
+				if !kdl.is_empty() {
+					node += kdl;
+				}
+				if *count > 1 {
+					node.push_entry(*count as i64);
+				}
+				node
+			},
 			Self::CustomItem(item) => NodeBuilder::default()
 				.with_entry("Custom")
 				.with_extension(item.as_kdl()),
@@ -116,19 +122,13 @@ impl AsKdl for StartingEquipment {
 }
 
 impl FromKDL for ItemFilter {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let tags = node
 			.query_str_all("scope() > tag", 0)?
 			.into_iter()
 			.map(str::to_owned)
 			.collect::<Vec<_>>();
-		let weapon = match node.query_opt("scope() > weapon")? {
-			None => None,
-			Some(node) => Some(WeaponFilter::from_kdl(node, &mut ctx.next_node())?),
-		};
+		let weapon = node.query_opt_t::<WeaponFilter>("scope() > weapon")?;
 		Ok(Self { tags, weapon })
 	}
 }
@@ -146,10 +146,7 @@ impl AsKdl for ItemFilter {
 }
 
 impl FromKDL for WeaponFilter {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		_ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let kind = match node.get_str_opt("kind")? {
 			None => None,
 			Some(str) => Some(weapon::Kind::from_str(str)?),

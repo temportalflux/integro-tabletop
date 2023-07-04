@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt, ValueExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::dnd5e::{data::character::Character, Value},
 	utility::{Dependencies, Evaluator, NotInList},
 };
@@ -36,11 +36,8 @@ crate::impl_trait_eq!(Math);
 crate::impl_kdl_node!(Math, "math");
 
 impl FromKDL for Math {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		let operation = match node.get_str_req(ctx.consume_idx())? {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let operation = match node.next_str_req()? {
 			"Add" => MathOp::Add,
 			"Subtract" => MathOp::Subtract,
 			"Multiply" => MathOp::Multiply,
@@ -68,16 +65,7 @@ impl FromKDL for Math {
 		let minimum = node.get_i64_opt("min")?.map(|v| v as i32);
 		let maximum = node.get_i64_opt("max")?.map(|v| v as i32);
 
-		let mut values = Vec::new();
-		for node in node.query_all("scope() > value")? {
-			let mut ctx = ctx.next_node();
-			values.push(Value::from_kdl(
-				node,
-				node.entry_req(ctx.consume_idx())?,
-				&mut ctx,
-				|value| Ok(value.as_i64_req()? as i32),
-			)?);
-		}
+		let values = node.query_all_t::<Value<i32>>("scope() > value")?;
 		match (&operation, values.len()) {
 			(MathOp::Divide { .. }, len) if len > 2 => {
 				return Err(DivideTooManyOps(len).into());

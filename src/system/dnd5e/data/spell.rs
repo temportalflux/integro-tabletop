@@ -1,6 +1,6 @@
 use super::{description, AreaOfEffect};
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeContext, NodeExt},
+	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
 	system::{core::SourceId, dnd5e::SystemComponent},
 };
 
@@ -60,40 +60,26 @@ impl SystemComponent for Spell {
 }
 
 impl FromKDL for Spell {
-	fn from_kdl(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		// TODO: all system components need to check if the node has a source field
-		let id = ctx.parse_source_req(node)?;
+		let id = node.query_source_req()?;
 
 		let name = node.get_str_req("name")?.to_owned();
-		let description = match node.query_opt("scope() > description")? {
-			None => description::Info::default(),
-			Some(node) => description::Info::from_kdl(node, &mut ctx.next_node())?,
-		};
+		let description = node
+			.query_opt_t::<description::Info>("scope() > description")?
+			.unwrap_or_default();
 		let rank = node.query_i64_req("scope() > rank", 0)? as u8;
 		let school_tag = node
 			.query_str_opt("scope() > school", 0)?
 			.map(str::to_owned);
 
-		let components = Components::from_kdl(node, ctx)?;
-		let casting_time = node.query_req("scope() > casting-time")?;
-		let casting_time = CastingTime::from_kdl(casting_time, &mut ctx.next_node())?;
-		let range = node.query_req("scope() > range")?;
-		let range = Range::from_kdl(range, &mut ctx.next_node())?;
-		let area_of_effect = match node.query_opt("scope() > area_of_effect")? {
-			None => None,
-			Some(node) => Some(AreaOfEffect::from_kdl(node, &mut ctx.next_node())?),
-		};
-		let duration = node.query_req("scope() > duration")?;
-		let duration = Duration::from_kdl(duration, &mut ctx.next_node())?;
-
-		let check = match node.query_opt("scope() > check")? {
-			None => None,
-			Some(node) => Some(Check::from_kdl(node, &mut ctx.next_node())?),
-		};
-		let damage = match node.query_opt("scope() > damage")? {
-			None => None,
-			Some(node) => Some(Damage::from_kdl(node, &mut ctx.next_node())?),
-		};
+		let components = Components::from_kdl(node)?;
+		let casting_time = node.query_req_t::<CastingTime>("scope() > casting-time")?;
+		let range = node.query_req_t::<Range>("scope() > range")?;
+		let area_of_effect = node.query_opt_t::<AreaOfEffect>("scope() > area_of_effect")?;
+		let duration = node.query_req_t::<Duration>("scope() > duration")?;
+		let check = node.query_opt_t::<Check>("scope() > check")?;
+		let damage = node.query_opt_t::<Damage>("scope() > damage")?;
 
 		let mut tags = node.query_str_all("scope() > tag", 0)?;
 		tags.sort();

@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::dnd5e::data::{
 		character::Character,
 		item::{container::AsItem, Item, Kind},
@@ -60,11 +60,8 @@ impl MutatorGroup for EquipableEntry {
 }
 
 impl FromKDL for EquipableEntry {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		let item = Item::from_kdl(node, ctx)?;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let item = Item::from_kdl(node)?;
 		let is_equipped = node.get_bool_opt("equipped")?.unwrap_or_default();
 		Ok(Self { is_equipped, item })
 	}

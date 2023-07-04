@@ -1,6 +1,6 @@
 use super::{Basis, DefaultLevelMap};
 use crate::{
-	kdl_ext::{AsKdl, EntryExt, NodeBuilder, NodeExt},
+	kdl_ext::{AsKdl, EntryExt, NodeBuilder},
 	system::dnd5e::{data::character::Character, FromKDL},
 	GeneralError,
 };
@@ -36,13 +36,10 @@ impl<T> FromKDL for Value<T>
 where
 	T: Clone + DefaultLevelMap + FromKDL,
 {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		match node.entry_req(ctx.peak_idx())?.type_opt() {
-			None => Ok(Self::Fixed(T::from_kdl(node, ctx)?)),
-			Some("Scaled") => Ok(Self::Scaled(Basis::from_kdl(node, ctx)?)),
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		match node.peak_req()?.type_opt() {
+			None => Ok(Self::Fixed(T::from_kdl(node)?)),
+			Some("Scaled") => Ok(Self::Scaled(Basis::from_kdl(node)?)),
 			Some(type_name) => Err(GeneralError(format!(
 				"Invalid type name {type_name:?}, expected no type or Scaled."
 			))

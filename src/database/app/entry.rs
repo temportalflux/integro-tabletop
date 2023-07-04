@@ -54,8 +54,8 @@ impl Entry {
 		let Ok(document) = self.kdl.parse::<kdl::KdlDocument>() else { return None; };
 		// document to first (and hopefully only) node
 		let Some(node) = document.nodes().get(0) else { return None; };
-		let mut ctx = crate::kdl_ext::NodeContext::new(Arc::new(self.source_id(true)), node_reg);
-		let Ok(value) = T::from_kdl(node, &mut ctx) else { return None; };
+		let ctx = crate::kdl_ext::NodeContext::new(Arc::new(self.source_id(true)), node_reg);
+		let Ok(value) = T::from_kdl(&mut crate::kdl_ext::NodeReader::new_root(node, ctx)) else { return None; };
 		Some(value)
 	}
 }

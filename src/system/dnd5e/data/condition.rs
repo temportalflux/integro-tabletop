@@ -1,9 +1,9 @@
 use super::character::Character;
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt},
+	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
 	system::{
 		core::SourceId,
-		dnd5e::{BoxedCriteria, BoxedMutator, SystemComponent},
+		dnd5e::{BoxedMutator, SystemComponent},
 	},
 	utility::MutatorGroup,
 };
@@ -52,21 +52,15 @@ impl SystemComponent for Condition {
 }
 
 impl FromKDL for Condition {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		let id = ctx.parse_source_opt(node)?;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let id = node.query_source_opt()?;
 
 		let name = node.get_str_req("name")?.to_owned();
 		let description = node
 			.query_str_opt("scope() > description", 0)?
 			.unwrap_or_default()
 			.to_owned();
-		let mut mutators = Vec::new();
-		for entry_node in node.query_all("scope() > mutator")? {
-			mutators.push(ctx.parse_mutator(entry_node)?);
-		}
+		let mutators = node.query_all_t("scope() > mutator")?;
 
 		Ok(Self {
 			id,

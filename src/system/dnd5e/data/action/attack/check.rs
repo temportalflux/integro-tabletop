@@ -1,12 +1,11 @@
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt, ValueExt},
+	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
 	system::dnd5e::{
 		data::{character::Character, Ability},
 		Value,
 	},
 	utility::NotInList,
 };
-use std::str::FromStr;
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum AttackCheckKind {
@@ -53,28 +52,17 @@ impl AttackCheckKind {
 }
 
 impl FromKDL for AttackCheckKind {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		match node.get_str_req(ctx.consume_idx())? {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		match node.next_str_req()? {
 			"AttackRoll" => {
-				let ability = Ability::from_str(node.get_str_req(ctx.consume_idx())?)?;
+				let ability = node.next_str_req_t::<Ability>()?;
 				let proficient = match (
 					node.get_bool_opt("proficient")?,
-					node.query("scope() > proficient")?,
+					node.query_opt_t::<Value<bool>>("scope() > proficient")?,
 				) {
 					(None, None) => Value::Fixed(false),
 					(Some(prof), None) => Value::Fixed(prof),
-					(_, Some(node)) => {
-						let mut ctx = ctx.next_node();
-						Value::from_kdl(
-							node,
-							node.entry_req(ctx.consume_idx())?,
-							&mut ctx,
-							|value| Ok(value.as_bool_req()?),
-						)?
-					}
+					(_, Some(value)) => value,
 				};
 				Ok(Self::AttackRoll {
 					ability,
@@ -84,20 +72,15 @@ impl FromKDL for AttackCheckKind {
 			"SavingThrow" => {
 				// TODO: The difficulty class should be its own struct (which impls evaluator)
 				let (base, dc_ability, proficient) = {
-					let node = node.query_req("scope() > difficulty_class")?;
-					let mut ctx = ctx.next_node();
-					let base = node.get_i64_req(ctx.consume_idx())? as i32;
-					let ability = match node.query_str_opt("scope() > ability_bonus", 0)? {
-						None => None,
-						Some(str) => Some(Ability::from_str(str)?),
-					};
+					let mut node = node.query_req("scope() > difficulty_class")?;
+					let base = node.next_i64_req()? as i32;
+					let ability = node.query_str_opt_t::<Ability>("scope() > ability_bonus", 0)?;
 					let proficient = node
 						.query_bool_opt("scope() > proficiency_bonus", 0)?
 						.unwrap_or(false);
 					(base, ability, proficient)
 				};
-				let save_ability =
-					Ability::from_str(node.query_str_req("scope() > save_ability", 0)?)?;
+				let save_ability = node.query_str_req_t::<Ability>("scope() > save_ability", 0)?;
 				Ok(Self::SavingThrow {
 					base,
 					dc_ability,

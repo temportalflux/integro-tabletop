@@ -10,111 +10,103 @@ mod test {
 	mod from_kdl {
 		use super::*;
 		use crate::{
-			kdl_ext::NodeContext,
-			system::dnd5e::{
-				data::roll::{Die, Roll},
-				FromKDL,
-			},
+			kdl_ext::test_utils::*,
+			system::dnd5e::data::roll::{Die, Roll},
 		};
 
-		fn from_doc<T>(doc: &str) -> anyhow::Result<Value<T>>
-		where
-			T: Clone + DefaultLevelMap + FromKDL,
-		{
-			let document = doc.parse::<kdl::KdlDocument>()?;
-			let node = document
-				.query("scope() > scaling")?
-				.expect("missing scaling node");
-			Value::<T>::from_kdl(node, &mut NodeContext::default())
-		}
+		static NODE_NAME: &str = "scaling";
 
 		#[test]
 		fn fixed_int() -> anyhow::Result<()> {
 			let doc = "scaling 1";
-			assert_eq!(from_doc(doc)?, Value::Fixed(1u32));
+			let data = Value::Fixed(1u32);
+			assert_eq_fromkdl!(Value<u32>, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 
 		#[test]
 		fn fixed_roll() -> anyhow::Result<()> {
 			let doc = "scaling \"2d8\"";
-			assert_eq!(from_doc(doc)?, Value::<Roll>::Fixed((2, Die::D8).into()));
+			let data = Value::<Roll>::Fixed((2, Die::D8).into());
+			assert_eq_fromkdl!(Value<Roll>, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 
 		#[test]
 		fn scaling_level_int_noclass_nomap() -> anyhow::Result<()> {
 			let doc = "scaling (Scaled)\"Level\"";
-			assert_eq!(
-				from_doc(doc)?,
-				Value::<u32>::Scaled(Basis::Level {
-					class_name: None,
-					level_map: [].into()
-				})
-			);
+			let data = Value::<u32>::Scaled(Basis::Level {
+				class_name: None,
+				level_map: [].into(),
+			});
+			assert_eq_fromkdl!(Value<u32>, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 
 		#[test]
 		fn scaling_level_int_nomap() -> anyhow::Result<()> {
 			let doc = "scaling (Scaled)\"Level\" class=\"Barbarian\"";
-			assert_eq!(
-				from_doc(doc)?,
-				Value::<u32>::Scaled(Basis::Level {
-					class_name: Some("Barbarian".into()),
-					level_map: [].into()
-				})
-			);
+			let data = Value::<u32>::Scaled(Basis::Level {
+				class_name: Some("Barbarian".into()),
+				level_map: [].into(),
+			});
+			assert_eq_fromkdl!(Value<u32>, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 
 		#[test]
 		fn scaling_level_int() -> anyhow::Result<()> {
-			let doc = "scaling (Scaled)\"Level\" class=\"Barbarian\" {
-				level 1 2
-				level 4 3
-				level 7 4
-				level 14 5
-				level 18
-			}";
-			assert_eq!(
-				from_doc(doc)?,
-				Value::<u32>::Scaled(Basis::Level {
-					class_name: Some("Barbarian".into()),
-					level_map: [
-						(1, Some(2)),
-						(4, Some(3)),
-						(7, Some(4)),
-						(14, Some(5)),
-						(18, None)
-					]
-					.into()
-				})
-			);
+			let doc = "
+				|scaling (Scaled)\"Level\" class=\"Barbarian\" {
+				|    level 1 2
+				|    level 4 3
+				|    level 7 4
+				|    level 14 5
+				|    level 18
+				|}
+			";
+			let data = Value::<u32>::Scaled(Basis::Level {
+				class_name: Some("Barbarian".into()),
+				level_map: [
+					(1, Some(2)),
+					(4, Some(3)),
+					(7, Some(4)),
+					(14, Some(5)),
+					(18, None),
+				]
+				.into(),
+			});
+			assert_eq_fromkdl!(Value<u32>, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 
 		#[test]
 		fn scaling_level_roll_noclass() -> anyhow::Result<()> {
-			let doc = "scaling (Scaled)\"Level\" {
-				level 1 \"1d8\"
-				level 5 \"2d8\"
-				level 9 \"3d8\"
-				level 16 \"4d8\"
-			}";
-			assert_eq!(
-				from_doc(doc)?,
-				Value::<Roll>::Scaled(Basis::Level {
-					class_name: None,
-					level_map: [
-						(1, Some((1, Die::D8).into())),
-						(5, Some((2, Die::D8).into())),
-						(9, Some((3, Die::D8).into())),
-						(16, Some((4, Die::D8).into())),
-					]
-					.into()
-				})
-			);
+			let doc = "
+				|scaling (Scaled)\"Level\" {
+				|    level 1 (Roll)\"1d8\"
+				|    level 5 (Roll)\"2d8\"
+				|    level 9 (Roll)\"3d8\"
+				|    level 16 (Roll)\"4d8\"
+				|}
+			";
+			let data = Value::<Roll>::Scaled(Basis::Level {
+				class_name: None,
+				level_map: [
+					(1, Some((1, Die::D8).into())),
+					(5, Some((2, Die::D8).into())),
+					(9, Some((3, Die::D8).into())),
+					(16, Some((4, Die::D8).into())),
+				]
+				.into(),
+			});
+			assert_eq_fromkdl!(Value<Roll>, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 	}

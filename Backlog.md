@@ -2,8 +2,6 @@
 -----
 
 ## Cleanup
-- proficiency level and its html should be separate functions
-- kdl NodeReader to combine KdlNode and NodeContext (mainly for consume_idx and next_node)
 
 ## DnD5e Features
 - Starting Equipment in UI

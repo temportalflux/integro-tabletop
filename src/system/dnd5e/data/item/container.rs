@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt},
+	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
 	system::dnd5e::data::{
 		character::Character,
 		currency::Wallet,
@@ -172,14 +172,10 @@ impl<T: AsItem> Container<T> {
 }
 
 impl<T: AsItem + FromKDL> FromKDL for Container<T> {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		let wallet = match node.query_opt("scope() > wallet")? {
-			Some(node) => Wallet::from_kdl(node, &mut ctx.next_node())?,
-			None => Default::default(),
-		};
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let wallet = node
+			.query_opt_t::<Wallet>("scope() > wallet")?
+			.unwrap_or_default();
 
 		let capacity = match node.query_opt("scope() > capacity")? {
 			Some(node) => {
@@ -212,8 +208,8 @@ impl<T: AsItem + FromKDL> FromKDL for Container<T> {
 			itemids_by_name: Vec::new(),
 		};
 
-		for node in node.query_all("scope() > item")? {
-			let item = T::from_kdl(node, &mut ctx.next_node())?;
+		for mut node in &mut node.query_all("scope() > item")? {
+			let item = T::from_kdl(&mut node)?;
 			inventory.push_entry(item);
 		}
 

@@ -1,6 +1,6 @@
 use crate::{
 	database::app::Criteria,
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::{
 		core::SourceId,
 		dnd5e::data::{character::Character, description, Bundle},
@@ -58,10 +58,7 @@ impl AddBundle {
 }
 
 impl FromKDL for AddBundle {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		_ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let category = node.get_str_req("category")?.to_owned();
 		let selector = Self::bundle_selector(&category);
 		Ok(Self { category, selector })

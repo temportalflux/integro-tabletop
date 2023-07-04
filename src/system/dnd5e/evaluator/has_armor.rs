@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt},
+	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
 	system::dnd5e::data::{character::Character, item, ArmorExtended},
 };
 use std::{collections::HashSet, str::FromStr};
@@ -83,10 +83,7 @@ impl crate::utility::Evaluator for HasArmorEquipped {
 crate::impl_kdl_node!(HasArmorEquipped, "has_armor_equipped");
 
 impl FromKDL for HasArmorEquipped {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		_ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let inverted = node.get_bool_opt("inverted")?.unwrap_or_default();
 		let mut kinds = HashSet::new();
 		for kind_str in node.query_str_all("scope() > kind", 0)? {

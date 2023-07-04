@@ -1,9 +1,8 @@
 use super::BoundedAbility;
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::dnd5e::data::{character::Character, Ability},
 };
-use std::str::FromStr;
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct ArmorClassFormula {
@@ -45,15 +44,11 @@ impl ArmorClassFormula {
 }
 
 impl FromKDL for ArmorClassFormula {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let base = node.get_i64_req("base")? as u32;
 		let mut bonuses = Vec::new();
-		for node in node.query_all("scope() > bonus")? {
-			let mut ctx = ctx.next_node();
-			let ability = Ability::from_str(node.get_str_req(ctx.consume_idx())?)?;
+		for node in &mut node.query_all("scope() > bonus")? {
+			let ability = node.next_str_req_t::<Ability>()?;
 			let min = node.get_i64_opt("min")?.map(|v| v as i32);
 			let max = node.get_i64_opt("max")?.map(|v| v as i32);
 			bonuses.push(BoundedAbility { ability, min, max });

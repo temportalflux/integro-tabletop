@@ -36,11 +36,8 @@ impl Mutator for AddFeature {
 }
 
 impl FromKDL for AddFeature {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		Ok(Self(Feature::from_kdl(node, ctx)?))
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		Ok(Self(Feature::from_kdl(node)?))
 	}
 }
 

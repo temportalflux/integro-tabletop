@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::dnd5e::data::{character::Character, description, roll::Roll},
 	utility::Mutator,
 };
@@ -79,10 +79,7 @@ impl Mutator for AddSize {
 }
 
 impl FromKDL for AddSize {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		_ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let height = match node.query_opt("scope() > height")? {
 			None => Vec::new(),
 			Some(node) => {
@@ -90,8 +87,10 @@ impl FromKDL for AddSize {
 				if let Some(base) = node.get_i64_opt("base")? {
 					comps.push(FormulaComponent::Base(base as u32));
 				}
-				if let Some(kdl_value) = node.get("bonus") {
-					comps.push(FormulaComponent::Bonus(Roll::from_kdl_value(kdl_value)?));
+				if let Some(entry) = node.get_opt("bonus") {
+					comps.push(FormulaComponent::Bonus(Roll::from_kdl_value(
+						entry.value(),
+					)?));
 				}
 				comps
 			}
@@ -103,12 +102,14 @@ impl FromKDL for AddSize {
 				if let Some(base) = node.get_i64_opt("base")? {
 					comps.push(FormulaComponent::Base(base as u32));
 				}
-				if let Some(kdl_value) = node.get("bonus") {
-					comps.push(FormulaComponent::Bonus(Roll::from_kdl_value(kdl_value)?));
+				if let Some(entry) = node.get_opt("bonus") {
+					comps.push(FormulaComponent::Bonus(Roll::from_kdl_value(
+						entry.value(),
+					)?));
 				}
-				if let Some(kdl_value) = node.get("multiplier") {
+				if let Some(entry) = node.get_opt("multiplier") {
 					comps.push(FormulaComponent::WeightMultiplier(Roll::from_kdl_value(
-						kdl_value,
+						entry.value(),
 					)?));
 				}
 				comps

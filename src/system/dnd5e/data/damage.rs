@@ -1,6 +1,6 @@
 use super::roll::EvaluatedRoll;
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt},
+	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
 	utility::InvalidEnumStr,
 };
 use enumset::EnumSetType;
@@ -14,14 +14,8 @@ pub struct DamageRoll {
 }
 
 impl FromKDL for DamageRoll {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		let roll = match node.query_opt("scope() > roll")? {
-			None => None,
-			Some(node) => Some(EvaluatedRoll::from_kdl(node, &mut ctx.next_node())?),
-		};
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let roll = node.query_opt_t::<EvaluatedRoll>("scope() > roll")?;
 		let base_bonus = node.get_i64_opt("base")?.unwrap_or(0) as i32;
 		let damage_type = DamageType::from_str(node.query_str_req("scope() > damage_type", 0)?)?;
 		Ok(Self {

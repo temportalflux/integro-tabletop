@@ -1,5 +1,5 @@
 use super::IndirectCondition;
-use crate::kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt};
+use crate::kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeReader};
 use std::str::FromStr;
 
 mod activation;
@@ -20,32 +20,20 @@ pub struct Action {
 }
 
 impl FromKDL for Action {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut NodeReader<'doc>) -> anyhow::Result<Self> {
 		let activation_kind = match (
-			node.get_str_opt(ctx.consume_idx())?,
+			node.next_str_opt()?,
 			node.query_opt("scope() > activation")?,
 		) {
 			(Some(str), None) => ActivationKind::from_str(str)?,
-			(None, Some(node)) => ActivationKind::from_kdl(node, &mut ctx.next_node())?,
+			(None, Some(mut node)) => ActivationKind::from_kdl(&mut node)?,
 			_ => return Err(MissingActivation(node.to_string()).into()),
 		};
 
-		let attack = match node.query("scope() > attack")? {
-			None => None,
-			Some(node) => Some(Attack::from_kdl(node, &mut ctx.next_node())?),
-		};
-		let limited_uses = match node.query("scope() > limited_uses")? {
-			None => None,
-			Some(node) => Some(LimitedUses::from_kdl(node, &mut ctx.next_node())?),
-		};
+		let attack = node.query_opt_t::<Attack>("scope() > attack")?;
+		let limited_uses = node.query_opt_t::<LimitedUses>("scope() > limited_uses")?;
 
-		let mut conditions_to_apply = Vec::new();
-		for node in node.query_all("scope() > condition")? {
-			conditions_to_apply.push(IndirectCondition::from_kdl(node, &mut ctx.next_node())?);
-		}
+		let conditions_to_apply = node.query_all_t::<IndirectCondition>("scope() > condition")?;
 
 		Ok(Self {
 			activation_kind,

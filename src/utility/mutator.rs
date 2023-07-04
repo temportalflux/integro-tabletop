@@ -84,3 +84,15 @@ pub trait MutatorGroup {
 
 	fn apply_mutators(&self, target: &mut Self::Target, parent: &Path);
 }
+
+impl<T> crate::kdl_ext::FromKDL for GenericMutator<T>
+where
+	T: 'static,
+{
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let id = node.next_str_req()?;
+		let node_reg = node.node_reg().clone();
+		let factory = node_reg.get_mutator_factory(id)?;
+		factory.from_kdl::<T>(node)
+	}
+}

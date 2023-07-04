@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	utility::NotInList,
 };
 use std::str::FromStr;
@@ -46,17 +46,14 @@ impl FromStr for ActivationKind {
 }
 
 impl FromKDL for ActivationKind {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		match node.get_str_req(ctx.consume_idx())? {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		match node.next_str_req()? {
 			"Action" => Ok(Self::Action),
 			"Bonus" => Ok(Self::Bonus),
 			"Reaction" => Ok(Self::Reaction),
 			"Special" => Ok(Self::Special),
-			"Minute" => Ok(Self::Minute(node.get_i64_req(ctx.consume_idx())? as u32)),
-			"Hour" => Ok(Self::Hour(node.get_i64_req(ctx.consume_idx())? as u32)),
+			"Minute" => Ok(Self::Minute(node.next_i64_req()? as u32)),
+			"Hour" => Ok(Self::Hour(node.next_i64_req()? as u32)),
 			name => Err(NotInList(
 				name.into(),
 				vec!["Action", "Bonus", "Reaction", "Special", "Minute", "Hour"],

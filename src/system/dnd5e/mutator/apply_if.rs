@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::dnd5e::{
 		data::{character::Character, description},
 		BoxedCriteria, BoxedMutator,
@@ -52,7 +52,10 @@ impl Mutator for ApplyIf {
 		let mut criteria_desc = Vec::new();
 		for criteria in &self.criteria {
 			if let Some(desc) = criteria.description() {
-				criteria_desc.push(description::Section { content: desc.into(), ..Default::default() });
+				criteria_desc.push(description::Section {
+					content: desc.into(),
+					..Default::default()
+				});
 			}
 		}
 		let mut mutator_desc = Vec::new();
@@ -116,22 +119,10 @@ impl ApplyIf {
 }
 
 impl FromKDL for ApplyIf {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		let op = match node.get_str_opt(ctx.consume_idx())? {
-			None => LogicOp::default(),
-			Some(str) => LogicOp::from_str(str)?,
-		};
-		let mut criteria = Vec::new();
-		for node in node.query_all("scope() > criteria")? {
-			criteria.push(ctx.parse_evaluator(node)?);
-		}
-		let mut mutators = Vec::new();
-		for node in node.query_all("scope() > mutator")? {
-			mutators.push(ctx.parse_mutator(node)?);
-		}
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let op = node.next_str_opt_t::<LogicOp>()?.unwrap_or_default();
+		let criteria = node.query_all_t("scope() > criteria")?;
+		let mutators = node.query_all_t("scope() > mutator")?;
 		Ok(Self {
 			op,
 			criteria,
@@ -171,10 +162,13 @@ mod test {
 		use super::*;
 		use crate::{
 			kdl_ext::test_utils::*,
-			system::{dnd5e::{
-				evaluator::HasArmorEquipped,
-				mutator::{test::test_utils, Bonus},
-			}, core::NodeRegistry},
+			system::{
+				core::NodeRegistry,
+				dnd5e::{
+					evaluator::HasArmorEquipped,
+					mutator::{test::test_utils, Bonus},
+				},
+			},
 		};
 
 		test_utils!(ApplyIf, node_reg());
@@ -215,7 +209,7 @@ mod test {
 		#[test]
 		fn all_criteria() -> anyhow::Result<()> {
 			let doc = "
-				|mutator \"apply_if\" {
+				|mutator \"apply_if\" \"All\" {
 				|    criteria (Evaluator)\"has_armor_equipped\"
 				|    criteria (Evaluator)\"has_armor_equipped\" inverted=true
 				|}

@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	utility::NotInList,
 };
 use enumset::EnumSetType;
@@ -49,17 +49,14 @@ impl AttackKindValue {
 }
 
 impl FromKDL for AttackKindValue {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		match node.get_str_req(ctx.consume_idx())? {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		match node.next_str_req()? {
 			"Melee" => Ok(Self::Melee {
 				reach: node.get_i64_opt("reach")?.unwrap_or(5) as u32,
 			}),
 			"Ranged" => {
-				let short_dist = node.get_i64_req(ctx.consume_idx())? as u32;
-				let long_dist = node.get_i64_req(ctx.consume_idx())? as u32;
+				let short_dist = node.next_i64_req()? as u32;
+				let long_dist = node.next_i64_req()? as u32;
 				Ok(Self::Ranged {
 					short_dist,
 					long_dist,

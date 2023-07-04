@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt, ValueExt},
+	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
 	system::dnd5e::{
 		data::{character::Character, Rest},
 		Value,
@@ -111,20 +111,8 @@ impl UseCounterData {
 }
 
 impl FromKDL for LimitedUses {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		if let Some(node_max_uses) = node.query_opt("scope() > max_uses")? {
-			let max_uses = {
-				let mut ctx = ctx.next_node();
-				Value::from_kdl(
-					node_max_uses,
-					node_max_uses.entry_req(ctx.consume_idx())?,
-					&mut ctx,
-					|value| Ok(value.as_i64_req()? as i32),
-				)?
-			};
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		if let Some(max_uses) = node.query_opt_t::<Value<i32>>("scope() > max_uses")? {
 			let reset_on = match node.query_str_opt("scope() > reset_on", 0)? {
 				None => None,
 				Some(str) => Some(Rest::from_str(str)?),
@@ -136,18 +124,14 @@ impl FromKDL for LimitedUses {
 			}));
 		}
 
-		if let Some(node_resource) = node.query_opt("scope() > resource")? {
+		if let Some(mut node_resource) = node.query_opt("scope() > resource")? {
 			let resource = {
-				let mut ctx = ctx.next_node();
-				let path_str = node_resource.get_str_req(ctx.consume_idx())?;
+				let path_str = node_resource.next_str_req()?;
 				PathBuf::from(path_str)
 			};
 			let cost = match node.query_opt("scope() > cost")? {
 				None => 1,
-				Some(node) => {
-					let mut ctx = ctx.next_node();
-					node.get_i64_req(ctx.consume_idx())? as u32
-				}
+				Some(mut node) => node.next_i64_req()? as u32,
 			};
 			return Ok(Self::Consumer { resource, cost });
 		}

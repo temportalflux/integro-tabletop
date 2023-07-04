@@ -1,9 +1,9 @@
 use crate::{
-	kdl_ext::{AsKdl, EntryExt, FromKDL, NodeBuilder, NodeExt, ValueExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::dnd5e::data::{character::Character, description, roll, Ability, Skill},
 	utility::{Mutator, NotInList, Selector, SelectorMetaVec},
 };
-use std::{path::Path, str::FromStr};
+use std::path::Path;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AddModifier {
@@ -160,33 +160,23 @@ impl Mutator for AddModifier {
 }
 
 impl FromKDL for AddModifier {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		let modifier = roll::Modifier::from_str(node.get_str_req(ctx.consume_idx())?)?;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let modifier = node.next_str_req_t::<roll::Modifier>()?;
 		let context = node.get_str_opt("context")?.map(str::to_owned);
-		let entry = node.entry_req(ctx.consume_idx())?;
-		let kind = match entry.type_req()? {
+		let kind = match node.peak_type_req()? {
 			"Ability" => {
-				let ability = Selector::from_kdl(node, entry, ctx, |kdl| {
-					Ok(Ability::from_str(kdl.as_str_req()?)?)
-				})?;
+				let ability = Selector::from_kdl(node)?;
 				ModifierKind::Ability(ability)
 			}
 			"SavingThrow" => {
-				let ability = match entry.as_str_req()? {
+				let ability = match node.peak_str_req()? {
 					"All" => None,
-					_ => Some(Selector::from_kdl(node, entry, ctx, |kdl| {
-						Ok(Ability::from_str(kdl.as_str_req()?)?)
-					})?),
+					_ => Some(Selector::from_kdl(node)?),
 				};
 				ModifierKind::SavingThrow(ability)
 			}
 			"Skill" => {
-				let skill = Selector::from_kdl(node, entry, ctx, |kdl| {
-					Ok(Skill::from_str(kdl.as_str_req()?)?)
-				})?;
+				let skill = Selector::from_kdl(node)?;
 				ModifierKind::Skill(skill)
 			}
 			"Initiative" => ModifierKind::Initiative,

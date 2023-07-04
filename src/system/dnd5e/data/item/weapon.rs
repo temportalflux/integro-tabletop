@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::dnd5e::{
 		data::{
 			action::{
@@ -13,7 +13,6 @@ use crate::{
 		Value,
 	},
 };
-use std::str::FromStr;
 
 mod damage;
 pub use damage::*;
@@ -136,27 +135,18 @@ impl Weapon {
 }
 
 impl FromKDL for Weapon {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		let kind = Kind::from_str(node.get_str_req(ctx.consume_idx())?)?;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let kind = node.next_str_req_t::<Kind>()?;
 		let classification = node.get_str_req("class")?.to_owned();
-		let damage = match node.query("scope() > damage")? {
-			None => None,
-			Some(node) => Some(WeaponDamage::from_kdl(node, &mut ctx.next_node())?),
-		};
+		let damage = node.query_opt_t::<WeaponDamage>("scope() > damage")?;
 		let properties = {
 			let mut props = Vec::new();
-			for node in node.query_all("scope() > property")? {
-				props.push(Property::from_kdl(node, &mut ctx.next_node())?);
+			for mut node in &mut node.query_all("scope() > property")? {
+				props.push(Property::from_kdl(&mut node)?);
 			}
 			props
 		};
-		let range = match node.query("scope() > range")? {
-			None => None,
-			Some(node) => Some(Range::from_kdl(node, &mut ctx.next_node())?),
-		};
+		let range = node.query_opt_t::<Range>("scope() > range")?;
 		Ok(Self {
 			kind,
 			classification,

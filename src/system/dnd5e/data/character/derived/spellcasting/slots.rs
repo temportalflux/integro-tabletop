@@ -1,9 +1,9 @@
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::dnd5e::data::Rest,
 	utility::NotInList,
 };
-use std::{collections::BTreeMap, str::FromStr};
+use std::collections::BTreeMap;
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Slots {
@@ -35,10 +35,7 @@ impl Slots {
 }
 
 impl FromKDL for Slots {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let multiclass_half_caster = match node.get_str_opt("multiclass")? {
 			None | Some("Full") => false,
 			Some("Half") => true,
@@ -46,20 +43,18 @@ impl FromKDL for Slots {
 				return Err(NotInList(name.into(), vec!["Half", "Full"]).into());
 			}
 		};
-		let reset_on = Rest::from_str(node.get_str_req("reset_on")?)?;
+		let reset_on = node.get_str_req_t::<Rest>("reset_on")?;
 
 		static MAX_LEVEL: usize = 20;
 		let mut slots_capacity = (1..=MAX_LEVEL)
 			.into_iter()
 			.map(|level| (level, BTreeMap::new()))
 			.collect::<BTreeMap<usize, BTreeMap<u8, usize>>>();
-		for node in node.query_all("scope() > rank")? {
-			let mut ctx = ctx.next_node();
-			let rank = node.get_i64_req(ctx.consume_idx())? as u8;
-			for node in node.query_all("scope() > level")? {
-				let mut ctx = ctx.next_node();
-				let level = node.get_i64_req(ctx.consume_idx())? as usize;
-				let amount = node.get_i64_req(ctx.consume_idx())? as usize;
+		for node in &mut node.query_all("scope() > rank")? {
+			let rank = node.next_i64_req()? as u8;
+			for node in &mut node.query_all("scope() > level")? {
+				let level = node.next_i64_req()? as usize;
+				let amount = node.next_i64_req()? as usize;
 				for lvl in level..=MAX_LEVEL {
 					let ranks = slots_capacity.get_mut(&lvl).unwrap();
 					ranks.insert(rank, amount);

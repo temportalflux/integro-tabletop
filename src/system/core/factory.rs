@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{FromKDL, KDLNode, NodeContext},
+	kdl_ext::{FromKDL, KDLNode},
 	utility::{ArcEvaluator, ArcMutator, Evaluator, GenericEvaluator, GenericMutator, Mutator},
 };
 use std::{
@@ -88,7 +88,10 @@ pub struct MutatorFactory {
 	type_name: &'static str,
 	target_type_info: (TypeId, &'static str),
 	fn_from_kdl: Box<
-		dyn Fn(&kdl::KdlNode, &mut NodeContext) -> anyhow::Result<BoxAny> + 'static + Send + Sync,
+		dyn Fn(&mut crate::kdl_ext::NodeReader<'_>) -> anyhow::Result<BoxAny>
+			+ 'static
+			+ Send
+			+ Sync,
 	>,
 }
 
@@ -103,17 +106,16 @@ impl MutatorFactory {
 				TypeId::of::<M::Target>(),
 				std::any::type_name::<M::Target>(),
 			),
-			fn_from_kdl: Box::new(|node, ctx| {
-				let arc_eval: ArcMutator<M::Target> = Arc::new(M::from_kdl(node, ctx)?);
+			fn_from_kdl: Box::new(|node| {
+				let arc_eval: ArcMutator<M::Target> = Arc::new(M::from_kdl(node)?);
 				Ok(Box::new(arc_eval))
 			}),
 		}
 	}
 
-	pub fn from_kdl<T>(
+	pub fn from_kdl<'doc, T>(
 		&self,
-		node: &kdl::KdlNode,
-		ctx: &mut NodeContext,
+		node: &mut crate::kdl_ext::NodeReader<'doc>,
 	) -> anyhow::Result<GenericMutator<T>>
 	where
 		T: 'static,
@@ -127,7 +129,7 @@ impl MutatorFactory {
 			)
 			.into());
 		}
-		let any = (self.fn_from_kdl)(node, ctx)?;
+		let any = (self.fn_from_kdl)(node)?;
 		let eval = any
 			.downcast::<ArcMutator<T>>()
 			.expect("failed to unpack boxed arc-evaluator");
@@ -143,7 +145,10 @@ pub struct EvaluatorFactory {
 	item_type_info: (TypeId, &'static str),
 	ctx_type_info: (TypeId, &'static str),
 	fn_from_kdl: Box<
-		dyn Fn(&kdl::KdlNode, &mut NodeContext) -> anyhow::Result<BoxAny> + 'static + Send + Sync,
+		dyn Fn(&mut crate::kdl_ext::NodeReader<'_>) -> anyhow::Result<BoxAny>
+			+ 'static
+			+ Send
+			+ Sync,
 	>,
 }
 
@@ -159,17 +164,16 @@ impl EvaluatorFactory {
 				std::any::type_name::<E::Context>(),
 			),
 			item_type_info: (TypeId::of::<E::Item>(), std::any::type_name::<E::Item>()),
-			fn_from_kdl: Box::new(|node, ctx| {
-				let arc_eval: ArcEvaluator<E::Context, E::Item> = Arc::new(E::from_kdl(node, ctx)?);
+			fn_from_kdl: Box::new(|node| {
+				let arc_eval: ArcEvaluator<E::Context, E::Item> = Arc::new(E::from_kdl(node)?);
 				Ok(Box::new(arc_eval))
 			}),
 		}
 	}
 
-	pub fn from_kdl<C, T>(
+	pub fn from_kdl<'doc, C, T>(
 		&self,
-		node: &kdl::KdlNode,
-		ctx: &mut NodeContext,
+		node: &mut crate::kdl_ext::NodeReader<'doc>,
 	) -> anyhow::Result<GenericEvaluator<C, T>>
 	where
 		C: 'static,
@@ -195,7 +199,7 @@ impl EvaluatorFactory {
 			.into());
 		}
 
-		let any = (self.fn_from_kdl)(node, ctx)?;
+		let any = (self.fn_from_kdl)(node)?;
 		let eval = any
 			.downcast::<ArcEvaluator<C, T>>()
 			.expect("failed to unpack boxed arc-evaluator");
@@ -240,7 +244,9 @@ impl NodeRegistry {
 		let node = document
 			.query("scope() > evaluator")?
 			.expect("missing evaluator node");
-		NodeContext::registry(self).parse_evaluator::<C, T>(node)
+		let ctx = crate::kdl_ext::NodeContext::registry(self);
+		let mut node = crate::kdl_ext::NodeReader::new_child(node, ctx);
+		GenericEvaluator::<C, T>::from_kdl(&mut node)
 	}
 
 	pub fn parse_kdl_mutator<T>(self, doc: &str) -> anyhow::Result<GenericMutator<T>>
@@ -251,7 +257,9 @@ impl NodeRegistry {
 		let node = document
 			.query("scope() > mutator")?
 			.expect("missing mutator node");
-		NodeContext::registry(self).parse_mutator::<T>(node)
+		let ctx = crate::kdl_ext::NodeContext::registry(self);
+		let mut node = crate::kdl_ext::NodeReader::new_child(node, ctx);
+		GenericMutator::<T>::from_kdl(&mut node)
 	}
 
 	pub fn defaulteval_parse_kdl<E>(

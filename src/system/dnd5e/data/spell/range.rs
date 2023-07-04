@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeContext, NodeExt, ValueExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder, ValueExt},
 	utility::NotInList,
 };
 
@@ -17,15 +17,12 @@ pub enum Range {
 }
 
 impl FromKDL for Range {
-	fn from_kdl(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
-		let entry = node.entry_req(ctx.consume_idx())?;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let entry = node.next_req()?;
 		match entry.value().as_string() {
 			None => {
 				let distance = entry.as_i64_req()? as u64;
-				let unit = node
-					.get_str_opt(ctx.consume_idx())?
-					.unwrap_or("Feet")
-					.to_owned();
+				let unit = node.next_str_opt()?.unwrap_or("Feet").to_owned();
 				Ok(Self::Unit { distance, unit })
 			}
 			Some("Self") => Ok(Self::OnlySelf),

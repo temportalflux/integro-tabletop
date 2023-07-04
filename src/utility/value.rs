@@ -84,29 +84,45 @@ where
 	}
 }
 
+trait FromKdlValue {
+	fn parse(value: &kdl::KdlValue) -> anyhow::Result<Self>
+	where
+		Self: Sized;
+}
+impl FromKdlValue for bool {
+	fn parse(value: &kdl::KdlValue) -> anyhow::Result<Self>
+	where
+		Self: Sized,
+	{
+		Ok(value.as_bool_req()?)
+	}
+}
+impl FromKdlValue for i32 {
+	fn parse(value: &kdl::KdlValue) -> anyhow::Result<Self>
+	where
+		Self: Sized,
+	{
+		Ok(value.as_i64_req()? as i32)
+	}
+}
+
 // TODO: Test Value::from_kdl/as_kdl
-impl<V> Value<Character, V>
+impl<V> crate::kdl_ext::FromKDL for Value<Character, V>
 where
-	V: 'static,
+	V: 'static + FromKdlValue,
 {
-	pub fn from_kdl(
-		node: &kdl::KdlNode,
-		entry: &kdl::KdlEntry,
-		ctx: &mut crate::kdl_ext::NodeContext,
-		map_value: impl Fn(&kdl::KdlValue) -> anyhow::Result<V>,
-	) -> anyhow::Result<Self> {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let entry = node.next_req()?;
 		match entry.type_opt() {
 			Some("Evaluator") => {
 				let eval_id = entry
 					.as_str_req()
 					.context("Evaluator values must be a string containing the evaluator id")?;
-				let node_reg = ctx.node_reg().clone();
+				let node_reg = node.node_reg().clone();
 				let factory = node_reg.get_evaluator_factory(eval_id)?;
-				Ok(Self::Evaluated(
-					factory.from_kdl::<Character, V>(node, ctx)?,
-				))
+				Ok(Self::Evaluated(factory.from_kdl::<Character, V>(node)?))
 			}
-			_ => Ok(Self::Fixed(map_value(entry.value())?)),
+			_ => Ok(Self::Fixed(V::parse(entry.value())?)),
 		}
 	}
 }

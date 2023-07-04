@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::dnd5e::data::{character::Character, description},
 	utility::Mutator,
 };
@@ -26,11 +26,8 @@ impl Mutator for AddLifeExpectancy {
 }
 
 impl FromKDL for AddLifeExpectancy {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		Ok(Self(node.get_i64_req(ctx.consume_idx())? as i32))
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		Ok(Self(node.next_i64_req()? as i32))
 	}
 }
 

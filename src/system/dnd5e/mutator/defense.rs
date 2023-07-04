@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt, ValueExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::dnd5e::data::{character::Character, description, DamageType},
 	utility::{InvalidEnumStr, Mutator},
 };
@@ -90,15 +90,9 @@ impl Mutator for AddDefense {
 }
 
 impl FromKDL for AddDefense {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		let defense = Defense::from_str(node.get_str_req(ctx.consume_idx())?)?;
-		let damage_type = match node.entry(ctx.consume_idx()) {
-			Some(entry) => Some(DamageType::from_str(entry.as_str_req()?)?),
-			None => None,
-		};
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let defense = node.next_str_req_t::<Defense>()?;
+		let damage_type = node.next_str_opt_t::<DamageType>()?;
 		let context = node.get_str_opt("context")?.map(str::to_owned);
 		Ok(Self {
 			defense,

@@ -28,11 +28,8 @@ impl Mutator for AddStartingEquipment {
 }
 
 impl FromKDL for AddStartingEquipment {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		Ok(Self(StartingEquipment::from_kdl_vec(node, ctx)?))
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		Ok(Self(StartingEquipment::from_kdl_vec(node)?))
 	}
 }
 impl AsKdl for AddStartingEquipment {
@@ -74,7 +71,7 @@ mod test {
 			let data = AddStartingEquipment(vec![StartingEquipment::SpecificItem(SourceId {
 				path: "items/weapon/rapier.kdl".into(),
 				..Default::default()
-			})]);
+			}, 1)]);
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -199,11 +196,11 @@ mod test {
 					StartingEquipment::SpecificItem(SourceId {
 						path: "items/weapon/rapier.kdl".into(),
 						..Default::default()
-					}),
+					}, 1),
 					StartingEquipment::SpecificItem(SourceId {
 						path: "items/weapon/longsword.kdl".into(),
 						..Default::default()
-					}),
+					}, 1),
 				],
 				pick: Some(1),
 			}]);
@@ -228,15 +225,15 @@ mod test {
 					StartingEquipment::SpecificItem(SourceId {
 						path: "items/weapons/shortsword.kdl".into(),
 						..Default::default()
-					}),
+					}, 1),
 					StartingEquipment::SpecificItem(SourceId {
 						path: "items/weapons/shortsword.kdl".into(),
 						..Default::default()
-					}),
+					}, 1),
 					StartingEquipment::SpecificItem(SourceId {
 						path: "items/weapons/longbow.kdl".into(),
 						..Default::default()
-					}),
+					}, 1),
 				],
 				pick: None,
 			}]);

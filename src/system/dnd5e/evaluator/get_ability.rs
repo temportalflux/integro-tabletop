@@ -1,9 +1,8 @@
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::dnd5e::data::{character::Character, Ability},
 	utility::{Dependencies, Evaluator},
 };
-use std::str::FromStr;
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct GetAbilityModifier(pub Ability);
@@ -30,13 +29,8 @@ impl Evaluator for GetAbilityModifier {
 }
 
 impl FromKDL for GetAbilityModifier {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		Ok(Self(Ability::from_str(
-			node.get_str_req(ctx.consume_idx())?,
-		)?))
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		Ok(Self(node.next_str_req_t::<Ability>()?))
 	}
 }
 
