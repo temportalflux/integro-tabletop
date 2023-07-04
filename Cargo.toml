@@ -23,7 +23,8 @@ web-sys = { version = "0.3", features = [
 	"DomTokenList", "Node", "NodeList",
 	"MediaQueryList", "MediaQueryListEvent",
 	"Event", "EventTarget", "KeyboardEvent",
-	"Performance", "Screen"
+	"Performance", "Screen",
+	"UiEvent",
 ] }
 wasm-bindgen-futures = "0.4"
 futures = "0.3"

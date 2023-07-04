@@ -164,8 +164,8 @@ async fn main() -> anyhow::Result<()> {
 				continue;
 			};
 			let ctx = kdl_ext::NodeContext::new(Arc::new(source_id.clone()), node_reg.clone());
-			//#[allow(unused_variables)]
-			//let metadata = comp_factory.metadata_from_kdl(kdl_ext::NodeReader::new_root(node, ctx))?;
+			#[allow(unused_variables)]
+			let metadata = comp_factory.metadata_from_kdl(kdl_ext::NodeReader::new_root(node, ctx))?;
 			/*
 			if node_name == "bundle" {
 				log::debug!("{}", metadata.to_string());
@@ -174,7 +174,7 @@ async fn main() -> anyhow::Result<()> {
 
 			// NOTE: This will re-write the local data using the re-serialized node.
 			// Do not enable unless you are specifically testing input vs output on documents.
-			reserialized_nodes.push(comp_factory.reserialize_kdl(kdl_ext::NodeReader::new_root(node, ctx))?);
+			//reserialized_nodes.push(comp_factory.reserialize_kdl(kdl_ext::NodeReader::new_root(node, ctx))?);
 		}
 		if !reserialized_nodes.is_empty() {
 			let Some(ModuleId::Local { name: module_name }) = &source_id.module else { continue; };

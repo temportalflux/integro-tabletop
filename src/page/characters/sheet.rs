@@ -1,5 +1,5 @@
 use crate::{
-	components::{mobile, modal, Spinner},
+	components::{mobile, modal, Spinner, ViewScaler},
 	system::{core::SourceId, dnd5e::components::GeneralProp},
 };
 use yew::prelude::*;
@@ -59,7 +59,9 @@ pub fn Sheet(props: &GeneralProp<SourceId>) -> Html {
 			<div style="--theme-frame-color: #BA90CB; --theme-frame-color-muted: #BA90CB80; --theme-roll-modifier: #ffffff;">
 				<modal::Provider>
 					<modal::GeneralPurpose />
-					{content}
+					<ViewScaler ranges={vec![(1200.0..1400.0).into(), (1400.0..).into()]}>
+						{content}
+					</ViewScaler>
 				</modal::Provider>
 			</div>
 		</ContextProvider<CharacterHandle>>

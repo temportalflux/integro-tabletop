@@ -14,6 +14,8 @@ mod spinner;
 pub use spinner::*;
 mod tag;
 pub use tag::*;
+mod view_scaler;
+pub use view_scaler::*;
 
 pub fn stop_propagation() -> yew::prelude::Callback<web_sys::MouseEvent> {
 	yew::prelude::Callback::from(|evt: web_sys::MouseEvent| evt.stop_propagation())
