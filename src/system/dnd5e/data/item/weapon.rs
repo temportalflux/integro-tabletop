@@ -137,7 +137,7 @@ impl Weapon {
 
 impl FromKDL for Weapon {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
-		let kind = Kind::from_str(node.next_str_req()?)?;
+		let kind = node.next_str_req_t::<Kind>()?;
 		let classification = node.get_str_req("class")?.to_owned();
 		let damage = node.query_opt_t::<WeaponDamage>("scope() > damage")?;
 		let properties = {

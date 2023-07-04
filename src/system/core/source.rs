@@ -117,7 +117,7 @@ impl ToString for SourceId {
 }
 
 impl FromStr for SourceId {
-	type Err = anyhow::Error;
+	type Err = SourceIdParseError;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		let url = match url::Url::from_str(s) {
@@ -187,7 +187,15 @@ impl AsKdl for SourceId {
 }
 
 #[derive(thiserror::Error, Debug)]
-enum SourceIdParseError {
+pub enum SourceIdParseError {
+	#[error(transparent)]
+	PathParse(#[from] std::convert::Infallible),
+	#[error(transparent)]
+	UrlParse(#[from] url::ParseError),
+	#[error(transparent)]
+	PrefixError(#[from] std::path::StripPrefixError),
+	#[error(transparent)]
+	FragmentError(#[from] std::num::ParseIntError),
 	#[error("Missing system id in host field of url")]
 	MissingSystemId,
 	#[error("Missing repository name in password field of url")]

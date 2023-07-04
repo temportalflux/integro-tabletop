@@ -31,7 +31,7 @@ impl Evaluator for GetAbilityModifier {
 
 impl FromKDL for GetAbilityModifier {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
-		Ok(Self(Ability::from_str(node.next_str_req()?)?))
+		Ok(Self(node.next_str_req_t::<Ability>()?))
 	}
 }
 

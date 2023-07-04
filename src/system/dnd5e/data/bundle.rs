@@ -111,7 +111,7 @@ impl FromKDL for Bundle {
 					requirements.push(BundleRequirement::Bundle { category, name });
 				}
 				"Ability" => {
-					let ability = Ability::from_str(node.next_str_req()?)?;
+					let ability = node.next_str_req_t::<Ability>()?;
 					let score = node.next_i64_req()? as u32;
 					requirements.push(BundleRequirement::Ability(ability, score));
 				}

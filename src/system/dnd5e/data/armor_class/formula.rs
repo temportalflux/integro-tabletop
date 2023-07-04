@@ -49,7 +49,7 @@ impl FromKDL for ArmorClassFormula {
 		let base = node.get_i64_req("base")? as u32;
 		let mut bonuses = Vec::new();
 		for node in &mut node.query_all("scope() > bonus")? {
-			let ability = Ability::from_str(node.next_str_req()?)?;
+			let ability = node.next_str_req_t::<Ability>()?;
 			let min = node.get_i64_opt("min")?.map(|v| v as i32);
 			let max = node.get_i64_opt("max")?.map(|v| v as i32);
 			bonuses.push(BoundedAbility { ability, min, max });

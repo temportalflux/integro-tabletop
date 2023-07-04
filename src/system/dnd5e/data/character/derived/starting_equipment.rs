@@ -74,7 +74,7 @@ impl FromKDL for StartingEquipment {
 			}
 			"item" => match node.next_str_req()? {
 				"Specific" => {
-					let id = SourceId::from_str(node.next_str_req()?)?;
+					let id = node.next_str_req_t::<SourceId>()?;
 					Ok(Self::SpecificItem(id.with_basis(node.id(), false)))
 				}
 				"Custom" => Ok(Self::CustomItem(Item::from_kdl(node)?)),

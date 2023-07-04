@@ -56,7 +56,7 @@ impl FromKDL for AttackCheckKind {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		match node.next_str_req()? {
 			"AttackRoll" => {
-				let ability = Ability::from_str(node.next_str_req()?)?;
+				let ability = node.next_str_req_t::<Ability>()?;
 				let proficient = match (
 					node.get_bool_opt("proficient")?,
 					node.query_opt_t::<Value<bool>>("scope() > proficient")?,

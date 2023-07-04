@@ -16,7 +16,7 @@ crate::impl_kdl_node!(GetHitPoints, "get_hit_points");
 
 impl FromKDL for GetHitPoints {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
-		Ok(Self(HitPoint::from_str(node.next_str_req()?)?))
+		Ok(Self(node.next_str_req_t::<HitPoint>()?))
 	}
 }
 

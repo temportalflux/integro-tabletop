@@ -200,7 +200,7 @@ impl FromKDL for Spellcasting {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let operation = match node.next_str_opt()? {
 			None => {
-				let ability = Ability::from_str(node.get_str_req("ability")?)?;
+				let ability = node.get_str_req_t::<Ability>("ability")?;
 				let class_name = node.get_str_req("class")?.to_owned();
 				let restriction = {
 					let node = node.query_req("scope() > restriction")?;
@@ -303,7 +303,7 @@ impl FromKDL for Spellcasting {
 				}
 			}
 			Some("add_prepared") => {
-				let ability = Ability::from_str(node.get_str_req("ability")?)?;
+				let ability = node.get_str_req_t::<Ability>("ability")?;
 				let classified_as = node.get_str_opt("classified_as")?.map(str::to_owned);
 
 				let mut specific_spells = Vec::new();

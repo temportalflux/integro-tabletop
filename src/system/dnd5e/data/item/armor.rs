@@ -20,7 +20,7 @@ pub struct Armor {
 
 impl FromKDL for Armor {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
-		let kind = Kind::from_str(node.next_str_req()?)?;
+		let kind = node.next_str_req_t::<Kind>()?;
 		let formula = node.query_req_t::<ArmorClassFormula>("scope() > formula")?;
 		let min_strength_score = node
 			.query_i64_opt("scope() > min-strength", 0)?

@@ -120,10 +120,7 @@ impl ApplyIf {
 
 impl FromKDL for ApplyIf {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
-		let op = match node.next_str_opt()? {
-			None => LogicOp::default(),
-			Some(str) => LogicOp::from_str(str)?,
-		};
+		let op = node.next_str_opt_t::<LogicOp>()?.unwrap_or_default();
 		let mut criteria = Vec::new();
 		for node in &mut node.query_all("scope() > criteria")? {
 			criteria.push(node.parse_evaluator()?);

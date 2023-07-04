@@ -18,7 +18,7 @@ impl FromKDL for WeaponDamage {
 			None => None,
 		};
 		let base = node.get_i64_opt("base")?.unwrap_or(0) as i32;
-		let damage_type = DamageType::from_str(node.next_str_req()?)?;
+		let damage_type = node.next_str_req_t::<DamageType>()?;
 		Ok(Self {
 			roll,
 			bonus: base,

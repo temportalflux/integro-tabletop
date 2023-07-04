@@ -153,7 +153,7 @@ impl FromKDL for Persistent {
 
 		let mut ability_scores = EnumMap::default();
 		for node in &mut node.query_all("scope() > ability")? {
-			let ability = Ability::from_str(node.next_str_req()?)?;
+			let ability = node.next_str_req_t::<Ability>()?;
 			let score = node.next_i64_req()? as u32;
 			ability_scores[ability] = score;
 		}

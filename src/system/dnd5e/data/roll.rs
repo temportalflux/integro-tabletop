@@ -65,7 +65,7 @@ impl Roll {
 }
 
 impl FromStr for Roll {
-	type Err = anyhow::Error;
+	type Err = ParseRollError;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		static EXPECTED: &'static str = "{int}d{int}";
@@ -95,9 +95,17 @@ impl FromStr for Roll {
 	}
 }
 
+#[derive(thiserror::Error, Debug)]
+pub enum ParseRollError {
+	#[error(transparent)]
+	ParseInt(#[from] std::num::ParseIntError),
+	#[error(transparent)]
+	Format(#[from] GeneralError),
+}
+
 impl FromKDL for Roll {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
-		Ok(Self::from_str(node.next_str_req()?)?)
+		Ok(node.next_str_req_t::<Self>()?)
 	}
 }
 

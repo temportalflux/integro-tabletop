@@ -74,7 +74,7 @@ impl FromKDL for Property {
 				Ok(Self::Thrown(short, long))
 			}
 			"Versatile" => {
-				let roll = Roll::from_str(node.next_str_req()?)?;
+				let roll = node.next_str_req_t::<Roll>()?;
 				Ok(Self::Versatile(roll))
 			}
 			name => Err(GeneralError(format!("Unrecognized weapon property {name:?}")).into()),

@@ -202,7 +202,7 @@ impl FromKDL for AddProficiency {
 				};
 				Ok(Self::Ability(ability, level))
 			}
-			"SavingThrow" => Ok(Self::SavingThrow(Ability::from_str(node.next_str_req()?)?)),
+			"SavingThrow" => Ok(Self::SavingThrow(node.next_str_req_t::<Ability>()?)),
 			"Skill" => {
 				let skill = Selector::from_kdl(node)?;
 				let level = match node.get_str_opt("level")? {
@@ -213,7 +213,7 @@ impl FromKDL for AddProficiency {
 			}
 			"Language" => Ok(Self::Language(Selector::from_kdl(node)?)),
 			"Armor" => {
-				let kind = ArmorExtended::from_str(node.next_str_req()?)?;
+				let kind = node.next_str_req_t::<ArmorExtended>()?;
 				let context = node.next_str_opt()?.map(str::to_owned);
 				Ok(Self::Armor(kind, context))
 			}

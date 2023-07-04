@@ -225,7 +225,7 @@ impl AsKdl for Wallet {
 impl Wallet {
 	fn from_row<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let amt = node.next_i64_req()? as u64;
-		let kind = Kind::from_str(node.next_str_req()?)?;
+		let kind = node.next_str_req_t::<Kind>()?;
 		Ok(Wallet::from([(amt, kind)]))
 	}
 }

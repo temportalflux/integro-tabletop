@@ -43,7 +43,7 @@ impl FromKDL for Slots {
 				return Err(NotInList(name.into(), vec!["Half", "Full"]).into());
 			}
 		};
-		let reset_on = Rest::from_str(node.get_str_req("reset_on")?)?;
+		let reset_on = node.get_str_req_t::<Rest>("reset_on")?;
 
 		static MAX_LEVEL: usize = 20;
 		let mut slots_capacity = (1..=MAX_LEVEL)

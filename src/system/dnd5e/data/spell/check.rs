@@ -18,7 +18,7 @@ impl FromKDL for Check {
 				node.next_str_req()?,
 			)?)),
 			"SavingThrow" => {
-				let ability = Ability::from_str(node.next_str_req()?)?;
+				let ability = node.next_str_req_t::<Ability>()?;
 				let dc = node.get_i64_opt("dc")?.map(|v| v as u8);
 				Ok(Self::SavingThrow(ability, dc))
 			}

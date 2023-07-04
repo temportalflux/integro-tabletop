@@ -46,7 +46,7 @@ impl Damage {
 impl FromKDL for Damage {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let amount = scaling::Value::from_kdl(node)?;
-		let damage_type = DamageType::from_str(node.next_str_req()?)?;
+		let damage_type = node.next_str_req_t::<DamageType>()?;
 		let base = node.get_i64_opt("base")?.unwrap_or_default() as i32;
 		let ability = node.get_bool_opt("ability")?.unwrap_or_default();
 		let upcast = match node.get_str_opt("upcast")? {
