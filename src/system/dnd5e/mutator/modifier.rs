@@ -3,7 +3,7 @@ use crate::{
 	system::dnd5e::data::{character::Character, description, roll, Ability, Skill},
 	utility::{Mutator, NotInList, Selector, SelectorMetaVec},
 };
-use std::{path::Path, str::FromStr};
+use std::path::Path;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AddModifier {

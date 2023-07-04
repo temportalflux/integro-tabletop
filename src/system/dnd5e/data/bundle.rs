@@ -9,7 +9,7 @@ use crate::{
 	},
 	utility::{MutatorGroup, NotInList},
 };
-use std::{collections::HashMap, path::Path, str::FromStr};
+use std::{collections::HashMap, path::Path};
 
 #[derive(Default, Clone, PartialEq, Debug)]
 pub struct Bundle {

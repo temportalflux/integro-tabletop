@@ -3,7 +3,6 @@ use crate::{
 	system::dnd5e::data::{character::Character, Ability},
 	utility::{Dependencies, Evaluator},
 };
-use std::str::FromStr;
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct GetAbilityModifier(pub Ability);

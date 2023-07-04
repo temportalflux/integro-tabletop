@@ -296,16 +296,28 @@ impl<'doc> NodeReader<'doc> {
 		Ok(self.peak_req()?.type_req()?)
 	}
 
-	pub fn next_str_opt_t<T>(&mut self) -> anyhow::Result<Option<T>> where T: FromStr, T::Err: std::error::Error + Send + Sync + 'static, {
+	pub fn next_str_opt_t<T>(&mut self) -> anyhow::Result<Option<T>>
+	where
+		T: FromStr,
+		T::Err: std::error::Error + Send + Sync + 'static,
+	{
 		let Some(str) = self.next_str_opt()? else { return Ok(None); };
 		Ok(Some(T::from_str(str)?))
 	}
 
-	pub fn next_str_req_t<T>(&mut self) -> anyhow::Result<T> where T: FromStr, T::Err: std::error::Error + Send + Sync + 'static, {
+	pub fn next_str_req_t<T>(&mut self) -> anyhow::Result<T>
+	where
+		T: FromStr,
+		T::Err: std::error::Error + Send + Sync + 'static,
+	{
 		Ok(T::from_str(self.next_str_req()?)?)
 	}
 
-	pub fn get_str_req_t<T>(&self, key: impl AsRef<str>) -> anyhow::Result<T> where T: FromStr, T::Err: std::error::Error + Send + Sync + 'static, {
+	pub fn get_str_req_t<T>(&self, key: impl AsRef<str>) -> anyhow::Result<T>
+	where
+		T: FromStr,
+		T::Err: std::error::Error + Send + Sync + 'static,
+	{
 		Ok(T::from_str(self.get_str_req(key)?)?)
 	}
 

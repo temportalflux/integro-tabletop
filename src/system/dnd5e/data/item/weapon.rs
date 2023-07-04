@@ -13,7 +13,6 @@ use crate::{
 		Value,
 	},
 };
-use std::str::FromStr;
 
 mod damage;
 pub use damage::*;

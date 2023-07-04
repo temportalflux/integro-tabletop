@@ -3,7 +3,6 @@ use crate::{
 	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::dnd5e::data::{character::Character, Ability},
 };
-use std::str::FromStr;
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct ArmorClassFormula {

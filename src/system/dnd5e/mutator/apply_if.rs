@@ -215,7 +215,7 @@ mod test {
 		#[test]
 		fn all_criteria() -> anyhow::Result<()> {
 			let doc = "
-				|mutator \"apply_if\" {
+				|mutator \"apply_if\" \"All\" {
 				|    criteria (Evaluator)\"has_armor_equipped\"
 				|    criteria (Evaluator)\"has_armor_equipped\" inverted=true
 				|}

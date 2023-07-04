@@ -6,7 +6,6 @@ use crate::{
 	},
 	utility::NotInList,
 };
-use std::str::FromStr;
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum AttackCheckKind {

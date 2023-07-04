@@ -181,6 +181,7 @@ impl AsKdl for Item {
 			if let Kind::Simple { count } = &self.kind {
 				stack_weight *= *count as f64;
 			}
+			let stack_weight = (stack_weight * 1000.0).round() / 1000.0;
 			node.push_entry(("weight", stack_weight));
 		}
 
@@ -219,8 +220,8 @@ mod test {
 	mod item {
 		use super::*;
 		use crate::{
-			kdl_ext::test_utils::*,
-			system::dnd5e::{
+			kdl_ext::{test_utils::*, NodeContext},
+			system::{dnd5e::{
 				data::{
 					currency,
 					item::{armor::Armor, equipment::Equipment},
@@ -228,11 +229,15 @@ mod test {
 					ArmorClassFormula, Skill,
 				},
 				mutator::{AddModifier, ModifierKind},
-			},
+			}, core::NodeRegistry},
 			utility::Selector,
 		};
 
 		static NODE_NAME: &str = "item";
+
+		fn node_ctx() -> NodeContext {
+			NodeContext::registry(NodeRegistry::default_with_mut::<AddModifier>())
+		}
 
 		#[test]
 		fn simple() -> anyhow::Result<()> {

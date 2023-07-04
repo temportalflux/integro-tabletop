@@ -3,7 +3,6 @@ use crate::{
 	system::dnd5e::data::roll::Roll,
 	GeneralError,
 };
-use std::str::FromStr;
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum Property {

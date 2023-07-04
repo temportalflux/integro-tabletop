@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use super::Kind;
 use crate::kdl_ext::{AsKdl, FromKDL, NodeBuilder};
 use enum_map::EnumMap;

@@ -18,7 +18,6 @@ use itertools::Itertools;
 use std::{
 	collections::{BTreeMap, HashMap},
 	path::Path,
-	str::FromStr,
 	sync::Arc,
 };
 

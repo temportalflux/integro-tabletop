@@ -3,7 +3,7 @@ use crate::{
 	system::dnd5e::data::Rest,
 	utility::NotInList,
 };
-use std::{collections::BTreeMap, str::FromStr};
+use std::collections::BTreeMap;
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Slots {

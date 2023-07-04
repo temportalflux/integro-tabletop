@@ -6,7 +6,6 @@ use crate::{
 	},
 	utility::{Dependencies, Evaluator},
 };
-use std::str::FromStr;
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct GetHitPoints(pub HitPoint);

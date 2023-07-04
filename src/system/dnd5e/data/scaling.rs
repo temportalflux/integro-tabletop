@@ -60,13 +60,15 @@ mod test {
 
 		#[test]
 		fn scaling_level_int() -> anyhow::Result<()> {
-			let doc = "scaling (Scaled)\"Level\" class=\"Barbarian\" {
-				level 1 2
-				level 4 3
-				level 7 4
-				level 14 5
-				level 18
-			}";
+			let doc = "
+				|scaling (Scaled)\"Level\" class=\"Barbarian\" {
+				|    level 1 2
+				|    level 4 3
+				|    level 7 4
+				|    level 14 5
+				|    level 18
+				|}
+			";
 			let data = Value::<u32>::Scaled(Basis::Level {
 				class_name: Some("Barbarian".into()),
 				level_map: [
@@ -85,12 +87,14 @@ mod test {
 
 		#[test]
 		fn scaling_level_roll_noclass() -> anyhow::Result<()> {
-			let doc = "scaling (Scaled)\"Level\" {
-				level 1 \"1d8\"
-				level 5 \"2d8\"
-				level 9 \"3d8\"
-				level 16 \"4d8\"
-			}";
+			let doc = "
+				|scaling (Scaled)\"Level\" {
+				|    level 1 (Roll)\"1d8\"
+				|    level 5 (Roll)\"2d8\"
+				|    level 9 (Roll)\"3d8\"
+				|    level 16 (Roll)\"4d8\"
+				|}
+			";
 			let data = Value::<Roll>::Scaled(Basis::Level {
 				class_name: None,
 				level_map: [
