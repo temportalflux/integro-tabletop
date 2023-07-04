@@ -100,10 +100,7 @@ impl FromKDL for Feature {
 		// TODO: Unimplemented
 		let _is_unique = node.get_bool_opt("unique")?.unwrap_or_default();
 
-		let mut mutators = Vec::new();
-		for node in &mut node.query_all("scope() > mutator")? {
-			mutators.push(node.parse_mutator()?);
-		}
+		let mutators = node.query_all_t("scope() > mutator")?;
 
 		let action = node.query_opt_t::<Action>("scope() > action")?;
 

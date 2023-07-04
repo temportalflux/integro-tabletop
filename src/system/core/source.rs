@@ -40,10 +40,18 @@ pub struct SourceId {
 	pub path: PathBuf,
 	pub version: Option<String>,
 	pub node_idx: usize,
+	pub basis: Option<Box<SourceId>>,
 }
 
 impl SourceId {
 	pub fn set_basis(&mut self, other: &Self, include_version: bool) {
+		if other == &Self::default() {
+			return;
+		}
+		self.basis = Some(match include_version {
+			true => other.clone(),
+			false => other.unversioned(),
+		}.into());
 		if self.module.is_none() {
 			self.module = other.module.clone();
 		}
@@ -52,6 +60,31 @@ impl SourceId {
 		}
 		if include_version && self.version.is_none() {
 			self.version = other.version.clone();
+		}
+	}
+
+	pub fn without_basis(&self) -> Self {
+		match &self.basis {
+			None => self.clone(),
+			Some(basis) if self == &**basis => Self::default(),
+			Some(basis) => {
+				let mut id = self.clone();
+				if id.module == basis.module {
+					id.module = None;
+				}
+				if id.module.is_none() && id.system == basis.system {
+					id.system = None;
+				}
+				if id.module.is_none() && id.version == basis.version {
+					id.version = None;
+				}
+				if id.module.is_none() && id.system.is_none() {
+					if id.path == basis.path {
+						id.path = PathBuf::default();
+					}
+				}
+				id
+			}
 		}
 	}
 
@@ -172,6 +205,7 @@ impl FromStr for SourceId {
 			path,
 			version,
 			node_idx,
+			basis: None,
 		})
 	}
 }
@@ -179,8 +213,12 @@ impl FromStr for SourceId {
 impl AsKdl for SourceId {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
-		if *self != Self::default() {
-			node.push_entry(self.to_string());
+		let baseless = self.without_basis();
+		if baseless != Self::default() {
+			let as_str = baseless.to_string();
+			if !as_str.is_empty() {
+				node.push_entry(as_str);
+			}
 		}
 		node
 	}
@@ -220,6 +258,7 @@ mod test {
 				path: "items/trinket.kdl".into(),
 				version: None,
 				node_idx: 0,
+				basis: None,
 			}
 		);
 		Ok(())
@@ -239,6 +278,7 @@ mod test {
 				path: "items/trinket.kdl".into(),
 				version: None,
 				node_idx: 32,
+				basis: None,
 			}
 		);
 		Ok(())
@@ -254,6 +294,7 @@ mod test {
 			path: "items/trinket.kdl".into(),
 			version: None,
 			node_idx: 0,
+			basis: None,
 		};
 		assert_eq!(
 			source.to_string(),
@@ -276,6 +317,7 @@ mod test {
 				path: "items/trinket.kdl".into(),
 				version: Some("4b37d0e2a".into()),
 				node_idx: 5,
+				basis: None,
 			}
 		);
 		Ok(())
@@ -292,6 +334,7 @@ mod test {
 			path: "items/trinket.kdl".into(),
 			version: Some("4b37d0e2a".into()),
 			node_idx: 7,
+			basis: None,
 		};
 		assert_eq!(
 			source.to_string(),
@@ -307,6 +350,7 @@ mod test {
 			path: "items/trinket.kdl".into(),
 			version: None,
 			node_idx: 0,
+			basis: None,
 		};
 		assert_eq!(source.to_string(), "items/trinket.kdl");
 	}
@@ -317,8 +361,9 @@ mod test {
 			SourceId::from_str("local://module-name@mysystem/item/gear.kdl?version=e812da2c")?;
 		let mut relative = SourceId::from_str("feat/initiate.kdl")?;
 		relative.set_basis(&basis, true);
-		let expected =
+		let mut expected =
 			SourceId::from_str("local://module-name@mysystem/feat/initiate.kdl?version=e812da2c")?;
+		expected.basis = Some(basis.into());
 		assert_eq!(relative, expected);
 		Ok(())
 	}

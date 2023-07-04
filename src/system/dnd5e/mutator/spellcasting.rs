@@ -231,10 +231,7 @@ impl FromKDL for Spellcasting {
 					let mut node = node.query_req("scope() > kind")?;
 					match node.next_str_req()? {
 						"Prepared" => {
-							let capacity = {
-								let node = node.query_req("scope() > capacity")?;
-								node.parse_evaluator::<Character, i32>()?
-							};
+							let capacity = node.query_req_t("scope() > capacity")?;
 							spellcasting::Capacity::Prepared(capacity)
 						}
 						"Known" => {
@@ -442,7 +439,6 @@ impl AsKdl for Spellcasting {
 				node.push_entry("add_source");
 				node.push_entry(("class", class_name.clone()));
 				for spell_id in spell_ids {
-					// TODO: SourceId should be provided the context of the module which is serializing them, so basis can be removed.
 					node.push_child_t("spell", spell_id);
 				}
 				node
@@ -463,8 +459,10 @@ impl AsKdl for Spellcasting {
 				for (spell_id, prepared_info) in specific_spells {
 					node.push_child({
 						let mut node = NodeBuilder::default();
-						// TODO: Dont encode the basis that was applied during from_kdl
-						node.push_entry(spell_id.to_string());
+						let spell_id = spell_id.as_kdl();
+						if !spell_id.is_empty() {
+							node += spell_id;
+						}
 						node += prepared_info.as_kdl();
 						node.build("spell")
 					});

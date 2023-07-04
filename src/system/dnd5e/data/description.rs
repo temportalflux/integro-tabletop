@@ -443,9 +443,10 @@ impl FormatArgs {
 			let arg = match eval_type_entry.as_str_req()? {
 				"int" => {
 					let signed = eval_type_entry.type_opt() == Some("Signed");
-					Arg::Number(node.parse_evaluator_inline()?, signed)
+					let eval = BoxedEvaluator::from_kdl(node)?;
+					Arg::Number(eval, signed)
 				}
-				"str" => Arg::String(node.parse_evaluator_inline()?),
+				"str" => Arg::String(BoxedEvaluator::from_kdl(node)?),
 				_type => return Err(NotInList(_type.into(), vec!["int", "str"]).into()),
 			};
 			args.insert(key, arg);

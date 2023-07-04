@@ -61,15 +61,8 @@ impl Equipment {
 
 impl FromKDL for Equipment {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
-		let criteria = match node.query_opt("scope() > criteria")? {
-			None => None,
-			Some(node) => Some(node.parse_evaluator::<Character, Result<(), String>>()?),
-		};
-
-		let mut mutators = Vec::new();
-		for node in &mut node.query_all("scope() > mutator")? {
-			mutators.push(node.parse_mutator()?);
-		}
+		let criteria = node.query_opt_t("scope() > criteria")?;
+		let mutators = node.query_all_t("scope() > mutator")?;
 
 		let armor = node.query_opt_t::<Armor>("scope() > armor")?;
 		let shield = match node.query_opt("scope() > shield")? {

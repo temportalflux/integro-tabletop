@@ -53,17 +53,14 @@ impl SystemComponent for Condition {
 
 impl FromKDL for Condition {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
-		let id = node.parse_source_opt()?;
+		let id = node.query_source_opt()?;
 
 		let name = node.get_str_req("name")?.to_owned();
 		let description = node
 			.query_str_opt("scope() > description", 0)?
 			.unwrap_or_default()
 			.to_owned();
-		let mut mutators = Vec::new();
-		for node in &mut node.query_all("scope() > mutator")? {
-			mutators.push(node.parse_mutator()?);
-		}
+		let mutators = node.query_all_t("scope() > mutator")?;
 
 		Ok(Self {
 			id,

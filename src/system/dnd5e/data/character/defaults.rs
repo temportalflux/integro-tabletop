@@ -42,10 +42,7 @@ impl MutatorGroup for DefaultsBlock {
 
 impl FromKDL for DefaultsBlock {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
-		let mut mutators = Vec::new();
-		for node in &mut node.query_all("scope() > mutator")? {
-			mutators.push(node.parse_mutator()?);
-		}
+		let mutators = node.query_all_t("scope() > mutator")?;
 		Ok(Self {
 			source_id: None,
 			mutators,

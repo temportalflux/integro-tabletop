@@ -647,6 +647,6 @@ pub mod test_utils {
 		let node = document
 			.query(format!("scope() > {name}"))?
 			.expect(&format!("missing {name} node"));
-		from_kdl(NodeReader::new(node, ctx))
+		from_kdl(NodeReader::new_child(node, ctx))
 	}
 }

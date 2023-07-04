@@ -93,8 +93,8 @@ impl FromKDL for Bundle {
 		let category = node.get_str_req("category")?.to_owned();
 
 		let id = match category.as_str() {
-			"Feat" => node.parse_source_opt()?.unwrap_or_default(),
-			_ => node.parse_source_req()?,
+			"Feat" => node.query_source_opt()?.unwrap_or_default(),
+			_ => node.query_source_req()?,
 		};
 
 		let description = node
@@ -119,10 +119,7 @@ impl FromKDL for Bundle {
 			}
 		}
 
-		let mut mutators = Vec::new();
-		for node in &mut node.query_all("scope() > mutator")? {
-			mutators.push(node.parse_mutator()?);
-		}
+		let mutators = node.query_all_t("scope() > mutator")?;
 
 		Ok(Self {
 			id,
@@ -143,7 +140,7 @@ impl AsKdl for Bundle {
 		node.push_entry(("category", self.category.clone()));
 		node.push_entry(("name", self.name.clone()));
 
-		node.push_child_t("source", &self.id);
+		node.push_child_opt_t("source", &self.id);
 
 		for requirement in &self.requirements {
 			let kdl = match requirement {

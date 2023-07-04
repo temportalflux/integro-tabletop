@@ -62,7 +62,7 @@ impl SystemComponent for Spell {
 impl FromKDL for Spell {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		// TODO: all system components need to check if the node has a source field
-		let id = node.parse_source_req()?;
+		let id = node.query_source_req()?;
 
 		let name = node.get_str_req("name")?.to_owned();
 		let description = node

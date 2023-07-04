@@ -1,16 +1,13 @@
 use super::{DocumentExt, DocumentQueryExt, EntryExt, NodeExt};
 use crate::{
 	system::core::{NodeRegistry, SourceId},
-	utility::{GenericEvaluator, GenericMutator},
 };
 use std::{str::FromStr, sync::Arc};
 
 #[derive(Default, Clone)]
 pub struct NodeContext {
 	root_id: Arc<SourceId>,
-	index_cursor: usize,
 	node_registry: Arc<NodeRegistry>,
-	inheiret_source: bool,
 }
 
 impl NodeContext {
@@ -18,8 +15,6 @@ impl NodeContext {
 		Self {
 			root_id: id,
 			node_registry: registry,
-			index_cursor: 0,
-			inheiret_source: true,
 		}
 	}
 
@@ -31,97 +26,19 @@ impl NodeContext {
 		}
 	}
 
-	pub fn inheiret_source(mut self, inheiret: bool) -> Self {
-		self.set_inheiret_source(inheiret);
-		self
-	}
-
-	pub fn set_inheiret_source(&mut self, inheiret: bool) {
-		self.inheiret_source = inheiret;
-	}
-
 	pub fn id(&self) -> &SourceId {
 		&*self.root_id
-	}
-
-	pub fn peak_idx(&self) -> usize {
-		self.index_cursor
-	}
-
-	pub fn consume_idx(&mut self) -> usize {
-		let consumed = self.index_cursor;
-		self.index_cursor += 1;
-		consumed
-	}
-
-	pub fn next_node(&self) -> Self {
-		Self {
-			root_id: self.root_id.clone(),
-			index_cursor: 0,
-			node_registry: self.node_registry.clone(),
-			inheiret_source: self.inheiret_source,
-		}
 	}
 
 	pub fn node_reg(&self) -> &Arc<NodeRegistry> {
 		&self.node_registry
 	}
-
-	pub fn parse_source_opt(&self, node: &kdl::KdlNode) -> anyhow::Result<Option<SourceId>> {
-		match node.query_str_opt("scope() > source", 0)? {
-			Some(id_str) => Ok(Some(SourceId::from_str(id_str)?)),
-			None if self.inheiret_source => Ok(Some(self.id().clone())),
-			None => Ok(None),
-		}
-	}
-
-	pub fn parse_source_req(&self, node: &kdl::KdlNode) -> anyhow::Result<SourceId> {
-		Ok(self.parse_source_opt(node)?.ok_or(MissingSource)?)
-	}
-
-	pub fn parse_mutator<'doc, T>(
-		&self,
-		node: &'doc kdl::KdlNode,
-	) -> anyhow::Result<GenericMutator<T>>
-	where
-		T: 'static,
-	{
-		let mut ctx = self.next_node();
-		let id = node.get_str_req(ctx.consume_idx())?;
-		let factory = self.node_registry.get_mutator_factory(id)?;
-		factory.from_kdl::<T>(NodeReader::new(node, ctx))
-	}
-
-	pub fn parse_evaluator<C, V>(
-		&self,
-		node: &kdl::KdlNode,
-	) -> anyhow::Result<GenericEvaluator<C, V>>
-	where
-		C: 'static,
-		V: 'static,
-	{
-		let mut ctx = self.next_node();
-		ctx.parse_evaluator_inline(node)
-	}
-
-	pub fn parse_evaluator_inline<C, V>(
-		&mut self,
-		node: &kdl::KdlNode,
-	) -> anyhow::Result<GenericEvaluator<C, V>>
-	where
-		C: 'static,
-		V: 'static,
-	{
-		let id = node.get_str_req(self.consume_idx())?;
-		let node_reg = self.node_registry.clone();
-		let factory = node_reg.get_evaluator_factory(id)?;
-		factory.from_kdl::<C, V>(&mut NodeReader::new(node, self.clone()))
-	}
 }
-
 pub struct NodeReader<'doc> {
 	node: &'doc kdl::KdlNode,
 	ctx: NodeContext,
+	index_cursor: usize,
+	is_root: bool,
 }
 impl<'doc> ToString for NodeReader<'doc> {
 	fn to_string(&self) -> String {
@@ -129,8 +46,26 @@ impl<'doc> ToString for NodeReader<'doc> {
 	}
 }
 impl<'doc> NodeReader<'doc> {
-	pub fn new(node: &'doc kdl::KdlNode, ctx: NodeContext) -> Self {
-		Self { node, ctx }
+	pub fn new_root(node: &'doc kdl::KdlNode, ctx: NodeContext) -> Self {
+		Self {
+			node,
+			ctx,
+			index_cursor: 0,
+			is_root: true,
+		}
+	}
+
+	pub fn new_child(node: &'doc kdl::KdlNode, ctx: NodeContext) -> Self {
+		Self {
+			node,
+			ctx,
+			index_cursor: 0,
+			is_root: false,
+		}
+	}
+
+	fn next_node(&self, node: &'doc kdl::KdlNode) -> Self {
+		Self::new_child(node, self.ctx.clone())
 	}
 
 	pub fn id(&self) -> &SourceId {
@@ -154,76 +89,82 @@ impl<'doc> NodeReader<'doc> {
 		ctx: &NodeContext,
 		iter: impl Iterator<Item = &'doc kdl::KdlNode> + 'doc,
 	) -> Vec<Self> {
-		iter.map(|node| NodeReader::new(node, ctx.next_node()))
+		iter.map(|node| Self::new_child(node, ctx.clone()))
 			.collect()
 	}
-
-	fn next_node(&self, node: &'doc kdl::KdlNode) -> Self {
-		Self::new(node, self.ctx.next_node())
-	}
 }
 impl<'doc> NodeReader<'doc> {
+	fn peak_idx(&self) -> usize {
+		self.index_cursor
+	}
+
 	pub fn peak_opt(&self) -> Option<&'doc kdl::KdlEntry> {
-		self.node.entry_opt(self.ctx.peak_idx())
+		self.node.entry_opt(self.peak_idx())
 	}
 	pub fn peak_req(&self) -> Result<&'doc kdl::KdlEntry, super::EntryMissing> {
-		self.node.entry_req(self.ctx.peak_idx())
+		self.node.entry_req(self.peak_idx())
 	}
 	pub fn peak_bool_opt(&self) -> Result<Option<bool>, super::InvalidValueType> {
-		self.node.get_bool_opt(self.ctx.peak_idx())
+		self.node.get_bool_opt(self.peak_idx())
 	}
 	pub fn peak_i64_opt(&self) -> Result<Option<i64>, super::InvalidValueType> {
-		self.node.get_i64_opt(self.ctx.peak_idx())
+		self.node.get_i64_opt(self.peak_idx())
 	}
 	pub fn peak_f64_opt(&self) -> Result<Option<f64>, super::InvalidValueType> {
-		self.node.get_f64_opt(self.ctx.peak_idx())
+		self.node.get_f64_opt(self.peak_idx())
 	}
 	pub fn peak_str_opt(&self) -> Result<Option<&'doc str>, super::InvalidValueType> {
-		self.node.get_str_opt(self.ctx.peak_idx())
+		self.node.get_str_opt(self.peak_idx())
 	}
 	pub fn peak_bool_req(&self) -> Result<bool, super::RequiredValue> {
-		self.node.get_bool_req(self.ctx.peak_idx())
+		self.node.get_bool_req(self.peak_idx())
 	}
 	pub fn peak_i64_req(&self) -> Result<i64, super::RequiredValue> {
-		self.node.get_i64_req(self.ctx.peak_idx())
+		self.node.get_i64_req(self.peak_idx())
 	}
 	pub fn peak_f64_req(&self) -> Result<f64, super::RequiredValue> {
-		self.node.get_f64_req(self.ctx.peak_idx())
+		self.node.get_f64_req(self.peak_idx())
 	}
 	pub fn peak_str_req(&self) -> Result<&'doc str, super::RequiredValue> {
-		self.node.get_str_req(self.ctx.peak_idx())
+		self.node.get_str_req(self.peak_idx())
 	}
 }
 impl<'doc> NodeReader<'doc> {
+	fn consume_idx(&mut self) -> usize {
+		let consumed = self.index_cursor;
+		self.index_cursor += 1;
+		consumed
+	}
+
 	pub fn next_opt(&mut self) -> Option<&'doc kdl::KdlEntry> {
-		self.node.entry_opt(self.ctx.consume_idx())
+		self.node.entry_opt(self.consume_idx())
 	}
 	pub fn next_req(&mut self) -> Result<&'doc kdl::KdlEntry, super::EntryMissing> {
-		self.node.entry_req(self.ctx.consume_idx())
+		self.node.entry_req(self.consume_idx())
 	}
 	pub fn next_bool_opt(&mut self) -> Result<Option<bool>, super::InvalidValueType> {
-		self.node.get_bool_opt(self.ctx.consume_idx())
+		self.node.get_bool_opt(self.consume_idx())
 	}
 	pub fn next_i64_opt(&mut self) -> Result<Option<i64>, super::InvalidValueType> {
-		self.node.get_i64_opt(self.ctx.consume_idx())
+		self.node.get_i64_opt(self.consume_idx())
 	}
 	pub fn next_f64_opt(&mut self) -> Result<Option<f64>, super::InvalidValueType> {
-		self.node.get_f64_opt(self.ctx.consume_idx())
+		self.node.get_f64_opt(self.consume_idx())
 	}
 	pub fn next_str_opt(&mut self) -> Result<Option<&'doc str>, super::InvalidValueType> {
-		self.node.get_str_opt(self.ctx.consume_idx())
+		self.node.get_str_opt(self.consume_idx())
 	}
 	pub fn next_bool_req(&mut self) -> Result<bool, super::RequiredValue> {
-		self.node.get_bool_req(self.ctx.consume_idx())
+		self.node.get_bool_req(self.consume_idx())
 	}
 	pub fn next_i64_req(&mut self) -> Result<i64, super::RequiredValue> {
-		self.node.get_i64_req(self.ctx.consume_idx())
+		self.node.get_i64_req(self.consume_idx())
 	}
 	pub fn next_f64_req(&mut self) -> Result<f64, super::RequiredValue> {
-		self.node.get_f64_req(self.ctx.consume_idx())
+		self.node.get_f64_req(self.consume_idx())
 	}
 	pub fn next_str_req(&mut self) -> Result<&'doc str, super::RequiredValue> {
-		self.node.get_str_req(self.ctx.consume_idx())
+		self.node.get_str_req(self.consume_idx())
 	}
 }
 impl<'doc> NodeReader<'doc> {
@@ -457,39 +398,16 @@ impl<'doc> NodeReader<'doc> {
 		self.ctx.node_reg()
 	}
 
-	pub fn set_inheiret_source(&mut self, inheiret: bool) {
-		self.ctx.set_inheiret_source(inheiret);
+	pub fn query_source_opt(&self) -> anyhow::Result<Option<SourceId>> {
+		match self.query_str_opt("scope() > source", 0)? {
+			Some(id_str) => Ok(Some(SourceId::from_str(id_str)?.with_basis(self.id(), true))),
+			None if self.is_root => Ok(Some(self.id().clone().with_basis(self.id(), true))),
+			None => Ok(None),
+		}
 	}
 
-	pub fn parse_source_opt(&self) -> anyhow::Result<Option<SourceId>> {
-		self.ctx.parse_source_opt(self.node)
-	}
-
-	pub fn parse_source_req(&self) -> anyhow::Result<SourceId> {
-		self.ctx.parse_source_req(self.node)
-	}
-
-	pub fn parse_mutator<T>(&self) -> anyhow::Result<GenericMutator<T>>
-	where
-		T: 'static,
-	{
-		self.ctx.parse_mutator(self.node)
-	}
-
-	pub fn parse_evaluator<C, V>(&self) -> anyhow::Result<GenericEvaluator<C, V>>
-	where
-		C: 'static,
-		V: 'static,
-	{
-		self.ctx.parse_evaluator(self.node)
-	}
-
-	pub fn parse_evaluator_inline<C, V>(&mut self) -> anyhow::Result<GenericEvaluator<C, V>>
-	where
-		C: 'static,
-		V: 'static,
-	{
-		self.ctx.parse_evaluator_inline(self.node)
+	pub fn query_source_req(&self) -> anyhow::Result<SourceId> {
+		Ok(self.query_source_opt()?.ok_or(MissingSource)?)
 	}
 }
 

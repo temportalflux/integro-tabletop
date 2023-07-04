@@ -88,7 +88,10 @@ pub struct MutatorFactory {
 	type_name: &'static str,
 	target_type_info: (TypeId, &'static str),
 	fn_from_kdl: Box<
-		dyn Fn(crate::kdl_ext::NodeReader<'_>) -> anyhow::Result<BoxAny> + 'static + Send + Sync,
+		dyn Fn(&mut crate::kdl_ext::NodeReader<'_>) -> anyhow::Result<BoxAny>
+			+ 'static
+			+ Send
+			+ Sync,
 	>,
 }
 
@@ -103,8 +106,8 @@ impl MutatorFactory {
 				TypeId::of::<M::Target>(),
 				std::any::type_name::<M::Target>(),
 			),
-			fn_from_kdl: Box::new(|mut node| {
-				let arc_eval: ArcMutator<M::Target> = Arc::new(M::from_kdl(&mut node)?);
+			fn_from_kdl: Box::new(|node| {
+				let arc_eval: ArcMutator<M::Target> = Arc::new(M::from_kdl(node)?);
 				Ok(Box::new(arc_eval))
 			}),
 		}
@@ -112,7 +115,7 @@ impl MutatorFactory {
 
 	pub fn from_kdl<'doc, T>(
 		&self,
-		node: crate::kdl_ext::NodeReader<'doc>,
+		node: &mut crate::kdl_ext::NodeReader<'doc>,
 	) -> anyhow::Result<GenericMutator<T>>
 	where
 		T: 'static,
@@ -241,7 +244,9 @@ impl NodeRegistry {
 		let node = document
 			.query("scope() > evaluator")?
 			.expect("missing evaluator node");
-		crate::kdl_ext::NodeContext::registry(self).parse_evaluator::<C, T>(node)
+		let ctx = crate::kdl_ext::NodeContext::registry(self);
+		let mut node = crate::kdl_ext::NodeReader::new_child(node, ctx);
+		GenericEvaluator::<C, T>::from_kdl(&mut node)
 	}
 
 	pub fn parse_kdl_mutator<T>(self, doc: &str) -> anyhow::Result<GenericMutator<T>>
@@ -252,7 +257,9 @@ impl NodeRegistry {
 		let node = document
 			.query("scope() > mutator")?
 			.expect("missing mutator node");
-		crate::kdl_ext::NodeContext::registry(self).parse_mutator::<T>(node)
+		let ctx = crate::kdl_ext::NodeContext::registry(self);
+		let mut node = crate::kdl_ext::NodeReader::new_child(node, ctx);
+		GenericMutator::<T>::from_kdl(&mut node)
 	}
 
 	pub fn defaulteval_parse_kdl<E>(

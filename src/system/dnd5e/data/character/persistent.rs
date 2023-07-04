@@ -141,7 +141,6 @@ impl SystemComponent for Persistent {
 impl FromKDL for Persistent {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let id = node.id().clone();
-		node.set_inheiret_source(false);
 
 		let description = node.query_req_t::<Description>("scope() > description")?;
 

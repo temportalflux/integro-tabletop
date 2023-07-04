@@ -121,14 +121,8 @@ impl ApplyIf {
 impl FromKDL for ApplyIf {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let op = node.next_str_opt_t::<LogicOp>()?.unwrap_or_default();
-		let mut criteria = Vec::new();
-		for node in &mut node.query_all("scope() > criteria")? {
-			criteria.push(node.parse_evaluator()?);
-		}
-		let mut mutators = Vec::new();
-		for node in &mut node.query_all("scope() > mutator")? {
-			mutators.push(node.parse_mutator()?);
-		}
+		let criteria = node.query_all_t("scope() > criteria")?;
+		let mutators = node.query_all_t("scope() > mutator")?;
 		Ok(Self {
 			op,
 			criteria,

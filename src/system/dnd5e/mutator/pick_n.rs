@@ -155,14 +155,8 @@ impl FromKDL for PickN {
 		let mut options = HashMap::new();
 		for node in &mut node.query_all("scope() > option")? {
 			let name = node.next_str_req()?.to_owned();
-
 			let description = node.query_opt_t::<description::Section>("scope() > description")?;
-
-			let mut mutators = Vec::new();
-			for node in &mut node.query_all("scope() > mutator")? {
-				mutators.push(node.parse_mutator()?);
-			}
-
+			let mutators = node.query_all_t("scope() > mutator")?;
 			options.insert(
 				name,
 				PickOption {

@@ -12,7 +12,7 @@ use std::str::FromStr;
 #[derive(Clone, Debug, PartialEq)]
 pub enum StartingEquipment {
 	Currency(Wallet),
-	SpecificItem(SourceId),
+	SpecificItem(SourceId, usize),
 	CustomItem(Item),
 	SelectItem(ItemFilter),
 	Group {
@@ -37,7 +37,7 @@ impl StartingEquipment {
 	fn node_name(&self) -> &'static str {
 		match self {
 			Self::Currency(_) => "currency",
-			Self::SpecificItem(_) | Self::CustomItem(_) | Self::SelectItem(_) => "item",
+			Self::SpecificItem(_, _) | Self::CustomItem(_) | Self::SelectItem(_) => "item",
 			Self::Group { .. } => "group",
 		}
 	}
@@ -75,7 +75,9 @@ impl FromKDL for StartingEquipment {
 			"item" => match node.next_str_req()? {
 				"Specific" => {
 					let id = node.next_str_req_t::<SourceId>()?;
-					Ok(Self::SpecificItem(id.with_basis(node.id(), false)))
+					let id = id.with_basis(node.id(), false);
+					let count = node.next_i64_opt()?.unwrap_or(1) as usize;
+					Ok(Self::SpecificItem(id, count))
 				}
 				"Custom" => Ok(Self::CustomItem(Item::from_kdl(node)?)),
 				"Select" => Ok(Self::SelectItem(ItemFilter::from_kdl(node)?)),
@@ -91,9 +93,17 @@ impl AsKdl for StartingEquipment {
 	fn as_kdl(&self) -> NodeBuilder {
 		match self {
 			Self::Currency(wallet) => wallet.as_kdl(),
-			Self::SpecificItem(id) => NodeBuilder::default()
-				.with_entry("Specific")
-				.with_entry(id.to_string()),
+			Self::SpecificItem(id, count) => {
+				let mut node = NodeBuilder::default().with_entry("Specific");
+				let kdl = id.as_kdl();
+				if !kdl.is_empty() {
+					node += kdl;
+				}
+				if *count > 1 {
+					node.push_entry(*count as i64);
+				}
+				node
+			},
 			Self::CustomItem(item) => NodeBuilder::default()
 				.with_entry("Custom")
 				.with_extension(item.as_kdl()),

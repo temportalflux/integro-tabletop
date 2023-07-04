@@ -419,8 +419,7 @@ impl Loader {
 			module: Some(module_id.clone()),
 			system: Some(system.clone()),
 			path: path_in_system,
-			version: None,
-			node_idx: 0,
+			..Default::default()
 		};
 		let mut entries = Vec::with_capacity(document.nodes().len());
 		for (idx, node) in document.nodes().iter().enumerate() {

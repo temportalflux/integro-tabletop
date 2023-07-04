@@ -110,7 +110,7 @@ impl SystemComponent for Item {
 impl FromKDL for Item {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		// TODO: Items can have empty ids if they are completely custom in the sheet
-		let id = node.parse_source_opt()?.unwrap_or_default();
+		let id = node.query_source_opt()?.unwrap_or_default();
 
 		let name = node.get_str_req("name")?.to_owned();
 		let rarity = match node.query_str_opt("scope() > rarity", 0)? {
@@ -221,15 +221,18 @@ mod test {
 		use super::*;
 		use crate::{
 			kdl_ext::{test_utils::*, NodeContext},
-			system::{dnd5e::{
-				data::{
-					currency,
-					item::{armor::Armor, equipment::Equipment},
-					roll::Modifier,
-					ArmorClassFormula, Skill,
+			system::{
+				core::NodeRegistry,
+				dnd5e::{
+					data::{
+						currency,
+						item::{armor::Armor, equipment::Equipment},
+						roll::Modifier,
+						ArmorClassFormula, Skill,
+					},
+					mutator::{AddModifier, ModifierKind},
 				},
-				mutator::{AddModifier, ModifierKind},
-			}, core::NodeRegistry},
+			},
 			utility::Selector,
 		};
 

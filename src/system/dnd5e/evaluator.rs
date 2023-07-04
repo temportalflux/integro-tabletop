@@ -45,7 +45,7 @@ pub(crate) mod test {
 			fn from_kdl<'doc>(
 				mut node: crate::kdl_ext::NodeReader<'doc>,
 			) -> anyhow::Result<Target> {
-				node.parse_evaluator_inline()
+				Target::from_kdl(&mut node)
 			}
 
 			fn as_kdl<E: crate::utility::Evaluator>(data: &E) -> crate::kdl_ext::NodeBuilder {
