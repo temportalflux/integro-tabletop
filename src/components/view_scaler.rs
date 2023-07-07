@@ -1,12 +1,15 @@
-use std::ops::Bound;
 use any_range::AnyRange;
-use yew::prelude::*;
+use std::ops::Bound;
 use wasm_bindgen::prelude::{Closure, JsCast};
+use yew::prelude::*;
 
 trait BoundExt<T> {
 	fn value(&self) -> Option<T>;
 }
-impl<T> BoundExt<T> for Bound<T> where T: Copy {
+impl<T> BoundExt<T> for Bound<T>
+where
+	T: Copy,
+{
 	fn value(&self) -> Option<T> {
 		match self {
 			Bound::Included(v) | Bound::Excluded(v) => Some(*v),
@@ -18,7 +21,7 @@ impl<T> BoundExt<T> for Bound<T> where T: Copy {
 #[derive(Clone, PartialEq, Properties)]
 pub struct ViewScalerProps {
 	pub ranges: Vec<AnyRange<f64>>,
-	
+
 	/// The precision the scale operation is rounded to.
 	#[prop_or(Some(1000.0))]
 	pub precision: Option<f64>,
@@ -28,7 +31,10 @@ pub struct ViewScalerProps {
 }
 
 #[hook]
-fn use_on_window_resize<F>(callback: F) where F: Fn() + 'static {
+fn use_on_window_resize<F>(callback: F)
+where
+	F: Fn() + 'static,
+{
 	let callback = std::rc::Rc::new(callback);
 	let js_on_resize = use_memo(
 		{
@@ -46,10 +52,21 @@ fn use_on_window_resize<F>(callback: F) where F: Fn() + 'static {
 }
 
 #[function_component]
-pub fn ViewScaler(ViewScalerProps { ranges, precision, children }: &ViewScalerProps) -> Html {
+pub fn ViewScaler(
+	ViewScalerProps {
+		ranges,
+		precision,
+		children,
+	}: &ViewScalerProps,
+) -> Html {
 	fn get_width() -> f64 {
 		let window = web_sys::window().unwrap();
-		window.inner_width().ok().map(|js| js.as_f64()).flatten().unwrap_or(0.0)
+		window
+			.inner_width()
+			.ok()
+			.map(|js| js.as_f64())
+			.flatten()
+			.unwrap_or(0.0)
 	}
 
 	let window_width = use_state_eq(|| get_width());
@@ -91,4 +108,3 @@ pub fn ViewScaler(ViewScalerProps { ranges, precision, children }: &ViewScalerPr
 		</div>
 	}
 }
-

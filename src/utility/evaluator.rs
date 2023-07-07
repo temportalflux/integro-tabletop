@@ -69,8 +69,8 @@ impl<C, V> std::fmt::Debug for GenericEvaluator<C, V> {
 
 impl<C, V> crate::kdl_ext::FromKDL for GenericEvaluator<C, V>
 where
-C: 'static,
-V: 'static,
+	C: 'static,
+	V: 'static,
 {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let id = node.next_str_req()?;

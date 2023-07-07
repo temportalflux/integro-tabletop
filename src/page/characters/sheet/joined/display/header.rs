@@ -7,12 +7,7 @@ pub fn Header() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 
 	let description = &state.persistent().description;
-	let iter_pronouns = description.pronouns.iter().sorted();
-	let iter_pronouns = iter_pronouns.chain(match description.custom_pronouns.is_empty() {
-		true => vec![],
-		false => vec![&description.custom_pronouns],
-	});
-	let pronouns = group_names(html!(", "), iter_pronouns).map(|items| {
+	let pronouns = pronouns(description).map(|items| {
 		html! {
 			<span class="pronouns ms-1">{"("}{items}{")"}</span>
 		}
@@ -99,6 +94,15 @@ pub fn Header() -> Html {
 			<div class="level">{format!("Character Level ({total_level}): ")}{classes}</div>
 		</div>
 	}
+}
+
+pub fn pronouns(description: &crate::system::dnd5e::data::character::Description) -> Option<Vec<Html>> {
+	let iter_pronouns = description.pronouns.iter().sorted();
+	let iter_pronouns = iter_pronouns.chain(match description.custom_pronouns.is_empty() {
+		true => vec![],
+		false => vec![&description.custom_pronouns],
+	});
+	group_names(html!(", "), iter_pronouns)
 }
 
 fn group_names<T: AsRef<str>>(

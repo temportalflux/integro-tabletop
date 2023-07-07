@@ -18,7 +18,7 @@ use yew::prelude::*;
 use yewdux::prelude::use_store;
 
 mod header;
-use header::*;
+pub use header::*;
 
 #[function_component]
 pub fn Display(ViewProps { swap_view }: &ViewProps) -> Html {
@@ -170,7 +170,7 @@ pub fn Display(ViewProps { swap_view }: &ViewProps) -> Html {
 									<panel::Features />
 								</TabContent>
 								<TabContent id="description" title={html! {{"Description"}}}>
-									{"Description"}
+									<panel::Description />
 								</TabContent>
 							</Nav>
 						</div>

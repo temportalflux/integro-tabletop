@@ -66,6 +66,14 @@ component "Material" {
 - Desktop
 	- Display
 		- Description
+			- Alignment
+			- Size
+			- Height
+			- Weight
+			- Age
+			- Personality Traits
+			- Appearance (hair, eyes, skin, etc)
+			- Notes
 - Mobile
 	- Display
 		- Header

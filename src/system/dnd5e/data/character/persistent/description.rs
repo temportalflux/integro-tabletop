@@ -15,7 +15,10 @@ pub struct Description {
 	pub custom_pronouns: String,
 	pub height: u32,
 	pub weight: u32,
+	pub age: u32,
 	pub personality: EnumMap<PersonalityKind, Vec<String>>,
+	pub appearance: String,
+	pub notes: String,
 }
 
 impl Description {
@@ -47,6 +50,10 @@ impl FromKDL for Description {
 			}
 		}
 
+		let age = node
+			.query_i64_opt("scope() > age", 0)?
+			.map(|v| v as u32)
+			.unwrap_or_default();
 		let height = node
 			.query_i64_opt("scope() > height", 0)?
 			.map(|v| v as u32)
@@ -64,6 +71,14 @@ impl FromKDL for Description {
 				}
 			}
 		}
+		let appearance = node
+			.query_str_opt("scope() > appearance", 0)?
+			.map(str::to_owned)
+			.unwrap_or_default();
+		let notes = node
+			.query_str_opt("scope() > notes", 0)?
+			.map(str::to_owned)
+			.unwrap_or_default();
 
 		Ok(Self {
 			name,
@@ -71,7 +86,10 @@ impl FromKDL for Description {
 			custom_pronouns,
 			height,
 			weight,
+			age,
 			personality,
+			appearance,
+			notes,
 		})
 	}
 }
@@ -85,6 +103,9 @@ impl AsKdl for Description {
 		}
 		if !self.custom_pronouns.is_empty() {
 			node.push_child_t("pronoun", &self.custom_pronouns);
+		}
+		if self.age != 0 {
+			node.push_child_t("age", &self.age);
 		}
 		if self.height != 0 {
 			node.push_child_t("height", &self.height);
@@ -101,6 +122,12 @@ impl AsKdl for Description {
 			}
 			node.build("personality")
 		});
+		if !self.appearance.is_empty() {
+			node.push_child_t("appearance", &self.appearance);
+		}
+		if !self.notes.is_empty() {
+			node.push_child_t("notes", &self.notes);
+		}
 		node
 	}
 }

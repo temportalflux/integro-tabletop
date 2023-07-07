@@ -103,7 +103,7 @@ impl AsKdl for StartingEquipment {
 					node.push_entry(*count as i64);
 				}
 				node
-			},
+			}
 			Self::CustomItem(item) => NodeBuilder::default()
 				.with_entry("Custom")
 				.with_extension(item.as_kdl()),

@@ -32,11 +32,7 @@ fn SizeForm() -> Html {
 	let height = state.persistent().description.height;
 	let weight = state.persistent().description.weight;
 	let size = state.persistent().description.size();
-	let size_info = match size {
-		Size::Small => "Creatures less than 45 inches tall are Small sized. You control a 5 by 5 ft. space in combat. You can squeeze through Tiny spaces.",
-		Size::Medium => "Creatures at least 45 inches tall are Medium sized. You control a 5 by 5 ft. space in combat. You can squeeze through Small spaces.",
-		_ => "",
-	};
+	let size_info = size.description();
 	let h_bonus_str = formula.height.bonus.as_nonzero_string();
 	let w_mod_str = formula.weight.multiplier.as_nonzero_string();
 	let height_range_str = format!("{} - {} inches", formula.min_height(), formula.max_height());

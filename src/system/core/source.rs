@@ -48,10 +48,13 @@ impl SourceId {
 		if other == &Self::default() {
 			return;
 		}
-		self.basis = Some(match include_version {
-			true => other.clone(),
-			false => other.unversioned(),
-		}.into());
+		self.basis = Some(
+			match include_version {
+				true => other.clone(),
+				false => other.unversioned(),
+			}
+			.into(),
+		);
 		if self.module.is_none() {
 			self.module = other.module.clone();
 		}

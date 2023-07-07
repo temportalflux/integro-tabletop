@@ -68,10 +68,13 @@ mod test {
 				|    item \"Specific\" \"items/weapon/rapier.kdl\"
 				|}
 			";
-			let data = AddStartingEquipment(vec![StartingEquipment::SpecificItem(SourceId {
-				path: "items/weapon/rapier.kdl".into(),
-				..Default::default()
-			}, 1)]);
+			let data = AddStartingEquipment(vec![StartingEquipment::SpecificItem(
+				SourceId {
+					path: "items/weapon/rapier.kdl".into(),
+					..Default::default()
+				},
+				1,
+			)]);
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -193,14 +196,20 @@ mod test {
 			";
 			let data = AddStartingEquipment(vec![StartingEquipment::Group {
 				entries: vec![
-					StartingEquipment::SpecificItem(SourceId {
-						path: "items/weapon/rapier.kdl".into(),
-						..Default::default()
-					}, 1),
-					StartingEquipment::SpecificItem(SourceId {
-						path: "items/weapon/longsword.kdl".into(),
-						..Default::default()
-					}, 1),
+					StartingEquipment::SpecificItem(
+						SourceId {
+							path: "items/weapon/rapier.kdl".into(),
+							..Default::default()
+						},
+						1,
+					),
+					StartingEquipment::SpecificItem(
+						SourceId {
+							path: "items/weapon/longsword.kdl".into(),
+							..Default::default()
+						},
+						1,
+					),
 				],
 				pick: Some(1),
 			}]);
@@ -222,18 +231,27 @@ mod test {
 			";
 			let data = AddStartingEquipment(vec![StartingEquipment::Group {
 				entries: vec![
-					StartingEquipment::SpecificItem(SourceId {
-						path: "items/weapons/shortsword.kdl".into(),
-						..Default::default()
-					}, 1),
-					StartingEquipment::SpecificItem(SourceId {
-						path: "items/weapons/shortsword.kdl".into(),
-						..Default::default()
-					}, 1),
-					StartingEquipment::SpecificItem(SourceId {
-						path: "items/weapons/longbow.kdl".into(),
-						..Default::default()
-					}, 1),
+					StartingEquipment::SpecificItem(
+						SourceId {
+							path: "items/weapons/shortsword.kdl".into(),
+							..Default::default()
+						},
+						1,
+					),
+					StartingEquipment::SpecificItem(
+						SourceId {
+							path: "items/weapons/shortsword.kdl".into(),
+							..Default::default()
+						},
+						1,
+					),
+					StartingEquipment::SpecificItem(
+						SourceId {
+							path: "items/weapons/longbow.kdl".into(),
+							..Default::default()
+						},
+						1,
+					),
 				],
 				pick: None,
 			}]);
