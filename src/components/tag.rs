@@ -1,4 +1,4 @@
-use yew::{html::ChildrenProps, prelude::*};
+use yew::prelude::*;
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct TagProps {
@@ -36,9 +36,18 @@ pub fn Tag(
 	}
 }
 
+#[derive(Clone, PartialEq, Properties)]
+pub struct TagsProps {
+	#[prop_or_default]
+	pub classes: Classes,
+	#[prop_or_default]
+	pub children: Children,
+}
+
 #[function_component]
-pub fn Tags(ChildrenProps { children }: &ChildrenProps) -> Html {
+pub fn Tags(TagsProps { classes, children }: &TagsProps) -> Html {
+	let classes = classes!("tags", classes.clone());
 	html! {
-		<div class="tags">{children.clone()}</div>
+		<div class={classes}>{children.clone()}</div>
 	}
 }

@@ -55,6 +55,7 @@
 		}
 		> .pronouns {
 			font-size: 14px;
+			font-weight: var(--bs-body-font-weight);
 		}
 	}
 	> .group {
@@ -275,6 +276,12 @@
 	@extend .icon-mask;
 	--icon-image: url(assets/defense/vulnerability.svg);
 	--icon-color: #e40712;
+}
+.tags.scroll-content:last-child {
+	margin-bottom: 0;
+}
+.tags.scroll-content .tag {
+	margin-bottom: 0;
 }
 .tag.defense .icon {
 	width: 12px;
@@ -770,11 +777,22 @@ button.collapse_trigger.arrow_right.collapsed::after {
 }
 .panel.spells > .sections {
 	padding-right: 1rem!important;
-	overflow-y: scroll;
+	overflow-y: auto;
 	height: 460px;
 }
 .panel.spells:has(> .caster-stats) > .sections {
 	height: 400px;
+}
+
+.panel.inventory > .sections {
+	overflow-y: auto;
+	height: 470px;
+}
+
+.panel.description {
+	overflow-y: auto;
+	height: 510px;
+	padding: 0 12px 5px 5px;
 }
 
 // All pages are always hidden

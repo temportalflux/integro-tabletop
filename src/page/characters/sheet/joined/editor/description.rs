@@ -2,7 +2,7 @@ use crate::{
 	page::characters::sheet::{CharacterHandle, MutatorImpact},
 	system::dnd5e::{
 		components::{validate_uint_only, GeneralProp},
-		data::{character::PersonalityKind, Size},
+		data::character::{Persistent, PersonalityKind},
 	},
 	utility::InputExt,
 };
@@ -10,17 +10,11 @@ use yew::prelude::*;
 
 #[function_component]
 pub fn DescriptionTab() -> Html {
-	/*
-	Age numerical field, with descriptive text for life expectancy.
-	*/
-
+	/* TODO: Age numerical field, with descriptive text for life expectancy. */
 	html! {<div class="mx-4 mt-3">
 		<SizeForm />
 		<PersonalitySection />
-		<div class="form-floating mb-3">
-			<textarea class="form-control" id="appearance" />
-			<label for="appearance">{"Appearance"}</label>
-		</div>
+		<AppearanceSection />
 	</div>}
 }
 
@@ -267,6 +261,31 @@ fn PersonalityCard(GeneralProp { value }: &GeneralProp<PersonalityKind>) -> Html
 			{selected_values}
 			{info_collapse}
 			{suggestions_collapsable}
+		</div>
+	}
+}
+
+#[function_component]
+pub fn AppearanceSection() -> Html {
+	let state = use_context::<CharacterHandle>().unwrap();
+	let onchange = Callback::from({
+		let state = state.clone();
+		move |evt: web_sys::Event| {
+			let Some(value) = evt.input_value() else { return; };
+			state.dispatch(Box::new(move |persistent: &mut Persistent| {
+				persistent.description.appearance = value;
+				MutatorImpact::None
+			}));
+		}
+	});
+	html! {
+		<div class="form-floating mb-3">
+			<textarea
+				class="form-control" id="appearance"
+				{onchange}
+				value={state.persistent().description.appearance.clone()}
+			/>
+			<label for="appearance">{"Appearance"}</label>
 		</div>
 	}
 }

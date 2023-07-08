@@ -46,7 +46,7 @@ pub fn Inventory() -> Html {
 
 	// TODO: If the player's persistent inventory is empty,
 	// show an option to add items based on their StartingEquipment.
-	log::debug!(target: "inventory", "{:?}", state.starting_equipment());
+	//log::debug!(target: "inventory", "{:?}", state.starting_equipment());
 
 	// TODO: Implement search-inventory functionality
 	// TODO: tag buttons to browse item containers
@@ -56,18 +56,22 @@ pub fn Inventory() -> Html {
 		.filter(|(_, entry)| entry.as_item().items.is_some())
 		.map(|(id, _)| html! { <ContainerSection container_id={id.clone()} /> })
 		.collect::<Vec<_>>();
-	html! {<>
-		<div class="input-group mt-2">
-			<span class="input-group-text"><i class="bi bi-search"/></span>
-			<input
-				type="text" class="form-control"
-				placeholder="Search item names, types, rarities, or tags"
-			/>
-			<button type="button" class="btn btn-outline-theme" onclick={open_browser}>{"Browse Items"}</button>
+	html! {
+		<div class="panel inventory">
+			<div class="input-group mt-2">
+				<span class="input-group-text"><i class="bi bi-search"/></span>
+				<input
+					type="text" class="form-control"
+					placeholder="Search item names, types, rarities, or tags"
+				/>
+				<button type="button" class="btn btn-outline-theme" onclick={open_browser}>{"Browse Items"}</button>
+			</div>
+			<div class="sections">
+				<ContainerSection container_id={None} />
+				{containers}
+			</div>
 		</div>
-		<ContainerSection container_id={None} />
-		{containers}
-	</>}
+	}
 }
 
 #[derive(Clone, PartialEq, Properties)]

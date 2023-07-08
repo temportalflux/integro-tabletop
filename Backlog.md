@@ -63,17 +63,6 @@ component "Material" {
 - Some spell containers can only be transcribed from, never prepare or cast from
 
 ### Views
-- Desktop
-	- Display
-		- Description
-			- Alignment
-			- Size
-			- Height
-			- Weight
-			- Age
-			- Personality Traits
-			- Appearance (hair, eyes, skin, etc)
-			- Notes
 - Mobile
 	- Display
 		- Header
@@ -84,6 +73,7 @@ component "Material" {
 		- Inventory
 		- Description
 	- Editor; TBD
+- Consider moving notes to a dedicated page outside of description
 
 ## App Features
 

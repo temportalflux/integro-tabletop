@@ -1,6 +1,6 @@
 use std::str::FromStr;
 use wasm_bindgen::JsCast;
-use web_sys::{HtmlInputElement, HtmlSelectElement};
+use web_sys::{HtmlInputElement, HtmlSelectElement, HtmlTextAreaElement};
 use yew::prelude::Callback;
 
 pub fn callback<T>() -> Callback<T, T> {
@@ -9,11 +9,17 @@ pub fn callback<T>() -> Callback<T, T> {
 
 pub trait InputExt {
 	fn target_input(&self) -> Option<HtmlInputElement>;
+	fn target_textarea(&self) -> Option<HtmlTextAreaElement>;
 	fn target_select(&self) -> Option<HtmlSelectElement>;
 
 	fn input_value(&self) -> Option<String> {
-		let Some(input) = self.target_input() else { return None; };
-		Some(input.value())
+		if let Some(input) = self.target_input() {
+			return Some(input.value());
+		}
+		if let Some(text_area) = self.target_textarea() {
+			return Some(text_area.value());
+		}
+		None
 	}
 
 	fn input_value_t<T: FromStr>(&self) -> Option<T> {
@@ -45,6 +51,11 @@ impl InputExt for web_sys::Event {
 		target.dyn_into::<HtmlInputElement>().ok()
 	}
 
+	fn target_textarea(&self) -> Option<HtmlTextAreaElement> {
+		let Some(target) = self.target() else { return None; };
+		target.dyn_into::<HtmlTextAreaElement>().ok()
+	}
+
 	fn target_select(&self) -> Option<HtmlSelectElement> {
 		let Some(target) = self.target() else { return None; };
 		target.dyn_into::<HtmlSelectElement>().ok()
@@ -55,6 +66,11 @@ impl InputExt for yew::prelude::NodeRef {
 	fn target_input(&self) -> Option<HtmlInputElement> {
 		let Some(node) = self.get() else { return None; };
 		node.dyn_into::<HtmlInputElement>().ok()
+	}
+
+	fn target_textarea(&self) -> Option<HtmlTextAreaElement> {
+		let Some(node) = self.get() else { return None; };
+		node.dyn_into::<HtmlTextAreaElement>().ok()
 	}
 
 	fn target_select(&self) -> Option<HtmlSelectElement> {

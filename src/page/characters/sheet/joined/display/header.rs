@@ -96,7 +96,9 @@ pub fn Header() -> Html {
 	}
 }
 
-pub fn pronouns(description: &crate::system::dnd5e::data::character::Description) -> Option<Vec<Html>> {
+pub fn pronouns(
+	description: &crate::system::dnd5e::data::character::Description,
+) -> Option<Vec<Html>> {
 	let iter_pronouns = description.pronouns.iter().sorted();
 	let iter_pronouns = iter_pronouns.chain(match description.custom_pronouns.is_empty() {
 		true => vec![],

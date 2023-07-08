@@ -18,7 +18,6 @@ pub struct Description {
 	pub age: u32,
 	pub personality: EnumMap<PersonalityKind, Vec<String>>,
 	pub appearance: String,
-	pub notes: String,
 }
 
 impl Description {
@@ -75,10 +74,6 @@ impl FromKDL for Description {
 			.query_str_opt("scope() > appearance", 0)?
 			.map(str::to_owned)
 			.unwrap_or_default();
-		let notes = node
-			.query_str_opt("scope() > notes", 0)?
-			.map(str::to_owned)
-			.unwrap_or_default();
 
 		Ok(Self {
 			name,
@@ -89,7 +84,6 @@ impl FromKDL for Description {
 			age,
 			personality,
 			appearance,
-			notes,
 		})
 	}
 }
@@ -124,9 +118,6 @@ impl AsKdl for Description {
 		});
 		if !self.appearance.is_empty() {
 			node.push_child_t("appearance", &self.appearance);
-		}
-		if !self.notes.is_empty() {
-			node.push_child_t("notes", &self.notes);
 		}
 		node
 	}

@@ -19,12 +19,12 @@ gloo-utils = "0.1"
 gloo-timers = { version = "0.2", features = ["futures"] }
 web-sys = { version = "0.3", features = [
 	"Request", "Storage", "Window", "DataTransfer",
-	"HtmlSelectElement", "HtmlInputElement",
+	"HtmlSelectElement", "HtmlInputElement", "HtmlTextAreaElement",
 	"DomTokenList", "Node", "NodeList",
 	"MediaQueryList", "MediaQueryListEvent",
 	"Event", "EventTarget", "KeyboardEvent",
 	"Performance", "Screen",
-	"UiEvent",
+	"UiEvent", "CssStyleDeclaration",
 ] }
 wasm-bindgen-futures = "0.4"
 futures = "0.3"
