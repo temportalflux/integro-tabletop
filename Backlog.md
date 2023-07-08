@@ -66,7 +66,6 @@ component "Material" {
 - Mobile
 	- Display
 		- Header
-		- Speeds, Senses, & Other Proficiencies
 		- Combat
 		- Actions & Features
 		- Spells

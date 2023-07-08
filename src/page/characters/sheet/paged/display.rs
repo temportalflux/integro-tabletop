@@ -14,11 +14,6 @@ Mobile-First Pages:
   - Take a Rest btns
   - HP Small
   - Inspiration
-- Abilities & Skills
-  - Ability Scores + Modifiers
-  - Saving Throw Modifiers
-  - Saving Throw Adv/Dis
-  - Skills
 - Speed, Senses, & Other Proficiencies
   - Prof Bonus
   - Speeds & Senses
@@ -37,6 +32,7 @@ Mobile-First Pages:
 */
 
 pub mod abilities;
+pub mod proficiencies;
 
 #[derive(EnumSetType, Default)]
 enum Page {
@@ -65,7 +61,7 @@ impl Page {
 	fn page_html(&self) -> Html {
 		match self {
 			Self::Abilities => html!(<abilities::Page />),
-			Self::Proficiencies => html!(),
+			Self::Proficiencies => html!(<proficiencies::Page />),
 			Self::Combat => html!(),
 			Self::Features => html!(),
 			Self::Spells => html!(),
