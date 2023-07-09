@@ -22,6 +22,7 @@ Mobile-First Pages:
 
 pub mod abilities;
 pub mod attributes;
+pub mod description;
 
 #[derive(EnumSetType, Default)]
 enum Page {
@@ -52,7 +53,7 @@ impl Page {
 			Self::Features => html!(),
 			Self::Spells => html!(),
 			Self::Inventory => html!(),
-			Self::Description => html!(),
+			Self::Description => html!(<description::Page />),
 		}
 	}
 }

@@ -5,6 +5,21 @@ use crate::{
 };
 use yew::prelude::*;
 
+#[function_component]
+pub fn Description() -> Html {
+	html! {
+		<div class="panel description">
+			<AgePronouns />
+			<div class="hr my-2" />
+			<SizeHeightWeight />
+			<div class="hr my-2" />
+			<Personality />
+			<div class="hr my-2" />
+			<AppearanceEditor />
+		</div>
+	}
+}
+
 #[derive(Clone, PartialEq, Default)]
 enum HeightDisplay {
 	#[default]
@@ -38,7 +53,7 @@ impl WeightDisplay {
 }
 
 #[function_component]
-pub fn Description() -> Html {
+pub fn SizeHeightWeight() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let height_display = use_state_eq(|| HeightDisplay::default());
 	let weight_display = use_state_eq(|| WeightDisplay::default());
@@ -63,6 +78,78 @@ pub fn Description() -> Html {
 			});
 		}
 	});
+	
+	html! {<>
+		<div class="row text-center">
+			<div class="col">
+				<label style="font-weight: 700;">{"Size"}</label>
+				<span style="display: block;">{state.persistent().description.size()}</span>
+			</div>
+			<div class="col" onclick={onclick_height}>
+				<label style="font-weight: 700;">{"Height"}</label>
+				<span style="display: block;">
+					{height_display.format(state.persistent().description.height)}
+				</span>
+			</div>
+			<div class="col" onclick={onclick_weight}>
+				<label style="font-weight: 600;">{"Weight"}</label>
+				<span style="display: block;">
+					{weight_display.format(state.persistent().description.weight)}
+				</span>
+			</div>
+		</div>
+		<div class="form-text">
+			{state.persistent().description.size().description()}
+		</div>
+	</>}
+}
+
+#[function_component]
+pub fn AgePronouns() -> Html {
+	let state = use_context::<CharacterHandle>().unwrap();
+	html! {
+		<div class="row">
+			<div class="col-auto">
+				<label style="font-weight: 700;">{"Age"}</label>
+				<span class="text-center" style="display: block;">
+					{match state.persistent().description.age {
+						0 => html!("--"),
+						age => html!({age}),
+					}}
+				</span>
+			</div>
+			<div class="col">
+				<label style="font-weight: 700;">{"Pronouns"}</label>
+				<span style="display: block;">{pronouns(&state.persistent().description).unwrap_or_default()}</span>
+			</div>
+		</div>
+	}
+}
+
+#[function_component]
+pub fn Personality() -> Html {
+	let state = use_context::<CharacterHandle>().unwrap();
+	html! {
+		<div class="mb-3">
+			{state.persistent().description.personality.iter().map(|(kind, traits)| {
+				html! {
+					<div>
+						<label style="font-weight: 700;">{kind}</label>
+						<ul style="margin-bottom: 0;">
+							{traits.iter().map(move |trait_str| {
+								html!(<li>{trait_str}</li>)
+							}).collect::<Vec<_>>()}
+						</ul>
+					</div>
+				}
+			}).collect::<Vec<_>>()}
+		</div>
+	}
+}
+
+#[function_component]
+pub fn AppearanceEditor() -> Html {
+	let state = use_context::<CharacterHandle>().unwrap();
 
 	// TODO: Display appearance as plaintext (no editor), and switch to a textarea
 	// with fixed rows equal to (lines + 5) when double clicked, reverting back when focus is lost
@@ -78,75 +165,14 @@ pub fn Description() -> Html {
 	});
 
 	html! {
-		<div class="panel description">
-			<div class="row">
-				<div class="col-auto">
-					<label style="font-weight: 700;">{"Age"}</label>
-					<span class="text-center" style="display: block;">
-						{match state.persistent().description.age {
-							0 => html!("--"),
-							age => html!({age}),
-						}}
-					</span>
-				</div>
-				<div class="col">
-					<label style="font-weight: 700;">{"Pronouns"}</label>
-					<span style="display: block;">{pronouns(&state.persistent().description).unwrap_or_default()}</span>
-				</div>
-			</div>
-
-			<div class="hr my-2" />
-
-			<div class="row text-center">
-				<div class="col">
-					<label style="font-weight: 700;">{"Size"}</label>
-					<span style="display: block;">{state.persistent().description.size()}</span>
-				</div>
-				<div class="col" onclick={onclick_height}>
-					<label style="font-weight: 700;">{"Height"}</label>
-					<span style="display: block;">
-						{height_display.format(state.persistent().description.height)}
-					</span>
-				</div>
-				<div class="col" onclick={onclick_weight}>
-					<label style="font-weight: 600;">{"Weight"}</label>
-					<span style="display: block;">
-						{weight_display.format(state.persistent().description.weight)}
-					</span>
-				</div>
-			</div>
-			<div class="form-text">
-				{state.persistent().description.size().description()}
-			</div>
-
-			<div class="hr my-2" />
-
-			<div class="mb-3">
-				{state.persistent().description.personality.iter().map(|(kind, traits)| {
-					html! {
-						<div>
-							<label style="font-weight: 700;">{kind}</label>
-							<ul style="margin-bottom: 0;">
-								{traits.iter().map(move |trait_str| {
-									html!(<li>{trait_str}</li>)
-								}).collect::<Vec<_>>()}
-							</ul>
-						</div>
-					}
-				}).collect::<Vec<_>>()}
-			</div>
-
-			<div class="hr my-2" />
-
-			<div class="mb-3">
-				<label class="form-label" for="appearanceInput" style="font-weight: 700;">{"Appearance"}</label>
-				<textarea
-					class="form-control" id="appearanceInput"
-					rows="5"
-					onchange={onchange_appearance}
-					value={state.persistent().description.appearance.clone()}
-				/>
-			</div>
+		<div class="mb-3">
+			<label class="form-label" for="appearanceInput" style="font-weight: 700;">{"Appearance"}</label>
+			<textarea
+				class="form-control" id="appearanceInput"
+				rows="5"
+				onchange={onchange_appearance}
+				value={state.persistent().description.appearance.clone()}
+			/>
 		</div>
 	}
 }
