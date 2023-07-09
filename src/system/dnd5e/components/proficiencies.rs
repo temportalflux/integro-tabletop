@@ -56,7 +56,7 @@ pub fn Proficiencies() -> Html {
 		}
 	});
 	html! {
-		<div id="proficiencies-container" class="card my-1 mx-auto" style="border-color: var(--theme-frame-color);" {onclick}>
+		<div id="proficiencies-container" class="card my-1" style="border-color: var(--theme-frame-color);" {onclick}>
 			<div class="card-body" style="padding: 5px;">
 				<h5 class="card-title text-center" style="font-size: 0.8rem;">{"Proficiencies"}</h5>
 				{make_proficiencies_section("Languages", &proficiencies.languages, String::to_string)}

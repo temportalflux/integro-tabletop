@@ -56,7 +56,7 @@ pub fn Sheet(props: &GeneralProp<SourceId>) -> Html {
 	};
 	html! {<>
 		<ContextProvider<CharacterHandle> context={character.clone()}>
-			<div style="--theme-frame-color: #BA90CB; --theme-frame-color-muted: #BA90CB80; --theme-roll-modifier: #ffffff;">
+			<div class="page-root" style="--theme-frame-color: #BA90CB; --theme-frame-color-muted: #BA90CB80; --theme-roll-modifier: #ffffff;">
 				<modal::Provider>
 					<modal::GeneralPurpose />
 					<ViewScaler ranges={vec![(1200.0..1400.0).into(), (1400.0..).into()]}>

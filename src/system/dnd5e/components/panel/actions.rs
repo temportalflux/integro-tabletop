@@ -346,13 +346,15 @@ pub fn Actions() -> Html {
 		}).collect::<Vec<_>>()}
 	</div>});
 
-	html! {<>
-		<Tags>{tag_htmls}</Tags>
-		{budget}
-		<div class="pe-3" style="overflow-y: scroll; height: 455px;">
-			{panes}
+	html! {
+		<div class="panel actions">
+			<Tags>{tag_htmls}</Tags>
+			{budget}
+			<div class="pane">
+				{panes}
+			</div>
 		</div>
-	</>}
+	}
 }
 
 #[derive(Clone, PartialEq, Default)]

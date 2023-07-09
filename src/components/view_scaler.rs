@@ -88,7 +88,7 @@ pub fn ViewScaler(
 			(Some(start), Some(end)) => *start < real_width && real_width < *end,
 		}
 	});
-	let Some(target_range) = target_range else { return html!(<div>{children.clone()}</div>); };
+	let Some(target_range) = target_range else { return html!(<div class="view-scaler">{children.clone()}</div>); };
 	let start = target_range.start_bound().value().cloned();
 	let end = target_range.end_bound().value().cloned();
 	let start = start.unwrap_or(real_width);
@@ -103,7 +103,7 @@ pub fn ViewScaler(
 	}
 	let style = format!("transform-origin: top; transform: scale({scale});");
 	html! {
-		<div {style}>
+		<div class="view-scaler" {style}>
 			{children.clone()}
 		</div>
 	}

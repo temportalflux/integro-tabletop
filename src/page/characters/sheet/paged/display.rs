@@ -49,9 +49,9 @@ impl Page {
 		match self {
 			Self::Abilities => html!(<abilities::Page />),
 			Self::Attributes => html!(<attributes::Page />),
-			Self::Features => html!(),
-			Self::Spells => html!(),
-			Self::Inventory => html!(),
+			Self::Features => html!(<crate::system::dnd5e::components::panel::Actions />),
+			Self::Spells => html!(<crate::system::dnd5e::components::panel::Spells />),
+			Self::Inventory => html!(<crate::system::dnd5e::components::panel::Inventory />),
 			Self::Description => html!(<crate::system::dnd5e::components::panel::Description />),
 		}
 	}

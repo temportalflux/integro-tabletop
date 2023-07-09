@@ -5,6 +5,23 @@
 @import "src/components/tag.scss";
 @import "src/system/dnd5e/components/ability/score.scss";
 
+html {
+	height: 100%;
+}
+body {
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+}
+.page-root {
+	flex-grow: 1;
+	> .view-scaler {
+		height: 100%;
+		display: flex;
+		flex-direction: column;
+	}
+}
+
 .dropdown-item.disabled, .dropdown-item:disabled {
 	color: #adb5bd75;
 }
@@ -755,8 +772,6 @@ button.collapse_trigger.arrow_right.collapsed::after {
 }
 
 .panel.spells > .caster-stats {
-	margin: 0 8rem;
-	height: 55px;
 	> .names {
 		text-align: center!important;
 	}
@@ -775,22 +790,38 @@ button.collapse_trigger.arrow_right.collapsed::after {
 		}
 	}
 }
-.panel.spells > .sections {
-	padding-right: 1rem!important;
-	overflow-y: auto;
-	height: 460px;
-}
-.panel.spells:has(> .caster-stats) > .sections {
-	height: 400px;
-}
 
-.panel.inventory > .sections {
+.panel.actions > .pane {
 	overflow-y: auto;
-	height: 470px;
 }
 
 @media screen and (min-width: 1200px)
 {
+	.panel.actions > .pane {
+		padding-right: 1rem!important;
+		height: 455px;
+	}
+
+	.panel.spells {
+		> .caster-stats {
+			margin: 0 8rem;
+			height: 55px;
+		}
+		> .sections {
+			padding-right: 1rem!important;
+			overflow-y: auto;
+			height: 460px;
+		}
+	}
+	.panel.spells:has(> .caster-stats) > .sections {
+		height: 400px;
+	}
+
+	.panel.inventory > .sections {
+		overflow-y: auto;
+		height: 470px;
+	}
+
 	.panel.description {
 		overflow-y: auto;
 		height: 510px;
@@ -799,11 +830,32 @@ button.collapse_trigger.arrow_right.collapsed::after {
 }
 @media screen and (max-width: 1200px)
 {
+	.panel.actions {
+		margin-top: 0.5rem;
+		display: flex;
+		flex-direction: column;
+		flex-grow: 1;
+		> .pane {
+			display: flex;
+			flex-direction: column;
+			flex-grow: 1;
+
+			height: 0;
+			padding-right: 0.25rem;
+			overflow-y: auto;
+		}
+	}
+
 	.panel.description {
 		margin: 0.5rem!important;
 	}
 }
 
+.paged-display {
+	display: flex;
+	flex-direction: column;
+	flex-grow: 1;
+}
 // All pages are always hidden
 .paged-display > .page {
 	display: none;
@@ -812,6 +864,8 @@ button.collapse_trigger.arrow_right.collapsed::after {
 $Pages: Abilities, Attributes, Features, Spells, Inventory, Description;
 @each $Page in $Pages {
 	.paged-display:has(> select > option[value="#{$Page}"][selected="selected"]) > .page##{$Page} {
-		display: block;
+		display: flex;
+		flex-direction: column;
+		flex-grow: 1;
 	}
 }
