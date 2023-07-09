@@ -789,10 +789,19 @@ button.collapse_trigger.arrow_right.collapsed::after {
 	height: 470px;
 }
 
-.panel.description {
-	overflow-y: auto;
-	height: 510px;
-	padding: 0 12px 5px 5px;
+@media screen and (min-width: 1200px)
+{
+	.panel.description {
+		overflow-y: auto;
+		height: 510px;
+		padding: 0 12px 5px 5px;
+	}
+}
+@media screen and (max-width: 1200px)
+{
+	.panel.description {
+		margin: 0.5rem!important;
+	}
 }
 
 // All pages are always hidden

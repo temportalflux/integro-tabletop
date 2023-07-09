@@ -66,13 +66,10 @@ component "Material" {
 - Mobile
 	- Display
 		- Header
-		- Combat
 		- Actions & Features
 		- Spells
 		- Inventory
-		- Description
 	- Editor; TBD
-- Consider moving notes to a dedicated page outside of description
 
 ## App Features
 
