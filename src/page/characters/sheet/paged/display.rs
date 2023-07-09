@@ -14,17 +14,6 @@ Mobile-First Pages:
   - Take a Rest btns
   - HP Small
   - Inspiration
-- Speed, Senses, & Other Proficiencies
-  - Prof Bonus
-  - Speeds & Senses
-  - Languages, Armor, Weapons, Tools
-- Combat
-  - Initiative Bonus
-  - Armor Class
-  - HP Mgmt
-  - Defenses
-  - Conditions
-  - Speed & Senses?
 - Actions & Features
 - Spells
 - Inventory
@@ -32,14 +21,13 @@ Mobile-First Pages:
 */
 
 pub mod abilities;
-pub mod proficiencies;
+pub mod attributes;
 
 #[derive(EnumSetType, Default)]
 enum Page {
 	#[default]
 	Abilities,
-	Proficiencies,
-	Combat,
+	Attributes,
 	Features,
 	Spells,
 	Inventory,
@@ -49,8 +37,7 @@ impl Page {
 	fn display_name(&self) -> &'static str {
 		match self {
 			Self::Abilities => "Abilities & Skills",
-			Self::Proficiencies => "Speeds, Senses, & Other Proficiencies",
-			Self::Combat => "Combat",
+			Self::Attributes => "Attributes & Proficiencies",
 			Self::Features => "Actions & Features",
 			Self::Spells => "Spells",
 			Self::Inventory => "Inventory",
@@ -61,8 +48,7 @@ impl Page {
 	fn page_html(&self) -> Html {
 		match self {
 			Self::Abilities => html!(<abilities::Page />),
-			Self::Proficiencies => html!(<proficiencies::Page />),
-			Self::Combat => html!(),
+			Self::Attributes => html!(<attributes::Page />),
 			Self::Features => html!(),
 			Self::Spells => html!(),
 			Self::Inventory => html!(),
@@ -74,8 +60,7 @@ impl ToString for Page {
 	fn to_string(&self) -> String {
 		match self {
 			Self::Abilities => "Abilities",
-			Self::Proficiencies => "Proficiencies",
-			Self::Combat => "Combat",
+			Self::Attributes => "Attributes",
 			Self::Features => "Features",
 			Self::Spells => "Spells",
 			Self::Inventory => "Inventory",
@@ -90,8 +75,7 @@ impl FromStr for Page {
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		match s {
 			"Abilities" => Ok(Self::Abilities),
-			"Proficiencies" => Ok(Self::Proficiencies),
-			"Combat" => Ok(Self::Combat),
+			"Attributes" => Ok(Self::Attributes),
 			"Features" => Ok(Self::Features),
 			"Spells" => Ok(Self::Spells),
 			"Inventory" => Ok(Self::Inventory),
@@ -100,8 +84,7 @@ impl FromStr for Page {
 				v.into(),
 				vec![
 					"Abilities",
-					"Proficiencies",
-					"Combat",
+					"Attributes",
 					"Features",
 					"Spells",
 					"Inventory",

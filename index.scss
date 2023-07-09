@@ -800,7 +800,7 @@ button.collapse_trigger.arrow_right.collapsed::after {
 	display: none;
 }
 // unless the page is selected in the dropdown
-$Pages: Abilities, Proficiencies, Combat, Features, Spells, Inventory, Description;
+$Pages: Abilities, Attributes, Features, Spells, Inventory, Description;
 @each $Page in $Pages {
 	.paged-display:has(> select > option[value="#{$Page}"][selected="selected"]) > .page##{$Page} {
 		display: block;
