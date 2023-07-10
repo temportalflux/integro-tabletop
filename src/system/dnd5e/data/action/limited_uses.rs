@@ -91,7 +91,7 @@ impl LimitedUses {
 }
 
 impl UseCounterData {
-	fn get_data_path(&self) -> Option<PathBuf> {
+	pub fn get_data_path(&self) -> Option<PathBuf> {
 		self.uses_count.get_data_path()
 	}
 

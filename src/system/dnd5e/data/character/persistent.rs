@@ -24,6 +24,8 @@ use std::{
 mod description;
 pub use description::*;
 
+pub static MAX_SPELL_RANK: u8 = 9;
+
 /// Core character data which is (de)serializable and
 /// from which the derived data can be compiled.
 #[derive(Clone, PartialEq, Default, Debug)]
@@ -451,9 +453,7 @@ impl FromKDL for SelectedSpells {
 			cache_by_caster.insert(caster_name.to_owned(), selection_data);
 		}
 
-		Ok(Self {
-			cache_by_caster,
-		})
+		Ok(Self { cache_by_caster })
 	}
 }
 impl AsKdl for SelectedSpells {

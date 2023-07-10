@@ -6,7 +6,7 @@ use crate::{
 			action::LimitedUses,
 			character::{
 				spellcasting::{self, Caster, Restriction, RitualCapability, Slots, SpellEntry},
-				Character,
+				Character, MAX_SPELL_RANK,
 			},
 			description,
 			spell::{self, Spell},
@@ -142,6 +142,16 @@ impl Mutator for Spellcasting {
 	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
 		match &self.0 {
 			Operation::Caster(caster) => {
+				let data_paths = (1..=MAX_SPELL_RANK)
+					.into_iter()
+					.map(|rank| stats.persistent().selected_spells.consumed_slots_path(rank))
+					.collect::<Vec<_>>();
+				let entry = crate::system::dnd5e::data::character::RestEntry {
+					name: "Spell Slots".into(),
+					data_paths,
+					source: parent.to_owned(),
+				};
+				stats.rest_resets_mut().add(caster.slots.reset_on, entry);
 				stats.spellcasting_mut().add_caster(caster.clone());
 			}
 			Operation::AddSource {
@@ -162,6 +172,16 @@ impl Mutator for Spellcasting {
 				if let Some(uses) = limited_uses.as_ref() {
 					if let LimitedUses::Usage(data) = uses {
 						stats.features_mut().register_usage(data, parent);
+						if let Some(rest) = data.reset_on {
+							if let Some(data_path) = data.get_data_path() {
+								let entry = crate::system::dnd5e::data::character::RestEntry {
+									name: "Prepared Spellcasting".into(),
+									data_paths: vec![data_path],
+									source: parent.to_owned(),
+								};
+								stats.rest_resets_mut().add(rest, entry);
+							}
+						}
 					}
 				}
 				let mut all_spells = specific_spells

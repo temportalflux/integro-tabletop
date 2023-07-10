@@ -4,7 +4,7 @@ use crate::system::dnd5e::{
 		item::weapon,
 		proficiency,
 		roll::{Modifier, Roll},
-		Ability, ArmorClass, DamageType, OtherProficiencies, Skill,
+		Ability, ArmorClass, DamageType, OtherProficiencies, Rest, Skill,
 	},
 	mutator::{Defense, Flag},
 };
@@ -54,6 +54,7 @@ pub struct Derived {
 	pub spellcasting: Spellcasting,
 	pub starting_equipment: Vec<(Vec<StartingEquipment>, PathBuf)>,
 	pub additional_bundles: AdditionalBundleCache,
+	pub rest_resets: RestResets,
 }
 
 impl Default for Derived {
@@ -78,6 +79,7 @@ impl Default for Derived {
 			spellcasting: Default::default(),
 			starting_equipment: Default::default(),
 			additional_bundles: Default::default(),
+			rest_resets: Default::default(),
 		}
 	}
 }
@@ -391,5 +393,21 @@ impl AttackBonuses {
 			bonuses.push((&bonus.amount, &bonus.damage_type, bonus.source.as_path()));
 		}
 		bonuses
+	}
+}
+
+#[derive(Clone, Default, PartialEq, Debug)]
+pub struct RestResets {
+	entries: EnumMap<Rest, Vec<RestEntry>>,
+}
+#[derive(Clone, PartialEq, Debug)]
+pub struct RestEntry {
+	pub name: String,
+	pub data_paths: Vec<PathBuf>,
+	pub source: PathBuf,
+}
+impl RestResets {
+	pub fn add(&mut self, rest: Rest, entry: RestEntry) {
+		self.entries[rest].push(entry);
 	}
 }

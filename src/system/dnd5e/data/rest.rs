@@ -1,8 +1,9 @@
 use crate::utility::InvalidEnumStr;
+use enum_map::Enum;
 use enumset::EnumSetType;
 use std::str::FromStr;
 
-#[derive(Debug, EnumSetType)]
+#[derive(Debug, EnumSetType, Enum)]
 pub enum Rest {
 	Short,
 	Long,

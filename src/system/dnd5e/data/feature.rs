@@ -76,6 +76,16 @@ impl MutatorGroup for Feature {
 			if let Some(uses) = &action.limited_uses {
 				if let LimitedUses::Usage(data) = uses {
 					stats.features_mut().register_usage(data, &path_to_self);
+					if let Some(rest) = data.reset_on {
+						if let Some(data_path) = data.get_data_path() {
+							let entry = super::character::RestEntry {
+								name: self.name.clone(),
+								data_paths: vec![data_path],
+								source: path_to_self.clone(),
+							};
+							stats.rest_resets_mut().add(rest, entry);
+						}
+					}
 				}
 			}
 		}

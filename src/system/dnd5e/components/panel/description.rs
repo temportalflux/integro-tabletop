@@ -78,7 +78,7 @@ pub fn SizeHeightWeight() -> Html {
 			});
 		}
 	});
-	
+
 	html! {<>
 		<div class="row text-center">
 			<div class="col">

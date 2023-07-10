@@ -1,6 +1,6 @@
 use super::{
-	spellcasting, AttackBonuses, DefaultsBlock, Features, HitPoint, HitPoints, Spellcasting,
-	StartingEquipment,
+	spellcasting, AttackBonuses, DefaultsBlock, Features, HitPoint, HitPoints, RestResets,
+	Spellcasting, StartingEquipment,
 };
 use crate::{
 	path_map::PathMap,
@@ -486,6 +486,14 @@ impl Character {
 		self.derived
 			.starting_equipment
 			.push((entries.clone(), source.to_owned()));
+	}
+
+	pub fn rest_resets_mut(&mut self) -> &mut RestResets {
+		&mut self.derived.rest_resets
+	}
+
+	pub fn rest_resets(&self) -> &RestResets {
+		&self.derived.rest_resets
 	}
 }
 

@@ -9,7 +9,10 @@ use crate::{
 		core::{ModuleId, SourceId},
 		dnd5e::{
 			data::{
-				character::spellcasting::{CasterKind, RitualCapability, SpellEntry},
+				character::{
+					spellcasting::{CasterKind, RitualCapability, SpellEntry},
+					MAX_SPELL_RANK,
+				},
 				proficiency, spell, Spell,
 			},
 			DnD5e,
@@ -153,23 +156,19 @@ struct SpellSections<'c> {
 impl<'c> Default for SpellSections<'c> {
 	fn default() -> Self {
 		Self {
-			sections: (0..=Self::max_spell_rank())
+			sections: (0..=MAX_SPELL_RANK)
 				.map(|slot: u8| (slot, SectionProps::default()))
 				.collect::<BTreeMap<_, _>>(),
 		}
 	}
 }
 impl<'c> SpellSections<'c> {
-	const fn max_spell_rank() -> u8 {
-		9
-	}
-
 	fn insert_slots(&mut self, state: &'c CharacterHandle) {
 		if let Some(slots) = state.spellcasting().spell_slots(&*state) {
 			for (rank, slot_count) in slots {
 				let section =
 					self.sections.get_mut(&rank).expect(&format!(
-					"Spell rank {rank} is not supported by UI, must be in the range of [0, {}].", Self::max_spell_rank()
+					"Spell rank {rank} is not supported by UI, must be in the range of [0, {}].", MAX_SPELL_RANK
 				));
 				let data_path = state.persistent().selected_spells.consumed_slots_path(rank);
 				let consumed_slots = state.get_first_selection_at::<usize>(&data_path);
@@ -186,7 +185,7 @@ impl<'c> SpellSections<'c> {
 			(None, true) => {
 				let max_rank = match spell.rank {
 					0 => 0,
-					_ => Self::max_spell_rank(),
+					_ => MAX_SPELL_RANK,
 				};
 				let rank_range = spell.rank..=max_rank;
 				let mut locations = Vec::with_capacity(rank_range.len());
