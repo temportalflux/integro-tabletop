@@ -428,7 +428,6 @@ impl Settings {
 
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct SelectedSpells {
-	consumed_slots: HashMap<u8, usize>,
 	cache_by_caster: HashMap<String, SelectedSpellsData>,
 }
 #[derive(Clone, PartialEq, Default, Debug)]
@@ -441,15 +440,6 @@ pub struct SelectedSpellsData {
 }
 impl FromKDL for SelectedSpells {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
-		let mut consumed_slots = HashMap::new();
-		if let Some(node) = node.query_opt("scope() > consumed_slots")? {
-			for node in &mut node.query_all("scope() > slot")? {
-				let slot = node.next_i64_req()? as u8;
-				let consumed = node.next_i64_req()? as usize;
-				consumed_slots.insert(slot, consumed);
-			}
-		}
-
 		let mut cache_by_caster = HashMap::new();
 		for node in &mut node.query_all("scope() > caster")? {
 			let caster_name = node.next_str_req()?;
@@ -462,7 +452,6 @@ impl FromKDL for SelectedSpells {
 		}
 
 		Ok(Self {
-			consumed_slots,
 			cache_by_caster,
 		})
 	}
@@ -470,20 +459,6 @@ impl FromKDL for SelectedSpells {
 impl AsKdl for SelectedSpells {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
-		// Consumed Slots
-		node.push_child_opt({
-			let mut node = NodeBuilder::default();
-			let iter_slots = self.consumed_slots.iter().sorted_by_key(|(slot, _)| *slot);
-			for (slot, consumed) in iter_slots {
-				node.push_child({
-					let mut node = NodeBuilder::default();
-					node.push_entry(*slot as i64);
-					node.push_entry(*consumed as i64);
-					node.build("slot")
-				});
-			}
-			node.build("consumed_slots")
-		});
 		// Casters
 		let iter_casters = self.cache_by_caster.iter();
 		let iter_casters = iter_casters.sorted_by_key(|(name, _)| *name);
@@ -549,23 +524,8 @@ impl SelectedSpells {
 		data.selections.contains_key(spell_id)
 	}
 
-	pub fn consumed_slots(&self, rank: u8) -> Option<usize> {
-		self.consumed_slots.get(&rank).map(|v| *v)
-	}
-
-	pub fn set_slots_consumed(&mut self, rank: u8, count: usize) {
-		if count == 0 {
-			self.consumed_slots.remove(&rank);
-			return;
-		}
-		match self.consumed_slots.get_mut(&rank) {
-			None => {
-				self.consumed_slots.insert(rank, count);
-			}
-			Some(slot_count) => {
-				*slot_count = count;
-			}
-		}
+	pub fn consumed_slots_path(&self, rank: u8) -> std::path::PathBuf {
+		Path::new("SpellSlots").join(rank.to_string())
 	}
 }
 impl SelectedSpellsData {

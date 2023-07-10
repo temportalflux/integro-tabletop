@@ -171,11 +171,9 @@ impl<'c> SpellSections<'c> {
 					self.sections.get_mut(&rank).expect(&format!(
 					"Spell rank {rank} is not supported by UI, must be in the range of [0, {}].", Self::max_spell_rank()
 				));
-				let consumed_slots = state
-					.persistent()
-					.selected_spells
-					.consumed_slots(rank)
-					.unwrap_or(0);
+				let data_path = state.persistent().selected_spells.consumed_slots_path(rank);
+				let consumed_slots = state.get_first_selection_at::<usize>(&data_path);
+				let consumed_slots = consumed_slots.map(Result::ok).flatten().unwrap_or_default();
 				section.slot_count = Some((consumed_slots, slot_count));
 			}
 		}
@@ -366,9 +364,8 @@ fn spell_section<'c>(
 					true => consumed_slots.saturating_add(1),
 					false => consumed_slots.saturating_sub(1),
 				};
-				persistent
-					.selected_spells
-					.set_slots_consumed(rank, new_consumed_slots);
+				let data_path = persistent.selected_spells.consumed_slots_path(rank);
+				persistent.set_selected_value(&data_path, new_consumed_slots.to_string());
 				MutatorImpact::None
 			}
 		});
@@ -1315,9 +1312,8 @@ fn UseSpellButton(UseSpellButtonProps { kind }: &UseSpellButtonProps) -> Html {
 				move |evt: MouseEvent, persistent| {
 					evt.stop_propagation();
 					if can_cast {
-						persistent
-							.selected_spells
-							.set_slots_consumed(slot_rank, consumed_slots + 1);
+						let data_path = persistent.selected_spells.consumed_slots_path(slot_rank);
+						persistent.set_selected_value(&data_path, (consumed_slots + 1).to_string());
 					}
 					MutatorImpact::None
 				}
