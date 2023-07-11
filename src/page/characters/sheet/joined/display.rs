@@ -113,9 +113,19 @@ pub fn Display(ViewProps { swap_view }: &ViewProps) -> Html {
 		<div class="container overflow-hidden">
 			<div class="d-flex border-bottom-theme-muted mt-1 mb-2 px-3 pb-1">
 				<Header />
-				<div class="ms-auto">
-					<a class="icon forge" onclick={swap_view.reform(|_| ())} />
-					<button class="btn btn-success btn-xs" onclick={save_to_storage}>{"Save"}</button>
+				<div class="ms-auto d-flex flex-column justify-content-center">
+					<div class="d-flex align-items-center">
+						<button class="btn btn-outline-theme btn-sm me-3">
+							<i class="icon rest short me-1" />
+							{"Short Rest"}
+						</button>
+						<button class="btn btn-outline-theme btn-sm me-3">
+							<i class="icon rest long me-1" />
+							{"Long Rest"}
+						</button>
+						<a class="icon forge" style="margin-right: 0.3rem;" onclick={swap_view.reform(|_| ())} />
+					</div>
+					<button class="btn btn-success btn-xs ms-auto mt-2" onclick={save_to_storage}>{"Save"}</button>
 				</div>
 			</div>
 			<div class="row" style="--bs-gutter-x: 10px;">

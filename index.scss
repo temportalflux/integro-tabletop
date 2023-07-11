@@ -294,6 +294,28 @@ body {
 	--icon-image: url(assets/defense/vulnerability.svg);
 	--icon-color: #e40712;
 }
+.icon.rest.short {
+	@extend .icon-mask;
+	--icon-image: url(assets/campfire.svg);
+	--icon-color: var(--theme-frame-color);
+	
+	display: inline-block;
+	height: 16px;
+	width: 16px;
+	vertical-align: middle;
+	margin-top: -4px;
+}
+.icon.rest.long {
+	@extend .icon-mask;
+	--icon-image: url(assets/eclipse.svg);
+	--icon-color: var(--theme-frame-color);
+	
+	display: inline-block;
+	height: 16px;
+	width: 16px;
+	vertical-align: middle;
+	margin-top: -4px;
+}
 .tags.scroll-content:last-child {
 	margin-bottom: 0;
 }
