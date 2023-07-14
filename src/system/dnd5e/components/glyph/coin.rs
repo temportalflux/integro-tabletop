@@ -1,4 +1,4 @@
-use crate::system::dnd5e::data::currency;
+use crate::system::dnd5e::{components::glyph::Glyph, data::currency};
 use yew::prelude::*;
 
 #[derive(Clone, PartialEq, Properties)]
@@ -21,7 +21,7 @@ pub fn Coin(
 		large,
 	}: &CoinProps,
 ) -> Html {
-	let mut classes = classes!("glyph", "currency", classes.clone());
+	let mut classes = classes!("currency", classes.clone());
 	if *large {
 		classes.push("lg");
 	}
@@ -32,5 +32,5 @@ pub fn Coin(
 		currency::Kind::Gold => "gold",
 		currency::Kind::Platinum => "platinum",
 	});
-	html! { <@{tag.as_str().to_owned()} class={classes} /> }
+	html!(<Glyph tag={tag.clone()} {classes} />)
 }

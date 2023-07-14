@@ -390,7 +390,7 @@ fn LevelHitPoints(LevelHitPointsProps { data_path, die }: &LevelHitPointsProps) 
 	html! {
 		<div class="d-inline-flex align-items-center ms-auto">
 			{info_text.unwrap_or_default()}
-			<span class="icon heart me-1" />
+			<span class="glyph heart me-1" />
 			<select class={classes} {onchange}>
 				<option selected={hp_value == None}></option>
 				{(1..=die.value()).map(|value| {

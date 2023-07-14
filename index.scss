@@ -2,15 +2,16 @@
 
 @use "src/bootstrap/scss/bootstrap.scss";
 
-@use "src/components/glyph.scss" as glyph;
-
 @use "src/components/annotated_number.scss";
 @use "src/components/nav_onesheet_tabs.scss";
 @use "src/components/tag.scss";
 @use "src/system/dnd5e/components/ability/score.scss";
+
+@use "src/system/dnd5e/components/glyph.scss" as *;
 @use "src/system/dnd5e/components/glyph/ability.scss";
 @use "src/system/dnd5e/components/glyph/coin.scss";
 @use "src/system/dnd5e/components/glyph/roll.scss";
+@use "src/system/dnd5e/components/glyph/defense.scss";
 
 html {
 	height: 100%;
@@ -193,90 +194,6 @@ body {
 	border-color: var(--theme-frame-color-muted);
 }
 
-.icon.sheet {
-	@include glyph.solid;
-	--glyph-image: url(assets/sheet.svg);
-	--glyph-color: #fff;
-
-	display: block;
-	height: 30px;
-	width: 30px;
-	background-size: 28px;
-}
-.icon.forge {
-	@include glyph.mask;
-	--glyph-image: url(assets/forge.svg);
-	--glyph-color: #fff;
-
-	display: block;
-	height: 40px;
-	width: 40px;
-}
-.icon.inspiration {
-	@include glyph.mask;
-	--glyph-image: url(assets/inspiration.svg);
-
-	width: 50px;
-	height: 30px;
-}
-.icon.concentration {
-	@include glyph.solid;
-	--glyph-image: url(assets/spells/concentration.svg);
-
-	display: inline-block;
-	width: 14px;
-	height: 14px;
-}
-.icon.ritual {
-	@include glyph.solid;
-	--glyph-image: url(assets/spells/ritual.svg);
-
-	display: inline-block;
-	width: 14px;
-	height: 14px;
-}
-.icon.defense {
-	display: inline-block;
-	margin-top: auto!important;
-	margin-bottom: auto!important;
-}
-.icon.defense.resistance {
-	@include glyph.mask;
-	--glyph-image: url(assets/defense/resistance.svg);
-	--glyph-color: #00c680;
-}
-.icon.defense.immunity {
-	@include glyph.mask;
-	--glyph-image: url(assets/defense/immunity.svg);
-	--glyph-color: #00c680;
-}
-.icon.defense.vulnerability {
-	@include glyph.mask;
-	--glyph-image: url(assets/defense/vulnerability.svg);
-	--glyph-color: #e40712;
-}
-.icon.rest.short {
-	@include glyph.mask;
-	--glyph-image: url(assets/campfire.svg);
-	--glyph-color: var(--theme-frame-color);
-	
-	display: inline-block;
-	height: 16px;
-	width: 16px;
-	vertical-align: middle;
-	margin-top: -4px;
-}
-.icon.rest.long {
-	@include glyph.mask;
-	--glyph-image: url(assets/eclipse.svg);
-	--glyph-color: var(--theme-frame-color);
-	
-	display: inline-block;
-	height: 16px;
-	width: 16px;
-	vertical-align: middle;
-	margin-top: -4px;
-}
 .tags.scroll-content:last-child {
 	margin-bottom: 0;
 }
@@ -490,20 +407,6 @@ input.slot[type="checkbox"]:checked:before {
 [data-bs-theme=dark] .card.collapsable .card-header > .arrow[role=button] {
 	--bs-collapse-btn-icon: url(assets/arrow/idle_dark.svg);
 	--bs-collapse-btn-active-icon: url(assets/arrow/active_dark.svg);
-}
-
-.icon.heart::before {
-	@include glyph.mask;
-	--glyph-image: url(assets/heart-plus.svg);
-	--glyph-color: var(--theme-healing);
-
-	content: "";
-	display: block;
-	height: 20px;
-	width: 20px;
-}
-:has(> select.missing-value) > .icon.heart::before {
-	--glyph-color: var(--bs-warning);
 }
 
 .modal.spells.browse {

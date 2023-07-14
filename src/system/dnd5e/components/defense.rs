@@ -2,7 +2,7 @@ use crate::{
 	bootstrap::components::Tooltip,
 	components::{modal, Tag, Tags},
 	page::characters::sheet::CharacterHandle,
-	system::dnd5e::mutator::Defense,
+	system::dnd5e::components::glyph,
 };
 use yew::prelude::*;
 
@@ -59,7 +59,7 @@ pub fn DefensesCard() -> Html {
 				all.push(html! {
 					<Tooltip tag={"span"} style={"margin: 2px;"} content={tooltip} use_html={true}>
 						<Tag classes={"defense"}>
-							<DefenseIcon value={kind} />
+							<glyph::Defense value={kind} />
 							{damage_type}
 							{context}
 						</Tag>
@@ -87,18 +87,6 @@ pub fn DefensesCard() -> Html {
 pub struct GeneralProp<T: Clone + PartialEq> {
 	pub value: T,
 }
-#[function_component]
-fn DefenseIcon(props: &GeneralProp<Defense>) -> Html {
-	let mut classes = classes!("icon", "defense");
-	classes.push(match props.value {
-		Defense::Resistance => "resistance",
-		Defense::Immunity => "immunity",
-		Defense::Vulnerability => "vulnerability",
-	});
-	html! {
-		<span class={classes} />
-	}
-}
 
 #[function_component]
 fn Modal() -> Html {
@@ -110,7 +98,10 @@ fn Modal() -> Html {
 		}
 		sections.push(html! {
 			<div class="defense-section">
-				<h4><DefenseIcon value={defense} />{defense.to_string()}</h4>
+				<h4>
+					<glyph::Defense value={defense} />
+					{defense.to_string()}
+				</h4>
 				<table class="table table-compact table-striped mx-auto">
 					<thead>
 						<tr class="text-center" style="color: var(--bs-heading-color);">

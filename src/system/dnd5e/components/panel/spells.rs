@@ -8,6 +8,7 @@ use crate::{
 		self,
 		core::{ModuleId, SourceId},
 		dnd5e::{
+			components::glyph::Glyph,
 			data::{
 				character::{
 					spellcasting::{CasterKind, RitualCapability, SpellEntry},
@@ -505,12 +506,12 @@ fn spell_row<'c>(props: SpellRowProps<'c>) -> Html {
 			<td>
 				<div>
 					{&spell.name}
-					{can_ritual_cast.then(|| html! {
-						<div class="icon ritual ms-1" />
-					}).unwrap_or_default()}
-					{spell.duration.concentration.then(|| html! {
-						<div class="icon concentration ms-1" />
-					}).unwrap_or_default()}
+					{can_ritual_cast.then(|| html!(
+						<Glyph tag="div" classes={"ritual ms-1"} />
+					)).unwrap_or_default()}
+					{spell.duration.concentration.then(|| html!(
+						<Glyph tag="div" classes={"concentration ms-1"} />
+					)).unwrap_or_default()}
 				</div>
 				<div style="font-size: 10px; color: var(--bs-gray-600);">
 					{crate::data::as_feature_path_text(&entry.source)}
@@ -905,12 +906,12 @@ fn spell_list_item(
 					data-bs-target={format!("#{collapse_id}")}
 				>
 					{spell.name.clone()}
-					{can_ritual_cast.then(|| html! {
-						<div class="icon ritual ms-1 my-auto" />
-					}).unwrap_or_default()}
-					{spell.duration.concentration.then(|| html! {
-						<div class="icon concentration ms-1 my-auto" />
-					}).unwrap_or_default()}
+					{can_ritual_cast.then(|| html!(
+						<Glyph tag="div" classes={"ritual ms-1 my-auto"} />
+					)).unwrap_or_default()}
+					{spell.duration.concentration.then(|| html!(
+						<Glyph tag="div" classes={"concentration ms-1 my-auto"} />
+					)).unwrap_or_default()}
 					<span class="spell_rank_suffix">
 						{"("}
 						{match spell.rank {

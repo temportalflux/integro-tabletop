@@ -1,0 +1,87 @@
+@use "../../../components/glyph.scss" as glyph;
+
+.glyph.sheet {
+	@include glyph.solid;
+	--glyph-image: url(assets/sheet.svg);
+	--glyph-color: #fff;
+
+	display: block;
+	height: 30px;
+	width: 30px;
+	background-size: 28px;
+}
+
+.glyph.forge {
+	@include glyph.mask;
+	--glyph-image: url(assets/forge.svg);
+	--glyph-color: #fff;
+
+	display: block;
+	height: 40px;
+	width: 40px;
+}
+
+.glyph.inspiration {
+	@include glyph.mask;
+	--glyph-image: url(assets/inspiration.svg);
+
+	width: 50px;
+	height: 30px;
+}
+
+.glyph.concentration {
+	@include glyph.solid;
+	--glyph-image: url(assets/spells/concentration.svg);
+
+	display: inline-block;
+	width: 14px;
+	height: 14px;
+}
+
+.glyph.ritual {
+	@include glyph.solid;
+	--glyph-image: url(assets/spells/ritual.svg);
+
+	display: inline-block;
+	width: 14px;
+	height: 14px;
+}
+
+.glyph.rest.short {
+	@include glyph.mask;
+	--glyph-image: url(assets/campfire.svg);
+	--glyph-color: var(--theme-frame-color);
+	
+	display: inline-block;
+	height: 16px;
+	width: 16px;
+	vertical-align: middle;
+	margin-top: -4px;
+}
+
+.glyph.rest.long {
+	@include glyph.mask;
+	--glyph-image: url(assets/eclipse.svg);
+	--glyph-color: var(--theme-frame-color);
+	
+	display: inline-block;
+	height: 16px;
+	width: 16px;
+	vertical-align: middle;
+	margin-top: -4px;
+}
+
+// Heart icon for class HP
+.glyph.heart::before {
+	@include glyph.mask;
+	--glyph-image: url(assets/heart-plus.svg);
+	--glyph-color: var(--theme-healing);
+
+	content: "";
+	display: block;
+	height: 20px;
+	width: 20px;
+}
+:has(> select.missing-value) > .glyph.heart::before {
+	--glyph-color: var(--bs-warning);
+}
