@@ -1,4 +1,4 @@
-use crate::system::dnd5e::{data, components::GeneralProp};
+use crate::system::dnd5e::{components::GeneralProp, data};
 use yew::prelude::*;
 
 #[function_component]

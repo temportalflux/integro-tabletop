@@ -3,7 +3,7 @@ use crate::{
 	components::{mobile, modal, AnnotatedNumber},
 	page::characters::sheet::CharacterHandle,
 	system::dnd5e::{
-		components::{glyph, roll::ModifierIcon, ProficiencyLevelIcon},
+		components::glyph,
 		data::{Ability, Skill},
 	},
 };
@@ -106,7 +106,7 @@ pub fn Score(ScoreProps { ability }: &ScoreProps) -> Html {
 					</div>
 					<div class="row align-items-center" style="--bs-gutter-x: 0;">
 						<div class="col-auto" style="font-size: 0.75rem;">
-							<ProficiencyLevelIcon value={*saving_throw_prof.value()} />
+							<glyph::ProficiencyLevel value={*saving_throw_prof.value()} />
 						</div>
 						<div class="col">
 							<div style="font-size: 0.75rem;">{"Saving Throw"}</div>
@@ -141,7 +141,7 @@ pub fn AbilityModifiers() -> Html {
 			for item in items {
 				modifiers.push(html! {<div>
 					<span class="d-inline-flex" aria-label="Advantage" {style}>
-						<ModifierIcon value={modifier} />
+						<glyph::RollModifier value={modifier} />
 					</span>
 					<span>{"on "}{ability.abbreviated_name().to_uppercase()}{" checks"}</span>
 					<span>

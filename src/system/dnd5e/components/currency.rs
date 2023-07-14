@@ -4,7 +4,7 @@ use crate::{
 	page::characters::sheet::CharacterHandle,
 	page::characters::sheet::MutatorImpact,
 	system::dnd5e::{
-		components::{validate_uint_only, glyph},
+		components::{glyph, validate_uint_only},
 		data::{
 			character::Persistent,
 			currency::{self, Wallet},

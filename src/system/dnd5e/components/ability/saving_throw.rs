@@ -2,9 +2,8 @@ use crate::{
 	bootstrap::components::Tooltip,
 	components::modal,
 	page::characters::sheet::CharacterHandle,
-	system::dnd5e::components::roll::ModifierIcon,
 	system::dnd5e::{
-		components::ProficiencyLevelIcon,
+		components::glyph,
 		data::{character::ModifierMapItem, roll::Modifier, Ability},
 	},
 };
@@ -59,7 +58,7 @@ pub fn SavingThrow(
 		<Tooltip tag={"td"} classes={"text-center"} use_html={true} content={abbreviated.then(|| {
 			crate::data::as_feature_paths_html(proficiency.sources().iter().map(|(path, _)| path))
 		}).flatten()}>
-			<ProficiencyLevelIcon value={*proficiency.value()} />
+			<glyph::ProficiencyLevel value={*proficiency.value()} />
 		</Tooltip>
 		<td class={"text-center"}>{match *abbreviated {
 			true => ability.abbreviated_name().to_uppercase(),
@@ -176,7 +175,7 @@ pub fn saving_throw_modifier(
 		"height: 14px; margin-right: 2px; margin-top: -2px; width: 14px; vertical-align: middle;";
 	html! {<>
 		<span class="d-inline-flex" aria-label="Advantage" {style}>
-			<ModifierIcon value={modifier} />
+			<glyph::RollModifier value={modifier} />
 		</span>
 		{ability.map(|ability| html! {
 			<span>{"on "}{ability.abbreviated_name().to_uppercase()}</span>
@@ -205,7 +204,7 @@ fn Modal() -> Html {
 					<tr>
 						<td class="text-center">
 							<span class="d-inline-flex" aria-label="Advantage" {style}>
-								<ModifierIcon value={modifier} />
+								<glyph::RollModifier value={modifier} />
 							</span>
 						</td>
 						<td class="text-center">{ability.map(|ability| ability.long_name()).unwrap_or_default()}</td>

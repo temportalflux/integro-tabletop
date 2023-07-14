@@ -7,6 +7,7 @@
 @use "src/system/dnd5e/components/ability/score.scss";
 @use "src/system/dnd5e/components/glyph/ability.scss";
 @use "src/system/dnd5e/components/glyph/coin.scss";
+@use "src/system/dnd5e/components/glyph/roll.scss";
 
 html {
 	height: 100%;
@@ -210,18 +211,6 @@ body {
 	width: 50px;
 	height: 30px;
 	--icon-image: url(assets/inspiration.svg);
-}
-.icon.advantage {
-	@extend .icon-mask;
-	--icon-image: url(assets/modifier/advantage.svg);
-	--icon-color: #00c680;
-	width: 24px;
-}
-.icon.disadvantage {
-	@extend .icon-mask;
-	--icon-image: url(assets/modifier/disadvantage.svg);
-	--icon-color: #e40712;
-	width: 24px;
 }
 .icon.concentration {
 	@extend .icon-solid;
