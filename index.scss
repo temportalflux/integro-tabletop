@@ -6,12 +6,7 @@
 @use "src/components/nav_onesheet_tabs.scss";
 @use "src/components/tag.scss";
 @use "src/system/dnd5e/components/ability/score.scss";
-
-@use "src/system/dnd5e/components/glyph.scss" as *;
-@use "src/system/dnd5e/components/glyph/ability.scss";
-@use "src/system/dnd5e/components/glyph/coin.scss";
-@use "src/system/dnd5e/components/glyph/roll.scss";
-@use "src/system/dnd5e/components/glyph/defense.scss";
+@use "src/system/dnd5e/components/glyph.scss";
 
 html {
 	height: 100%;

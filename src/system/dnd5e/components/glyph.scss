@@ -1,4 +1,8 @@
 @use "../../../components/glyph.scss" as glyph;
+@use "glyph/ability.scss";
+@use "glyph/coin.scss";
+@use "glyph/roll.scss";
+@use "glyph/defense.scss";
 
 .glyph.sheet {
 	@include glyph.solid;
