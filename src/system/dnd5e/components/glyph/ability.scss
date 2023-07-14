@@ -1,6 +1,7 @@
-@use "../../../../components/glyph.scss";
+@use "../../../../components/glyph.scss" as glyph;
 
 .glyph.ability {
+	@include glyph.mask;
 	--glyph-color: #fff;
 	display: inline-block;
 	width: 25px;
@@ -9,31 +10,25 @@
 }
 
 .glyph.ability.strength {
-	@extend .mask;
 	--glyph-image: url(assets/ability/strength.svg);
 }
 
 .glyph.ability.dexterity {
-	@extend .mask;
 	--glyph-image: url(assets/ability/dexterity.svg);
 }
 
 .glyph.ability.constitution {
-	@extend .mask;
 	--glyph-image: url(assets/ability/constitution.svg);
 }
 
 .glyph.ability.intelligence {
-	@extend .mask;
 	--glyph-image: url(assets/ability/intelligence.svg);
 }
 
 .glyph.ability.wisdom {
-	@extend .mask;
 	--glyph-image: url(assets/ability/wisdom.svg);
 }
 
 .glyph.ability.charisma {
-	@extend .mask;
 	--glyph-image: url(assets/ability/charisma.svg);
 }

@@ -1,6 +1,9 @@
 @charset "utf-8";
+
 @use "src/bootstrap/scss/bootstrap.scss";
-@use "src/components/glyph.scss";
+
+@use "src/components/glyph.scss" as glyph;
+
 @use "src/components/annotated_number.scss";
 @use "src/components/nav_onesheet_tabs.scss";
 @use "src/components/tag.scss";
@@ -191,40 +194,46 @@ body {
 }
 
 .icon.sheet {
-	@extend .icon-solid;
+	@include glyph.solid;
+	--glyph-image: url(assets/sheet.svg);
+	--glyph-color: #fff;
+
 	display: block;
 	height: 30px;
 	width: 30px;
-	--icon-image: url(assets/sheet.svg);
 	background-size: 28px;
 }
 .icon.forge {
-	@extend .icon-mask;
+	@include glyph.mask;
+	--glyph-image: url(assets/forge.svg);
+	--glyph-color: #fff;
+
 	display: block;
 	height: 40px;
 	width: 40px;
-	--icon-image: url(assets/forge.svg);
-	--icon-color: #fff;
 }
 .icon.inspiration {
-	@extend .icon-mask;
+	@include glyph.mask;
+	--glyph-image: url(assets/inspiration.svg);
+
 	width: 50px;
 	height: 30px;
-	--icon-image: url(assets/inspiration.svg);
 }
 .icon.concentration {
-	@extend .icon-solid;
+	@include glyph.solid;
+	--glyph-image: url(assets/spells/concentration.svg);
+
 	display: inline-block;
 	width: 14px;
 	height: 14px;
-	--icon-image: url(assets/spells/concentration.svg);
 }
 .icon.ritual {
-	@extend .icon-solid;
+	@include glyph.solid;
+	--glyph-image: url(assets/spells/ritual.svg);
+
 	display: inline-block;
 	width: 14px;
 	height: 14px;
-	--icon-image: url(assets/spells/ritual.svg);
 }
 .icon.defense {
 	display: inline-block;
@@ -232,24 +241,24 @@ body {
 	margin-bottom: auto!important;
 }
 .icon.defense.resistance {
-	@extend .icon-mask;
-	--icon-image: url(assets/defense/resistance.svg);
-	--icon-color: #00c680;
+	@include glyph.mask;
+	--glyph-image: url(assets/defense/resistance.svg);
+	--glyph-color: #00c680;
 }
 .icon.defense.immunity {
-	@extend .icon-mask;
-	--icon-image: url(assets/defense/immunity.svg);
-	--icon-color: #00c680;
+	@include glyph.mask;
+	--glyph-image: url(assets/defense/immunity.svg);
+	--glyph-color: #00c680;
 }
 .icon.defense.vulnerability {
-	@extend .icon-mask;
-	--icon-image: url(assets/defense/vulnerability.svg);
-	--icon-color: #e40712;
+	@include glyph.mask;
+	--glyph-image: url(assets/defense/vulnerability.svg);
+	--glyph-color: #e40712;
 }
 .icon.rest.short {
-	@extend .icon-mask;
-	--icon-image: url(assets/campfire.svg);
-	--icon-color: var(--theme-frame-color);
+	@include glyph.mask;
+	--glyph-image: url(assets/campfire.svg);
+	--glyph-color: var(--theme-frame-color);
 	
 	display: inline-block;
 	height: 16px;
@@ -258,9 +267,9 @@ body {
 	margin-top: -4px;
 }
 .icon.rest.long {
-	@extend .icon-mask;
-	--icon-image: url(assets/eclipse.svg);
-	--icon-color: var(--theme-frame-color);
+	@include glyph.mask;
+	--glyph-image: url(assets/eclipse.svg);
+	--glyph-color: var(--theme-frame-color);
 	
 	display: inline-block;
 	height: 16px;
@@ -484,16 +493,17 @@ input.slot[type="checkbox"]:checked:before {
 }
 
 .icon.heart::before {
-	@extend .icon-mask;
+	@include glyph.mask;
+	--glyph-image: url(assets/heart-plus.svg);
+	--glyph-color: var(--theme-healing);
+
 	content: "";
 	display: block;
 	height: 20px;
 	width: 20px;
-	--icon-image: url(assets/heart-plus.svg);
-	--icon-color: var(--theme-healing);
 }
 :has(> select.missing-value) > .icon.heart::before {
-	--icon-color: var(--bs-warning);
+	--glyph-color: var(--bs-warning);
 }
 
 .modal.spells.browse {
