@@ -31,6 +31,7 @@ pub use inspiration::*;
 mod proficiencies;
 pub use proficiencies::*;
 
+pub mod rest;
 pub mod roll;
 
 mod speed_senses;

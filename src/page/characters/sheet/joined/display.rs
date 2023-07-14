@@ -7,9 +7,8 @@ use crate::{
 		core::{ModuleId, SourceId},
 		dnd5e::{
 			components::{
-				ability, glyph::Glyph, panel, ArmorClass, ConditionsCard, DefensesCard,
-				HitPointMgmtCard, InitiativeBonus, Inspiration, ProfBonus, Proficiencies,
-				SpeedAndSenses,
+				ability, panel, rest, ArmorClass, ConditionsCard, DefensesCard, HitPointMgmtCard,
+				InitiativeBonus, Inspiration, ProfBonus, Proficiencies, SpeedAndSenses,
 			},
 			data::Ability,
 		},
@@ -116,14 +115,8 @@ pub fn Display(ViewProps { swap_view }: &ViewProps) -> Html {
 				<Header />
 				<div class="ms-auto d-flex flex-column justify-content-center">
 					<div class="d-flex align-items-center">
-						<button class="btn btn-outline-theme btn-sm me-3">
-							<Glyph classes="rest short me-1" />
-							{"Short Rest"}
-						</button>
-						<button class="btn btn-outline-theme btn-sm me-3">
-							<Glyph classes="rest long me-1" />
-							{"Long Rest"}
-						</button>
+						<rest::Button value={crate::system::dnd5e::data::Rest::Short} />
+						<rest::Button value={crate::system::dnd5e::data::Rest::Long} />
 						<a class="glyph forge" style="margin-right: 0.3rem;" onclick={swap_view.reform(|_| ())} />
 					</div>
 					<button class="btn btn-success btn-xs ms-auto mt-2" onclick={save_to_storage}>{"Save"}</button>

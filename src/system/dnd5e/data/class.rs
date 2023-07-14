@@ -9,12 +9,13 @@ use crate::{
 };
 use std::{path::Path, str::FromStr};
 
-#[derive(Clone, PartialEq, Default, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Class {
 	pub id: SourceId,
 	pub name: String,
 	pub description: String,
 	pub hit_die: Die,
+	pub hit_die_selector: Selector<u32>,
 	pub current_level: usize,
 	/// Mutators that are applied only when this class is the primary class (not multiclassing).
 	pub mutators: Vec<BoxedMutator>,
@@ -22,6 +23,26 @@ pub struct Class {
 	pub subclass_selection_level: Option<usize>,
 	pub subclass: Option<Subclass>,
 	// TODO: `multiclass-req` data node (already in data, just not in structures yet)
+}
+
+impl Default for Class {
+	fn default() -> Self {
+		Self {
+			id: Default::default(),
+			name: Default::default(),
+			description: Default::default(),
+			hit_die: Default::default(),
+			hit_die_selector: Selector::Any {
+				id: Some("hit_die").into(),
+				cannot_match: Default::default(),
+			},
+			current_level: Default::default(),
+			mutators: Default::default(),
+			levels: Default::default(),
+			subclass_selection_level: Default::default(),
+			subclass: Default::default(),
+		}
+	}
 }
 
 impl Class {
@@ -39,6 +60,7 @@ impl MutatorGroup for Class {
 
 	fn set_data_path(&self, parent: &std::path::Path) {
 		let path_to_self = parent.join(&self.name);
+		self.hit_die_selector.set_data_path(&path_to_self);
 		for mutator in &self.mutators {
 			mutator.set_data_path(&path_to_self);
 		}
@@ -111,6 +133,7 @@ impl FromKDL for Class {
 			levels,
 			subclass_selection_level,
 			subclass,
+			..Default::default()
 		})
 	}
 }

@@ -75,6 +75,10 @@
 	margin-top: -4px;
 }
 
+.btn:hover > .glyph.rest {
+	--glyph-color: var(--bs-btn-hover-color);
+}
+
 // Heart icon for class HP
 .glyph.heart::before {
 	@include glyph.mask;
