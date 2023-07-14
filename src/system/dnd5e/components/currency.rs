@@ -4,7 +4,7 @@ use crate::{
 	page::characters::sheet::CharacterHandle,
 	page::characters::sheet::MutatorImpact,
 	system::dnd5e::{
-		components::validate_uint_only,
+		components::{validate_uint_only, glyph},
 		data::{
 			character::Persistent,
 			currency::{self, Wallet},
@@ -15,40 +15,6 @@ use crate::{
 use itertools::Itertools;
 use uuid::Uuid;
 use yew::prelude::*;
-
-#[derive(Clone, PartialEq, Properties)]
-pub struct CoinIconProps {
-	pub kind: currency::Kind,
-	#[prop_or_else(|| "span".into())]
-	pub tag: AttrValue,
-	#[prop_or_default]
-	pub classes: Classes,
-	#[prop_or_default]
-	pub large: bool,
-}
-
-#[function_component]
-pub fn CoinIcon(
-	CoinIconProps {
-		kind,
-		tag,
-		classes,
-		large,
-	}: &CoinIconProps,
-) -> Html {
-	let mut classes = classes!("icon", "currency", classes.clone());
-	if *large {
-		classes.push("lg");
-	}
-	classes.push(match kind {
-		currency::Kind::Copper => "copper",
-		currency::Kind::Silver => "silver",
-		currency::Kind::Electrum => "electrum",
-		currency::Kind::Gold => "gold",
-		currency::Kind::Platinum => "platinum",
-	});
-	html! { <@{tag.as_str().to_owned()} class={classes} /> }
-}
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct WalletInlineProps {
@@ -62,7 +28,7 @@ pub fn WalletInline(WalletInlineProps { wallet }: &WalletInlineProps) -> Html {
 			match wallet[coin] {
 				0 => None,
 				amt => Some(html! {
-					<span>{amt} <CoinIcon kind={coin} /></span>
+					<span>{amt} <glyph::Coin kind={coin} /></span>
 				}),
 			}
 		}).collect::<Vec<_>>()}
@@ -141,7 +107,7 @@ fn Modal(WalletContainerProps { id }: &WalletContainerProps) -> Html {
 						{"(est. "}
 						{total_value_gold}
 						{" GP"}
-						<CoinIcon classes="ms-1" kind={currency::Kind::Gold}/>
+						<glyph::Coin classes="ms-1" kind={currency::Kind::Gold}/>
 						{")"}
 					</span>
 				</div>
@@ -149,7 +115,7 @@ fn Modal(WalletContainerProps { id }: &WalletContainerProps) -> Html {
 					let amount = wallet[coin];
 					html! {<>
 						<div class="d-flex py-1" style="font-size: 1.25rem;">
-							<CoinIcon kind={coin} classes="my-auto me-2" large={true} />
+							<glyph::Coin kind={coin} classes="my-auto me-2" large={true} />
 							<div class="my-auto">{coin.to_string()}{" ("}{coin.abbreviation()}{")"}</div>
 							<div class="my-auto ms-auto me-3">{amount}</div>
 						</div>
@@ -254,7 +220,7 @@ fn Modal(WalletContainerProps { id }: &WalletContainerProps) -> Html {
 						html! {<>
 							<div class="col">
 								<div class="d-flex justify-content-center">
-									<CoinIcon kind={coin} classes="my-auto me-1" />
+									<glyph::Coin kind={coin} classes="my-auto me-1" />
 									{coin.abbreviation().to_uppercase()}
 								</div>
 								<input

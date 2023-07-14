@@ -1,0 +1,28 @@
+@use "../../../../components/glyph.scss";
+
+.glyph.currency {
+	@extend .solid;
+	display: inline-block;
+	width: 16px;
+	height: 16px;
+	margin-bottom: -3px;
+}
+.glyph.currency.lg {
+	width: 24px;
+	height: 24px;
+}
+.glyph.currency.copper {
+	--glyph-image: url(assets/currency/copper.svg);
+}
+.glyph.currency.silver {
+	--glyph-image: url(assets/currency/silver.svg);
+}
+.glyph.currency.electrum {
+	--glyph-image: url(assets/currency/electrum.svg);
+}
+.glyph.currency.gold {
+	--glyph-image: url(assets/currency/gold.svg);
+}
+.glyph.currency.platinum {
+	--glyph-image: url(assets/currency/platinum.svg);
+}

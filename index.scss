@@ -6,6 +6,7 @@
 @use "src/components/tag.scss";
 @use "src/system/dnd5e/components/ability/score.scss";
 @use "src/system/dnd5e/components/glyph/ability.scss";
+@use "src/system/dnd5e/components/glyph/coin.scss";
 
 html {
 	height: 100%;
@@ -209,32 +210,6 @@ body {
 	width: 50px;
 	height: 30px;
 	--icon-image: url(assets/inspiration.svg);
-}
-.icon.currency {
-	@extend .icon-solid;
-	display: inline-block;
-	width: 16px;
-	height: 16px;
-	margin-bottom: -3px;
-}
-.icon.currency.lg {
-	width: 24px;
-	height: 24px;
-}
-.icon.currency.copper {
-	--icon-image: url(assets/currency/copper.svg);
-}
-.icon.currency.silver {
-	--icon-image: url(assets/currency/silver.svg);
-}
-.icon.currency.electrum {
-	--icon-image: url(assets/currency/electrum.svg);
-}
-.icon.currency.gold {
-	--icon-image: url(assets/currency/gold.svg);
-}
-.icon.currency.platinum {
-	--icon-image: url(assets/currency/platinum.svg);
 }
 .icon.advantage {
 	@extend .icon-mask;
