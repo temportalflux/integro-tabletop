@@ -3,7 +3,7 @@ use crate::{
 	components::{mobile, modal, AnnotatedNumber},
 	page::characters::sheet::CharacterHandle,
 	system::dnd5e::{
-		components::{ability::AbilityGlyph, roll::ModifierIcon, ProficiencyLevelIcon},
+		components::{glyph, roll::ModifierIcon, ProficiencyLevelIcon},
 		data::{Ability, Skill},
 	},
 };
@@ -236,8 +236,8 @@ fn Modal(AbilityProps { ability }: &AbilityProps) -> Html {
 	html! {<>
 		<div class="modal-header">
 			<h1 class="modal-title fs-4">
-				<AbilityGlyph ability={*ability} />
-				{ability.long_name()}
+				<glyph::Ability value={*ability} />
+				<span class="ms-2">{ability.long_name()}</span>
 			</h1>
 			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
 		</div>

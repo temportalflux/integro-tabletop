@@ -1,0 +1,29 @@
+
+.glyph {
+	--glyph-image: "";
+	--glyph-color: var(--theme-frame-color);
+}
+.glyph.solid {
+	background-image: var(--glyph-image);
+	background-repeat: no-repeat;
+	background-color: transparent;
+}
+.glyph.mask {
+	-webkit-mask: var(--glyph-image) no-repeat 50% 50%;
+	mask: var(--glyph-image) no-repeat 50% 50%;
+	background-color: var(--glyph-color);
+}
+
+.icon {
+	@extend .glyph;
+	--glyph-image: var(--icon-image);
+	--glyph-color: var(--icon-color);
+	--icon-image: "";
+	--icon-color: var(--theme-frame-color);
+}
+.icon-solid {
+	@extend .icon, .solid;
+}
+.icon-mask {
+	@extend .icon, .mask;
+}

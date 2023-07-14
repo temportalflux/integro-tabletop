@@ -1,9 +1,10 @@
 @charset "utf-8";
-
-@import "src/components/annotated_number.scss";
-@import "src/components/nav_onesheet_tabs.scss";
-@import "src/components/tag.scss";
-@import "src/system/dnd5e/components/ability/score.scss";
+@use "src/components/glyph.scss";
+@use "src/components/annotated_number.scss";
+@use "src/components/nav_onesheet_tabs.scss";
+@use "src/components/tag.scss";
+@use "src/system/dnd5e/components/ability/score.scss";
+@use "src/system/dnd5e/components/glyph/ability.scss";
 
 html {
 	height: 100%;
@@ -186,20 +187,6 @@ body {
 	border-color: var(--theme-frame-color-muted);
 }
 
-.icon {
-	--icon-image: "";
-	--icon-color: var(--theme-frame-color);
-}
-.icon-solid {
-	background-image: var(--icon-image);
-	background-repeat: no-repeat;
-	background-color: transparent;
-}
-.icon-mask {
-	-webkit-mask: var(--icon-image) no-repeat 50% 50%;
-	mask: var(--icon-image) no-repeat 50% 50%;
-	background-color: var(--icon-color);
-}
 .icon.sheet {
 	@extend .icon-solid;
 	display: block;

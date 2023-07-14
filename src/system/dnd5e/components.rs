@@ -12,6 +12,8 @@ pub use currency::*;
 mod defense;
 pub use defense::*;
 
+pub mod glyph;
+
 mod hit_points;
 pub use hit_points::*;
 
