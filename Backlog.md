@@ -12,15 +12,12 @@
 - Sheet inventory search bar functionality
 - name generator
 - Warlock Invocations & Sorcerer Metamagic selections
+- Warlock & Spell Slots
+	- pact magic's slot format isn't currently supported
+	- spell slots are currently shared (which is fine b/c everything resets on long rest), but a Warlock class slots reset on short rest, which is at conflict with everything else.
 
 ### Rest
-- Add Hit Dice access to Hit Points modal (so users can manually use or add hit dice without taking a rest, some class features restore or consume hit dice from other players).
-- Things that get updated on rest
-	- anything with `LimitedUses` where `reset_on` is specified (features/actions, always-prepared spellcasting)
-	- hit points
-	- spell slots
-- Rest modal should tell the user what all is changing for a given rest (things affected get registered on the character)
-- hit points UI should track hit dice (for usage during short rest or when features specify like Wither and Bloom)
+- Add Hit Dice access to Hit Points modal (so users can manually use or add hit dice without taking a rest, some class features restore or consume hit dice from other players, for usage during short rest or when features specify like Wither and Bloom)
 
 ### Customizations
 - Allow users to create new entries
@@ -86,6 +83,8 @@ component "Material" {
 - mdbook on the tech stack & functionality of the app
 
 ## Future Features
+
+- Hit Dice Mutator: instead of each class hard-coding its hit die, classes have a mutator which add hit die of a type based on the level of that class. This will enable other content or feats to also add hit dice if desired. It also allows for features to consume hit dice as a usage/resource.
 
 ### Mailbox
 - Pull requests are used to send items between characters
