@@ -142,14 +142,16 @@ impl Mutator for Spellcasting {
 	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
 		match &self.0 {
 			Operation::Caster(caster) => {
+				// TODO: Every caster is submitting a reset for the shared-slots (redudant).
+				// Need to rethink this b/c Warlocks are the only ones with a short-rest slot reset.
 				let data_paths = (1..=MAX_SPELL_RANK)
 					.into_iter()
 					.map(|rank| stats.persistent().selected_spells.consumed_slots_path(rank))
 					.collect::<Vec<_>>();
 				let entry = crate::system::dnd5e::data::character::RestEntry {
-					name: "Spell Slots".into(),
+					restore_amount: None,
 					data_paths,
-					source: parent.to_owned(),
+					source: parent.join(format!("{} Spellcasting Slots", caster.name())),
 				};
 				stats.rest_resets_mut().add(caster.slots.reset_on, entry);
 				stats.spellcasting_mut().add_caster(caster.clone());
@@ -175,9 +177,9 @@ impl Mutator for Spellcasting {
 						if let Some(rest) = data.reset_on {
 							if let Some(data_path) = data.get_data_path() {
 								let entry = crate::system::dnd5e::data::character::RestEntry {
-									name: "Prepared Spellcasting".into(),
+									restore_amount: None,
 									data_paths: vec![data_path],
-									source: parent.to_owned(),
+									source: parent.join("Prepared Spellcasting"),
 								};
 								stats.rest_resets_mut().add(rest, entry);
 							}

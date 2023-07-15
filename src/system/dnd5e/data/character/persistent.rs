@@ -18,6 +18,7 @@ use itertools::Itertools;
 use std::{
 	collections::{BTreeMap, HashMap},
 	path::Path,
+	str::FromStr,
 	sync::Arc,
 };
 
@@ -101,6 +102,30 @@ impl Persistent {
 
 	pub fn hit_points_mut(&mut self) -> &mut HitPoints {
 		&mut self.hit_points
+	}
+
+	pub fn get_selections_at(&self, path: impl AsRef<Path>) -> Option<&Vec<String>> {
+		self.selected_values.get(path.as_ref())
+	}
+
+	pub fn get_first_selection(&self, path: impl AsRef<Path>) -> Option<&String> {
+		self.get_selections_at(path)
+			.map(|all| all.first())
+			.flatten()
+	}
+
+	pub fn get_first_selection_at<T>(
+		&self,
+		data_path: impl AsRef<Path>,
+	) -> Option<Result<T, <T as FromStr>::Err>>
+	where
+		T: Clone + 'static + FromStr,
+	{
+		let selections = self.get_selections_at(data_path);
+		selections
+			.map(|all| all.first())
+			.flatten()
+			.map(|selected| T::from_str(&selected))
 	}
 
 	pub fn set_selected_value(&mut self, key: impl AsRef<Path>, value: impl Into<String>) {

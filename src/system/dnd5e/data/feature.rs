@@ -79,7 +79,7 @@ impl MutatorGroup for Feature {
 					if let Some(rest) = data.reset_on {
 						if let Some(data_path) = data.get_data_path() {
 							let entry = super::character::RestEntry {
-								name: self.name.clone(),
+								restore_amount: None,
 								data_paths: vec![data_path],
 								source: path_to_self.clone(),
 							};

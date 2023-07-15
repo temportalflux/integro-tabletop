@@ -37,8 +37,8 @@ eating, drinking, reading, and tending to wounds.";
 static DESC_LONG: &str = "\
 A long rest is a period of extended downtime, at least 8 hours long, \
 during which a character sleeps for at least 6 hours and performs \
-no more than 2 hours of light activity, such as reading, talking, eating, or standing watch.\
-\
+no more than 2 hours of light activity, such as reading, talking, eating, or standing watch.
+
 If the rest is interrupted by a period of strenuous activity — at least 1 hour of \
 walking, fighting, casting spells, or similar adventuring activity — \
 the characters must begin the rest again to gain any benefit from it.";

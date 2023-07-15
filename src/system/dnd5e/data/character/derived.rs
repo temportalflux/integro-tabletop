@@ -402,12 +402,16 @@ pub struct RestResets {
 }
 #[derive(Clone, PartialEq, Debug)]
 pub struct RestEntry {
-	pub name: String,
+	pub restore_amount: Option<Roll>,
 	pub data_paths: Vec<PathBuf>,
 	pub source: PathBuf,
 }
 impl RestResets {
 	pub fn add(&mut self, rest: Rest, entry: RestEntry) {
 		self.entries[rest].push(entry);
+	}
+
+	pub fn get(&self, rest: Rest) -> &Vec<RestEntry> {
+		&self.entries[rest]
 	}
 }

@@ -65,16 +65,15 @@ impl FromStr for Die {
 		}
 	}
 }
-impl ToString for Die {
-	fn to_string(&self) -> String {
+impl std::fmt::Display for Die {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
-			Self::D4 => "d4",
-			Self::D6 => "d6",
-			Self::D8 => "d8",
-			Self::D10 => "d10",
-			Self::D12 => "d12",
-			Self::D20 => "d20",
+			Self::D4 => write!(f, "d4"),
+			Self::D6 => write!(f, "d6"),
+			Self::D8 => write!(f, "d8"),
+			Self::D10 => write!(f, "d10"),
+			Self::D12 => write!(f, "d12"),
+			Self::D20 => write!(f, "d20"),
 		}
-		.to_owned()
 	}
 }

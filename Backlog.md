@@ -14,7 +14,6 @@
 - Warlock Invocations & Sorcerer Metamagic selections
 
 ### Rest
-- Short and Long rest buttons with functionality
 - Add Hit Dice access to Hit Points modal (so users can manually use or add hit dice without taking a rest, some class features restore or consume hit dice from other players).
 - Things that get updated on rest
 	- anything with `LimitedUses` where `reset_on` is specified (features/actions, always-prepared spellcasting)

@@ -194,13 +194,11 @@ impl Character {
 	}
 
 	pub fn get_selections_at(&self, path: impl AsRef<Path>) -> Option<&Vec<String>> {
-		self.character.selected_values.get(path.as_ref())
+		self.character.get_selections_at(path)
 	}
 
 	pub fn get_first_selection(&self, path: impl AsRef<Path>) -> Option<&String> {
-		self.get_selections_at(path)
-			.map(|all| all.first())
-			.flatten()
+		self.character.get_first_selection(path)
 	}
 
 	pub fn get_first_selection_at<T>(
@@ -210,11 +208,7 @@ impl Character {
 	where
 		T: Clone + 'static + FromStr,
 	{
-		let selections = self.get_selections_at(data_path);
-		selections
-			.map(|all| all.first())
-			.flatten()
-			.map(|selected| T::from_str(&selected))
+		self.character.get_first_selection_at(data_path)
 	}
 
 	pub fn get_selector_value<T>(&self, selector: &Selector<T>) -> Option<T>
