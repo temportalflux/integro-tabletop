@@ -51,7 +51,12 @@ fn Modal(GeneralProp { value }: &GeneralProp<Rest>) -> Html {
 		let rest = *value;
 		let hit_dice_to_consume = hit_dice_to_consume.clone();
 		let max_hp = state.max_hit_points().value();
-		let resets = state.rest_resets().get(*value).clone();
+		let resets = value
+			.resets_to_apply()
+			.into_iter()
+			.map(|rest| state.rest_resets().get(rest).clone().into_iter())
+			.flatten()
+			.collect::<Vec<_>>();
 		let close_modal = modal_dispatcher.callback(|_| modal::Action::Close);
 		move |_, persistent| {
 			let mut rng = rand::thread_rng();
@@ -115,8 +120,8 @@ fn Modal(GeneralProp { value }: &GeneralProp<Rest>) -> Html {
 						Some(gained_uses) => {
 							let prev_value = persistent.get_first_selection_at::<u32>(data_path);
 							let prev_value = prev_value.map(Result::ok).flatten().unwrap_or(0);
-							let new_value = prev_value.saturating_add(*gained_uses);
-							Some(new_value.to_string())
+							let new_value = prev_value.saturating_sub(*gained_uses);
+							(new_value > 0).then(|| new_value.to_string())
 						}
 					};
 					persistent.set_selected(data_path, new_value);
@@ -424,14 +429,16 @@ fn ProjectedRestorations(GeneralProp { value }: &GeneralProp<Rest>) -> Html {
 		}
 		Rest::Short => {}
 	}
-	for entry in state.rest_resets().get(*value) {
-		let amt = match &entry.restore_amount {
-			None => "all".to_owned(),
-			Some(roll) => roll.to_string(),
-		};
-		let path_str = crate::data::as_feature_path_text(&entry.source).unwrap_or_default();
-		let description = format!("Restore {amt} uses of {path_str}.");
-		sections.push(html!(<li>{description}</li>));
+	for rest in value.resets_to_apply() {
+		for entry in state.rest_resets().get(rest) {
+			let amt = match &entry.restore_amount {
+				None => "all".to_owned(),
+				Some(roll) => roll.to_string(),
+			};
+			let path_str = crate::data::as_feature_path_text(&entry.source).unwrap_or_default();
+			let description = format!("Restore {amt} uses of {path_str}.");
+			sections.push(html!(<li>{description}</li>));
+		}
 	}
 	html! {
 		<div class="mt-3">
