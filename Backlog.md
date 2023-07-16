@@ -1,9 +1,20 @@
 # Backlog
 -----
 
-## Cleanup
-
 ## DnD5e Features
+
+- Apply Dodge condition when the action is taken (defined in `defaults.kdl`)
+- `Bardic Inspiration` reset_on is scaled to the class level
+- Expertise - selection filter to select skills that the character already has proficiency in
+- Monk `Martial Arts` mutators (largely dependent on defining what a monk weapon is and applying bonus damage)
+- Conditions imply other Conditions
+- Ranger Favored Enemy and Natural Explorer
+- Wizard spell source (spellbook)
+- Condition supression (`Mindless Rage`)
+- Granting speed based on another speed (`Second-Story Work`, `Dragon Wings`)
+- `add_defense` damage type selector
+- Bonus to damage from spells based on a criteria (`Empowered Evocation`)
+- Grappler feat
 - Starting Equipment in UI
 - Showing weapon attacks with the additional bonuses in atk rolls and damage (UI doesn't support this right now)
 - Condition degrees (like exhaustion): these are stages of the same condition, which add more mutators the higher the degree.
@@ -11,10 +22,7 @@
 - Item Charges
 - Sheet inventory search bar functionality
 - name generator
-- Warlock Invocations & Sorcerer Metamagic selections
-- Warlock & Spell Slots
-	- pact magic's slot format isn't currently supported
-	- spell slots are currently shared (which is fine b/c everything resets on long rest), but a Warlock class slots reset on short rest, which is at conflict with everything else.
+- Warlock Pact Boon, Invocations & Sorcerer Metamagic selections
 
 ### Rest
 - Add Hit Dice access to Hit Points modal (so users can manually use or add hit dice without taking a rest, some class features restore or consume hit dice from other players, for usage during short rest or when features specify like Wither and Bloom)
