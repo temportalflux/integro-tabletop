@@ -1,10 +1,13 @@
 use super::{Slots, SpellEntry};
-use crate::system::dnd5e::{
-	data::{
-		character::{Character, Persistent},
-		Ability,
+use crate::{
+	system::dnd5e::{
+		data::{
+			character::{Character, Persistent},
+			Ability,
+		},
+		BoxedEvaluator,
 	},
-	BoxedEvaluator,
+	utility::AddAssignMap,
 };
 use std::collections::BTreeMap;
 
@@ -14,7 +17,8 @@ pub struct Caster {
 	pub ability: Ability,
 	pub restriction: Restriction,
 	pub cantrip_capacity: Option<BTreeMap<usize, usize>>,
-	pub slots: Slots,
+	pub standard_slots: Option<Slots>,
+	pub bonus_slots: Vec<Slots>,
 	pub spell_capacity: Capacity,
 	pub spell_entry: SpellEntry,
 	pub ritual_capability: Option<RitualCapability>,
@@ -98,13 +102,24 @@ impl Caster {
 	/// Use to determine what kind of spells can be prepared/known.
 	pub fn max_spell_rank(&self, persistent: &Persistent) -> Option<u8> {
 		let current_level = persistent.level(Some(&self.class_name));
-		let mut max_rank = None;
-		for (level, rank_to_count) in &self.slots.slots_capacity {
-			if *level > current_level {
-				break;
+		let mut max_rank = 0u8;
+		let iter_all_slots = self.standard_slots.iter().chain(&self.bonus_slots);
+		for slots in iter_all_slots {
+			if let Some(rank) = slots.max_spell_rank(current_level) {
+				if rank > max_rank {
+					max_rank = rank;
+				}
 			}
-			max_rank = rank_to_count.keys().max().cloned();
 		}
-		max_rank
+		(max_rank > 0).then(|| max_rank)
+	}
+
+	pub fn all_slots(&self) -> BTreeMap<usize, BTreeMap<u8, usize>> {
+		let mut all_slots = BTreeMap::new();
+		let iter_all_slots = self.standard_slots.iter().chain(&self.bonus_slots);
+		for slots in iter_all_slots {
+			all_slots.add_assign_map(slots.capacity());
+		}
+		all_slots
 	}
 }

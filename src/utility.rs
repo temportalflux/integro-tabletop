@@ -1,4 +1,6 @@
 mod evaluator;
+use std::ops::AddAssign;
+
 pub use evaluator::*;
 mod error;
 pub use error::*;
@@ -30,6 +32,33 @@ pub fn list_as_english(mut items: Vec<String>, joiner: &str) -> Option<String> {
 				*last = format!("{joiner} {last}");
 			}
 			Some(items.join(", "))
+		}
+	}
+}
+
+pub trait AddAssignMap {
+	fn add_assign_map(&mut self, other: &Self);
+}
+impl AddAssignMap for usize {
+	fn add_assign_map(&mut self, other: &Self) {
+		self.add_assign(other);
+	}
+}
+impl<K, V> AddAssignMap for std::collections::BTreeMap<K, V>
+where
+	K: Clone + std::hash::Hash + std::cmp::Ord,
+	V: Clone + AddAssignMap,
+{
+	fn add_assign_map(&mut self, other: &Self) {
+		for (key, value) in other {
+			match self.get_mut(key) {
+				None => {
+					self.insert(key.clone(), value.clone());
+				}
+				Some(dst_value) => {
+					dst_value.add_assign_map(value);
+				}
+			}
 		}
 	}
 }

@@ -6,9 +6,10 @@ use crate::{
 			action::LimitedUses,
 			character::{
 				spellcasting::{self, Caster, Restriction, RitualCapability, Slots, SpellEntry},
-				Character, MAX_SPELL_RANK,
+				Character,
 			},
 			description,
+			roll::Roll,
 			spell::{self, Spell},
 			Ability,
 		},
@@ -142,18 +143,38 @@ impl Mutator for Spellcasting {
 	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
 		match &self.0 {
 			Operation::Caster(caster) => {
-				// TODO: Every caster is submitting a reset for the shared-slots (redudant).
-				// Need to rethink this b/c Warlocks are the only ones with a short-rest slot reset.
-				let data_paths = (1..=MAX_SPELL_RANK)
-					.into_iter()
-					.map(|rank| stats.persistent().selected_spells.consumed_slots_path(rank))
-					.collect::<Vec<_>>();
-				let entry = crate::system::dnd5e::data::character::RestEntry {
-					restore_amount: None,
-					data_paths,
-					source: parent.join(format!("{} Spellcasting Slots", caster.name())),
-				};
-				stats.rest_resets_mut().add(caster.slots.reset_on, entry);
+				// The reset entry for standard spell slots is taken care of by `Persistent::SelectedSpells`
+				// (where the data paths for spell slots are found).
+				// We need to add reset entries for all bonus spell slots at the character's current level.
+				let current_level = stats.level(Some(&caster.class_name));
+				for slots in &caster.bonus_slots {
+					let Slots::Bonus { reset_on, slots_capacity } = slots else {
+						continue;
+					};
+					// Since we are compiling the character at a specific level, we only need to
+					// submit reset data for the slots granted at that level.
+					if let Some(ranks) = slots_capacity.get(&current_level) {
+						for (rank, amount) in ranks {
+							// Each rank has its own data path and amount of slots granted by this slot-group,
+							// so we need to submit a separate reset for it
+							// (because restore amount is applied to all data paths in an entry).
+							let rank_data_path = stats
+								.persistent()
+								.selected_spells
+								.consumed_slots_path(*rank);
+							let entry = crate::system::dnd5e::data::character::RestEntry {
+								restore_amount: Some(Roll::from(*amount as u32)),
+								data_paths: vec![rank_data_path],
+								source: parent.join(format!(
+									"{} Spellcasting Slots (Rank {})",
+									caster.name(),
+									*rank
+								)),
+							};
+							stats.rest_resets_mut().add(*reset_on, entry);
+						}
+					}
+				}
 				stats.spellcasting_mut().add_caster(caster.clone());
 			}
 			Operation::AddSource {
@@ -247,7 +268,16 @@ impl FromKDL for Spellcasting {
 					}
 				};
 
-				let slots = node.query_req_t::<Slots>("scope() > slots")?;
+				let all_slots = node.query_all_t::<Slots>("scope() > slots")?;
+				let mut standard_slots = None;
+				let mut bonus_slots = Vec::with_capacity(1);
+				for slots in all_slots {
+					if matches!(slots, Slots::Standard { .. }) {
+						standard_slots = Some(slots);
+					} else {
+						bonus_slots.push(slots);
+					}
+				}
 
 				let spell_capacity = {
 					let mut node = node.query_req("scope() > kind")?;
@@ -304,7 +334,8 @@ impl FromKDL for Spellcasting {
 					ability,
 					restriction,
 					cantrip_capacity,
-					slots,
+					standard_slots,
+					bonus_slots,
 					spell_capacity,
 					spell_entry,
 					ritual_capability,
@@ -451,7 +482,12 @@ impl AsKdl for Spellcasting {
 					}
 					node.build("kind")
 				});
-				node.push_child_t("slots", &caster.slots);
+				if let Some(slots) = &caster.standard_slots {
+					node.push_child_t("slots", slots);
+				}
+				for bonus_slots in &caster.bonus_slots {
+					node.push_child_t("slots", bonus_slots);
+				}
 				node
 			}
 			Operation::AddSource {

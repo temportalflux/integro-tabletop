@@ -6,7 +6,7 @@ use crate::{
 		dnd5e::{
 			data::{
 				character::Character, item::container::Inventory, Ability, Bundle, Class,
-				Condition, Spell,
+				Condition, Rest, Spell,
 			},
 			SystemComponent,
 		},
@@ -24,6 +24,8 @@ use std::{
 
 mod description;
 pub use description::*;
+
+use super::RestEntry;
 
 pub static MAX_SPELL_RANK: u8 = 9;
 
@@ -65,6 +67,13 @@ impl MutatorGroup for Persistent {
 				.push_bonus(ability, (*score).into(), "Base Score".into());
 		}
 		stats.apply(&super::FinalizeAbilityScores.into(), parent);
+		{
+			// Add the reset data for spell slots (shared by multiple classes when multiclassing).
+			// Non-casters will still have this entry, but since they can't cast/don't have any slots,
+			// there will be no slots that show up or actual data to reset.
+			let (rest, entry) = self.selected_spells.reset_on_rest();
+			stats.rest_resets_mut().add(rest, entry);
+		}
 
 		for bundle in &self.bundles {
 			stats.apply_from(bundle, parent);
@@ -551,6 +560,19 @@ impl SelectedSpells {
 
 	pub fn consumed_slots_path(&self, rank: u8) -> std::path::PathBuf {
 		Path::new("SpellSlots").join(rank.to_string())
+	}
+
+	pub fn reset_on_rest(&self) -> (Rest, RestEntry) {
+		let data_paths = (1..=MAX_SPELL_RANK)
+			.into_iter()
+			.map(|rank| self.consumed_slots_path(rank))
+			.collect::<Vec<_>>();
+		let entry = RestEntry {
+			restore_amount: None,
+			data_paths,
+			source: Path::new("Standard Spellcasting Slots").to_owned(),
+		};
+		(Rest::Long, entry)
 	}
 }
 impl SelectedSpellsData {

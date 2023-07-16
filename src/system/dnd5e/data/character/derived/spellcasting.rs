@@ -1,9 +1,12 @@
-use crate::system::{
-	core::SourceId,
-	dnd5e::data::{
-		character::{Character, ObjectCacheProvider, Persistent},
-		spell::Spell,
+use crate::{
+	system::{
+		core::SourceId,
+		dnd5e::data::{
+			character::{Character, ObjectCacheProvider, Persistent},
+			spell::Spell,
+		},
 	},
+	utility::AddAssignMap,
 };
 use multimap::MultiMap;
 use std::{
@@ -239,29 +242,40 @@ impl Spellcasting {
 			return None;
 		}
 
-		let (total_caster_level, slots_by_level) = if self.casters.len() == 1 {
+		if self.casters.len() == 1 {
 			let (_id, caster) = self.casters.iter().next().unwrap();
 			let current_level = character.level(Some(&caster.class_name));
-			(current_level, &caster.slots.slots_capacity)
+			caster.all_slots().remove(&current_level)
 		} else {
-			let mut levels = 0;
+			let mut total_level = 0;
 			for (_id, caster) in &self.casters {
 				let current_level = character.level(Some(&caster.class_name));
-				levels += match caster.slots.multiclass_half_caster {
-					false => current_level,
-					true => current_level / 2,
+				total_level += match &caster.standard_slots {
+					Some(Slots::Standard {
+						multiclass_half_caster: false,
+						..
+					}) => current_level,
+					Some(Slots::Standard {
+						multiclass_half_caster: true,
+						..
+					}) => current_level / 2,
+					_ => 0,
 				};
 			}
-			(levels, &*MULTICLASS_SLOTS)
-		};
-
-		for (level, ranks) in slots_by_level.iter().rev() {
-			if *level <= total_caster_level {
-				return Some(ranks.clone());
+			let mut slots = MULTICLASS_SLOTS
+				.get(&total_level)
+				.cloned()
+				.unwrap_or_default();
+			for (_id, caster) in &self.casters {
+				let current_level = character.level(Some(&caster.class_name));
+				for bonus_slots in &caster.bonus_slots {
+					if let Some(ranks) = bonus_slots.capacity().get(&current_level) {
+						slots.add_assign_map(ranks);
+					}
+				}
 			}
+			(!slots.is_empty()).then(|| slots)
 		}
-
-		None
 	}
 
 	pub fn prepared_spells(&self) -> &HashMap<SourceId, AlwaysPreparedSpell> {
