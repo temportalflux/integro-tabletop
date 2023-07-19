@@ -85,6 +85,11 @@ impl ToString for DamageType {
 		self.display_name().into()
 	}
 }
+impl AsKdl for DamageType {
+	fn as_kdl(&self) -> NodeBuilder {
+		NodeBuilder::default().with_entry(self.to_string())
+	}
+}
 
 impl DamageType {
 	pub fn display_name(&self) -> &'static str {

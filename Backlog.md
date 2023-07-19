@@ -3,8 +3,6 @@
 
 ## DnD5e Features
 
-- `add_defense` damage type selector
-
 - Apply Dodge condition when the action is taken (defined in `defaults.kdl`)
 - `Bardic Inspiration` reset_on is scaled to the class level
 - Expertise - selection filter to select skills that the character already has proficiency in

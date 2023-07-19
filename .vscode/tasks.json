@@ -19,13 +19,6 @@
 			"problemMatcher": []
 		},
 		{
-			"label": "3. [Wasm] Serve (Watched)",
-      "type": "shell",
-			"command": "cargo",
-			"args": [ "watch", "-s", "\"trunk build\"", "-s", "\"netlify deploy --dir dist --alias local\"" ],
-			"group": "build"
-		},
-		{
 			"label": "3. [Wasm] Serve Localhost",
       "type": "shell",
 			"command": "trunk",
@@ -43,6 +36,7 @@
 			"label": "5. [Cargo] Run Tests",
 			"command": "cargo",
 			"args": [ "test" ],
+			"group": "build",
 			"problemMatcher": []
 		},
 		{

@@ -2,7 +2,10 @@ use crate::{
 	components::{modal, stop_propagation},
 	page::characters::sheet::CharacterHandle,
 	page::characters::sheet::MutatorImpact,
-	system::dnd5e::{data::character::{HitPoint, Persistent}, components::UseCounterDelta},
+	system::dnd5e::{
+		components::UseCounterDelta,
+		data::character::{HitPoint, Persistent},
+	},
 	utility::InputExt,
 };
 use std::{cmp::Ordering, path::PathBuf};
