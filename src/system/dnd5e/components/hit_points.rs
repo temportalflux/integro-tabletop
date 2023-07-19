@@ -2,10 +2,10 @@ use crate::{
 	components::{modal, stop_propagation},
 	page::characters::sheet::CharacterHandle,
 	page::characters::sheet::MutatorImpact,
-	system::dnd5e::data::character::{HitPoint, Persistent},
+	system::dnd5e::{data::character::{HitPoint, Persistent}, components::UseCounterDelta},
 	utility::InputExt,
 };
-use std::cmp::Ordering;
+use std::{cmp::Ordering, path::PathBuf};
 use yew::prelude::*;
 
 static TEXT_HIT_POINTS: &'static str = "\
@@ -268,13 +268,15 @@ fn Modal() -> Html {
 			<span class="hr my-3" />
 			<ModalSectionApplyChangeForm />
 			<span class="hr my-3" />
+			<ModalSectionHitDice />
+			<span class="hr my-3" />
 			<ModalSectionInfo />
 		</div>
 	</>}
 }
 
 #[function_component]
-pub fn ModalSectionDeathSaves() -> Html {
+fn ModalSectionDeathSaves() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	if state.get_hp(HitPoint::Current) > 0 {
 		return html! {};
@@ -298,7 +300,7 @@ pub fn ModalSectionDeathSaves() -> Html {
 }
 
 #[function_component]
-pub fn ModalSectionCurrentStats() -> Html {
+fn ModalSectionCurrentStats() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let apply_temp_hp = Callback::from({
 		let state = state.clone();
@@ -336,7 +338,7 @@ pub fn ModalSectionCurrentStats() -> Html {
 }
 
 #[function_component]
-pub fn ModalSectionApplyChangeForm() -> Html {
+fn ModalSectionApplyChangeForm() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 
 	let delta = use_state_eq(|| 0i32);
@@ -495,7 +497,52 @@ pub fn ModalSectionApplyChangeForm() -> Html {
 }
 
 #[function_component]
-pub fn MaxHitPointsTable() -> Html {
+fn ModalSectionHitDice() -> Html {
+	let state = use_context::<CharacterHandle>().unwrap();
+	static SECTION_DESC: &str = "\
+		Manual access to your available hit dice per class. Generally hit dice are only used during a \
+		Short Rest and reset on a Long Rest, but some special class features, feats, and spells take \
+		and force the usage of hit dice outside of rests. These inputs will not change your hit points, \
+		just the number of hit dice you have available until your next Long Rest.";
+
+	let apply_delta = state.new_dispatch(|(data_path, delta): (PathBuf, i32), persistent| {
+		let prev_value = persistent.get_first_selection_at::<u32>(&data_path);
+		let prev_value = prev_value.map(Result::ok).flatten().unwrap_or_default();
+		let new_value = ((prev_value as i32) + delta).max(0) as u32;
+		persistent.set_selected(data_path, (new_value > 0).then(|| new_value.to_string()));
+		MutatorImpact::None
+	});
+
+	let mut class_sections = Vec::new();
+	for class in &state.persistent().classes {
+		let Some(data_path) = class.hit_die_selector.get_data_path() else { continue; };
+		let consumed_uses = state.get_first_selection_at::<u32>(&data_path);
+		let consumed_uses = consumed_uses.map(Result::ok).flatten().unwrap_or_default();
+		class_sections.push(html! {
+			<div class="uses d-flex">
+				<span class="d-inline-block me-4" style="width: 100px; font-weight: 600px;">
+					{&class.name}{format!(" ({})", class.hit_die)}
+				</span>
+				<UseCounterDelta
+					max_uses={class.current_level as u32}
+					consumed_uses={consumed_uses}
+					on_apply={apply_delta.reform(move |delta: i32| (data_path.clone(), -delta))}
+				/>
+			</div>
+		});
+	}
+
+	html! {
+		<div>
+			<h4>{"Hit Dice"}</h4>
+			<div class="mb-2">{SECTION_DESC}</div>
+			{class_sections}
+		</div>
+	}
+}
+
+#[function_component]
+fn MaxHitPointsTable() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let rows =
 		state
@@ -527,7 +574,7 @@ pub fn MaxHitPointsTable() -> Html {
 }
 
 #[function_component]
-pub fn ModalSectionInfo() -> Html {
+fn ModalSectionInfo() -> Html {
 	html! {
 		<div class="accordion" id="hitPointsInformation">
 			<div class="accordion-item">

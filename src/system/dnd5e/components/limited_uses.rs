@@ -118,14 +118,14 @@ impl<'parent> UsesCounter<'parent> {
 }
 
 #[derive(Clone, PartialEq, Properties)]
-struct UseCounterDeltaProps {
-	max_uses: u32,
-	consumed_uses: u32,
-	on_apply: Callback<i32>,
+pub struct UseCounterDeltaProps {
+	pub max_uses: u32,
+	pub consumed_uses: u32,
+	pub on_apply: Callback<i32>,
 }
 
 #[function_component]
-fn UseCounterDelta(
+pub fn UseCounterDelta(
 	UseCounterDeltaProps {
 		max_uses,
 		consumed_uses,
