@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::dnd5e::{
 		data::{character::Character, Rest},
 		Value,
@@ -32,7 +32,7 @@ pub struct UseCounterData {
 	pub(crate) max_uses: Value<i32>,
 	/// Consumed uses resets when the user takes at least this rest
 	/// (a reset on a short rest will also reset on long rest).
-	pub(crate) reset_on: Option<Rest>,
+	pub(crate) reset_on: Option<Value<String>>,
 	pub(crate) uses_count: Selector<u32>,
 }
 impl Default for UseCounterData {
@@ -105,18 +105,17 @@ impl UseCounterData {
 		self.max_uses.evaluate(character)
 	}
 
-	fn get_reset_rest(&self, _character: &Character) -> Option<Rest> {
-		self.reset_on.clone()
+	pub fn get_reset_rest(&self, character: &Character) -> Option<Rest> {
+		let Some(reset_eval) = &self.reset_on else { return None; };
+		let rest_str = reset_eval.evaluate(character);
+		Rest::from_str(&rest_str).ok()
 	}
 }
 
 impl FromKDL for LimitedUses {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		if let Some(max_uses) = node.query_opt_t::<Value<i32>>("scope() > max_uses")? {
-			let reset_on = match node.query_str_opt("scope() > reset_on", 0)? {
-				None => None,
-				Some(str) => Some(Rest::from_str(str)?),
-			};
+			let reset_on = node.query_opt_t::<Value<String>>("scope() > reset_on")?;
 			return Ok(Self::Usage(UseCounterData {
 				max_uses,
 				reset_on,
@@ -150,7 +149,7 @@ impl AsKdl for LimitedUses {
 			Self::Usage(use_counter) => {
 				node.push_child_t("max_uses", &use_counter.max_uses);
 				if let Some(reset_on) = &use_counter.reset_on {
-					node.push_child_entry("reset_on", reset_on.to_string());
+					node.push_child_t("reset_on", reset_on);
 				}
 				node
 			}
@@ -175,14 +174,20 @@ mod test {
 			kdl_ext::{test_utils::*, NodeContext},
 			system::{
 				core::NodeRegistry,
-				dnd5e::{data::Rest, evaluator::GetLevelInt},
+				dnd5e::{
+					data::Rest,
+					evaluator::{GetLevelInt, GetLevelStr},
+				},
 			},
 		};
 
 		static NODE_NAME: &str = "limited_uses";
 
 		fn node_ctx() -> NodeContext {
-			NodeContext::registry(NodeRegistry::default_with_eval::<GetLevelInt>())
+			let mut node_reg = NodeRegistry::default();
+			node_reg.register_evaluator::<GetLevelInt>();
+			node_reg.register_evaluator::<GetLevelStr>();
+			NodeContext::registry(node_reg)
 		}
 
 		#[test]
@@ -211,7 +216,7 @@ mod test {
 			";
 			let data = LimitedUses::Usage(UseCounterData {
 				max_uses: Value::Fixed(2),
-				reset_on: Some(Rest::Short),
+				reset_on: Some(Value::Fixed(Rest::Short.to_string())),
 				..Default::default()
 			});
 			assert_eq_fromkdl!(LimitedUses, doc, data);
@@ -230,7 +235,10 @@ mod test {
 				|        level 14 5
 				|        level 20 -1
 				|    }
-				|    reset_on \"Long\"
+				|    reset_on (Evaluator)\"get_level_str\" {
+				|        level 1 \"Long\"
+				|        level 5 \"Short\"
+				|    }
 				|}
 			";
 			let data = LimitedUses::Usage(UseCounterData {
@@ -241,7 +249,14 @@ mod test {
 					}
 					.into(),
 				),
-				reset_on: Some(Rest::Long),
+				reset_on: Some(Value::Evaluated(
+					GetLevelStr {
+						class_name: None,
+						order_map: [(1, Rest::Long.to_string()), (5, Rest::Short.to_string())]
+							.into(),
+					}
+					.into(),
+				)),
 				..Default::default()
 			});
 			assert_eq_fromkdl!(LimitedUses, doc, data);

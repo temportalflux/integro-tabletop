@@ -195,7 +195,7 @@ impl Mutator for Spellcasting {
 				if let Some(uses) = limited_uses.as_ref() {
 					if let LimitedUses::Usage(data) = uses {
 						stats.features_mut().register_usage(data, parent);
-						if let Some(rest) = data.reset_on {
+						if let Some(rest) = data.get_reset_rest(stats) {
 							if let Some(data_path) = data.get_data_path() {
 								let entry = crate::system::dnd5e::data::character::RestEntry {
 									restore_amount: None,

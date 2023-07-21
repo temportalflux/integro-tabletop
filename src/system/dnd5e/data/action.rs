@@ -163,7 +163,7 @@ mod test {
 				attack: None,
 				limited_uses: Some(LimitedUses::Usage(UseCounterData {
 					max_uses: Value::Fixed(1),
-					reset_on: Some(Rest::Long),
+					reset_on: Some(Value::Fixed(Rest::Long.to_string())),
 					..Default::default()
 				})),
 				conditions_to_apply: Vec::new(),
@@ -200,7 +200,7 @@ mod test {
 						}
 						.into(),
 					),
-					reset_on: Some(Rest::Long),
+					reset_on: Some(Value::Fixed(Rest::Long.to_string())),
 					..Default::default()
 				})),
 				conditions_to_apply: Vec::new(),

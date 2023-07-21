@@ -206,7 +206,7 @@ mod test {
 					id: Default::default(),
 					cannot_match: vec![],
 					amount: 1,
-					options: vec![DamageType::Fire, DamageType::Force]
+					options: vec![DamageType::Fire, DamageType::Force],
 				}),
 				context: None,
 			};

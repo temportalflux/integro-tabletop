@@ -84,7 +84,7 @@ where
 	}
 }
 
-trait FromKdlValue {
+pub trait FromKdlValue {
 	fn parse(value: &kdl::KdlValue) -> anyhow::Result<Self>
 	where
 		Self: Sized;
@@ -103,6 +103,14 @@ impl FromKdlValue for i32 {
 		Self: Sized,
 	{
 		Ok(value.as_i64_req()? as i32)
+	}
+}
+impl FromKdlValue for String {
+	fn parse(value: &kdl::KdlValue) -> anyhow::Result<Self>
+	where
+		Self: Sized,
+	{
+		Ok(value.as_str_req()?.to_owned())
 	}
 }
 

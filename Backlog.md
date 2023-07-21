@@ -1,15 +1,22 @@
 # Backlog
 -----
 
+## Tech Debt
+- Right now, evaluator's output type must be the same as the type read from kdl. Instead, an evaluator should have a parsed type (bool, int, float, string) and an output type (same as parsed or impls From/FromStr of the underlying type). This would support something like `Value<Rest>` instead of needing to use `Rest::from_str(Value<String>::evaluate())`. The output type can be lazily provided at evaluation time, instead of being a compile-time restriction. Heck, at that rate we dont even need a compile-time parsed type because it can be stored as a KdlValue (enum wrapper around all primitive types), which is then parsed at evaluation time.
+
 ## DnD5e Features
 
+- spell containers
+- Wizards can add spells to spellbook
+  req; spell containers
+- Wizard's can prepare spells from spellbook
+  req; Wizards can add spells to spellbook
+
 - Apply Dodge condition when the action is taken (defined in `defaults.kdl`)
-- `Bardic Inspiration` reset_on is scaled to the class level
 - Expertise - selection filter to select skills that the character already has proficiency in
 - Monk `Martial Arts` mutators (largely dependent on defining what a monk weapon is and applying bonus damage)
 - Conditions imply other Conditions
 - Ranger Favored Enemy and Natural Explorer
-- Wizard spell source (spellbook)
 - Condition supression (`Mindless Rage`)
 - Granting speed based on another speed (`Second-Story Work`, `Dragon Wings`)
 - Bonus to damage from spells based on a criteria (`Empowered Evocation`)

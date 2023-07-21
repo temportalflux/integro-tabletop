@@ -76,7 +76,7 @@ impl MutatorGroup for Feature {
 			if let Some(uses) = &action.limited_uses {
 				if let LimitedUses::Usage(data) = uses {
 					stats.features_mut().register_usage(data, &path_to_self);
-					if let Some(rest) = data.reset_on {
+					if let Some(rest) = data.get_reset_rest(stats) {
 						if let Some(data_path) = data.get_data_path() {
 							let entry = super::character::RestEntry {
 								restore_amount: None,
