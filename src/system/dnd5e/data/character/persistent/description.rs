@@ -27,6 +27,16 @@ impl Description {
 			_ => Size::Small,
 		}
 	}
+
+	pub fn iter_pronouns(&self) -> impl Iterator<Item = &String> + '_ {
+		self.pronouns
+			.iter()
+			.sorted()
+			.chain(match self.custom_pronouns.is_empty() {
+				true => vec![],
+				false => vec![&self.custom_pronouns],
+			})
+	}
 }
 
 impl FromKDL for Description {

@@ -15,6 +15,8 @@ use crate::{
 };
 use enum_map::EnumMap;
 use itertools::Itertools;
+use multimap::MultiMap;
+use serde::{Deserialize, Serialize};
 use std::{
 	collections::{BTreeMap, HashMap},
 	path::Path,
@@ -167,11 +169,40 @@ impl Persistent {
 }
 
 crate::impl_kdl_node!(Persistent, "character");
+#[derive(PartialEq, Serialize, Deserialize)]
+pub struct PersistentMetadata {
+	pub name: String,
+	pub pronouns: Vec<String>,
+	pub level: usize,
+	pub classes: Vec<(String, Option<String>)>,
+	pub bundles: MultiMap<String, String>,
+}
 impl SystemComponent for Persistent {
 	fn to_metadata(self) -> serde_json::Value {
-		serde_json::json!({
-			"name": &self.description.name,
-		})
+		let mut level = 0;
+		let mut classes = Vec::with_capacity(self.classes.len());
+		for class in &self.classes {
+			level += class.current_level;
+			classes.push((
+				class.name.clone(),
+				class
+					.subclass
+					.as_ref()
+					.map(|subclass| subclass.name.clone()),
+			));
+		}
+		let metadata = PersistentMetadata {
+			name: self.description.name.clone(),
+			pronouns: self.description.iter_pronouns().cloned().collect(),
+			level,
+			classes,
+			bundles: self
+				.bundles
+				.iter()
+				.map(|bundle| (bundle.category.clone(), bundle.name.clone()))
+				.collect(),
+		};
+		serde_json::json!(metadata)
 	}
 }
 impl FromKDL for Persistent {

@@ -99,12 +99,7 @@ pub fn Header() -> Html {
 pub fn pronouns(
 	description: &crate::system::dnd5e::data::character::Description,
 ) -> Option<Vec<Html>> {
-	let iter_pronouns = description.pronouns.iter().sorted();
-	let iter_pronouns = iter_pronouns.chain(match description.custom_pronouns.is_empty() {
-		true => vec![],
-		false => vec![&description.custom_pronouns],
-	});
-	group_names(html!(", "), iter_pronouns)
+	group_names(html!(", "), description.iter_pronouns())
 }
 
 fn group_names<T: AsRef<str>>(
