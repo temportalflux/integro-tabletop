@@ -41,7 +41,8 @@ impl Description {
 
 impl FromKDL for Description {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
-		let name = node.query_str_req("scope() > name", 0)?.to_owned();
+		let name = node.query_str_opt("scope() > name", 0)?;
+		let name = name.map(str::to_owned).unwrap_or_default();
 
 		let mut pronouns = HashSet::new();
 		let mut custom_pronouns = String::new();
@@ -101,7 +102,9 @@ impl FromKDL for Description {
 impl AsKdl for Description {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
-		node.push_child_t("name", &self.name);
+		if !self.name.is_empty() {
+			node.push_child_t("name", &self.name);
+		}
 		for pronoun in self.pronouns.iter().sorted() {
 			node.push_child_t("pronoun", pronoun);
 		}

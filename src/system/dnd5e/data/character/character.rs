@@ -248,11 +248,7 @@ impl Character {
 	}
 
 	pub fn export_as_kdl(&self) -> kdl::KdlDocument {
-		use crate::kdl_ext::AsKdl;
-		let mut doc = kdl::KdlDocument::new();
-		doc.nodes_mut()
-			.push(self.persistent().as_kdl().build("character"));
-		doc
+		self.persistent().export_as_kdl()
 	}
 }
 

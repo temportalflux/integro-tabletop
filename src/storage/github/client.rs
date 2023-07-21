@@ -1,5 +1,3 @@
-use std::path::Path;
-
 use super::{
 	queries::{FindOrgs, SearchForRepos, ViewerInfo},
 	GraphQLQueryExt, QueryError, QueryStream, RepositoryMetadata,
@@ -7,6 +5,7 @@ use super::{
 use futures_util::future::LocalBoxFuture;
 use reqwest::StatusCode;
 use serde::Deserialize;
+use std::path::Path;
 
 static GITHUB_API: &'static str = "https://api.github.com";
 static APP_USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
@@ -292,6 +291,7 @@ impl GithubClient {
 	}
 }
 
+#[derive(Debug)]
 pub struct CreateOrUpdateFileArgs<'a> {
 	pub repo_org: &'a str,
 	pub repo_name: &'a str,
@@ -338,11 +338,11 @@ impl GithubClient {
 			.replace("\\", "/");
 		let url = format!("{GITHUB_API}/repos/{repo_org}/{repo_name}/contents/{path_str}");
 
-		let encoded_content: String = general_purpose::STANDARD_NO_PAD.encode(content.as_bytes());
+		let encoded_content: String = general_purpose::URL_SAFE.encode(content.as_bytes());
 
 		let builder = self.0.put(url);
 		let builder = self.insert_rest_headers(builder, None);
-		let builder = builder.body({
+		let body = {
 			let mut entries = vec![
 				("message".into(), commit_message.to_owned().into()),
 				("content".into(), encoded_content.into()),
@@ -355,28 +355,35 @@ impl GithubClient {
 			}
 			let object = Value::Object(entries.into_iter().collect::<Map<String, Value>>());
 			serde_json::to_string(&object).unwrap()
-		});
-		log::debug!("{builder:?}");
+		};
+		log::debug!("{builder:?} \"{body}\"");
+		let builder = builder.body(body);
 		Box::pin(async move {
 			let response = builder.send().await?;
-			if response.status() != StatusCode::OK {
-				match response.status().as_u16() {
+			let status = response.status();
+			let data = response.json::<Value>().await?;
+			if status != StatusCode::OK {
+				match status.as_u16() {
 					201 => {
 						// file was created
 					}
 					404 => {
+						log::warn!("{data:?}");
 						return Err(CreateOrUpdateFileError::ResourceNotFound.into());
 					}
 					409 => {
+						log::warn!("{data:?}");
 						return Err(CreateOrUpdateFileError::FileConflict.into());
 					}
 					422 => {
 						log::warn!("create_or_update_file is being spammed");
+						log::warn!("{data:?}");
 					}
 					code => {
 						log::warn!(
 							"create_or_update_file encountered unknown response code: {code}"
 						);
+						log::warn!("{data:?}");
 					}
 				}
 			}

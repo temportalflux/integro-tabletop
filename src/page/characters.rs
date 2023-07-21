@@ -1,21 +1,23 @@
-use std::rc::Rc;
-
 use super::app;
 use crate::{
-	components::Spinner,
+	components::{modal, Spinner},
 	database::app::Database,
 	system::{
-		core::{ModuleId, SourceId},
+		core::{ModuleId, SourceId, System},
 		dnd5e::{
+			components::GeneralProp,
 			data::character::{Persistent, PersistentMetadata},
 			DnD5e,
 		},
 	},
+	utility::InputExt, task::Signal,
 };
 use itertools::Itertools;
+use std::{path::Path, rc::Rc};
 use yew::prelude::*;
 use yew_hooks::{use_async_with_options, UseAsyncOptions};
 use yew_router::{prelude::Link, Routable};
+use yewdux::prelude::use_store;
 
 pub mod sheet;
 use sheet::Sheet;
@@ -104,24 +106,45 @@ impl Route {
 
 #[function_component]
 pub fn CharacterLanding() -> Html {
+	let modal_dispatcher = use_context::<modal::Context>().unwrap();
+
+	let on_create = modal_dispatcher.callback({
+		move |_| {
+			modal::Action::Open(modal::Props {
+				centered: true,
+				scrollable: true,
+				content: html! {<ModalCreate />},
+				..Default::default()
+			})
+		}
+	});
+	let on_delete = modal_dispatcher.callback({
+		move |id: SourceId| {
+			modal::Action::Open(modal::Props {
+				centered: true,
+				scrollable: true,
+				content: html! {<ModalDelete value={id} />},
+				..Default::default()
+			})
+		}
+	});
+
 	html! {<div>
 		<h3 class="text-center">{"Characters"}</h3>
 		<div class="d-flex align-items-center justify-content-center mb-1">
 			<button
 				class="btn btn-outline-success btn-sm ms-2"
-				onclick={Callback::from({
-					move |_| {}
-				})}
+				onclick={on_create}
 			>
 				{"New Character"}
 			</button>
 		</div>
-		<CharacterList />
+		<CharacterList value={on_delete} />
 	</div>}
 }
 
 #[function_component]
-pub fn CharacterList() -> Html {
+pub fn CharacterList(GeneralProp { value: on_delete }: &GeneralProp<Callback<SourceId>>) -> Html {
 	use crate::{
 		components::database::{use_query_all, QueryAllArgs, QueryStatus},
 		kdl_ext::KDLNode,
@@ -148,7 +171,11 @@ pub fn CharacterList() -> Html {
 				let Ok(metadata) = serde_json::from_value::<PersistentMetadata>(entry.metadata.clone()) else { continue; };
 				let id = entry.source_id(false);
 				let route = Route::sheet(&id);
-				cards.push(html!(<CharacterCard {id} {route} metadata={Rc::new(metadata)} />));
+				cards.push(html!(<CharacterCard
+					{id} {route}
+					metadata={Rc::new(metadata)}
+					on_delete={on_delete.clone()}
+				/>));
 			}
 			html! {
 				<div class="d-flex align-items-center justify-content-center">
@@ -164,9 +191,17 @@ struct CharacterCardProps {
 	id: SourceId,
 	route: Route,
 	metadata: Rc<PersistentMetadata>,
+	on_delete: Callback<SourceId>,
 }
 #[function_component]
-fn CharacterCard(CharacterCardProps { id, route, metadata }: &CharacterCardProps) -> Html {
+fn CharacterCard(
+	CharacterCardProps {
+		id,
+		route,
+		metadata,
+		on_delete,
+	}: &CharacterCardProps,
+) -> Html {
 	html! {
 		<div class="card m-1" style="min-width: 300px;">
 			<div class="card-header d-flex align-items-center">
@@ -174,11 +209,9 @@ fn CharacterCard(CharacterCardProps { id, route, metadata }: &CharacterCardProps
 				<i
 					class="bi bi-trash ms-auto"
 					style="color: var(--bs-danger);"
-					onclick={Callback::from({
+					onclick={on_delete.reform({
 						let id = id.clone();
-						move |_| {
-							log::debug!("TODO: open delete modal for {:?}", id.to_string());
-						}
+						move |_| id.clone()
 					})}
 				/>
 			</div>
@@ -221,4 +254,115 @@ fn CharacterCard(CharacterCardProps { id, route, metadata }: &CharacterCardProps
 			</div>
 		</div>
 	}
+}
+
+#[function_component]
+fn ModalCreate() -> Html {
+	let (auth_status, _dispatch) = use_store::<crate::auth::Status>();
+	let task_dispatch = use_context::<crate::task::Dispatch>().unwrap();
+
+	// TODO: Select the parent module
+
+	let filename = use_state_eq(|| "unnamed".to_owned());
+	let on_change_filename = Callback::from({
+		let filename = filename.clone();
+		move |evt: web_sys::Event| {
+			let Some(value) = evt.input_value() else { return; };
+			filename.set(value);
+		}
+	});
+
+	let creation_in_progress = use_state(|| Signal::new(false));
+	let onclick = Callback::from({
+		let auth_status = auth_status.clone();
+		let task_dispatch = task_dispatch.clone();
+		let filename = filename.clone();
+		let creation_in_progress = creation_in_progress.clone();
+		move |_| {
+			if creation_in_progress.value() {
+				return;
+			}
+			let Some(client) = auth_status.storage() else {
+				log::debug!("no storage client");
+				return;
+			};
+			let path_in_repo = Path::new(DnD5e::id())
+				.join("character")
+				.join(format!("{}.kdl", filename.as_str()));
+			let signal = task_dispatch.spawn("Create Character File", None, async move {
+				let (_, homebrew_repo) = client.viewer().await?;
+				let Some(homebrew_repo) = homebrew_repo else { return Ok(()); };
+				let message = "Add new character";
+				let state = Persistent::default();
+				let content = {
+					let doc = state.export_as_kdl();
+					let doc = doc.to_string();
+					let doc = doc.replace("\\r", "");
+					let doc = doc.replace("\\n", "\n");
+					let doc = doc.replace("\\t", "\t");
+					let doc = doc.replace("    ", "\t");
+					doc
+				};
+				let args = crate::storage::github::CreateOrUpdateFileArgs {
+					repo_org: &homebrew_repo.owner,
+					repo_name: &homebrew_repo.name,
+					path_in_repo: &path_in_repo,
+					commit_message: &message,
+					content: &content,
+					file_id: None,
+					branch: None,
+				};
+				log::debug!("{args:?}");
+				client.create_or_update_file(args).await?;
+				log::debug!("complete");
+				Ok(()) as anyhow::Result<()>
+			});
+			creation_in_progress.set(signal);
+		}
+	});
+
+	html! {<>
+		<div class="modal-header">
+			<h1 class="modal-title fs-4">{"New Character"}</h1>
+			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
+		</div>
+		<div class="modal-body">
+			<div class="mb-3">
+				<label class="form-label" for="filename">{"Unique File Name"}</label>
+				<input
+					class="form-control" id="filename" type="text"
+					value={(*filename).clone()}
+					onchange={on_change_filename}
+				/>
+				<div class="form-text">{"This is a unique id used to save the file."}</div>
+			</div>
+			<div class="d-flex justify-content-center">
+				<button class="btn btn-success m-2" {onclick}>{"Create Character"}</button>
+			</div>
+		</div>
+	</>}
+}
+
+#[function_component]
+fn ModalDelete(GeneralProp { value: id }: &GeneralProp<SourceId>) -> Html {
+	// TODO: This could use a confirmation captcha, requiring that the character's name by typed in.
+	let onclick = Callback::from({
+		let id = id.clone();
+		move |_| {
+			log::debug!("TODO: Delete {:?}", id.to_string());
+		}
+	});
+	html! {<>
+		<div class="modal-header">
+			<h1 class="modal-title fs-4">{"Delete Character"}</h1>
+			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
+		</div>
+		<div class="modal-body">
+			{"Are you sure you want to delete this character? You wont be able to undo this action \
+			within this app (you need to know how to use git to do so)."}
+			<div class="d-flex justify-content-center">
+				<button class="btn btn-danger m-2" {onclick}>{"Delete Character"}</button>
+			</div>
+		</div>
+	</>}
 }

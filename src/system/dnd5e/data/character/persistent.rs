@@ -166,6 +166,12 @@ impl Persistent {
 			None
 		}
 	}
+
+	pub fn export_as_kdl(&self) -> kdl::KdlDocument {
+		let mut doc = kdl::KdlDocument::new();
+		doc.nodes_mut().push(self.as_kdl().build("character"));
+		doc
+	}
 }
 
 crate::impl_kdl_node!(Persistent, "character");
@@ -234,7 +240,7 @@ impl FromKDL for Persistent {
 			conditions.insert(condition);
 		}
 
-		let inventory = node.query_req_t::<Inventory>("scope() > inventory")?;
+		let inventory = node.query_opt_t::<Inventory>("scope() > inventory")?.unwrap_or_default();
 
 		let selected_spells = node
 			.query_opt_t::<SelectedSpells>("scope() > spells")?

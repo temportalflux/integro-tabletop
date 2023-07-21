@@ -26,7 +26,10 @@ fn main() {
 fn App() -> Html {
 	html! {<>
 		<ProviderChain>
-			<page::App />
+			<crate::components::modal::Provider>
+				<crate::components::modal::GeneralPurpose />
+				<page::App />
+			</crate::components::modal::Provider>
 		</ProviderChain>
 	</>}
 }
