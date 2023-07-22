@@ -1,6 +1,6 @@
 use crate::{
 	database::{
-		app::{Criteria, Database, Entry, FetchError},
+		app::{Criteria, Database, Entry, FetchError, Module},
 		Error as DatabaseError,
 	},
 	kdl_ext::{FromKDL, KDLNode},
@@ -63,6 +63,31 @@ impl<T> UseQueryAllHandle<T> {
 
 	pub fn run(&self, args: Option<QueryAllArgs<T>>) {
 		(self.run)(args);
+	}
+}
+
+#[derive(Clone)]
+pub struct UseQueryModulesHandle {
+	async_handle: UseAsyncHandle<Vec<Module>, DatabaseError>,
+	run: Rc<dyn Fn()>,
+}
+
+impl UseQueryModulesHandle {
+	pub fn status(&self) -> QueryStatus<&Vec<Module>, DatabaseError> {
+		if self.async_handle.loading {
+			return QueryStatus::Pending;
+		}
+		if let Some(error) = &self.async_handle.error {
+			return QueryStatus::Failed(error.clone());
+		}
+		if let Some(data) = &self.async_handle.data {
+			return QueryStatus::Success(data);
+		}
+		QueryStatus::Empty
+	}
+
+	pub fn run(&self) {
+		(self.run)();
 	}
 }
 
@@ -169,6 +194,43 @@ where
 		}
 	});
 	UseQueryAllHandle { async_handle, run }
+}
+
+#[hook]
+pub fn use_query_modules(system: Option<&'static str>) -> UseQueryModulesHandle
+{
+	use crate::database::app::module;
+	use futures_util::StreamExt;
+	let database = use_context::<Database>().unwrap();
+	let options = UseAsyncOptions { auto: true };
+	let async_handle = use_async_with_options(
+		async move {
+			use crate::database::{ObjectStoreExt, TransactionExt};
+			let transaction = database.read_modules()?;
+			let entries_store = transaction.object_store_of::<Module>()?;
+			let idx_system = entries_store.index_of::<module::System>()?;
+			let index = match system {
+				None => None,
+				Some(system_id) => Some(module::System {
+					system: system_id.into(),
+				}),
+			};
+			let mut cursor = idx_system.open_cursor(index.as_ref()).await?;
+			let mut items = Vec::new();
+			while let Some(item) = cursor.next().await {
+				items.push(item);
+			}
+			Ok(items)
+		},
+		options,
+	);
+	let run = Rc::new({
+		let handle = async_handle.clone();
+		move || {
+			handle.run();
+		}
+	});
+	UseQueryModulesHandle { async_handle, run }
 }
 
 #[derive(Clone)]

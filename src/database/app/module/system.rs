@@ -1,23 +1,22 @@
 use crate::database::{app::Module, IndexType, QueryExt};
 
 #[derive(Default)]
-pub struct NameSystem {
-	pub name: String,
+pub struct System {
 	pub system: String,
 }
 
-impl IndexType for NameSystem {
+impl IndexType for System {
 	type Record = Module;
 
 	fn name() -> &'static str {
-		"name_system"
+		"system"
 	}
 
 	fn keys() -> &'static [&'static str] {
-		&["name", "system"]
+		&["system"]
 	}
 
 	fn as_query(&self) -> Result<idb::Query, idb::Error> {
-		idb::Query::from_items([&self.name, &self.system])
+		idb::Query::from_items([&self.system])
 	}
 }

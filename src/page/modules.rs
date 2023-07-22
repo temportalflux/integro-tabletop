@@ -1,9 +1,12 @@
+use std::collections::BTreeMap;
+
 use crate::{
 	auth::{self, OAuthProvider},
-	database::app::Database,
+	database::app::{Database, Module},
 	storage::github::GithubClient,
-	system, task,
+	system::{self, dnd5e::{DnD5e, components::GeneralProp}, core::System}, task, components::{database::{use_query_all_typed, use_query_modules, QueryStatus}, Spinner},
 };
+use multimap::MultiMap;
 use yew::prelude::*;
 use yewdux::prelude::*;
 
@@ -59,6 +62,8 @@ pub fn ModulesLanding() -> Html {
 			</div>
 
 			<TaskListView />
+
+			<ModuleList />
 		</div>
 	</>}
 }
@@ -88,6 +93,75 @@ pub fn TaskListView() -> Html {
 					}}
 				</div>
 			}).collect::<Vec<_>>()}
+		</div>
+	}
+}
+
+#[function_component]
+fn ModuleList() -> Html {
+	let modules_query = use_query_modules(None);
+	match modules_query.status() {
+		QueryStatus::Pending => html!(<Spinner />),
+		QueryStatus::Empty | QueryStatus::Failed(_) => html! {
+			{"You have no modules on this device. Scanning storage or creating a module!"}
+		},
+		QueryStatus::Success(modules) => {
+			let total_module_count = modules.len();
+			let mut by_system = BTreeMap::<&String, Vec<Module>>::new();
+			for module in modules {
+				match by_system.get_mut(&module.system) {
+					None => {
+						by_system.insert(&module.system, vec![module.clone()]);
+					}
+					Some(group) => {
+						let idx = group.binary_search_by(|probe| probe.name.cmp(&module.name));
+						let idx = idx.unwrap_or_else(|err_idx| err_idx);
+						group.insert(idx, module.clone());
+					}
+				}
+			}
+			let sys_count = by_system.len();
+			let mut sections_by_system = Vec::with_capacity(sys_count);
+			for (system_id, modules) in by_system {
+				sections_by_system.push(html! {
+					<div>
+						<h4>{system_id}</h4>
+						<div class="d-flex flex-wrap">
+							{modules.into_iter().map(|module| html!(<ModuleCard value={module} />)).collect::<Vec<_>>()}
+						</div>
+					</div>
+				});
+			}
+			html! {
+				<div>
+					{format!("These are {total_module_count} modules downloaded to your device across {sys_count} game systems.")}
+					{sections_by_system}
+				</div>
+			}
+		}
+	}
+}
+
+#[function_component]
+fn ModuleCard(GeneralProp { value}: &GeneralProp<Module>) -> Html {
+	html! {
+		<div class="card m-1" style="min-width: 300px;">
+			<div class="card-header">
+				<span>{&value.name}</span>
+			</div>
+			<div class="card-body">
+				<div>
+					{"Version: "}
+					{match value.version.get(0..8) {
+						None => html!("Unknown"),
+						Some(ver) => html!({ver}),
+					}}
+				</div>
+				<div>
+					{"System: "}
+					{&value.system}
+				</div>
+			</div>
 		</div>
 	}
 }

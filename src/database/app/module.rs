@@ -1,10 +1,10 @@
 use crate::{database::Record, system::core::ModuleId};
 use serde::{Deserialize, Serialize};
 
-mod name_system;
-pub use name_system::*;
+mod system;
+pub use system::*;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
 pub struct Module {
 	pub module_id: ModuleId,
 	pub name: String,

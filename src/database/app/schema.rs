@@ -27,12 +27,12 @@ impl Schema for SchemaVersion {
 			Self::Version1 => {
 				// Create modules table
 				{
-					use app::module::{Module, NameSystem};
+					use app::module::{Module, System};
 					let mut params = idb::ObjectStoreParams::new();
 					params.auto_increment(true);
 					params.key_path(Some(idb::KeyPath::new_single("name")));
 					let store = database.create_object_store(Module::store_id(), params)?;
-					store.create_index_of::<NameSystem>(None)?;
+					store.create_index_of::<System>(None)?;
 				}
 				// Create entries table
 				{
