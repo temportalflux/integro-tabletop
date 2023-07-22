@@ -2,7 +2,10 @@ use yew::prelude::*;
 
 #[function_component]
 pub fn Home() -> Html {
-	html! {
-		"This is the home page!"
-	}
+	html! {<>
+		<crate::components::modal::GeneralPurpose />
+		<div>
+			{"This is the home page!"}
+		</div>
+	</>}
 }

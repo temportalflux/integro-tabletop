@@ -26,10 +26,7 @@ fn main() {
 fn App() -> Html {
 	html! {<>
 		<ProviderChain>
-			<crate::components::modal::Provider>
-				<crate::components::modal::GeneralPurpose />
-				<page::App />
-			</crate::components::modal::Provider>
+			<page::App />
 		</ProviderChain>
 	</>}
 }
@@ -44,7 +41,9 @@ fn ProviderChain(props: &html::ChildrenProps) -> Html {
 					<system::Provider>
 						<DatabaseProvider>
 							<object_browser::Provider>
-								{props.children.clone()}
+								<crate::components::modal::Provider>
+									{props.children.clone()}
+								</crate::components::modal::Provider>
 							</object_browser::Provider>
 						</DatabaseProvider>
 					</system::Provider>

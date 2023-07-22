@@ -129,18 +129,21 @@ pub fn CharacterLanding() -> Html {
 		}
 	});
 
-	html! {<div>
-		<h3 class="text-center">{"Characters"}</h3>
-		<div class="d-flex align-items-center justify-content-center mb-1">
-			<button
-				class="btn btn-outline-success btn-sm ms-2"
-				onclick={on_create}
-			>
-				{"New Character"}
-			</button>
+	html! {<>
+		<crate::components::modal::GeneralPurpose />
+		<div>
+			<h3 class="text-center">{"Characters"}</h3>
+			<div class="d-flex align-items-center justify-content-center mb-1">
+				<button
+					class="btn btn-outline-success btn-sm ms-2"
+					onclick={on_create}
+				>
+					{"New Character"}
+				</button>
+			</div>
+			<CharacterList value={on_delete} />
 		</div>
-		<CharacterList value={on_delete} />
-	</div>}
+	</>}
 }
 
 #[function_component]

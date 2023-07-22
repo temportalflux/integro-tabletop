@@ -50,14 +50,17 @@ pub fn ModulesLanding() -> Html {
 		}
 	});
 
-	html! {<div class="m-2">
-		<div class="d-flex justify-content-center">
-			<button class="btn btn-outline-success me-2" onclick={initiate_loader}>{"Scan Github"}</button>
-			<button class="btn btn-outline-danger me-2" onclick={clear_database}>{"Clear Downloaded Data"}</button>
-		</div>
+	html! {<>
+		<crate::components::modal::GeneralPurpose />
+		<div class="m-2">
+			<div class="d-flex justify-content-center">
+				<button class="btn btn-outline-success me-2" onclick={initiate_loader}>{"Scan Github"}</button>
+				<button class="btn btn-outline-danger me-2" onclick={clear_database}>{"Clear Downloaded Data"}</button>
+			</div>
 
-		<TaskListView />
-	</div>}
+			<TaskListView />
+		</div>
+	</>}
 }
 
 #[function_component]

@@ -3,6 +3,9 @@ use std::rc::Rc;
 use wasm_bindgen::{prelude::Closure, JsCast};
 use yew::{html::ChildrenProps, prelude::*};
 
+// TODO: Use portals to solve the "modal contents require page-specific-provider" problem:
+// https://yew.rs/docs/advanced-topics/portals
+
 #[function_component]
 pub fn Provider(props: &ChildrenProps) -> Html {
 	let modal_dispatcher = Context::from(use_reducer(|| State::default()));
