@@ -45,7 +45,9 @@ pub struct SourceId {
 
 impl SourceId {
 	pub fn set_basis(&mut self, other: &Self, include_version: bool) {
-		if other == &Self::default() {
+		// Ignore any basis which is empty or is exactly equal to the current id.
+		// The latter can happen when parsing bundles from their source file for instance.
+		if other == &Self::default() || other == self {
 			return;
 		}
 		self.basis = Some(

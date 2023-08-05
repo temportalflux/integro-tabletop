@@ -476,7 +476,7 @@ impl AsKdl for Spellcasting {
 											.build("level"),
 									);
 								}
-								node.build("cantrips")
+								node.build("capacity")
 							});
 						}
 					}
