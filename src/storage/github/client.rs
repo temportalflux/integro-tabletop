@@ -356,7 +356,6 @@ impl GithubClient {
 			let object = Value::Object(entries.into_iter().collect::<Map<String, Value>>());
 			serde_json::to_string(&object).unwrap()
 		};
-		log::debug!("{builder:?} \"{body}\"");
 		let builder = builder.body(body);
 		Box::pin(async move {
 			let response = builder.send().await?;
@@ -382,6 +381,99 @@ impl GithubClient {
 					code => {
 						log::warn!(
 							"create_or_update_file encountered unknown response code: {code}"
+						);
+						log::warn!("{data:?}");
+					}
+				}
+			}
+			Ok(())
+		})
+	}
+}
+
+
+#[derive(Debug)]
+pub struct DeleteFileArgs<'a> {
+	pub repo_org: &'a str,
+	pub repo_name: &'a str,
+	pub path_in_repo: &'a Path,
+	pub commit_message: &'a str,
+	pub file_id: &'a str,
+	/// If omitted, operation will be performed on the default branch.
+	pub branch: Option<&'a str>,
+}
+#[derive(thiserror::Error, Debug)]
+pub enum DeleteFileError {
+	#[error("Requested resource to update was not found.")]
+	ResourceNotFound,
+	#[error("Requested resource has a merge conflict with the updated content.")]
+	FileConflict,
+}
+impl GithubClient {
+	pub fn delete_file(
+		&self,
+		args: DeleteFileArgs<'_>,
+	) -> LocalBoxFuture<'static, anyhow::Result<()>> {
+		use serde_json::{Map, Value};
+
+		// https://docs.github.com/en/rest/repos/contents?apiVersion=2022-11-28#delete-a-file
+		let DeleteFileArgs {
+			repo_org,
+			repo_name,
+			path_in_repo,
+			commit_message,
+			file_id,
+			branch,
+		} = args;
+
+		let path_str = path_in_repo
+			.as_os_str()
+			.to_str()
+			.unwrap()
+			.replace("\\", "/");
+		let url = format!("{GITHUB_API}/repos/{repo_org}/{repo_name}/contents/{path_str}");
+
+		let builder = self.0.delete(url);
+		let builder = self.insert_rest_headers(builder, None);
+		let body = {
+			let mut entries = vec![
+				("message".into(), commit_message.to_owned().into()),
+				("sha".into(), file_id.to_owned().into()),
+			];
+			if let Some(branch) = branch {
+				entries.push(("branch".into(), branch.to_owned().into()));
+			}
+			let object = Value::Object(entries.into_iter().collect::<Map<String, Value>>());
+			serde_json::to_string(&object).unwrap()
+		};
+		let builder = builder.body(body);
+		Box::pin(async move {
+			let response = builder.send().await?;
+			let status = response.status();
+			let data = response.json::<Value>().await?;
+			if status != StatusCode::OK {
+				match status.as_u16() {
+					200 => {
+						// file was deleted
+					}
+					404 => {
+						log::warn!("{data:?}");
+						return Err(DeleteFileError::ResourceNotFound.into());
+					}
+					409 => {
+						log::warn!("{data:?}");
+						return Err(DeleteFileError::FileConflict.into());
+					}
+					422 => {
+						log::warn!("'delete' validation failed or is being spammed");
+						log::warn!("{data:?}");
+					}
+					503 => {
+						log::warn!("'delete' service unavailable: {data:?}");
+					}
+					code => {
+						log::warn!(
+							"'delete' encountered unknown response code: {code}"
 						);
 						log::warn!("{data:?}");
 					}
