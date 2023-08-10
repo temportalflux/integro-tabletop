@@ -2,6 +2,7 @@ use super::{
 	queries::{FindOrgs, SearchForRepos, ViewerInfo},
 	GraphQLQueryExt, QueryError, QueryStream, RepositoryMetadata,
 };
+use base64ct::Base64UrlUnpadded;
 use futures_util::future::LocalBoxFuture;
 use reqwest::StatusCode;
 use serde::Deserialize;
@@ -326,7 +327,7 @@ impl GithubClient {
 		&self,
 		args: CreateOrUpdateFileArgs<'_>,
 	) -> LocalBoxFuture<'static, anyhow::Result<CreateOrUpdateFileResponse>> {
-		use base64::{engine::general_purpose, Engine as _};
+		use base64ct::{Base64UrlUnpadded, Encoding};
 		use serde_json::{Map, Value};
 
 		// https://docs.github.com/en/rest/repos/contents?apiVersion=2022-11-28#create-or-update-file-contents
@@ -347,7 +348,10 @@ impl GithubClient {
 			.replace("\\", "/");
 		let url = format!("{GITHUB_API}/repos/{repo_org}/{repo_name}/contents/{path_str}");
 
-		let encoded_content: String = general_purpose::URL_SAFE.encode(content.as_bytes());
+		// encode using Base64 url-safe compliant with RFC 4648
+		// https://stackoverflow.com/a/22962982
+		//let encoded_content: String = Base64UrlUnpadded::encode_string(content.as_bytes());
+		let encoded_content = radix64::URL_SAFE.encode(&content);
 
 		let builder = self.0.put(url);
 		let builder = self.insert_rest_headers(builder, None);
@@ -365,27 +369,30 @@ impl GithubClient {
 			let object = Value::Object(entries.into_iter().collect::<Map<String, Value>>());
 			serde_json::to_string(&object).unwrap()
 		};
+		log::debug!("{body}");
 		let builder = builder.body(body);
 		Box::pin(async move {
+			#[derive(Deserialize)]
+			struct Content {
+				sha: String,
+			}
+			#[derive(Deserialize)]
+			struct Commit {
+				sha: String,
+			}
+			#[derive(Deserialize)]
+			struct Response {
+				content: Content,
+				commit: Commit,
+			}
+
 			let response = builder.send().await?;
 			let status = response.status();
 			let data = response.json::<Value>().await?;
 			match status.as_u16() {
-				// file was created
-				201 => {
-					#[derive(Deserialize)]
-					struct Content {
-						sha: String,
-					}
-					#[derive(Deserialize)]
-					struct Commit {
-						sha: String,
-					}
-					#[derive(Deserialize)]
-					struct Response {
-						content: Content,
-						commit: Commit,
-					}
+				// 200: file was updated
+				// 201: file was created
+				200 | 201 => {
 					let response = serde_json::from_value::<Response>(data)?;
 					let file_id = response.content.sha;
 					let version = response.commit.sha;

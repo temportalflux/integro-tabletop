@@ -69,7 +69,7 @@ pub fn Display(ViewProps { swap_view }: &ViewProps) -> Html {
 					file_id: Some(&file_id),
 					branch: None,
 				};
-				log::debug!("executing update character request");
+				log::debug!("executing update character request {args:?}");
 				client.create_or_update_file(args).await?;
 				log::debug!("finished update character request");
 				Ok(()) as anyhow::Result<()>
