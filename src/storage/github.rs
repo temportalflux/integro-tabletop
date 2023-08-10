@@ -15,3 +15,11 @@ pub struct RepositoryMetadata {
 	pub systems: Vec<String>,
 	pub tree_id: String,
 }
+impl RepositoryMetadata {
+	pub fn module_id(&self) -> crate::system::core::ModuleId {
+		crate::system::core::ModuleId::Github {
+			user_org: self.owner.clone(),
+			repository: self.name.clone(),
+		}
+	}
+}

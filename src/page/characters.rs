@@ -1,22 +1,22 @@
 use super::app;
 use crate::{
 	components::{modal, Spinner},
-	database::app::Database,
+	database::{app::Database, TransactionExt, ObjectStoreExt},
 	system::{
 		core::{ModuleId, SourceId, System},
 		dnd5e::{
 			components::GeneralProp,
 			data::character::{Persistent, PersistentMetadata},
-			DnD5e,
+			DnD5e, SystemComponent,
 		},
 	},
-	utility::InputExt, task::Signal,
+	utility::InputExt, task::Signal, GeneralError, kdl_ext::KDLNode,
 };
 use itertools::Itertools;
 use std::{path::Path, rc::Rc};
 use yew::prelude::*;
 use yew_hooks::{use_async_with_options, UseAsyncOptions};
-use yew_router::{prelude::Link, Routable};
+use yew_router::{prelude::{Link, use_navigator}, Routable};
 use yewdux::prelude::use_store;
 
 pub mod sheet;
@@ -269,6 +269,8 @@ fn ModalCreate() -> Html {
 	let (auth_status, _dispatch) = use_store::<crate::auth::Status>();
 	let task_dispatch = use_context::<crate::task::Dispatch>().unwrap();
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();
+	let database = use_context::<Database>().unwrap();
+	let navigator = use_navigator().unwrap();
 	
 	// TODO: Select the parent module
 	// TODO: Select game system
@@ -286,6 +288,8 @@ fn ModalCreate() -> Html {
 	let onclick = Callback::from({
 		let auth_status = auth_status.clone();
 		let task_dispatch = task_dispatch.clone();
+		let database = database.clone();
+		let navigator = navigator.clone();
 		let filename = filename.clone();
 		let action_in_progress = action_in_progress.clone();
 		let close_modal = modal_dispatcher.callback(|_| modal::Action::Close);
@@ -297,9 +301,12 @@ fn ModalCreate() -> Html {
 				log::debug!("no storage client");
 				return;
 			};
-			let path_in_repo = Path::new(DnD5e::id())
+			let system = DnD5e::id();
+			let path_in_repo = Path::new(system)
 				.join("character")
 				.join(format!("{}.kdl", filename.as_str()));
+			let database = database.clone();
+			let navigator = navigator.clone();
 			let close_modal = close_modal.clone();
 			let signal = task_dispatch.spawn("Create Character File", None, async move {
 				let (_, homebrew_repo) = client.viewer().await?;
@@ -315,6 +322,32 @@ fn ModalCreate() -> Html {
 					let doc = doc.replace("    ", "\t");
 					doc
 				};
+
+				let module_id = homebrew_repo.module_id();
+				let module_id_str = module_id.to_string();
+				let source_id_unversioned = SourceId {
+					module: Some(module_id),
+					system: Some(system.to_string()),
+					path: path_in_repo.clone(),
+					..Default::default()
+				};
+				let metadata = match state.clone().to_metadata() {
+					serde_json::Value::Null => serde_json::Value::Null,
+					serde_json::Value::Object(mut metadata) => {
+						metadata.insert("module".into(), serde_json::json!(&module_id_str));
+						serde_json::Value::Object(metadata)
+					}
+					other => {
+						return Err(GeneralError(format!(
+							"Metadata must be a map, but {} returned {:?}.",
+							source_id_unversioned.to_string(),
+							other
+						))
+						.into());
+					}
+				};
+
+				// TODO: Update local ddb module before submitting a change so we dont have some files in an old version and some on a new version
 				let args = crate::storage::github::CreateOrUpdateFileArgs {
 					repo_org: &homebrew_repo.owner,
 					repo_name: &homebrew_repo.name,
@@ -324,7 +357,35 @@ fn ModalCreate() -> Html {
 					file_id: None,
 					branch: None,
 				};
-				client.create_or_update_file(args).await?;
+				let response = client.create_or_update_file(args).await?;
+
+				// TODO: Update module version in database for the submitted change
+
+				let mut route = Route::sheet(&source_id_unversioned);
+				let record = crate::database::app::Entry {
+					id: source_id_unversioned.to_string(),
+					module: module_id_str,
+					system: system.to_string(),
+					category: state.get_id().to_owned(), // KdlNode::get_id
+					version: Some(response.version),
+					metadata,
+					kdl: content.clone(),
+					file_id: Some(response.file_id),
+				};
+				if let Err(err) = database.mutate(|transaction| {
+					Box::pin(async move {
+						//let module_store = transaction.object_store_of::<Module>()?;
+						let entry_store = transaction.object_store_of::<crate::database::app::Entry>()?;
+						entry_store.add_record(&record).await?;
+						Ok(())
+					})
+				}).await {
+					log::error!("{err:?}");
+					route = Route::Landing;
+				}
+
+				navigator.push(&route);
+
 				close_modal.emit(());
 				Ok(()) as anyhow::Result<()>
 			});

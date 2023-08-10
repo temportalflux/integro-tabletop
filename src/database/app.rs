@@ -5,6 +5,7 @@ use super::Record;
 pub mod entry;
 pub use entry::Entry;
 pub mod module;
+use futures_util::future::LocalBoxFuture;
 pub use module::Module;
 mod query;
 pub use query::*;
@@ -155,6 +156,15 @@ impl Database {
 			marker: Default::default(),
 		};
 		Ok(query_typed)
+	}
+
+	pub async fn mutate<F>(&self, fn_transaction: F) -> Result<(), super::Error>
+	where F: FnOnce(&idb::Transaction) -> LocalBoxFuture<'_, Result<(), super::Error>>
+	{
+		let transaction = self.write()?;
+		fn_transaction(&transaction).await?;
+		transaction.commit().await?;
+		Ok(())
 	}
 }
 

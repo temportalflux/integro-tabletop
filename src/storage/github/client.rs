@@ -305,18 +305,27 @@ pub struct CreateOrUpdateFileArgs<'a> {
 	/// If omitted, operation will be performed on the default branch.
 	pub branch: Option<&'a str>,
 }
+#[derive(Debug)]
+pub struct CreateOrUpdateFileResponse {
+	pub file_id: String,
+	pub version: String,
+}
 #[derive(thiserror::Error, Debug)]
 pub enum CreateOrUpdateFileError {
 	#[error("Requested resource to update was not found.")]
 	ResourceNotFound,
 	#[error("Requested resource has a merge conflict with the updated content.")]
 	FileConflict,
+	#[error("Validation failed or operation is being spammed.")]
+	ValidationFailed,
+	#[error("Unknown response code {0}")]
+	Unknown(u16),
 }
 impl GithubClient {
 	pub fn create_or_update_file(
 		&self,
 		args: CreateOrUpdateFileArgs<'_>,
-	) -> LocalBoxFuture<'static, anyhow::Result<()>> {
+	) -> LocalBoxFuture<'static, anyhow::Result<CreateOrUpdateFileResponse>> {
 		use base64::{engine::general_purpose, Engine as _};
 		use serde_json::{Map, Value};
 
@@ -361,32 +370,49 @@ impl GithubClient {
 			let response = builder.send().await?;
 			let status = response.status();
 			let data = response.json::<Value>().await?;
-			if status != StatusCode::OK {
-				match status.as_u16() {
-					201 => {
-						// file was created
+			match status.as_u16() {
+				// file was created
+				201 => {
+					#[derive(Deserialize)]
+					struct Content {
+						sha: String,
 					}
-					404 => {
-						log::warn!("{data:?}");
-						return Err(CreateOrUpdateFileError::ResourceNotFound.into());
+					#[derive(Deserialize)]
+					struct Commit {
+						sha: String,
 					}
-					409 => {
-						log::warn!("{data:?}");
-						return Err(CreateOrUpdateFileError::FileConflict.into());
+					#[derive(Deserialize)]
+					struct Response {
+						content: Content,
+						commit: Commit,
 					}
-					422 => {
-						log::warn!("create_or_update_file is being spammed");
-						log::warn!("{data:?}");
-					}
-					code => {
-						log::warn!(
-							"create_or_update_file encountered unknown response code: {code}"
-						);
-						log::warn!("{data:?}");
-					}
+					let response = serde_json::from_value::<Response>(data)?;
+					let file_id = response.content.sha;
+					let version = response.commit.sha;
+					Ok(CreateOrUpdateFileResponse {
+						file_id,
+						version,
+					})
+				}
+				404 => {
+					log::warn!("{data:?}");
+					Err(CreateOrUpdateFileError::ResourceNotFound.into())
+				}
+				409 => {
+					log::warn!("{data:?}");
+					Err(CreateOrUpdateFileError::FileConflict.into())
+				}
+				422 => {
+					log::warn!("{data:?}");
+					Err(CreateOrUpdateFileError::ValidationFailed.into())
+				}
+				code => {
+					log::warn!(
+						"create_or_update_file encountered unknown response code: {code}"
+					);
+					Err(CreateOrUpdateFileError::Unknown(code).into())
 				}
 			}
-			Ok(())
 		})
 	}
 }
