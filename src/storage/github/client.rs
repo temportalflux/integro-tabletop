@@ -327,7 +327,7 @@ impl GithubClient {
 		&self,
 		args: CreateOrUpdateFileArgs<'_>,
 	) -> LocalBoxFuture<'static, anyhow::Result<CreateOrUpdateFileResponse>> {
-		use base64ct::{Base64UrlUnpadded, Encoding};
+		use base64ct::{Base64, Encoding};
 		use serde_json::{Map, Value};
 
 		// https://docs.github.com/en/rest/repos/contents?apiVersion=2022-11-28#create-or-update-file-contents
@@ -350,8 +350,7 @@ impl GithubClient {
 
 		// encode using Base64 url-safe compliant with RFC 4648
 		// https://stackoverflow.com/a/22962982
-		//let encoded_content: String = Base64UrlUnpadded::encode_string(content.as_bytes());
-		let encoded_content = radix64::URL_SAFE.encode(&content);
+		let encoded_content: String = Base64::encode_string(content.as_bytes());
 
 		let builder = self.0.put(url);
 		let builder = self.insert_rest_headers(builder, None);
@@ -441,12 +440,18 @@ pub enum DeleteFileError {
 	ResourceNotFound,
 	#[error("Requested resource has a merge conflict with the updated content.")]
 	FileConflict,
+	#[error("Validation failed or operation is being spammed.")]
+	ValidationFailed,
+	#[error("Service unavailable.")]
+	ServiceUnavailable,
+	#[error("Unknown response code {0}")]
+	Unknown(u16),
 }
 impl GithubClient {
 	pub fn delete_file(
 		&self,
 		args: DeleteFileArgs<'_>,
-	) -> LocalBoxFuture<'static, anyhow::Result<()>> {
+	) -> LocalBoxFuture<'static, anyhow::Result<String>> {
 		use serde_json::{Map, Value};
 
 		// https://docs.github.com/en/rest/repos/contents?apiVersion=2022-11-28#delete-a-file
@@ -481,38 +486,46 @@ impl GithubClient {
 		};
 		let builder = builder.body(body);
 		Box::pin(async move {
+			#[derive(Deserialize)]
+			struct Commit {
+				sha: String,
+			}
+			#[derive(Deserialize)]
+			struct Response {
+				commit: Commit,
+			}
+			
 			let response = builder.send().await?;
 			let status = response.status();
 			let data = response.json::<Value>().await?;
-			if status != StatusCode::OK {
-				match status.as_u16() {
-					200 => {
-						// file was deleted
-					}
-					404 => {
-						log::warn!("{data:?}");
-						return Err(DeleteFileError::ResourceNotFound.into());
-					}
-					409 => {
-						log::warn!("{data:?}");
-						return Err(DeleteFileError::FileConflict.into());
-					}
-					422 => {
-						log::warn!("'delete' validation failed or is being spammed");
-						log::warn!("{data:?}");
-					}
-					503 => {
-						log::warn!("'delete' service unavailable: {data:?}");
-					}
-					code => {
-						log::warn!(
-							"'delete' encountered unknown response code: {code}"
-						);
-						log::warn!("{data:?}");
-					}
+			match status.as_u16() {
+				// file was deleted
+				200 => {
+					let response = serde_json::from_value::<Response>(data)?;
+					let version = response.commit.sha;
+					Ok(version)
+				}
+				404 => {
+					log::warn!("{data:?}");
+					Err(DeleteFileError::ResourceNotFound.into())
+				}
+				409 => {
+					log::warn!("{data:?}");
+					Err(DeleteFileError::FileConflict.into())
+				}
+				422 => {
+					log::warn!("{data:?}");
+					Err(DeleteFileError::ValidationFailed.into())
+				}
+				503 => {
+					log::warn!("{data:?}");
+					Err(DeleteFileError::ServiceUnavailable.into())
+				}
+				code => {
+					log::warn!("{data:?}");
+					Err(DeleteFileError::Unknown(code).into())
 				}
 			}
-			Ok(())
 		})
 	}
 }

@@ -1,3 +1,5 @@
+//! Also inspired by https://github.com/XAMPPRocky/octocrab, which does not support WASM.
+
 mod client;
 pub use client::*;
 pub mod queries;

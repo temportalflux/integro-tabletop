@@ -10,6 +10,11 @@ pub trait ObjectStoreExt {
 	where
 		V: Record + serde::de::DeserializeOwned;
 
+	fn delete_record<'store>(
+		&'store self,
+		key: impl Into<JsValue> + 'store,
+	) -> PinFutureLifetimeNoSend<'store, Result<(), Error>>;
+
 	fn add_record<'store, V>(
 		&'store self,
 		record: &'store V,
@@ -52,6 +57,17 @@ impl ObjectStoreExt for idb::ObjectStore {
 		Box::pin(async move {
 			let Some(record_js) = self.get(idb::Query::Key(key.into())).await? else { return Ok(None); };
 			Ok(Some(serde_wasm_bindgen::from_value::<V>(record_js)?))
+		})
+	}
+
+	fn delete_record<'store>(
+		&'store self,
+		key: impl Into<JsValue> + 'store,
+	) -> PinFutureLifetimeNoSend<'store, Result<(), Error>>
+	{
+		Box::pin(async move {
+			self.delete(idb::Query::Key(key.into())).await?;
+			Ok(())
 		})
 	}
 

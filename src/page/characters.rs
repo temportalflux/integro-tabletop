@@ -119,11 +119,11 @@ pub fn CharacterLanding() -> Html {
 		}
 	});
 	let on_delete = modal_dispatcher.callback({
-		move |(id, file_id): (SourceId, String)| {
+		move |props: ModalDeleteProps| {
 			modal::Action::Open(modal::Props {
 				centered: true,
 				scrollable: true,
-				content: html! {<ModalDelete {id} {file_id} />},
+				content: html! {<ModalDelete ..props />},
 				..Default::default()
 			})
 		}
@@ -147,7 +147,7 @@ pub fn CharacterLanding() -> Html {
 }
 
 #[function_component]
-pub fn CharacterList(GeneralProp { value: on_delete }: &GeneralProp<Callback<(SourceId, /*file_id*/String)>>) -> Html {
+fn CharacterList(GeneralProp { value: on_delete }: &GeneralProp<Callback<ModalDeleteProps>>) -> Html {
 	use crate::{
 		components::database::{use_query_all, QueryAllArgs, QueryStatus},
 		kdl_ext::KDLNode,
@@ -156,14 +156,21 @@ pub fn CharacterList(GeneralProp { value: on_delete }: &GeneralProp<Callback<(So
 			dnd5e::{data::character::Persistent, DnD5e},
 		},
 	};
+	let query_args = Some(QueryAllArgs {
+		system: DnD5e::id().to_owned(),
+		..Default::default()
+	});
 	let character_entries = use_query_all(
 		Persistent::id(),
 		true,
-		Some(QueryAllArgs {
-			system: DnD5e::id().to_owned(),
-			..Default::default()
-		}),
+		query_args.clone(),
 	);
+	let on_delete_clicked = Callback::from({
+		let character_entries = character_entries.clone();
+		move |_| {
+			character_entries.run(query_args.clone());
+		}
+	});
 
 	match character_entries.status() {
 		QueryStatus::Pending => html!(<Spinner />),
@@ -179,7 +186,12 @@ pub fn CharacterList(GeneralProp { value: on_delete }: &GeneralProp<Callback<(So
 					Some(file_id) => on_delete.reform({
 						let id = id.clone();
 						let file_id = file_id.clone();
-						move |_| (id.clone(), file_id.clone())
+						let on_delete_clicked = on_delete_clicked.clone();
+						move |_| ModalDeleteProps {
+							id: id.clone(),
+							file_id: file_id.clone(),
+							on_click: on_delete_clicked.clone(),
+						}
 					}),
 				};
 				cards.push(html!(<CharacterCard
@@ -301,9 +313,7 @@ fn ModalCreate() -> Html {
 				log::debug!("no storage client");
 				return;
 			};
-			let system = DnD5e::id();
-			let path_in_repo = Path::new(system)
-				.join("character")
+			let id_path = Path::new("character")
 				.join(format!("{}.kdl", filename.as_str()));
 			let database = database.clone();
 			let navigator = navigator.clone();
@@ -311,6 +321,22 @@ fn ModalCreate() -> Html {
 			let signal = task_dispatch.spawn("Create Character File", None, async move {
 				let (_, homebrew_repo) = client.viewer().await?;
 				let Some(homebrew_repo) = homebrew_repo else { return Ok(()); };
+				let module_id = homebrew_repo.module_id();
+
+				// NOTE: Cannot continue if our local version is not the latest version in storage (github).
+				// We need to ensure that all files from the local ddb module are on the correct version,
+				// so we aren't accidentally ahead for some files and not for others.
+				// e.g. creating a new file without having latest means our module either
+				// has an old version and a new file locally,
+				// or a new version and missing updates between current local and the new version.
+				let local_module_version = match database.get::<crate::database::app::Module>(module_id.to_string()).await {
+					Ok(Some(local_module)) => local_module.version,
+					_ => return Ok(()),
+				};
+				if local_module_version != homebrew_repo.version {
+					return Ok(());
+				}
+				
 				let message = "Add new character";
 				let state = Persistent::default();
 				let content = {
@@ -323,12 +349,13 @@ fn ModalCreate() -> Html {
 					doc
 				};
 
-				let module_id = homebrew_repo.module_id();
 				let module_id_str = module_id.to_string();
+				let system = DnD5e::id();
+				let path_in_repo = Path::new(system).join(&id_path);
 				let source_id_unversioned = SourceId {
 					module: Some(module_id),
 					system: Some(system.to_string()),
-					path: path_in_repo.clone(),
+					path: id_path,
 					..Default::default()
 				};
 				let metadata = match state.clone().to_metadata() {
@@ -347,7 +374,6 @@ fn ModalCreate() -> Html {
 					}
 				};
 
-				// TODO: Update local ddb module before submitting a change so we dont have some files in an old version and some on a new version
 				let args = crate::storage::github::CreateOrUpdateFileArgs {
 					repo_org: &homebrew_repo.owner,
 					repo_name: &homebrew_repo.name,
@@ -358,24 +384,31 @@ fn ModalCreate() -> Html {
 					branch: None,
 				};
 				let response = client.create_or_update_file(args).await?;
-
-				// TODO: Update module version in database for the submitted change
+				let updated_version = response.version;
 
 				let mut route = Route::sheet(&source_id_unversioned);
 				let record = crate::database::app::Entry {
 					id: source_id_unversioned.to_string(),
-					module: module_id_str,
+					module: module_id_str.clone(),
 					system: system.to_string(),
 					category: state.get_id().to_owned(), // KdlNode::get_id
-					version: Some(response.version),
+					version: Some(updated_version.clone()),
 					metadata,
 					kdl: content.clone(),
 					file_id: Some(response.file_id),
 				};
-				if let Err(err) = database.mutate(|transaction| {
+				if let Err(err) = database.mutate(move |transaction| {
+					use crate::database::app::{Entry, Module};
+					let module_id_str = module_id_str.clone();
 					Box::pin(async move {
-						//let module_store = transaction.object_store_of::<Module>()?;
-						let entry_store = transaction.object_store_of::<crate::database::app::Entry>()?;
+						// Update module version in database for the submitted change
+						let module_store = transaction.object_store_of::<Module>()?;
+						let module_req = module_store.get_record::<Module>(module_id_str);
+						let mut module = module_req.await?.unwrap();
+						module.version = updated_version;
+						module_store.put_record(&module).await?;
+						// Insert the character record
+						let entry_store = transaction.object_store_of::<Entry>()?;
 						entry_store.add_record(&record).await?;
 						Ok(())
 					})
@@ -384,9 +417,9 @@ fn ModalCreate() -> Html {
 					route = Route::Landing;
 				}
 
+				close_modal.emit(());
 				navigator.push(&route);
 
-				close_modal.emit(());
 				Ok(()) as anyhow::Result<()>
 			});
 			action_in_progress.set(signal);
@@ -419,12 +452,14 @@ fn ModalCreate() -> Html {
 struct ModalDeleteProps {
 	id: SourceId,
 	file_id: String,
+	on_click: Callback<()>,
 }
 #[function_component]
-fn ModalDelete(ModalDeleteProps { id, file_id }: &ModalDeleteProps) -> Html {
+fn ModalDelete(ModalDeleteProps { id, file_id, on_click }: &ModalDeleteProps) -> Html {
 	let (auth_status, _dispatch) = use_store::<crate::auth::Status>();
 	let task_dispatch = use_context::<crate::task::Dispatch>().unwrap();
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();
+	let database = use_context::<Database>().unwrap();
 
 	// TODO: This could use a confirmation captcha, requiring that the character's name by typed in.
 	let action_in_progress = use_state(|| Signal::new(false));
@@ -433,6 +468,8 @@ fn ModalDelete(ModalDeleteProps { id, file_id }: &ModalDeleteProps) -> Html {
 		let id = id.clone();
 		let file_id = file_id.clone();
 		let action_in_progress = action_in_progress.clone();
+		let database = database.clone();
+		let on_success = on_click.clone();
 		let close_modal = modal_dispatcher.callback(|_| modal::Action::Close);
 		move |_| {
 			if action_in_progress.value() {
@@ -444,6 +481,7 @@ fn ModalDelete(ModalDeleteProps { id, file_id }: &ModalDeleteProps) -> Html {
 			};
 			let Some(system) = &id.system else { return; };
 			let path_in_repo = Path::new(system.as_str()).join(&id.path);
+			let module_id_str = id.module.as_ref().unwrap().to_string();
 
 			let message = "Delete character";
 			let file_id = file_id.clone();
@@ -451,7 +489,10 @@ fn ModalDelete(ModalDeleteProps { id, file_id }: &ModalDeleteProps) -> Html {
 				log::debug!("no storage client");
 				return;
 			};
+			let database = database.clone();
+			let id_str = id.to_string();
 			let close_modal = close_modal.clone();
+			let on_success = on_success.clone();
 			let signal = task_dispatch.spawn("Delete Character File", None, async move {
 				let args = crate::storage::github::DeleteFileArgs {
 					repo_org: repo_org.as_str(),
@@ -461,8 +502,31 @@ fn ModalDelete(ModalDeleteProps { id, file_id }: &ModalDeleteProps) -> Html {
 					file_id: &file_id,
 					branch: None,
 				};
-				client.delete_file(args).await?;
+				let updated_version = client.delete_file(args).await?;
+				
+				if let Err(err) = database.mutate(move |transaction| {
+					use crate::database::app::{Entry, Module};
+					let module_id_str = module_id_str.clone();
+					let id_str = id_str.clone();
+					let updated_version = updated_version.clone();
+					Box::pin(async move {
+						// Update module version in database for the submitted change
+						let module_store = transaction.object_store_of::<Module>()?;
+						let module_req = module_store.get_record::<Module>(module_id_str);
+						let mut module = module_req.await?.unwrap();
+						module.version = updated_version;
+						module_store.put_record(&module).await?;
+						// Insert the character record
+						let entry_store = transaction.object_store_of::<Entry>()?;
+						entry_store.delete_record(id_str).await?;
+						Ok(())
+					})
+				}).await {
+					log::error!("{err:?}");
+				}
+
 				close_modal.emit(());
+				on_success.emit(());
 				Ok(()) as anyhow::Result<()>
 			});
 			action_in_progress.set(signal);
