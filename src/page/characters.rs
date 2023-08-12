@@ -1,7 +1,8 @@
 use super::app;
 use crate::{
 	components::{modal, Spinner},
-	database::{app::Database, TransactionExt, ObjectStoreExt},
+	database::{app::Database, ObjectStoreExt, TransactionExt},
+	kdl_ext::KDLNode,
 	system::{
 		core::{ModuleId, SourceId, System},
 		dnd5e::{
@@ -10,13 +11,18 @@ use crate::{
 			DnD5e, SystemComponent,
 		},
 	},
-	utility::InputExt, task::Signal, GeneralError, kdl_ext::KDLNode,
+	task::Signal,
+	utility::InputExt,
+	GeneralError,
 };
 use itertools::Itertools;
 use std::{path::Path, rc::Rc};
 use yew::prelude::*;
 use yew_hooks::{use_async_with_options, UseAsyncOptions};
-use yew_router::{prelude::{Link, use_navigator}, Routable};
+use yew_router::{
+	prelude::{use_navigator, Link},
+	Routable,
+};
 use yewdux::prelude::use_store;
 
 pub mod sheet;
@@ -147,7 +153,9 @@ pub fn CharacterLanding() -> Html {
 }
 
 #[function_component]
-fn CharacterList(GeneralProp { value: on_delete }: &GeneralProp<Callback<ModalDeleteProps>>) -> Html {
+fn CharacterList(
+	GeneralProp { value: on_delete }: &GeneralProp<Callback<ModalDeleteProps>>,
+) -> Html {
 	use crate::{
 		components::database::{use_query_all, QueryAllArgs, QueryStatus},
 		kdl_ext::KDLNode,
@@ -160,11 +168,7 @@ fn CharacterList(GeneralProp { value: on_delete }: &GeneralProp<Callback<ModalDe
 		system: DnD5e::id().to_owned(),
 		..Default::default()
 	});
-	let character_entries = use_query_all(
-		Persistent::id(),
-		true,
-		query_args.clone(),
-	);
+	let character_entries = use_query_all(Persistent::id(), true, query_args.clone());
 	let on_delete_clicked = Callback::from({
 		let character_entries = character_entries.clone();
 		move |_| {
@@ -283,7 +287,7 @@ fn ModalCreate() -> Html {
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 	let database = use_context::<Database>().unwrap();
 	let navigator = use_navigator().unwrap();
-	
+
 	// TODO: Select the parent module
 	// TODO: Select game system
 
@@ -313,8 +317,7 @@ fn ModalCreate() -> Html {
 				log::debug!("no storage client");
 				return;
 			};
-			let id_path = Path::new("character")
-				.join(format!("{}.kdl", filename.as_str()));
+			let id_path = Path::new("character").join(format!("{}.kdl", filename.as_str()));
 			let database = database.clone();
 			let navigator = navigator.clone();
 			let close_modal = close_modal.clone();
@@ -329,14 +332,17 @@ fn ModalCreate() -> Html {
 				// e.g. creating a new file without having latest means our module either
 				// has an old version and a new file locally,
 				// or a new version and missing updates between current local and the new version.
-				let local_module_version = match database.get::<crate::database::app::Module>(module_id.to_string()).await {
+				let local_module_version = match database
+					.get::<crate::database::app::Module>(module_id.to_string())
+					.await
+				{
 					Ok(Some(local_module)) => local_module.version,
 					_ => return Ok(()),
 				};
 				if local_module_version != homebrew_repo.version {
 					return Ok(());
 				}
-				
+
 				let message = "Add new character";
 				let state = Persistent::default();
 				let content = {
@@ -397,22 +403,25 @@ fn ModalCreate() -> Html {
 					kdl: content.clone(),
 					file_id: Some(response.file_id),
 				};
-				if let Err(err) = database.mutate(move |transaction| {
-					use crate::database::app::{Entry, Module};
-					let module_id_str = module_id_str.clone();
-					Box::pin(async move {
-						// Update module version in database for the submitted change
-						let module_store = transaction.object_store_of::<Module>()?;
-						let module_req = module_store.get_record::<Module>(module_id_str);
-						let mut module = module_req.await?.unwrap();
-						module.version = updated_version;
-						module_store.put_record(&module).await?;
-						// Insert the character record
-						let entry_store = transaction.object_store_of::<Entry>()?;
-						entry_store.add_record(&record).await?;
-						Ok(())
+				if let Err(err) = database
+					.mutate(move |transaction| {
+						use crate::database::app::{Entry, Module};
+						let module_id_str = module_id_str.clone();
+						Box::pin(async move {
+							// Update module version in database for the submitted change
+							let module_store = transaction.object_store_of::<Module>()?;
+							let module_req = module_store.get_record::<Module>(module_id_str);
+							let mut module = module_req.await?.unwrap();
+							module.version = updated_version;
+							module_store.put_record(&module).await?;
+							// Insert the character record
+							let entry_store = transaction.object_store_of::<Entry>()?;
+							entry_store.add_record(&record).await?;
+							Ok(())
+						})
 					})
-				}).await {
+					.await
+				{
 					log::error!("{err:?}");
 					route = Route::Landing;
 				}
@@ -455,7 +464,13 @@ struct ModalDeleteProps {
 	on_click: Callback<()>,
 }
 #[function_component]
-fn ModalDelete(ModalDeleteProps { id, file_id, on_click }: &ModalDeleteProps) -> Html {
+fn ModalDelete(
+	ModalDeleteProps {
+		id,
+		file_id,
+		on_click,
+	}: &ModalDeleteProps,
+) -> Html {
 	let (auth_status, _dispatch) = use_store::<crate::auth::Status>();
 	let task_dispatch = use_context::<crate::task::Dispatch>().unwrap();
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();
@@ -503,25 +518,28 @@ fn ModalDelete(ModalDeleteProps { id, file_id, on_click }: &ModalDeleteProps) ->
 					branch: None,
 				};
 				let updated_version = client.delete_file(args).await?;
-				
-				if let Err(err) = database.mutate(move |transaction| {
-					use crate::database::app::{Entry, Module};
-					let module_id_str = module_id_str.clone();
-					let id_str = id_str.clone();
-					let updated_version = updated_version.clone();
-					Box::pin(async move {
-						// Update module version in database for the submitted change
-						let module_store = transaction.object_store_of::<Module>()?;
-						let module_req = module_store.get_record::<Module>(module_id_str);
-						let mut module = module_req.await?.unwrap();
-						module.version = updated_version;
-						module_store.put_record(&module).await?;
-						// Insert the character record
-						let entry_store = transaction.object_store_of::<Entry>()?;
-						entry_store.delete_record(id_str).await?;
-						Ok(())
+
+				if let Err(err) = database
+					.mutate(move |transaction| {
+						use crate::database::app::{Entry, Module};
+						let module_id_str = module_id_str.clone();
+						let id_str = id_str.clone();
+						let updated_version = updated_version.clone();
+						Box::pin(async move {
+							// Update module version in database for the submitted change
+							let module_store = transaction.object_store_of::<Module>()?;
+							let module_req = module_store.get_record::<Module>(module_id_str);
+							let mut module = module_req.await?.unwrap();
+							module.version = updated_version;
+							module_store.put_record(&module).await?;
+							// Insert the character record
+							let entry_store = transaction.object_store_of::<Entry>()?;
+							entry_store.delete_record(id_str).await?;
+							Ok(())
+						})
 					})
-				}).await {
+					.await
+				{
 					log::error!("{err:?}");
 				}
 

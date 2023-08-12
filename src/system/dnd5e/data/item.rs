@@ -1,3 +1,4 @@
+use super::character::IndirectItem;
 use crate::{
 	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
 	system::{
@@ -12,7 +13,6 @@ use std::str::FromStr;
 
 mod kind;
 pub use kind::*;
-
 pub mod armor;
 pub mod container;
 pub mod equipment;
@@ -32,7 +32,11 @@ pub struct Item {
 	pub kind: Kind,
 	pub tags: Vec<String>,
 	// TODO: Tests for item containers
-	pub items: Option<container::Container<Item>>,
+	// Items which are contained within this item instance.
+	pub items: Option<container::ItemContainer<Item>>,
+	// Items (specific by SourceId or custom defn) which should be converted into the item container when added to a character sheet.
+	// The owning item must have a container (typically empty) if using this property.
+	pub item_refs: Vec<IndirectItem>,
 }
 
 crate::impl_kdl_node!(Item, "item");
@@ -138,7 +142,11 @@ impl FromKDL for Item {
 		let kind = node
 			.query_opt_t::<Kind>("scope() > kind")?
 			.unwrap_or_default();
-		let items = node.query_opt_t::<container::Container<Item>>("scope() > items")?;
+		let items = node.query_opt_t::<container::ItemContainer<Item>>("scope() > items")?;
+		let item_refs = match node.query_opt("scope() > items > templates")? {
+			None => Vec::new(),
+			Some(node) => node.query_all_t::<IndirectItem>("scope() > item")?,
+		};
 
 		// Items are defined with the weight being representative of the stack,
 		// but are used as the weight being representative of a single item
@@ -162,6 +170,7 @@ impl FromKDL for Item {
 			kind,
 			tags,
 			items,
+			item_refs,
 		})
 	}
 }

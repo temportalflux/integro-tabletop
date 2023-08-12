@@ -197,8 +197,7 @@ where
 }
 
 #[hook]
-pub fn use_query_modules(system: Option<&'static str>) -> UseQueryModulesHandle
-{
+pub fn use_query_modules(system: Option<&'static str>) -> UseQueryModulesHandle {
 	use crate::database::app::module;
 	use futures_util::StreamExt;
 	let database = use_context::<Database>().unwrap();

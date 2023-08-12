@@ -63,8 +63,7 @@ impl ObjectStoreExt for idb::ObjectStore {
 	fn delete_record<'store>(
 		&'store self,
 		key: impl Into<JsValue> + 'store,
-	) -> PinFutureLifetimeNoSend<'store, Result<(), Error>>
-	{
+	) -> PinFutureLifetimeNoSend<'store, Result<(), Error>> {
 		Box::pin(async move {
 			self.delete(idb::Query::Key(key.into())).await?;
 			Ok(())

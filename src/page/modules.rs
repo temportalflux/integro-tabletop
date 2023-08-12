@@ -2,9 +2,18 @@ use std::collections::BTreeMap;
 
 use crate::{
 	auth::{self, OAuthProvider},
+	components::{
+		database::{use_query_all_typed, use_query_modules, QueryStatus},
+		Spinner,
+	},
 	database::app::{Database, Module},
 	storage::github::GithubClient,
-	system::{self, dnd5e::{DnD5e, components::GeneralProp}, core::System}, task, components::{database::{use_query_all_typed, use_query_modules, QueryStatus}, Spinner},
+	system::{
+		self,
+		core::System,
+		dnd5e::{components::GeneralProp, DnD5e},
+	},
+	task,
 };
 use multimap::MultiMap;
 use yew::prelude::*;
@@ -143,7 +152,7 @@ fn ModuleList() -> Html {
 }
 
 #[function_component]
-fn ModuleCard(GeneralProp { value}: &GeneralProp<Module>) -> Html {
+fn ModuleCard(GeneralProp { value }: &GeneralProp<Module>) -> Html {
 	html! {
 		<div class="card m-1" style="min-width: 300px;">
 			<div class="card-header">

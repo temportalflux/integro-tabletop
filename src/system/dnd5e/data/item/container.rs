@@ -17,10 +17,10 @@ pub use equipable::*;
 mod capacity;
 pub use capacity::*;
 
-pub type Inventory = Container<EquipableEntry>;
+pub type Inventory = ItemContainer<EquipableEntry>;
 
 #[derive(Clone, PartialEq, Debug)]
-pub struct Container<T> {
+pub struct ItemContainer<T> {
 	pub capacity: Capacity,
 	pub restriction: Option<Restriction>,
 	items_by_id: HashMap<Uuid, T>,
@@ -28,7 +28,7 @@ pub struct Container<T> {
 	wallet: Wallet,
 }
 
-impl<T> Default for Container<T> {
+impl<T> Default for ItemContainer<T> {
 	fn default() -> Self {
 		Self {
 			capacity: Default::default(),
@@ -40,7 +40,7 @@ impl<T> Default for Container<T> {
 	}
 }
 
-impl<T> Container<T> {
+impl<T> ItemContainer<T> {
 	pub fn new() -> Self {
 		Self {
 			capacity: Capacity::default(),
@@ -66,7 +66,7 @@ impl<T> Container<T> {
 	}
 }
 
-impl<T: AsItem> Container<T> {
+impl<T: AsItem> ItemContainer<T> {
 	pub fn get_item(&self, id: &Uuid) -> Option<&Item> {
 		self.items_by_id.get(id).map(|entry| entry.as_item())
 	}
@@ -171,7 +171,7 @@ impl<T: AsItem> Container<T> {
 	}
 }
 
-impl<T: AsItem + FromKDL> FromKDL for Container<T> {
+impl<T: AsItem + FromKDL> FromKDL for ItemContainer<T> {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let wallet = node
 			.query_opt_t::<Wallet>("scope() > wallet")?
@@ -217,7 +217,7 @@ impl<T: AsItem + FromKDL> FromKDL for Container<T> {
 	}
 }
 
-impl<T: AsKdl> AsKdl for Container<T> {
+impl<T: AsKdl> AsKdl for ItemContainer<T> {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 

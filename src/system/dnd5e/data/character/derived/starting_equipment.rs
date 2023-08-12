@@ -12,8 +12,7 @@ use std::str::FromStr;
 #[derive(Clone, Debug, PartialEq)]
 pub enum StartingEquipment {
 	Currency(Wallet),
-	SpecificItem(SourceId, usize),
-	CustomItem(Item),
+	IndirectItem(IndirectItem),
 	SelectItem(ItemFilter),
 	Group {
 		entries: Vec<StartingEquipment>,
@@ -37,7 +36,7 @@ impl StartingEquipment {
 	fn node_name(&self) -> &'static str {
 		match self {
 			Self::Currency(_) => "currency",
-			Self::SpecificItem(_, _) | Self::CustomItem(_) | Self::SelectItem(_) => "item",
+			Self::IndirectItem(_) | Self::SelectItem(_) => "item",
 			Self::Group { .. } => "group",
 		}
 	}
@@ -72,15 +71,12 @@ impl FromKDL for StartingEquipment {
 				let pick = node.get_i64_opt("pick")?.map(|v| v as usize);
 				Ok(Self::Group { entries, pick })
 			}
-			"item" => match node.next_str_req()? {
-				"Specific" => {
-					let id = node.next_str_req_t::<SourceId>()?;
-					let id = id.with_basis(node.id(), false);
-					let count = node.next_i64_opt()?.unwrap_or(1) as usize;
-					Ok(Self::SpecificItem(id, count))
+			"item" => match node.peak_str_req()? {
+				"Specific" | "Custom" => Ok(Self::IndirectItem(IndirectItem::from_kdl(node)?)),
+				"Select" => {
+					let _ = node.next_str_req()?;
+					Ok(Self::SelectItem(ItemFilter::from_kdl(node)?))
 				}
-				"Custom" => Ok(Self::CustomItem(Item::from_kdl(node)?)),
-				"Select" => Ok(Self::SelectItem(ItemFilter::from_kdl(node)?)),
 				kind => Err(NotInList(kind.into(), vec!["Specific", "Custom", "Select"]).into()),
 			},
 			name => {
@@ -93,20 +89,7 @@ impl AsKdl for StartingEquipment {
 	fn as_kdl(&self) -> NodeBuilder {
 		match self {
 			Self::Currency(wallet) => wallet.as_kdl(),
-			Self::SpecificItem(id, count) => {
-				let mut node = NodeBuilder::default().with_entry("Specific");
-				let kdl = id.as_kdl();
-				if !kdl.is_empty() {
-					node += kdl;
-				}
-				if *count > 1 {
-					node.push_entry(*count as i64);
-				}
-				node
-			}
-			Self::CustomItem(item) => NodeBuilder::default()
-				.with_entry("Custom")
-				.with_extension(item.as_kdl()),
+			Self::IndirectItem(indirect) => indirect.as_kdl(),
 			Self::SelectItem(filter) => NodeBuilder::default()
 				.with_entry("Select")
 				.with_extension(filter.as_kdl()),
@@ -165,5 +148,45 @@ impl AsKdl for WeaponFilter {
 			node.push_entry(("has_melee", *has_melee));
 		}
 		node
+	}
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum IndirectItem {
+	Specific(SourceId, usize),
+	Custom(Item),
+}
+impl FromKDL for IndirectItem {
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		match node.next_str_req()? {
+			"Specific" => {
+				let id = node.next_str_req_t::<SourceId>()?;
+				let id = id.with_basis(node.id(), false);
+				let count = node.next_i64_opt()?.unwrap_or(1) as usize;
+				Ok(Self::Specific(id, count))
+			}
+			"Custom" => Ok(Self::Custom(Item::from_kdl(node)?)),
+			kind => Err(NotInList(kind.into(), vec!["Specific", "Custom"]).into()),
+		}
+	}
+}
+impl AsKdl for IndirectItem {
+	fn as_kdl(&self) -> NodeBuilder {
+		match self {
+			Self::Specific(id, count) => {
+				let mut node = NodeBuilder::default().with_entry("Specific");
+				let kdl = id.as_kdl();
+				if !kdl.is_empty() {
+					node += kdl;
+				}
+				if *count > 1 {
+					node.push_entry(*count as i64);
+				}
+				node
+			}
+			Self::Custom(item) => NodeBuilder::default()
+				.with_entry("Custom")
+				.with_extension(item.as_kdl()),
+		}
 	}
 }

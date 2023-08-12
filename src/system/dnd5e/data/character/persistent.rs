@@ -240,7 +240,9 @@ impl FromKDL for Persistent {
 			conditions.insert(condition);
 		}
 
-		let inventory = node.query_opt_t::<Inventory>("scope() > inventory")?.unwrap_or_default();
+		let inventory = node
+			.query_opt_t::<Inventory>("scope() > inventory")?
+			.unwrap_or_default();
 
 		let selected_spells = node
 			.query_opt_t::<SelectedSpells>("scope() > spells")?

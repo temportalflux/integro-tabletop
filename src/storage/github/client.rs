@@ -395,10 +395,7 @@ impl GithubClient {
 					let response = serde_json::from_value::<Response>(data)?;
 					let file_id = response.content.sha;
 					let version = response.commit.sha;
-					Ok(CreateOrUpdateFileResponse {
-						file_id,
-						version,
-					})
+					Ok(CreateOrUpdateFileResponse { file_id, version })
 				}
 				404 => {
 					log::warn!("{data:?}");
@@ -413,16 +410,13 @@ impl GithubClient {
 					Err(CreateOrUpdateFileError::ValidationFailed.into())
 				}
 				code => {
-					log::warn!(
-						"create_or_update_file encountered unknown response code: {code}"
-					);
+					log::warn!("create_or_update_file encountered unknown response code: {code}");
 					Err(CreateOrUpdateFileError::Unknown(code).into())
 				}
 			}
 		})
 	}
 }
-
 
 #[derive(Debug)]
 pub struct DeleteFileArgs<'a> {
@@ -494,7 +488,7 @@ impl GithubClient {
 			struct Response {
 				commit: Commit,
 			}
-			
+
 			let response = builder.send().await?;
 			let status = response.status();
 			let data = response.json::<Value>().await?;

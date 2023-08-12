@@ -3,7 +3,7 @@ use yew::prelude::*;
 use yew_router::prelude::*;
 
 #[function_component]
-pub fn App() -> Html {	
+pub fn App() -> Html {
 	html! {
 		<BrowserRouter>
 			<Header />

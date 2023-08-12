@@ -43,7 +43,6 @@ impl Loader {
 					while let Some(org_list) = find_all_orgs.next().await {
 						owners.extend(org_list);
 					}
-					log::debug!("{owners:?}");
 
 					// If the homebrew repo was not found when querying who the user is,
 					// then we need to generate one, since this is where their user data is stored
@@ -71,7 +70,6 @@ impl Loader {
 				let mut relevant_list = BTreeMap::new();
 				let mut metadata = Vec::new();
 				for owner in &owners {
-					log::debug!("searching {owner:?}");
 					let mut stream = self.client.search_for_repos(owner);
 					while let Some(repos) = stream.next().await {
 						metadata.extend(repos.clone());
@@ -82,7 +80,6 @@ impl Loader {
 					}
 					progress.inc(1);
 				}
-				log::debug!("Valid Repositories: {relevant_list:?}");
 
 				self.insert_or_update_modules(metadata);
 

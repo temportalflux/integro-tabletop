@@ -159,7 +159,8 @@ impl Database {
 	}
 
 	pub async fn mutate<F>(&self, fn_transaction: F) -> Result<(), super::Error>
-	where F: FnOnce(&idb::Transaction) -> LocalBoxFuture<'_, Result<(), super::Error>>
+	where
+		F: FnOnce(&idb::Transaction) -> LocalBoxFuture<'_, Result<(), super::Error>>,
 	{
 		let transaction = self.write()?;
 		fn_transaction(&transaction).await?;
