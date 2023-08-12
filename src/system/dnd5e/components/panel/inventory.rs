@@ -3,7 +3,7 @@ use crate::{
 	page::characters::sheet::CharacterHandle,
 	system::{
 		core::SourceId,
-		dnd5e::{components::WalletInlineButton, data::item::container::AsItem},
+		dnd5e::{components::WalletInlineButton, data::item::container::item::AsItem},
 	},
 };
 use uuid::Uuid;

@@ -5,7 +5,7 @@ use crate::{
 			action::{
 				Action, ActivationKind, Attack, AttackCheckKind, AttackKind, AttackKindValue,
 			},
-			item::container::EquipableEntry,
+			item::container::item::EquipableEntry,
 			roll::EvaluatedRoll,
 			Ability, DamageRoll, Feature, WeaponProficiency,
 		},

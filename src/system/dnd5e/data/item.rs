@@ -37,6 +37,7 @@ pub struct Item {
 	// Items (specific by SourceId or custom defn) which should be converted into the item container when added to a character sheet.
 	// The owning item must have a container (typically empty) if using this property.
 	pub item_refs: Vec<IndirectItem>,
+	pub spells: Option<container::SpellContainer>,
 }
 
 crate::impl_kdl_node!(Item, "item");
@@ -147,6 +148,7 @@ impl FromKDL for Item {
 			None => Vec::new(),
 			Some(node) => node.query_all_t::<IndirectItem>("scope() > item")?,
 		};
+		let spells = node.query_opt_t("scope() > spells")?;
 
 		// Items are defined with the weight being representative of the stack,
 		// but are used as the weight being representative of a single item
@@ -171,6 +173,7 @@ impl FromKDL for Item {
 			tags,
 			items,
 			item_refs,
+			spells,
 		})
 	}
 }
@@ -210,7 +213,21 @@ impl AsKdl for Item {
 		}
 
 		if let Some(items) = &self.items {
-			node.push_child_t("items", items);
+			let templates = {
+				let mut node = NodeBuilder::default();
+				for item_ref in &self.item_refs {
+					node.push_child_t("item", item_ref);
+				}
+				node.build("templates")
+			};
+			node.push_child({
+				let mut node = items.as_kdl();
+				node.push_child_opt(templates);
+				node.build("items")
+			});
+		}
+		if let Some(spells) = &self.spells {
+			node.push_child_t("spells", spells);
 		}
 
 		node

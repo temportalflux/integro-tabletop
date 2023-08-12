@@ -2,7 +2,7 @@ use crate::{
 	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::dnd5e::data::{
 		character::Character,
-		item::{container::AsItem, Item, Kind},
+		item::{container::item::AsItem, Item, Kind},
 	},
 	utility::MutatorGroup,
 };

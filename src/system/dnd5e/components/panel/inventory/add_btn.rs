@@ -1,5 +1,5 @@
 use crate::{
-	page::characters::sheet::CharacterHandle, system::dnd5e::data::item::container::AsItem,
+	page::characters::sheet::CharacterHandle, system::dnd5e::data::item::container::item::AsItem,
 };
 use uuid::Uuid;
 use yew::prelude::*;

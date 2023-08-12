@@ -18,7 +18,6 @@
 
 ## DnD5e Features
 
-- spell containers
 - Wizards can add spells to spellbook
   req; spell containers
 - Wizard's can prepare spells from spellbook
