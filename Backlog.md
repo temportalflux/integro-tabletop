@@ -18,6 +18,7 @@
 
 ## DnD5e Features
 
+- spell container item UI/X
 - Wizards can add spells to spellbook
   req; spell containers
 - Wizard's can prepare spells from spellbook
