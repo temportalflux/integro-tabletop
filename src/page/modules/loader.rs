@@ -13,10 +13,144 @@ use crate::{
 	},
 	task,
 };
+use futures_util::future::LocalBoxFuture;
 use std::{
 	collections::{BTreeMap, VecDeque},
 	path::PathBuf,
+	sync::{Arc, Mutex},
 };
+use wasm_bindgen_futures::spawn_local;
+
+async fn task_with_output<F, V, E>(
+	task_dispatch: &task::Dispatch,
+	name: impl Into<String>,
+	progress: Option<task::ProgressHandle>,
+	pending: F,
+) -> Option<V>
+where
+	F: futures_util::Future<Output = Result<V, E>> + 'static,
+	V: 'static,
+	E: 'static,
+	anyhow::Error: From<E>,
+{
+	let output = Arc::new(Mutex::new(None));
+	let channel = output.clone();
+	let signal = task_dispatch.spawn(name, progress, async move {
+		let value = pending.await?;
+		*channel.lock().unwrap() = Some(value);
+		Ok(()) as anyhow::Result<(), E>
+	});
+	signal.wait_true().await;
+	let mut handle = output.lock().unwrap();
+	handle.take()
+}
+
+// Query github for the logged in user and all organizations they have access to.
+struct TaskQueryRepoOwners {
+	client: GithubClient,
+	on_missing_homebrew: Box<dyn FnOnce() -> LocalBoxFuture<'static, ()>>,
+}
+impl TaskQueryRepoOwners {
+	async fn spawn(self, task_dispatch: &task::Dispatch) -> Option<Vec<String>> {
+		task_with_output(task_dispatch, "Query Current User & Orgs", None, self.run()).await
+	}
+
+	async fn run(self) -> anyhow::Result<Vec<String>> {
+		use futures_util::stream::StreamExt;
+		let (user, homebrew_repo) = self.client.viewer().await?;
+
+		let mut owners = vec![user.clone()];
+		let mut find_all_orgs = self.client.find_all_orgs();
+		while let Some(org_list) = find_all_orgs.next().await {
+			owners.extend(org_list);
+		}
+
+		// If the homebrew repo was not found when querying who the user is,
+		// then we need to generate one, since this is where their user data is stored
+		// and is the default location for any creations.
+		if homebrew_repo.is_none() {
+			(self.on_missing_homebrew)().await;
+		}
+
+		Ok(owners)
+	}
+}
+
+// Create the homebrew repo on the github client viewer (the user that is logged in).
+// https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#create-a-repository-for-the-authenticated-user
+// https://docs.github.com/en/rest/repos/contents?apiVersion=2022-11-28#create-or-update-file-contents
+struct TaskCreateViewerHomebrew {
+	client: GithubClient,
+}
+impl TaskCreateViewerHomebrew {
+	fn new(client: &GithubClient) -> Self {
+		Self {
+			client: client.clone(),
+		}
+	}
+
+	async fn spawn(self, task_dispatch: task::Dispatch) {
+		let signal = task_dispatch.spawn("Initialize User Homebrew", None, self.run());
+		signal.wait_true().await;
+	}
+
+	async fn run(self) -> anyhow::Result<()> {
+		use crate::storage::github::MODULE_TOPIC;
+		let create_repo = CreateRepoArgs {
+			org: None,
+			name: USER_HOMEBREW_REPO_NAME,
+			private: true,
+		};
+		let owner = self.client.create_repo(create_repo).await?;
+
+		let set_topics = SetRepoTopicsArgs {
+			owner: owner.as_str(),
+			repo: USER_HOMEBREW_REPO_NAME,
+			topics: vec![MODULE_TOPIC.to_owned()],
+		};
+		self.client.set_repo_topics(set_topics).await?;
+
+		Ok(())
+	}
+}
+
+struct TaskSearchForRelevantRepos {
+	client: GithubClient,
+	owners: Vec<String>,
+}
+impl TaskSearchForRelevantRepos {
+	async fn spawn(self, task_dispatch: &task::Dispatch) -> Option<Vec<RepositoryMetadata>> {
+		let mut progress = task_dispatch.new_progress(self.owners.len() as u32);
+		task_with_output(
+			task_dispatch,
+			"Scan for Modules",
+			Some(progress.clone()),
+			self.run(progress),
+		)
+		.await
+	}
+
+	async fn run(self, mut progress: task::ProgressHandle) -> anyhow::Result<Vec<RepositoryMetadata>> {
+		use futures_util::stream::StreamExt;
+		// Regardless of if the homebrew already existed, lets gather ALL of the relevant
+		// repositories which are content modules. This will always include the homebrew repo,
+		// since it is garunteed to exist due to the above code.
+		let mut relevant_list = BTreeMap::new();
+		let mut metadata = Vec::new();
+		for owner in self.owners {
+			let mut stream = self.client.search_for_repos(&owner);
+			while let Some(repos) = stream.next().await {
+				metadata.extend(repos.clone());
+				for repo in repos {
+					relevant_list.insert((repo.owner, repo.name), (repo.is_private, repo.version));
+				}
+			}
+			progress.inc(1);
+		}
+
+		Ok(metadata)
+	}
+}
 
 #[derive(Clone)]
 pub struct Loader {
@@ -27,89 +161,25 @@ pub struct Loader {
 }
 impl Loader {
 	pub fn find_and_download_modules(self) {
-		self.query_user_and_orgs();
-	}
+		spawn_local(Box::pin(async move {
+			let task_create_homebrew = TaskCreateViewerHomebrew::new(&self.client);
 
-	fn query_user_and_orgs(self) {
-		use futures_util::stream::StreamExt;
-		self.task_dispatch
-			.clone()
-			.spawn("Query Current User & Orgs", None, {
-				async move {
-					let (user, homebrew_repo) = self.client.viewer().await?;
-
-					let mut owners = vec![user.clone()];
-					let mut find_all_orgs = self.client.find_all_orgs();
-					while let Some(org_list) = find_all_orgs.next().await {
-						owners.extend(org_list);
+			let task = TaskQueryRepoOwners {
+				client: self.client.clone(),
+				on_missing_homebrew: Box::new({
+					let task_dispatch = self.task_dispatch.clone();
+					move || {
+						Box::pin(task_create_homebrew.spawn(task_dispatch))
 					}
+				}),
+			};
+			let Some(owners) = task.spawn(&self.task_dispatch).await else { return; };
 
-					// If the homebrew repo was not found when querying who the user is,
-					// then we need to generate one, since this is where their user data is stored
-					// and is the default location for any creations.
-					if homebrew_repo.is_none() {
-						self.clone().create_user_homebrew().wait_true().await;
-					}
+			let task = TaskSearchForRelevantRepos { client: self.client.clone(), owners };
+			let Some(metadata) = task.spawn(&self.task_dispatch).await else { return; };
 
-					self.search_for_relevant_repos(owners);
-
-					Ok(()) as anyhow::Result<()>
-				}
-			});
-	}
-
-	fn search_for_relevant_repos(self, owners: Vec<String>) {
-		use futures_util::stream::StreamExt;
-		let mut progress = self.task_dispatch.new_progress(owners.len() as u32);
-		self.task_dispatch
-			.clone()
-			.spawn("Scan for Modules", Some(progress.clone()), async move {
-				// Regardless of if the homebrew already existed, lets gather ALL of the relevant
-				// repositories which are content modules. This will always include the homebrew repo,
-				// since it is garunteed to exist due to the above code.
-				let mut relevant_list = BTreeMap::new();
-				let mut metadata = Vec::new();
-				for owner in &owners {
-					let mut stream = self.client.search_for_repos(owner);
-					while let Some(repos) = stream.next().await {
-						metadata.extend(repos.clone());
-						for repo in repos {
-							relevant_list
-								.insert((repo.owner, repo.name), (repo.is_private, repo.version));
-						}
-					}
-					progress.inc(1);
-				}
-
-				self.insert_or_update_modules(metadata);
-
-				Ok(()) as anyhow::Result<()>
-			});
-	}
-
-	fn create_user_homebrew(self) -> task::Signal {
-		use crate::storage::github::MODULE_TOPIC;
-		// https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#create-a-repository-for-the-authenticated-user
-		// https://docs.github.com/en/rest/repos/contents?apiVersion=2022-11-28#create-or-update-file-contents
-		self.task_dispatch
-			.clone()
-			.spawn("Initialize User Homebrew", None, async move {
-				let create_repo = CreateRepoArgs {
-					org: None,
-					name: USER_HOMEBREW_REPO_NAME,
-					private: true,
-				};
-				let owner = self.client.create_repo(create_repo).await?;
-
-				let set_topics = SetRepoTopicsArgs {
-					owner: owner.as_str(),
-					repo: USER_HOMEBREW_REPO_NAME,
-					topics: vec![MODULE_TOPIC.to_owned()],
-				};
-				self.client.set_repo_topics(set_topics).await?;
-
-				Ok(()) as anyhow::Result<()>
-			})
+			self.insert_or_update_modules(metadata);
+		}));
 	}
 
 	async fn get_ddb_module_version(&self, id: &ModuleId) -> Option<String> {
