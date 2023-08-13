@@ -1,5 +1,6 @@
 use crate::{database::Record, system::core::ModuleId};
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeSet;
 
 mod system;
 pub use system::*;
@@ -8,7 +9,7 @@ pub use system::*;
 pub struct Module {
 	pub module_id: ModuleId,
 	pub name: String,
-	pub system: String,
+	pub systems: BTreeSet<String>,
 	pub version: String,
 }
 

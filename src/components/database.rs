@@ -72,6 +72,12 @@ pub struct UseQueryModulesHandle {
 	run: Rc<dyn Fn()>,
 }
 
+impl PartialEq for UseQueryModulesHandle {
+	fn eq(&self, other: &Self) -> bool {
+		self.async_handle == other.async_handle
+	}
+}
+
 impl UseQueryModulesHandle {
 	pub fn status(&self) -> QueryStatus<&Vec<Module>, DatabaseError> {
 		if self.async_handle.loading {

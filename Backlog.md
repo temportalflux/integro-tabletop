@@ -6,7 +6,6 @@
 - Toast in bottom right for active tasks
 - Database updates/syncs
 	- Delete from DB on sync when receiving a change that deletes the file
-- Update characters landing query when a character is deleted
 - Open editor when character sheet is opened on create
 - Don't create character in storage until it's saved for the first time in the builder/editor.
 - Saving to Storage
@@ -91,8 +90,9 @@ component "Material" {
 ## App Features
 
 ### Modules page
-- view all locally installed modules
-- (action) force refresh to delete installation and reinstall (per module or all)
+- Can open a module modal to delete or perform other actions
+- Deleting a module requires that it is not used by any locally installed characters
+- Modules can be in the database without being installed. Users can select which modules they install out of all those they have access to.
 - (action) check for updates; query for any new revisions/commits
 - (action) clone module from its source to a user's own homebrew
 

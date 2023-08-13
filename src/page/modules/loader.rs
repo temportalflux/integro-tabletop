@@ -412,12 +412,12 @@ impl TaskFetchModuleFiles {
 	}
 }
 
-#[derive(Clone)]
 pub struct Loader {
 	pub client: GithubClient,
 	pub task_dispatch: task::Dispatch,
 	pub system_depot: system::Depot,
 	pub database: Database,
+	pub on_finished: Box<dyn FnOnce()>,
 }
 impl Loader {
 	pub fn find_and_download_modules(self) {
@@ -441,10 +441,14 @@ impl Loader {
 
 			let remote_updates = self.query_for_module_updates(metadata).await;
 			let record_updates = self.fetch_updates_from_storage(remote_updates).await;
-			let idb_result = self.commit_record_updates(record_updates).await;
-			if let Err(err) = idb_result {
-				log::error!(target: "loader", "Failed to commit module records: {0}", err.to_string());
+			for parsed_records in record_updates {
+				let idb_result = self.commit_record_updates(parsed_records).await;
+				if let Err(err) = idb_result {
+					log::error!(target: "loader", "Failed to commit module records: {0}", err.to_string());
+				}
 			}
+
+			(self.on_finished)();
 		}));
 	}
 
@@ -547,49 +551,45 @@ impl Loader {
 
 	async fn commit_record_updates(
 		&self,
-		module_records: Vec<ParsedModuleRecords>,
+		module_records: ParsedModuleRecords,
 	) -> Result<(), crate::database::Error> {
 		use crate::database::{
 			app::{Entry, Module},
 			ObjectStoreExt, TransactionExt,
 		};
 
-		for parsed_records in module_records {
-			let ParsedModuleRecords {
-				repository,
-				generate_new_system_modules,
-				entries,
-			} = parsed_records;
-			let module_id = repository.module_id();
+		let ParsedModuleRecords {
+			repository,
+			generate_new_system_modules,
+			entries,
+		} = module_records;
+		let module_id = repository.module_id();
 
-			let transaction = self.database.write()?;
-			let module_store = transaction.object_store_of::<Module>()?;
-			let entry_store = transaction.object_store_of::<Entry>()?;
+		let transaction = self.database.write()?;
+		let module_store = transaction.object_store_of::<Module>()?;
+		let entry_store = transaction.object_store_of::<Entry>()?;
 
-			for record in entries {
-				entry_store.put_record(&record).await?;
-			}
-			if generate_new_system_modules {
-				for system in &repository.systems {
-					let record = crate::database::app::Module {
-						module_id: module_id.clone(),
-						name: module_id.to_string(),
-						system: system.clone(),
-						version: repository.version.clone(),
-					};
-					module_store.put_record(&record).await?;
-				}
-			} else {
-				let mut module = module_store
-					.get_record::<Module>(module_id.to_string())
-					.await?
-					.unwrap();
-				module.version = repository.version;
-				module_store.put_record(&module).await?;
-			}
-
-			transaction.commit().await?;
+		for record in entries {
+			entry_store.put_record(&record).await?;
 		}
+		if generate_new_system_modules {
+			let record = crate::database::app::Module {
+				module_id: module_id.clone(),
+				name: module_id.to_string(),
+				systems: repository.systems.iter().cloned().collect(),
+				version: repository.version.clone(),
+			};
+			module_store.put_record(&record).await?;
+		} else {
+			let mut module = module_store
+				.get_record::<Module>(module_id.to_string())
+				.await?
+				.unwrap();
+			module.version = repository.version;
+			module_store.put_record(&module).await?;
+		}
+
+		transaction.commit().await?;
 
 		Ok(())
 	}

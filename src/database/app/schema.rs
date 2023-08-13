@@ -32,7 +32,11 @@ impl Schema for SchemaVersion {
 					params.auto_increment(true);
 					params.key_path(Some(idb::KeyPath::new_single("name")));
 					let store = database.create_object_store(Module::store_id(), params)?;
-					store.create_index_of::<System>(None)?;
+					store.create_index_of::<System>(Some({
+						let mut params = idb::IndexParams::new();
+						params.multi_entry(true);
+						params
+					}))?;
 				}
 				// Create entries table
 				{
