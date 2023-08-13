@@ -6,9 +6,15 @@
 - Toast in bottom right for active tasks
 - Database updates/syncs
 	- Delete from DB on sync when receiving a change that deletes the file
-- Update characters landing query when a character is deleted
 - Open editor when character sheet is opened on create
 - Don't create character in storage until it's saved for the first time in the builder/editor.
+- Saving to Storage
+	- Leaving editor always saves
+	- All changes generate a changelog message
+	- Adjacent changelog messages with the same type will auto-combine (e.g. hit point increment & decrement, excluding bulk changes)
+	- If there are no additional changes within 60 seconds, auto save
+	- Display save timer and a manual save button in header of display sheet under the rest & builder buttons
+	- Button to open changelog and view both committed and uncommitted changes
 
 ## Tech Debt
 - Right now, evaluator's output type must be the same as the type read from kdl. Instead, an evaluator should have a parsed type (bool, int, float, string) and an output type (same as parsed or impls From/FromStr of the underlying type). This would support something like `Value<Rest>` instead of needing to use `Rest::from_str(Value<String>::evaluate())`. The output type can be lazily provided at evaluation time, instead of being a compile-time restriction. Heck, at that rate we dont even need a compile-time parsed type because it can be stored as a KdlValue (enum wrapper around all primitive types), which is then parsed at evaluation time. This goes back to the initial implementation debate of is it better to ensure the input data is accurate at parse time or eval time, and given the pain it has been to create non-primitive typed evals, I think i'd be better to find a middle ground than going to one extreme or the other. In that world, the parsed and output types don't matter at compile time, but when the evaluator parses kdl and is evaluated, both of those functions should take the expected type so that the kdl can be checked at parse time, stored as a general primitive, and then parsed again at eval time.
@@ -84,8 +90,9 @@ component "Material" {
 ## App Features
 
 ### Modules page
-- view all locally installed modules
-- (action) force refresh to delete installation and reinstall (per module or all)
+- Can open a module modal to delete or perform other actions
+- Deleting a module requires that it is not used by any locally installed characters
+- Modules can be in the database without being installed. Users can select which modules they install out of all those they have access to.
 - (action) check for updates; query for any new revisions/commits
 - (action) clone module from its source to a user's own homebrew
 

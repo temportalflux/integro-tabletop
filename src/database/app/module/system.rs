@@ -13,7 +13,7 @@ impl IndexType for System {
 	}
 
 	fn keys() -> &'static [&'static str] {
-		&["system"]
+		&["systems"]
 	}
 
 	fn as_query(&self) -> Result<idb::Query, idb::Error> {
