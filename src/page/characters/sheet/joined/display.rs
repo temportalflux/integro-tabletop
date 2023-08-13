@@ -10,7 +10,7 @@ use crate::{
 				ability, panel, rest, ArmorClass, ConditionsCard, DefensesCard, HitPointMgmtCard,
 				InitiativeBonus, Inspiration, ProfBonus, Proficiencies, SpeedAndSenses,
 			},
-			data::Ability,
+			data::Ability, SystemComponent,
 		},
 	},
 };
@@ -42,6 +42,7 @@ pub fn Display(ViewProps { swap_view }: &ViewProps) -> Html {
 				Some(system) => std::path::Path::new(&system).join(&path),
 			};
 			let message = format!("Manually save character");
+			let metadata = state.persistent().clone().to_metadata();
 			let content = {
 				let doc = state.export_as_kdl();
 				let doc = doc.to_string();
@@ -56,22 +57,56 @@ pub fn Display(ViewProps { swap_view }: &ViewProps) -> Html {
 			let repo_name = repository.clone();
 			let database = database.clone();
 			task_dispatch.spawn("Update File", None, async move {
-				let Some(Entry { file_id: Some(file_id), .. }) = database.get::<Entry>(id_str).await? else {
-						log::debug!("missing file id");
-						return Ok(());
-					};
+				let Some(mut entry) = database.get::<Entry>(id_str).await? else {
+					log::debug!("missing entry");
+					return Ok(());
+				};
+				let Some(file_id) = &entry.file_id else {
+					log::debug!("missing file-id sha");
+					return Ok(());
+				};
 				let args = crate::storage::github::CreateOrUpdateFileArgs {
 					repo_org: &repo_org,
 					repo_name: &repo_name,
 					path_in_repo: &path,
 					commit_message: &message,
 					content: &content,
-					file_id: Some(&file_id),
+					file_id: Some(file_id),
 					branch: None,
 				};
 				log::debug!("executing update character request {args:?}");
-				client.create_or_update_file(args).await?;
-				log::debug!("finished update character request");
+				let response = client.create_or_update_file(args).await?;
+				log::debug!("finished update character request {response:?}");
+				
+				let module_version = response.version;
+				// put the updated content in the database for the persistent character segment
+				entry.kdl = content;
+				entry.metadata = metadata;
+				// with the updated module version
+				entry.version = Some(module_version.clone());
+				// and updated storage sha/file id (because it changes every time a change is saved on a file)
+				entry.file_id = Some(response.file_id);
+				// Commit the module version and entry changes to database
+				database.mutate(move |transaction| {
+					use crate::database::{
+						app::{Entry, Module},
+						ObjectStoreExt, TransactionExt,
+					};
+					Box::pin(async move {
+						let module_store = transaction.object_store_of::<Module>()?;
+						let entry_store = transaction.object_store_of::<Entry>()?;
+
+						let module_req = module_store.get_record::<Module>(entry.module.clone());
+						let mut module = module_req.await?.unwrap();
+						module.version = module_version;
+						module_store.put_record(&module).await?;
+
+						entry_store.put_record(&entry).await?;
+
+						Ok(())
+					})
+				}).await?;
+				
 				Ok(()) as anyhow::Result<()>
 			});
 		}

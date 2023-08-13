@@ -3,6 +3,7 @@
 
 ## App Flow Improvements
 - Check for module updates on app resume/open (post login), automatically sync before app is shown
+- Button to forcibly fetch a character from storage (helpful in case of data desync where storage got the update but the local database did not)
 - Toast in bottom right for active tasks
 - Database updates/syncs
 	- Delete from DB on sync when receiving a change that deletes the file

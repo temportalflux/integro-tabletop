@@ -229,10 +229,10 @@ impl<T: AsKdl> AsKdl for ItemContainer<T> {
 				node.push_entry(("count", *count as i64));
 			}
 			if let Some(weight) = &self.capacity.weight {
-				node.push_entry(("weight", *weight as i64));
+				node.push_entry(("weight", *weight));
 			}
 			if let Some(volume) = &self.capacity.volume {
-				node.push_entry(("volume", *volume as i64));
+				node.push_entry(("volume", *volume));
 			}
 			node.build("capacity")
 		});
