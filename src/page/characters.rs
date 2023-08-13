@@ -18,7 +18,6 @@ use crate::{
 use itertools::Itertools;
 use std::{path::Path, rc::Rc};
 use yew::prelude::*;
-use yew_hooks::{use_async_with_options, UseAsyncOptions};
 use yew_router::{
 	prelude::{use_navigator, Link},
 	Routable,

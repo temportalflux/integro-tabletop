@@ -1,5 +1,5 @@
 use crate::{
-	components::{mobile, modal, Spinner, ViewScaler},
+	components::{mobile, Spinner, ViewScaler},
 	system::{core::SourceId, dnd5e::components::GeneralProp},
 };
 use yew::prelude::*;

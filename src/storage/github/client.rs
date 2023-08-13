@@ -2,9 +2,7 @@ use super::{
 	queries::{FindOrgs, SearchForRepos, ViewerInfo},
 	GraphQLQueryExt, QueryError, QueryStream, RepositoryMetadata,
 };
-use base64ct::Base64UrlUnpadded;
 use futures_util::future::LocalBoxFuture;
-use reqwest::StatusCode;
 use serde::Deserialize;
 use std::path::Path;
 
