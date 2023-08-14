@@ -25,6 +25,15 @@
 
 ## DnD5e Features
 
+- Spell Overview component
+	- Spell rows in the spell panel are too cramped/don't handle long names well
+	- replace `spell_row` table framework in the spells panel component
+	- each spell overview is a simplified card
+	- this component is used in spell panel and in item container UI/X
+	- Display high-level info (everything currently in the row component), plus:
+		- Duration
+		- Rank (if overriden/desired; not used for spell panel, but will be used for spell container)
+		- Required Components?
 - spell container item UI/X
 	- Editting the spells in an item opens the spell object dialog using a specific filter as defined by the spell container. The dialog contains the list of spells currently in the container and all spells which can be added to the container, much like the item object browser or spell selector.
 	- Item Details Modal

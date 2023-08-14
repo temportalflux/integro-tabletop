@@ -17,7 +17,7 @@ pub struct Bundle {
 	pub name: String,
 	/// The group this bundle is in (Race, RaceVariant, Lineage, Upbringing, Background, Feat, etc).
 	pub category: String,
-	pub description: description::Section,
+	pub description: description::Info,
 	/// The bundles required for this one to be added to a character.
 	pub requirements: Vec<BundleRequirement>,
 	/// The number of times this bundle can be added to a character.
@@ -98,7 +98,7 @@ impl FromKDL for Bundle {
 		};
 
 		let description = node
-			.query_opt_t::<description::Section>("scope() > description")?
+			.query_opt_t::<description::Info>("scope() > description")?
 			.unwrap_or_default();
 		let limit = node.get_i64_opt("limit")?.unwrap_or(1) as usize;
 
@@ -156,7 +156,7 @@ impl AsKdl for Bundle {
 			node.push_child(kdl.build("requirement"));
 		}
 
-		if self.description != description::Section::default() {
+		if self.description != description::Info::default() {
 			node.push_child_t("description", &self.description);
 		}
 		if self.limit > 1 {

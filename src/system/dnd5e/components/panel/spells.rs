@@ -231,23 +231,31 @@ impl<'c> SpellSections<'c> {
 						source: source.clone(),
 					},
 				);
+				self.insert_as_ritual(spell, entry, RitualSpellSource::AlwaysPrepared(source.clone()));
 			}
 		}
 	}
 
 	fn insert_available_ritual_spells(&mut self, state: &'c CharacterHandle) {
 		for (caster_id, spell, spell_entry) in state.spellcasting().iter_ritual_spells() {
-			// ritual-only spells can only be cast at their specified rank
-			let Some(section) = self.sections.get_mut(&spell.rank) else { continue; };
-			section.insert_spell(
-				spell,
-				spell_entry,
-				SpellLocation::AvailableAsRitual {
-					spell_id: spell.id.unversioned(),
-					caster_id: caster_id.clone(),
-				},
-			);
+			self.insert_as_ritual(spell, spell_entry, RitualSpellSource::Caster(caster_id.clone()));
 		}
+	}
+
+	fn insert_as_ritual(&mut self, spell: &'c Spell, spell_entry: &'c SpellEntry, source: RitualSpellSource) {
+		if !spell_entry.cast_via_ritual {
+			return;
+		}
+		// ritual-only spells can only be cast at their specified rank
+		let Some(section) = self.sections.get_mut(&spell.rank) else { return; };
+		section.insert_spell(
+			spell,
+			spell_entry,
+			SpellLocation::AvailableAsRitual {
+				spell_id: spell.id.unversioned(),
+				source,
+			},
+		);
 	}
 }
 
@@ -273,8 +281,13 @@ enum SpellLocation {
 	},
 	AvailableAsRitual {
 		spell_id: SourceId,
-		caster_id: String,
+		source: RitualSpellSource,
 	},
+}
+#[derive(Clone, PartialEq, Debug)]
+enum RitualSpellSource {
+	Caster(String),
+	AlwaysPrepared(std::path::PathBuf),
 }
 impl SpellLocation {
 	fn get<'this, 'c>(
@@ -298,11 +311,20 @@ impl SpellLocation {
 			}
 			SpellLocation::AvailableAsRitual {
 				spell_id,
-				caster_id,
+				source: RitualSpellSource::Caster(caster_id),
 			} => {
 				let Some(caster) = state.spellcasting().get_caster(caster_id) else { return None; };
 				let Some(spell) = state.spellcasting().get_ritual(spell_id) else { return None; };
 				Some((spell, &caster.spell_entry))
+			}
+			SpellLocation::AvailableAsRitual {
+				spell_id,
+				source: RitualSpellSource::AlwaysPrepared(source),
+			} => {
+				let Some(spell_entry) = state.spellcasting().prepared_spells().get(spell_id) else { return None; };
+				let Some(spell) = &spell_entry.spell else { return None; };
+				let Some(entry) = spell_entry.entries.get(source) else { return None; };
+				Some((spell, entry))
 			}
 		}
 	}

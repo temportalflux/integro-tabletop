@@ -133,7 +133,7 @@ fn FeatureBlock(
 					_ => html! {},
 				}}
 			</span>
-			{description(&feature.description, true)}
+			{description(&feature.description, true, false)}
 			{match selected_values.len() {
 				0 => html! {},
 				_ => {

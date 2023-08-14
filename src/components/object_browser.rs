@@ -111,6 +111,7 @@ impl ObjectBrowser for SpellBrowser {
 			source: std::path::PathBuf::new(),
 			classified_as: None,
 			cast_via_slot: false,
+			cast_via_ritual: false,
 			cast_via_uses: None,
 			range: None,
 			forced_rank: None,

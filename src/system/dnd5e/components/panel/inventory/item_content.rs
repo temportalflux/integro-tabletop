@@ -309,7 +309,7 @@ pub fn item_body(item: &Item, state: &CharacterHandle, props: Option<ItemBodyPro
 	}
 	if !item.description.is_empty() {
 		let desc = item.description.clone().evaluate(state);
-		sections.push(description(&desc, false));
+		sections.push(description(&desc, false, false));
 	}
 	if let Some(notes) = &item.notes {
 		sections.push(html! {

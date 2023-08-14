@@ -263,7 +263,7 @@ fn selected_bundle(
 			})}
 		>
 			<div class="text-block">
-				<DescriptionSection section={bundle.description.clone()} show_selectors={true} />
+				{description(&bundle.description, false, true)}
 			</div>
 			{mutator_list(&bundle.mutators, Some(state))}
 		</ContentItem>
@@ -350,7 +350,7 @@ pub fn bundle_content(bundle: &Bundle) -> Html {
 	// TODO: Show the requirements in the description
 	html! {<>
 		<div class="text-block">
-			<DescriptionSection section={bundle.description.clone()} show_selectors={false} />
+			{description(&bundle.description, false, false)}
 		</div>
 		{mutator_list(&bundle.mutators, None::<&CharacterHandle>)}
 	</>}
@@ -460,14 +460,14 @@ pub fn feature(value: &Feature, state: Option<&CharacterHandle>) -> Html {
 	html! {
 		<div class="my-2">
 			<h5>{value.name.clone()}</h5>
-			{description(&desc, false)}
+			{description(&desc, false, false)}
 			{mutator_list(&value.mutators, state)}
 		</div>
 	}
 }
 
 // TODO: Unify with DescriptionSection
-pub fn description(info: &description::Info, prefer_short: bool) -> Html {
+pub fn description(info: &description::Info, prefer_short: bool, show_selectors: bool) -> Html {
 	if prefer_short {
 		if let Some(desc) = &info.short {
 			return html! { <div class="text-block">{desc}</div> };
@@ -477,7 +477,7 @@ pub fn description(info: &description::Info, prefer_short: bool) -> Html {
 		.sections
 		.iter()
 		.map(|section| {
-			html! { <DescriptionSection section={section.clone()} show_selectors={false} /> }
+			html! { <DescriptionSection section={section.clone()} {show_selectors} /> }
 		})
 		.collect::<Vec<_>>();
 	html! {

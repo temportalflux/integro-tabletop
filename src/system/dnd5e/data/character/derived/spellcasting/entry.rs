@@ -7,6 +7,7 @@ pub struct SpellEntry {
 	pub source: PathBuf,
 	pub classified_as: Option<String>,
 	pub cast_via_slot: bool,
+	pub cast_via_ritual: bool,
 	pub cast_via_uses: Option<LimitedUses>,
 	pub range: Option<spell::Range>,
 	pub forced_rank: Option<u8>,

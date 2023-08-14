@@ -580,7 +580,7 @@ fn ActionOverview(ActionProps { entry }: &ActionProps) -> Html {
 					_ => html! {},
 				}}
 			</span>
-			{description(&desc, true)}
+			{description(&desc, true, false)}
 			{action_block}
 			{match entry.children.is_empty() {
 				true => html! {},
@@ -899,7 +899,7 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 	}
 
 	let desc = feature.description.clone().evaluate(&state);
-	sections.push(description(&desc, false));
+	sections.push(description(&desc, false, false));
 
 	if !feature.mutators.is_empty() {
 		sections.push(html! {

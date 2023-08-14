@@ -59,6 +59,8 @@ pub struct PreparedInfo {
 	/// If the spell can be cast using a spell slot.
 	/// If false, the spell is either cast At-Will or through a LimitedUses.
 	pub can_cast_through_slot: bool,
+	// If the spell can be cast as a ritual.
+	pub can_ritual_cast: bool,
 	/// If present, the spell must be cast using the specified casting range.
 	pub range: Option<spell::Range>,
 	/// If present, the spell can only be cast at this rank using this feature.
@@ -228,6 +230,7 @@ impl Mutator for Spellcasting {
 						source: parent.to_owned(),
 						classified_as: classified_as.clone(),
 						cast_via_slot: prepared_info.can_cast_through_slot,
+						cast_via_ritual: prepared_info.can_ritual_cast,
 						cast_via_uses: limited_uses.clone(),
 						range: prepared_info.range.clone(),
 						forced_rank: prepared_info.cast_at_rank.clone(),
@@ -310,6 +313,7 @@ impl FromKDL for Spellcasting {
 					source: std::path::PathBuf::from(&class_name),
 					classified_as: Some(class_name.clone()),
 					cast_via_slot: true,
+					cast_via_ritual: true,
 					cast_via_uses: None,
 					range: None,
 					forced_rank: None,
@@ -560,10 +564,12 @@ impl AsKdl for Spellcasting {
 impl FromKDL for PreparedInfo {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let can_cast_through_slot = node.get_bool_opt("use_slot")?.unwrap_or_default();
+		let can_ritual_cast = node.get_bool_opt("use_ritual")?.unwrap_or_default();
 		let cast_at_rank = node.get_i64_opt("rank")?.map(|v| v as u8);
 		let range = node.query_opt_t::<spell::Range>("scope() > range")?;
 		Ok(PreparedInfo {
 			can_cast_through_slot,
+			can_ritual_cast,
 			range,
 			cast_at_rank,
 		})
@@ -575,6 +581,9 @@ impl AsKdl for PreparedInfo {
 		let mut node = NodeBuilder::default();
 		if self.can_cast_through_slot {
 			node.push_entry(("use_slot", true));
+		}
+		if self.can_ritual_cast {
+			node.push_entry(("use_ritual", true));
 		}
 		if let Some(rank) = &self.cast_at_rank {
 			node.push_entry(("rank", *rank as i64));
