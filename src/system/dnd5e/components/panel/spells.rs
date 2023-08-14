@@ -196,7 +196,7 @@ impl<'c> SpellSections<'c> {
 		};
 		for (section_rank, location) in ranks {
 			let Some(section) = self.sections.get_mut(&section_rank) else { continue; };
-			if section_rank == 0 || section.slot_count.is_some() {
+			if section_rank == 0 || section.slot_count.is_some() || entry.cast_at_will() {
 				section.insert_spell(spell, entry, location);
 			}
 		}
@@ -222,6 +222,7 @@ impl<'c> SpellSections<'c> {
 	fn insert_permaprepared_spells(&mut self, state: &'c CharacterHandle) {
 		for (_id, spell_entry) in state.spellcasting().prepared_spells() {
 			let Some(spell) = &spell_entry.spell else { continue; };
+			log::debug!("AlwaysPrepared {} {:?}", spell.id.unversioned().to_string(), spell_entry.entries);
 			for (source, entry) in &spell_entry.entries {
 				self.insert_spell(
 					spell,
@@ -401,7 +402,7 @@ fn spell_section<'c>(
 						onchange={toggle_slot.clone()}
 					/>
 				}).collect::<Vec<_>>()}
-				<span class="ms-1">{"SLOTS"}</span>
+				{(*count > 0).then_some(html!(<span class="ms-1">{"SLOTS"}</span>)).unwrap_or_default()}
 			</div>
 		}
 	});
@@ -467,7 +468,7 @@ fn spell_row<'c>(props: SpellRowProps<'c>) -> Html {
 
 	let (use_kind, src_text_suffix) = match (&location, spell.rank, entry.cast_via_uses.as_ref()) {
 		(SpellLocation::AvailableAsRitual { .. }, _, _) => (UseSpell::RitualOnly, None),
-		(_, 0, None) => (UseSpell::AtWill, None),
+		(_, rank, None) if rank == 0 || (!entry.cast_via_slot && !entry.cast_via_ritual) => (UseSpell::AtWill, None),
 		(_, spell_rank, None) => {
 			let slot = UseSpell::Slot {
 				spell_rank,

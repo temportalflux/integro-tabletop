@@ -12,3 +12,8 @@ pub struct SpellEntry {
 	pub range: Option<spell::Range>,
 	pub forced_rank: Option<u8>,
 }
+impl SpellEntry {
+	pub fn cast_at_will(&self) -> bool {
+		!self.cast_via_slot && !self.cast_via_ritual && self.cast_via_uses.is_none()
+	}
+}
