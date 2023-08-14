@@ -26,6 +26,19 @@
 ## DnD5e Features
 
 - spell container item UI/X
+	- Editting the spells in an item opens the spell object dialog using a specific filter as defined by the spell container. The dialog contains the list of spells currently in the container and all spells which can be added to the container, much like the item object browser or spell selector.
+	- Item Details Modal
+		- Container info
+			- Are spells consumed? Is the item consumed?
+			- Spellcasting DC/Bonus
+			- capacity (number of spells, rank range + total)
+			- Can the container be transcribed from? Prepared from?
+		- Button to add spells to container
+		- List of spells currently contained (as card rows)
+			- with button to delete any of them
+			- include cast at rank and spell dc/bonus
+	- If castable, spells in the container show up in the spells panel.
+	- Casting a spell from the container can remove the spell from the container (consume_spell) and destroy the item if its the last spell (consume_item).
 - Wizards can add spells to spellbook
   req; spell containers
 - Wizard's can prepare spells from spellbook

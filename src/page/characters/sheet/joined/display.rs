@@ -10,7 +10,8 @@ use crate::{
 				ability, panel, rest, ArmorClass, ConditionsCard, DefensesCard, HitPointMgmtCard,
 				InitiativeBonus, Inspiration, ProfBonus, Proficiencies, SpeedAndSenses,
 			},
-			data::Ability, SystemComponent,
+			data::Ability,
+			SystemComponent,
 		},
 	},
 };
@@ -77,7 +78,7 @@ pub fn Display(ViewProps { swap_view }: &ViewProps) -> Html {
 				log::debug!("executing update character request {args:?}");
 				let response = client.create_or_update_file(args).await?;
 				log::debug!("finished update character request {response:?}");
-				
+
 				let module_version = response.version;
 				// put the updated content in the database for the persistent character segment
 				entry.kdl = content;
@@ -87,26 +88,29 @@ pub fn Display(ViewProps { swap_view }: &ViewProps) -> Html {
 				// and updated storage sha/file id (because it changes every time a change is saved on a file)
 				entry.file_id = Some(response.file_id);
 				// Commit the module version and entry changes to database
-				database.mutate(move |transaction| {
-					use crate::database::{
-						app::{Entry, Module},
-						ObjectStoreExt, TransactionExt,
-					};
-					Box::pin(async move {
-						let module_store = transaction.object_store_of::<Module>()?;
-						let entry_store = transaction.object_store_of::<Entry>()?;
+				database
+					.mutate(move |transaction| {
+						use crate::database::{
+							app::{Entry, Module},
+							ObjectStoreExt, TransactionExt,
+						};
+						Box::pin(async move {
+							let module_store = transaction.object_store_of::<Module>()?;
+							let entry_store = transaction.object_store_of::<Entry>()?;
 
-						let module_req = module_store.get_record::<Module>(entry.module.clone());
-						let mut module = module_req.await?.unwrap();
-						module.version = module_version;
-						module_store.put_record(&module).await?;
+							let module_req =
+								module_store.get_record::<Module>(entry.module.clone());
+							let mut module = module_req.await?.unwrap();
+							module.version = module_version;
+							module_store.put_record(&module).await?;
 
-						entry_store.put_record(&entry).await?;
+							entry_store.put_record(&entry).await?;
 
-						Ok(())
+							Ok(())
+						})
 					})
-				}).await?;
-				
+					.await?;
+
 				Ok(()) as anyhow::Result<()>
 			});
 		}

@@ -1,6 +1,9 @@
 use crate::{
 	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
-	system::{core::SourceId, dnd5e::data::action::ActivationKind},
+	system::{
+		core::SourceId,
+		dnd5e::data::{action::ActivationKind, Indirect, Spell},
+	},
 };
 
 #[derive(Clone, PartialEq, Debug, Default)]
@@ -31,8 +34,12 @@ pub struct Casting {
 	// What kind of action is used to cast from this container.
 	// If not provided, the activation is defined by the spell itself.
 	activation_kind: Option<ActivationKind>,
-	// If casting any spell from the container will consume the item (destroy it).
+	// If casting tue last spell in the container will consume the item (destroy it).
+	// If the spell is transcribed from this container and this property is enabled,
+	// the item is destroyed (TODO: transcribing spells is not a feature yet).
 	consume_item: bool,
+	// If casting any spell from the container will consume the spell in the container.
+	consume_spell: bool,
 	// What the save DC is for a spell cast from the container.
 	save_dc: Option<u8>,
 	// What the attack bonus is for a spell cast from the container.
@@ -42,8 +49,7 @@ pub struct Casting {
 // A spell which is stored in a Spell Container.
 #[derive(Clone, PartialEq, Debug)]
 pub struct ContainerSpell {
-	// The id of the spell in the database.
-	id: SourceId,
+	spell: Indirect<Spell>,
 	// The overridden rank of the spell. If provided, the spell must be cast at this rank.
 	rank: Option<u8>,
 	// The spell save DC that must be used for this spell.
@@ -143,7 +149,8 @@ impl AsKdl for Capacity {
 impl FromKDL for Casting {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let activation_kind = node.next_str_opt_t()?;
-		let consume_item = node.get_bool_opt("consume_item")?.unwrap_or_default();
+		let consume_item = node.query_bool_opt("scope() > consume_item", 0)?.unwrap_or_default();
+		let consume_spell = node.query_bool_opt("scope() > consume_spell", 0)?.unwrap_or_default();
 		let save_dc = node.query_i64_opt("scope() > save_dc", 0)?.map(|v| v as u8);
 		let attack_bonus = node
 			.query_i64_opt("scope() > atk_bonus", 0)?
@@ -151,6 +158,7 @@ impl FromKDL for Casting {
 		Ok(Self {
 			activation_kind,
 			consume_item,
+			consume_spell,
 			save_dc,
 			attack_bonus,
 		})
@@ -165,7 +173,10 @@ impl AsKdl for Casting {
 		}
 
 		if self.consume_item {
-			node.push_entry(("consume_item", true));
+			node.push_child_entry("consume_item", true);
+		}
+		if self.consume_spell {
+			node.push_child_entry("consume_spell", true);
 		}
 
 		if let Some(num) = &self.save_dc {
@@ -182,7 +193,7 @@ impl AsKdl for Casting {
 impl From<SourceId> for ContainerSpell {
 	fn from(id: SourceId) -> Self {
 		Self {
-			id,
+			spell: Indirect::Id(id),
 			rank: None,
 			save_dc: None,
 			attack_bonus: None,
@@ -192,14 +203,12 @@ impl From<SourceId> for ContainerSpell {
 
 impl FromKDL for ContainerSpell {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
-		let id = node.next_str_req_t()?;
-		let rank = node.query_i64_opt("scope() > rank", 0)?.map(|v| v as u8);
-		let save_dc = node.query_i64_opt("scope() > save_dc", 0)?.map(|v| v as u8);
-		let attack_bonus = node
-			.query_i64_opt("scope() > atk_bonus", 0)?
-			.map(|v| v as i32);
+		let spell = Indirect::from_kdl(node)?;
+		let rank = node.get_i64_opt("rank")?.map(|v| v as u8);
+		let save_dc = node.get_i64_opt("save_dc")?.map(|v| v as u8);
+		let attack_bonus = node.get_i64_opt("atk_bonus")?.map(|v| v as i32);
 		Ok(Self {
-			id,
+			spell,
 			rank,
 			save_dc,
 			attack_bonus,
@@ -208,19 +217,17 @@ impl FromKDL for ContainerSpell {
 }
 impl AsKdl for ContainerSpell {
 	fn as_kdl(&self) -> NodeBuilder {
-		let mut node = NodeBuilder::default();
-
-		node.push_entry(self.id.unversioned().to_string());
+		let mut node = self.spell.as_kdl();
 
 		if let Some(num) = &self.rank {
-			node.push_child_t("rank", num);
+			node.push_entry(("rank", *num as i64));
 		}
 
 		if let Some(num) = &self.save_dc {
-			node.push_child_t("save_dc", num);
+			node.push_entry(("save_dc", *num as i64));
 		}
 		if let Some(num) = &self.attack_bonus {
-			node.push_child_t("atk_bonus", num);
+			node.push_entry(("atk_bonus", *num as i64));
 		}
 
 		node
@@ -294,11 +301,7 @@ mod test {
 			|    capacity {
 			|        rank min=1 max=5 total=5
 			|    }
-			|    spell \"local://basic-rules@dnd5e/spells/identify.kdl\" {
-			|        rank 2
-			|        save_dc 15
-			|        atk_bonus 2
-			|    }
+			|    spell \"local://basic-rules@dnd5e/spells/identify.kdl\" rank=2 save_dc=15 atk_bonus=2
 			|}
 		";
 		let data = SpellContainer {
@@ -309,7 +312,9 @@ mod test {
 				rank_total: Some(5),
 			},
 			spells: vec![ContainerSpell {
-				id: SourceId::from_str("local://basic-rules@dnd5e/spells/identify.kdl")?,
+				spell: Indirect::Id(SourceId::from_str(
+					"local://basic-rules@dnd5e/spells/identify.kdl",
+				)?),
 				rank: Some(2),
 				save_dc: Some(15),
 				attack_bonus: Some(2),
@@ -328,7 +333,8 @@ mod test {
 			|    capacity 1 {
 			|        rank min=3 max=3
 			|    }
-			|    casting consume_item=true {
+			|    casting {
+			|        consume_item true
 			|        save_dc 13
 			|        atk_bonus 5
 			|    }
@@ -345,11 +351,14 @@ mod test {
 			casting: Some(Casting {
 				activation_kind: None,
 				consume_item: true,
+				consume_spell: false,
 				save_dc: Some(13),
 				attack_bonus: Some(5),
 			}),
 			spells: vec![ContainerSpell {
-				id: SourceId::from_str("local://basic-rules@dnd5e/spells/fireball.kdl")?,
+				spell: Indirect::Id(SourceId::from_str(
+					"local://basic-rules@dnd5e/spells/fireball.kdl",
+				)?),
 				rank: None,
 				save_dc: None,
 				attack_bonus: None,
@@ -368,7 +377,9 @@ mod test {
 			|    capacity 1 {
 			|        rank max=0
 			|    }
-			|    casting \"Action\"
+			|    casting \"Action\" {
+			|        consume_spell true
+			|    }
 			|}
 		";
 		let data = SpellContainer {
@@ -381,6 +392,7 @@ mod test {
 			casting: Some(Casting {
 				activation_kind: Some(ActivationKind::Action),
 				consume_item: false,
+				consume_spell: true,
 				save_dc: None,
 				attack_bonus: None,
 			}),

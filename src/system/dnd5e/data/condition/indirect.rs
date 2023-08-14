@@ -6,23 +6,25 @@ use crate::{
 use anyhow::Context;
 use std::str::FromStr;
 
+pub type IndirectCondition = Indirect<Condition>;
+
 #[derive(Clone, PartialEq, Debug)]
-pub enum IndirectCondition {
+pub enum Indirect<V> {
 	Id(SourceId),
-	Custom(Condition),
+	Custom(V),
 }
 
-impl FromKDL for IndirectCondition {
+impl<V: FromKDL> FromKDL for Indirect<V> {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		match node.next_str_req()? {
-			"Custom" => {
+			"Custom" | "Specific" => {
 				// this is a custom condition node, parse it as a condition struct
-				let condition = Condition::from_kdl(node)?;
+				let condition = V::from_kdl(node)?;
 				Ok(Self::Custom(condition))
 			}
 			source_id_str => {
 				let mut source_id = SourceId::from_str(source_id_str).with_context(|| {
-					format!("Expected {source_id_str:?} to either be the value \"Custom\" or a valid SourceId.")
+					format!("Expected {source_id_str:?} to either be the value \"Custom\"/\"Specific\" or a valid SourceId.")
 				})?;
 				source_id.set_basis(node.id(), false);
 				Ok(Self::Id(source_id))
@@ -31,14 +33,14 @@ impl FromKDL for IndirectCondition {
 	}
 }
 
-impl AsKdl for IndirectCondition {
+impl<V: AsKdl> AsKdl for Indirect<V> {
 	fn as_kdl(&self) -> NodeBuilder {
 		let node = NodeBuilder::default();
 		match self {
 			Self::Id(id) => node.with_entry(id.to_string()),
-			Self::Custom(condition) => {
-				let mut node = node.with_entry("Custom");
-				node += condition.as_kdl();
+			Self::Custom(value) => {
+				let mut node = node.with_entry("Specific");
+				node += value.as_kdl();
 				node
 			}
 		}
@@ -69,7 +71,7 @@ mod test {
 
 		#[test]
 		fn custom() -> anyhow::Result<()> {
-			let doc = "condition \"Custom\" name=\"Slippery\"";
+			let doc = "condition \"Specific\" name=\"Slippery\"";
 			let data = IndirectCondition::Custom(Condition {
 				name: "Slippery".into(),
 				..Default::default()

@@ -242,7 +242,7 @@ mod test {
 		fn condition_custom() -> anyhow::Result<()> {
 			let doc = "
 				|action \"Action\" {
-				|    condition \"Custom\" name=\"Slippery\"
+				|    condition \"Specific\" name=\"Slippery\"
 				|}
 			";
 			let data = Action {
