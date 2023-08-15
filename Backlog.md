@@ -68,6 +68,7 @@
 - Item Charges
 - Sheet inventory search bar functionality
 - name generator
+- Selected Eldritch Invocations should show the bundle descriptions in the panel under the feature, like a feature with a parent
 
 ### Customizations
 - Allow users to create new entries
