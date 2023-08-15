@@ -141,15 +141,6 @@ async fn main() -> anyhow::Result<()> {
 				};
 				sources.insert(source_id, content);
 			}
-			// Update the index file
-			tokio::fs::write(system_path.join("index"), {
-				item_paths
-					.into_iter()
-					.map(|path| path.display().to_string().replace("\\", "/"))
-					.collect::<Vec<_>>()
-					.join("\n")
-			})
-			.await?;
 		}
 	}
 
