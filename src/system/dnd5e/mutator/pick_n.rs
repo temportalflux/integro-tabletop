@@ -148,7 +148,10 @@ impl FromKDL for PickN {
 		let max_selections = node.next_i64_req()? as usize;
 		let name = node.get_str_req("name")?.to_owned();
 
-		let id = IdPath::from(node.get_str_opt("id")?);
+		let id = IdPath::from(Some(match node.get_str_opt("id")? {
+			Some(id) => id.to_owned(),
+			None => name.clone(),
+		}));
 		let cannot_match = node.query_str_all("scope() > cannot-match", 0)?;
 		let cannot_match = cannot_match.into_iter().map(IdPath::from).collect();
 
