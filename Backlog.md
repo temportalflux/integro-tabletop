@@ -68,7 +68,6 @@
 - Item Charges
 - Sheet inventory search bar functionality
 - name generator
-- Warlock Pact Boon, Invocations & Sorcerer Metamagic selections
 
 ### Customizations
 - Allow users to create new entries

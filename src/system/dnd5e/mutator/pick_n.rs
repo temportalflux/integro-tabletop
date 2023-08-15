@@ -192,7 +192,9 @@ impl AsKdl for PickN {
 
 		node.push_entry(("name", self.name.clone()));
 		if let Some(id) = self.id() {
-			node.push_entry(("id", id.clone()));
+			if id != &self.name {
+				node.push_entry(("id", id.clone()));
+			}
 		}
 
 		for cannot_match in self.cannot_match() {
@@ -293,7 +295,7 @@ mod test {
 				name: "Default Speed".into(),
 				options: options(),
 				selector: Selector::AnyOf {
-					id: IdPath::default(),
+					id: IdPath::from("Default Speed"),
 					cannot_match: vec![],
 					amount: 1,
 					options: vec!["Climbing".into(), "Swimming".into()],
