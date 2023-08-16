@@ -69,7 +69,6 @@
 - Sheet inventory search bar functionality
 - name generator
 - Selected Eldritch Invocations should show the bundle descriptions in the panel under the feature, like a feature with a parent
-- Metamagic transcribing and make each bundle have a feature which uses sorcery points like Monk features which use Ki
 
 ### Customizations
 - Allow users to create new entries
