@@ -138,6 +138,7 @@ mod test {
 						damage_type: DamageType::Fire,
 					}),
 					weapon_kind: None,
+					classification: None,
 					properties: Vec::new(),
 				}),
 				limited_uses: None,

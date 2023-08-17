@@ -1,9 +1,6 @@
 use crate::{
 	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
-	system::dnd5e::{
-		data::{character::Character, Ability},
-		Value,
-	},
+	system::dnd5e::{data::Ability, Value},
 	utility::NotInList,
 };
 
@@ -22,34 +19,6 @@ pub enum AttackCheckKind {
 }
 
 crate::impl_trait_eq!(AttackCheckKind);
-impl AttackCheckKind {
-	pub fn evaluate(&self, state: &Character) -> i32 {
-		match self {
-			Self::AttackRoll {
-				ability,
-				proficient,
-			} => {
-				let proficient = proficient.evaluate(state);
-				state.ability_modifier(*ability, Some(proficient.into()))
-			}
-			Self::SavingThrow {
-				base,
-				dc_ability,
-				proficient,
-				save_ability: _,
-			} => {
-				let ability_bonus = dc_ability
-					.as_ref()
-					.map(|ability| state.ability_scores().get(*ability).score().modifier())
-					.unwrap_or_default();
-				let prof_bonus = proficient
-					.then(|| state.proficiency_bonus())
-					.unwrap_or_default();
-				*base + ability_bonus + prof_bonus
-			}
-		}
-	}
-}
 
 impl FromKDL for AttackCheckKind {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {

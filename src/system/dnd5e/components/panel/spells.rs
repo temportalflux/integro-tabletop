@@ -222,7 +222,11 @@ impl<'c> SpellSections<'c> {
 	fn insert_permaprepared_spells(&mut self, state: &'c CharacterHandle) {
 		for (_id, spell_entry) in state.spellcasting().prepared_spells() {
 			let Some(spell) = &spell_entry.spell else { continue; };
-			log::debug!("AlwaysPrepared {} {:?}", spell.id.unversioned().to_string(), spell_entry.entries);
+			log::debug!(
+				"AlwaysPrepared {} {:?}",
+				spell.id.unversioned().to_string(),
+				spell_entry.entries
+			);
 			for (source, entry) in &spell_entry.entries {
 				self.insert_spell(
 					spell,
@@ -232,18 +236,31 @@ impl<'c> SpellSections<'c> {
 						source: source.clone(),
 					},
 				);
-				self.insert_as_ritual(spell, entry, RitualSpellSource::AlwaysPrepared(source.clone()));
+				self.insert_as_ritual(
+					spell,
+					entry,
+					RitualSpellSource::AlwaysPrepared(source.clone()),
+				);
 			}
 		}
 	}
 
 	fn insert_available_ritual_spells(&mut self, state: &'c CharacterHandle) {
 		for (caster_id, spell, spell_entry) in state.spellcasting().iter_ritual_spells() {
-			self.insert_as_ritual(spell, spell_entry, RitualSpellSource::Caster(caster_id.clone()));
+			self.insert_as_ritual(
+				spell,
+				spell_entry,
+				RitualSpellSource::Caster(caster_id.clone()),
+			);
 		}
 	}
 
-	fn insert_as_ritual(&mut self, spell: &'c Spell, spell_entry: &'c SpellEntry, source: RitualSpellSource) {
+	fn insert_as_ritual(
+		&mut self,
+		spell: &'c Spell,
+		spell_entry: &'c SpellEntry,
+		source: RitualSpellSource,
+	) {
 		if !spell_entry.cast_via_ritual {
 			return;
 		}
@@ -468,7 +485,9 @@ fn spell_row<'c>(props: SpellRowProps<'c>) -> Html {
 
 	let (use_kind, src_text_suffix) = match (&location, spell.rank, entry.cast_via_uses.as_ref()) {
 		(SpellLocation::AvailableAsRitual { .. }, _, _) => (UseSpell::RitualOnly, None),
-		(_, rank, None) if rank == 0 || (!entry.cast_via_slot && !entry.cast_via_ritual) => (UseSpell::AtWill, None),
+		(_, rank, None) if rank == 0 || (!entry.cast_via_slot && !entry.cast_via_ritual) => {
+			(UseSpell::AtWill, None)
+		}
 		(_, spell_rank, None) => {
 			let slot = UseSpell::Slot {
 				spell_rank,

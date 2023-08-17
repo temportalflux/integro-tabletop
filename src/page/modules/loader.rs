@@ -381,7 +381,9 @@ impl TaskFetchModuleFiles {
 		use anyhow::Context;
 		let Some(system_reg) = self.system_depot.get(&system) else { return Ok(Vec::new()); };
 
-		let document = content.parse::<kdl::KdlDocument>().with_context(|| format!("{file_path}"))?;
+		let document = content
+			.parse::<kdl::KdlDocument>()
+			.with_context(|| format!("{file_path}"))?;
 		let path_in_system = match file_path.strip_prefix(&format!("{system}/")) {
 			Some(systemless) => PathBuf::from(systemless),
 			None => PathBuf::from(&file_path),

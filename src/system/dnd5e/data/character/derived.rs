@@ -394,6 +394,11 @@ impl AttackBonuses {
 		}
 		bonuses
 	}
+
+	pub fn get_attack_ability_variants(&self, _attack: &crate::system::dnd5e::data::action::Attack) -> std::collections::HashSet<Ability> {
+		// TODO: STUB
+		std::collections::HashSet::default()
+	}
 }
 
 #[derive(Clone, Default, PartialEq, Debug)]

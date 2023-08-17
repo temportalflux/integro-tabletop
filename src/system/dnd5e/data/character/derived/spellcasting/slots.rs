@@ -1,6 +1,6 @@
 use crate::{
 	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
-	system::dnd5e::data::{Rest, character::MAX_SPELL_RANK},
+	system::dnd5e::data::{character::MAX_SPELL_RANK, Rest},
 	utility::NotInList,
 };
 use std::{collections::BTreeMap, str::FromStr};

@@ -149,8 +149,12 @@ impl AsKdl for Capacity {
 impl FromKDL for Casting {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let activation_kind = node.next_str_opt_t()?;
-		let consume_item = node.query_bool_opt("scope() > consume_item", 0)?.unwrap_or_default();
-		let consume_spell = node.query_bool_opt("scope() > consume_spell", 0)?.unwrap_or_default();
+		let consume_item = node
+			.query_bool_opt("scope() > consume_item", 0)?
+			.unwrap_or_default();
+		let consume_spell = node
+			.query_bool_opt("scope() > consume_spell", 0)?
+			.unwrap_or_default();
 		let save_dc = node.query_i64_opt("scope() > save_dc", 0)?.map(|v| v as u8);
 		let attack_bonus = node
 			.query_i64_opt("scope() > atk_bonus", 0)?

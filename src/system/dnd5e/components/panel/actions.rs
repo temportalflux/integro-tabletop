@@ -168,6 +168,8 @@ pub fn Actions() -> Html {
 							return None;
 						};
 						let onclick = open_attack_modal.reform(move |_| feature_path.clone());
+
+						let (_check_ability, atk_bonus, dmg_bonus) = attack.evaluate_bonuses(&*state);
 						Some(html! {
 							<tr class="align-middle" {onclick}>
 								<td>{feature.name.clone()}</td>
@@ -177,30 +179,25 @@ pub fn Actions() -> Html {
 									Some(AttackKindValue::Ranged { short_dist, long_dist, .. }) => html! {<>{short_dist}{" / "}{long_dist}</>},
 								}}</td>
 								<td class="text-center">{{
-									let value = attack.check.evaluate(&*state);
 									match attack.check {
 										AttackCheckKind::AttackRoll {..} => html!{<>
-											{match value >= 0 { true => "+", false => "-" }}
-											{value.abs()}
+											{match atk_bonus >= 0 { true => "+", false => "-" }}
+											{atk_bonus.abs()}
 										</>},
 										AttackCheckKind::SavingThrow { save_ability, ..} => html!{<>
 											{save_ability.abbreviated_name()}
 											<br />
-											{value}
+											{atk_bonus}
 										</>},
 									}
 								}}</td>
 								<td class="text-center">{{
-									let ability_bonus = match &attack.check {
-										AttackCheckKind::AttackRoll { ability, .. } => state.ability_modifier(*ability, None),
-										_ => 0,
-									};
 									//let additional_damage = state.attack_bonuses().get_weapon_damage(action);
 									match &attack.damage {
 										Some(DamageRoll { roll, base_bonus, damage_type: _ }) => {
 											// TODO: Showing bonuses when a bonus is a roll with an optional damage type
 											//let additional_bonus: i32 = additional_damage.iter().map(|(v, _)| *v).sum();
-											let bonus = base_bonus + ability_bonus;// + additional_bonus;
+											let bonus = base_bonus + dmg_bonus;// + additional_bonus;
 											let roll_str = match &roll {
 												None => None,
 												Some(roll_value) => Some(roll_value.evaluate(&state).to_string()),
@@ -695,7 +692,7 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 				}
 			}
 
-			let value = attack.check.evaluate(&*state);
+			let (check_ability, atk_bonus, dmg_bonus) = attack.evaluate_bonuses(&*state);
 			match &attack.check {
 				AttackCheckKind::AttackRoll {
 					ability,
@@ -706,8 +703,8 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 						<div class="property">
 							<strong>{"To Hit:"}</strong>
 							<span>
-								{match value >= 0 { true => "+", false => "-" }}
-								{value.abs()}
+								{match atk_bonus >= 0 { true => "+", false => "-" }}
+								{atk_bonus.abs()}
 							</span>
 							<span style="color: var(--bs-gray-600);">
 								{" ("}
@@ -728,7 +725,7 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 						<div class="property">
 							<strong>{"Saving Throw:"}</strong>
 							<span>
-								{format!("{} - DC {value}", save_ability.long_name())}
+								{format!("{} - DC {atk_bonus}", save_ability.long_name())}
 							</span>
 							<span class="ms-1" style="color: var(--bs-gray-600);">
 								{"("}
@@ -768,15 +765,9 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 				damage_type,
 			}) = &attack.damage
 			{
-				let (check_ability, ability_bonus) = match &attack.check {
-					AttackCheckKind::AttackRoll { ability, .. } => {
-						(Some(*ability), state.ability_modifier(*ability, None))
-					}
-					_ => (None, 0),
-				};
 				// TODO: Show damage roll bonuses inline, when the bonuses themselves can be rolls
 				//let additional_bonus: i32 = additional_damage.iter().map(|(v, _damage_type, _source)| *v).sum();
-				let bonus = base_bonus + ability_bonus; // + additional_bonus;
+				let bonus = base_bonus + dmg_bonus; // + additional_bonus;
 				let roll_str = match &roll {
 					None => None,
 					Some(roll_value) => Some(roll_value.evaluate(&state).to_string()),

@@ -1,8 +1,9 @@
 use super::super::{AreaOfEffect, DamageRoll};
 use crate::{
 	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
-	system::dnd5e::data::item::weapon,
+	system::dnd5e::data::{character::Character, item::weapon, Ability},
 };
+use std::collections::HashSet;
 
 mod check;
 pub use check::*;
@@ -18,6 +19,7 @@ pub struct Attack {
 	pub area_of_effect: Option<AreaOfEffect>,
 	pub damage: Option<DamageRoll>,
 	pub weapon_kind: Option<weapon::Kind>,
+	pub classification: Option<String>,
 	pub properties: Vec<weapon::Property>,
 }
 
@@ -27,12 +29,14 @@ impl FromKDL for Attack {
 		let check = node.query_req_t::<AttackCheckKind>("scope() > check")?;
 		let area_of_effect = node.query_opt_t::<AreaOfEffect>("scope() > area_of_effect")?;
 		let damage = node.query_opt_t::<DamageRoll>("scope() > damage")?;
+		let classification = node.get_str_opt("class")?.map(str::to_owned);
 		Ok(Self {
 			kind,
 			check,
 			area_of_effect,
 			damage,
 			weapon_kind: None,
+			classification,
 			properties: Vec::new(),
 		})
 	}
@@ -41,6 +45,9 @@ impl FromKDL for Attack {
 impl AsKdl for Attack {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
+		if let Some(classification) = &self.classification {
+			node.push_entry(("class", classification.clone()));
+		}
 		if let Some(kind) = &self.kind {
 			node.push_child_t("kind", kind);
 		}
@@ -52,6 +59,61 @@ impl AsKdl for Attack {
 			node.push_child_t("damage", damage);
 		}
 		node
+	}
+}
+
+impl Attack {
+	fn all_ability_options(&self, primary: Ability, state: &Character) -> HashSet<Ability> {
+		let mut abilities = HashSet::from([primary]);
+		if self.properties.contains(&weapon::Property::Finesse) {
+			abilities.extend([Ability::Strength, Ability::Dexterity]);
+		}
+		abilities.extend(state.attack_bonuses().get_attack_ability_variants(self));
+		return abilities;
+	}
+
+	fn best_ability_modifier(&self, primary: Ability, state: &Character) -> (Ability, i32) {
+		let abilities = self.all_ability_options(primary, state).into_iter();
+		let abilities = abilities.map(|ability| {
+			let modifier = state.ability_modifier(ability, None);
+			(ability, modifier)
+		});
+		let option = abilities.max_by_key(|(_, modifier)| *modifier);
+		return option.expect("there is always at least one ability option");
+	}
+
+	pub fn evaluate_bonuses(&self, state: &Character) -> (Option<Ability>, i32, i32) {
+		match &self.check {
+			AttackCheckKind::AttackRoll {
+				ability,
+				proficient,
+			} => {
+				let (ability, modifier) = self.best_ability_modifier(*ability, state);
+				let prof_bonus = proficient
+					.evaluate(state)
+					.then_some(state.proficiency_bonus())
+					.unwrap_or_default();
+				let atk_bonus = modifier + prof_bonus;
+				let dmg_bonus = modifier;
+				(Some(ability), atk_bonus, dmg_bonus)
+			}
+			AttackCheckKind::SavingThrow {
+				base,
+				dc_ability,
+				proficient,
+				save_ability: _,
+			} => {
+				let ability_bonus = dc_ability
+					.as_ref()
+					.map(|ability| state.ability_scores().get(*ability).score().modifier())
+					.unwrap_or_default();
+				let prof_bonus = proficient
+					.then(|| state.proficiency_bonus())
+					.unwrap_or_default();
+				let atk_bonus = *base + ability_bonus + prof_bonus;
+				(None, atk_bonus, 0)
+			}
+		}
 	}
 }
 
@@ -97,6 +159,7 @@ mod test {
 					damage_type: DamageType::Fire,
 				}),
 				weapon_kind: None,
+				classification: None,
 				properties: Vec::new(),
 			};
 			assert_eq_fromkdl!(Attack, doc, data);
@@ -138,6 +201,7 @@ mod test {
 					damage_type: DamageType::Fire,
 				}),
 				weapon_kind: None,
+				classification: None,
 				properties: Vec::new(),
 			};
 			assert_eq_fromkdl!(Attack, doc, data);

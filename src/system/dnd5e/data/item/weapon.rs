@@ -80,7 +80,6 @@ impl Weapon {
 	}
 
 	pub fn attack_action(&self, entry: &EquipableEntry) -> Feature {
-		// TODO: Attack should have properties for both melee and range to support the thrown property
 		let attack_kind = match self.range {
 			None => AttackKindValue::Melee {
 				reach: self.melee_reach().unwrap(),
@@ -94,10 +93,6 @@ impl Weapon {
 				long_dist: long_range,
 			},
 		};
-		// TODO: The ability modifier used for a melee weapon attack is Strength,
-		// and the ability modifier used for a ranged weapon attack is Dexterity.
-		// Weapons that have the finesse or thrown property break this rule.
-		let attack_ability = self.attack_ability();
 		Feature {
 			name: entry.item.name.clone(),
 			action: Some(Action {
@@ -105,7 +100,7 @@ impl Weapon {
 				attack: Some(Attack {
 					kind: Some(attack_kind),
 					check: AttackCheckKind::AttackRoll {
-						ability: attack_ability,
+						ability: self.attack_ability(),
 						proficient: Value::Evaluated(
 							evaluator::Any(vec![
 								IsProficientWith::Weapon(WeaponProficiency::Kind(self.kind)).into(),
@@ -125,6 +120,7 @@ impl Weapon {
 						..Default::default()
 					}),
 					weapon_kind: Some(self.kind),
+					classification: Some(self.classification.clone()),
 					properties: self.properties.clone(),
 				}),
 				..Default::default()
