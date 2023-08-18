@@ -1,21 +1,26 @@
 use crate::{
-	kdl_ext::{DocumentExt, FromKDL, NodeBuilder},
+	kdl_ext::{DocumentExt, EntryExt, FromKDL, NodeBuilder, ValueExt},
 	system::dnd5e::data::{
-		action::AttackQuery, character::Character, description, roll::EvaluatedRoll, DamageType,
+		action::AttackQuery, character::Character, description, roll::EvaluatedRoll, Ability,
+		DamageType,
 	},
 	utility::{Dependencies, Mutator, NotInList},
 };
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum Bonus {
-	WeaponDamage {
+	AttackRoll {
+		bonus: i32,
+		query: Vec<AttackQuery>,
+	},
+	AttackDamage {
 		damage: EvaluatedRoll,
 		damage_type: Option<DamageType>,
-		restriction: Option<AttackQuery>,
+		query: Vec<AttackQuery>,
 	},
-	WeaponAttackRoll {
-		bonus: i32,
-		restriction: Option<AttackQuery>,
+	AttackAbilityModifier {
+		ability: Ability,
+		query: Vec<AttackQuery>,
 	},
 	ArmorClass {
 		bonus: i32,
@@ -38,10 +43,11 @@ impl Mutator for Bonus {
 		use crate::kdl_ext::KDLNode;
 		let mut deps = Dependencies::from([super::AddFeature::id()]);
 		match self {
-			Self::WeaponDamage { damage, .. } => {
+			Self::AttackRoll { .. } => {}
+			Self::AttackDamage { damage, .. } => {
 				deps = deps.join(damage.dependencies());
 			}
-			Self::WeaponAttackRoll { .. } => {}
+			Self::AttackAbilityModifier { .. } => {}
 			Self::ArmorClass { .. } => {}
 		}
 		deps
@@ -49,23 +55,30 @@ impl Mutator for Bonus {
 
 	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
 		match self {
-			Self::WeaponDamage {
+			Self::AttackRoll { bonus, query } => {
+				stats.attack_bonuses_mut().add_to_weapon_attacks(
+					*bonus,
+					query.clone(),
+					parent.to_owned(),
+				);
+			}
+			Self::AttackDamage {
 				damage,
 				damage_type,
-				restriction,
+				query,
 			} => {
 				let bonus = damage.evaluate(stats);
 				stats.attack_bonuses_mut().add_to_weapon_damage(
 					bonus,
 					damage_type.clone(),
-					restriction.clone(),
+					query.clone(),
 					parent.to_owned(),
 				);
 			}
-			Self::WeaponAttackRoll { bonus, restriction } => {
-				stats.attack_bonuses_mut().add_to_weapon_attacks(
-					*bonus,
-					restriction.clone(),
+			Self::AttackAbilityModifier { ability, query } => {
+				stats.attack_bonuses_mut().add_ability_modifier(
+					*ability,
+					query.clone(),
 					parent.to_owned(),
 				);
 			}
@@ -80,30 +93,44 @@ impl Mutator for Bonus {
 
 impl FromKDL for Bonus {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
-		match node.next_str_req()? {
-			"WeaponDamage" => {
+		let entry = node.next_req()?;
+		match (entry.type_opt(), entry.as_str_req()?) {
+			(Some("Attack"), "Roll") => {
+				let bonus = node.query_i64_req("scope() > bonus", 0)? as i32;
+				let query = node.query_all_t::<AttackQuery>("scope() > query")?;
+				Ok(Self::AttackRoll { bonus, query })
+			}
+			(Some("Attack"), "Damage") => {
 				let damage = node.query_req_t::<EvaluatedRoll>("scope() > damage")?;
 				let damage_type = node.query_str_opt_t::<DamageType>("scope() > damage_type", 0)?;
-				let restriction = node.query_opt_t::<AttackQuery>("scope() > query")?;
-				Ok(Self::WeaponDamage {
+				let query = node.query_all_t::<AttackQuery>("scope() > query")?;
+				Ok(Self::AttackDamage {
 					damage,
 					damage_type,
-					restriction,
+					query,
 				})
 			}
-			"WeaponAttackRoll" => {
-				let bonus = node.query_i64_req("scope() > bonus", 0)? as i32;
-				let restriction = node.query_opt_t::<AttackQuery>("scope() > query")?;
-				Ok(Self::WeaponAttackRoll { bonus, restriction })
+			(Some("Attack"), "AbilityModifier") => {
+				let ability = node.next_str_req_t()?;
+				let query = node.query_all_t::<AttackQuery>("scope() > query")?;
+				Ok(Self::AttackAbilityModifier { ability, query })
 			}
-			"ArmorClass" => {
+			(None, "ArmorClass") => {
 				let bonus = node.next_i64_req()? as i32;
 				let context = node.get_str_opt("context")?.map(str::to_owned);
 				Ok(Self::ArmorClass { bonus, context })
 			}
-			key => Err(NotInList(
-				key.into(),
-				vec!["WeaponDamage", "WeaponAttackRoll", "ArmorClass"],
+			(type_id, name) => Err(NotInList(
+				format!(
+					"{}{name}",
+					type_id.map(|id| format!("({id})")).unwrap_or_default()
+				),
+				vec![
+					"(Attack)Damage",
+					"(Attack)Roll",
+					"(Attack)AbilityModifier",
+					"ArmorClass",
+				],
 			)
 			.into()),
 		}
@@ -114,26 +141,34 @@ impl crate::kdl_ext::AsKdl for Bonus {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 		match self {
-			Self::WeaponDamage {
+			Self::AttackRoll { bonus, query } => {
+				node.push_entry_typed("Roll", "Attack");
+				node.push_child_entry("bonus", *bonus as i64);
+				for query in query {
+					node.push_child_t("query", query);
+				}
+				node
+			}
+			Self::AttackDamage {
 				damage,
 				damage_type,
-				restriction,
+				query,
 			} => {
-				node.push_entry("WeaponDamage");
+				node.push_entry_typed("Damage", "Attack");
 				node.push_child_t("damage", damage);
 				if let Some(kind) = damage_type {
 					node.push_child_entry("damage_type", kind.to_string());
 				}
-				if let Some(restriction) = restriction {
-					node.push_child_t("query", restriction);
+				for query in query {
+					node.push_child_t("query", query);
 				}
 				node
 			}
-			Self::WeaponAttackRoll { bonus, restriction } => {
-				node.push_entry("WeaponAttackRoll");
-				node.push_child_entry("bonus", *bonus as i64);
-				if let Some(restriction) = restriction {
-					node.push_child_t("query", restriction);
+			Self::AttackAbilityModifier { ability, query } => {
+				node.push_entry_typed("AbilityModifier", "Attack");
+				node.push_entry_typed(ability.to_string(), "Ability");
+				for query in query {
+					node.push_child_t("query", query);
 				}
 				node
 			}
@@ -184,14 +219,14 @@ mod test {
 			#[test]
 			fn fixed_unrestricted() -> anyhow::Result<()> {
 				let doc = "
-					|mutator \"bonus\" \"WeaponDamage\" {
+					|mutator \"bonus\" (Attack)\"Damage\" {
 					|    damage 2
 					|}
 				";
-				let data = Bonus::WeaponDamage {
+				let data = Bonus::AttackDamage {
 					damage: EvaluatedRoll::from(2),
 					damage_type: None,
-					restriction: None,
+					query: vec![],
 				};
 				assert_eq_askdl!(&data, doc);
 				assert_eq_fromkdl!(Target, doc, data.into());
@@ -201,7 +236,7 @@ mod test {
 			#[test]
 			fn fixed_restricted() -> anyhow::Result<()> {
 				let doc = "
-					|mutator \"bonus\" \"WeaponDamage\" {
+					|mutator \"bonus\" (Attack)\"Damage\" {
 					|    damage 5
 					|    query {
 					|        weapon \"Simple\" \"Martial\"
@@ -211,15 +246,16 @@ mod test {
 					|    }
 					|}
 				";
-				let data = Bonus::WeaponDamage {
+				let data = Bonus::AttackDamage {
 					damage: EvaluatedRoll::from(5),
 					damage_type: None,
-					restriction: Some(AttackQuery {
+					query: vec![AttackQuery {
 						weapon_kind: weapon::Kind::Martial | weapon::Kind::Simple,
 						attack_kind: AttackKind::Melee.into(),
 						ability: [Ability::Strength].into(),
 						properties: [(weapon::Property::TwoHanded, false)].into(),
-					}),
+						classification: [].into(),
+					}],
 				};
 				assert_eq_askdl!(&data, doc);
 				assert_eq_fromkdl!(Target, doc, data.into());
@@ -229,15 +265,15 @@ mod test {
 			#[test]
 			fn roll_typed() -> anyhow::Result<()> {
 				let doc = "
-					|mutator \"bonus\" \"WeaponDamage\" {
+					|mutator \"bonus\" (Attack)\"Damage\" {
 					|    damage (Roll)\"1d8\"
 					|    damage_type \"Radiant\"
 					|}
 				";
-				let data = Bonus::WeaponDamage {
+				let data = Bonus::AttackDamage {
 					damage: EvaluatedRoll::from((1, Die::D8)),
 					damage_type: Some(DamageType::Radiant),
-					restriction: None,
+					query: vec![],
 				};
 				assert_eq_askdl!(&data, doc);
 				assert_eq_fromkdl!(Target, doc, data.into());
@@ -247,19 +283,19 @@ mod test {
 			#[test]
 			fn eval_amt() -> anyhow::Result<()> {
 				let doc = "
-					|mutator \"bonus\" \"WeaponDamage\" {
+					|mutator \"bonus\" (Attack)\"Damage\" {
 					|    damage {
 					|        amount (Evaluator)\"get_level\"
 					|    }
 					|}
 				";
-				let data = Bonus::WeaponDamage {
+				let data = Bonus::AttackDamage {
 					damage: EvaluatedRoll {
 						amount: Value::Evaluated(GetLevelInt::default().into()),
 						die: None,
 					},
 					damage_type: None,
-					restriction: None,
+					query: vec![],
 				};
 				assert_eq_askdl!(&data, doc);
 				assert_eq_fromkdl!(Target, doc, data.into());
@@ -273,13 +309,13 @@ mod test {
 			#[test]
 			fn unrestricted() -> anyhow::Result<()> {
 				let doc = "
-					|mutator \"bonus\" \"WeaponAttackRoll\" {
+					|mutator \"bonus\" (Attack)\"Roll\" {
 					|    bonus 2
 					|}
 				";
-				let data = Bonus::WeaponAttackRoll {
+				let data = Bonus::AttackRoll {
 					bonus: 2,
-					restriction: None,
+					query: vec![],
 				};
 				assert_eq_askdl!(&data, doc);
 				assert_eq_fromkdl!(Target, doc, data.into());
@@ -289,19 +325,19 @@ mod test {
 			#[test]
 			fn restricted() -> anyhow::Result<()> {
 				let doc = "
-					|mutator \"bonus\" \"WeaponAttackRoll\" {
+					|mutator \"bonus\" (Attack)\"Roll\" {
 					|    bonus 5
 					|    query {
 					|        attack \"Ranged\"
 					|    }
 					|}
 				";
-				let data = Bonus::WeaponAttackRoll {
+				let data = Bonus::AttackRoll {
 					bonus: 5,
-					restriction: Some(AttackQuery {
+					query: vec![AttackQuery {
 						attack_kind: AttackKind::Ranged.into(),
 						..Default::default()
-					}),
+					}],
 				};
 				assert_eq_askdl!(&data, doc);
 				assert_eq_fromkdl!(Target, doc, data.into());
@@ -335,6 +371,27 @@ mod test {
 				assert_eq_fromkdl!(Target, doc, data.into());
 				Ok(())
 			}
+		}
+
+		#[test]
+		fn attack_ability_modifier() -> anyhow::Result<()> {
+			let doc = "
+				|mutator \"bonus\" (Attack)\"AbilityModifier\" (Ability)\"Constitution\" {
+				|    query {
+				|        class \"Shortsword\"
+				|    }
+				|}
+			";
+			let data = Bonus::AttackAbilityModifier {
+				ability: Ability::Constitution,
+				query: vec![AttackQuery {
+					classification: ["Shortsword".into()].into(),
+					..Default::default()
+				}],
+			};
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
+			Ok(())
 		}
 	}
 }

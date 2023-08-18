@@ -316,32 +316,39 @@ impl MaxHitPoints {
 
 #[derive(Clone, Default, PartialEq, Debug)]
 pub struct AttackBonuses {
-	weapon_attack_roll: Vec<WeaponAttackRollBonus>,
-	weapon_damage: Vec<WeaponDamageBonus>,
+	attack_roll: Vec<AttackRollBonus>,
+	attack_damage: Vec<AttackDamageBonus>,
+	attack_ability: Vec<AttackAbility>,
 }
 #[derive(Clone, PartialEq, Debug)]
-struct WeaponAttackRollBonus {
+struct AttackRollBonus {
 	bonus: i32,
-	restriction: Option<AttackQuery>,
+	queries: Vec<AttackQuery>,
 	source: PathBuf,
 }
 #[derive(Clone, PartialEq, Debug)]
-struct WeaponDamageBonus {
+struct AttackDamageBonus {
 	amount: Roll,
 	damage_type: Option<DamageType>,
-	restriction: Option<AttackQuery>,
+	queries: Vec<AttackQuery>,
+	source: PathBuf,
+}
+#[derive(Clone, PartialEq, Debug)]
+struct AttackAbility {
+	ability: Ability,
+	queries: Vec<AttackQuery>,
 	source: PathBuf,
 }
 impl AttackBonuses {
 	pub fn add_to_weapon_attacks(
 		&mut self,
 		bonus: i32,
-		restriction: Option<AttackQuery>,
+		queries: Vec<AttackQuery>,
 		source: PathBuf,
 	) {
-		self.weapon_attack_roll.push(WeaponAttackRollBonus {
+		self.attack_roll.push(AttackRollBonus {
 			bonus,
-			restriction,
+			queries,
 			source,
 		});
 	}
@@ -350,13 +357,26 @@ impl AttackBonuses {
 		&mut self,
 		amount: Roll,
 		damage_type: Option<DamageType>,
-		restriction: Option<AttackQuery>,
+		queries: Vec<AttackQuery>,
 		source: PathBuf,
 	) {
-		self.weapon_damage.push(WeaponDamageBonus {
+		self.attack_damage.push(AttackDamageBonus {
 			amount,
 			damage_type,
-			restriction,
+			queries,
+			source,
+		});
+	}
+
+	pub fn add_ability_modifier(
+		&mut self,
+		ability: Ability,
+		queries: Vec<AttackQuery>,
+		source: PathBuf,
+	) {
+		self.attack_ability.push(AttackAbility {
+			ability,
+			queries,
 			source,
 		});
 	}
@@ -367,14 +387,14 @@ impl AttackBonuses {
 	) -> Vec<(i32, &Path)> {
 		let mut bonuses = Vec::new();
 		let Some(attack) = &action.attack else { return bonuses; };
-		for bonus in &self.weapon_attack_roll {
+		for bonus in &self.attack_roll {
 			// Filter out any bonuses which do not meet the restriction
-			if let Some(restriction) = &bonus.restriction {
-				if !restriction.is_attack_valid(attack) {
-					continue;
+			'iter_query: for query in &bonus.queries {
+				if query.is_attack_valid(attack) {
+					bonuses.push((bonus.bonus, bonus.source.as_path()));
+					break 'iter_query;
 				}
 			}
-			bonuses.push((bonus.bonus, bonus.source.as_path()));
 		}
 		bonuses
 	}
@@ -385,14 +405,14 @@ impl AttackBonuses {
 	) -> Vec<(&Roll, &Option<DamageType>, &Path)> {
 		let mut bonuses = Vec::new();
 		let Some(attack) = &action.attack else { return bonuses; };
-		for bonus in &self.weapon_damage {
+		for bonus in &self.attack_damage {
 			// Filter out any bonuses which do not meet the restriction
-			if let Some(restriction) = &bonus.restriction {
-				if !restriction.is_attack_valid(attack) {
-					continue;
+			'iter_query: for query in &bonus.queries {
+				if query.is_attack_valid(attack) {
+					bonuses.push((&bonus.amount, &bonus.damage_type, bonus.source.as_path()));
+					break 'iter_query;
 				}
 			}
-			bonuses.push((&bonus.amount, &bonus.damage_type, bonus.source.as_path()));
 		}
 		bonuses
 	}

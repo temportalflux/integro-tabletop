@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{NodeBuilder, ValueExt},
+	kdl_ext::{DocumentExt, NodeBuilder, ValueExt},
 	system::dnd5e::data::{
 		action::{Attack, AttackCheckKind, AttackKind},
 		item::weapon,
@@ -12,10 +12,16 @@ use std::{collections::HashSet, str::FromStr};
 
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct AttackQuery {
+	// Must be either Simple or Martial
 	pub weapon_kind: EnumSet<weapon::Kind>,
+	// Must be either Melee or Ranged
 	pub attack_kind: EnumSet<AttackKind>,
+	// Must use one of these abilities
 	pub ability: HashSet<Ability>,
+	// Must have or not have specific properties
 	pub properties: Vec<(weapon::Property, bool)>,
+	// Must be classified as one of these weapon types
+	pub classification: HashSet<String>,
 }
 
 impl std::fmt::Display for AttackQuery {
@@ -158,11 +164,15 @@ impl crate::kdl_ext::FromKDL for AttackQuery {
 			properties.push((property, required));
 		}
 
+		let classification = node.query_str_all("scope() > class", 0)?;
+		let classification = classification.into_iter().map(str::to_owned).collect();
+
 		Ok(Self {
 			weapon_kind,
 			attack_kind,
 			ability,
 			properties,
+			classification,
 		})
 	}
 }
@@ -204,6 +214,10 @@ impl crate::kdl_ext::AsKdl for AttackQuery {
 
 		for (property, required) in &self.properties {
 			node.push_child(property.as_kdl().with_entry(*required).build("property"));
+		}
+
+		for class in self.classification.iter().sorted() {
+			node.push_child_t("class", class);
 		}
 
 		node
