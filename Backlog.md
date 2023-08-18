@@ -5,8 +5,6 @@
 - Check for module updates on app resume/open (post login), automatically sync before app is shown
 - Button to forcibly fetch a character from storage (helpful in case of data desync where storage got the update but the local database did not)
 - Toast in bottom right for active tasks
-- Database updates/syncs
-	- Delete from DB on sync when receiving a change that deletes the file
 - Open editor when character sheet is opened on create
 - Don't create character in storage until it's saved for the first time in the builder/editor.
 - Saving to Storage
@@ -55,7 +53,6 @@
 
 - Apply Dodge condition when the action is taken (defined in `defaults.kdl`)
 - Expertise - selection filter to select skills that the character already has proficiency in
-- Monk `Martial Arts` mutators (largely dependent on defining what a monk weapon is and applying bonus damage)
 - Conditions imply other Conditions
 - Ranger Favored Enemy and Natural Explorer
 - Condition supression (`Mindless Rage`)

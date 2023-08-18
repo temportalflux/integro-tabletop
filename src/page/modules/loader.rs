@@ -2,8 +2,8 @@ use crate::{
 	database::app::Database,
 	storage::{
 		github::{
-			CreateRepoArgs, FileContentArgs, FilesChangedArgs, GetTreeArgs, GithubClient,
-			RepositoryMetadata, SetRepoTopicsArgs,
+			ChangedFileStatus, CreateRepoArgs, FileContentArgs, FilesChangedArgs, GetTreeArgs,
+			GithubClient, RepositoryMetadata, SetRepoTopicsArgs,
 		},
 		USER_HOMEBREW_REPO_NAME,
 	},
@@ -15,7 +15,7 @@ use crate::{
 };
 use futures_util::future::LocalBoxFuture;
 use std::{
-	collections::{BTreeMap, VecDeque},
+	collections::{BTreeMap, HashSet, VecDeque},
 	path::PathBuf,
 	sync::{Arc, Mutex},
 };
@@ -184,6 +184,7 @@ struct FileToUpdate {
 	path_in_repo: String,
 	// The file-id sha in the github repo.
 	file_id: String,
+	status: ChangedFileStatus,
 }
 impl TaskScanRepository {
 	fn spawn(self, task_dispatch: &task::Dispatch) -> SignalWithOutput<ModuleUpdate> {
@@ -262,6 +263,7 @@ impl TaskScanRepository {
 						system,
 						path_in_repo,
 						file_id: entry.id,
+						status: ChangedFileStatus::Added,
 					});
 				}
 			}
@@ -290,12 +292,14 @@ impl TaskScanRepository {
 		};
 		let changed_file_paths = client.get_files_changed(args).await?;
 		let mut files = Vec::with_capacity(changed_file_paths.len());
-		for (file_path, file_id) in changed_file_paths {
-			let system = Self::get_system_in_file_path(std::path::Path::new(&file_path)).unwrap();
+		for changed_file in changed_file_paths {
+			let path_in_repo = std::path::Path::new(&changed_file.path);
+			let system = Self::get_system_in_file_path(path_in_repo).unwrap();
 			files.push(FileToUpdate {
 				system,
-				path_in_repo: file_path,
-				file_id,
+				path_in_repo: changed_file.path,
+				file_id: changed_file.file_id,
+				status: changed_file.status,
 			});
 		}
 		progress.inc(1);
@@ -319,6 +323,7 @@ struct ParsedModuleRecords {
 	repository: RepositoryMetadata,
 	generate_new_system_modules: bool,
 	entries: Vec<crate::database::app::Entry>,
+	removed_file_ids: HashSet<String>,
 }
 impl TaskFetchModuleFiles {
 	fn spawn(self, task_dispatch: &task::Dispatch) -> SignalWithOutput<ParsedModuleRecords> {
@@ -344,12 +349,14 @@ impl TaskFetchModuleFiles {
 		}
 
 		let mut entries = Vec::with_capacity(self.files.len());
+		let mut removed_file_ids = HashSet::new();
 		let files = self.files.drain(..).collect::<Vec<_>>();
 		for file_to_update in files {
 			let FileToUpdate {
 				system,
 				path_in_repo,
 				file_id,
+				status,
 			} = file_to_update;
 			let args = FileContentArgs {
 				owner: self.repository.owner.as_str(),
@@ -357,17 +364,29 @@ impl TaskFetchModuleFiles {
 				path: path_in_repo.as_str(),
 				version: self.repository.version.as_str(),
 			};
-			let content = self.client.get_file_content(args).await?;
-
-			let parsed_entries = self.parse_content(system, path_in_repo, file_id, content)?;
-			entries.extend(parsed_entries);
-
+			match status {
+				ChangedFileStatus::Added
+				| ChangedFileStatus::Modified
+				| ChangedFileStatus::Renamed
+				| ChangedFileStatus::Copied
+				| ChangedFileStatus::Changed => {
+					let content = self.client.get_file_content(args).await?;
+					let parsed_entries =
+						self.parse_content(system, path_in_repo, file_id, content)?;
+					entries.extend(parsed_entries);
+				}
+				ChangedFileStatus::Removed => {
+					removed_file_ids.insert(file_id);
+				}
+				ChangedFileStatus::Unchanged => {}
+			}
 			progress.inc(1);
 		}
 		Ok(ParsedModuleRecords {
 			repository: self.repository,
 			generate_new_system_modules: self.generate_new_system_modules,
 			entries,
+			removed_file_ids,
 		})
 	}
 
@@ -557,7 +576,7 @@ impl Loader {
 		module_records: ParsedModuleRecords,
 	) -> Result<(), crate::database::Error> {
 		use crate::database::{
-			app::{Entry, Module},
+			app::{entry, Entry, Module},
 			ObjectStoreExt, TransactionExt,
 		};
 
@@ -565,6 +584,7 @@ impl Loader {
 			repository,
 			generate_new_system_modules,
 			entries,
+			removed_file_ids,
 		} = module_records;
 		let module_id = repository.module_id();
 
@@ -575,6 +595,27 @@ impl Loader {
 		for record in entries {
 			entry_store.put_record(&record).await?;
 		}
+		// Delete entries by module and file-id
+		let entry_ids_to_remove = {
+			use futures_util::StreamExt;
+			let idx_module = entry_store.index_of::<entry::Module>()?;
+			let module = repository.module_id().to_string();
+			let mut cursor = idx_module
+				.open_cursor(Some(&entry::Module { module }))
+				.await?;
+			let mut entry_ids_to_remove = Vec::with_capacity(removed_file_ids.len());
+			while let Some(entry) = cursor.next().await {
+				let Some(file_id) = &entry.file_id else { continue; };
+				if removed_file_ids.contains(file_id) {
+					entry_ids_to_remove.push(entry.id.clone());
+				}
+			}
+			entry_ids_to_remove
+		};
+		for entry_id in entry_ids_to_remove {
+			entry_store.delete_record(entry_id).await?;
+		}
+
 		if generate_new_system_modules {
 			let record = crate::database::app::Module {
 				module_id: module_id.clone(),

@@ -693,9 +693,10 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 			}
 
 			let (check_ability, atk_bonus, dmg_bonus) = attack.evaluate_bonuses(&*state);
+			let check_ability_mod_str = check_ability.map(|ability| format!("{} modifier", ability.long_name())).unwrap_or_default();
 			match &attack.check {
 				AttackCheckKind::AttackRoll {
-					ability,
+					ability: _,
 					proficient,
 				} => {
 					let use_prof = proficient.evaluate(&*state);
@@ -708,7 +709,7 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 							</span>
 							<span style="color: var(--bs-gray-600);">
 								{" ("}
-								{format!("{} modifier", ability.long_name())}
+								{&check_ability_mod_str}
 								{use_prof.then(|| html! { {" + proficiency bonus"} }).unwrap_or_default()}
 								{")"}
 							</span>
@@ -790,7 +791,8 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 					<span style="color: var(--bs-gray-600);">
 						{" ("}
 						{concat_roll_bonus(&roll_str, *base_bonus)}
-						{check_ability.map(|ability| html! { {format!(" + {} modifier", ability.long_name())} }).unwrap_or_default()}
+						{" + "}
+						{&check_ability_mod_str}
 						{additional_damage_html}
 						{")"}
 					</span>

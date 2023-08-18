@@ -86,7 +86,7 @@ impl Mutator for ApplyIf {
 		}
 	}
 
-	fn apply(&self, state: &mut Self::Target, parent: &std::path::Path) {
+	fn on_insert(&self, state: &mut Self::Target, parent: &std::path::Path) {
 		if self.evaluate(state) {
 			for mutator in &self.mutators {
 				state.apply(mutator, parent);

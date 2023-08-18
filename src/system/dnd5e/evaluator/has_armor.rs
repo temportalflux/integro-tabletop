@@ -52,6 +52,9 @@ impl crate::utility::Evaluator for HasArmorEquipped {
 				continue;
 			}
 			let item::Kind::Equipment(equipment) = &item.kind else { continue; };
+			if equipment.armor.is_none() && equipment.shield.is_none() {
+				continue;
+			}
 
 			let mut in_filter = false;
 			if let Some(armor) = &equipment.armor {
@@ -495,6 +498,34 @@ mod test {
 				assert_eq!(
 					evaluator.evaluate(&character),
 					Err("\"Shield\" is equipped.".into())
+				);
+			}
+
+			#[test]
+			fn weapon_equipped() {
+				let evaluator = HasArmorEquipped {
+					inverted: true,
+					..Default::default()
+				};
+				let mut character = character(&[], None);
+				let id = character.persistent_mut().inventory.insert(Item {
+					name: format!("Staff"),
+					kind: item::Kind::Equipment(Equipment {
+						weapon: Some(item::weapon::Weapon {
+							kind: item::weapon::Kind::Simple,
+							classification: "Quarterstaff".into(),
+							damage: None,
+							properties: vec![],
+							range: None,
+						}),
+						..Default::default()
+					}),
+					..Default::default()
+				});
+				character.persistent_mut().inventory.set_equipped(&id, true);
+				assert_eq!(
+					evaluator.evaluate(&character),
+					Ok(())
 				);
 			}
 		}

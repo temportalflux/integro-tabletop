@@ -10,7 +10,7 @@ use crate::system::dnd5e::{
 };
 use enum_map::{enum_map, EnumMap};
 use std::{
-	collections::BTreeMap,
+	collections::{BTreeMap, HashSet},
 	path::{Path, PathBuf},
 };
 
@@ -419,10 +419,19 @@ impl AttackBonuses {
 
 	pub fn get_attack_ability_variants(
 		&self,
-		_attack: &crate::system::dnd5e::data::action::Attack,
-	) -> std::collections::HashSet<Ability> {
-		// TODO: STUB
-		std::collections::HashSet::default()
+		attack: &crate::system::dnd5e::data::action::Attack,
+	) -> HashSet<Ability> {
+		// TODO: this doesnt report out the sources for the ability variants
+		let mut abilities = HashSet::default();
+		for bonus in &self.attack_ability {
+			'iter_query: for query in &bonus.queries {
+				if query.is_attack_valid(attack) {
+					abilities.insert(bonus.ability);
+					break 'iter_query;
+				}
+			}
+		}
+		abilities
 	}
 }
 

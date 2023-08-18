@@ -36,7 +36,11 @@ impl Mutator for Bonus {
 
 	fn description(&self, _state: Option<&Self::Target>) -> description::Section {
 		// TODO: Bonus description
-		description::Section::default()
+		description::Section {
+			title: Some("Bonus".into()),
+			content: format!("{self:?}").into(),
+			..Default::default()
+		}
 	}
 
 	fn dependencies(&self) -> Dependencies {

@@ -40,6 +40,7 @@ impl Client {
 		V: 'static + Schema + TryFrom<u32, Error = MissingVersion>,
 	{
 		let database = event.database()?;
+		let transaction = event.transaction()?;
 		// This is always 0 for database initialization, and is otherwise the previous version.
 		let old_version = event.old_version()?;
 		// I've never seen this be None in practice.
@@ -49,7 +50,7 @@ impl Client {
 		// Even if we are initializing fresh, we need to step through all of the versions
 		for version in (old_version + 1)..=new_version {
 			let schema = V::try_from(version)?;
-			schema.apply(&database)?;
+			schema.apply(&database, transaction.as_ref())?;
 		}
 		Ok(())
 	}

@@ -22,7 +22,11 @@ impl Schema for SchemaVersion {
 		Self::Version1 as u32
 	}
 
-	fn apply(&self, database: &idb::Database) -> Result<(), idb::Error> {
+	fn apply(
+		&self,
+		database: &idb::Database,
+		_transaction: Option<&idb::Transaction>,
+	) -> Result<(), idb::Error> {
 		match self {
 			Self::Version1 => {
 				// Create modules table
@@ -40,11 +44,12 @@ impl Schema for SchemaVersion {
 				}
 				// Create entries table
 				{
-					use app::entry::{Entry, ModuleSystem, System, SystemCategory};
+					use app::entry::{Entry, Module, ModuleSystem, System, SystemCategory};
 					let mut params = idb::ObjectStoreParams::new();
 					params.auto_increment(true);
 					params.key_path(Some(idb::KeyPath::new_single("id")));
 					let store = database.create_object_store(Entry::store_id(), params)?;
+					store.create_index_of::<Module>(None)?;
 					store.create_index_of::<ModuleSystem>(None)?;
 					store.create_index_of::<System>(None)?;
 					store.create_index_of::<SystemCategory>(None)?;

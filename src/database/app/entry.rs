@@ -2,6 +2,8 @@ use crate::{database::Record, system::core::SourceId};
 use serde::{Deserialize, Serialize};
 use std::{str::FromStr, sync::Arc};
 
+mod module;
+pub use module::*;
 mod module_system;
 pub use module_system::*;
 mod system;

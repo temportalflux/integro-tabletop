@@ -4,7 +4,7 @@ use super::{
 };
 use futures_util::future::LocalBoxFuture;
 use serde::Deserialize;
-use std::path::Path;
+use std::{path::Path};
 
 static GITHUB_API: &'static str = "https://api.github.com";
 static APP_USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
@@ -180,14 +180,57 @@ pub struct FilesChangedArgs<'a> {
 	// Inclusive end of the rnage (will include changes in this commit).
 	pub commit_end: &'a str,
 }
+#[derive(Debug, Clone, PartialEq)]
+pub struct ChangedFile {
+	pub path: String,
+	pub file_id: String,
+	pub status: ChangedFileStatus,
+}
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ChangedFileStatus {
+	Added,
+	Removed,
+	Modified,
+	Renamed,
+	Copied,
+	Changed,
+	Unchanged,
+}
+impl std::str::FromStr for ChangedFileStatus {
+	type Err = InvalidChangedFileStatus;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		match s {
+			"added" => Ok(Self::Added),
+			"removed" => Ok(Self::Removed),
+			"modified" => Ok(Self::Modified),
+			"renamed" => Ok(Self::Renamed),
+			"copied" => Ok(Self::Copied),
+			"changed" => Ok(Self::Changed),
+			"unchanged" => Ok(Self::Unchanged),
+			_ => Err(InvalidChangedFileStatus(s.to_owned())),
+		}
+	}
+}
+#[derive(thiserror::Error, Debug)]
+#[error("Invalid file status {0:?}")]
+pub struct InvalidChangedFileStatus(String);
+#[derive(thiserror::Error, Debug)]
+pub enum ChangedFilesError {
+	#[error(transparent)]
+	Request(#[from] reqwest::Error),
+	#[error(transparent)]
+	Invalid(#[from] InvalidChangedFileStatus),
+}
 impl GithubClient {
 	/// Queries github for the list of files that have changed between two commits.
 	/// The list of file path + file ids (sha) within the repository are returned when the request is successful.
 	pub fn get_files_changed(
 		&self,
 		request: FilesChangedArgs<'_>,
-	) -> LocalBoxFuture<'static, reqwest::Result<Vec<(String, String)>>> {
+	) -> LocalBoxFuture<'static, Result<Vec<ChangedFile>, ChangedFilesError>> {
 		use serde_json::Value;
+		use std::str::FromStr;
 		// https://docs.github.com/en/rest/commits/commits?apiVersion=2022-11-28#compare-two-commits
 		// https://www.git-scm.com/docs/gitrevisions#_dotted_range_notations
 		let builder = self.0.get(format!(
@@ -204,7 +247,13 @@ impl GithubClient {
 				let Value::Object(map) = entry else { continue; };
 				let Some(Value::String(file_id)) = map.get("sha") else { continue; };
 				let Some(Value::String(path)) = map.get("filename") else { continue; };
-				paths_changed.push((path.clone(), file_id.clone()));
+				let Some(Value::String(status)) = map.get("status") else { continue; };
+				let status = ChangedFileStatus::from_str(status.as_str())?;
+				paths_changed.push(ChangedFile {
+					path: path.clone(),
+					file_id: file_id.clone(),
+					status,
+				});
 			}
 			Ok(paths_changed)
 		})
