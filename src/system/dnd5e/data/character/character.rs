@@ -418,14 +418,11 @@ impl Character {
 		&mut self.derived.other_proficiencies
 	}
 
-	pub fn add_bundles(&mut self, bundle_ids: Vec<SourceId>, parent_path: &Path) {
-		self.derived
-			.additional_bundles
-			.insert(bundle_ids, parent_path);
+	pub fn add_bundles(&mut self, bundle_data: super::AdditionalBundleData) {
+		self.derived.additional_bundles.insert(bundle_data);
 	}
 
-	pub fn add_feature(&mut self, feature: &Feature, parent_path: &Path) {
-		let feature = feature.clone();
+	pub fn add_feature(&mut self, feature: Feature, parent_path: &Path) {
 		self.apply_from(&feature, parent_path);
 		self.features_mut()
 			.path_map

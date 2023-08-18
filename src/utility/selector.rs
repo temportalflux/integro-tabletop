@@ -289,7 +289,7 @@ impl SelectorMeta {
 		}))
 	}
 
-	fn from_object(
+	pub fn from_object(
 		name: impl Into<String>,
 		selector: &ObjectSelector,
 	) -> Result<Option<Self>, InvalidDataPath> {
@@ -441,6 +441,10 @@ impl SelectorMetaVec {
 			_ => {}
 		}
 		self
+	}
+
+	pub fn push(&mut self, metadata: SelectorMeta) {
+		self.0.push(metadata);
 	}
 
 	pub fn as_vec(&self) -> &Vec<SelectorMeta> {

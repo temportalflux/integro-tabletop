@@ -523,10 +523,7 @@ mod test {
 					..Default::default()
 				});
 				character.persistent_mut().inventory.set_equipped(&id, true);
-				assert_eq!(
-					evaluator.evaluate(&character),
-					Ok(())
-				);
+				assert_eq!(evaluator.evaluate(&character), Ok(()));
 			}
 		}
 

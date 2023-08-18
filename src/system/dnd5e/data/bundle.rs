@@ -1,3 +1,4 @@
+use super::Feature;
 use crate::{
 	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::{
@@ -9,7 +10,10 @@ use crate::{
 	},
 	utility::{MutatorGroup, NotInList},
 };
-use std::{collections::HashMap, path::Path};
+use std::{
+	collections::HashMap,
+	path::{Path, PathBuf},
+};
 
 #[derive(Default, Clone, PartialEq, Debug)]
 pub struct Bundle {
@@ -23,6 +27,7 @@ pub struct Bundle {
 	/// The number of times this bundle can be added to a character.
 	pub limit: usize,
 	pub mutators: Vec<BoxedMutator>,
+	pub feature_config: Option<FeatureConfig>,
 }
 
 // TODO: Could bundle requirements just be a criteria/bool-evaluator?
@@ -32,6 +37,11 @@ pub enum BundleRequirement {
 	Bundle { category: String, name: String },
 	/// The character must have an ability score of at least a specific amount.
 	Ability(Ability, u32),
+}
+
+#[derive(Clone, PartialEq, Debug, Default)]
+pub struct FeatureConfig {
+	pub parent_path: Option<PathBuf>,
 }
 
 impl MutatorGroup for Bundle {
@@ -45,9 +55,21 @@ impl MutatorGroup for Bundle {
 	}
 
 	fn apply_mutators(&self, stats: &mut Character, parent: &Path) {
-		let path_to_self = parent.join(&self.name);
-		for mutator in &self.mutators {
-			stats.apply(mutator, &path_to_self);
+		// TODO: Check requirements before applying
+		if let Some(config) = &self.feature_config {
+			let feature = Feature {
+				name: self.name.clone(),
+				description: self.description.clone(),
+				mutators: self.mutators.clone(),
+				parent: config.parent_path.clone(),
+				..Default::default()
+			};
+			stats.add_feature(feature, parent);
+		} else {
+			let path_to_self = parent.join(&self.name);
+			for mutator in &self.mutators {
+				stats.apply(mutator, &path_to_self);
+			}
 		}
 	}
 }
@@ -97,6 +119,11 @@ impl FromKDL for Bundle {
 			_ => node.query_source_req()?,
 		};
 
+		let feature_config = match node.get_bool_opt("display_as_feature")? {
+			Some(true) => Some(FeatureConfig::default()),
+			_ => None,
+		};
+
 		let description = node
 			.query_opt_t::<description::Info>("scope() > description")?
 			.unwrap_or_default();
@@ -129,6 +156,7 @@ impl FromKDL for Bundle {
 			requirements,
 			limit,
 			mutators,
+			feature_config,
 		})
 	}
 }
@@ -139,6 +167,9 @@ impl AsKdl for Bundle {
 
 		node.push_entry(("category", self.category.clone()));
 		node.push_entry(("name", self.name.clone()));
+		if let Some(_config) = &self.feature_config {
+			node.push_entry(("display_as_feature", true));
+		}
 
 		node.push_child_opt_t("source", &self.id);
 

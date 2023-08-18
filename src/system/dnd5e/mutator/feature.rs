@@ -31,7 +31,7 @@ impl Mutator for AddFeature {
 	}
 
 	fn on_insert(&self, stats: &mut Character, parent: &std::path::Path) {
-		stats.add_feature(&self.0, parent);
+		stats.add_feature(self.0.clone(), parent);
 	}
 }
 

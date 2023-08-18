@@ -54,7 +54,7 @@ impl MutatorGroup for EquipableEntry {
 		let path_to_item = parent.join(&self.item.name);
 		stats.apply_from(equipment, &path_to_item);
 		if let Some(weapon) = &equipment.weapon {
-			stats.add_feature(&weapon.attack_action(self), &path_to_item);
+			stats.add_feature(weapon.attack_action(self), &path_to_item);
 		}
 	}
 }

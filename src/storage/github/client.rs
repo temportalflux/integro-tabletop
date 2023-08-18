@@ -4,7 +4,7 @@ use super::{
 };
 use futures_util::future::LocalBoxFuture;
 use serde::Deserialize;
-use std::{path::Path};
+use std::path::Path;
 
 static GITHUB_API: &'static str = "https://api.github.com";
 static APP_USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
