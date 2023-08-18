@@ -9,12 +9,12 @@ pub use get_level::*;
 
 mod has_armor;
 pub use has_armor::*;
+mod has_attack;
+pub use has_attack::*;
 mod has_condition;
 pub use has_condition::*;
 mod has_proficiency;
 pub use has_proficiency::*;
-mod has_weapon;
-pub use has_weapon::*;
 
 mod logic;
 pub use logic::*;

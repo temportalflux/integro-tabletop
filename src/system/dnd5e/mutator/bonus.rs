@@ -1,7 +1,7 @@
 use crate::{
 	kdl_ext::{DocumentExt, FromKDL, NodeBuilder},
 	system::dnd5e::data::{
-		character::Character, description, item::weapon, roll::EvaluatedRoll, DamageType,
+		action::AttackQuery, character::Character, description, roll::EvaluatedRoll, DamageType,
 	},
 	utility::{Dependencies, Mutator, NotInList},
 };
@@ -11,11 +11,11 @@ pub enum Bonus {
 	WeaponDamage {
 		damage: EvaluatedRoll,
 		damage_type: Option<DamageType>,
-		restriction: Option<weapon::Restriction>,
+		restriction: Option<AttackQuery>,
 	},
 	WeaponAttackRoll {
 		bonus: i32,
-		restriction: Option<weapon::Restriction>,
+		restriction: Option<AttackQuery>,
 	},
 	ArmorClass {
 		bonus: i32,
@@ -84,8 +84,7 @@ impl FromKDL for Bonus {
 			"WeaponDamage" => {
 				let damage = node.query_req_t::<EvaluatedRoll>("scope() > damage")?;
 				let damage_type = node.query_str_opt_t::<DamageType>("scope() > damage_type", 0)?;
-				let restriction =
-					node.query_opt_t::<weapon::Restriction>("scope() > restriction")?;
+				let restriction = node.query_opt_t::<AttackQuery>("scope() > query")?;
 				Ok(Self::WeaponDamage {
 					damage,
 					damage_type,
@@ -94,8 +93,7 @@ impl FromKDL for Bonus {
 			}
 			"WeaponAttackRoll" => {
 				let bonus = node.query_i64_req("scope() > bonus", 0)? as i32;
-				let restriction =
-					node.query_opt_t::<weapon::Restriction>("scope() > restriction")?;
+				let restriction = node.query_opt_t::<AttackQuery>("scope() > query")?;
 				Ok(Self::WeaponAttackRoll { bonus, restriction })
 			}
 			"ArmorClass" => {
@@ -127,7 +125,7 @@ impl crate::kdl_ext::AsKdl for Bonus {
 					node.push_child_entry("damage_type", kind.to_string());
 				}
 				if let Some(restriction) = restriction {
-					node.push_child_t("restriction", restriction);
+					node.push_child_t("query", restriction);
 				}
 				node
 			}
@@ -135,7 +133,7 @@ impl crate::kdl_ext::AsKdl for Bonus {
 				node.push_entry("WeaponAttackRoll");
 				node.push_child_entry("bonus", *bonus as i64);
 				if let Some(restriction) = restriction {
-					node.push_child_t("restriction", restriction);
+					node.push_child_t("query", restriction);
 				}
 				node
 			}
@@ -181,6 +179,7 @@ mod test {
 
 		mod weapon_damage {
 			use super::*;
+			use crate::system::dnd5e::data::item::weapon;
 
 			#[test]
 			fn fixed_unrestricted() -> anyhow::Result<()> {
@@ -204,7 +203,7 @@ mod test {
 				let doc = "
 					|mutator \"bonus\" \"WeaponDamage\" {
 					|    damage 5
-					|    restriction {
+					|    query {
 					|        weapon \"Simple\" \"Martial\"
 					|        attack \"Melee\"
 					|        ability \"Strength\"
@@ -215,7 +214,7 @@ mod test {
 				let data = Bonus::WeaponDamage {
 					damage: EvaluatedRoll::from(5),
 					damage_type: None,
-					restriction: Some(weapon::Restriction {
+					restriction: Some(AttackQuery {
 						weapon_kind: weapon::Kind::Martial | weapon::Kind::Simple,
 						attack_kind: AttackKind::Melee.into(),
 						ability: [Ability::Strength].into(),
@@ -292,14 +291,14 @@ mod test {
 				let doc = "
 					|mutator \"bonus\" \"WeaponAttackRoll\" {
 					|    bonus 5
-					|    restriction {
+					|    query {
 					|        attack \"Ranged\"
 					|    }
 					|}
 				";
 				let data = Bonus::WeaponAttackRoll {
 					bonus: 5,
-					restriction: Some(weapon::Restriction {
+					restriction: Some(AttackQuery {
 						attack_kind: AttackKind::Ranged.into(),
 						..Default::default()
 					}),

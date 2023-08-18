@@ -1,7 +1,7 @@
 use super::{AttributedValue, PersonalityKind};
 use crate::system::dnd5e::{
 	data::{
-		item::weapon,
+		action::AttackQuery,
 		proficiency,
 		roll::{Modifier, Roll},
 		Ability, ArmorClass, DamageType, OtherProficiencies, Rest, Skill,
@@ -322,21 +322,21 @@ pub struct AttackBonuses {
 #[derive(Clone, PartialEq, Debug)]
 struct WeaponAttackRollBonus {
 	bonus: i32,
-	restriction: Option<weapon::Restriction>,
+	restriction: Option<AttackQuery>,
 	source: PathBuf,
 }
 #[derive(Clone, PartialEq, Debug)]
 struct WeaponDamageBonus {
 	amount: Roll,
 	damage_type: Option<DamageType>,
-	restriction: Option<weapon::Restriction>,
+	restriction: Option<AttackQuery>,
 	source: PathBuf,
 }
 impl AttackBonuses {
 	pub fn add_to_weapon_attacks(
 		&mut self,
 		bonus: i32,
-		restriction: Option<weapon::Restriction>,
+		restriction: Option<AttackQuery>,
 		source: PathBuf,
 	) {
 		self.weapon_attack_roll.push(WeaponAttackRollBonus {
@@ -350,7 +350,7 @@ impl AttackBonuses {
 		&mut self,
 		amount: Roll,
 		damage_type: Option<DamageType>,
-		restriction: Option<weapon::Restriction>,
+		restriction: Option<AttackQuery>,
 		source: PathBuf,
 	) {
 		self.weapon_damage.push(WeaponDamageBonus {
@@ -366,10 +366,11 @@ impl AttackBonuses {
 		action: &crate::system::dnd5e::data::action::Action,
 	) -> Vec<(i32, &Path)> {
 		let mut bonuses = Vec::new();
+		let Some(attack) = &action.attack else { return bonuses; };
 		for bonus in &self.weapon_attack_roll {
 			// Filter out any bonuses which do not meet the restriction
 			if let Some(restriction) = &bonus.restriction {
-				if !restriction.does_action_meet(action) {
+				if !restriction.is_attack_valid(attack) {
 					continue;
 				}
 			}
@@ -383,10 +384,11 @@ impl AttackBonuses {
 		action: &crate::system::dnd5e::data::action::Action,
 	) -> Vec<(&Roll, &Option<DamageType>, &Path)> {
 		let mut bonuses = Vec::new();
+		let Some(attack) = &action.attack else { return bonuses; };
 		for bonus in &self.weapon_damage {
 			// Filter out any bonuses which do not meet the restriction
 			if let Some(restriction) = &bonus.restriction {
-				if !restriction.does_action_meet(action) {
+				if !restriction.is_attack_valid(attack) {
 					continue;
 				}
 			}
@@ -395,7 +397,10 @@ impl AttackBonuses {
 		bonuses
 	}
 
-	pub fn get_attack_ability_variants(&self, _attack: &crate::system::dnd5e::data::action::Attack) -> std::collections::HashSet<Ability> {
+	pub fn get_attack_ability_variants(
+		&self,
+		_attack: &crate::system::dnd5e::data::action::Attack,
+	) -> std::collections::HashSet<Ability> {
 		// TODO: STUB
 		std::collections::HashSet::default()
 	}

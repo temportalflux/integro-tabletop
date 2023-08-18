@@ -1,8 +1,7 @@
-use super::Weapon;
 use crate::{
 	kdl_ext::{NodeBuilder, ValueExt},
 	system::dnd5e::data::{
-		action::{Action, AttackCheckKind, AttackKind},
+		action::{Attack, AttackCheckKind, AttackKind},
 		item::weapon,
 		Ability,
 	},
@@ -12,14 +11,14 @@ use itertools::Itertools;
 use std::{collections::HashSet, str::FromStr};
 
 #[derive(Clone, PartialEq, Default, Debug)]
-pub struct Restriction {
+pub struct AttackQuery {
 	pub weapon_kind: EnumSet<weapon::Kind>,
 	pub attack_kind: EnumSet<AttackKind>,
 	pub ability: HashSet<Ability>,
 	pub properties: Vec<(weapon::Property, bool)>,
 }
 
-impl std::fmt::Display for Restriction {
+impl std::fmt::Display for AttackQuery {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		let mut entries = Vec::new();
 
@@ -81,44 +80,10 @@ impl std::fmt::Display for Restriction {
 	}
 }
 
-impl Restriction {
-	pub fn does_weapon_meet(&self, weapon: &Weapon) -> bool {
-		// the action must be an attack which is one of the provided weapon kinds
+impl AttackQuery {
+	pub fn is_attack_valid(&self, attack: &Attack) -> bool {
+		// the attack must have one of the provided weapon kinds
 		if !self.weapon_kind.is_empty() {
-			if !self.weapon_kind.contains(weapon.kind) {
-				return false;
-			}
-		}
-		// the action must be an attack which is one of the provided attack kinds
-		if !self.attack_kind.is_empty() {
-			if !self.attack_kind.contains(weapon.attack_kind()) {
-				return false;
-			}
-		}
-		// the action must be an attack which uses one of the provided abilities
-		if !self.ability.is_empty() {
-			if !self.ability.contains(&weapon.attack_ability()) {
-				return false;
-			}
-		}
-		// the action must be an attack which has or doesn't have specific weapon properties
-		if !self.properties.is_empty() {
-			for (property, required_else_barred) in &self.properties {
-				let has_property = weapon.properties.contains(property);
-				if has_property != *required_else_barred {
-					return false;
-				}
-			}
-		}
-		true
-	}
-
-	pub fn does_action_meet(&self, action: &Action) -> bool {
-		// the action must be an attack which is one of the provided weapon kinds
-		if !self.weapon_kind.is_empty() {
-			let Some(attack) = &action.attack else {
-				return false;
-			};
 			let Some(kind) = &attack.weapon_kind else {
 				return false;
 			};
@@ -126,25 +91,22 @@ impl Restriction {
 				return false;
 			}
 		}
-		// the action must be an attack which is one of the provided attack kinds
+		// the attack must have one of the provided attack kinds
 		if !self.attack_kind.is_empty() {
-			let Some(attack) = &action.attack else { return false; };
 			let Some(atk_kind) = &attack.kind else { return false; };
 			if !self.attack_kind.contains(atk_kind.kind()) {
 				return false;
 			}
 		}
-		// the action must be an attack which uses one of the provided abilities
+		// the attack must use one of the provided abilities
 		if !self.ability.is_empty() {
-			let Some(attack) = &action.attack else { return false; };
 			let AttackCheckKind::AttackRoll { ability: atk_roll_ability, .. } = &attack.check else { return false; };
 			if !self.ability.contains(atk_roll_ability) {
 				return false;
 			}
 		}
-		// the action must be an attack which has or doesn't have specific weapon properties
+		// the attack must have specific weapon properties
 		if !self.properties.is_empty() {
-			let Some(attack) = &action.attack else { return false; };
 			for (property, required_else_barred) in &self.properties {
 				let has_property = attack.properties.contains(property);
 				if has_property != *required_else_barred {
@@ -156,7 +118,7 @@ impl Restriction {
 	}
 }
 
-impl crate::kdl_ext::FromKDL for Restriction {
+impl crate::kdl_ext::FromKDL for AttackQuery {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let weapon_kind = match node.query_opt("scope() > weapon")? {
 			None => EnumSet::empty(),
@@ -205,7 +167,7 @@ impl crate::kdl_ext::FromKDL for Restriction {
 	}
 }
 
-impl crate::kdl_ext::AsKdl for Restriction {
+impl crate::kdl_ext::AsKdl for AttackQuery {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 

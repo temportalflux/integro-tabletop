@@ -127,7 +127,7 @@ pub fn node_registry() -> NodeRegistry {
 	registry.register_evaluator::<GetLevelInt>();
 	registry.register_evaluator::<GetLevelStr>();
 	registry.register_evaluator::<HasArmorEquipped>();
-	registry.register_evaluator::<HasWeaponEquipped>();
+	registry.register_evaluator::<HasAttack>();
 	registry.register_evaluator::<HasCondition>();
 	registry.register_evaluator::<IsProficientWith>();
 	registry.register_evaluator::<Math>();

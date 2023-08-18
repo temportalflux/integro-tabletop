@@ -11,6 +11,8 @@ mod kind;
 pub use kind::*;
 mod range;
 pub use range::*;
+mod query;
+pub use query::*;
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Attack {

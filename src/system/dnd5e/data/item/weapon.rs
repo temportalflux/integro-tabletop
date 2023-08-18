@@ -22,8 +22,6 @@ mod property;
 pub use property::*;
 mod range;
 pub use range::*;
-mod restriction;
-pub use restriction::*;
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Weapon {

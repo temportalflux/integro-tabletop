@@ -222,7 +222,7 @@ struct CharacterCardProps {
 #[function_component]
 fn CharacterCard(
 	CharacterCardProps {
-		id,
+		id: _,
 		route,
 		metadata,
 		on_delete,

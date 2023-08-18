@@ -1,24 +1,21 @@
 use crate::{
 	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
-	system::dnd5e::data::{
-		character::Character,
-		item::{self, weapon},
-	},
+	system::dnd5e::data::{action::AttackQuery, character::Character},
 	utility::Evaluator,
 };
 
-/// Checks if the character has a weapon equipped.
+/// Checks if the character has an action with an attack that matches a restriction.
 #[derive(Clone, PartialEq, Default, Debug)]
-pub struct HasWeaponEquipped {
+pub struct HasAttack {
 	min: usize,
 	max: Option<usize>,
-	restriction: weapon::Restriction,
+	restriction: AttackQuery,
 }
 
-crate::impl_trait_eq!(HasWeaponEquipped);
-crate::impl_kdl_node!(HasWeaponEquipped, "has_weapon_equipped");
+crate::impl_trait_eq!(HasAttack);
+crate::impl_kdl_node!(HasAttack, "has_attack");
 
-impl Evaluator for HasWeaponEquipped {
+impl Evaluator for HasAttack {
 	type Context = Character;
 	type Item = Result<(), String>;
 
@@ -42,13 +39,10 @@ impl Evaluator for HasWeaponEquipped {
 
 	fn evaluate(&self, character: &Self::Context) -> Result<(), String> {
 		let mut count = 0usize;
-		for entry in character.inventory().entries() {
-			if !entry.is_equipped {
-				continue;
-			}
-			let item::Kind::Equipment(equipment) = &entry.item.kind else { continue; };
-			let Some(weapon) = &equipment.weapon else { continue; };
-			if !self.restriction.does_weapon_meet(weapon) {
+		for (_source, feature) in character.features().iter_all() {
+			let Some(action) = &feature.action else { continue; };
+			let Some(attack) = &action.attack else { continue; };
+			if !self.restriction.is_attack_valid(attack) {
 				continue;
 			}
 
@@ -68,11 +62,11 @@ impl Evaluator for HasWeaponEquipped {
 	}
 }
 
-impl FromKDL for HasWeaponEquipped {
+impl FromKDL for HasAttack {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let min = node.get_i64_opt("min")?.unwrap_or(1) as usize;
 		let max = node.get_i64_opt("max")?.map(|v| v as usize);
-		let restriction = weapon::Restriction::from_kdl(node)?;
+		let restriction = AttackQuery::from_kdl(node)?;
 		Ok(Self {
 			min,
 			max,
@@ -81,7 +75,7 @@ impl FromKDL for HasWeaponEquipped {
 	}
 }
 
-impl AsKdl for HasWeaponEquipped {
+impl AsKdl for HasAttack {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 		if self.min > 1 {
@@ -103,15 +97,18 @@ mod test {
 		use super::*;
 		use crate::{
 			kdl_ext::test_utils::*,
-			system::dnd5e::{data::action::AttackKind, evaluator::test::test_utils},
+			system::dnd5e::{
+				data::{action::AttackKind, item::weapon},
+				evaluator::test::test_utils,
+			},
 		};
 
-		test_utils!(HasWeaponEquipped);
+		test_utils!(HasAttack);
 
 		#[test]
 		fn any() -> anyhow::Result<()> {
-			let doc = "evaluator \"has_weapon_equipped\"";
-			let data = HasWeaponEquipped {
+			let doc = "evaluator \"has_attack\"";
+			let data = HasAttack {
 				min: 1,
 				..Default::default()
 			};
@@ -122,8 +119,8 @@ mod test {
 
 		#[test]
 		fn single() -> anyhow::Result<()> {
-			let doc = "evaluator \"has_weapon_equipped\" max=1";
-			let data = HasWeaponEquipped {
+			let doc = "evaluator \"has_attack\" max=1";
+			let data = HasAttack {
 				min: 1,
 				max: Some(1),
 				..Default::default()
@@ -136,15 +133,15 @@ mod test {
 		#[test]
 		fn restricted() -> anyhow::Result<()> {
 			let doc = "
-				|evaluator \"has_weapon_equipped\" min=3 {
+				|evaluator \"has_attack\" min=3 {
 				|    weapon \"Simple\" \"Martial\"
 				|    attack \"Melee\"
 				|}
 			";
-			let data = HasWeaponEquipped {
+			let data = HasAttack {
 				min: 3,
 				max: None,
-				restriction: weapon::Restriction {
+				restriction: AttackQuery {
 					weapon_kind: weapon::Kind::Simple | weapon::Kind::Martial,
 					attack_kind: AttackKind::Melee.into(),
 					..Default::default()
