@@ -16,7 +16,7 @@ use crate::{
 use futures_util::future::LocalBoxFuture;
 use std::{
 	collections::{BTreeMap, HashSet, VecDeque},
-	path::PathBuf,
+	path::{Path, PathBuf},
 	sync::{Arc, Mutex},
 };
 use wasm_bindgen_futures::spawn_local;
@@ -361,7 +361,7 @@ impl TaskFetchModuleFiles {
 			let args = FileContentArgs {
 				owner: self.repository.owner.as_str(),
 				repo: self.repository.name.as_str(),
-				path: path_in_repo.as_str(),
+				path: Path::new(path_in_repo.as_str()),
 				version: self.repository.version.as_str(),
 			};
 			match status {

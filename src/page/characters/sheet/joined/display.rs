@@ -3,7 +3,9 @@ use crate::{
 	components::{use_media_query, Nav, NavDisplay, TabContent},
 	database::app::{Database, Entry},
 	page::characters::sheet::{CharacterHandle, ViewProps},
+	storage::github::FileContentArgs,
 	system::{
+		self,
 		core::{ModuleId, SourceId},
 		dnd5e::{
 			components::{
@@ -15,6 +17,7 @@ use crate::{
 		},
 	},
 };
+use anyhow::Context;
 use yew::prelude::*;
 use yewdux::prelude::use_store;
 
@@ -27,7 +30,91 @@ pub fn Display(ViewProps { swap_view }: &ViewProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let (auth_status, _dispatch) = use_store::<auth::Status>();
 	let task_dispatch = use_context::<crate::task::Dispatch>().unwrap();
+	let system_depot = use_context::<system::Depot>().unwrap();
+
+	let fetch_from_storage = Callback::from({
+		let auth_status = auth_status.clone();
+		let task_dispatch = task_dispatch.clone();
+		let system_depot = system_depot.clone();
+		let database = database.clone();
+		let id = state.id().clone();
+		move |_| {
+			let Some(client) = auth_status.storage() else {
+				log::debug!("no storage client");
+				return;
+			};
+			let system_depot = system_depot.clone();
+			let database = database.clone();
+			let id = id.clone();
+			task_dispatch.spawn("Fetch Character", None, async move {
+				log::debug!("Forcibly fetching {:?}", id.to_string());
+
+				let id_str = id.unversioned().to_string();
+				let Some(mut entry) = database.get::<Entry>(&id_str).await? else {
+					log::error!("missing entry");
+					return Ok(());
+				};
+
+				let SourceId { module: Some(ModuleId::Github { user_org, repository }), system, path, version, ..} = &id else {
+					log::error!("non-github source id");
+					return Ok(());
+				};
+				let Some(version) = version.clone() else {
+					log::error!("Mission version in character id");
+					return Ok(());
+				};
+				let Some(system) = system.clone() else {
+					log::error!("Mission system in character id");
+					return Ok(());
+				};
+				let path_in_repo = std::path::Path::new(&system).join(&path);
+				let user_org = user_org.clone();
+				let repository = repository.clone();
+
+				let args = FileContentArgs {
+					owner: user_org.as_str(),
+					repo: repository.as_str(),
+					path: path_in_repo.as_path(),
+					version: version.as_str(),
+				};
+				let content = client.get_file_content(args).await.with_context(|| format!("Failed to fetch content from storage"))?;
+
+				let Some(system_reg) = system_depot.get(&system) else {
+					log::error!("Mission system registration for {system:?}");
+					return Ok(());
+				};
+				let document = content.parse::<kdl::KdlDocument>().with_context(|| format!("Failed to parse fetched content"))?;
+				let Some(node) = document.nodes().get(0) else {
+					log::error!("Character data is empty, no first node in {content:?}");
+					return Ok(());
+				};
+				let metadata = system_reg.parse_metadata(node, &id)?;
+
+				entry.kdl = content;
+				entry.metadata = metadata;
+
+				log::debug!("Successfully force-fetched {:?}", id.to_string());
+
+				database
+					.mutate(move |transaction| {
+						use crate::database::{app::Entry, ObjectStoreExt, TransactionExt};
+						Box::pin(async move {
+							let entry_store = transaction.object_store_of::<Entry>()?;
+							entry_store.put_record(&entry).await?;
+							Ok(())
+						})
+					})
+					.await?;
+
+				Ok(()) as anyhow::Result<()>
+			});
+		}
+	});
+
 	let save_to_storage = Callback::from({
+		let auth_status = auth_status.clone();
+		let task_dispatch = task_dispatch.clone();
+		let database = database.clone();
 		let id = state.id().unversioned();
 		move |_| {
 			let Some(client) = auth_status.storage() else {
@@ -158,7 +245,11 @@ pub fn Display(ViewProps { swap_view }: &ViewProps) -> Html {
 						<rest::Button value={crate::system::dnd5e::data::Rest::Long} />
 						<a class="glyph forge" style="margin-right: 0.3rem;" onclick={swap_view.reform(|_| ())} />
 					</div>
-					<button class="btn btn-success btn-xs ms-auto mt-2" onclick={save_to_storage}>{"Save"}</button>
+					<div class="d-flex align-items-center mt-2">
+						<div class="ms-auto" />
+						<button class="btn btn-warning btn-xs mx-2" onclick={fetch_from_storage}>{"Force Fetch"}</button>
+						<button class="btn btn-success btn-xs mx-2" onclick={save_to_storage}>{"Save"}</button>
+					</div>
 				</div>
 			</div>
 			<div class="row" style="--bs-gutter-x: 10px;">

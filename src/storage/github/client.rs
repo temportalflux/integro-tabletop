@@ -316,7 +316,7 @@ pub struct FileContentArgs<'a> {
 	pub owner: &'a str,
 	pub repo: &'a str,
 	/// The path to the file in the repository.
-	pub path: &'a str,
+	pub path: &'a Path,
 	pub version: &'a str,
 }
 impl GithubClient {
@@ -327,9 +327,15 @@ impl GithubClient {
 	) -> LocalBoxFuture<'static, reqwest::Result<String>> {
 		// https://docs.github.com/en/rest/repos/contents?apiVersion=2022-11-28#get-repository-content
 		// https://docs.github.com/en/rest/overview/media-types?apiVersion=2022-11-28
+		let path_str = request
+			.path
+			.as_os_str()
+			.to_str()
+			.unwrap()
+			.replace("\\", "/");
 		let builder = self.0.get(format!(
 			"{GITHUB_API}/repos/{}/{}/contents/{}?ref={}",
-			request.owner, request.repo, request.path, request.version,
+			request.owner, request.repo, path_str, request.version,
 		));
 		let builder = self.insert_rest_headers(builder, Some("raw"));
 		Box::pin(async move {

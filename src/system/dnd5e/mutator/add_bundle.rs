@@ -11,7 +11,7 @@ use crate::{
 			Value,
 		},
 	},
-	utility::{Mutator, ObjectSelector, SelectorMetaVec, SelectorMeta, SelectorOptions},
+	utility::{Mutator, ObjectSelector, SelectorMeta, SelectorMetaVec, SelectorOptions},
 };
 use std::str::FromStr;
 
