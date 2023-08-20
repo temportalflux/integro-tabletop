@@ -222,11 +222,6 @@ impl<'c> SpellSections<'c> {
 	fn insert_permaprepared_spells(&mut self, state: &'c CharacterHandle) {
 		for (_id, spell_entry) in state.spellcasting().prepared_spells() {
 			let Some(spell) = &spell_entry.spell else { continue; };
-			log::debug!(
-				"AlwaysPrepared {} {:?}",
-				spell.id.unversioned().to_string(),
-				spell_entry.entries
-			);
 			for (source, entry) in &spell_entry.entries {
 				self.insert_spell(
 					spell,

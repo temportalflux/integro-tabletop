@@ -1,5 +1,6 @@
 use crate::{
 	auth,
+	kdl_ext::KDLNode,
 	components::{use_media_query, Nav, NavDisplay, TabContent},
 	database::app::{Database, Entry},
 	page::characters::sheet::{CharacterHandle, ViewProps},
@@ -12,13 +13,14 @@ use crate::{
 				ability, panel, rest, ArmorClass, ConditionsCard, DefensesCard, HitPointMgmtCard,
 				InitiativeBonus, Inspiration, ProfBonus, Proficiencies, SpeedAndSenses,
 			},
-			data::Ability,
+			data::{Ability, character::Persistent},
 			SystemComponent,
 		},
 	},
 };
 use anyhow::Context;
 use yew::prelude::*;
+use yew_router::prelude::use_navigator;
 use yewdux::prelude::use_store;
 
 mod header;
@@ -31,6 +33,7 @@ pub fn Display(ViewProps { swap_view }: &ViewProps) -> Html {
 	let (auth_status, _dispatch) = use_store::<auth::Status>();
 	let task_dispatch = use_context::<crate::task::Dispatch>().unwrap();
 	let system_depot = use_context::<system::Depot>().unwrap();
+	let navigator = use_navigator().unwrap();
 
 	let fetch_from_storage = Callback::from({
 		let auth_status = auth_status.clone();
@@ -110,24 +113,59 @@ pub fn Display(ViewProps { swap_view }: &ViewProps) -> Html {
 			});
 		}
 	});
+	let fetch_btn = match state.id().has_path() {
+		true => {
+			html!(<button class="btn btn-warning btn-xs mx-2" onclick={fetch_from_storage}>{"Force Fetch"}</button>)
+		}
+		false => html!(),
+	};
 
 	let save_to_storage = Callback::from({
 		let auth_status = auth_status.clone();
 		let task_dispatch = task_dispatch.clone();
 		let database = database.clone();
+		let navigator = navigator.clone();
 		let id = state.id().unversioned();
 		move |_| {
 			let Some(client) = auth_status.storage() else {
 				log::debug!("no storage client");
 				return;
 			};
-			let SourceId { module: Some(ModuleId::Github { user_org, repository }), system, path, ..} = &id else {
+
+			let mut id = id.clone();
+			let is_new = !id.has_path();
+			id.path = match is_new {
+				false => id.path.clone(),
+				true => {
+					let id = uuid::Uuid::new_v4();
+					let mut buffer = uuid::Uuid::encode_buffer();
+					let filename = id.as_hyphenated().encode_lower(&mut buffer);
+					std::path::Path::new("character").join(format!("{filename}.kdl"))
+				}
+			};
+
+			let SourceId { module: Some(ModuleId::Github { user_org, repository }), ..} = &id else {
 				log::debug!("non-github source id");
 				return;
 			};
-			let path = match system {
-				None => path.clone(),
-				Some(system) => std::path::Path::new(&system).join(&path),
+			let path_in_repo = match &id.system {
+				None => id.path.clone(),
+				Some(system) => std::path::Path::new(&system).join(&id.path),
+			};
+			let id_str = id.to_string();
+			let route = crate::page::characters::Route::sheet(&id);
+			let empty_entry = match is_new {
+				false => None,
+				true => Some(Entry {
+					id: id_str.clone(),
+					module: id.module.as_ref().map(ModuleId::to_string).unwrap(),
+					system: id.system.clone().unwrap(),
+					category: Persistent::id().into(),
+					version: None,
+					metadata: Default::default(),
+					kdl: Default::default(),
+					file_id: None,
+				}),
 			};
 			let message = format!("Manually save character");
 			let metadata = state.persistent().clone().to_metadata();
@@ -140,31 +178,34 @@ pub fn Display(ViewProps { swap_view }: &ViewProps) -> Html {
 				let doc = doc.replace("    ", "\t");
 				doc
 			};
-			let id_str = id.to_string();
 			let repo_org = user_org.clone();
 			let repo_name = repository.clone();
 			let database = database.clone();
+			let navigator = navigator.clone();
 			task_dispatch.spawn("Update File", None, async move {
-				let Some(mut entry) = database.get::<Entry>(id_str).await? else {
-					log::debug!("missing entry");
-					return Ok(());
-				};
-				let Some(file_id) = &entry.file_id else {
-					log::debug!("missing file-id sha");
-					return Ok(());
+				let mut entry = match empty_entry {
+					Some(entry) => entry,
+					None => match database.get::<Entry>(id_str).await? {
+						Some(entry) => entry,
+						None => {
+							log::debug!("missing entry");
+							return Ok(());
+						}
+					}
 				};
 				let args = crate::storage::github::CreateOrUpdateFileArgs {
 					repo_org: &repo_org,
 					repo_name: &repo_name,
-					path_in_repo: &path,
+					path_in_repo: &path_in_repo,
 					commit_message: &message,
 					content: &content,
-					file_id: Some(file_id),
+					file_id: entry.file_id.as_ref().map(String::as_str),
 					branch: None,
 				};
 				log::debug!("executing update character request {args:?}");
 				let response = client.create_or_update_file(args).await?;
 				log::debug!("finished update character request {response:?}");
+
 
 				let module_version = response.version;
 				// put the updated content in the database for the persistent character segment
@@ -197,6 +238,10 @@ pub fn Display(ViewProps { swap_view }: &ViewProps) -> Html {
 						})
 					})
 					.await?;
+
+				if is_new {
+					navigator.push(&route);
+				}
 
 				Ok(()) as anyhow::Result<()>
 			});
@@ -247,7 +292,7 @@ pub fn Display(ViewProps { swap_view }: &ViewProps) -> Html {
 					</div>
 					<div class="d-flex align-items-center mt-2">
 						<div class="ms-auto" />
-						<button class="btn btn-warning btn-xs mx-2" onclick={fetch_from_storage}>{"Force Fetch"}</button>
+						{fetch_btn}
 						<button class="btn btn-success btn-xs mx-2" onclick={save_to_storage}>{"Save"}</button>
 					</div>
 				</div>

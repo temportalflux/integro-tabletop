@@ -49,7 +49,7 @@ impl std::ops::Deref for Context {
 }
 
 /// The global-context state of the [GeneralPurpose] modal.
-#[derive(PartialEq, Default)]
+#[derive(PartialEq, Default, Debug)]
 pub struct State {
 	/// If the modal should show/hide.
 	/// If none, no action is taken. Otherwise, the bool determines if the
@@ -148,7 +148,7 @@ impl Reducible for State {
 }
 
 /// Properties provided to [GeneralPurpose] via the global [State].
-#[derive(Clone, PartialEq, Default, Properties)]
+#[derive(Clone, PartialEq, Default, Properties, Debug)]
 pub struct Props {
 	#[prop_or_default]
 	pub root_classes: Classes,
@@ -215,7 +215,7 @@ pub fn GeneralPurpose() -> Html {
 	use_effect_with_deps(
 		{
 			let bootstrap = bootstrap.clone();
-			move |context: &Context| {
+			move |(context, _has_modal): &(Context, bool)| {
 				// If the node hasn't been found yet, we can't do anything.
 				// Since the node is populated when the component first renders,
 				// we can safely assume that it will exist for all future calls,
@@ -235,7 +235,7 @@ pub fn GeneralPurpose() -> Html {
 				}
 			}
 		},
-		context.clone(),
+		(context.clone(), bootstrap.is_some()),
 	);
 
 	let mut root_classes = classes!("modal", "fade");

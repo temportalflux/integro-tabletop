@@ -36,6 +36,12 @@ pub fn Switch() -> Html {
 enum Route {
 	#[at("/characters")]
 	Landing,
+	#[at("/characters/:storage/:module/:system")]
+	EmptySheet {
+		storage: String,
+		module: String,
+		system: String,
+	},
 	#[at("/characters/:storage/:module/:system/*path")]
 	Sheet {
 		storage: String,
@@ -69,58 +75,99 @@ impl Route {
 		}
 	}
 
+	fn sheet_id(
+		storage: String,
+		module: String,
+		system: String,
+		path: Option<String>,
+	) -> Option<SourceId> {
+		let module = match storage.as_str() {
+			"local" => ModuleId::Local { name: module },
+			"github" => {
+				let mut parts = module.split(':');
+				let Some(user_org) = parts.next() else {
+					return None;
+				};
+				let Some(repo) = parts.next() else {
+					return None;
+				};
+				ModuleId::Github {
+					user_org: user_org.to_owned(),
+					repository: repo.to_owned(),
+				}
+			}
+			_ => return None,
+		};
+		Some(SourceId {
+			module: Some(module),
+			system: Some(system),
+			path: match path {
+				None => std::path::PathBuf::new(),
+				Some(path) => std::path::PathBuf::from(path),
+			},
+			version: None,
+			..Default::default()
+		})
+	}
+
 	fn switch(self) -> Html {
 		match self {
 			Self::Landing => html!(<CharacterLanding />),
 			Self::NotFound => app::Route::not_found(),
+			Self::EmptySheet {
+				storage,
+				module,
+				system,
+			} => match Self::sheet_id(storage, module, system, None) {
+				None => app::Route::not_found(),
+				Some(id) => html!(<Sheet value={id} />),
+			},
 			Self::Sheet {
 				storage,
 				module,
 				system,
 				path,
-			} => {
-				let module = match storage.as_str() {
-					"local" => ModuleId::Local { name: module },
-					"github" => {
-						let mut parts = module.split(':');
-						let Some(user_org) = parts.next() else {
-							return app::Route::not_found();
-						};
-						let Some(repo) = parts.next() else {
-							return app::Route::not_found();
-						};
-						ModuleId::Github {
-							user_org: user_org.to_owned(),
-							repository: repo.to_owned(),
-						}
-					}
-					_ => return app::Route::not_found(),
-				};
-				let id = SourceId {
-					module: Some(module),
-					system: Some(system),
-					path: std::path::PathBuf::from(path),
-					version: None,
-					..Default::default()
-				};
-				html!(<Sheet value={id} />)
-			}
+			} => match Self::sheet_id(storage, module, system, Some(path)) {
+				None => app::Route::not_found(),
+				Some(id) => html!(<Sheet value={id} />),
+			},
 		}
 	}
 }
 
 #[function_component]
 pub fn CharacterLanding() -> Html {
+	let (auth_status, _dispatch) = use_store::<crate::auth::Status>();
+	let navigator = use_navigator().unwrap();
+	let task_dispatch = use_context::<crate::task::Dispatch>().unwrap();
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 
-	let on_create = modal_dispatcher.callback({
+	let on_create = Callback::from({
+		let auth_status = auth_status.clone();
+		let navigator = navigator.clone();
+		let task_dispatch = task_dispatch.clone();
 		move |_| {
-			modal::Action::Open(modal::Props {
-				centered: true,
-				scrollable: true,
-				content: html! {<ModalCreate />},
-				..Default::default()
-			})
+			let Some(client) = auth_status.storage() else {
+				log::debug!("no storage client");
+				return;
+			};
+			let navigator = navigator.clone();
+			task_dispatch.spawn("Prepare Character", None, async move {
+				let (_, homebrew_repo) = client.viewer().await?;
+				let Some(homebrew_repo) = homebrew_repo else { return Ok(()); };
+				let module_id = homebrew_repo.module_id();
+
+				let system = DnD5e::id();
+				let source_id_unversioned = SourceId {
+					module: Some(module_id),
+					system: Some(system.to_string()),
+					..Default::default()
+				};
+
+				let route = Route::sheet(&source_id_unversioned);
+				navigator.push(&route);
+				Ok(()) as anyhow::Result<()>
+			});
 		}
 	});
 	let on_delete = modal_dispatcher.callback({
@@ -143,7 +190,7 @@ pub fn CharacterLanding() -> Html {
 					class="btn btn-outline-success btn-sm ms-2"
 					onclick={on_create}
 				>
-					{"New Character"}
+					{"Open New Character"}
 				</button>
 			</div>
 			<CharacterList value={on_delete} />
@@ -204,7 +251,7 @@ fn CharacterList(
 				/>));
 			}
 			html! {
-				<div class="d-flex align-items-center justify-content-center">
+				<div class="d-flex align-items-center justify-content-center flex-wrap">
 					{cards}
 				</div>
 			}
@@ -285,7 +332,6 @@ fn ModalCreate() -> Html {
 	let task_dispatch = use_context::<crate::task::Dispatch>().unwrap();
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 	let database = use_context::<Database>().unwrap();
-	let navigator = use_navigator().unwrap();
 
 	// TODO: Select the parent module
 	// TODO: Select game system
@@ -304,10 +350,9 @@ fn ModalCreate() -> Html {
 		let auth_status = auth_status.clone();
 		let task_dispatch = task_dispatch.clone();
 		let database = database.clone();
-		let navigator = navigator.clone();
 		let filename = filename.clone();
 		let action_in_progress = action_in_progress.clone();
-		let close_modal = modal_dispatcher.callback(|_| modal::Action::Close);
+		let close_modal = modal_dispatcher.callback(|_: ()| modal::Action::Close);
 		move |_| {
 			if action_in_progress.value() {
 				return;
@@ -318,7 +363,6 @@ fn ModalCreate() -> Html {
 			};
 			let id_path = Path::new("character").join(format!("{}.kdl", filename.as_str()));
 			let database = database.clone();
-			let navigator = navigator.clone();
 			let close_modal = close_modal.clone();
 			let signal = task_dispatch.spawn("Create Character File", None, async move {
 				let (_, homebrew_repo) = client.viewer().await?;
@@ -426,7 +470,6 @@ fn ModalCreate() -> Html {
 				}
 
 				close_modal.emit(());
-				navigator.push(&route);
 
 				Ok(()) as anyhow::Result<()>
 			});

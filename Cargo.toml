@@ -18,9 +18,10 @@ gloo-storage = "0.2"
 gloo-utils = "0.1"
 gloo-timers = { version = "0.2", features = ["futures"] }
 web-sys = { version = "0.3", features = [
-	"Request", "Storage", "Window", "DataTransfer",
-	"HtmlSelectElement", "HtmlInputElement", "HtmlTextAreaElement",
-	"DomTokenList", "Node", "NodeList",
+	"DataTransfer", "Document", "DomTokenList",
+	"HtmlCollection", "HtmlSelectElement", "HtmlInputElement", "HtmlTextAreaElement",
+	"Request", "Storage", "Window",
+	"Node", "NodeList",
 	"MediaQueryList", "MediaQueryListEvent",
 	"Event", "EventTarget", "KeyboardEvent",
 	"Performance", "Screen",

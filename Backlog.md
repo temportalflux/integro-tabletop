@@ -4,8 +4,6 @@
 ## App Flow Improvements
 - Check for module updates on app resume/open (post login), automatically sync before app is shown
 - Toast in bottom right for active tasks
-- Open editor when character sheet is opened on create
-- Don't create character in storage until it's saved for the first time in the builder/editor.
 - Saving to Storage
 	- Leaving editor always saves
 	- All changes generate a changelog message

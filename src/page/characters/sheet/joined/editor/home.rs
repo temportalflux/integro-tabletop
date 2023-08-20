@@ -7,6 +7,8 @@ use yew::prelude::*;
 
 #[function_component]
 pub fn HomeTab() -> Html {
+	let state = use_context::<CharacterHandle>().unwrap();
+
 	// TODO: In here is where module selection will go.
 	// Modules enabled for the character is a subset of the modules the user has access to.
 	// Only modules enabled for the character are available in the editor/viewer.
@@ -14,7 +16,16 @@ pub fn HomeTab() -> Html {
 	// More robust pronoun selection? https://twitter.com/Patch_Games/status/1423706763841347586
 	html! {<div class="mx-4">
 		<div class="my-3">
-			<h4>{"Character Info"}</h4>
+			<div class="d-flex align-items-center mb-2">
+				<h4 class="mb-0">{"Character Info"}</h4>
+				<span class="ms-auto" style="color: rgba(var(--bs-body-color-rgb), .65);">
+					{"id: "}
+					{match state.id().path.components().last() {
+						Some(comp) => comp.as_os_str().to_str().unwrap().strip_suffix(".kdl").unwrap(),
+						None => "Not Yet Saved",
+					}}
+				</span>
+			</div>
 			<p>{"Who is your character? These options are also available in the Description tab."}</p>
 			<div class="row">
 				<div class="col-5">

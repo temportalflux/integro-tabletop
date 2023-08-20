@@ -9,7 +9,7 @@ pub use handle::*;
 pub mod joined;
 pub mod paged;
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 enum View {
 	Display,
 	Editor,
@@ -25,7 +25,13 @@ pub fn Sheet(props: &GeneralProp<SourceId>) -> Html {
 	let character = use_character(props.value.clone());
 
 	let screen_size = mobile::use_mobile_kind();
-	let view_handle = use_state_eq(|| View::Display);
+	let view_handle = use_state_eq({
+		let is_new = !props.value.has_path();
+		move || match is_new {
+			true => View::Editor,
+			false => View::Display,
+		}
+	});
 	let swap_view = Callback::from({
 		let view_handle = view_handle.clone();
 		move |_| {
@@ -36,6 +42,18 @@ pub fn Sheet(props: &GeneralProp<SourceId>) -> Html {
 		}
 	});
 
+	use_effect_with_deps(
+		{
+			let character = character.clone();
+			move |id: &SourceId| {
+				if character.is_loaded() {
+					log::info!("Reloading character with updated id {id:?}");
+					character.unload();
+				}
+			}
+		},
+		props.value.clone()
+	);
 	if !character.is_loaded() {
 		return html!(<Spinner />);
 	}

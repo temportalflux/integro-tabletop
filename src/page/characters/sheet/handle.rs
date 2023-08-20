@@ -33,46 +33,7 @@ pub fn use_character(id: SourceId) -> CharacterHandle {
 	// Character Initialization
 	if !handle.is_loaded() && !handle.is_recompiling() {
 		handle.set_recompiling(true);
-		wasm_bindgen_futures::spawn_local({
-			let handle = handle.clone();
-			let initialize_character = async move {
-				let id_str = id.to_string();
-				log::debug!("Initializing character from {:?}", id_str);
-				let Some(persistent) = handle.database.get_typed_entry::<Persistent>(id, handle.system_depot.clone()).await? else {
-					return Err(CharacterInitializationError::CharacterMissing(id_str));
-				};
-
-				let query_defaults = handle.database.clone().query_typed::<DefaultsBlock>(
-					system::dnd5e::DnD5e::id(),
-					handle.system_depot.clone(),
-					None,
-				);
-				let query_result = query_defaults.await;
-				let defaults_stream = query_result.map_err(|err| {
-					CharacterInitializationError::DefaultsError(format!("{err:?}"))
-				})?;
-				let default_blocks = defaults_stream.all().await;
-
-				let mut character = Character::new(persistent, default_blocks);
-				let provider = ObjectCacheProvider {
-					database: handle.database.clone(),
-					system_depot: handle.system_depot.clone(),
-				};
-				if let Err(err) = character.recompile(provider).await {
-					log::warn!("Encountered error updating cached character objects: {err:?}");
-				}
-				handle.state.set(CharacterState::Loaded(character));
-				handle.set_recompiling(false);
-				handle.process_pending_mutations();
-
-				Ok(()) as Result<(), CharacterInitializationError>
-			};
-			async move {
-				if let Err(err) = initialize_character.await {
-					log::error!("Failed to initialize character: {err:?}");
-				}
-			}
-		});
+		handle.load_with(id);
 	}
 
 	handle
@@ -80,6 +41,8 @@ pub fn use_character(id: SourceId) -> CharacterHandle {
 
 #[derive(thiserror::Error, Debug)]
 enum CharacterInitializationError {
+	#[error("Character has no game system associated with it.")]
+	NoSystem,
 	#[error("Character at key {0:?} is not in the database.")]
 	CharacterMissing(String),
 	#[error(transparent)]
@@ -126,6 +89,68 @@ impl CharacterHandle {
 
 	pub fn is_loaded(&self) -> bool {
 		matches!(&*self.state, CharacterState::Loaded(_))
+	}
+
+	pub fn unload(&self) {
+		self.state.set(CharacterState::Unloaded);
+	}
+
+	fn load_with(&self, id: SourceId) {
+		wasm_bindgen_futures::spawn_local({
+			let handle = self.clone();
+			let initialize_character = async move {
+				let Some(system) = &id.system else {
+					return Err(CharacterInitializationError::NoSystem);
+				};
+				let id_str = id.to_string();
+				log::debug!("Initializing character from {:?}", id_str);
+
+				let entry = handle
+					.database
+					.get_typed_entry::<Persistent>(id.clone(), handle.system_depot.clone())
+					.await?;
+				let persistent = match entry {
+					Some(known) => known,
+					None if !id.has_path() => Persistent {
+						id: id.clone(),
+						..Default::default()
+					},
+					None => {
+						return Err(CharacterInitializationError::CharacterMissing(id_str));
+					}
+				};
+
+				let query_defaults = handle.database.clone().query_typed::<DefaultsBlock>(
+					system.as_str(),
+					handle.system_depot.clone(),
+					None,
+				);
+				let query_result = query_defaults.await;
+				let defaults_stream = query_result.map_err(|err| {
+					CharacterInitializationError::DefaultsError(format!("{err:?}"))
+				})?;
+				let default_blocks = defaults_stream.all().await;
+
+				let mut character = Character::new(persistent, default_blocks);
+				let provider = ObjectCacheProvider {
+					database: handle.database.clone(),
+					system_depot: handle.system_depot.clone(),
+				};
+				if let Err(err) = character.recompile(provider).await {
+					log::warn!("Encountered error updating cached character objects: {err:?}");
+				}
+				handle.state.set(CharacterState::Loaded(character));
+				handle.set_recompiling(false);
+				handle.process_pending_mutations();
+
+				Ok(()) as Result<(), CharacterInitializationError>
+			};
+			async move {
+				if let Err(err) = initialize_character.await {
+					log::error!("Failed to initialize character: {err:?}");
+				}
+			}
+		});
 	}
 }
 

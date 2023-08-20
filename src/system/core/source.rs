@@ -119,6 +119,10 @@ impl SourceId {
 		self.version = None;
 		self
 	}
+
+	pub fn has_path(&self) -> bool {
+		!self.path.as_os_str().is_empty()
+	}
 }
 
 impl ToString for SourceId {
