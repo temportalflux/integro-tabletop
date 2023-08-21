@@ -11,10 +11,6 @@ pub struct Object<Context: 'static> {
 }
 
 impl<Context> Object<Context> {
-	fn id_path(&self) -> &IdPath {
-		&self.id
-	}
-
 	pub fn set_data_path(&self, parent: &Path) {
 		self.id.set_path(parent);
 	}

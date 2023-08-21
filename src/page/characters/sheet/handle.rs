@@ -3,7 +3,6 @@ use crate::{
 	system::{
 		self,
 		core::SourceId,
-		core::System,
 		dnd5e::data::character::{Character, DefaultsBlock, ObjectCacheProvider, Persistent},
 	},
 	task,

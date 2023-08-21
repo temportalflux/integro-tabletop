@@ -26,7 +26,7 @@ use crate::{
 use convert_case::{Case, Casing};
 use multimap::MultiMap;
 
-use std::{collections::HashSet, sync::Arc};
+use std::sync::Arc;
 use yew::prelude::*;
 
 static HELP_TEXT: &'static str = "Lineages and Upbingings are a replacement for races. \

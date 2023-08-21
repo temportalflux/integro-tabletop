@@ -435,7 +435,6 @@ fn ModalCreate() -> Html {
 				let response = client.create_or_update_file(args).await?;
 				let updated_version = response.version;
 
-				let mut route = Route::sheet(&source_id_unversioned);
 				let record = crate::database::app::Entry {
 					id: source_id_unversioned.to_string(),
 					module: module_id_str.clone(),
@@ -466,7 +465,6 @@ fn ModalCreate() -> Html {
 					.await
 				{
 					log::error!("{err:?}");
-					route = Route::Landing;
 				}
 
 				close_modal.emit(());

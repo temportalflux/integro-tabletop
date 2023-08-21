@@ -13,11 +13,21 @@ use std::str::FromStr;
 pub enum AddProficiency {
 	Ability(selector::Value<Character, Ability>, proficiency::Level),
 	SavingThrow(Ability),
-	Skill(selector::Value<Character, Skill>, proficiency::Level),
+	Skill {
+		// The skill to grant proficiency to
+		skill: selector::Value<Character, Skill>,
+		// The minimum level the skill has to be in order to grant proficiency
+		minimum_level: proficiency::Level,
+		// The proficiency to grant to the skill
+		level: proficiency::Level,
+	},
 	Language(selector::Value<Character, String>),
 	Armor(ArmorExtended, Option<String>),
 	Weapon(WeaponProficiency),
-	Tool(selector::Value<Character, String>),
+	Tool {
+		tool: selector::Value<Character, String>,
+		level: proficiency::Level,
+	},
 }
 
 crate::impl_trait_eq!(AddProficiency);
@@ -54,18 +64,30 @@ impl Mutator for AddProficiency {
 				"You are proficient with {} saving throws.",
 				ability.long_name()
 			),
-			Self::Skill(selector::Value::Specific(skill), level) => format!(
+			Self::Skill {
+				skill: selector::Value::Specific(skill),
+				level,
+				minimum_level: _,
+			} => format!(
 				"You are {} with {} checks.",
 				level.as_display_name().to_lowercase(),
 				skill.display_name()
 			),
-			Self::Skill(selector::Value::Options { options, .. }, level) if options.is_empty() => {
+			Self::Skill {
+				skill: selector::Value::Options { options, .. },
+				level,
+				minimum_level: _,
+			} if options.is_empty() => {
 				format!(
 					"You are {} with one skill of your choice.",
 					level.as_display_name().to_lowercase()
 				)
 			}
-			Self::Skill(selector::Value::Options { options, .. }, level) => format!(
+			Self::Skill {
+				skill: selector::Value::Options { options, .. },
+				level,
+				minimum_level: _,
+			} => format!(
 				"You are {} with one skill of: {}.",
 				level.as_display_name().to_lowercase(),
 				options
@@ -104,26 +126,42 @@ impl Mutator for AddProficiency {
 			Self::Weapon(WeaponProficiency::Classification(kind)) => {
 				format!("You are proficient with {kind} weapon-types.")
 			}
-			Self::Tool(selector::Value::Specific(tool)) => {
-				format!("You are proficient with {tool}.")
+			Self::Tool {
+				tool: selector::Value::Specific(tool),
+				level,
+			} => {
+				format!(
+					"You are {} with {tool}.",
+					level.as_display_name().to_lowercase()
+				)
 			}
-			Self::Tool(selector::Value::Options { options, .. }) if options.is_empty() => {
-				format!("You are proficient with one tool of your choice.")
+			Self::Tool {
+				tool: selector::Value::Options { options, .. },
+				level,
+			} if options.is_empty() => {
+				format!(
+					"You are {} with one tool of your choice.",
+					level.as_display_name().to_lowercase()
+				)
 			}
-			Self::Tool(selector::Value::Options { options, .. }) => format!(
-				"You are proficient with one tool of: {}.",
+			Self::Tool {
+				tool: selector::Value::Options { options, .. },
+				level,
+			} => format!(
+				"You are {} with one tool of: {}.",
+				level.as_display_name().to_lowercase(),
 				options.iter().cloned().collect::<Vec<_>>().join(", ")
 			),
 		};
 		let selectors = match self {
-			Self::Skill(selector, _) => {
-				selector::DataList::default().with_enum("Skill", selector, state)
+			Self::Skill { skill, .. } => {
+				selector::DataList::default().with_enum("Skill", skill, state)
 			}
 			Self::Language(selector) => {
 				selector::DataList::default().with_value("Language", selector, state)
 			}
-			Self::Tool(selector) => {
-				selector::DataList::default().with_value("Tool", selector, state)
+			Self::Tool { tool, .. } => {
+				selector::DataList::default().with_value("Tool", tool, state)
 			}
 			_ => Default::default(),
 		};
@@ -137,23 +175,21 @@ impl Mutator for AddProficiency {
 	fn set_data_path(&self, parent: &std::path::Path) {
 		match self {
 			Self::Ability(selector, _) => selector.set_data_path(parent),
-			Self::Skill(selector, _) => selector.set_data_path(parent),
+			Self::Skill { skill, .. } => skill.set_data_path(parent),
 			Self::Language(selector) => selector.set_data_path(parent),
-			Self::Tool(selector) => selector.set_data_path(parent),
+			Self::Tool { tool, .. } => tool.set_data_path(parent),
 			_ => {}
 		}
 	}
 
-	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
+	fn on_insert(&self, stats: &mut Character, parent: &std::path::Path) {
 		match &self {
 			Self::Ability(ability, level) => {
 				if let Some(ability) = stats.resolve_selector(ability) {
 					// TODO: Grant proficiency for an ability (in addition to the skills which use that ability)
 					let derived_skills = stats.skills_mut();
-					log::debug!("{level:?} in {ability:?}");
 					for skill in EnumSet::<Skill>::all() {
 						if skill.ability() == ability {
-							log::debug!("{level:?} in {skill:?}");
 							derived_skills.add_proficiency(skill, *level, parent.to_owned());
 						}
 					}
@@ -164,12 +200,17 @@ impl Mutator for AddProficiency {
 					.saving_throws_mut()
 					.add_proficiency(*ability, parent.to_owned());
 			}
-			Self::Skill(skill, level) => {
-				if let Some(skill) = stats.resolve_selector(skill) {
-					stats
-						.skills_mut()
-						.add_proficiency(skill, *level, parent.to_owned());
-				}
+			Self::Skill {
+				skill,
+				level,
+				minimum_level: _,
+			} => {
+				let Some(skill) = stats.resolve_selector(skill) else {
+					return;
+				};
+				stats
+					.skills_mut()
+					.add_proficiency(skill, *level, parent.to_owned());
 			}
 			Self::Language(value) => {
 				if let Some(value) = stats.resolve_selector(value) {
@@ -191,8 +232,9 @@ impl Mutator for AddProficiency {
 					.weapons
 					.insert(value.clone(), parent.to_owned());
 			}
-			Self::Tool(value) => {
-				if let Some(value) = stats.resolve_selector(value) {
+			Self::Tool { tool, level } => {
+				// TODO: Actually grant the tool's proficiency level (there is no place to put that data yet)
+				if let Some(value) = stats.resolve_selector(tool) {
 					stats
 						.other_proficiencies_mut()
 						.tools
@@ -216,12 +258,28 @@ impl FromKDL for AddProficiency {
 			}
 			"SavingThrow" => Ok(Self::SavingThrow(node.next_str_req_t::<Ability>()?)),
 			"Skill" => {
-				let skill = selector::Value::from_kdl(node)?;
+				let mut skill = selector::Value::from_kdl(node)?;
 				let level = match node.get_str_opt("level")? {
 					Some(str) => proficiency::Level::from_str(str)?,
 					None => proficiency::Level::Full,
 				};
-				Ok(Self::Skill(skill, level))
+
+				let minimum_level = match node.get_str_opt("min")? {
+					Some(str) => proficiency::Level::from_str(str)?,
+					None => proficiency::Level::None,
+				};
+				if minimum_level != proficiency::Level::None {
+					skill.set_is_applicable(move |skill, character| {
+						let active_level = *character.skills().proficiency(*skill).value();
+						active_level >= minimum_level && active_level < level
+					});
+				}
+
+				Ok(Self::Skill {
+					skill,
+					level,
+					minimum_level,
+				})
 			}
 			"Language" => Ok(Self::Language(selector::Value::from_kdl(node)?)),
 			"Armor" => {
@@ -238,7 +296,14 @@ impl FromKDL for AddProficiency {
 					classification => WeaponProficiency::Classification(classification.to_owned()),
 				}))
 			}
-			"Tool" => Ok(Self::Tool(selector::Value::from_kdl(node)?)),
+			"Tool" => {
+				let tool = selector::Value::from_kdl(node)?;
+				let level = match node.get_str_opt("level")? {
+					Some(str) => proficiency::Level::from_str(str)?,
+					None => proficiency::Level::Full,
+				};
+				Ok(Self::Tool { tool, level })
+			}
 			name => Err(NotInList(
 				name.into(),
 				vec![
@@ -267,10 +332,17 @@ impl AsKdl for AddProficiency {
 				node
 			}
 			Self::SavingThrow(ability) => node.with_entry_typed(ability.long_name(), "SavingThrow"),
-			Self::Skill(skill, level) => {
+			Self::Skill {
+				skill,
+				level,
+				minimum_level,
+			} => {
 				node.append_typed("Skill", skill.as_kdl());
 				if *level != proficiency::Level::Full {
 					node.push_entry(("level", level.to_string()));
+				}
+				if *minimum_level != proficiency::Level::None {
+					node.push_entry(("min", minimum_level.to_string()));
 				}
 				node
 			}
@@ -286,8 +358,11 @@ impl AsKdl for AddProficiency {
 				node
 			}
 			Self::Weapon(weapon_prof) => node.with_entry_typed(weapon_prof.to_string(), "Weapon"),
-			Self::Tool(tool_name) => {
-				node.append_typed("Tool", tool_name.as_kdl());
+			Self::Tool { tool, level } => {
+				node.append_typed("Tool", tool.as_kdl());
+				if *level != proficiency::Level::Full {
+					node.push_entry(("level", level.to_string()));
+				}
 				node
 			}
 		}
@@ -363,10 +438,11 @@ mod test {
 		#[test]
 		fn skill_specific_nolevel() -> anyhow::Result<()> {
 			let doc = "mutator \"add_proficiency\" (Skill)\"Specific\" \"Insight\"";
-			let data = AddProficiency::Skill(
-				selector::Value::Specific(Skill::Insight),
-				proficiency::Level::Full,
-			);
+			let data = AddProficiency::Skill {
+				skill: selector::Value::Specific(Skill::Insight),
+				level: proficiency::Level::Full,
+				minimum_level: proficiency::Level::None,
+			};
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -376,10 +452,11 @@ mod test {
 		fn skill_specific_withlevel() -> anyhow::Result<()> {
 			let doc = "mutator \"add_proficiency\" \
 				(Skill)\"Specific\" \"Religion\" level=\"Double\"";
-			let data = AddProficiency::Skill(
-				selector::Value::Specific(Skill::Religion),
-				proficiency::Level::Double,
-			);
+			let data = AddProficiency::Skill {
+				skill: selector::Value::Specific(Skill::Religion),
+				level: proficiency::Level::Double,
+				minimum_level: proficiency::Level::None,
+			};
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -388,15 +465,16 @@ mod test {
 		#[test]
 		fn skill_any_nolevel() -> anyhow::Result<()> {
 			let doc = "mutator \"add_proficiency\" (Skill)\"Any\" id=\"MutatorSelect\"";
-			let data = AddProficiency::Skill(
-				selector::Value::Options {
+			let data = AddProficiency::Skill {
+				skill: selector::Value::Options {
 					id: Some("MutatorSelect").into(),
 					options: Default::default(),
 					amount: Value::Fixed(1),
 					is_applicable: None,
 				},
-				proficiency::Level::Full,
-			);
+				level: proficiency::Level::Full,
+				minimum_level: proficiency::Level::None,
+			};
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -405,15 +483,16 @@ mod test {
 		#[test]
 		fn skill_any_nolevel_noid() -> anyhow::Result<()> {
 			let doc = "mutator \"add_proficiency\" (Skill)\"Any\"";
-			let data = AddProficiency::Skill(
-				selector::Value::Options {
+			let data = AddProficiency::Skill {
+				skill: selector::Value::Options {
 					id: Default::default(),
 					options: Default::default(),
 					amount: Value::Fixed(1),
 					is_applicable: None,
 				},
-				proficiency::Level::Full,
-			);
+				level: proficiency::Level::Full,
+				minimum_level: proficiency::Level::None,
+			};
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -423,15 +502,16 @@ mod test {
 		fn skill_any_withlevel() -> anyhow::Result<()> {
 			let doc = "mutator \"add_proficiency\" \
 				(Skill)\"Any\" id=\"MutatorSelect\" level=\"HalfDown\"";
-			let data = AddProficiency::Skill(
-				selector::Value::Options {
+			let data = AddProficiency::Skill {
+				skill: selector::Value::Options {
 					id: Some("MutatorSelect").into(),
 					options: Default::default(),
 					amount: Value::Fixed(1),
 					is_applicable: None,
 				},
-				proficiency::Level::HalfDown,
-			);
+				level: proficiency::Level::HalfDown,
+				minimum_level: proficiency::Level::None,
+			};
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -445,15 +525,16 @@ mod test {
 				|    option \"AnimalHandling\"
 				|}
 			";
-			let data = AddProficiency::Skill(
-				selector::Value::Options {
+			let data = AddProficiency::Skill {
+				skill: selector::Value::Options {
 					id: Some("MutatorSelect").into(),
 					options: [Skill::Insight, Skill::AnimalHandling].into(),
 					amount: Value::Fixed(1),
 					is_applicable: None,
 				},
-				proficiency::Level::Full,
-			);
+				level: proficiency::Level::Full,
+				minimum_level: proficiency::Level::None,
+			};
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -467,15 +548,16 @@ mod test {
 				|    option \"AnimalHandling\"
 				|}
 			";
-			let data = AddProficiency::Skill(
-				selector::Value::Options {
+			let data = AddProficiency::Skill {
+				skill: selector::Value::Options {
 					id: Default::default(),
 					options: [Skill::Insight, Skill::AnimalHandling].into(),
 					amount: Value::Fixed(1),
 					is_applicable: None,
 				},
-				proficiency::Level::Double,
-			);
+				level: proficiency::Level::Double,
+				minimum_level: proficiency::Level::None,
+			};
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -583,7 +665,10 @@ mod test {
 		#[test]
 		fn tool_specific() -> anyhow::Result<()> {
 			let doc = "mutator \"add_proficiency\" (Tool)\"Specific\" \"Dragonchess Set\"";
-			let data = AddProficiency::Tool(selector::Value::Specific("Dragonchess Set".into()));
+			let data = AddProficiency::Tool {
+				tool: selector::Value::Specific("Dragonchess Set".into()),
+				level: proficiency::Level::Full,
+			};
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -592,12 +677,15 @@ mod test {
 		#[test]
 		fn tool_any() -> anyhow::Result<()> {
 			let doc = "mutator \"add_proficiency\" (Tool)\"Any\"";
-			let data = AddProficiency::Tool(selector::Value::Options {
-				id: Default::default(),
-				options: Default::default(),
-				amount: Value::Fixed(1),
-				is_applicable: None,
-			});
+			let data = AddProficiency::Tool {
+				tool: selector::Value::Options {
+					id: Default::default(),
+					options: Default::default(),
+					amount: Value::Fixed(1),
+					is_applicable: None,
+				},
+				level: proficiency::Level::Full,
+			};
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -612,12 +700,15 @@ mod test {
 				|    option \"Flute\"
 				|}
 			";
-			let data = AddProficiency::Tool(selector::Value::Options {
-				id: Default::default(),
-				options: ["Dice set".into(), "Playing card set".into(), "Flute".into()].into(),
-				amount: Value::Fixed(1),
-				is_applicable: None,
-			});
+			let data = AddProficiency::Tool {
+				tool: selector::Value::Options {
+					id: Default::default(),
+					options: ["Dice set".into(), "Playing card set".into(), "Flute".into()].into(),
+					amount: Value::Fixed(1),
+					is_applicable: None,
+				},
+				level: proficiency::Level::Full,
+			};
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -687,10 +778,11 @@ mod test {
 		#[test]
 		fn skill() {
 			let character = character(
-				AddProficiency::Skill(
-					selector::Value::Specific(Skill::Arcana),
-					proficiency::Level::Double,
-				),
+				AddProficiency::Skill {
+					skill: selector::Value::Specific(Skill::Arcana),
+					level: proficiency::Level::Double,
+					minimum_level: proficiency::Level::None,
+				},
 				None,
 			);
 			assert_eq!(
@@ -822,7 +914,10 @@ mod test {
 		#[test]
 		fn tool_specific() {
 			let character = character(
-				AddProficiency::Tool(selector::Value::Specific("Thieves' Tools".into())),
+				AddProficiency::Tool {
+					tool: selector::Value::Specific("Thieves' Tools".into()),
+					level: proficiency::Level::Full,
+				},
 				None,
 			);
 			assert_eq!(

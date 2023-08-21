@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::dnd5e::{
 		data::{character::Character, description},
 		BoxedMutator,
@@ -13,6 +13,7 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 #[derive(Clone, PartialEq, Debug)]
 pub struct PickN {
 	name: String,
+	id: String,
 	options: HashMap<String, PickOption>,
 	selector: selector::Value<Character, String>,
 }
@@ -115,7 +116,7 @@ impl Mutator for PickN {
 	fn set_data_path(&self, parent: &std::path::Path) {
 		self.selector.set_data_path(parent);
 		for (name, option) in &self.options {
-			let path_to_option = parent.join(name);
+			let path_to_option = parent.join(&self.id).join(name);
 			for mutator in &option.mutators {
 				mutator.set_data_path(&path_to_option);
 			}
@@ -144,10 +145,10 @@ impl FromKDL for PickN {
 		let max_selections = node.next_i64_req()? as usize;
 		let name = node.get_str_req("name")?.to_owned();
 
-		let id = selector::IdPath::from(Some(match node.get_str_opt("id")? {
+		let id = match node.get_str_opt("id")? {
 			Some(id) => id.to_owned(),
 			None => name.clone(),
-		}));
+		};
 
 		let mut options = HashMap::new();
 		for node in &mut node.query_all("scope() > option")? {
@@ -164,7 +165,7 @@ impl FromKDL for PickN {
 		}
 
 		let selector = selector::Value::Options {
-			id,
+			id: selector::IdPath::from(Some(id.clone())),
 			amount: crate::utility::Value::Fixed(max_selections as i32),
 			options: options.keys().cloned().sorted().collect(),
 			is_applicable: None,
@@ -172,6 +173,7 @@ impl FromKDL for PickN {
 
 		Ok(Self {
 			name,
+			id,
 			options,
 			selector,
 		})
@@ -283,6 +285,7 @@ mod test {
 			";
 			let data = PickN {
 				name: "Default Speed".into(),
+				id: "Default Speed".into(),
 				options: options(),
 				selector: selector::Value::Options {
 					id: "Default Speed".into(),
@@ -311,6 +314,7 @@ mod test {
 			";
 			let data = PickN {
 				name: "Default Speed".into(),
+				id: "speedA".into(),
 				options: options(),
 				selector: selector::Value::Options {
 					id: "speedA".into(),
@@ -339,6 +343,7 @@ mod test {
 			";
 			let data = PickN {
 				name: "Default Speed".into(),
+				id: "speedA".into(),
 				options: options(),
 				selector: selector::Value::Options {
 					id: "speedA".into(),
