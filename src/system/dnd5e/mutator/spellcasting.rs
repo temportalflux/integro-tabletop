@@ -14,7 +14,7 @@ use crate::{
 			Ability,
 		},
 	},
-	utility::{Mutator, NotInList, ObjectSelector, SelectorMetaVec},
+	utility::{selector, Mutator, NotInList, Value},
 };
 use itertools::Itertools;
 use std::{
@@ -70,14 +70,14 @@ pub struct PreparedInfo {
 pub struct SelectableSpells {
 	pub filter: Option<spellcasting::Filter>,
 	/// For all prepared spells which allow the user to select them, this is the selector that is used.
-	pub selector: ObjectSelector,
+	pub selector: selector::Object<Character>,
 	pub prepared: PreparedInfo,
 }
 
 impl Mutator for Spellcasting {
 	type Target = Character;
 
-	fn description(&self, _state: Option<&Character>) -> description::Section {
+	fn description(&self, state: Option<&Character>) -> description::Section {
 		match &self.0 {
 			Operation::Caster(caster) => description::Section {
 				title: Some("Spellcasting".into()),
@@ -94,9 +94,10 @@ impl Mutator for Spellcasting {
 				selectable_spells,
 				..
 			} => {
-				let mut selectors = SelectorMetaVec::default();
+				let mut selectors = selector::DataList::default();
 				if let Some(selectable) = selectable_spells {
-					selectors = selectors.with_object("Selected Spells", &selectable.selector);
+					selectors =
+						selectors.with_object("Selected Spells", &selectable.selector, state);
 				}
 				description::Section {
 					title: Some("Spellcasting: Always Preppared Spells".into()),
@@ -371,10 +372,17 @@ impl FromKDL for Spellcasting {
 				let selectable_spells = match node.query_opt("scope() > options")? {
 					None => None,
 					Some(mut node) => {
-						let count = node.next_i64_req()? as usize;
 						let info = PreparedInfo::from_kdl(&mut node)?;
 						let mut filter = None;
-						let mut selector = ObjectSelector::new(Spell::id(), count);
+						let amount = node
+							.query_opt_t("scope() > amount")?
+							.unwrap_or(Value::Fixed(1));
+						let mut selector = selector::Object {
+							id: Default::default(),
+							object_category: Spell::id().into(),
+							amount,
+							criteria: None,
+						};
 						if let Some(node) = node.query_opt("scope() > filter")? {
 							let spell_filter = {
 								let ranks = node.query_i64_all("scope() > rank", 0)?;
@@ -533,8 +541,8 @@ impl AsKdl for Spellcasting {
 				if let Some(selectable) = selectable_spells {
 					node.push_child({
 						let mut node = NodeBuilder::default();
-						node.push_entry(selectable.selector.count() as i64);
 						node += selectable.prepared.as_kdl();
+						node.push_child_t("amount", &selectable.selector.amount);
 						if let Some(filter) = &selectable.filter {
 							node.push_child({
 								let mut node = NodeBuilder::default();

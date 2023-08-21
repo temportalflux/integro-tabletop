@@ -1,7 +1,7 @@
 use crate::{
 	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::dnd5e::data::{character::Character, description, DamageType},
-	utility::{list_as_english, InvalidEnumStr, Mutator, Selector},
+	utility::{list_as_english, selector, InvalidEnumStr, Mutator},
 };
 use enum_map::Enum;
 use enumset::EnumSetType;
@@ -39,7 +39,7 @@ impl FromStr for Defense {
 #[derive(Clone, Debug, PartialEq)]
 pub struct AddDefense {
 	pub defense: Defense,
-	pub damage_type: Option<Selector<DamageType>>,
+	pub damage_type: Option<selector::Value<Character, DamageType>>,
 	pub context: Option<String>,
 }
 impl Default for AddDefense {
@@ -62,30 +62,37 @@ impl Mutator for AddDefense {
 		}
 	}
 
-	fn description(&self, _state: Option<&Character>) -> description::Section {
+	fn description(&self, state: Option<&Character>) -> description::Section {
+		let body = format!(
+			"You are {} to {} damage{}.",
+			match self.defense {
+				Defense::Resistance => "resistant",
+				Defense::Immunity => "immune",
+				Defense::Vulnerability => "vulnerable",
+			},
+			match &self.damage_type {
+				None => "all".to_owned(),
+				Some(selector::Value::Specific(damage_type)) =>
+					damage_type.display_name().to_owned(),
+				Some(selector::Value::Options { options, .. }) if options.is_empty() =>
+					"any single type of".to_owned(),
+				Some(selector::Value::Options { options, .. }) => {
+					let options = options.iter().map(DamageType::to_string).collect();
+					list_as_english(options, "or").unwrap_or_default()
+				}
+			},
+			self.context
+				.as_ref()
+				.map(|ctx| format!(" from {ctx}"))
+				.unwrap_or_default(),
+		);
+		let mut selectors = selector::DataList::default();
+		if let Some(damage_type) = &self.damage_type {
+			selectors = selectors.with_enum("Damage Type", damage_type, state);
+		}
 		description::Section {
-			content: format!(
-				"You are {} to {} damage{}.",
-				match self.defense {
-					Defense::Resistance => "resistant",
-					Defense::Immunity => "immune",
-					Defense::Vulnerability => "vulnerable",
-				},
-				match &self.damage_type {
-					None => "all".to_owned(),
-					Some(Selector::Specific(damage_type)) => damage_type.display_name().to_owned(),
-					Some(Selector::AnyOf { options, .. }) => {
-						let options = options.iter().map(DamageType::to_string).collect();
-						list_as_english(options, "or").unwrap_or_default()
-					}
-					Some(Selector::Any { .. }) => "any single type of".to_owned(),
-				},
-				self.context
-					.as_ref()
-					.map(|ctx| format!(" from {ctx}"))
-					.unwrap_or_default(),
-			)
-			.into(),
+			content: body.into(),
+			children: vec![selectors.into()],
 			..Default::default()
 		}
 	}
@@ -108,7 +115,7 @@ impl FromKDL for AddDefense {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let defense = node.next_str_req_t::<Defense>()?;
 		let damage_type = match node.peak_opt().is_some() {
-			true => Some(Selector::from_kdl(node)?),
+			true => Some(selector::Value::from_kdl(node)?),
 			false => None,
 		};
 		let context = node.get_str_opt("context")?.map(str::to_owned);
@@ -144,7 +151,9 @@ mod test {
 
 	mod kdl {
 		use super::*;
-		use crate::{kdl_ext::test_utils::*, system::dnd5e::mutator::test::test_utils};
+		use crate::{
+			kdl_ext::test_utils::*, system::dnd5e::mutator::test::test_utils, utility::Value,
+		};
 
 		test_utils!(AddDefense);
 
@@ -168,7 +177,7 @@ mod test {
 				\"Resistance\" (DamageType)\"Specific\" \"Cold\"";
 			let data = AddDefense {
 				defense: Defense::Resistance,
-				damage_type: Some(Selector::Specific(DamageType::Cold)),
+				damage_type: Some(selector::Value::Specific(DamageType::Cold)),
 				context: None,
 			};
 			assert_eq_askdl!(&data, doc);
@@ -181,9 +190,11 @@ mod test {
 			let doc = "mutator \"add_defense\" \"Resistance\" (DamageType)\"Any\"";
 			let data = AddDefense {
 				defense: Defense::Resistance,
-				damage_type: Some(Selector::Any {
+				damage_type: Some(selector::Value::Options {
 					id: Default::default(),
-					cannot_match: vec![],
+					options: Default::default(),
+					amount: Value::Fixed(1),
+					is_applicable: None,
 				}),
 				context: None,
 			};
@@ -202,11 +213,11 @@ mod test {
 			";
 			let data = AddDefense {
 				defense: Defense::Resistance,
-				damage_type: Some(Selector::AnyOf {
+				damage_type: Some(selector::Value::Options {
 					id: Default::default(),
-					cannot_match: vec![],
-					amount: 1,
-					options: vec![DamageType::Fire, DamageType::Force],
+					options: [DamageType::Fire, DamageType::Force].into(),
+					amount: Value::Fixed(1),
+					is_applicable: None,
 				}),
 				context: None,
 			};
@@ -223,7 +234,7 @@ mod test {
 				name: "AddDefense".into(),
 				mutators: vec![AddDefense {
 					defense: Defense::Resistance,
-					damage_type: Some(Selector::Specific(DamageType::Fire)),
+					damage_type: Some(selector::Value::Specific(DamageType::Fire)),
 					context: None,
 				}
 				.into()],
@@ -249,7 +260,7 @@ mod test {
 				name: "AddDefense".into(),
 				mutators: vec![AddDefense {
 					defense: Defense::Immunity,
-					damage_type: Some(Selector::Specific(DamageType::Cold)),
+					damage_type: Some(selector::Value::Specific(DamageType::Cold)),
 					context: None,
 				}
 				.into()],
@@ -275,7 +286,7 @@ mod test {
 				name: "AddDefense".into(),
 				mutators: vec![AddDefense {
 					defense: Defense::Vulnerability,
-					damage_type: Some(Selector::Specific(DamageType::Psychic)),
+					damage_type: Some(selector::Value::Specific(DamageType::Psychic)),
 					context: None,
 				}
 				.into()],

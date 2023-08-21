@@ -4,7 +4,7 @@ use crate::{
 		data::{character::Character, Rest},
 		Value,
 	},
-	utility::{IdPath, Selector},
+	utility::selector,
 	GeneralError,
 };
 use std::{
@@ -33,16 +33,18 @@ pub struct UseCounterData {
 	/// Consumed uses resets when the user takes at least this rest
 	/// (a reset on a short rest will also reset on long rest).
 	pub(crate) reset_on: Option<Value<String>>,
-	pub(crate) uses_count: Selector<u32>,
+	pub(crate) uses_count: selector::Value<Character, u32>,
 }
 impl Default for UseCounterData {
 	fn default() -> Self {
 		Self {
 			max_uses: Value::Fixed(0),
 			reset_on: None,
-			uses_count: Selector::Any {
-				id: IdPath::from("uses_consumed"),
-				cannot_match: vec![],
+			uses_count: selector::Value::Options {
+				id: "uses_consumed".into(),
+				options: Default::default(),
+				amount: Value::Fixed(1),
+				is_applicable: None,
 			},
 		}
 	}

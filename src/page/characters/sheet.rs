@@ -52,7 +52,7 @@ pub fn Sheet(props: &GeneralProp<SourceId>) -> Html {
 				}
 			}
 		},
-		props.value.clone()
+		props.value.clone(),
 	);
 	if !character.is_loaded() {
 		return html!(<Spinner />);

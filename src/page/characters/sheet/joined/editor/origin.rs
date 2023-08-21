@@ -18,8 +18,9 @@ use crate::{
 		},
 	},
 	utility::{
+		selector,
 		web_ext::{self, CallbackExt, CallbackOptExt},
-		GenericMutator, InputExt, SelectorMeta, SelectorOptions,
+		GenericMutator, InputExt,
 	},
 };
 use convert_case::{Case, Casing};
@@ -536,7 +537,7 @@ pub fn DescriptionSection(
 				}
 				let iter_selectors = selectors.as_vec().iter();
 				let fields = iter_selectors
-					.map(|meta| html! { <SelectorField meta={meta.clone()} /> })
+					.map(|data_option| html! { <SelectorField data={data_option.clone()} /> })
 					.collect::<Vec<_>>();
 				html! {
 					<div>
@@ -599,15 +600,15 @@ pub fn DescriptionSection(
 
 #[derive(Clone, PartialEq, Properties)]
 struct SelectorFieldProps {
-	meta: SelectorMeta,
+	data: selector::DataOption,
 }
 #[function_component]
 fn SelectorField(
 	SelectorFieldProps {
-		meta: SelectorMeta {
+		data: selector::DataOption {
 			name,
 			data_path,
-			options,
+			kind,
 		},
 	}: &SelectorFieldProps,
 ) -> Html {
@@ -639,8 +640,9 @@ fn SelectorField(
 		.is_none()
 		.then(|| classes!("missing-value"))
 		.unwrap_or_default();
-	let inner = match options {
-		SelectorOptions::Any => {
+	let inner = match kind {
+		// TODO: Display a different UI if amount > 1
+		selector::Kind::StringEntry { amount: _, options } if options.is_empty() => {
 			let onchange = Callback::from({
 				let save_value = save_value.clone();
 				move |evt: web_sys::Event| {
@@ -654,11 +656,8 @@ fn SelectorField(
 				{onchange}
 			/>}
 		}
-		SelectorOptions::AnyOf {
-			options: valid_values,
-			cannot_match,
-			amount: _, // TODO: Display a different UI if amount > 1
-		} => {
+		// TODO: Display a different UI if amount > 1
+		selector::Kind::StringEntry { amount: _, options } => {
 			let onchange = Callback::from({
 				let save_value = save_value.clone();
 				move |evt: web_sys::Event| {
@@ -666,30 +665,17 @@ fn SelectorField(
 					save_value.emit((!value.is_empty()).then_some(value.into()));
 				}
 			});
-			let invalid_values = match cannot_match {
-				None => HashSet::new(),
-				Some(selection_paths) => {
-					let mut values = HashSet::new();
-					for path in selection_paths {
-						if let Some(value) = state.get_first_selection(path) {
-							values.insert(value);
-						}
-					}
-					values
-				}
-			};
 			html! {
 				<select class="form-select" {onchange}>
 					<option
 						value=""
 						selected={value.is_none()}
 					>{"Select a value..."}</option>
-					{valid_values.iter().map(|item| {
+					{options.iter().map(|item| {
 						html! {
 							<option
 								value={item.clone()}
 								selected={value == Some(item)}
-								disabled={invalid_values.contains(item)}
 							>
 								{item.clone()}
 							</option>
@@ -698,17 +684,17 @@ fn SelectorField(
 				</select>
 			}
 		}
-		SelectorOptions::Object {
-			category,
-			count: capacity,
+		selector::Kind::Object {
+			amount,
+			object_category,
 			criteria,
 		} => {
 			let browse = object_browser::open_modal(
 				&modal_dispatcher,
 				object_browser::ModalProps {
 					data_path: data_path.clone(),
-					category: category.clone().into(),
-					capacity: *capacity,
+					category: object_category.clone().into(),
+					capacity: *amount,
 					criteria: criteria.clone(),
 				},
 			);
@@ -721,7 +707,7 @@ fn SelectorField(
 				<div class={classes}>
 					<h6>{name.clone()}</h6>
 					<button type="button" class={btn_classes} onclick={browse}>
-						{format!("Browse ({}/{capacity} selected)", selection_count)}
+						{format!("Browse ({}/{amount} selected)", selection_count)}
 					</button>
 					<div>
 						<ObjectSelectorList value={data_path.clone()} />

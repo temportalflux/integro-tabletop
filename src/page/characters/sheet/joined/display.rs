@@ -1,8 +1,8 @@
 use crate::{
 	auth,
-	kdl_ext::KDLNode,
 	components::{use_media_query, Nav, NavDisplay, TabContent},
 	database::app::{Database, Entry},
+	kdl_ext::KDLNode,
 	page::characters::sheet::{CharacterHandle, ViewProps},
 	storage::github::FileContentArgs,
 	system::{
@@ -13,7 +13,7 @@ use crate::{
 				ability, panel, rest, ArmorClass, ConditionsCard, DefensesCard, HitPointMgmtCard,
 				InitiativeBonus, Inspiration, ProfBonus, Proficiencies, SpeedAndSenses,
 			},
-			data::{Ability, character::Persistent},
+			data::{character::Persistent, Ability},
 			SystemComponent,
 		},
 	},
@@ -191,7 +191,7 @@ pub fn Display(ViewProps { swap_view }: &ViewProps) -> Html {
 							log::debug!("missing entry");
 							return Ok(());
 						}
-					}
+					},
 				};
 				let args = crate::storage::github::CreateOrUpdateFileArgs {
 					repo_org: &repo_org,
@@ -205,7 +205,6 @@ pub fn Display(ViewProps { swap_view }: &ViewProps) -> Html {
 				log::debug!("executing update character request {args:?}");
 				let response = client.create_or_update_file(args).await?;
 				log::debug!("finished update character request {response:?}");
-
 
 				let module_version = response.version;
 				// put the updated content in the database for the persistent character segment

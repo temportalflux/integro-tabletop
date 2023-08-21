@@ -1,6 +1,6 @@
 use crate::{
 	database::app::Criteria,
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
+	kdl_ext::{AsKdl, FromKDL, KDLNode, NodeBuilder},
 	system::{
 		core::SourceId,
 		dnd5e::{
@@ -11,15 +11,14 @@ use crate::{
 			Value,
 		},
 	},
-	utility::{Mutator, ObjectSelector, SelectorMeta, SelectorMetaVec, SelectorOptions},
+	utility::{selector, Mutator},
 };
 use std::str::FromStr;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AddBundle {
 	category: String,
-	selector: ObjectSelector,
-	amount: Value<i32>,
+	selector: selector::Object<Character>,
 	propogate_parent: bool,
 }
 
@@ -30,20 +29,11 @@ impl Mutator for AddBundle {
 	type Target = Character;
 
 	fn description(&self, state: Option<&Character>) -> description::Section {
-		let amount = match state {
-			Some(state) => self.amount.evaluate(state),
-			None => 0,
-		};
-		let mut selectors = SelectorMetaVec::default();
-		if let Ok(Some(mut metadata)) = SelectorMeta::from_object("Bundle", &self.selector) {
-			if let SelectorOptions::Object { count, .. } = &mut metadata.options {
-				*count = amount.max(0) as usize;
-			}
-			selectors.push(metadata);
-		}
 		description::Section {
 			content: "You have the following bundles:".to_owned().into(),
-			children: vec![selectors.into()],
+			children: vec![selector::DataList::default()
+				.with_object("Bundle", &self.selector, state)
+				.into()],
 			..Default::default()
 		}
 	}
@@ -66,30 +56,25 @@ impl Mutator for AddBundle {
 	}
 }
 
-impl AddBundle {
-	fn bundle_selector(category: &str) -> ObjectSelector {
-		use crate::kdl_ext::KDLNode;
-		let mut selector = ObjectSelector::new(Bundle::id(), 1);
-		selector.set_criteria(Criteria::contains_prop(
-			"category",
-			Criteria::exact(category.to_owned()),
-		));
-		selector
-	}
-}
-
 impl FromKDL for AddBundle {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let category = node.get_str_req("category")?.to_owned();
-		let selector = Self::bundle_selector(&category);
-		let propogate_parent = node.get_bool_opt("propogate_parent")?.unwrap_or_default();
 		let amount = node
 			.query_opt_t::<Value<i32>>("scope() > amount")?
 			.unwrap_or(Value::Fixed(1));
+		let selector = selector::Object {
+			id: Default::default(),
+			object_category: Bundle::id().into(),
+			amount,
+			criteria: Some(Criteria::contains_prop(
+				"category",
+				Criteria::exact(category.to_owned()),
+			)),
+		};
+		let propogate_parent = node.get_bool_opt("propogate_parent")?.unwrap_or_default();
 		Ok(Self {
 			category,
 			selector,
-			amount,
 			propogate_parent,
 		})
 	}
@@ -102,8 +87,8 @@ impl AsKdl for AddBundle {
 		if self.propogate_parent {
 			node.push_entry(("propogate_parent", true));
 		}
-		if self.amount != Value::Fixed(1) {
-			node.push_child_t("amount", &self.amount);
+		if self.selector.amount != Value::Fixed(1) {
+			node.push_child_t("amount", &self.selector.amount);
 		}
 		node
 	}
@@ -124,8 +109,15 @@ mod test {
 			let doc = "mutator \"add_bundle\" category=\"Feat\"";
 			let data = AddBundle {
 				category: "Feat".into(),
-				selector: AddBundle::bundle_selector("Feat"),
-				amount: Value::Fixed(1),
+				selector: selector::Object {
+					id: Default::default(),
+					object_category: Bundle::id().into(),
+					amount: Value::Fixed(1),
+					criteria: Some(Criteria::contains_prop(
+						"category",
+						Criteria::exact("Feat".to_owned()),
+					)),
+				},
 				propogate_parent: false,
 			};
 			assert_eq_askdl!(&data, doc);

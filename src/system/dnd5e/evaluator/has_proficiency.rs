@@ -205,7 +205,7 @@ mod test {
 				data::{item::weapon, Bundle},
 				mutator::AddProficiency,
 			},
-			utility::Selector,
+			utility::selector,
 		};
 
 		fn character_with_profs(mutators: Vec<AddProficiency>) -> Character {
@@ -235,7 +235,7 @@ mod test {
 		fn skill() {
 			let empty = Character::from(Persistent::default());
 			let with_prof = character_with_profs(vec![AddProficiency::Skill(
-				Selector::Specific(Skill::SleightOfHand),
+				selector::Value::Specific(Skill::SleightOfHand),
 				proficiency::Level::Full,
 			)]);
 			let eval = IsProficientWith::Skill(Skill::SleightOfHand);
@@ -247,7 +247,7 @@ mod test {
 		fn language() {
 			let empty = Character::from(Persistent::default());
 			let with_prof = character_with_profs(vec![AddProficiency::Language(
-				Selector::Specific("Gibberish".into()),
+				selector::Value::Specific("Gibberish".into()),
 			)]);
 			let eval = IsProficientWith::Language("Gibberish".into());
 			assert_eq!(eval.evaluate(&empty), false);
@@ -307,9 +307,9 @@ mod test {
 		#[test]
 		fn tool() {
 			let empty = Character::from(Persistent::default());
-			let with_prof = character_with_profs(vec![AddProficiency::Tool(Selector::Specific(
-				"Workworking Tools".into(),
-			))]);
+			let with_prof = character_with_profs(vec![AddProficiency::Tool(
+				selector::Value::Specific("Workworking Tools".into()),
+			)]);
 			let eval = IsProficientWith::Tool("Workworking Tools".into());
 			assert_eq!(eval.evaluate(&empty), false);
 			assert_eq!(eval.evaluate(&with_prof), true);

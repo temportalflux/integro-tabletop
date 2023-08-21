@@ -144,7 +144,7 @@ mod test {
 					mutator::{AddModifier, ModifierKind},
 				},
 			},
-			utility::Selector,
+			utility::selector,
 		};
 
 		static NODE_NAME: &str = "equipment";
@@ -169,7 +169,7 @@ mod test {
 				mutators: vec![AddModifier {
 					modifier: Modifier::Disadvantage,
 					context: None,
-					kind: ModifierKind::Skill(Selector::Specific(Skill::Stealth)),
+					kind: ModifierKind::Skill(selector::Value::Specific(Skill::Stealth)),
 				}
 				.into()],
 				armor: Some(Armor {

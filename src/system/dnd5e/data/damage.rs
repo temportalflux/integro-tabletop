@@ -39,7 +39,7 @@ impl AsKdl for DamageRoll {
 	}
 }
 
-#[derive(Debug, Default, EnumSetType)]
+#[derive(Debug, Default, EnumSetType, PartialOrd, Ord)]
 pub enum DamageType {
 	Acid,
 	Bludgeoning,

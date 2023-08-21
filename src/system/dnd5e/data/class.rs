@@ -5,7 +5,7 @@ use crate::{
 		core::SourceId,
 		dnd5e::{mutator::AddMaxHitPoints, BoxedMutator, SystemComponent, Value},
 	},
-	utility::{MutatorGroup, Selector},
+	utility::{selector, MutatorGroup},
 };
 use std::{path::Path, str::FromStr};
 
@@ -15,7 +15,7 @@ pub struct Class {
 	pub name: String,
 	pub description: String,
 	pub hit_die: Die,
-	pub hit_die_selector: Selector<u32>,
+	pub hit_die_selector: selector::Value<Character, u32>,
 	pub current_level: usize,
 	/// Mutators that are applied only when this class is the primary class (not multiclassing).
 	pub mutators: Vec<BoxedMutator>,
@@ -32,9 +32,11 @@ impl Default for Class {
 			name: Default::default(),
 			description: Default::default(),
 			hit_die: Default::default(),
-			hit_die_selector: Selector::Any {
-				id: Some("hit_die").into(),
-				cannot_match: Default::default(),
+			hit_die_selector: selector::Value::Options {
+				id: "hit_die".into(),
+				options: Default::default(),
+				amount: Value::Fixed(1),
+				is_applicable: None,
 			},
 			current_level: Default::default(),
 			mutators: Default::default(),
@@ -181,16 +183,18 @@ impl AsKdl for Class {
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Level {
-	pub hit_points: Selector<u32>,
+	pub hit_points: selector::Value<Character, u32>,
 	pub mutators: Vec<BoxedMutator>,
 }
 
 impl Default for Level {
 	fn default() -> Self {
 		Self {
-			hit_points: Selector::Any {
-				id: Some("hit_points").into(),
-				cannot_match: Default::default(),
+			hit_points: selector::Value::Options {
+				id: "hit_points".into(),
+				options: Default::default(),
+				amount: Value::Fixed(1),
+				is_applicable: None,
 			},
 			mutators: Default::default(),
 		}
@@ -205,9 +209,11 @@ impl Level {
 
 impl FromKDL for Level {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
-		let hit_points = Selector::Any {
-			id: Some("hit_points").into(),
-			cannot_match: Default::default(),
+		let hit_points = selector::Value::Options {
+			id: "hit_points".into(),
+			options: Default::default(),
+			amount: Value::Fixed(1),
+			is_applicable: None,
 		};
 
 		let mutators = node.query_all_t("scope() > mutator")?;
@@ -244,8 +250,6 @@ impl<'a> LevelWithIndex<'a> {
 }
 impl<'a> MutatorGroup for LevelWithIndex<'a> {
 	type Target = Character;
-
-	// TODO: SelectorMeta for `Level::hit_points` integer field
 
 	fn set_data_path(&self, parent: &Path) {
 		let path_to_self = parent.join(self.level_name());

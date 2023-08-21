@@ -19,7 +19,7 @@ use crate::{
 			BoxedCriteria, BoxedMutator,
 		},
 	},
-	utility::{Dependencies, MutatorGroup, Selector},
+	utility::{selector, Dependencies, MutatorGroup},
 };
 use enum_map::EnumMap;
 use std::{
@@ -211,11 +211,11 @@ impl Character {
 		self.character.get_first_selection_at(data_path)
 	}
 
-	pub fn get_selector_value<T>(&self, selector: &Selector<T>) -> Option<T>
+	pub fn get_selector_value<T>(&self, selector: &selector::Value<Self, T>) -> Option<T>
 	where
 		T: Clone + 'static + ToString + FromStr,
 	{
-		if let Selector::Specific(value) = selector {
+		if let selector::Value::Specific(value) = selector {
 			return Some(value.clone());
 		}
 		let path_to_data = selector
@@ -226,11 +226,11 @@ impl Character {
 			.flatten()
 	}
 
-	pub fn resolve_selector<T>(&mut self, selector: &Selector<T>) -> Option<T>
+	pub fn resolve_selector<T>(&mut self, selector: &selector::Value<Self, T>) -> Option<T>
 	where
 		T: Clone + 'static + ToString + FromStr,
 	{
-		if let Selector::Specific(value) = selector {
+		if let selector::Value::Specific(value) = selector {
 			return Some(value.clone());
 		}
 		let path_to_data = selector

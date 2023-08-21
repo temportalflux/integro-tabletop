@@ -6,8 +6,7 @@ mod error;
 pub use error::*;
 mod mutator;
 pub use mutator::*;
-mod selector;
-pub use selector::*;
+pub mod selector;
 mod value;
 pub use value::*;
 

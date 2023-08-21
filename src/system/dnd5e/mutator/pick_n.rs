@@ -1,21 +1,20 @@
-use itertools::Itertools;
-
 use crate::{
 	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
 	system::dnd5e::{
 		data::{character::Character, description},
 		BoxedMutator,
 	},
-	utility::{IdPath, Mutator, Selector, SelectorMetaVec},
+	utility::{selector, Mutator},
 };
-use std::collections::{HashMap, HashSet};
+use itertools::Itertools;
+use std::collections::{BTreeSet, HashMap, HashSet};
 
 /// Allows the user to select some number of options where each option can apply a different group of mutators.
 #[derive(Clone, PartialEq, Debug)]
 pub struct PickN {
 	name: String,
 	options: HashMap<String, PickOption>,
-	selector: Selector<String>,
+	selector: selector::Value<Character, String>,
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -29,22 +28,18 @@ crate::impl_kdl_node!(PickN, "pick");
 
 impl PickN {
 	fn id(&self) -> Option<&String> {
-		let Selector::AnyOf { id, .. } = &self.selector else { return None; };
+		let selector::Value::Options { id, .. } = &self.selector else { return None; };
 		id.get_id()
 	}
 
-	fn cannot_match(&self) -> &Vec<IdPath> {
-		let Selector::AnyOf { cannot_match, .. } = &self.selector else { unimplemented!(); };
-		cannot_match
-	}
-
 	fn max_selections(&self) -> usize {
-		let Selector::AnyOf { amount, .. } = &self.selector else { return 0; };
-		*amount
+		let selector::Value::Options { amount, .. } = &self.selector else { return 0; };
+		let crate::utility::Value::Fixed(amt) = amount else { return 0; };
+		*amt as usize
 	}
 
-	fn option_order(&self) -> Option<&Vec<String>> {
-		let Selector::AnyOf { options, .. } = &self.selector else { return None; };
+	fn option_order(&self) -> Option<&BTreeSet<String>> {
+		let selector::Value::Options { options, .. } = &self.selector else { return None; };
 		Some(options)
 	}
 
@@ -100,7 +95,8 @@ impl Mutator for PickN {
 			});
 		}
 
-		let selectors = SelectorMetaVec::default().with_str("Selected Option", &self.selector);
+		let selectors =
+			selector::DataList::default().with_value("Selected Option", &self.selector, state);
 		children.insert(0, selectors.into());
 
 		description::Section {
@@ -148,12 +144,10 @@ impl FromKDL for PickN {
 		let max_selections = node.next_i64_req()? as usize;
 		let name = node.get_str_req("name")?.to_owned();
 
-		let id = IdPath::from(Some(match node.get_str_opt("id")? {
+		let id = selector::IdPath::from(Some(match node.get_str_opt("id")? {
 			Some(id) => id.to_owned(),
 			None => name.clone(),
 		}));
-		let cannot_match = node.query_str_all("scope() > cannot-match", 0)?;
-		let cannot_match = cannot_match.into_iter().map(IdPath::from).collect();
 
 		let mut options = HashMap::new();
 		for node in &mut node.query_all("scope() > option")? {
@@ -169,11 +163,11 @@ impl FromKDL for PickN {
 			);
 		}
 
-		let selector = Selector::AnyOf {
+		let selector = selector::Value::Options {
 			id,
-			cannot_match,
-			amount: max_selections,
+			amount: crate::utility::Value::Fixed(max_selections as i32),
 			options: options.keys().cloned().sorted().collect(),
+			is_applicable: None,
 		};
 
 		Ok(Self {
@@ -195,11 +189,6 @@ impl AsKdl for PickN {
 			if id != &self.name {
 				node.push_entry(("id", id.clone()));
 			}
-		}
-
-		for cannot_match in self.cannot_match() {
-			let Some(id) = cannot_match.get_id() else { continue; };
-			node.push_child_t("cannot-match", id);
 		}
 
 		for name in self.option_order().unwrap() {
@@ -234,6 +223,7 @@ mod test {
 					mutator::{test::test_utils, Speed},
 				},
 			},
+			utility::Value,
 		};
 
 		test_utils!(PickN, node_reg());
@@ -294,11 +284,11 @@ mod test {
 			let data = PickN {
 				name: "Default Speed".into(),
 				options: options(),
-				selector: Selector::AnyOf {
-					id: IdPath::from("Default Speed"),
-					cannot_match: vec![],
-					amount: 1,
-					options: vec!["Climbing".into(), "Swimming".into()],
+				selector: selector::Value::Options {
+					id: "Default Speed".into(),
+					options: ["Climbing".into(), "Swimming".into()].into(),
+					amount: Value::Fixed(1),
+					is_applicable: None,
 				},
 			};
 			assert_eq_askdl!(&data, doc);
@@ -322,11 +312,11 @@ mod test {
 			let data = PickN {
 				name: "Default Speed".into(),
 				options: options(),
-				selector: Selector::AnyOf {
-					id: IdPath::from("speedA"),
-					cannot_match: vec![],
-					amount: 1,
-					options: vec!["Climbing".into(), "Swimming".into()],
+				selector: selector::Value::Options {
+					id: "speedA".into(),
+					options: ["Climbing".into(), "Swimming".into()].into(),
+					amount: Value::Fixed(1),
+					is_applicable: None,
 				},
 			};
 			assert_eq_askdl!(&data, doc);
@@ -338,7 +328,6 @@ mod test {
 		fn with_cannot_match() -> anyhow::Result<()> {
 			let doc = "
 				|mutator \"pick\" 1 name=\"Default Speed\" id=\"speedA\" {
-				|    cannot-match \"speedB\"
 				|    option \"Climbing\" {
 				|        mutator \"speed\" \"Climbing\" (Base)15
 				|    }
@@ -351,11 +340,11 @@ mod test {
 			let data = PickN {
 				name: "Default Speed".into(),
 				options: options(),
-				selector: Selector::AnyOf {
-					id: IdPath::from("speedA"),
-					cannot_match: vec![IdPath::from("speedB")],
-					amount: 1,
-					options: vec!["Climbing".into(), "Swimming".into()],
+				selector: selector::Value::Options {
+					id: "speedA".into(),
+					options: ["Climbing".into(), "Swimming".into()].into(),
+					amount: Value::Fixed(1),
+					is_applicable: None,
 				},
 			};
 			assert_eq_askdl!(&data, doc);

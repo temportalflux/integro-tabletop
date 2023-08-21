@@ -4,12 +4,12 @@ use crate::{
 		character::{AbilityScoreBonus, Character},
 		description, Ability,
 	},
-	utility::{Mutator, Selector, SelectorMetaVec},
+	utility::{selector, Mutator},
 };
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AbilityScoreChange {
-	pub ability: Selector<Ability>,
+	pub ability: selector::Value<Character, Ability>,
 	pub operations: Vec<AbilityScoreOp>,
 }
 #[derive(Clone, Debug, PartialEq)]
@@ -29,18 +29,23 @@ crate::impl_kdl_node!(AbilityScoreChange, "ability_score");
 impl Mutator for AbilityScoreChange {
 	type Target = Character;
 
-	fn description(&self, _state: Option<&Character>) -> description::Section {
+	fn description(&self, state: Option<&Character>) -> description::Section {
 		let ability = match &self.ability {
-			Selector::Specific(ability) => format!("Your {} score", ability.long_name()),
-			Selector::Any { .. } => "One ability score of your choice".to_owned(),
-			Selector::AnyOf { options, .. } => format!(
-				"One ability score of {}",
-				options
-					.iter()
-					.map(Ability::long_name)
-					.collect::<Vec<_>>()
-					.join(", ")
-			),
+			selector::Value::Specific(ability) => format!("Your {} score", ability.long_name()),
+			selector::Value::Options { options, .. } => {
+				if options.is_empty() {
+					"One ability score of your choice".to_owned()
+				} else {
+					format!(
+						"One ability score of {}",
+						options
+							.iter()
+							.map(Ability::long_name)
+							.collect::<Vec<_>>()
+							.join(", ")
+					)
+				}
+			}
 		};
 		let op_descs = self
 			.operations
@@ -65,8 +70,8 @@ impl Mutator for AbilityScoreChange {
 		description::Section {
 			title: Some("Ability Score Increase".into()),
 			content: format!("{ability}; {}.", op_descs.join(", ")).into(),
-			children: vec![SelectorMetaVec::default()
-				.with_enum("Ability", &self.ability)
+			children: vec![selector::DataList::default()
+				.with_enum("Ability", &self.ability, state)
 				.into()],
 			..Default::default()
 		}
@@ -108,7 +113,7 @@ impl Mutator for AbilityScoreChange {
 
 impl FromKDL for AbilityScoreChange {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
-		let ability = node.query_req_t::<Selector<Ability>>("scope() > ability")?;
+		let ability = node.query_req_t("scope() > ability")?;
 		let mut operations = Vec::new();
 		for node in &mut node.query_all("scope() > bonus")? {
 			let value = node.next_i64_req()? as u32;
@@ -167,7 +172,9 @@ mod test {
 
 	mod kdl {
 		use super::*;
-		use crate::{kdl_ext::test_utils::*, system::dnd5e::mutator::test::test_utils};
+		use crate::{
+			kdl_ext::test_utils::*, system::dnd5e::mutator::test::test_utils, utility::Value,
+		};
 
 		test_utils!(AbilityScoreChange);
 
@@ -180,7 +187,7 @@ mod test {
 				|}
 			";
 			let data = AbilityScoreChange {
-				ability: Selector::Specific(Ability::Dexterity),
+				ability: selector::Value::Specific(Ability::Dexterity),
 				operations: vec![AbilityScoreOp::Bonus {
 					value: 2,
 					max_total_score: None,
@@ -200,37 +207,14 @@ mod test {
 				|}
 			";
 			let data = AbilityScoreChange {
-				ability: Selector::Any {
+				ability: selector::Value::Options {
 					id: Some("skillA").into(),
-					cannot_match: Default::default(),
+					amount: Value::Fixed(1),
+					options: [].into(),
+					is_applicable: None,
 				},
 				operations: vec![AbilityScoreOp::Bonus {
 					value: 1,
-					max_total_score: None,
-				}],
-			};
-			assert_eq_askdl!(&data, doc);
-			assert_eq_fromkdl!(Target, doc, data.into());
-			Ok(())
-		}
-
-		#[test]
-		fn cannot_match() -> anyhow::Result<()> {
-			let doc = "
-				|mutator \"ability_score\" {
-				|    ability \"Any\" id=\"skillA\" {
-				|        cannot-match \"skillB\"
-				|    }
-				|    bonus 3
-				|}
-			";
-			let data = AbilityScoreChange {
-				ability: Selector::Any {
-					id: Some("skillA").into(),
-					cannot_match: vec!["skillB".into()],
-				},
-				operations: vec![AbilityScoreOp::Bonus {
-					value: 3,
 					max_total_score: None,
 				}],
 			};
@@ -248,7 +232,7 @@ mod test {
 				|}
 			";
 			let data = AbilityScoreChange {
-				ability: Selector::Specific(Ability::Constitution),
+				ability: selector::Value::Specific(Ability::Constitution),
 				operations: vec![AbilityScoreOp::Bonus {
 					value: 3,
 					max_total_score: Some(12),
@@ -268,7 +252,7 @@ mod test {
 				|}
 			";
 			let data = AbilityScoreChange {
-				ability: Selector::Specific(Ability::Constitution),
+				ability: selector::Value::Specific(Ability::Constitution),
 				operations: vec![AbilityScoreOp::IncreaseMax { value: 24 }],
 			};
 			assert_eq_askdl!(&data, doc);
@@ -286,7 +270,7 @@ mod test {
 				|}
 			";
 			let data = AbilityScoreChange {
-				ability: Selector::Specific(Ability::Strength),
+				ability: selector::Value::Specific(Ability::Strength),
 				operations: vec![
 					AbilityScoreOp::Bonus {
 						value: 4,
@@ -309,7 +293,7 @@ mod test {
 				character::{AbilityScore, Character, Persistent},
 				Ability, Bundle,
 			},
-			utility::Selector,
+			utility::{selector, Value},
 		};
 
 		fn character(
@@ -338,7 +322,7 @@ mod test {
 			let character = character(
 				vec![(Ability::Strength, 10)],
 				vec![AbilityScoreChange {
-					ability: Selector::Specific(Ability::Strength),
+					ability: selector::Value::Specific(Ability::Strength),
 					operations: vec![AbilityScoreOp::Bonus {
 						value: 1,
 						max_total_score: None,
@@ -360,9 +344,11 @@ mod test {
 			let character = character(
 				vec![(Ability::Dexterity, 10)],
 				vec![AbilityScoreChange {
-					ability: Selector::Any {
+					ability: selector::Value::Options {
 						id: Default::default(),
-						cannot_match: Default::default(),
+						amount: Value::Fixed(1),
+						options: Default::default(),
+						is_applicable: Default::default(),
 					},
 					operations: vec![AbilityScoreOp::Bonus {
 						value: 5,
@@ -394,7 +380,7 @@ mod test {
 				bundles: vec![Bundle {
 					name: "AddAbilityScore".into(),
 					mutators: vec![AbilityScoreChange {
-						ability: Selector::Specific(Ability::Intelligence),
+						ability: selector::Value::Specific(Ability::Intelligence),
 						operations: vec![AbilityScoreOp::Bonus {
 							value: 3,
 							max_total_score: None,
@@ -465,7 +451,7 @@ mod test {
 			let character = character(
 				vec![(Ability::Strength, 10)],
 				vec![AbilityScoreChange {
-					ability: Selector::Specific(Ability::Strength),
+					ability: selector::Value::Specific(Ability::Strength),
 					operations: vec![AbilityScoreOp::Bonus {
 						value: 5,
 						max_total_score: Some(13),
@@ -487,7 +473,7 @@ mod test {
 			let character = character(
 				vec![(Ability::Strength, 18)],
 				vec![AbilityScoreChange {
-					ability: Selector::Specific(Ability::Strength),
+					ability: selector::Value::Specific(Ability::Strength),
 					operations: vec![
 						AbilityScoreOp::IncreaseMax { value: 24 },
 						AbilityScoreOp::Bonus {

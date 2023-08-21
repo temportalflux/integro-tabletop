@@ -2,7 +2,7 @@ use super::character::Character;
 use crate::{
 	kdl_ext::{AsKdl, DocumentExt, EntryExt, FromKDL, NodeBuilder, ValueExt},
 	system::dnd5e::BoxedEvaluator,
-	utility::{NotInList, SelectorMetaVec},
+	utility::{selector, NotInList},
 };
 use std::{
 	collections::{BTreeMap, HashMap},
@@ -27,7 +27,7 @@ pub struct Section {
 #[derive(Clone, PartialEq, Debug)]
 pub enum SectionContent {
 	Body(String),
-	Selectors(SelectorMetaVec),
+	Selectors(selector::DataList),
 	Table {
 		column_count: usize,
 		headers: Option<Vec<String>>,
@@ -189,8 +189,8 @@ impl Section {
 	}
 }
 
-impl From<SelectorMetaVec> for Section {
-	fn from(value: SelectorMetaVec) -> Self {
+impl From<selector::DataList> for Section {
+	fn from(value: selector::DataList) -> Self {
 		Self {
 			content: SectionContent::Selectors(value),
 			..Default::default()
