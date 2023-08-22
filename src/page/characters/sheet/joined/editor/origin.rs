@@ -642,46 +642,63 @@ fn SelectorField(
 		.unwrap_or_default();
 	let inner = match kind {
 		// TODO: Display a different UI if amount > 1
-		selector::Kind::StringEntry { amount: _, options } if options.is_empty() => {
-			let onchange = Callback::from({
-				let save_value = save_value.clone();
-				move |evt: web_sys::Event| {
-					let Some(value) = evt.input_value() else { return; };
-					save_value.emit((!value.is_empty()).then_some(value.into()));
+		selector::Kind::StringEntry {
+			amount: _,
+			options,
+			blocked_options,
+			cannot_match,
+		} => {
+			// Gather the list of all blocked options (both provided directly by the kind and via those that the picker is not allowed to match).
+			let mut blocked_options = blocked_options.clone();
+			blocked_options.extend(
+				cannot_match
+					.iter()
+					.filter_map(|data_path| state.get_first_selection(data_path).cloned()),
+			);
+
+			// No options means text field
+			if options.is_empty() {
+				let onchange = Callback::from({
+					let save_value = save_value.clone();
+					move |evt: web_sys::Event| {
+						let Some(value) = evt.input_value() else { return; };
+						save_value.emit((!value.is_empty()).then_some(value.into()));
+					}
+				});
+				html! {<input
+					class="form-control" type="text"
+					value={value.cloned().unwrap_or_default()}
+					{onchange}
+				/>}
+			}
+			// If we have explicit options, then this is a select / dropdown picker
+			else {
+				let onchange = Callback::from({
+					let save_value = save_value.clone();
+					move |evt: web_sys::Event| {
+						let Some(value) = evt.select_value() else { return; };
+						save_value.emit((!value.is_empty()).then_some(value.into()));
+					}
+				});
+				html! {
+					<select class="form-select" {onchange}>
+						<option
+							value=""
+							selected={value.is_none()}
+						>{"Select a value..."}</option>
+						{options.iter().map(|item| {
+							html! {
+								<option
+									value={item.clone()}
+									selected={value == Some(item)}
+									disabled={blocked_options.contains(item)}
+								>
+									{item.clone()}
+								</option>
+							}
+						}).collect::<Vec<_>>()}
+					</select>
 				}
-			});
-			html! {<input
-				class="form-control" type="text"
-				value={value.cloned().unwrap_or_default()}
-				{onchange}
-			/>}
-		}
-		// TODO: Display a different UI if amount > 1
-		selector::Kind::StringEntry { amount: _, options } => {
-			let onchange = Callback::from({
-				let save_value = save_value.clone();
-				move |evt: web_sys::Event| {
-					let Some(value) = evt.select_value() else { return; };
-					save_value.emit((!value.is_empty()).then_some(value.into()));
-				}
-			});
-			html! {
-				<select class="form-select" {onchange}>
-					<option
-						value=""
-						selected={value.is_none()}
-					>{"Select a value..."}</option>
-					{options.iter().map(|item| {
-						html! {
-							<option
-								value={item.clone()}
-								selected={value == Some(item)}
-							>
-								{item.clone()}
-							</option>
-						}
-					}).collect::<Vec<_>>()}
-				</select>
 			}
 		}
 		selector::Kind::Object {

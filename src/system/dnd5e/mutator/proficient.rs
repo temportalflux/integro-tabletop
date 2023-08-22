@@ -43,15 +43,19 @@ impl Mutator for AddProficiency {
 				level.as_display_name().to_lowercase(),
 				ability.long_name()
 			),
-			Self::Ability(selector::Value::Options { options, .. }, level)
-				if options.is_empty() =>
-			{
+			Self::Ability(
+				selector::Value::Options(selector::ValueOptions { options, .. }),
+				level,
+			) if options.is_empty() => {
 				format!(
 					"You are {} with all skill checks which use one ability of your choice.",
 					level.as_display_name().to_lowercase()
 				)
 			}
-			Self::Ability(selector::Value::Options { options, .. }, level) => format!(
+			Self::Ability(
+				selector::Value::Options(selector::ValueOptions { options, .. }),
+				level,
+			) => format!(
 				"You are {} with all skill checks which use one ability of: {}.",
 				level.as_display_name().to_lowercase(),
 				options
@@ -74,7 +78,7 @@ impl Mutator for AddProficiency {
 				skill.display_name()
 			),
 			Self::Skill {
-				skill: selector::Value::Options { options, .. },
+				skill: selector::Value::Options(selector::ValueOptions { options, .. }),
 				level,
 				minimum_level: _,
 			} if options.is_empty() => {
@@ -84,7 +88,7 @@ impl Mutator for AddProficiency {
 				)
 			}
 			Self::Skill {
-				skill: selector::Value::Options { options, .. },
+				skill: selector::Value::Options(selector::ValueOptions { options, .. }),
 				level,
 				minimum_level: _,
 			} => format!(
@@ -99,10 +103,14 @@ impl Mutator for AddProficiency {
 			Self::Language(selector::Value::Specific(lang)) => {
 				format!("You can speak, read, and write {lang}.")
 			}
-			Self::Language(selector::Value::Options { options, .. }) if options.is_empty() => {
+			Self::Language(selector::Value::Options(selector::ValueOptions {
+				options, ..
+			})) if options.is_empty() => {
 				format!("You can speak, read, and write one language of your choice.")
 			}
-			Self::Language(selector::Value::Options { options, .. }) => format!(
+			Self::Language(selector::Value::Options(selector::ValueOptions {
+				options, ..
+			})) => format!(
 				"You can speak, read, and write one language of: {}.",
 				options.iter().cloned().collect::<Vec<_>>().join(", ")
 			),
@@ -136,7 +144,7 @@ impl Mutator for AddProficiency {
 				)
 			}
 			Self::Tool {
-				tool: selector::Value::Options { options, .. },
+				tool: selector::Value::Options(selector::ValueOptions { options, .. }),
 				level,
 			} if options.is_empty() => {
 				format!(
@@ -145,7 +153,7 @@ impl Mutator for AddProficiency {
 				)
 			}
 			Self::Tool {
-				tool: selector::Value::Options { options, .. },
+				tool: selector::Value::Options(selector::ValueOptions { options, .. }),
 				level,
 			} => format!(
 				"You are {} with one tool of: {}.",
@@ -268,12 +276,13 @@ impl FromKDL for AddProficiency {
 					Some(str) => proficiency::Level::from_str(str)?,
 					None => proficiency::Level::None,
 				};
-				if minimum_level != proficiency::Level::None {
-					skill.set_is_applicable(move |skill, character| {
-						let active_level = *character.skills().proficiency(*skill).value();
-						active_level >= minimum_level && active_level < level
-					});
-				}
+				skill.set_is_applicable(move |skill, character| {
+					let active_level = *character.skills().proficiency(*skill).value();
+					if active_level < minimum_level {
+						return false;
+					}
+					active_level < level
+				});
 
 				Ok(Self::Skill {
 					skill,
@@ -376,9 +385,7 @@ mod test {
 
 	mod kdl {
 		use super::*;
-		use crate::{
-			kdl_ext::test_utils::*, system::dnd5e::mutator::test::test_utils, utility::Value,
-		};
+		use crate::{kdl_ext::test_utils::*, system::dnd5e::mutator::test::test_utils};
 
 		test_utils!(AddProficiency);
 
@@ -413,12 +420,10 @@ mod test {
 			let doc = "mutator \"add_proficiency\" \
 				(Ability)\"Any\" id=\"MutatorSelect\"";
 			let data = AddProficiency::Ability(
-				selector::Value::Options {
+				selector::Value::Options(selector::ValueOptions {
 					id: Some("MutatorSelect").into(),
-					options: Default::default(),
-					amount: Value::Fixed(1),
-					is_applicable: None,
-				},
+					..Default::default()
+				}),
 				proficiency::Level::Full,
 			);
 			assert_eq_askdl!(&data, doc);
@@ -466,12 +471,10 @@ mod test {
 		fn skill_any_nolevel() -> anyhow::Result<()> {
 			let doc = "mutator \"add_proficiency\" (Skill)\"Any\" id=\"MutatorSelect\"";
 			let data = AddProficiency::Skill {
-				skill: selector::Value::Options {
+				skill: selector::Value::Options(selector::ValueOptions {
 					id: Some("MutatorSelect").into(),
-					options: Default::default(),
-					amount: Value::Fixed(1),
-					is_applicable: None,
-				},
+					..Default::default()
+				}),
 				level: proficiency::Level::Full,
 				minimum_level: proficiency::Level::None,
 			};
@@ -484,12 +487,7 @@ mod test {
 		fn skill_any_nolevel_noid() -> anyhow::Result<()> {
 			let doc = "mutator \"add_proficiency\" (Skill)\"Any\"";
 			let data = AddProficiency::Skill {
-				skill: selector::Value::Options {
-					id: Default::default(),
-					options: Default::default(),
-					amount: Value::Fixed(1),
-					is_applicable: None,
-				},
+				skill: selector::Value::Options(selector::ValueOptions::default()),
 				level: proficiency::Level::Full,
 				minimum_level: proficiency::Level::None,
 			};
@@ -503,12 +501,10 @@ mod test {
 			let doc = "mutator \"add_proficiency\" \
 				(Skill)\"Any\" id=\"MutatorSelect\" level=\"HalfDown\"";
 			let data = AddProficiency::Skill {
-				skill: selector::Value::Options {
+				skill: selector::Value::Options(selector::ValueOptions {
 					id: Some("MutatorSelect").into(),
-					options: Default::default(),
-					amount: Value::Fixed(1),
-					is_applicable: None,
-				},
+					..Default::default()
+				}),
 				level: proficiency::Level::HalfDown,
 				minimum_level: proficiency::Level::None,
 			};
@@ -520,18 +516,17 @@ mod test {
 		#[test]
 		fn skill_anyof_nolevel() -> anyhow::Result<()> {
 			let doc = "
-				|mutator \"add_proficiency\" (Skill)\"AnyOf\" id=\"MutatorSelect\" {
-				|    option \"Insight\"
+				|mutator \"add_proficiency\" (Skill)\"Any\" id=\"MutatorSelect\" {
 				|    option \"AnimalHandling\"
+				|    option \"Insight\"
 				|}
 			";
 			let data = AddProficiency::Skill {
-				skill: selector::Value::Options {
+				skill: selector::Value::Options(selector::ValueOptions {
 					id: Some("MutatorSelect").into(),
 					options: [Skill::Insight, Skill::AnimalHandling].into(),
-					amount: Value::Fixed(1),
-					is_applicable: None,
-				},
+					..Default::default()
+				}),
 				level: proficiency::Level::Full,
 				minimum_level: proficiency::Level::None,
 			};
@@ -543,18 +538,16 @@ mod test {
 		#[test]
 		fn skill_anyof_withlevel_noid() -> anyhow::Result<()> {
 			let doc = "
-				|mutator \"add_proficiency\" (Skill)\"AnyOf\" level=\"Double\" {
-				|    option \"Insight\"
+				|mutator \"add_proficiency\" (Skill)\"Any\" level=\"Double\" {
 				|    option \"AnimalHandling\"
+				|    option \"Insight\"
 				|}
 			";
 			let data = AddProficiency::Skill {
-				skill: selector::Value::Options {
-					id: Default::default(),
+				skill: selector::Value::Options(selector::ValueOptions {
 					options: [Skill::Insight, Skill::AnimalHandling].into(),
-					amount: Value::Fixed(1),
-					is_applicable: None,
-				},
+					..Default::default()
+				}),
 				level: proficiency::Level::Double,
 				minimum_level: proficiency::Level::None,
 			};
@@ -575,12 +568,9 @@ mod test {
 		#[test]
 		fn language_any() -> anyhow::Result<()> {
 			let doc = "mutator \"add_proficiency\" (Language)\"Any\"";
-			let data = AddProficiency::Language(selector::Value::Options {
-				id: Default::default(),
-				options: Default::default(),
-				amount: Value::Fixed(1),
-				is_applicable: None,
-			});
+			let data = AddProficiency::Language(selector::Value::Options(
+				selector::ValueOptions::default(),
+			));
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -589,17 +579,15 @@ mod test {
 		#[test]
 		fn language_anyof() -> anyhow::Result<()> {
 			let doc = "
-				|mutator \"add_proficiency\" (Language)\"AnyOf\" {
+				|mutator \"add_proficiency\" (Language)\"Any\" {
 				|    option \"Dwarven\"
 				|    option \"Giant\"
 				|}
 			";
-			let data = AddProficiency::Language(selector::Value::Options {
-				id: Default::default(),
+			let data = AddProficiency::Language(selector::Value::Options(selector::ValueOptions {
 				options: ["Dwarven".into(), "Giant".into()].into(),
-				amount: Value::Fixed(1),
-				is_applicable: None,
-			});
+				..Default::default()
+			}));
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -678,12 +666,7 @@ mod test {
 		fn tool_any() -> anyhow::Result<()> {
 			let doc = "mutator \"add_proficiency\" (Tool)\"Any\"";
 			let data = AddProficiency::Tool {
-				tool: selector::Value::Options {
-					id: Default::default(),
-					options: Default::default(),
-					amount: Value::Fixed(1),
-					is_applicable: None,
-				},
+				tool: selector::Value::Options(selector::ValueOptions::default()),
 				level: proficiency::Level::Full,
 			};
 			assert_eq_askdl!(&data, doc);
@@ -694,19 +677,17 @@ mod test {
 		#[test]
 		fn tool_anyof() -> anyhow::Result<()> {
 			let doc = "
-				|mutator \"add_proficiency\" (Tool)\"AnyOf\" {
+				|mutator \"add_proficiency\" (Tool)\"Any\" {
 				|    option \"Dice set\"
-				|    option \"Playing card set\"
 				|    option \"Flute\"
+				|    option \"Playing card set\"
 				|}
 			";
 			let data = AddProficiency::Tool {
-				tool: selector::Value::Options {
-					id: Default::default(),
+				tool: selector::Value::Options(selector::ValueOptions {
 					options: ["Dice set".into(), "Playing card set".into(), "Flute".into()].into(),
-					amount: Value::Fixed(1),
-					is_applicable: None,
-				},
+					..Default::default()
+				}),
 				level: proficiency::Level::Full,
 			};
 			assert_eq_askdl!(&data, doc);
@@ -723,7 +704,6 @@ mod test {
 				character::{AttributedValue, Character, Persistent},
 				Bundle,
 			},
-			utility::Value,
 		};
 		use std::path::PathBuf;
 
@@ -810,12 +790,10 @@ mod test {
 		#[test]
 		fn language_any() {
 			let character = character(
-				AddProficiency::Language(selector::Value::Options {
+				AddProficiency::Language(selector::Value::Options(selector::ValueOptions {
 					id: Some("langTest").into(),
-					options: Default::default(),
-					amount: Value::Fixed(1),
-					is_applicable: None,
-				}),
+					..Default::default()
+				})),
 				Some([("AddProficiency/langTest", "Gibberish".into())].into()),
 			);
 			assert_eq!(

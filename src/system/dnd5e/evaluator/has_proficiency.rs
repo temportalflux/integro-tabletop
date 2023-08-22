@@ -234,10 +234,11 @@ mod test {
 		#[test]
 		fn skill() {
 			let empty = Character::from(Persistent::default());
-			let with_prof = character_with_profs(vec![AddProficiency::Skill(
-				selector::Value::Specific(Skill::SleightOfHand),
-				proficiency::Level::Full,
-			)]);
+			let with_prof = character_with_profs(vec![AddProficiency::Skill {
+				skill: selector::Value::Specific(Skill::SleightOfHand),
+				minimum_level: proficiency::Level::None,
+				level: proficiency::Level::Full,
+			}]);
 			let eval = IsProficientWith::Skill(Skill::SleightOfHand);
 			assert_eq!(eval.evaluate(&empty), false);
 			assert_eq!(eval.evaluate(&with_prof), true);
@@ -307,9 +308,10 @@ mod test {
 		#[test]
 		fn tool() {
 			let empty = Character::from(Persistent::default());
-			let with_prof = character_with_profs(vec![AddProficiency::Tool(
-				selector::Value::Specific("Workworking Tools".into()),
-			)]);
+			let with_prof = character_with_profs(vec![AddProficiency::Tool {
+				tool: selector::Value::Specific("Workworking Tools".into()),
+				level: proficiency::Level::Full,
+			}]);
 			let eval = IsProficientWith::Tool("Workworking Tools".into());
 			assert_eq!(eval.evaluate(&empty), false);
 			assert_eq!(eval.evaluate(&with_prof), true);

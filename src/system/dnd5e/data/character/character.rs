@@ -191,6 +191,14 @@ impl Character {
 			*/
 			entry.mutator.apply(self, &entry.parent_path);
 		}
+		if !self.mutators.is_empty() {
+			log::warn!(target: "character",
+				"Additional mutators were added during the application phase. \
+				In order to preserve mutator dependency chain integrity, \
+				all mutators should be added during the insertion phase (on_insert).\n\n{:?}",
+				self.mutators
+			);
+		}
 	}
 
 	pub fn get_selections_at(&self, path: impl AsRef<Path>) -> Option<&Vec<String>> {

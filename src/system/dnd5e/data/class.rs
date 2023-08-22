@@ -32,12 +32,10 @@ impl Default for Class {
 			name: Default::default(),
 			description: Default::default(),
 			hit_die: Default::default(),
-			hit_die_selector: selector::Value::Options {
+			hit_die_selector: selector::Value::Options(selector::ValueOptions {
 				id: "hit_die".into(),
-				options: Default::default(),
-				amount: Value::Fixed(1),
-				is_applicable: None,
-			},
+				..Default::default()
+			}),
 			current_level: Default::default(),
 			mutators: Default::default(),
 			levels: Default::default(),
@@ -190,12 +188,10 @@ pub struct Level {
 impl Default for Level {
 	fn default() -> Self {
 		Self {
-			hit_points: selector::Value::Options {
+			hit_points: selector::Value::Options(selector::ValueOptions {
 				id: "hit_points".into(),
-				options: Default::default(),
-				amount: Value::Fixed(1),
-				is_applicable: None,
-			},
+				..Default::default()
+			}),
 			mutators: Default::default(),
 		}
 	}
@@ -209,12 +205,10 @@ impl Level {
 
 impl FromKDL for Level {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
-		let hit_points = selector::Value::Options {
+		let hit_points = selector::Value::Options(selector::ValueOptions {
 			id: "hit_points".into(),
-			options: Default::default(),
-			amount: Value::Fixed(1),
-			is_applicable: None,
-		};
+			..Default::default()
+		});
 
 		let mutators = node.query_all_t("scope() > mutator")?;
 

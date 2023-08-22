@@ -32,7 +32,7 @@ impl Mutator for AbilityScoreChange {
 	fn description(&self, state: Option<&Character>) -> description::Section {
 		let ability = match &self.ability {
 			selector::Value::Specific(ability) => format!("Your {} score", ability.long_name()),
-			selector::Value::Options { options, .. } => {
+			selector::Value::Options(selector::ValueOptions { options, .. }) => {
 				if options.is_empty() {
 					"One ability score of your choice".to_owned()
 				} else {
@@ -172,9 +172,7 @@ mod test {
 
 	mod kdl {
 		use super::*;
-		use crate::{
-			kdl_ext::test_utils::*, system::dnd5e::mutator::test::test_utils, utility::Value,
-		};
+		use crate::{kdl_ext::test_utils::*, system::dnd5e::mutator::test::test_utils};
 
 		test_utils!(AbilityScoreChange);
 
@@ -207,12 +205,10 @@ mod test {
 				|}
 			";
 			let data = AbilityScoreChange {
-				ability: selector::Value::Options {
+				ability: selector::Value::Options(selector::ValueOptions {
 					id: Some("skillA").into(),
-					amount: Value::Fixed(1),
-					options: [].into(),
-					is_applicable: None,
-				},
+					..Default::default()
+				}),
 				operations: vec![AbilityScoreOp::Bonus {
 					value: 1,
 					max_total_score: None,
@@ -293,7 +289,7 @@ mod test {
 				character::{AbilityScore, Character, Persistent},
 				Ability, Bundle,
 			},
-			utility::{selector, Value},
+			utility::selector,
 		};
 
 		fn character(
@@ -344,12 +340,7 @@ mod test {
 			let character = character(
 				vec![(Ability::Dexterity, 10)],
 				vec![AbilityScoreChange {
-					ability: selector::Value::Options {
-						id: Default::default(),
-						amount: Value::Fixed(1),
-						options: Default::default(),
-						is_applicable: Default::default(),
-					},
+					ability: selector::Value::Options(selector::ValueOptions::default()),
 					operations: vec![AbilityScoreOp::Bonus {
 						value: 5,
 						max_total_score: None,

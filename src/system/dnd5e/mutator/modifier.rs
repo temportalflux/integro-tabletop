@@ -28,60 +28,73 @@ impl Mutator for AddModifier {
 
 	fn description(&self, state: Option<&Character>) -> description::Section {
 		let mut desc = format!("You have {} on ", self.modifier.display_name());
-		let kind_desc = match &self.kind {
-			ModifierKind::Ability(selector::Value::Specific(ability)) => {
-				format!("{} checks", ability.long_name())
-			}
-			ModifierKind::Ability(selector::Value::Options { options, .. })
-				if options.is_empty() =>
-			{
-				format!("any single ability check")
-			}
-			ModifierKind::Ability(selector::Value::Options { options, .. }) => format!(
-				"any single ability check (of: {})",
-				options
-					.iter()
-					.map(Ability::long_name)
-					.collect::<Vec<_>>()
-					.join(", ")
-			),
-			ModifierKind::SavingThrow(None) => format!("saving throws"),
-			ModifierKind::SavingThrow(Some(selector::Value::Specific(ability))) => {
-				format!("{} saving throws", ability.long_name(),)
-			}
-			ModifierKind::SavingThrow(Some(selector::Value::Options { options, .. }))
-				if options.is_empty() =>
-			{
-				format!("any single ability saving throw")
-			}
-			ModifierKind::SavingThrow(Some(selector::Value::Options { options, .. })) => format!(
-				"any single ability saving throw (of: {})",
-				options
-					.iter()
-					.map(Ability::long_name)
-					.collect::<Vec<_>>()
-					.join(", ")
-			),
-			ModifierKind::Skill(selector::Value::Specific(skill)) => format!(
-				"{} ({}) checks",
-				skill.ability().long_name(),
-				skill.display_name()
-			),
-			ModifierKind::Skill(selector::Value::Options { options, .. }) if options.is_empty() => {
-				format!("any single ability skill check")
-			}
-			ModifierKind::Skill(selector::Value::Options { options, .. }) => format!(
-				"any single ability skill check (of: {})",
-				options
-					.iter()
-					.map(Skill::display_name)
-					.collect::<Vec<_>>()
-					.join(", ")
-			),
-			ModifierKind::Initiative => {
-				format!("initiative checks")
-			}
-		};
+		let kind_desc =
+			match &self.kind {
+				ModifierKind::Ability(selector::Value::Specific(ability)) => {
+					format!("{} checks", ability.long_name())
+				}
+				ModifierKind::Ability(selector::Value::Options(selector::ValueOptions {
+					options,
+					..
+				})) if options.is_empty() => {
+					format!("any single ability check")
+				}
+				ModifierKind::Ability(selector::Value::Options(selector::ValueOptions {
+					options,
+					..
+				})) => format!(
+					"any single ability check (of: {})",
+					options
+						.iter()
+						.map(Ability::long_name)
+						.collect::<Vec<_>>()
+						.join(", ")
+				),
+				ModifierKind::SavingThrow(None) => format!("saving throws"),
+				ModifierKind::SavingThrow(Some(selector::Value::Specific(ability))) => {
+					format!("{} saving throws", ability.long_name(),)
+				}
+				ModifierKind::SavingThrow(Some(selector::Value::Options(
+					selector::ValueOptions { options, .. },
+				))) if options.is_empty() => {
+					format!("any single ability saving throw")
+				}
+				ModifierKind::SavingThrow(Some(selector::Value::Options(
+					selector::ValueOptions { options, .. },
+				))) => format!(
+					"any single ability saving throw (of: {})",
+					options
+						.iter()
+						.map(Ability::long_name)
+						.collect::<Vec<_>>()
+						.join(", ")
+				),
+				ModifierKind::Skill(selector::Value::Specific(skill)) => format!(
+					"{} ({}) checks",
+					skill.ability().long_name(),
+					skill.display_name()
+				),
+				ModifierKind::Skill(selector::Value::Options(selector::ValueOptions {
+					options,
+					..
+				})) if options.is_empty() => {
+					format!("any single ability skill check")
+				}
+				ModifierKind::Skill(selector::Value::Options(selector::ValueOptions {
+					options,
+					..
+				})) => format!(
+					"any single ability skill check (of: {})",
+					options
+						.iter()
+						.map(Skill::display_name)
+						.collect::<Vec<_>>()
+						.join(", ")
+				),
+				ModifierKind::Initiative => {
+					format!("initiative checks")
+				}
+			};
 		desc.push_str(&kind_desc);
 		if let Some(ctx) = &self.context {
 			desc.push_str(match &self.kind {
@@ -230,9 +243,7 @@ mod test {
 
 	mod kdl {
 		use super::*;
-		use crate::{
-			kdl_ext::test_utils::*, system::dnd5e::mutator::test::test_utils, utility::Value,
-		};
+		use crate::{kdl_ext::test_utils::*, system::dnd5e::mutator::test::test_utils};
 
 		test_utils!(AddModifier);
 
@@ -253,7 +264,7 @@ mod test {
 		#[test]
 		fn ability_anyof_ctx() -> anyhow::Result<()> {
 			let doc = "
-				|mutator \"add_modifier\" \"Advantage\" (Ability)\"AnyOf\" context=\"which use smell\" {
+				|mutator \"add_modifier\" \"Advantage\" (Ability)\"Any\" context=\"which use smell\" {
 				|    option \"Strength\"
 				|    option \"Wisdom\"
 				|}
@@ -261,12 +272,10 @@ mod test {
 			let data = AddModifier {
 				modifier: roll::Modifier::Advantage,
 				context: Some("which use smell".into()),
-				kind: ModifierKind::Ability(selector::Value::Options {
-					id: Default::default(),
+				kind: ModifierKind::Ability(selector::Value::Options(selector::ValueOptions {
 					options: [Ability::Strength, Ability::Wisdom].into(),
-					amount: Value::Fixed(1),
-					is_applicable: None,
-				}),
+					..Default::default()
+				})),
 			};
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
@@ -293,12 +302,9 @@ mod test {
 			let data = AddModifier {
 				modifier: roll::Modifier::Advantage,
 				context: None,
-				kind: ModifierKind::SavingThrow(Some(selector::Value::Options {
-					id: Default::default(),
-					options: Default::default(),
-					amount: Value::Fixed(1),
-					is_applicable: None,
-				})),
+				kind: ModifierKind::SavingThrow(Some(selector::Value::Options(
+					selector::ValueOptions::default(),
+				))),
 			};
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());

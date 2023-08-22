@@ -1,6 +1,5 @@
-use enumset::EnumSetType;
-
 use crate::database::app::Criteria;
+use enumset::EnumSetType;
 use std::{collections::BTreeSet, path::PathBuf};
 
 #[derive(Clone, PartialEq, Debug)]
@@ -15,6 +14,8 @@ pub enum Kind {
 	StringEntry {
 		amount: usize,
 		options: BTreeSet<String>,
+		blocked_options: BTreeSet<String>,
+		cannot_match: Vec<PathBuf>,
 	},
 	Object {
 		amount: usize,

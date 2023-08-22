@@ -40,12 +40,10 @@ impl Default for UseCounterData {
 		Self {
 			max_uses: Value::Fixed(0),
 			reset_on: None,
-			uses_count: selector::Value::Options {
+			uses_count: selector::Value::Options(selector::ValueOptions {
 				id: "uses_consumed".into(),
-				options: Default::default(),
-				amount: Value::Fixed(1),
-				is_applicable: None,
-			},
+				..Default::default()
+			}),
 		}
 	}
 }

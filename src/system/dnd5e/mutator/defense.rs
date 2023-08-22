@@ -74,9 +74,10 @@ impl Mutator for AddDefense {
 				None => "all".to_owned(),
 				Some(selector::Value::Specific(damage_type)) =>
 					damage_type.display_name().to_owned(),
-				Some(selector::Value::Options { options, .. }) if options.is_empty() =>
+				Some(selector::Value::Options(selector::ValueOptions { options, .. }))
+					if options.is_empty() =>
 					"any single type of".to_owned(),
-				Some(selector::Value::Options { options, .. }) => {
+				Some(selector::Value::Options(selector::ValueOptions { options, .. })) => {
 					let options = options.iter().map(DamageType::to_string).collect();
 					list_as_english(options, "or").unwrap_or_default()
 				}
@@ -151,9 +152,7 @@ mod test {
 
 	mod kdl {
 		use super::*;
-		use crate::{
-			kdl_ext::test_utils::*, system::dnd5e::mutator::test::test_utils, utility::Value,
-		};
+		use crate::{kdl_ext::test_utils::*, system::dnd5e::mutator::test::test_utils};
 
 		test_utils!(AddDefense);
 
@@ -190,12 +189,7 @@ mod test {
 			let doc = "mutator \"add_defense\" \"Resistance\" (DamageType)\"Any\"";
 			let data = AddDefense {
 				defense: Defense::Resistance,
-				damage_type: Some(selector::Value::Options {
-					id: Default::default(),
-					options: Default::default(),
-					amount: Value::Fixed(1),
-					is_applicable: None,
-				}),
+				damage_type: Some(selector::Value::Options(selector::ValueOptions::default())),
 				context: None,
 			};
 			assert_eq_askdl!(&data, doc);
@@ -206,19 +200,17 @@ mod test {
 		#[test]
 		fn any_of() -> anyhow::Result<()> {
 			let doc = "
-				|mutator \"add_defense\" \"Resistance\" (DamageType)\"AnyOf\" {
+				|mutator \"add_defense\" \"Resistance\" (DamageType)\"Any\" {
 				|    option \"Fire\"
 				|    option \"Force\"
 				|}
 			";
 			let data = AddDefense {
 				defense: Defense::Resistance,
-				damage_type: Some(selector::Value::Options {
-					id: Default::default(),
+				damage_type: Some(selector::Value::Options(selector::ValueOptions {
 					options: [DamageType::Fire, DamageType::Force].into(),
-					amount: Value::Fixed(1),
-					is_applicable: None,
-				}),
+					..Default::default()
+				})),
 				context: None,
 			};
 			assert_eq_askdl!(&data, doc);

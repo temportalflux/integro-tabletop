@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
+	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
 	system::dnd5e::{
 		data::{character::Character, description},
 		BoxedMutator,
@@ -28,19 +28,19 @@ crate::impl_trait_eq!(PickN);
 crate::impl_kdl_node!(PickN, "pick");
 
 impl PickN {
-	fn id(&self) -> Option<&String> {
-		let selector::Value::Options { id, .. } = &self.selector else { return None; };
+	fn id(&self) -> Option<std::borrow::Cow<'_, String>> {
+		let selector::Value::Options(selector::ValueOptions { id, .. }) = &self.selector else { return None; };
 		id.get_id()
 	}
 
 	fn max_selections(&self) -> usize {
-		let selector::Value::Options { amount, .. } = &self.selector else { return 0; };
+		let selector::Value::Options(selector::ValueOptions { amount, .. }) = &self.selector else { return 0; };
 		let crate::utility::Value::Fixed(amt) = amount else { return 0; };
 		*amt as usize
 	}
 
 	fn option_order(&self) -> Option<&BTreeSet<String>> {
-		let selector::Value::Options { options, .. } = &self.selector else { return None; };
+		let selector::Value::Options(selector::ValueOptions { options, .. }) = &self.selector else { return None; };
 		Some(options)
 	}
 
@@ -123,7 +123,7 @@ impl Mutator for PickN {
 		}
 	}
 
-	fn apply(&self, stats: &mut Self::Target, parent: &std::path::Path) {
+	fn on_insert(&self, stats: &mut Self::Target, parent: &std::path::Path) {
 		let Some(data_path) = self.selector.get_data_path() else { return; };
 		let selected_options = {
 			let Some(selections) = stats.get_selections_at(&data_path) else { return; };
@@ -150,6 +150,11 @@ impl FromKDL for PickN {
 			None => name.clone(),
 		};
 
+		let mut cannot_match = Vec::new();
+		for path_str in node.query_str_all("scope() > cannot_match", 0)? {
+			cannot_match.push(path_str.into());
+		}
+
 		let mut options = HashMap::new();
 		for node in &mut node.query_all("scope() > option")? {
 			let name = node.next_str_req()?.to_owned();
@@ -164,12 +169,13 @@ impl FromKDL for PickN {
 			);
 		}
 
-		let selector = selector::Value::Options {
+		let selector = selector::Value::Options(selector::ValueOptions {
 			id: selector::IdPath::from(Some(id.clone())),
 			amount: crate::utility::Value::Fixed(max_selections as i32),
 			options: options.keys().cloned().sorted().collect(),
+			cannot_match,
 			is_applicable: None,
-		};
+		});
 
 		Ok(Self {
 			name,
@@ -188,8 +194,17 @@ impl AsKdl for PickN {
 
 		node.push_entry(("name", self.name.clone()));
 		if let Some(id) = self.id() {
-			if id != &self.name {
-				node.push_entry(("id", id.clone()));
+			if *id != self.name {
+				node.push_entry(("id", id.into_owned()));
+			}
+		}
+
+		if let selector::Value::Options(selector::ValueOptions { cannot_match, .. }) =
+			&self.selector
+		{
+			for id_path in cannot_match {
+				let Some(id_str) = id_path.get_id() else { continue; };
+				node.push_child_entry("cannot_match", id_str.into_owned());
 			}
 		}
 
@@ -225,7 +240,6 @@ mod test {
 					mutator::{test::test_utils, Speed},
 				},
 			},
-			utility::Value,
 		};
 
 		test_utils!(PickN, node_reg());
@@ -287,12 +301,11 @@ mod test {
 				name: "Default Speed".into(),
 				id: "Default Speed".into(),
 				options: options(),
-				selector: selector::Value::Options {
+				selector: selector::Value::Options(selector::ValueOptions {
 					id: "Default Speed".into(),
 					options: ["Climbing".into(), "Swimming".into()].into(),
-					amount: Value::Fixed(1),
-					is_applicable: None,
-				},
+					..Default::default()
+				}),
 			};
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
@@ -316,12 +329,11 @@ mod test {
 				name: "Default Speed".into(),
 				id: "speedA".into(),
 				options: options(),
-				selector: selector::Value::Options {
+				selector: selector::Value::Options(selector::ValueOptions {
 					id: "speedA".into(),
 					options: ["Climbing".into(), "Swimming".into()].into(),
-					amount: Value::Fixed(1),
-					is_applicable: None,
-				},
+					..Default::default()
+				}),
 			};
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
@@ -332,6 +344,7 @@ mod test {
 		fn with_cannot_match() -> anyhow::Result<()> {
 			let doc = "
 				|mutator \"pick\" 1 name=\"Default Speed\" id=\"speedA\" {
+				|    cannot_match \"/RootFeature/some_value\"
 				|    option \"Climbing\" {
 				|        mutator \"speed\" \"Climbing\" (Base)15
 				|    }
@@ -345,12 +358,12 @@ mod test {
 				name: "Default Speed".into(),
 				id: "speedA".into(),
 				options: options(),
-				selector: selector::Value::Options {
+				selector: selector::Value::Options(selector::ValueOptions {
 					id: "speedA".into(),
 					options: ["Climbing".into(), "Swimming".into()].into(),
-					amount: Value::Fixed(1),
-					is_applicable: None,
-				},
+					cannot_match: ["/RootFeature/some_value".into()].into(),
+					..Default::default()
+				}),
 			};
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
