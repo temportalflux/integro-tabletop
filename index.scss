@@ -28,6 +28,9 @@ body {
 .dropdown-item.disabled, .dropdown-item:disabled {
 	color: #adb5bd75;
 }
+option:disabled {
+	color: var(--bs-gray-600);
+}
 
 // Scroll Bar
 ::-webkit-scrollbar {
