@@ -14,7 +14,7 @@ use crate::{
 					spellcasting::{CasterKind, RitualCapability, SpellEntry},
 					MAX_SPELL_RANK,
 				},
-				proficiency, spell, Spell,
+				proficiency, spell::{self, DurationKind}, Spell, AreaOfEffect,
 			},
 			DnD5e,
 		},
@@ -422,30 +422,16 @@ fn spell_section<'c>(
 	let contents = match section_props.spells.is_empty() {
 		true => html! { <p class="empty-note mx-4">{empty_note}</p> },
 		false => {
-			html! {
-				<table class="table table-compact mx-auto">
-					<thead>
-						<tr style="font-size: 11px;">
-							<th scope="col"></th>
-							<th scope="col">{"Name"}</th>
-							<th scope="col">{"Time"}</th>
-							<th scope="col">{"Range"}</th>
-							<th scope="col">{"Hit / DC"}</th>
-							<th scope="col">{"Effect"}</th>
-						</tr>
-					</thead>
-					<tbody>
-						{section_props.spells.into_iter().map(|section_spell| {
-							spell_row(SpellRowProps {
-								state,
-								section_rank: rank,
-								slots: section_props.slot_count,
-								section_spell,
-							})
-						}).collect::<Vec<_>>()}
-					</tbody>
-				</table>
-			}
+			html! {<>
+				{section_props.spells.into_iter().map(|section_spell| {
+					spell_row(SpellRowProps {
+						state,
+						section_rank: rank,
+						slots: section_props.slot_count,
+						section_spell,
+					})
+				}).collect::<Vec<_>>()}
+			</>}
 		}
 	};
 	html! {
@@ -535,13 +521,13 @@ fn spell_row<'c>(props: SpellRowProps<'c>) -> Html {
 	// TODO: Tooltips for ritual & concentration icons
 	html! {
 		<SpellModalRowRoot {location}>
-			<td onclick={stop_propagation()}>
-				<div class="d-inline-flex align-items-center justify-content-center w-100">
-					<UseSpellButton kind={use_kind} />
-				</div>
-			</td>
-			<td>
-				<div>
+
+			<div class="cast-button" onclick={stop_propagation()}>
+				<UseSpellButton kind={use_kind} />
+			</div>
+
+			<div class="name-and-source">
+				<div class="name-row">
 					{&spell.name}
 					{can_ritual_cast.then(|| html!(
 						<Glyph tag="div" classes={"ritual ms-1"} />
@@ -554,68 +540,111 @@ fn spell_row<'c>(props: SpellRowProps<'c>) -> Html {
 					{crate::data::as_feature_path_text(&entry.source)}
 					{src_text_suffix.unwrap_or_default()}
 				</div>
-			</td>
-			<td>
-				{match &spell.casting_time.duration {
-					CastingDuration::Action => html!("1A"),
-					CastingDuration::Bonus => html!("1BA"),
-					CastingDuration::Reaction(_trigger) => html!("1R"),
-					CastingDuration::Unit(amt, kind) => html!{<>{amt}{kind.chars().next().unwrap()}</>},
-				}}
-			</td>
-			<td>
-				{match entry.range.as_ref().unwrap_or(&spell.range) {
-					spell::Range::OnlySelf => html!("Self"),
-					spell::Range::Touch => html!("Touch"),
-					spell::Range::Unit { distance, unit } => html! {<>{distance}{" "}{unit}</>},
-					spell::Range::Sight => html!("Sight"),
-					spell::Range::Unlimited => html!("Unlimited"),
-				}}
-			</td>
-			<td>
-				{match &spell.check {
-					None => html!("--"),
-					Some(spell::Check::AttackRoll(_atk_kind)) => {
-						let modifier = state.ability_modifier(entry.ability, Some(proficiency::Level::Full));
-						html!(format!("{modifier:+}"))
-					}
-					Some(spell::Check::SavingThrow(ability, fixed_dc)) => {
-						let abb_name = ability.abbreviated_name().to_case(Case::Upper);
-						match fixed_dc {
-							Some(dc) => html!(format!("{abb_name} {dc}")),
-							None => {
-								let modifier = state.ability_modifier(entry.ability, Some(proficiency::Level::Full));
-								let dc = 8 + modifier;
-								html!(format!("{abb_name} {dc}"))
-							}
+			</div>
+			
+			<div class="attributes">
+				<div class="attribute-row">
+					<span class="attribute">
+						<span class="label">{"Casting Time:"}</span>
+						{match &spell.casting_time.duration {
+							CastingDuration::Action => html!("Action"),
+							CastingDuration::Bonus => html!("Bonus Action"),
+							CastingDuration::Reaction(_trigger) => html!("Reaction"),
+							CastingDuration::Unit(amt, kind) => html!{<>{amt} {kind}</>},
+						}}
+					</span>
+					{match &spell.duration.kind {
+						DurationKind::Special => html!(),
+						DurationKind::Instantaneous => html! {
+							<span class="attribute">
+								<span class="label">{"Duration:"}</span>
+								{"Instant"}
+							</span>
+						},
+						DurationKind::Unit(amt, kind) => html! {
+							<span class="attribute">
+								<span class="label">{"Duration:"}</span>
+								{amt}{" "}{kind}
+							</span>
+						},
+					}}
+					<span class="attribute">
+						<span class="label">{"Range:"}</span>
+						{match entry.range.as_ref().unwrap_or(&spell.range) {
+							spell::Range::OnlySelf => html!("Self"),
+							spell::Range::Touch => html!("Touch"),
+							spell::Range::Unit { distance, unit } => html! {<>{distance}{" "}{unit}</>},
+							spell::Range::Sight => html!("Sight"),
+							spell::Range::Unlimited => html!("Unlimited"),
+						}}
+					</span>
+				</div>
+				<div class="attribute-row">
+					{match &spell.check {
+						None => html!(),
+						Some(spell::Check::AttackRoll(_atk_kind)) => {
+							let modifier = state.ability_modifier(entry.ability, Some(proficiency::Level::Full));
+							html! {<span class="attribute">
+								<span class="label">{"Atk Roll:"}</span>
+								{format!("{modifier:+}")}
+							</span>}
 						}
-					}
-				}}
-			</td>
-			<td>
-				{match &spell.damage {
-					None => html!("--"),
-					Some(damage) => {
-						let modifier = state.ability_modifier(entry.ability, Some(proficiency::Level::Full));
-						let upcast_amt = section_rank - spell.rank;
-						let (roll_set, bonus) = damage.evaluate(&*state, modifier, upcast_amt as u32);
-						let mut spans = roll_set.rolls().into_iter().enumerate().map(|(idx, roll)| {
-							html! {
-								<span>
-									{(idx != 0).then(|| html!("+")).unwrap_or_default()}
-									{roll.to_string()}
-								</span>
-							}
-						}).collect::<Vec<_>>();
-						if bonus != 0 {
-							spans.push(html! {
-								<span>{format!("{bonus:+}")}</span>
-							});
+						Some(spell::Check::SavingThrow(ability, fixed_dc)) => {
+							let abb_name = ability.abbreviated_name().to_case(Case::Upper);
+							let dc = match fixed_dc {
+								Some(dc) => *dc as i32,
+								None => {
+									let modifier = state.ability_modifier(entry.ability, Some(proficiency::Level::Full));
+									8 + modifier
+								}
+							};
+							html! {<span class="attribute">
+								<span class="label">{"Save DC:"}</span>
+								{format!("{abb_name} {dc}")}
+							</span>}
 						}
-						html! {<>{spans}</>}
-					}
-				}}
-			</td>
+					}}
+					{match &spell.damage {
+						None => html!(),
+						Some(damage) => {
+							let modifier = state.ability_modifier(entry.ability, Some(proficiency::Level::Full));
+							let upcast_amt = section_rank - spell.rank;
+							let (roll_set, bonus) = damage.evaluate(&*state, modifier, upcast_amt as u32);
+							let mut spans = roll_set.rolls().into_iter().enumerate().map(|(idx, roll)| {
+								html! {
+									<span>
+										{(idx != 0).then(|| html!("+")).unwrap_or_default()}
+										{roll.to_string()}
+									</span>
+								}
+							}).collect::<Vec<_>>();
+							if bonus != 0 {
+								spans.push(html! {
+									<span>{format!("{bonus:+}")}</span>
+								});
+							}
+							// TODO: DamageType glyph `damage.damage_type`
+							html! {<span class="attribute">
+								<span class="label">{"Damage:"}</span>
+								{spans}
+							</span>}
+						}
+					}}
+					{match &spell.area_of_effect {
+						None => html!(),
+						Some(area_of_effect) => html! {<span class="attribute">
+							<span class="label">{"Area of Effect:"}</span>
+							{match area_of_effect {
+								AreaOfEffect::Cone { length } => html!{<>{length}{"ft. Cone"}</>},
+								AreaOfEffect::Cube { size } => html!{<>{size}{"ft. Cube"}</>},
+								AreaOfEffect::Cylinder { radius, height } => html!{<>{radius}{"ft. x "}{height}{"ft. Cylinder"}</>},
+								AreaOfEffect::Line { width, length } => html!{<>{width}{"ft. x "}{length}{"ft. Line"}</>},
+								AreaOfEffect::Sphere { radius } => html!{<>{radius}{"ft. Sphere"}</>},
+							}}
+						</span>}
+					}}
+				</div>
+			</div>
 		</SpellModalRowRoot>
 	}
 }
@@ -637,9 +666,9 @@ fn SpellModalRowRoot(SpellModalProps { location, children }: &SpellModalProps) -
 		}
 	});
 	html! {
-		<tr onclick={open_browser}>
+		<div class="spell-row" onclick={open_browser}>
 			{children.clone()}
-		</tr>
+		</div>
 	}
 }
 
@@ -1365,7 +1394,7 @@ fn UseSpellButton(UseSpellButtonProps { kind }: &UseSpellButtonProps) -> Html {
 					</span>
 				</span>
 			});
-			let mut btn_classes = classes!("btn", "btn-xs", "px-1", "w-100");
+			let mut btn_classes = classes!("btn", "btn-xs", "px-1");
 			btn_classes.push(match can_cast {
 				true => classes!("btn-theme"),
 				false => classes!("btn-outline-theme", "disabled"),
@@ -1399,7 +1428,7 @@ fn UseSpellButton(UseSpellButtonProps { kind }: &UseSpellButtonProps) -> Html {
 			};
 			let uses_remaining = max_uses.saturating_sub(*uses_consumed);
 			html! {
-				<button class="btn btn-theme btn-xs px-1 w-100" {onclick} disabled={uses_consumed >= max_uses}>
+				<button class="btn btn-theme btn-xs px-1" {onclick} disabled={uses_consumed >= max_uses}>
 					{"Use"}
 					<span class="ms-1 d-none" style="font-size: 9px; color: var(--bs-gray-600);">{format!("({uses_remaining}/{max_uses})")}</span>
 				</button>

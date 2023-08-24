@@ -68,12 +68,10 @@ impl SourceId {
 		}
 	}
 
-	pub fn without_basis(&self) -> Self {
-		match &self.basis {
-			None => self.clone(),
-			Some(basis) if self == &**basis => Self::default(),
-			Some(basis) => {
-				let mut id = self.clone();
+	pub fn relative_to_basis(&self) -> Self {
+		let mut id = self.without_basis();
+		if let Some(basis) = &self.basis {
+			if **basis != id {
 				if id.module == basis.module {
 					id.module = None;
 				}
@@ -88,9 +86,15 @@ impl SourceId {
 						id.path = PathBuf::default();
 					}
 				}
-				id
 			}
 		}
+		id
+	}
+
+	pub fn without_basis(&self) -> Self {
+		let mut id = self.clone();
+		id.basis = None;
+		id
 	}
 
 	pub fn with_basis(mut self, other: &Self, include_version: bool) -> Self {
@@ -223,7 +227,7 @@ impl FromStr for SourceId {
 impl AsKdl for SourceId {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
-		let baseless = self.without_basis();
+		let baseless = self.relative_to_basis();
 		if baseless != Self::default() {
 			let as_str = baseless.to_string();
 			if !as_str.is_empty() {

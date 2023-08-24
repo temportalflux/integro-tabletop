@@ -628,6 +628,71 @@ button.collapse_trigger.arrow_right.collapsed::after {
 	> .empty-note {
 		font-size: 14px;
 	}
+	> .spell-row {
+		display: flex;
+		flex-wrap: wrap;
+
+		width: 100%;
+		padding-top: 0.25rem;
+		padding-bottom: 0.25rem;
+		
+		border: 0;
+		border-bottom-width: var(--bs-border-width);
+		border-style: solid;
+		border-color: var(--bs-border-color);
+
+		> .cast-button {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			min-width: 40px;
+		}
+		> .name-and-source {
+			display: flex;
+			flex-direction: column;
+			margin-left: 0.25rem;
+			flex-grow: 1;
+		}
+		@media screen and (max-width: 1200px) {
+			> .name-and-source {
+				// in order to have name+src & attributes be inline with each other for large view,
+				// but stacked vertically via flex-wrap in small/mobile view,
+				// we ensure that the name+src grow to fill the container (pushing attributes to the far right on large view),
+				// and have a min-width so that attributes get pushed below on all mobile devices.
+				min-width: 70%;
+			}
+		}
+		> .attributes {
+			display: flex;
+			flex-direction: column;
+			flex-wrap: wrap;
+
+			--attribute-col-minwidth: 120px;
+			--attribute-col-ms: 0.5rem;
+			--attribute-col-totalwidth: calc(var(--attribute-col-minwidth) + var(--attribute-col-ms));
+			--attribute-per-row: 3;
+			max-width: calc(var(--attribute-per-row) * var(--attribute-col-totalwidth));
+			
+			> .attribute-row {
+				display: flex;
+				flex-direction: row;
+			}
+
+			.attribute {
+				margin-left: var(--attribute-col-ms);
+				display: flex;
+    		align-items: baseline;
+				min-width: var(--attribute-col-minwidth);
+				font-size: 12px;
+				> .label {
+					margin-right: 0.25rem;
+					font-size: 10px;
+					color: var(--bs-gray-600);
+				}
+			}
+
+		}
+	}
 	table > thead > tr {
 		// Use button
 		> th:nth-child(1) {
