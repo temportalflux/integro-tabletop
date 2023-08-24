@@ -292,12 +292,9 @@ fn CharacterCard(
 				}}
 				<div>
 					{"Level "}{metadata.level}{": "}
-					{metadata.classes.iter().map(|(class_name, subclass_name)| html! {
+					{metadata.classes.iter().map(|class_name| html! {
 						<span>
 							{class_name}
-							{subclass_name.as_ref().map(|name| {
-								html!(<>{"/"}{name}</>)
-							}).unwrap_or_default()}
 						</span>
 					}).collect::<Vec<_>>()}
 				</div>

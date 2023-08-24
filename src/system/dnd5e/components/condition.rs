@@ -150,10 +150,11 @@ fn Modal() -> Html {
 						let key = key.clone();
 						move |_| key.clone()
 					});
+					let ref_id = condition.name.replace(" ", "");
 					// TODO: Show degrees in body of collapsable card
 					html! {
 						<CollapsableCard
-							id={condition.name.clone()}
+							id={ref_id}
 							header_content={{
 								html! {<>
 									<span>{condition.name.clone()}</span>

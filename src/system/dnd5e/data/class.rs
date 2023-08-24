@@ -20,8 +20,6 @@ pub struct Class {
 	/// Mutators that are applied only when this class is the primary class (not multiclassing).
 	pub mutators: Vec<BoxedMutator>,
 	pub levels: Vec<Level>,
-	pub subclass_selection_level: Option<usize>,
-	pub subclass: Option<Subclass>,
 	// TODO: `multiclass-req` data node (already in data, just not in structures yet)
 }
 
@@ -39,8 +37,6 @@ impl Default for Class {
 			current_level: Default::default(),
 			mutators: Default::default(),
 			levels: Default::default(),
-			subclass_selection_level: Default::default(),
-			subclass: Default::default(),
 		}
 	}
 }
@@ -67,9 +63,6 @@ impl MutatorGroup for Class {
 		for level in self.iter_levels(true) {
 			level.set_data_path(&path_to_self);
 		}
-		if let Some(subclass) = &self.subclass {
-			subclass.set_data_path(&path_to_self);
-		}
 	}
 
 	fn apply_mutators(&self, stats: &mut Character, parent: &Path) {
@@ -79,9 +72,6 @@ impl MutatorGroup for Class {
 		}
 		for level in self.iter_levels(false) {
 			stats.apply_from(&level, &path_to_self);
-		}
-		if let Some(subclass) = &self.subclass {
-			stats.apply_from(subclass, &path_to_self);
 		}
 	}
 }
@@ -110,11 +100,6 @@ impl FromKDL for Class {
 
 		let mutators = node.query_all_t("scope() > mutator")?;
 
-		let subclass_selection_level = node
-			.query_i64_opt("scope() > subclass-level", 0)?
-			.map(|v| v as usize);
-		let subclass = node.query_opt_t::<Subclass>("scope() > subclass")?;
-
 		let mut levels = Vec::with_capacity(20);
 		levels.resize_with(20, Default::default);
 		for mut node in &mut node.query_all("scope() > level")? {
@@ -131,8 +116,6 @@ impl FromKDL for Class {
 			current_level,
 			mutators,
 			levels,
-			subclass_selection_level,
-			subclass,
 			..Default::default()
 		})
 	}
@@ -150,9 +133,6 @@ impl AsKdl for Class {
 		node.push_child_opt_t("source", &self.id);
 		node.push_child_opt_t("description", &self.description);
 		node.push_child_entry("hit-die", self.hit_die.to_string());
-		if let Some(level) = &self.subclass_selection_level {
-			node.push_child_t("subclass-level", level);
-		}
 
 		for mutator in &self.mutators {
 			node.push_child_t("mutator", mutator);
@@ -169,10 +149,6 @@ impl AsKdl for Class {
 					.with_extension(level_node)
 					.build("level"),
 			);
-		}
-
-		if let Some(subclass) = &self.subclass {
-			node.push_child_t("subclass", subclass);
 		}
 
 		node
@@ -270,7 +246,7 @@ impl<'a> MutatorGroup for LevelWithIndex<'a> {
 
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct Subclass {
-	pub source_id: SourceId,
+	pub id: SourceId,
 	pub class_name: String,
 	pub name: String,
 	pub description: String,
@@ -281,7 +257,8 @@ pub struct Subclass {
 impl SystemComponent for Subclass {
 	fn to_metadata(self) -> serde_json::Value {
 		serde_json::json!({
-			"name": self.name.clone(),
+			"name": &self.name,
+			"class": &self.class_name,
 		})
 	}
 }
@@ -323,6 +300,8 @@ impl MutatorGroup for Subclass {
 
 impl FromKDL for Subclass {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let id = node.query_source_req()?;
+
 		let name = node.get_str_req("name")?.to_owned();
 		let class_name = node.get_str_req("class")?.to_owned();
 		let description = node
@@ -339,7 +318,7 @@ impl FromKDL for Subclass {
 		}
 
 		Ok(Self {
-			source_id: Default::default(),
+			id,
 			name,
 			description,
 			class_name,
@@ -354,7 +333,7 @@ impl AsKdl for Subclass {
 
 		node.push_entry(("class", self.class_name.clone()));
 		node.push_entry(("name", self.name.clone()));
-		node.push_child_opt_t("source", &self.source_id);
+		node.push_child_opt_t("source", &self.id);
 		node.push_child_opt_t("description", &self.description);
 
 		for mutator in &self.mutators {

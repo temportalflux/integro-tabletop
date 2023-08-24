@@ -101,13 +101,14 @@ impl SourceId {
 	pub fn ref_id(&self) -> String {
 		let prefix = match &self.module {
 			None => String::default(),
-			Some(ModuleId::Local { name }) => format!("{name}-"),
+			Some(ModuleId::Local { name }) => format!("{name}_"),
 			Some(ModuleId::Github {
 				user_org,
 				repository,
-			}) => format!("{user_org}_{repository}-"),
+			}) => format!("{user_org}_{repository}_"),
 		};
-		let name = self.path.file_stem().unwrap().to_str().unwrap();
+		let name = self.path.with_extension("").display().to_string();
+		let name = name.replace("\\", "/").replace("/", "_");
 		format!("{prefix}{name}")
 	}
 

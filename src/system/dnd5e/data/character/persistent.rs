@@ -180,7 +180,7 @@ pub struct PersistentMetadata {
 	pub name: String,
 	pub pronouns: Vec<String>,
 	pub level: usize,
-	pub classes: Vec<(String, Option<String>)>,
+	pub classes: Vec<String>,
 	pub bundles: MultiMap<String, String>,
 }
 impl SystemComponent for Persistent {
@@ -189,13 +189,7 @@ impl SystemComponent for Persistent {
 		let mut classes = Vec::with_capacity(self.classes.len());
 		for class in &self.classes {
 			level += class.current_level;
-			classes.push((
-				class.name.clone(),
-				class
-					.subclass
-					.as_ref()
-					.map(|subclass| subclass.name.clone()),
-			));
+			classes.push(class.name.clone());
 		}
 		let metadata = PersistentMetadata {
 			name: self.description.name.clone(),

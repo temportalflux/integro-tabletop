@@ -21,6 +21,7 @@ impl Registry {
 		let mut registry = HashMap::<_, Box<dyn ObjectBrowser>>::new();
 		registry.insert(SpellBrowser::id().to_owned(), Box::new(SpellBrowser));
 		registry.insert(BundleBrowser::id().to_owned(), Box::new(BundleBrowser));
+		registry.insert(SubclassBrowser::id().to_owned(), Box::new(SubclassBrowser));
 		Self(Rc::new(registry))
 	}
 
@@ -73,6 +74,14 @@ fn Modal(props: &ModalProps) -> Html {
 		<div class="modal-header">
 			<h1 class="modal-title fs-4">{"Unsupported object category"}</h1>
 			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
+		</div>
+		<div class="modal-body">
+			{format!(
+				"There is no browser registry item for the object type \"{}\". \
+				You may need to add a new browser object entry to the registry. \
+				The currently supported types are: {:?}",
+				props.category.as_str(), registry.0.as_ref().keys().collect::<Vec<_>>()
+			)}
 		</div>
 	</>}
 }
@@ -214,6 +223,96 @@ fn BundleList(props: &BundleListProps) -> Html {
 							<div class="card">
 								<div class="card-body px-2 py-1">
 									{bundle_content(bundle)}
+								</div>
+							</div>
+						</div>
+					</div>
+				});
+			}
+			html!(<>{htmls}</>)
+		}
+	}
+}
+
+struct SubclassBrowser;
+impl ObjectBrowser for SubclassBrowser {
+	fn id() -> &'static str {
+		use crate::kdl_ext::KDLNode;
+		crate::system::dnd5e::data::Subclass::id()
+	}
+
+	fn modal(&self, props: &ModalProps) -> Html {
+		html! {<>
+			<div class="modal-header">
+				<h1 class="modal-title fs-4">{"Browse Subclasses"}</h1>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
+			</div>
+			<div class="modal-body list">
+				<SubclassList
+					data_path={props.data_path.clone()}
+					capacity={props.capacity}
+					criteria={props.criteria.clone()}
+				/>
+			</div>
+		</>}
+	}
+}
+
+#[derive(Clone, PartialEq, Properties)]
+struct SubclassListProps {
+	data_path: PathBuf,
+	capacity: usize,
+	criteria: Option<Criteria>,
+}
+#[function_component]
+fn SubclassList(props: &SubclassListProps) -> Html {
+	use crate::{
+		components::database::{use_query_all_typed, QueryAllArgs, QueryStatus},
+		system::{
+			core::System,
+			dnd5e::{data::Subclass, DnD5e},
+		},
+	};
+
+	let fetch_objects = use_query_all_typed::<Subclass>(
+		true,
+		Some(QueryAllArgs::<Subclass> {
+			system: DnD5e::id().into(),
+			criteria: props.criteria.clone().map(Box::new),
+			adjust_listings: Some(Arc::new(|mut objects| {
+				objects.sort_by(|a, b| a.name.cmp(&b.name));
+				objects
+			})),
+			max_limit: None,
+		}),
+	);
+	match fetch_objects.status() {
+		QueryStatus::Pending => html!(<crate::components::Spinner />),
+		QueryStatus::Empty | QueryStatus::Failed(_) => html!("No subclasses available"),
+		QueryStatus::Success(objects) => {
+			let mut htmls = Vec::new();
+			for item in objects {
+				let collapse_id = format!("{}", item.id.ref_id());
+				htmls.push(html! {
+					<div class="section mb-1">
+						<div class="header mb-1">
+							<button
+								role="button" class={"collapse_trigger arrow_left collapsed"}
+								data-bs-toggle="collapse"
+								data-bs-target={format!("#{collapse_id}")}
+							>
+								{item.name.clone()}
+							</button>
+							<ObjectSelectorEntryButton
+								data_path={props.data_path.clone()}
+								id={item.id.unversioned()}
+								capacity={props.capacity}
+							/>
+						</div>
+						<div class="collapse mb-2" id={collapse_id}>
+							<div class="card">
+								<div class="card-body px-2 py-1">
+									{"TODO: Subclass contents"}
 								</div>
 							</div>
 						</div>

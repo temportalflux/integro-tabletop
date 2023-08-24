@@ -426,8 +426,8 @@ impl Character {
 		&mut self.derived.other_proficiencies
 	}
 
-	pub fn add_bundles(&mut self, bundle_data: super::AdditionalBundleData) {
-		self.derived.additional_bundles.insert(bundle_data);
+	pub fn add_bundles(&mut self, object_data: super::AdditionalObjectData) {
+		self.derived.additional_bundles.insert(object_data);
 	}
 
 	pub fn add_feature(&mut self, feature: Feature, parent_path: &Path) {
