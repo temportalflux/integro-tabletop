@@ -8,24 +8,24 @@ use crate::{
 
 #[derive(Clone, PartialEq, Debug, Default)]
 pub struct SpellContainer {
-	can_transcribe_from: bool,
-	can_prepare_from: bool,
-	capacity: Capacity,
-	casting: Option<Casting>,
-	spells: Vec<ContainerSpell>,
+	pub can_transcribe_from: bool,
+	pub can_prepare_from: bool,
+	pub capacity: Capacity,
+	pub casting: Option<Casting>,
+	pub spells: Vec<ContainerSpell>,
 }
 
 // Describes how many spells and of what types this container can hold.
 #[derive(Clone, PartialEq, Debug, Default)]
 pub struct Capacity {
 	// How many individual spells can be contained.
-	max_count: Option<usize>,
+	pub max_count: Option<usize>,
 	// The minimum allowed rank of any individual spell.
-	rank_min: Option<u8>,
+	pub rank_min: Option<u8>,
 	// The maximum allowed rank of any individual spell.
-	rank_max: Option<u8>,
+	pub rank_max: Option<u8>,
 	// The max total value allowed when the ranks of all contained spells are summed.
-	rank_total: Option<usize>,
+	pub rank_total: Option<usize>,
 }
 
 // Describes the conditions under which all spells are cast, unless overriden on a given entry.
@@ -33,29 +33,29 @@ pub struct Capacity {
 pub struct Casting {
 	// What kind of action is used to cast from this container.
 	// If not provided, the activation is defined by the spell itself.
-	activation_kind: Option<ActivationKind>,
+	pub activation_kind: Option<ActivationKind>,
 	// If casting tue last spell in the container will consume the item (destroy it).
 	// If the spell is transcribed from this container and this property is enabled,
 	// the item is destroyed (TODO: transcribing spells is not a feature yet).
-	consume_item: bool,
+	pub consume_item: bool,
 	// If casting any spell from the container will consume the spell in the container.
-	consume_spell: bool,
+	pub consume_spell: bool,
 	// What the save DC is for a spell cast from the container.
-	save_dc: Option<u8>,
+	pub save_dc: Option<u8>,
 	// What the attack bonus is for a spell cast from the container.
-	attack_bonus: Option<i32>,
+	pub attack_bonus: Option<i32>,
 }
 
 // A spell which is stored in a Spell Container.
 #[derive(Clone, PartialEq, Debug)]
 pub struct ContainerSpell {
-	spell: Indirect<Spell>,
+	pub spell: Indirect<Spell>,
 	// The overridden rank of the spell. If provided, the spell must be cast at this rank.
-	rank: Option<u8>,
+	pub rank: Option<u8>,
 	// The spell save DC that must be used for this spell.
-	save_dc: Option<u8>,
+	pub save_dc: Option<u8>,
 	// The spell attack bonus that must be used for this spell.
-	attack_bonus: Option<i32>,
+	pub attack_bonus: Option<i32>,
 }
 
 impl FromKDL for SpellContainer {

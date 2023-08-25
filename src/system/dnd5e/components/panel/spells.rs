@@ -14,7 +14,9 @@ use crate::{
 					spellcasting::{CasterKind, RitualCapability, SpellEntry},
 					MAX_SPELL_RANK,
 				},
-				proficiency, spell::{self, DurationKind}, Spell, AreaOfEffect,
+				proficiency,
+				spell::{self, CastingDuration, DurationKind},
+				AreaOfEffect, Spell,
 			},
 			DnD5e,
 		},
@@ -452,7 +454,6 @@ struct SpellRowProps<'c> {
 	section_spell: SectionSpell<'c>,
 }
 fn spell_row<'c>(props: SpellRowProps<'c>) -> Html {
-	use spell::CastingDuration;
 	let SpellRowProps {
 		state,
 		section_rank,
@@ -541,7 +542,7 @@ fn spell_row<'c>(props: SpellRowProps<'c>) -> Html {
 					{src_text_suffix.unwrap_or_default()}
 				</div>
 			</div>
-			
+
 			<div class="attributes">
 				<div class="attribute-row">
 					<span class="attribute">
@@ -1001,11 +1002,7 @@ fn spell_list_item(
 }
 
 fn spell_content(spell: &Spell, entry: &SpellEntry, state: &CharacterHandle) -> Html {
-	use crate::{
-		components::{Tag, Tags},
-		system::dnd5e::data::AreaOfEffect,
-	};
-	use spell::{CastingDuration, DurationKind};
+	use crate::components::{Tag, Tags};
 	let mut sections = Vec::new();
 	sections.push(html! {
 		<div class="property">

@@ -1,4 +1,5 @@
 use crate::{
+	kdl_ext::KDLNode,
 	system::{
 		core::SourceId,
 		dnd5e::data::{
@@ -6,7 +7,6 @@ use crate::{
 			Bundle, Subclass,
 		},
 	},
-	kdl_ext::KDLNode,
 	utility::MutatorGroup,
 };
 use std::{collections::HashMap, path::PathBuf};
@@ -53,7 +53,12 @@ impl AdditionalObjectCache {
 		// we should be able to generically deserialize objects into system components,
 		// and then store the generic data which is a MutatorGroup instead of the hard types.
 		// We can re-serialize them in the same manner perhaps.
-		for AdditionalObjectData { ids, object_type_id, .. } in &self.pending {
+		for AdditionalObjectData {
+			ids,
+			object_type_id,
+			..
+		} in &self.pending
+		{
 			for object_id in ids {
 				if self.object_cache.contains_key(object_id) {
 					continue;
@@ -67,20 +72,23 @@ impl AdditionalObjectCache {
 						log::error!(target: "object_cache", "Failed to find bundle {:?}, no such entry in database.", object_id.to_string());
 						continue;
 					};
-					self.object_cache.insert(object_id.clone(), CachedObject::Bundle(bundle));
-				}
-				else if object_type_id == Subclass::id() {
+					self.object_cache
+						.insert(object_id.clone(), CachedObject::Bundle(bundle));
+				} else if object_type_id == Subclass::id() {
 					let subclass = provider
 						.database
-						.get_typed_entry::<Subclass>(object_id.clone(), provider.system_depot.clone())
+						.get_typed_entry::<Subclass>(
+							object_id.clone(),
+							provider.system_depot.clone(),
+						)
 						.await?;
 					let Some(subclass) = subclass else {
 						log::error!(target: "object_cache", "Failed to find subclass {:?}, no such entry in database.", object_id.to_string());
 						continue;
 					};
-					self.object_cache.insert(object_id.clone(), CachedObject::Subclass(subclass));
-				}
-				else {
+					self.object_cache
+						.insert(object_id.clone(), CachedObject::Subclass(subclass));
+				} else {
 					log::error!(target: "object_cache", "AdditionalObjectCache does not currently support {object_type_id:?} objects.");
 				}
 			}

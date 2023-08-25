@@ -1,9 +1,12 @@
 use crate::{
+	components::progress_bar,
 	page::characters::sheet::joined::editor::{description, mutator_list},
 	page::characters::sheet::CharacterHandle,
 	system::dnd5e::{
 		components::{validate_uint_only, FormulaInline, WalletInline},
 		data::{
+			action::ActivationKind,
+			character::MAX_SPELL_RANK,
 			item::{self, Item},
 			ArmorExtended, WeaponProficiency,
 		},
@@ -11,6 +14,7 @@ use crate::{
 	},
 	utility::{Evaluator, InputExt},
 };
+use any_range::AnyRange;
 use yew::prelude::*;
 
 #[derive(Default)]
@@ -306,6 +310,177 @@ pub fn item_body(item: &Item, state: &CharacterHandle, props: Option<ItemBodyPro
 				</div>
 			});
 		}
+	}
+
+	if let Some(spell_container) = &item.spells {
+		let mut container_sections = Vec::new();
+
+		container_sections.push(html! {
+			<div class="property">
+				<strong>{"Transcribe Spells From:"}</strong>
+				<span>
+					{match spell_container.can_transcribe_from {
+						true => html!("✔"),
+						false => html!("❌"),
+					}}
+				</span>
+			</div>
+		});
+		container_sections.push(html! {
+			<div class="property">
+				<strong>{"Prepare Contained Spells:"}</strong>
+				<span>
+					{match spell_container.can_prepare_from {
+						true => html!("✔"),
+						false => html!("❌"),
+					}}
+				</span>
+			</div>
+		});
+		container_sections.push(html! {
+			<div class="property">
+				<strong>{"Casting: "}</strong>
+				{match &spell_container.casting {
+					None => html!("❌"),
+					Some(casting) => html! {
+						<div class="ms-3">
+							{match &casting.activation_kind {
+								None => html!(),
+								Some(activation) => html! {
+									<div class="property">
+										<strong>{"Casting Time:"}</strong>
+										<span>
+											{match activation {
+												ActivationKind::Action => html!("Action"),
+												ActivationKind::Bonus => html!("Bonus Action"),
+												ActivationKind::Reaction => html!("Reaction"),
+												ActivationKind::Special => html!("Special"),
+												ActivationKind::Minute(amt) => html!(format!("{amt} Minutes")),
+												ActivationKind::Hour(amt) => html!(format!("{amt} Hours")),
+											}}
+										</span>
+									</div>
+								},
+							}}
+							<div class="property">
+								<strong>{"Destroy Item on All Consumed:"}</strong>
+								<span>
+									{match casting.consume_item {
+										true => html!("Destroyed"),
+										false => html!("Not Destroyed"),
+									}}
+								</span>
+							</div>
+							<div class="property">
+								<strong>{"Consume Spell on Use:"}</strong>
+								<span>
+									{match casting.consume_spell {
+										true => html!("Consumed"),
+										false => html!("Not Consumed"),
+									}}
+								</span>
+							</div>
+							{match casting.save_dc {
+								None => html!(),
+								Some(dc) => html! {
+									<div class="property">
+										<strong>{"Spell Save DC:"}</strong>
+										<span>{dc}</span>
+									</div>
+								},
+							}}
+							{match casting.attack_bonus {
+								None => html!(),
+								Some(atk_bonus) => html! {
+									<div class="property">
+										<strong>{"Spell Attack:"}</strong>
+										<span>{format!("{atk_bonus:+}")}</span>
+									</div>
+								},
+							}}
+						</div>
+					},
+				}}
+			</div>
+		});
+
+		let mut capacity_sections = Vec::new();
+		if let Some(max_count) = &spell_container.capacity.max_count {
+			capacity_sections.push(html! {
+				<div class="property">
+					<strong>{"Total Stored Spells:"}</strong>
+					<progress_bar::Ticked
+						classes={"mt-4"}
+						ticked_bar_range={progress_bar::TickDisplay::BoundsOnly}
+						bar_range={0..=(*max_count as i64)}
+						value_range={AnyRange::from(..=spell_container.spells.len() as i64)}
+						show_labels={true}
+					/>
+				</div>
+			});
+		}
+		if let Some(rank_total) = &spell_container.capacity.rank_total {
+			let current_value: i64 = spell_container
+				.spells
+				.iter()
+				.map(|contained| {
+					match &contained.rank {
+						Some(rank) => *rank as i64,
+						None => 0 as i64, // TODO: get rank for that spell id
+					}
+				})
+				.sum();
+			capacity_sections.push(html! {
+				<div class="property">
+					<strong>{"Total Stored Ranks:"}</strong>
+					<progress_bar::Ticked
+						classes={"mt-4"}
+						ticked_bar_range={progress_bar::TickDisplay::BoundsOnly}
+						bar_range={0..=(*rank_total as i64)}
+						value_range={AnyRange::from(..=current_value)}
+						show_labels={true}
+					/>
+				</div>
+			});
+		}
+		let rank_min = spell_container.capacity.rank_min.unwrap_or(0);
+		let rank_max = spell_container.capacity.rank_max.unwrap_or(MAX_SPELL_RANK);
+		if rank_min != 0 || rank_max != MAX_SPELL_RANK {
+			capacity_sections.push({
+				html! {
+					<div class="property">
+						<strong>{"Allowed Spell Ranks:"}</strong>
+						<progress_bar::Ticked
+							classes={"mt-4"}
+							ticked_bar_range={progress_bar::TickDisplay::AllTicks}
+							bar_range={0..=(MAX_SPELL_RANK as i64)}
+							value_range={AnyRange::from((rank_min as i64)..=(rank_max as i64))}
+							show_labels={true}
+						/>
+					</div>
+				}
+			});
+		}
+
+		if !capacity_sections.is_empty() {
+			container_sections.push(html! {
+				<div>
+					<strong>{"Storage Capacity"}</strong>
+					<div class="ms-3 capacity">
+						{capacity_sections}
+					</div>
+				</div>
+			});
+		}
+
+		sections.push(html! {
+			<div>
+				<strong>{"Spell Container"}</strong>
+				<div class="ms-3 spell-container">
+					{container_sections}
+				</div>
+			</div>
+		});
 	}
 	if !item.description.is_empty() {
 		let desc = item.description.clone().evaluate(state);

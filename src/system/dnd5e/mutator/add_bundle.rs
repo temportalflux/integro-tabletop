@@ -203,9 +203,7 @@ impl AsKdl for MetadataObject {
 				MetadataEntry::Filter(values) => {
 					if values.len() == 1 {
 						node.push_entry((key.as_str(), values[0].as_str()));
-					}
-					else
-					{
+					} else {
 						for value in values {
 							node.push_child_entry(key.as_str(), value.as_str());
 						}
@@ -223,7 +221,10 @@ mod test {
 
 	mod kdl {
 		use super::*;
-		use crate::{kdl_ext::test_utils::*, system::dnd5e::{mutator::test::test_utils, data::Subclass}};
+		use crate::{
+			kdl_ext::test_utils::*,
+			system::dnd5e::{data::Subclass, mutator::test::test_utils},
+		};
 
 		test_utils!(AddBundle);
 
@@ -257,7 +258,7 @@ mod test {
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
 		}
-		
+
 		#[test]
 		fn subclass() -> anyhow::Result<()> {
 			let doc = "

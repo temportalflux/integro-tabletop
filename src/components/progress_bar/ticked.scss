@@ -1,0 +1,57 @@
+
+.progress-ticked {
+	--bar-height: 1rem;
+	--bar-color: #0d6efd;
+	--tick-scale-x: 2;
+	--tick-scale-y: 2;
+	--tick-position: 0;
+	--tick-count: 1;
+	position: relative;
+	margin: calc(0.5 * var(--bar-height) * (var(--tick-scale-y) - 1)) calc(0.5 * var(--bar-height) * var(--tick-scale-x));
+
+	> .progress {
+    --bs-progress-height: var(--bar-height);
+		--bs-progress-bar-bg: var(--bar-color);
+
+		> .progress-bar.spacer {
+			background-color: transparent;
+		}
+		> .progress-bar.tick-amt {
+			--tick-position: 0;
+			width: calc(100% / var(--tick-count) * var(--tick-position));
+		}
+
+		> .tick {
+			position: absolute;
+			z-index: 1;
+			border-radius:25px;
+		
+			--tick-width: calc(var(--tick-scale-x) * var(--bs-progress-height));
+			margin-top: calc(0.5 * var(--bs-progress-height) * (1 - var(--tick-scale-y)));
+			height: calc(var(--tick-scale-y) * var(--bs-progress-height));
+			width: var(--tick-width);
+			
+			background-color: inherit;
+			
+			left: calc(100% / var(--tick-count) * var(--tick-position) - (0.5 * var(--tick-width)));
+
+			> .label {
+				--width: 50px;
+				--height: 20px;
+
+				position: relative;
+				display: block;
+				text-align: center!important;
+
+				top: calc(-1 * var(--height));
+				left: calc(0.5 * (var(--tick-width) - var(--width)));
+				
+				width: var(--width);
+				height: var(--height);
+			}
+		}
+		> .tick.color-fill {
+			background-color: var(--bs-progress-bar-bg);
+		}
+	}
+}

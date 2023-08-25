@@ -5,6 +5,7 @@
 @use "src/components/annotated_number.scss";
 @use "src/components/nav_onesheet_tabs.scss";
 @use "src/components/tag.scss";
+@use "src/components/progress_bar/ticked.scss";
 @use "src/system/dnd5e/components/ability/score.scss";
 @use "src/system/dnd5e/components/glyph.scss";
 
@@ -819,4 +820,10 @@ $Pages: Abilities, Attributes, Features, Spells, Inventory, Description;
 		flex-direction: column;
 		flex-grow: 1;
 	}
+}
+
+.spell-container .capacity .progress-ticked {
+	--bar-height: 0.5rem;
+	--tick-scale-x: 1;
+	--bar-color: var(--theme-frame-color);
 }
