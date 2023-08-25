@@ -103,8 +103,8 @@ impl Character {
 		self.insert_mutators();
 
 		let mut cache_loops = 0usize;
-		let mut cache = super::AdditionalBundleCache::default();
-		while self.derived.additional_bundles.has_pending_objects() {
+		let mut cache = super::AdditionalObjectCache::default();
+		while self.derived.additional_objects.has_pending_objects() {
 			if cache_loops > 3 {
 				log::error!(target: "derived",
 					"Hit max number of recursive bundle processing loops. \
@@ -113,12 +113,12 @@ impl Character {
 				);
 				break;
 			}
-			cache += std::mem::take(&mut self.derived.additional_bundles);
+			cache += std::mem::take(&mut self.derived.additional_objects);
 			cache.update_objects(&provider).await?;
 			cache.apply_mutators(self);
 			cache_loops += 1;
 		}
-		self.derived.additional_bundles = cache;
+		self.derived.additional_objects = cache;
 
 		self.apply_cached_mutators();
 
@@ -427,7 +427,7 @@ impl Character {
 	}
 
 	pub fn add_bundles(&mut self, object_data: super::AdditionalObjectData) {
-		self.derived.additional_bundles.insert(object_data);
+		self.derived.additional_objects.insert(object_data);
 	}
 
 	pub fn add_feature(&mut self, feature: Feature, parent_path: &Path) {

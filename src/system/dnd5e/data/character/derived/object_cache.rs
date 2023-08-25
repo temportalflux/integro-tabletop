@@ -11,12 +11,16 @@ use crate::{
 };
 use std::{collections::HashMap, path::PathBuf};
 
-/// Holds the list of all bundles added via mutators, and fetched from the object provider.
+/// Holds the list of all objects (mainly bundles) added via mutators, and fetched from the object provider.
 #[derive(Clone, PartialEq, Debug, Default)]
-pub struct AdditionalBundleCache {
+pub struct AdditionalObjectCache {
+	// Objects which have not been applied to the character yet.
+	// Entries may or may not be present in the `object_cache` yet.
 	pending: Vec<AdditionalObjectData>,
-
-	applied_bundles: Vec<AdditionalObjectData>,
+	// Objects which have been applied to the character.
+	// All of these entries must exist in the `object_cache`.
+	applied_objects: Vec<AdditionalObjectData>,
+	// The current cache of all known auxilary objects.
 	object_cache: HashMap<SourceId, CachedObject>,
 }
 
@@ -34,8 +38,8 @@ pub struct AdditionalObjectData {
 	pub propagate_source_as_parent_feature: bool,
 }
 
-impl AdditionalBundleCache {
-	/// Inserts new pending bundles into the cache.
+impl AdditionalObjectCache {
+	/// Inserts new pending objects into the cache.
 	pub fn insert(&mut self, object_data: AdditionalObjectData) {
 		self.pending.push(object_data);
 	}
@@ -45,6 +49,10 @@ impl AdditionalBundleCache {
 	}
 
 	pub async fn update_objects(&mut self, provider: &ObjectCacheProvider) -> anyhow::Result<()> {
+		// TODO: Because ObjectCacheProvider contains both the databaser and system depot,
+		// we should be able to generically deserialize objects into system components,
+		// and then store the generic data which is a MutatorGroup instead of the hard types.
+		// We can re-serialize them in the same manner perhaps.
 		for AdditionalObjectData { ids, object_type_id, .. } in &self.pending {
 			for object_id in ids {
 				if self.object_cache.contains_key(object_id) {
@@ -110,12 +118,12 @@ impl AdditionalBundleCache {
 					}
 				}
 			}
-			self.applied_bundles.push(object_data);
+			self.applied_objects.push(object_data);
 		}
 	}
 }
 
-impl std::ops::AddAssign for AdditionalBundleCache {
+impl std::ops::AddAssign for AdditionalObjectCache {
 	fn add_assign(&mut self, mut rhs: Self) {
 		self.pending.append(&mut rhs.pending);
 	}
