@@ -39,6 +39,12 @@ pub struct UseQueryAllHandle<T> {
 	run: Rc<dyn Fn(Option<QueryAllArgs<T>>)>,
 }
 
+impl<T: PartialEq> PartialEq for UseQueryAllHandle<T> {
+	fn eq(&self, other: &Self) -> bool {
+		self.async_handle == other.async_handle
+	}
+}
+
 #[derive(Debug, PartialEq)]
 pub enum QueryStatus<T, E> {
 	Empty,
@@ -59,6 +65,11 @@ impl<T> UseQueryAllHandle<T> {
 			return QueryStatus::Success(data);
 		}
 		QueryStatus::Empty
+	}
+
+	pub fn get(&self, idx: usize) -> Option<&T> {
+		let Some(data) = &self.async_handle.data else { return None; };
+		data.get(idx)
 	}
 
 	pub fn run(&self, args: Option<QueryAllArgs<T>>) {

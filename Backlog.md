@@ -11,6 +11,10 @@
 	- If there are no additional changes within 60 seconds, auto save
 	- Display save timer and a manual save button in header of display sheet under the rest & builder buttons
 	- Button to open changelog and view both committed and uncommitted changes
+- Modal Replacement
+	For contexts which currently use a modal, where the user could drill down to an inner page (e.g. bundle selection, item and spell containers, etc),
+	we should not use a modal stack. Modals should be used exclusively for confirmation or form popups. Instead, the character sheet should have the concept of a "context panel". D&DBeyond uses one on the right side. For this implementation, the Paged character sheet (default on mobile, opt in on desktop) this is easy. The paged character sheet will just have a full-screen drill down panel, which displays a breadcrumb path on the top with a close button. When you drill down again, the breadcrumb length increases and the button becomes a back button (you have to fully back out to close the panel). For the Joined sheet (default on desktop), the context panel will slide up from the bottom. If the user clicks outside of the panel, it closes. Its basically a drawer. Maybe the user can also reopen it if it retains its path/state?
+	Anytime we open a modal on the sheet should use the context panel instead.
 
 ## Tech Debt
 - Additional Object Cache should save its bundles to the character kdl (and read them) so offline character sheets can be supported. Ideally we'd track what bundles are actually being used by the charcter so we don't reserialize bundles that aren't actively in use.

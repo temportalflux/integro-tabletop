@@ -5,8 +5,8 @@ use crate::{
 	page::characters::sheet::MutatorImpact,
 	system::dnd5e::{
 		components::panel::{
-			inventory::equip_toggle::ItemRowEquipBox, item_body, AddItemButton, AddItemOperation,
-			ItemBodyProps,
+			get_inventory_item, inventory::equip_toggle::ItemRowEquipBox, AddItemButton,
+			AddItemOperation, ItemBodyProps, ItemInfo, ItemLocation,
 		},
 		data::item::{self, Item},
 	},
@@ -68,22 +68,7 @@ pub fn ItemRow(
 pub fn ItemModal(InventoryItemProps { id_path }: &InventoryItemProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();
-	let item = {
-		let mut iter = id_path.iter();
-		let mut item = None;
-		while let Some(id) = iter.next() {
-			item = match item {
-				None => state.inventory().get_item(id),
-				Some(prev_item) => match &prev_item.items {
-					None => {
-						return Html::default();
-					}
-					Some(container) => container.get_item(id),
-				},
-			};
-		}
-		item
-	};
+	let item = get_inventory_item(&state, id_path);
 	let Some(item) = item else { return Html::default(); };
 	// TODO: edit capability for properties:
 	// name, notes, quantity(✔)
@@ -107,7 +92,14 @@ pub fn ItemModal(InventoryItemProps { id_path }: &InventoryItemProps) -> Html {
 			}
 		}
 	});
-	let mut item_props = ItemBodyProps::default();
+	let mut item_props = ItemBodyProps {
+		location: ItemLocation::Inventory {
+			id_path: id_path.clone(),
+		},
+		on_quantity_changed: None,
+		is_equipped: false,
+		set_equipped: None,
+	};
 	match &item.kind {
 		item::Kind::Simple { .. } => {
 			item_props.on_quantity_changed = Some(state.new_dispatch({
@@ -169,7 +161,7 @@ pub fn ItemModal(InventoryItemProps { id_path }: &InventoryItemProps) -> Html {
 			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
 		</div>
 		<div class="modal-body d-flex flex-column" style="min-height: 200px;">
-			{item_body(item, &state, Some(item_props))}
+			<ItemInfo ..item_props />
 			<span class="hr my-2" />
 			<div class="d-flex justify-content-center mt-auto">
 				{move_button}

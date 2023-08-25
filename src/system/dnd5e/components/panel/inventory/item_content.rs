@@ -1,32 +1,85 @@
 use crate::{
-	components::progress_bar,
+	components::{database::UseQueryAllHandle, modal, progress_bar},
+	database::app::Criteria,
 	page::characters::sheet::joined::editor::{description, mutator_list},
 	page::characters::sheet::CharacterHandle,
 	system::dnd5e::{
-		components::{validate_uint_only, FormulaInline, WalletInline},
+		components::{
+			panel::{AvailableSpellList, HeaderAddon},
+			validate_uint_only, FormulaInline, GeneralProp, WalletInline,
+		},
 		data::{
 			action::ActivationKind,
-			character::MAX_SPELL_RANK,
+			character::{spellcasting::SpellEntry, MAX_SPELL_RANK},
 			item::{self, Item},
-			ArmorExtended, WeaponProficiency,
+			Ability, ArmorExtended, Spell, WeaponProficiency,
 		},
 		evaluator::IsProficientWith,
 	},
 	utility::{Evaluator, InputExt},
 };
 use any_range::AnyRange;
+use std::path::PathBuf;
 use yew::prelude::*;
 
-#[derive(Default)]
+pub fn get_inventory_item<'c>(
+	state: &'c CharacterHandle,
+	id_path: &Vec<uuid::Uuid>,
+) -> Option<&'c Item> {
+	let mut iter = id_path.iter();
+	let mut item = None;
+	while let Some(id) = iter.next() {
+		item = match item {
+			None => state.inventory().get_item(id),
+			Some(prev_item) => match &prev_item.items {
+				None => {
+					return None;
+				}
+				Some(container) => container.get_item(id),
+			},
+		};
+	}
+	item
+}
+
+#[derive(Clone, PartialEq)]
+pub enum ItemLocation {
+	Database {
+		query: UseQueryAllHandle<Item>,
+		index: usize,
+	},
+	Inventory {
+		id_path: Vec<uuid::Uuid>,
+	},
+}
+impl ItemLocation {
+	pub fn resolve<'c>(&'c self, state: &'c CharacterHandle) -> Option<&'c Item> {
+		match self {
+			Self::Database { query, index } => query.get(*index),
+			Self::Inventory { id_path } => get_inventory_item(state, id_path),
+		}
+	}
+}
+
+#[derive(Clone, PartialEq, Properties)]
 pub struct ItemBodyProps {
+	pub location: ItemLocation,
+	#[prop_or_default]
 	pub on_quantity_changed: Option<Callback<u32>>,
+	#[prop_or_default]
 	pub is_equipped: bool,
+	#[prop_or_default]
 	pub set_equipped: Option<Callback<bool>>,
 }
-pub fn item_body(item: &Item, state: &CharacterHandle, props: Option<ItemBodyProps>) -> Html {
-	let props = props.unwrap_or_default();
+#[function_component]
+pub fn ItemInfo(props: &ItemBodyProps) -> Html {
+	let state = use_context::<CharacterHandle>().unwrap();
+	let modal_dispatcher = use_context::<modal::Context>().unwrap();
+
+	let Some(item) = props.location.resolve(&state) else { return Html::default(); };
+
 	let mut sections = Vec::new();
-	if IsProficientWith::Tool(item.name.clone()).evaluate(state) {
+	if IsProficientWith::Tool(item.name.clone()).evaluate(&state) {
 		sections.push(html! {
 			<div class="property">
 				<strong>{"Proficient (with tool):"}</strong>
@@ -60,7 +113,7 @@ pub fn item_body(item: &Item, state: &CharacterHandle, props: Option<ItemBodyPro
 	}
 	match &item.kind {
 		item::Kind::Simple { count } => {
-			let inner = match (props.on_quantity_changed, item.can_stack()) {
+			let inner = match (&props.on_quantity_changed, item.can_stack()) {
 				(None, _) | (Some(_), false) => html! { <span>{count}</span> },
 				(Some(on_changed), true) => {
 					let count = *count;
@@ -107,7 +160,7 @@ pub fn item_body(item: &Item, state: &CharacterHandle, props: Option<ItemBodyPro
 		}
 		item::Kind::Equipment(equipment) => {
 			let mut equip_sections = Vec::new();
-			if let Some(on_equipped) = props.set_equipped {
+			if let Some(on_equipped) = props.set_equipped.clone() {
 				let onchange = Callback::from({
 					move |evt: web_sys::Event| {
 						let Some(checked) = evt.input_checked() else { return; };
@@ -151,7 +204,7 @@ pub fn item_body(item: &Item, state: &CharacterHandle, props: Option<ItemBodyPro
 						<div class="ms-3">
 							<div class="property">
 								<strong>{"Proficient:"}</strong>
-								{match IsProficientWith::Armor(ArmorExtended::Shield).evaluate(state) {
+								{match IsProficientWith::Armor(ArmorExtended::Shield).evaluate(&state) {
 									true => html! { <span>{"✔ Yes"}</span> },
 									false => html! { <span>{"❌ No"}</span> },
 								}}
@@ -175,7 +228,7 @@ pub fn item_body(item: &Item, state: &CharacterHandle, props: Option<ItemBodyPro
 				armor_sections.push(html! {
 					<div class="property">
 						<strong>{"Proficient:"}</strong>
-						{match IsProficientWith::Armor(ArmorExtended::Kind(armor.kind)).evaluate(state) {
+						{match IsProficientWith::Armor(ArmorExtended::Kind(armor.kind)).evaluate(&state) {
 							true => html! { <span>{"✔ Yes"}</span> },
 							false => html! { <span>{"❌ No"}</span> },
 						}}
@@ -224,7 +277,7 @@ pub fn item_body(item: &Item, state: &CharacterHandle, props: Option<ItemBodyPro
 						weapon.classification.clone(),
 					)),
 				];
-				let is_proficient = is_proficient.into_iter().any(|eval| eval.evaluate(state));
+				let is_proficient = is_proficient.into_iter().any(|eval| eval.evaluate(&state));
 				weapon_sections.push(html! {
 					<div class="property">
 						<strong>{"Proficient:"}</strong>
@@ -408,7 +461,7 @@ pub fn item_body(item: &Item, state: &CharacterHandle, props: Option<ItemBodyPro
 		if let Some(max_count) = &spell_container.capacity.max_count {
 			capacity_sections.push(html! {
 				<div class="property">
-					<strong>{"Total Stored Spells:"}</strong>
+					<strong>{"Total Stored Spells"}</strong>
 					<progress_bar::Ticked
 						classes={"mt-4"}
 						ticked_bar_range={progress_bar::TickDisplay::BoundsOnly}
@@ -420,6 +473,7 @@ pub fn item_body(item: &Item, state: &CharacterHandle, props: Option<ItemBodyPro
 			});
 		}
 		if let Some(rank_total) = &spell_container.capacity.rank_total {
+			// TODO: Query the contained spell ids so we have them on hand
 			let current_value: i64 = spell_container
 				.spells
 				.iter()
@@ -432,7 +486,7 @@ pub fn item_body(item: &Item, state: &CharacterHandle, props: Option<ItemBodyPro
 				.sum();
 			capacity_sections.push(html! {
 				<div class="property">
-					<strong>{"Total Stored Ranks:"}</strong>
+					<strong>{"Total Stored Ranks"}</strong>
 					<progress_bar::Ticked
 						classes={"mt-4"}
 						ticked_bar_range={progress_bar::TickDisplay::BoundsOnly}
@@ -449,7 +503,7 @@ pub fn item_body(item: &Item, state: &CharacterHandle, props: Option<ItemBodyPro
 			capacity_sections.push({
 				html! {
 					<div class="property">
-						<strong>{"Allowed Spell Ranks:"}</strong>
+						<strong>{"Allowed Spell Ranks"}</strong>
 						<progress_bar::Ticked
 							classes={"mt-4"}
 							ticked_bar_range={progress_bar::TickDisplay::AllTicks}
@@ -473,17 +527,47 @@ pub fn item_body(item: &Item, state: &CharacterHandle, props: Option<ItemBodyPro
 			});
 		}
 
+		let browse = match &props.location {
+			ItemLocation::Database { .. } => html!(),
+			ItemLocation::Inventory { id_path } => {
+				let onclick = modal_dispatcher.callback({
+					let id_path = id_path.clone();
+					move |_| {
+						modal::Action::Open(modal::Props {
+							centered: true,
+							scrollable: true,
+							root_classes: classes!("browse", "item-spell-container"),
+							content: html! {<ModalSpellContainerBrowser value={id_path.clone()} />},
+							..Default::default()
+						})
+					}
+				});
+				html!(
+					<button class="btn btn-outline-theme btn-xs" type="button" {onclick}>
+						{"Browse Spells"}
+					</button>
+				)
+			}
+		};
+		let contents = html! {
+			<div>
+				{"TODO Show spell contents"}
+			</div>
+		};
+
 		sections.push(html! {
 			<div>
 				<strong>{"Spell Container"}</strong>
 				<div class="ms-3 spell-container">
 					{container_sections}
+					{browse}
+					{contents}
 				</div>
 			</div>
 		});
 	}
 	if !item.description.is_empty() {
-		let desc = item.description.clone().evaluate(state);
+		let desc = item.description.clone().evaluate(&state);
 		sections.push(description(&desc, false, false));
 	}
 	if let Some(notes) = &item.notes {
@@ -504,5 +588,49 @@ pub fn item_body(item: &Item, state: &CharacterHandle, props: Option<ItemBodyPro
 	}
 	html! {<>
 		{sections}
+	</>}
+}
+
+#[function_component]
+fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid>>) -> Html {
+	let state = use_context::<CharacterHandle>().unwrap();
+	let Some(item) = get_inventory_item(&state, value) else { return Html::default(); };
+	let Some(spell_container) = &item.spells else { return Html::default(); };
+
+	// TODO: implement SpellEntry for spell container when adding spells to the spell panel. For now lets just use /something/.
+	let entry = SpellEntry {
+		ability: Ability::Charisma,
+		source: PathBuf::new(),
+		classified_as: None,
+		cast_via_slot: false,
+		cast_via_ritual: false,
+		cast_via_uses: None,
+		range: None,
+		forced_rank: None,
+	};
+
+	let rank_min = spell_container.capacity.rank_min.unwrap_or(0);
+	let rank_max = spell_container.capacity.rank_max.unwrap_or(MAX_SPELL_RANK);
+	let criteria = Criteria::contains_prop(
+		"rank",
+		Criteria::any((rank_min..=rank_max).into_iter().map(|rank| Criteria::exact(rank))),
+	);
+
+	html! {<>
+		<div class="modal-header">
+			<h1 class="modal-title fs-4">{"Spell Container Browser"}</h1>
+			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
+		</div>
+		<div class="modal-body">
+			<AvailableSpellList
+				header_addon={HeaderAddon::from({
+					move |spell: &Spell| -> Html {
+						html! {}
+					}
+				})}
+				criteria={criteria.clone()}
+				entry={entry.clone()}
+			/>
+		</div>
 	</>}
 }

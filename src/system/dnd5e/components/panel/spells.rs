@@ -537,7 +537,7 @@ fn spell_row<'c>(props: SpellRowProps<'c>) -> Html {
 						<Glyph tag="div" classes={"concentration ms-1"} />
 					)).unwrap_or_default()}
 				</div>
-				<div style="font-size: 10px; color: var(--bs-gray-600);">
+				<div class="source-row">
 					{crate::data::as_feature_path_text(&entry.source)}
 					{src_text_suffix.unwrap_or_default()}
 				</div>
@@ -545,8 +545,8 @@ fn spell_row<'c>(props: SpellRowProps<'c>) -> Html {
 
 			<div class="attributes">
 				<div class="attribute-row">
-					<span class="attribute">
-						<span class="label">{"Casting Time:"}</span>
+					<span class="attribute casting-time">
+						<span class="label">{"Cast:"}</span>
 						{match &spell.casting_time.duration {
 							CastingDuration::Action => html!("Action"),
 							CastingDuration::Bonus => html!("Bonus Action"),
@@ -557,19 +557,19 @@ fn spell_row<'c>(props: SpellRowProps<'c>) -> Html {
 					{match &spell.duration.kind {
 						DurationKind::Special => html!(),
 						DurationKind::Instantaneous => html! {
-							<span class="attribute">
+							<span class="attribute duration">
 								<span class="label">{"Duration:"}</span>
 								{"Instant"}
 							</span>
 						},
 						DurationKind::Unit(amt, kind) => html! {
-							<span class="attribute">
+							<span class="attribute duration">
 								<span class="label">{"Duration:"}</span>
 								{amt}{" "}{kind}
 							</span>
 						},
 					}}
-					<span class="attribute">
+					<span class="attribute range">
 						<span class="label">{"Range:"}</span>
 						{match entry.range.as_ref().unwrap_or(&spell.range) {
 							spell::Range::OnlySelf => html!("Self"),
@@ -585,7 +585,7 @@ fn spell_row<'c>(props: SpellRowProps<'c>) -> Html {
 						None => html!(),
 						Some(spell::Check::AttackRoll(_atk_kind)) => {
 							let modifier = state.ability_modifier(entry.ability, Some(proficiency::Level::Full));
-							html! {<span class="attribute">
+							html! {<span class="attribute atk-roll">
 								<span class="label">{"Atk Roll:"}</span>
 								{format!("{modifier:+}")}
 							</span>}
@@ -599,7 +599,7 @@ fn spell_row<'c>(props: SpellRowProps<'c>) -> Html {
 									8 + modifier
 								}
 							};
-							html! {<span class="attribute">
+							html! {<span class="attribute save-dc">
 								<span class="label">{"Save DC:"}</span>
 								{format!("{abb_name} {dc}")}
 							</span>}
@@ -625,7 +625,7 @@ fn spell_row<'c>(props: SpellRowProps<'c>) -> Html {
 								});
 							}
 							// TODO: DamageType glyph `damage.damage_type`
-							html! {<span class="attribute">
+							html! {<span class="attribute damage">
 								<span class="label">{"Damage:"}</span>
 								{spans}
 							</span>}
@@ -633,16 +633,18 @@ fn spell_row<'c>(props: SpellRowProps<'c>) -> Html {
 					}}
 					{match &spell.area_of_effect {
 						None => html!(),
-						Some(area_of_effect) => html! {<span class="attribute">
-							<span class="label">{"Area of Effect:"}</span>
-							{match area_of_effect {
-								AreaOfEffect::Cone { length } => html!{<>{length}{"ft. Cone"}</>},
-								AreaOfEffect::Cube { size } => html!{<>{size}{"ft. Cube"}</>},
-								AreaOfEffect::Cylinder { radius, height } => html!{<>{radius}{"ft. x "}{height}{"ft. Cylinder"}</>},
-								AreaOfEffect::Line { width, length } => html!{<>{width}{"ft. x "}{length}{"ft. Line"}</>},
-								AreaOfEffect::Sphere { radius } => html!{<>{radius}{"ft. Sphere"}</>},
-							}}
-						</span>}
+						Some(area_of_effect) => html! {
+							<span class="attribute area-of-effect">
+								<span class="label">{"Area of Effect:"}</span>
+								{match area_of_effect {
+									AreaOfEffect::Cone { length } => html!{<>{length}{"ft. Cone"}</>},
+									AreaOfEffect::Cube { size } => html!{<>{size}{"ft. Cube"}</>},
+									AreaOfEffect::Cylinder { radius, height } => html!{<>{radius}{"ft. x "}{height}{"ft. Cylinder"}</>},
+									AreaOfEffect::Line { width, length } => html!{<>{width}{"ft. x "}{length}{"ft. Line"}</>},
+									AreaOfEffect::Sphere { radius } => html!{<>{radius}{"ft. Sphere"}</>},
+								}}
+							</span>
+						}
 					}}
 				</div>
 			</div>

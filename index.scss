@@ -653,6 +653,12 @@ button.collapse_trigger.arrow_right.collapsed::after {
 			flex-direction: column;
 			margin-left: 0.25rem;
 			flex-grow: 1;
+
+			> .source-row {
+				max-width: 250px;
+				font-size: 10px;
+				color: var(--bs-gray-600);
+			}
 		}
 		@media screen and (max-width: 1200px) {
 			> .name-and-source {
@@ -691,7 +697,6 @@ button.collapse_trigger.arrow_right.collapsed::after {
 					color: var(--bs-gray-600);
 				}
 			}
-
 		}
 	}
 	table > thead > tr {
@@ -824,6 +829,7 @@ $Pages: Abilities, Attributes, Features, Spells, Inventory, Description;
 
 .spell-container .capacity .progress-ticked {
 	--bar-height: 0.5rem;
-	--tick-scale-x: 1;
+	--tick-scale-x: 0.75;
+	--tick-scale-y: 2.5;
 	--bar-color: var(--theme-frame-color);
 }

@@ -13,7 +13,7 @@ use crate::{
 		core::{ModuleId, SourceId, System},
 		dnd5e::{
 			components::{
-				panel::{item_body, AddItemButton, AddItemOperation},
+				panel::{AddItemButton, AddItemOperation, ItemInfo},
 				validate_uint_only, GeneralProp, WalletInline,
 			},
 			data::{
@@ -29,6 +29,8 @@ use crate::{
 
 use uuid::Uuid;
 use yew::prelude::*;
+
+use super::ItemLocation;
 
 #[function_component]
 pub fn BrowseModal() -> Html {
@@ -87,8 +89,12 @@ pub fn BrowseModal() -> Html {
 			</div>
 		},
 		QueryStatus::Success(items) => html! {<>
-			{items.iter().map(|item| {
-				html!(<BrowsedItemCard value={item.clone()} />)
+			{items.iter().enumerate().map(|(idx, _item)| {
+				let location = ItemLocation::Database {
+					query: query_handle.clone(),
+					index: idx,
+				};
+				html!(<BrowsedItemCard value={location} />)
 			}).collect::<Vec<_>>()}
 			{result_limit.as_ref().map(|_limit| html! {
 				<button
@@ -174,9 +180,9 @@ pub fn SearchInput(SearchInputProps { on_change }: &SearchInputProps) -> Html {
 }
 
 #[function_component]
-fn BrowsedItemCard(props: &GeneralProp<Item>) -> Html {
+fn BrowsedItemCard(props: &GeneralProp<ItemLocation>) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let item = &props.value;
+	let Some(item) = props.value.resolve(&state) else { return Html::default(); };
 
 	let add_item = use_typed_fetch_callback_tuple::<Item, Option<Vec<Uuid>>>(
 		"Add Item".into(),
@@ -232,7 +238,7 @@ fn BrowsedItemCard(props: &GeneralProp<Item>) -> Html {
 				</>}
 			}}
 		>
-			{item_body(item, &state, None)}
+			<ItemInfo location={props.value.clone()} />
 			<AddItemActions
 				id={item.id.unversioned()}
 				{batch_size}
