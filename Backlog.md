@@ -104,6 +104,11 @@ component "Material" {
 
 ## App Features
 
+- Character History / Changelog
+	Instead of outputting MutatorImpact from CharacterHandle dispatches, output a mutation trait object (something which implements a new Mutation trait). The impl will provide an api for accessing the formatted name of the change (which becomes the commit desc), and a function to mutate a persistent state. If any two adjacent mutations can be merged, they are merged by the changelog (i.e. two hit point mutations with the same "cause").
+	Mutations can be read from a commit desc (short desc is user-facing, long desc is kdl data).
+	Mutations cannot be automatically reverted, but can be shown in app UI so users can manually make changes which undo a mutation.
+
 ### Modules page
 - Can open a module modal to delete or perform other actions
 - Deleting a module requires that it is not used by any locally installed characters

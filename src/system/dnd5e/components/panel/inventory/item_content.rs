@@ -1,25 +1,25 @@
 use crate::{
-	components::{database::UseQueryAllHandle, modal, progress_bar},
+	components::{database::{UseQueryAllHandle, use_query_typed, QueryStatus}, modal, progress_bar},
 	database::app::Criteria,
-	page::characters::sheet::joined::editor::{description, mutator_list},
+	page::characters::sheet::{joined::editor::{description, mutator_list}, MutatorImpact},
 	page::characters::sheet::CharacterHandle,
-	system::dnd5e::{
+	system::{dnd5e::{
 		components::{
-			panel::{AvailableSpellList, HeaderAddon},
+			panel::{AvailableSpellList, HeaderAddon, spell_name_and_icons, spell_overview_info},
 			validate_uint_only, FormulaInline, GeneralProp, WalletInline,
 		},
 		data::{
 			action::ActivationKind,
-			character::{spellcasting::SpellEntry, MAX_SPELL_RANK},
-			item::{self, Item},
-			Ability, ArmorExtended, Spell, WeaponProficiency,
+			character::{spellcasting::{SpellEntry, AbilityOrStat}, MAX_SPELL_RANK, Persistent},
+			item::{self, Item, container::spell::ContainerSpell},
+			ArmorExtended, Spell, WeaponProficiency, Indirect,
 		},
 		evaluator::IsProficientWith,
-	},
+	}, core::SourceId},
 	utility::{Evaluator, InputExt},
 };
 use any_range::AnyRange;
-use std::path::PathBuf;
+use std::{path::PathBuf, collections::HashSet};
 use yew::prelude::*;
 
 pub fn get_inventory_item<'c>(
@@ -38,6 +38,20 @@ pub fn get_inventory_item<'c>(
 				Some(container) => container.get_item(id),
 			},
 		};
+	}
+	item
+}
+pub fn get_inventory_item_mut<'c>(
+	persistent: &'c mut Persistent,
+	id_path: &Vec<uuid::Uuid>,
+) -> Option<&'c mut Item> {
+	let mut iter = id_path.iter();
+	let Some(id) = iter.next() else { return None; };
+	let mut item = persistent.inventory.get_mut(id);
+	while let Some(id) = iter.next() {
+		let Some(prev_item) = item.take() else { return None; };
+		let Some(container) = &mut prev_item.items else { return None; };
+		item = container.get_mut(id);
 	}
 	item
 }
@@ -594,19 +608,59 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 #[function_component]
 fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid>>) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
+
+	let fetch_indirect_spells = use_query_typed::<Spell>();
+	let indirect_spell_ids = use_state_eq(|| Vec::new());
+	use_effect_with_deps(
+		{
+			let fetch_indirect_spells = fetch_indirect_spells.clone();
+			move |ids: &UseStateHandle<Vec<SourceId>>| {
+				fetch_indirect_spells.run((**ids).clone());
+			}
+		},
+		indirect_spell_ids.clone(),
+	);
+
 	let Some(item) = get_inventory_item(&state, value) else { return Html::default(); };
 	let Some(spell_container) = &item.spells else { return Html::default(); };
 
+	indirect_spell_ids.set(spell_container.spells.iter().filter_map(|contained| {
+		match &contained.spell {
+			Indirect::Id(id) => Some(id.unversioned()),
+			Indirect::Custom(_spell) => None,
+		}
+	}).collect::<Vec<_>>());
+	let contained_ids = spell_container.spells.iter().map(|contained| {
+		match &contained.spell {
+			Indirect::Id(id) => id,
+			Indirect::Custom(spell) => &spell.id,
+		}.unversioned()
+	}).collect::<HashSet<_>>();
+
+	let add_to_container = state.new_dispatch({
+		let id_path = value.clone();
+		move |spell: Indirect<Spell>, persistent: &mut Persistent| {
+			let Some(item) = get_inventory_item_mut(persistent, &id_path) else {
+				return MutatorImpact::None;
+			};
+			let Some(spell_container) = &mut item.spells else {
+				return MutatorImpact::None;
+			};
+			spell_container.spells.push(ContainerSpell {
+				spell,
+				rank: None,
+				save_dc: None,
+				attack_bonus: None,
+			});
+			// TODO: only recompile character when the modal is dismissed
+			return MutatorImpact::None;
+		}
+	});
+
 	// TODO: implement SpellEntry for spell container when adding spells to the spell panel. For now lets just use /something/.
-	let entry = SpellEntry {
-		ability: Ability::Charisma,
-		source: PathBuf::new(),
-		classified_as: None,
-		cast_via_slot: false,
-		cast_via_ritual: false,
-		cast_via_uses: None,
-		range: None,
-		forced_rank: None,
+	let (casting_atk_bonus, casting_dc) = match &spell_container.casting {
+		None => (None, None),
+		Some(casting) => (casting.attack_bonus, casting.save_dc),
 	};
 
 	let rank_min = spell_container.capacity.rank_min.unwrap_or(0);
@@ -615,6 +669,52 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 		"rank",
 		Criteria::any((rank_min..=rank_max).into_iter().map(|rank| Criteria::exact(rank))),
 	);
+	
+	let contained_spells = spell_container.spells.iter().map(|contained| {
+		let ContainerSpell {
+			spell,
+			rank,
+			save_dc,
+			attack_bonus,
+		} = contained;
+		let spell = match spell {
+			Indirect::Id(id) => match fetch_indirect_spells.status() {
+				QueryStatus::Success((_ids, spells_by_id)) => {
+					spells_by_id.get(id)
+				}
+				_ => None,
+			},
+			Indirect::Custom(spell) => Some(spell),
+		};
+		let Some(spell) = spell else { return Html::default(); };
+
+		let entry = SpellEntry {
+			source: PathBuf::new(),
+			classified_as: None,
+			cast_via_slot: false,
+			cast_via_ritual: false,
+			cast_via_uses: None,
+			range: None,
+			rank: *rank,
+			attack_bonus: AbilityOrStat::Stat(attack_bonus.or(casting_atk_bonus).unwrap_or(0)),
+			save_dc: AbilityOrStat::Stat(save_dc.or(casting_dc).unwrap_or(0)),
+			// TODO: Should this also be an abilityorstat for the caster's original ability modifier?
+			damage_ability: None,
+		};
+
+		// TODO: Next up: fields for rank, save_dc, and attack_bonus on the container spell (so users can adjust the values when a spell is added).
+		// Save DC & Attack Bonus are not available if the item has casting values for those already set,
+		// but are required if those casting values are not provided.
+
+		html! {
+			<div class="spell-row">
+				<div class="name-and-source">
+					{spell_name_and_icons(&state, spell, &entry, false)}
+				</div>
+				{spell_overview_info(&state, spell, &entry, None)}
+			</div>
+		}
+	}).collect::<Vec<_>>();
 
 	html! {<>
 		<div class="modal-header">
@@ -622,14 +722,40 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
 		</div>
 		<div class="modal-body">
+			<div class="spell-section">
+				{contained_spells}
+			</div>
 			<AvailableSpellList
 				header_addon={HeaderAddon::from({
 					move |spell: &Spell| -> Html {
-						html! {}
+						let contained = contained_ids.contains(&spell.id.unversioned());
+						let mut classes = classes!("btn", "btn-xs", "select");
+						if contained {
+							classes.push("btn-outline-secondary");
+						}
+						else {
+							classes.push("btn-outline-theme");
+						}
+						html! {
+							<button
+								role="button"
+								class={classes}
+								disabled={contained}
+								onclick={add_to_container.reform({
+									let spell = Indirect::Id(spell.id.unversioned());
+									move |_| spell.clone()
+								})}
+							>
+								{match contained {
+									true => "Added",
+									false => "Add",
+								}}
+							</button>
+						}
 					}
 				})}
 				criteria={criteria.clone()}
-				entry={entry.clone()}
+				entry={None}
 			/>
 		</div>
 	</>}

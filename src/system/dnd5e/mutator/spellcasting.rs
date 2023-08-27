@@ -5,7 +5,7 @@ use crate::{
 		dnd5e::data::{
 			action::LimitedUses,
 			character::{
-				spellcasting::{self, Caster, Restriction, RitualCapability, Slots, SpellEntry},
+				spellcasting::{self, Caster, Restriction, RitualCapability, Slots, SpellEntry, AbilityOrStat},
 				Character,
 			},
 			description,
@@ -227,14 +227,16 @@ impl Mutator for Spellcasting {
 				}
 				for (id, prepared_info) in all_spells {
 					let entry = SpellEntry {
-						ability: *ability,
 						source: parent.to_owned(),
 						classified_as: classified_as.clone(),
 						cast_via_slot: prepared_info.can_cast_through_slot,
 						cast_via_ritual: prepared_info.can_ritual_cast,
 						cast_via_uses: limited_uses.clone(),
 						range: prepared_info.range.clone(),
-						forced_rank: prepared_info.cast_at_rank.clone(),
+						rank: prepared_info.cast_at_rank.clone(),
+						attack_bonus: AbilityOrStat::Ability(*ability),
+						save_dc: AbilityOrStat::Ability(*ability),
+						damage_ability: Some(*ability),
 					};
 					stats.spellcasting_mut().add_prepared(&id, entry);
 				}
@@ -310,14 +312,16 @@ impl FromKDL for Spellcasting {
 				};
 
 				let spell_entry = SpellEntry {
-					ability: ability,
 					source: std::path::PathBuf::from(&class_name),
 					classified_as: Some(class_name.clone()),
 					cast_via_slot: true,
 					cast_via_ritual: true,
 					cast_via_uses: None,
 					range: None,
-					forced_rank: None,
+					rank: None,
+					attack_bonus: AbilityOrStat::Ability(ability),
+					save_dc: AbilityOrStat::Ability(ability),
+					damage_ability: Some(ability),
 				};
 
 				let ritual_capability = match node.query_opt("scope() > ritual")? {

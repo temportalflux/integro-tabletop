@@ -11,7 +11,7 @@ use crate::{
 			components::glyph::Glyph,
 			data::{
 				character::{
-					spellcasting::{CasterKind, RitualCapability, SpellEntry},
+					spellcasting::{CasterKind, RitualCapability, SpellEntry, AbilityOrStat},
 					MAX_SPELL_RANK,
 				},
 				proficiency,
@@ -26,7 +26,7 @@ use crate::{
 use convert_case::{Case, Casing};
 use futures_util::{FutureExt, StreamExt};
 use itertools::Itertools;
-use std::{collections::BTreeMap, pin::Pin};
+use std::{collections::BTreeMap, pin::Pin, path::Path};
 use yew::prelude::*;
 
 fn rank_suffix(rank: u8) -> &'static str {
@@ -182,7 +182,7 @@ impl<'c> SpellSections<'c> {
 	}
 
 	fn insert_spell(&mut self, spell: &'c Spell, entry: &'c SpellEntry, location: SpellLocation) {
-		let ranks = match (entry.forced_rank, entry.cast_via_slot) {
+		let ranks = match (entry.rank, entry.cast_via_slot) {
 			(Some(rank), _) => vec![(rank, location)],
 			(None, false) => vec![(spell.rank, location)],
 			(None, true) => {
@@ -502,8 +502,28 @@ fn spell_row<'c>(props: SpellRowProps<'c>) -> Html {
 		}
 	};
 
+	// TODO: tooltip for casting time duration
+	// TODO: Tooltips for ritual & concentration icons
+	let use_ritual_only = use_kind == UseSpell::RitualOnly;
+	html! {
+		<SpellModalRowRoot {location}>
+			<div class="spell-row">
+				<div class="cast-button" onclick={stop_propagation()}>
+					<UseSpellButton kind={use_kind} />
+				</div>
+				<div class="name-and-source">
+					{spell_name_and_icons(&state, spell, entry, use_ritual_only)}
+					{spell_source_and_uses(&entry.source, src_text_suffix)}
+				</div>
+				{spell_overview_info(&state, spell, entry, Some(section_rank))}
+			</div>
+		</SpellModalRowRoot>
+	}
+}
+
+pub fn spell_name_and_icons(state: &CharacterHandle, spell: &Spell, entry: &SpellEntry, ritual_only: bool) -> Html {
 	let can_ritual_cast = spell.casting_time.ritual && {
-		use_kind == UseSpell::RitualOnly || {
+		ritual_only || {
 			let classified = entry.classified_as.as_ref();
 			let caster = classified
 				.map(|id| state.spellcasting().get_caster(id))
@@ -517,138 +537,142 @@ fn spell_row<'c>(props: SpellRowProps<'c>) -> Html {
 			ritual_cast_selected
 		}
 	};
-
-	// TODO: tooltip for casting time duration
-	// TODO: Tooltips for ritual & concentration icons
 	html! {
-		<SpellModalRowRoot {location}>
+		<div class="name-row">
+			{&spell.name}
+			{can_ritual_cast.then(|| html!(
+				<Glyph tag="div" classes={"ritual ms-1"} />
+			)).unwrap_or_default()}
+			{spell.duration.concentration.then(|| html!(
+				<Glyph tag="div" classes={"concentration ms-1"} />
+			)).unwrap_or_default()}
+		</div>
+	}
+}
 
-			<div class="cast-button" onclick={stop_propagation()}>
-				<UseSpellButton kind={use_kind} />
-			</div>
+pub fn spell_source_and_uses(source: &Path, uses_suffix: Option<Html>) -> Html {
+	html! {
+		<div class="source-row">
+			{crate::data::as_feature_path_text(source)}
+			{uses_suffix.unwrap_or_default()}
+		</div>
+	}
+}
 
-			<div class="name-and-source">
-				<div class="name-row">
-					{&spell.name}
-					{can_ritual_cast.then(|| html!(
-						<Glyph tag="div" classes={"ritual ms-1"} />
-					)).unwrap_or_default()}
-					{spell.duration.concentration.then(|| html!(
-						<Glyph tag="div" classes={"concentration ms-1"} />
-					)).unwrap_or_default()}
-				</div>
-				<div class="source-row">
-					{crate::data::as_feature_path_text(&entry.source)}
-					{src_text_suffix.unwrap_or_default()}
-				</div>
-			</div>
-
-			<div class="attributes">
-				<div class="attribute-row">
-					<span class="attribute casting-time">
-						<span class="label">{"Cast:"}</span>
-						{match &spell.casting_time.duration {
-							CastingDuration::Action => html!("Action"),
-							CastingDuration::Bonus => html!("Bonus Action"),
-							CastingDuration::Reaction(_trigger) => html!("Reaction"),
-							CastingDuration::Unit(amt, kind) => html!{<>{amt} {kind}</>},
-						}}
-					</span>
-					{match &spell.duration.kind {
-						DurationKind::Special => html!(),
-						DurationKind::Instantaneous => html! {
-							<span class="attribute duration">
-								<span class="label">{"Duration:"}</span>
-								{"Instant"}
-							</span>
-						},
-						DurationKind::Unit(amt, kind) => html! {
-							<span class="attribute duration">
-								<span class="label">{"Duration:"}</span>
-								{amt}{" "}{kind}
-							</span>
-						},
+pub fn spell_overview_info(state: &CharacterHandle, spell: &Spell, entry: &SpellEntry, override_rank: Option<u8>) -> Html {
+	html! {
+		<div class="attributes">
+			<div class="attribute-row">
+				<span class="attribute casting-time">
+					<span class="label">{"Cast:"}</span>
+					{match &spell.casting_time.duration {
+						CastingDuration::Action => html!("Action"),
+						CastingDuration::Bonus => html!("Bonus Action"),
+						CastingDuration::Reaction(_trigger) => html!("Reaction"),
+						CastingDuration::Unit(amt, kind) => html!(format!("{amt} {kind}")),
 					}}
-					<span class="attribute range">
-						<span class="label">{"Range:"}</span>
-						{match entry.range.as_ref().unwrap_or(&spell.range) {
-							spell::Range::OnlySelf => html!("Self"),
-							spell::Range::Touch => html!("Touch"),
-							spell::Range::Unit { distance, unit } => html! {<>{distance}{" "}{unit}</>},
-							spell::Range::Sight => html!("Sight"),
-							spell::Range::Unlimited => html!("Unlimited"),
-						}}
-					</span>
-				</div>
-				<div class="attribute-row">
-					{match &spell.check {
-						None => html!(),
-						Some(spell::Check::AttackRoll(_atk_kind)) => {
-							let modifier = state.ability_modifier(entry.ability, Some(proficiency::Level::Full));
-							html! {<span class="attribute atk-roll">
-								<span class="label">{"Atk Roll:"}</span>
-								{format!("{modifier:+}")}
-							</span>}
-						}
-						Some(spell::Check::SavingThrow(ability, fixed_dc)) => {
-							let abb_name = ability.abbreviated_name().to_case(Case::Upper);
-							let dc = match fixed_dc {
+				</span>
+				{match &spell.duration.kind {
+					DurationKind::Special => html!(),
+					DurationKind::Instantaneous => html! {
+						<span class="attribute duration">
+							<span class="label">{"Duration:"}</span>
+							{"Instant"}
+						</span>
+					},
+					DurationKind::Unit(amt, kind) => html! {
+						<span class="attribute duration">
+							<span class="label">{"Duration:"}</span>
+							{amt}{" "}{kind}
+						</span>
+					},
+				}}
+				<span class="attribute range">
+					<span class="label">{"Range:"}</span>
+					{match entry.range.as_ref().unwrap_or(&spell.range) {
+						spell::Range::OnlySelf => html!("Self"),
+						spell::Range::Touch => html!("Touch"),
+						spell::Range::Unit { distance, unit } => html! {<>{distance}{" "}{unit}</>},
+						spell::Range::Sight => html!("Sight"),
+						spell::Range::Unlimited => html!("Unlimited"),
+					}}
+				</span>
+			</div>
+			<div class="attribute-row">
+				{match &spell.check {
+					None => html!(),
+					Some(spell::Check::AttackRoll(_atk_kind)) => {
+						let modifier = match &entry.attack_bonus {
+							AbilityOrStat::Stat(modifier) => *modifier,
+							AbilityOrStat::Ability(ability) => state.ability_modifier(*ability, Some(proficiency::Level::Full)),
+						};
+						html! {<span class="attribute atk-roll">
+							<span class="label">{"Atk Roll:"}</span>
+							{format!("{modifier:+}")}
+						</span>}
+					}
+					Some(spell::Check::SavingThrow(ability, fixed_dc)) => {
+						let abb_name = ability.abbreviated_name().to_case(Case::Upper);
+						let dc = match &entry.save_dc {
+							AbilityOrStat::Stat(dc) => *dc as i32,
+							AbilityOrStat::Ability(ability) => match fixed_dc {
 								Some(dc) => *dc as i32,
 								None => {
-									let modifier = state.ability_modifier(entry.ability, Some(proficiency::Level::Full));
+									let modifier = state.ability_modifier(*ability, Some(proficiency::Level::Full));
 									8 + modifier
 								}
-							};
-							html! {<span class="attribute save-dc">
-								<span class="label">{"Save DC:"}</span>
-								{format!("{abb_name} {dc}")}
-							</span>}
-						}
-					}}
-					{match &spell.damage {
-						None => html!(),
-						Some(damage) => {
-							let modifier = state.ability_modifier(entry.ability, Some(proficiency::Level::Full));
-							let upcast_amt = section_rank - spell.rank;
-							let (roll_set, bonus) = damage.evaluate(&*state, modifier, upcast_amt as u32);
-							let mut spans = roll_set.rolls().into_iter().enumerate().map(|(idx, roll)| {
-								html! {
-									<span>
-										{(idx != 0).then(|| html!("+")).unwrap_or_default()}
-										{roll.to_string()}
-									</span>
-								}
-							}).collect::<Vec<_>>();
-							if bonus != 0 {
-								spans.push(html! {
-									<span>{format!("{bonus:+}")}</span>
-								});
+							},
+						};
+						html! {<span class="attribute save-dc">
+							<span class="label">{"Save DC:"}</span>
+							{format!("{abb_name} {dc}")}
+						</span>}
+					}
+				}}
+				{match &spell.damage {
+					None => html!(),
+					Some(damage) => {
+						let cast_at_rank = override_rank.or(entry.rank);
+						let modifier = entry.damage_ability.map(|ability| state.ability_modifier(ability, Some(proficiency::Level::Full))).unwrap_or_default();
+						let upcast_amt = cast_at_rank.map(|rank| rank - spell.rank).unwrap_or(0);
+						let (roll_set, bonus) = damage.evaluate(&*state, modifier, upcast_amt as u32);
+						let mut spans = roll_set.rolls().into_iter().enumerate().map(|(idx, roll)| {
+							html! {
+								<span>
+									{(idx != 0).then(|| html!("+")).unwrap_or_default()}
+									{roll.to_string()}
+								</span>
 							}
-							// TODO: DamageType glyph `damage.damage_type`
-							html! {<span class="attribute damage">
-								<span class="label">{"Damage:"}</span>
-								{spans}
-							</span>}
+						}).collect::<Vec<_>>();
+						if bonus != 0 {
+							spans.push(html! {
+								<span>{format!("{bonus:+}")}</span>
+							});
 						}
-					}}
-					{match &spell.area_of_effect {
-						None => html!(),
-						Some(area_of_effect) => html! {
-							<span class="attribute area-of-effect">
-								<span class="label">{"Area of Effect:"}</span>
-								{match area_of_effect {
-									AreaOfEffect::Cone { length } => html!{<>{length}{"ft. Cone"}</>},
-									AreaOfEffect::Cube { size } => html!{<>{size}{"ft. Cube"}</>},
-									AreaOfEffect::Cylinder { radius, height } => html!{<>{radius}{"ft. x "}{height}{"ft. Cylinder"}</>},
-									AreaOfEffect::Line { width, length } => html!{<>{width}{"ft. x "}{length}{"ft. Line"}</>},
-									AreaOfEffect::Sphere { radius } => html!{<>{radius}{"ft. Sphere"}</>},
-								}}
-							</span>
-						}
-					}}
-				</div>
+						// TODO: DamageType glyph `damage.damage_type`
+						html! {<span class="attribute damage">
+							<span class="label">{"Damage:"}</span>
+							{spans}
+						</span>}
+					}
+				}}
+				{match &spell.area_of_effect {
+					None => html!(),
+					Some(area_of_effect) => html! {
+						<span class="attribute area-of-effect">
+							<span class="label">{"Area of Effect:"}</span>
+							{match area_of_effect {
+								AreaOfEffect::Cone { length } => html!{<>{length}{"ft. Cone"}</>},
+								AreaOfEffect::Cube { size } => html!{<>{size}{"ft. Cube"}</>},
+								AreaOfEffect::Cylinder { radius, height } => html!{<>{radius}{"ft. x "}{height}{"ft. Cylinder"}</>},
+								AreaOfEffect::Line { width, length } => html!{<>{width}{"ft. x "}{length}{"ft. Line"}</>},
+								AreaOfEffect::Sphere { radius } => html!{<>{radius}{"ft. Sphere"}</>},
+							}}
+						</span>
+					}
+				}}
 			</div>
-		</SpellModalRowRoot>
+		</div>
 	}
 }
 
@@ -669,7 +693,7 @@ fn SpellModalRowRoot(SpellModalProps { location, children }: &SpellModalProps) -
 		}
 	});
 	html! {
-		<div class="spell-row" onclick={open_browser}>
+		<div onclick={open_browser}>
 			{children.clone()}
 		</div>
 	}
@@ -700,7 +724,7 @@ fn SpellModal(
 			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
 		</div>
 		<div class="modal-body">
-			{spell_content(spell, entry, &state)}
+			{spell_content(spell, Some(entry), &state)}
 		</div>
 	</>}
 }
@@ -775,7 +799,7 @@ fn ManagerCasterModal(CasterNameProps { caster_id }: &CasterNameProps) -> Html {
 							spell_id={spell.id.unversioned()}
 							rank={spell.rank}
 						/>};
-						spell_list_item("selected", &state, spell, &caster.spell_entry, action)
+						spell_list_item("selected", &state, spell, Some(&caster.spell_entry), action)
 					}).collect::<Vec<_>>()}
 				</CollapsableCard>
 				<CollapsableCard
@@ -945,12 +969,12 @@ fn spell_list_item(
 	section_id: &str,
 	state: &CharacterHandle,
 	spell: &Spell,
-	entry: &SpellEntry,
+	entry: Option<&SpellEntry>,
 	action: Html,
 ) -> Html {
 	let collapse_id = format!("{section_id}-{}", spell.id.ref_id());
 	let can_ritual_cast = spell.casting_time.ritual && {
-		let classified = entry.classified_as.as_ref();
+		let classified = entry.map(|entry| entry.classified_as.as_ref()).flatten();
 		let caster = classified
 			.map(|id| state.spellcasting().get_caster(id))
 			.flatten();
@@ -1003,7 +1027,7 @@ fn spell_list_item(
 	}
 }
 
-fn spell_content(spell: &Spell, entry: &SpellEntry, state: &CharacterHandle) -> Html {
+fn spell_content(spell: &Spell, entry: Option<&SpellEntry>, state: &CharacterHandle) -> Html {
 	use crate::components::{Tag, Tags};
 	let mut sections = Vec::new();
 	sections.push(html! {
@@ -1036,10 +1060,11 @@ fn spell_content(spell: &Spell, entry: &SpellEntry, state: &CharacterHandle) -> 
 			{spell.casting_time.ritual.then(|| html! { {" (ritual)"} }).unwrap_or_default()}
 		</div>
 	});
+	let range = entry.map(|entry| entry.range.as_ref()).flatten();
 	sections.push(html! {
 		<div class="property">
 			<strong>{"Range:"}</strong>
-			{match entry.range.as_ref().unwrap_or(&spell.range) {
+			{match range.unwrap_or(&spell.range) {
 				spell::Range::OnlySelf => html!("Self"),
 				spell::Range::Touch => html!("Touch"),
 				spell::Range::Unit { distance, unit } => html! {<>{distance}{" "}{unit}</>},
@@ -1132,14 +1157,22 @@ fn spell_content(spell: &Spell, entry: &SpellEntry, state: &CharacterHandle) -> 
 	});
 
 	let desc = {
-		let modifier = state.ability_modifier(entry.ability, None);
-		let prof_bonus = state.proficiency_bonus();
+		let (atk_bonus, save_dc) = entry.map(|entry| {
+			let atk_bonus = match entry.attack_bonus {
+				AbilityOrStat::Stat(stat) => stat,
+				AbilityOrStat::Ability(ability) => state.ability_modifier(ability, Some(proficiency::Level::Full)),
+			};
+			let save_dc = match entry.save_dc {
+				AbilityOrStat::Stat(stat) => stat as i32,
+				AbilityOrStat::Ability(ability) => 8 + state.ability_modifier(ability, Some(proficiency::Level::Full)),
+			};
+			(atk_bonus, save_dc)
+		}).unwrap_or((0, 0));
 		let caster_args = std::collections::HashMap::from([
-			("{CasterMod}".into(), format!("{:+}", modifier)),
-			("{CasterAtk}".into(), format!("{:+}", modifier + prof_bonus)),
+			("{CasterAtk}".into(), format!("{atk_bonus:+}")),
 			(
 				"{CasterDC}".into(),
-				format!("{}", 8 + modifier + prof_bonus),
+				format!("{save_dc}"),
 			),
 		]);
 		let desc = spell
@@ -1166,7 +1199,7 @@ fn spell_content(spell: &Spell, entry: &SpellEntry, state: &CharacterHandle) -> 
 #[derive(Clone, PartialEq, Properties)]
 pub struct AvailableSpellListProps {
 	pub criteria: Option<crate::database::app::Criteria>,
-	pub entry: SpellEntry,
+	pub entry: Option<SpellEntry>,
 	pub header_addon: HeaderAddon,
 }
 #[derive(Clone)]
@@ -1222,7 +1255,7 @@ pub fn AvailableSpellList(props: &AvailableSpellListProps) -> Html {
 					let info = (spell.name.clone(), spell.rank);
 					let html = {
 						let addon = (header_addon.0)(&spell);
-						spell_list_item("relevant", &state, &spell, &entry, addon)
+						spell_list_item("relevant", &state, &spell, entry.as_ref(), addon)
 					};
 					sorted_info.insert(idx, info);
 					htmls.insert(idx, html);

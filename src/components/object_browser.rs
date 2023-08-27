@@ -1,4 +1,4 @@
-use crate::{database::app::Criteria, system::dnd5e::components::GeneralProp};
+use crate::{database::app::Criteria, system::dnd5e::{components::GeneralProp, data::character::spellcasting::AbilityOrStat}};
 use std::{collections::HashMap, path::PathBuf, rc::Rc, str::FromStr, sync::Arc};
 use yew::prelude::*;
 
@@ -116,14 +116,16 @@ impl ObjectBrowser for SpellBrowser {
 
 		// TODO: Somehow generate the spell entry for the feature's selector data
 		let spell_entry = spellcasting::SpellEntry {
-			ability: crate::system::dnd5e::data::Ability::Charisma,
 			source: std::path::PathBuf::new(),
 			classified_as: None,
 			cast_via_slot: false,
 			cast_via_ritual: false,
 			cast_via_uses: None,
 			range: None,
-			forced_rank: None,
+			rank: None,
+			attack_bonus: AbilityOrStat::Ability(crate::system::dnd5e::data::Ability::Charisma),
+			save_dc: AbilityOrStat::Ability(crate::system::dnd5e::data::Ability::Charisma),
+			damage_ability: Some(crate::system::dnd5e::data::Ability::Charisma),
 		};
 
 		html! {<>
