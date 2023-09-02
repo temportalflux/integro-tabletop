@@ -637,6 +637,10 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 		}.unversioned()
 	}).collect::<HashSet<_>>();
 
+	// TODO: When adding multiple spells, it keeps overwriting the first slot for some reason.
+	// Its like the item state is always empty when the add_to_container runs
+	log::debug!("#Spells {:?}", spell_container.spells.len());
+
 	let add_to_container = state.new_dispatch({
 		let id_path = value.clone();
 		move |spell: Indirect<Spell>, persistent: &mut Persistent| {
@@ -646,12 +650,28 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 			let Some(spell_container) = &mut item.spells else {
 				return MutatorImpact::None;
 			};
+			log::debug!("add_to_container #Spells {:?}", spell_container.spells.len());
 			spell_container.spells.push(ContainerSpell {
 				spell,
 				rank: None,
 				save_dc: None,
 				attack_bonus: None,
 			});
+			log::debug!("add_to_container #Spells {:?}", spell_container.spells.len());
+			// TODO: only recompile character when the modal is dismissed
+			return MutatorImpact::None;
+		}
+	});
+	let remove_from_container = state.new_dispatch({
+		let id_path = value.clone();
+		move |spell_idx: usize, persistent: &mut Persistent| {
+			let Some(item) = get_inventory_item_mut(persistent, &id_path) else {
+				return MutatorImpact::None;
+			};
+			let Some(spell_container) = &mut item.spells else {
+				return MutatorImpact::None;
+			};
+			spell_container.spells.remove(spell_idx);
 			// TODO: only recompile character when the modal is dismissed
 			return MutatorImpact::None;
 		}
@@ -669,8 +689,52 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 		"rank",
 		Criteria::any((rank_min..=rank_max).into_iter().map(|rank| Criteria::exact(rank))),
 	);
-	
-	let contained_spells = spell_container.spells.iter().map(|contained| {
+
+	fn get_container_spell<'c>(persistent: &'c mut Persistent, id_path: &Vec<uuid::Uuid>, spell_idx: usize) -> Option<&'c mut ContainerSpell> {
+		let Some(item) = get_inventory_item_mut(persistent, &id_path) else {
+			return None;
+		};
+		let Some(spell_container) = &mut item.spells else {
+			return None;
+		};
+		spell_container.spells.get_mut(spell_idx)
+	}
+		
+	let select_rank = state.new_dispatch({
+		let id_path = value.clone();
+		move |(spell_idx, desired_rank): (usize, Option<u8>), persistent: &mut Persistent| {
+			let Some(contained) = get_container_spell(persistent, &id_path, spell_idx) else {
+				return MutatorImpact::None;
+			};
+			contained.rank = desired_rank;
+			// TODO: only recompile character when the modal is dismissed
+			return MutatorImpact::None;
+		}
+	});
+	let select_atk_bonus = state.new_dispatch({
+		let id_path = value.clone();
+		move |(spell_idx, desired_bonus): (usize, Option<i32>), persistent: &mut Persistent| {
+			let Some(contained) = get_container_spell(persistent, &id_path, spell_idx) else {
+				return MutatorImpact::None;
+			};
+			contained.attack_bonus = desired_bonus;
+			// TODO: only recompile character when the modal is dismissed
+			return MutatorImpact::None;
+		}
+	});
+	let select_save_dc = state.new_dispatch({
+		let id_path = value.clone();
+		move |(spell_idx, desired_dc): (usize, Option<u8>), persistent: &mut Persistent| {
+			let Some(contained) = get_container_spell(persistent, &id_path, spell_idx) else {
+				return MutatorImpact::None;
+			};
+			contained.save_dc = desired_dc;
+			// TODO: only recompile character when the modal is dismissed
+			return MutatorImpact::None;
+		}
+	});
+
+	let contained_spells = spell_container.spells.iter().enumerate().map(|(spell_idx, contained)| {
 		let ContainerSpell {
 			spell,
 			rank,
@@ -706,12 +770,135 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 		// Save DC & Attack Bonus are not available if the item has casting values for those already set,
 		// but are required if those casting values are not provided.
 
+		let field_rank = {
+			let select_rank = Callback::from({
+				let min_rank = spell.rank;
+				let select_rank = select_rank.clone();
+				move |evt: web_sys::Event| {
+					let Some(selected_rank) = evt.select_value_t::<u8>() else { return; };
+					select_rank.emit((spell_idx, (selected_rank != min_rank).then_some(selected_rank)));
+				}
+			});
+			let selected_rank = rank.unwrap_or(spell.rank);
+			html! {
+				<select class="form-select px-2 py-1" onchange={select_rank}>
+					{(spell.rank..=MAX_SPELL_RANK).into_iter().map(|option_rank| {
+						html! {
+							<option selected={option_rank == selected_rank} value={option_rank.to_string()}>
+								{"Rank "}{option_rank}
+							</option>
+						}
+					}).collect::<Vec<_>>()}
+				</select>
+			}
+		};
+		let field_atk_bonus = {
+			let select_atk_bonus = Callback::from({
+				let select_atk_bonus = select_atk_bonus.clone();
+				move |evt: web_sys::Event| {
+					let Some(value) = evt.select_value() else { return; };
+					if value.is_empty() { return; }
+					let Ok(value) = value.parse::<i32>() else { return; };
+					select_atk_bonus.emit((spell_idx, Some(value)));
+				}
+			});
+			match casting_atk_bonus {
+				Some(fixed_value) => html!(<div class="text-center">{format!("{fixed_value:+}")}</div>),
+				None => {
+					let mut class = classes!("form-select", "px-2", "py-1");
+					let selected = {
+						let mut selected = 0;
+						if let Some(value) = attack_bonus {
+							selected = *value;
+						}
+						else
+						{
+							class.push("missing-value");
+						}
+						selected
+					};
+					html! {
+						<select {class} onchange={select_atk_bonus}>
+							<option selected={attack_bonus.is_none()} value="" />
+							{(-20..=20).into_iter().map(|bonus| {
+								html! {
+									<option selected={bonus == selected} value={bonus.to_string()}>
+										{format!("{bonus:+}")}
+									</option>
+								}
+							}).collect::<Vec<_>>()}
+						</select>
+					}
+				}
+			}
+		};
+		let field_save_dc = {
+			let select_save_dc = Callback::from({
+				let select_save_dc = select_save_dc.clone();
+				move |evt: web_sys::Event| {
+					let Some(value) = evt.select_value() else { return; };
+					if value.is_empty() { return; }
+					let Ok(value) = value.parse::<u8>() else { return; };
+					select_save_dc.emit((spell_idx, Some(value)));
+				}
+			});
+			match casting_dc {
+				Some(fixed_value) => html!(<div class="text-center">{fixed_value}</div>),
+				None => {
+					let mut class = classes!("form-select", "px-2", "py-1");
+					let selected = {
+						let mut selected = 0;
+						if let Some(value) = save_dc {
+							selected = *value;
+						}
+						else
+						{
+							class.push("missing-value");
+						}
+						selected
+					};
+					html! {
+						<select {class} onchange={select_save_dc}>
+							<option selected={save_dc.is_none()} value="" />
+							{(0..=35).into_iter().map(|dc| {
+								html! {
+									<option selected={dc == selected} value={dc.to_string()}>
+										{dc}
+									</option>
+								}
+							}).collect::<Vec<_>>()}
+						</select>
+					}
+				}
+			}
+		};
+
 		html! {
 			<div class="spell-row">
-				<div class="name-and-source">
-					{spell_name_and_icons(&state, spell, &entry, false)}
+				<div class="flex-fill d-flex">
+					<div class="name-and-source">
+						{spell_name_and_icons(&state, spell, &entry, false)}
+					</div>
+					<button type="button" class="btn btn-danger btn-xs ms-2" onclick={remove_from_container.reform(move |_| spell_idx)}>
+						<i class="bi bi-dash me-1" />
+						{"Remove"}
+					</button>
 				</div>
 				{spell_overview_info(&state, spell, &entry, None)}
+				<div class="row flex-fill mt-1" style="font-size: 1rem;">
+					<div class="col">
+						<div class="text-center">{"Rank"}</div>
+						{field_rank}
+					</div>
+					<div class="col">
+						<div class="text-center">{"Attack Bonus"}</div>
+						{field_atk_bonus}
+					</div>
+					<div class="col">
+						<div class="text-center">{"Save DC"}</div>
+						{field_save_dc}
+					</div>
+				</div>
 			</div>
 		}
 	}).collect::<Vec<_>>();
