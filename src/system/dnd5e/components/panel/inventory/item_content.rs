@@ -2,7 +2,7 @@ use crate::{
 	components::{database::{UseQueryAllHandle, use_query_typed, QueryStatus}, modal, progress_bar},
 	database::app::Criteria,
 	page::characters::sheet::{joined::editor::{description, mutator_list}, MutatorImpact},
-	page::characters::sheet::CharacterHandle,
+	page::characters::sheet::{CharacterHandle, joined::editor::CollapsableCard},
 	system::{dnd5e::{
 		components::{
 			panel::{AvailableSpellList, HeaderAddon, spell_name_and_icons, spell_overview_info},
@@ -661,6 +661,25 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 		Criteria::any((rank_min..=rank_max).into_iter().map(|rank| Criteria::exact(rank))),
 	);
 
+	let consumed_rank_sum: usize = spell_container.spells.iter().map(|contained| match contained.rank {
+		Some(fixed_rank) => fixed_rank as usize,
+		None => {
+			let spell = match &contained.spell {
+				Indirect::Id(id) => match fetch_indirect_spells.status() {
+					QueryStatus::Success((_ids, spells_by_id)) => {
+						spells_by_id.get(id)
+					}
+					_ => None,
+				},
+				Indirect::Custom(spell) => Some(spell),
+			};
+			spell.map(|spell| spell.rank as usize).unwrap_or(0)
+		}
+	}).sum();
+	let remaining_total_rank = spell_container.capacity.rank_total.map(|total| total.saturating_sub(consumed_rank_sum));
+	let num_spells = spell_container.spells.len();
+	let remaining_total_spells = spell_container.capacity.max_count.map(|total| total.saturating_sub(num_spells));
+
 	fn get_container_spell<'c>(persistent: &'c mut Persistent, id_path: &Vec<uuid::Uuid>, spell_idx: usize) -> Option<&'c mut ContainerSpell> {
 		let Some(item) = get_inventory_item_mut(persistent, &id_path) else {
 			return None;
@@ -737,10 +756,6 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 			damage_ability: None,
 		};
 
-		// TODO: Next up: fields for rank, save_dc, and attack_bonus on the container spell (so users can adjust the values when a spell is added).
-		// Save DC & Attack Bonus are not available if the item has casting values for those already set,
-		// but are required if those casting values are not provided.
-
 		let field_rank = {
 			let select_rank = Callback::from({
 				let min_rank = spell.rank;
@@ -751,9 +766,14 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 				}
 			});
 			let selected_rank = rank.unwrap_or(spell.rank);
+			let rank_min = spell.rank.max(rank_min);
+			let rank_max = spell.rank.max(match remaining_total_rank {
+				None => rank_max,
+				Some(remaining_total_rank) => rank_max.min(selected_rank.saturating_add(remaining_total_rank as u8)),
+			});
 			html! {
 				<select class="form-select px-2 py-1" onchange={select_rank}>
-					{(spell.rank..=MAX_SPELL_RANK).into_iter().map(|option_rank| {
+					{(rank_min..=rank_max).into_iter().map(|option_rank| {
 						html! {
 							<option selected={option_rank == selected_rank} value={option_rank.to_string()}>
 								{"Rank "}{option_rank}
@@ -877,21 +897,31 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 			<div class="spell-section">
 				{contained_spells}
 			</div>
-			<AvailableSpellList
-				header_addon={HeaderAddon::from({
-					let id_path = value.clone();
-					move |spell: &Spell| -> Html {
-						html! {
-							<SpellListContainerAction
-								container_id={id_path.clone()}
-								spell_id={spell.id.unversioned()}
-							/>
+			<CollapsableCard
+				id={"available-spells"}
+				header_content={{html! { {"Available Spells"} }}}
+				body_classes={"spell-list"}
+			>
+				<AvailableSpellList
+					header_addon={HeaderAddon::from({
+						let id_path = value.clone();
+						move |spell: &Spell| -> Html {
+							let has_rank_capacity = remaining_total_rank.map(|capacity| spell.rank as usize <= capacity).unwrap_or(true);
+							let has_count_capacity = remaining_total_spells.map(|capacity| capacity > 0).unwrap_or(true);
+							html! {
+								<SpellListContainerAction
+									container_id={id_path.clone()}
+									spell_id={spell.id.unversioned()}
+									{has_rank_capacity}
+									{has_count_capacity}
+								/>
+							}
 						}
-					}
-				})}
-				criteria={criteria.clone()}
-				entry={None}
-			/>
+					})}
+					criteria={criteria.clone()}
+					entry={None}
+				/>
+			</CollapsableCard>
 		</div>
 	</>}
 }
@@ -900,12 +930,16 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 struct SpellListContainerActionProps {
 	container_id: Vec<uuid::Uuid>,
 	spell_id: SourceId,
+	has_rank_capacity: bool,
+	has_count_capacity: bool,
 }
 #[function_component]
 fn SpellListContainerAction(
 	SpellListContainerActionProps {
 		container_id,
 		spell_id,
+		has_rank_capacity,
+		has_count_capacity,
 	}: &SpellListContainerActionProps,
 ) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
@@ -919,19 +953,22 @@ fn SpellListContainerAction(
 		}.unversioned()
 	}).collect::<HashSet<_>>();
 	
-	let mut classes = classes!("btn", "btn-xs", "select");
-	let disabled = contained_ids.contains(&spell_id);
+	let mut classes = classes!("btn", "btn-xs", "ms-auto");
+	let (action_name, disabled) = match contained_ids.contains(&spell_id) {
+		true => ("Added", true),
+		false => match (has_rank_capacity, has_count_capacity) {
+			(true, true) => ("Add", false),
+			(false, true) => ("Not Enough Ranks", true),
+			(true, false) => ("Not Enough Space", true),
+			(false, false) => ("Full", true),
+		},
+	};
 	if disabled {
 		classes.push("btn-outline-secondary");
 	}
 	else {
 		classes.push("btn-outline-theme");
 	}
-
-	let action_name = match disabled {
-		true => "Added",
-		false => "Add",
-	};
 
 	let onclick = Callback::from({
 		let state = state.clone();
