@@ -8,10 +8,12 @@ use crate::{
 		self,
 		core::{ModuleId, SourceId},
 		dnd5e::{
-			components::glyph::Glyph,
+			components::{glyph::Glyph, panel::get_inventory_item_mut},
 			data::{
 				character::{
-					spellcasting::{CasterKind, RitualCapability, SpellEntry, AbilityOrStat},
+					spellcasting::{
+						AbilityOrStat, CasterKind, CastingMethod, RitualCapability, SpellEntry,
+					},
 					MAX_SPELL_RANK,
 				},
 				proficiency,
@@ -26,7 +28,7 @@ use crate::{
 use convert_case::{Case, Casing};
 use futures_util::{FutureExt, StreamExt};
 use itertools::Itertools;
-use std::{collections::BTreeMap, pin::Pin, path::Path};
+use std::{collections::BTreeMap, path::Path, pin::Pin};
 use yew::prelude::*;
 
 fn rank_suffix(rank: u8) -> &'static str {
@@ -182,10 +184,14 @@ impl<'c> SpellSections<'c> {
 	}
 
 	fn insert_spell(&mut self, spell: &'c Spell, entry: &'c SpellEntry, location: SpellLocation) {
-		let ranks = match (entry.rank, entry.cast_via_slot) {
-			(Some(rank), _) => vec![(rank, location)],
-			(None, false) => vec![(spell.rank, location)],
-			(None, true) => {
+		let ranks = match (entry.rank, &entry.method) {
+			(
+				None,
+				CastingMethod::Cast {
+					can_use_slots: true,
+					..
+				},
+			) => {
 				let max_rank = match spell.rank {
 					0 => 0,
 					_ => MAX_SPELL_RANK,
@@ -195,10 +201,15 @@ impl<'c> SpellSections<'c> {
 				locations.resize(rank_range.len(), location);
 				rank_range.zip(locations).collect::<Vec<_>>()
 			}
+			(Some(rank), _) => vec![(rank, location)],
+			(None, _) => vec![(spell.rank, location)],
 		};
 		for (section_rank, location) in ranks {
 			let Some(section) = self.sections.get_mut(&section_rank) else { continue; };
-			if section_rank == 0 || section.slot_count.is_some() || entry.cast_at_will() {
+			let can_cast_from_section = section_rank == 0 || section.slot_count.is_some();
+			let uses_cast_method = matches!(&entry.method, CastingMethod::Cast { .. });
+			if can_cast_from_section || !uses_cast_method
+			{
 				section.insert_spell(spell, entry, location);
 			}
 		}
@@ -258,8 +269,11 @@ impl<'c> SpellSections<'c> {
 		spell_entry: &'c SpellEntry,
 		source: RitualSpellSource,
 	) {
-		if !spell_entry.cast_via_ritual {
-			return;
+		match &spell_entry.method {
+			// ritual casting is allowed
+			CastingMethod::Cast { can_use_ritual: true, .. } => {}
+			// other casting, or any other method is not considered a ritual
+			_ => return,
 		}
 		// ritual-only spells can only be cast at their specified rank
 		let Some(section) = self.sections.get_mut(&spell.rank) else { return; };
@@ -465,41 +479,112 @@ fn spell_row<'c>(props: SpellRowProps<'c>) -> Html {
 		},
 	} = props;
 
-	let (use_kind, src_text_suffix) = match (&location, spell.rank, entry.cast_via_uses.as_ref()) {
-		(SpellLocation::AvailableAsRitual { .. }, _, _) => (UseSpell::RitualOnly, None),
-		(_, rank, None) if rank == 0 || (!entry.cast_via_slot && !entry.cast_via_ritual) => {
-			(UseSpell::AtWill, None)
-		}
-		(_, spell_rank, None) => {
-			let slot = UseSpell::Slot {
-				spell_rank,
-				slot_rank: section_rank,
-				slots: slots.clone(),
-			};
-			(slot, None)
-		}
-		(_, _, Some(limited_uses)) => {
-			let data_path = limited_uses.get_uses_path(state);
-			let max_uses = limited_uses.get_max_uses(state) as u32;
-			let uses_consumed = limited_uses.get_uses_consumed(state);
-			let kind = UseSpell::LimitedUse {
-				uses_consumed,
-				max_uses,
-				data_path,
-			};
-			let text = html! {
-				<span class="ms-1">
-					{format!(
-						"({}/{max_uses}{})",
-						max_uses.saturating_sub(uses_consumed),
-						limited_uses.get_reset_rest(state).map(|rest| {
-							format!(" per {} rest", rest.to_string())
-						}).unwrap_or_default()
-					)}
-				</span>
-			};
-			(kind, Some(text))
-		}
+	let (use_kind, src_text_suffix) = match &location {
+		SpellLocation::AvailableAsRitual { .. } => (UseSpell::RitualOnly, None),
+		_ => match &entry.method {
+			CastingMethod::AtWill => (UseSpell::AtWill, None),
+			CastingMethod::Cast {
+				can_use_slots: true,
+				..
+			} if spell.rank == 0 => (UseSpell::AtWill, None),
+			CastingMethod::Cast {
+				can_use_slots: true,
+				..
+			} => {
+				let slot = UseSpell::Slot {
+					spell_rank: spell.rank,
+					slot_rank: section_rank,
+					slots: slots.clone(),
+				};
+				(slot, None)
+			}
+			CastingMethod::LimitedUses(limited_uses) => {
+				let data_path = limited_uses.get_uses_path(state);
+				let max_uses = limited_uses.get_max_uses(state) as u32;
+				let uses_consumed = limited_uses.get_uses_consumed(state);
+				let kind = UseSpell::Usage(Callback::from(move |state: CharacterHandle| {
+					let onclick = match &data_path {
+						None => Callback::default(),
+						Some(path) => state.new_dispatch({
+							let uses_consumed = uses_consumed;
+							let key = path.clone();
+							move |evt: MouseEvent, persistent| {
+								evt.stop_propagation();
+								let uses_consumed = uses_consumed + 1;
+								persistent.set_selected_value(&key, uses_consumed.to_string());
+								MutatorImpact::None
+							}
+						}),
+					};
+					let uses_remaining = max_uses.saturating_sub(uses_consumed);
+					html! {
+						<button class="btn btn-theme btn-xs px-1" {onclick} disabled={uses_consumed >= max_uses}>
+							{"Use"}
+							<span class="ms-1 d-none" style="font-size: 9px; color: var(--bs-gray-600);">{format!("({uses_remaining}/{max_uses})")}</span>
+						</button>
+					}
+				}));
+				let text = html! {
+					<span class="ms-1">
+						{format!(
+							"({}/{max_uses}{})",
+							max_uses.saturating_sub(uses_consumed),
+							limited_uses.get_reset_rest(state).map(|rest| {
+								format!(" per {} rest", rest.to_string())
+							}).unwrap_or_default()
+						)}
+					</span>
+				};
+				(kind, Some(text))
+			}
+			CastingMethod::FromContainer {
+				item_id,
+				consume_spell,
+				consume_item,
+			} => {
+				let use_spell = match *consume_spell {
+					false => UseSpell::AtWill,
+					true => UseSpell::Usage(Callback::from({
+						let item_id = item_id.clone();
+						let spell_id = spell.id.unversioned();
+						let consume_item = *consume_item;
+						move |state: CharacterHandle| {
+							let onclick = state.new_dispatch({
+								let item_id = item_id.clone();
+								let spell_id = spell_id.clone();
+								move |evt: MouseEvent, persistent| {
+									evt.stop_propagation();
+									let container_is_empty = {
+										let Some(item) = get_inventory_item_mut(persistent, &item_id) else {
+											return MutatorImpact::None;
+										};
+										let Some(spell_container) = &mut item.spells else {
+											return MutatorImpact::None;
+										};
+										spell_container.remove(&spell_id);
+										spell_container.spells.is_empty()
+									};
+									if consume_item && container_is_empty {
+										persistent.inventory.remove_at_path(&item_id);
+									}
+									MutatorImpact::Recompile
+								}
+							});
+							html! {
+								<button class="btn btn-theme btn-xs px-1" {onclick}>
+									{"Use"}
+								</button>
+							}
+						}
+					})),
+				};
+				(use_spell, None)
+			}
+			CastingMethod::Cast {
+				can_use_slots: false,
+				..
+			} => return Html::default(),
+		},
 	};
 
 	// TODO: tooltip for casting time duration
@@ -521,7 +606,12 @@ fn spell_row<'c>(props: SpellRowProps<'c>) -> Html {
 	}
 }
 
-pub fn spell_name_and_icons(state: &CharacterHandle, spell: &Spell, entry: &SpellEntry, ritual_only: bool) -> Html {
+pub fn spell_name_and_icons(
+	state: &CharacterHandle,
+	spell: &Spell,
+	entry: &SpellEntry,
+	ritual_only: bool,
+) -> Html {
 	let can_ritual_cast = spell.casting_time.ritual && {
 		ritual_only || {
 			let classified = entry.classified_as.as_ref();
@@ -559,13 +649,18 @@ pub fn spell_source_and_uses(source: &Path, uses_suffix: Option<Html>) -> Html {
 	}
 }
 
-pub fn spell_overview_info(state: &CharacterHandle, spell: &Spell, entry: &SpellEntry, override_rank: Option<u8>) -> Html {
+pub fn spell_overview_info(
+	state: &CharacterHandle,
+	spell: &Spell,
+	entry: &SpellEntry,
+	override_rank: Option<u8>,
+) -> Html {
 	html! {
 		<div class="attributes">
 			<div class="attribute-row">
 				<span class="attribute casting-time">
 					<span class="label">{"Cast:"}</span>
-					{match &spell.casting_time.duration {
+					{match entry.casting_duration.as_ref().unwrap_or(&spell.casting_time.duration) {
 						CastingDuration::Action => html!("Action"),
 						CastingDuration::Bonus => html!("Bonus Action"),
 						CastingDuration::Reaction(_trigger) => html!("Reaction"),
@@ -1157,23 +1252,26 @@ fn spell_content(spell: &Spell, entry: Option<&SpellEntry>, state: &CharacterHan
 	});
 
 	let desc = {
-		let (atk_bonus, save_dc) = entry.map(|entry| {
-			let atk_bonus = match entry.attack_bonus {
-				AbilityOrStat::Stat(stat) => stat,
-				AbilityOrStat::Ability(ability) => state.ability_modifier(ability, Some(proficiency::Level::Full)),
-			};
-			let save_dc = match entry.save_dc {
-				AbilityOrStat::Stat(stat) => stat as i32,
-				AbilityOrStat::Ability(ability) => 8 + state.ability_modifier(ability, Some(proficiency::Level::Full)),
-			};
-			(atk_bonus, save_dc)
-		}).unwrap_or((0, 0));
+		let (atk_bonus, save_dc) = entry
+			.map(|entry| {
+				let atk_bonus = match entry.attack_bonus {
+					AbilityOrStat::Stat(stat) => stat,
+					AbilityOrStat::Ability(ability) => {
+						state.ability_modifier(ability, Some(proficiency::Level::Full))
+					}
+				};
+				let save_dc = match entry.save_dc {
+					AbilityOrStat::Stat(stat) => stat as i32,
+					AbilityOrStat::Ability(ability) => {
+						8 + state.ability_modifier(ability, Some(proficiency::Level::Full))
+					}
+				};
+				(atk_bonus, save_dc)
+			})
+			.unwrap_or((0, 0));
 		let caster_args = std::collections::HashMap::from([
 			("{CasterAtk}".into(), format!("{atk_bonus:+}")),
-			(
-				"{CasterDC}".into(),
-				format!("{save_dc}"),
-			),
+			("{CasterDC}".into(), format!("{save_dc}")),
 		]);
 		let desc = spell
 			.description
@@ -1367,11 +1465,7 @@ enum UseSpell {
 		slot_rank: u8,
 		slots: Option<(usize, usize)>,
 	},
-	LimitedUse {
-		uses_consumed: u32,
-		max_uses: u32,
-		data_path: Option<std::path::PathBuf>,
-	},
+	Usage(Callback<CharacterHandle, Html>),
 }
 #[function_component]
 fn UseSpellButton(UseSpellButtonProps { kind }: &UseSpellButtonProps) -> Html {
@@ -1435,31 +1529,6 @@ fn UseSpellButton(UseSpellButtonProps { kind }: &UseSpellButtonProps) -> Html {
 				</button>
 			}
 		}
-		UseSpell::LimitedUse {
-			uses_consumed,
-			max_uses,
-			data_path,
-		} => {
-			let onclick = match data_path {
-				None => Callback::default(),
-				Some(path) => state.new_dispatch({
-					let uses_consumed = *uses_consumed;
-					let key = path.clone();
-					move |evt: MouseEvent, persistent| {
-						evt.stop_propagation();
-						let uses_consumed = uses_consumed + 1;
-						persistent.set_selected_value(&key, uses_consumed.to_string());
-						MutatorImpact::None
-					}
-				}),
-			};
-			let uses_remaining = max_uses.saturating_sub(*uses_consumed);
-			html! {
-				<button class="btn btn-theme btn-xs px-1" {onclick} disabled={uses_consumed >= max_uses}>
-					{"Use"}
-					<span class="ms-1 d-none" style="font-size: 9px; color: var(--bs-gray-600);">{format!("({uses_remaining}/{max_uses})")}</span>
-				</button>
-			}
-		}
+		UseSpell::Usage(html_constructor) => html_constructor.emit(state.clone()),
 	}
 }

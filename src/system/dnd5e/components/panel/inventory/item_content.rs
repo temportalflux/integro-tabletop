@@ -1,25 +1,40 @@
 use crate::{
-	components::{database::{UseQueryAllHandle, use_query_typed, QueryStatus}, modal, progress_bar},
+	components::{
+		database::{use_query_typed, QueryStatus, UseQueryAllHandle},
+		modal, progress_bar,
+	},
 	database::app::Criteria,
-	page::characters::sheet::{joined::editor::{description, mutator_list}, MutatorImpact},
-	page::characters::sheet::{CharacterHandle, joined::editor::CollapsableCard},
-	system::{dnd5e::{
-		components::{
-			panel::{AvailableSpellList, HeaderAddon, spell_name_and_icons, spell_overview_info},
-			validate_uint_only, FormulaInline, GeneralProp, WalletInline,
+	page::characters::sheet::{joined::editor::CollapsableCard, CharacterHandle},
+	page::characters::sheet::{
+		joined::editor::{description, mutator_list},
+		MutatorImpact,
+	},
+	system::{
+		core::SourceId,
+		dnd5e::{
+			components::{
+				panel::{
+					spell_name_and_icons, spell_overview_info, AvailableSpellList, HeaderAddon,
+				},
+				validate_uint_only, FormulaInline, GeneralProp, WalletInline,
+			},
+			data::{
+				action::ActivationKind,
+				character::{
+					spellcasting::{AbilityOrStat, CastingMethod, SpellEntry},
+					Persistent, MAX_SPELL_RANK,
+				},
+				item::{self, container::spell::ContainerSpell, Item},
+				spell::CastingDuration,
+				ArmorExtended, Indirect, Spell, WeaponProficiency,
+			},
+			evaluator::IsProficientWith,
 		},
-		data::{
-			action::ActivationKind,
-			character::{spellcasting::{SpellEntry, AbilityOrStat}, MAX_SPELL_RANK, Persistent},
-			item::{self, Item, container::spell::ContainerSpell},
-			ArmorExtended, Spell, WeaponProficiency, Indirect,
-		},
-		evaluator::IsProficientWith,
-	}, core::SourceId},
+	},
 	utility::{Evaluator, InputExt},
 };
 use any_range::AnyRange;
-use std::{path::PathBuf, collections::HashSet};
+use std::{collections::HashSet, path::PathBuf};
 use yew::prelude::*;
 
 pub fn get_inventory_item<'c>(
@@ -411,19 +426,17 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 					None => html!("❌"),
 					Some(casting) => html! {
 						<div class="ms-3">
-							{match &casting.activation_kind {
+							{match &casting.duration {
 								None => html!(),
-								Some(activation) => html! {
+								Some(duration) => html! {
 									<div class="property">
 										<strong>{"Casting Time:"}</strong>
 										<span>
-											{match activation {
-												ActivationKind::Action => html!("Action"),
-												ActivationKind::Bonus => html!("Bonus Action"),
-												ActivationKind::Reaction => html!("Reaction"),
-												ActivationKind::Special => html!("Special"),
-												ActivationKind::Minute(amt) => html!(format!("{amt} Minutes")),
-												ActivationKind::Hour(amt) => html!(format!("{amt} Hours")),
+											{match duration {
+												CastingDuration::Action => html!("Action"),
+												CastingDuration::Bonus => html!("Bonus Action"),
+												CastingDuration::Reaction(_trigger) => html!("Reaction"),
+												CastingDuration::Unit(amt, unit) => html!(format!("{amt} {unit}")),
 											}}
 										</span>
 									</div>
@@ -624,12 +637,16 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 	let Some(item) = get_inventory_item(&state, value) else { return Html::default(); };
 	let Some(spell_container) = &item.spells else { return Html::default(); };
 
-	indirect_spell_ids.set(spell_container.spells.iter().filter_map(|contained| {
-		match &contained.spell {
-			Indirect::Id(id) => Some(id.unversioned()),
-			Indirect::Custom(_spell) => None,
-		}
-	}).collect::<Vec<_>>());
+	indirect_spell_ids.set(
+		spell_container
+			.spells
+			.iter()
+			.filter_map(|contained| match &contained.spell {
+				Indirect::Id(id) => Some(id.unversioned()),
+				Indirect::Custom(_spell) => None,
+			})
+			.collect::<Vec<_>>(),
+	);
 
 	let remove_from_container = state.new_dispatch({
 		let id_path = value.clone();
@@ -642,13 +659,10 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 			};
 			spell_container.spells.remove(spell_idx);
 			// TODO: only recompile character when the modal is dismissed
-			return MutatorImpact::None;
+			return MutatorImpact::Recompile;
 		}
 	});
 
-	// TODO: Prevent adding of new spells when any of the capacity axes are met
-
-	// TODO: implement SpellEntry for spell container when adding spells to the spell panel. For now lets just use /something/.
 	let (casting_atk_bonus, casting_dc) = match &spell_container.casting {
 		None => (None, None),
 		Some(casting) => (casting.attack_bonus, casting.save_dc),
@@ -658,29 +672,45 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 	let rank_max = spell_container.capacity.rank_max.unwrap_or(MAX_SPELL_RANK);
 	let criteria = Criteria::contains_prop(
 		"rank",
-		Criteria::any((rank_min..=rank_max).into_iter().map(|rank| Criteria::exact(rank))),
+		Criteria::any(
+			(rank_min..=rank_max)
+				.into_iter()
+				.map(|rank| Criteria::exact(rank)),
+		),
 	);
 
-	let consumed_rank_sum: usize = spell_container.spells.iter().map(|contained| match contained.rank {
-		Some(fixed_rank) => fixed_rank as usize,
-		None => {
-			let spell = match &contained.spell {
-				Indirect::Id(id) => match fetch_indirect_spells.status() {
-					QueryStatus::Success((_ids, spells_by_id)) => {
-						spells_by_id.get(id)
-					}
-					_ => None,
-				},
-				Indirect::Custom(spell) => Some(spell),
-			};
-			spell.map(|spell| spell.rank as usize).unwrap_or(0)
-		}
-	}).sum();
-	let remaining_total_rank = spell_container.capacity.rank_total.map(|total| total.saturating_sub(consumed_rank_sum));
+	let consumed_rank_sum: usize = spell_container
+		.spells
+		.iter()
+		.map(|contained| match contained.rank {
+			Some(fixed_rank) => fixed_rank as usize,
+			None => {
+				let spell = match &contained.spell {
+					Indirect::Id(id) => match fetch_indirect_spells.status() {
+						QueryStatus::Success((_ids, spells_by_id)) => spells_by_id.get(id),
+						_ => None,
+					},
+					Indirect::Custom(spell) => Some(spell),
+				};
+				spell.map(|spell| spell.rank as usize).unwrap_or(0)
+			}
+		})
+		.sum();
+	let remaining_total_rank = spell_container
+		.capacity
+		.rank_total
+		.map(|total| total.saturating_sub(consumed_rank_sum));
 	let num_spells = spell_container.spells.len();
-	let remaining_total_spells = spell_container.capacity.max_count.map(|total| total.saturating_sub(num_spells));
+	let remaining_total_spells = spell_container
+		.capacity
+		.max_count
+		.map(|total| total.saturating_sub(num_spells));
 
-	fn get_container_spell<'c>(persistent: &'c mut Persistent, id_path: &Vec<uuid::Uuid>, spell_idx: usize) -> Option<&'c mut ContainerSpell> {
+	fn get_container_spell<'c>(
+		persistent: &'c mut Persistent,
+		id_path: &Vec<uuid::Uuid>,
+		spell_idx: usize,
+	) -> Option<&'c mut ContainerSpell> {
 		let Some(item) = get_inventory_item_mut(persistent, &id_path) else {
 			return None;
 		};
@@ -689,7 +719,7 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 		};
 		spell_container.spells.get_mut(spell_idx)
 	}
-		
+
 	let select_rank = state.new_dispatch({
 		let id_path = value.clone();
 		move |(spell_idx, desired_rank): (usize, Option<u8>), persistent: &mut Persistent| {
@@ -698,7 +728,7 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 			};
 			contained.rank = desired_rank;
 			// TODO: only recompile character when the modal is dismissed
-			return MutatorImpact::None;
+			return MutatorImpact::Recompile;
 		}
 	});
 	let select_atk_bonus = state.new_dispatch({
@@ -709,7 +739,7 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 			};
 			contained.attack_bonus = desired_bonus;
 			// TODO: only recompile character when the modal is dismissed
-			return MutatorImpact::None;
+			return MutatorImpact::Recompile;
 		}
 	});
 	let select_save_dc = state.new_dispatch({
@@ -720,7 +750,7 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 			};
 			contained.save_dc = desired_dc;
 			// TODO: only recompile character when the modal is dismissed
-			return MutatorImpact::None;
+			return MutatorImpact::Recompile;
 		}
 	});
 
@@ -741,20 +771,7 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 			Indirect::Custom(spell) => Some(spell),
 		};
 		let Some(spell) = spell else { return Html::default(); };
-
-		let entry = SpellEntry {
-			source: PathBuf::new(),
-			classified_as: None,
-			cast_via_slot: false,
-			cast_via_ritual: false,
-			cast_via_uses: None,
-			range: None,
-			rank: *rank,
-			attack_bonus: AbilityOrStat::Stat(attack_bonus.or(casting_atk_bonus).unwrap_or(0)),
-			save_dc: AbilityOrStat::Stat(save_dc.or(casting_dc).unwrap_or(0)),
-			// TODO: Should this also be an abilityorstat for the caster's original ability modifier?
-			damage_ability: None,
-		};
+		let Some(entry) = spell_container.get_spell_entry(contained, Some((0, 0))) else { return Html::default(); };
 
 		let field_rank = {
 			let select_rank = Callback::from({
@@ -943,16 +960,21 @@ fn SpellListContainerAction(
 	}: &SpellListContainerActionProps,
 ) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	
+
 	let Some(item) = get_inventory_item(&state, container_id) else { return Html::default(); };
 	let Some(spell_container) = &item.spells else { return Html::default(); };
-	let contained_ids = spell_container.spells.iter().map(|contained| {
-		match &contained.spell {
-			Indirect::Id(id) => id,
-			Indirect::Custom(spell) => &spell.id,
-		}.unversioned()
-	}).collect::<HashSet<_>>();
-	
+	let contained_ids = spell_container
+		.spells
+		.iter()
+		.map(|contained| {
+			match &contained.spell {
+				Indirect::Id(id) => id,
+				Indirect::Custom(spell) => &spell.id,
+			}
+			.unversioned()
+		})
+		.collect::<HashSet<_>>();
+
 	let mut classes = classes!("btn", "btn-xs", "ms-auto");
 	let (action_name, disabled) = match contained_ids.contains(&spell_id) {
 		true => ("Added", true),
@@ -965,8 +987,7 @@ fn SpellListContainerAction(
 	};
 	if disabled {
 		classes.push("btn-outline-secondary");
-	}
-	else {
+	} else {
 		classes.push("btn-outline-theme");
 	}
 
@@ -993,7 +1014,7 @@ fn SpellListContainerAction(
 						attack_bonus: None,
 					});
 					// TODO: only recompile character when the modal is dismissed
-					return MutatorImpact::None;
+					return MutatorImpact::Recompile;
 				}
 			});
 		}

@@ -21,6 +21,7 @@ pub type Inventory = ItemContainer<EquipableEntry>;
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct ItemContainer<T> {
+	parent_item_id: Vec<Uuid>,
 	pub capacity: Capacity,
 	pub restriction: Option<Restriction>,
 	items_by_id: HashMap<Uuid, T>,
@@ -31,6 +32,7 @@ pub struct ItemContainer<T> {
 impl<T> Default for ItemContainer<T> {
 	fn default() -> Self {
 		Self {
+			parent_item_id: Default::default(),
 			capacity: Default::default(),
 			restriction: Default::default(),
 			items_by_id: Default::default(),
@@ -43,6 +45,7 @@ impl<T> Default for ItemContainer<T> {
 impl<T> ItemContainer<T> {
 	pub fn new() -> Self {
 		Self {
+			parent_item_id: Default::default(),
 			capacity: Capacity::default(),
 			restriction: None,
 			items_by_id: HashMap::new(),
@@ -89,8 +92,13 @@ impl<T: AsItem> ItemContainer<T> {
 		Some(item)
 	}
 
-	fn push_entry(&mut self, entry: T) -> Uuid {
+	fn push_entry(&mut self, mut entry: T) -> Uuid {
 		let id = Uuid::new_v4();
+		entry.set_id_path({
+			let mut path = self.parent_item_id.clone();
+			path.push(id);
+			path
+		});
 		let search = self.itemids_by_name.binary_search_by(|id| {
 			let Some(entry_item) = self.get_item(id) else {
 				return std::cmp::Ordering::Less;
@@ -201,6 +209,7 @@ impl<T: AsItem + FromKDL> FromKDL for ItemContainer<T> {
 		};
 
 		let mut inventory = Self {
+			parent_item_id: Vec::new(),
 			wallet,
 			capacity,
 			restriction,

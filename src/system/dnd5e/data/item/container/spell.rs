@@ -1,8 +1,18 @@
+use std::path::{Path, PathBuf};
+
 use crate::{
 	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
 	system::{
 		core::SourceId,
-		dnd5e::data::{action::ActivationKind, Indirect, Spell},
+		dnd5e::data::{
+			action::ActivationKind,
+			character::{
+				spellcasting::{AbilityOrStat, CastingMethod, SpellEntry},
+				Character,
+			},
+			spell::CastingDuration,
+			Indirect, Spell,
+		},
 	},
 };
 
@@ -31,9 +41,9 @@ pub struct Capacity {
 // Describes the conditions under which all spells are cast, unless overriden on a given entry.
 #[derive(Clone, PartialEq, Debug)]
 pub struct Casting {
-	// What kind of action is used to cast from this container.
-	// If not provided, the activation is defined by the spell itself.
-	pub activation_kind: Option<ActivationKind>,
+	// How long it takes to cast from this container.
+	// If not provided, the duration is defined by the spell itself.
+	pub duration: Option<CastingDuration>,
 	// If casting tue last spell in the container will consume the item (destroy it).
 	// If the spell is transcribed from this container and this property is enabled,
 	// the item is destroyed (TODO: transcribing spells is not a feature yet).
@@ -56,6 +66,67 @@ pub struct ContainerSpell {
 	pub save_dc: Option<u8>,
 	// The spell attack bonus that must be used for this spell.
 	pub attack_bonus: Option<i32>,
+}
+
+impl SpellContainer {
+	pub fn remove(&mut self, spell_id: &SourceId) {
+		self.spells.retain(|contained| match &contained.spell {
+			Indirect::Id(id) => id != spell_id,
+			Indirect::Custom(spell) => &spell.id != spell_id,
+		});
+	}
+
+	pub fn get_spell_entry(
+		&self,
+		contained: &ContainerSpell,
+		default_values: Option<(i32, u8)>,
+	) -> Option<SpellEntry> {
+		let Some(casting) = &self.casting else { return None; };
+		let Some(atk_bonus) = casting.attack_bonus.or(contained.attack_bonus).or(default_values.map(|(bonus, _)| bonus)) else { return None; };
+		let Some(save_dc) = casting.save_dc.or(contained.save_dc).or(default_values.map(|(_, dc)| dc)) else { return None; };
+		Some(SpellEntry {
+			source: PathBuf::new(),
+			classified_as: None,
+			method: CastingMethod::FromContainer {
+				item_id: Vec::new(),
+				consume_spell: casting.consume_spell,
+				consume_item: casting.consume_item,
+			},
+			attack_bonus: AbilityOrStat::Stat(atk_bonus),
+			save_dc: AbilityOrStat::Stat(save_dc),
+			// TODO: Should this also be an abilityorstat for the caster's original ability modifier?
+			damage_ability: None,
+			casting_duration: casting.duration.clone(),
+			rank: contained.rank,
+			range: None,
+		})
+	}
+
+	pub fn add_spellcasting(
+		&self,
+		stats: &mut Character,
+		item_id: &Vec<uuid::Uuid>,
+		parent: &Path,
+	) {
+		for contained in &self.spells {
+			let Some(mut entry) = self.get_spell_entry(contained, None) else { continue; };
+			entry.source = parent.to_owned();
+			if let CastingMethod::FromContainer {
+				item_id: id_path, ..
+			} = &mut entry.method
+			{
+				*id_path = item_id.clone();
+			}
+			match &contained.spell {
+				Indirect::Id(id) => {
+					stats.spellcasting_mut().add_prepared(&id, entry);
+				}
+				Indirect::Custom(spell) => {
+					stats.spellcasting_mut().add_prepared_spell(spell, entry);
+				}
+			}
+		}
+	}
 }
 
 impl FromKDL for SpellContainer {
@@ -148,7 +219,10 @@ impl AsKdl for Capacity {
 
 impl FromKDL for Casting {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
-		let activation_kind = node.next_str_opt_t()?;
+		let duration = match node.peak_opt().is_some() {
+			true => Some(CastingDuration::from_kdl(node)?),
+			false => None,
+		};
 		let consume_item = node
 			.query_bool_opt("scope() > consume_item", 0)?
 			.unwrap_or_default();
@@ -160,7 +234,7 @@ impl FromKDL for Casting {
 			.query_i64_opt("scope() > atk_bonus", 0)?
 			.map(|v| v as i32);
 		Ok(Self {
-			activation_kind,
+			duration,
 			consume_item,
 			consume_spell,
 			save_dc,
@@ -172,7 +246,7 @@ impl AsKdl for Casting {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 
-		if let Some(kind) = &self.activation_kind {
+		if let Some(kind) = &self.duration {
 			node += kind.as_kdl();
 		}
 
@@ -353,7 +427,7 @@ mod test {
 				rank_total: None,
 			},
 			casting: Some(Casting {
-				activation_kind: None,
+				duration: None,
 				consume_item: true,
 				consume_spell: false,
 				save_dc: Some(13),
@@ -394,7 +468,7 @@ mod test {
 				rank_total: None,
 			},
 			casting: Some(Casting {
-				activation_kind: Some(ActivationKind::Action),
+				duration: Some(CastingDuration::Action),
 				consume_item: false,
 				consume_spell: true,
 				save_dc: None,

@@ -5,7 +5,10 @@ use crate::{
 		dnd5e::data::{
 			action::LimitedUses,
 			character::{
-				spellcasting::{self, Caster, Restriction, RitualCapability, Slots, SpellEntry, AbilityOrStat},
+				spellcasting::{
+					self, AbilityOrStat, Caster, CastingMethod, Restriction, RitualCapability,
+					Slots, SpellEntry,
+				},
 				Character,
 			},
 			description,
@@ -229,14 +232,25 @@ impl Mutator for Spellcasting {
 					let entry = SpellEntry {
 						source: parent.to_owned(),
 						classified_as: classified_as.clone(),
-						cast_via_slot: prepared_info.can_cast_through_slot,
-						cast_via_ritual: prepared_info.can_ritual_cast,
-						cast_via_uses: limited_uses.clone(),
-						range: prepared_info.range.clone(),
-						rank: prepared_info.cast_at_rank.clone(),
+						// TODO: At will casting is not explicit for users. Change kdl format to use an enum of Uses, Slot/Ritual, or AtWill
+						method: match (
+							prepared_info.can_cast_through_slot,
+							prepared_info.can_ritual_cast,
+							limited_uses,
+						) {
+							(_, _, Some(uses)) => CastingMethod::LimitedUses(uses.clone()),
+							(false, false, None) => CastingMethod::AtWill,
+							(slot, ritual, None) => CastingMethod::Cast {
+								can_use_slots: slot,
+								can_use_ritual: ritual,
+							},
+						},
 						attack_bonus: AbilityOrStat::Ability(*ability),
 						save_dc: AbilityOrStat::Ability(*ability),
 						damage_ability: Some(*ability),
+						casting_duration: None,
+						rank: prepared_info.cast_at_rank.clone(),
+						range: prepared_info.range.clone(),
 					};
 					stats.spellcasting_mut().add_prepared(&id, entry);
 				}
@@ -314,14 +328,16 @@ impl FromKDL for Spellcasting {
 				let spell_entry = SpellEntry {
 					source: std::path::PathBuf::from(&class_name),
 					classified_as: Some(class_name.clone()),
-					cast_via_slot: true,
-					cast_via_ritual: true,
-					cast_via_uses: None,
-					range: None,
-					rank: None,
+					method: CastingMethod::Cast {
+						can_use_slots: true,
+						can_use_ritual: true,
+					},
 					attack_bonus: AbilityOrStat::Ability(ability),
 					save_dc: AbilityOrStat::Ability(ability),
 					damage_ability: Some(ability),
+					casting_duration: None,
+					rank: None,
+					range: None,
 				};
 
 				let ritual_capability = match node.query_opt("scope() > ritual")? {

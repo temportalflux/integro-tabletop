@@ -10,6 +10,7 @@ use std::path::Path;
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct EquipableEntry {
+	pub id_path: Vec<uuid::Uuid>,
 	pub item: Item,
 	pub is_equipped: bool,
 }
@@ -17,9 +18,19 @@ pub struct EquipableEntry {
 impl AsItem for EquipableEntry {
 	fn from_item(item: Item) -> Self {
 		Self {
+			id_path: Vec::new(),
 			item,
 			is_equipped: false,
 		}
+	}
+
+	fn set_id_path(&mut self, id: Vec<uuid::Uuid>) {
+		self.item.set_id_path(id.clone());
+		self.id_path = id;
+	}
+
+	fn id_path(&self) -> Option<&Vec<uuid::Uuid>> {
+		Some(&self.id_path)
 	}
 
 	fn into_item(self) -> Item {
@@ -56,6 +67,9 @@ impl MutatorGroup for EquipableEntry {
 		if let Some(weapon) = &equipment.weapon {
 			stats.add_feature(weapon.attack_action(self), &path_to_item);
 		}
+		if let Some(spell_container) = &self.item.spells {
+			spell_container.add_spellcasting(stats, &self.id_path, &path_to_item);
+		}
 	}
 }
 
@@ -63,7 +77,11 @@ impl FromKDL for EquipableEntry {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let item = Item::from_kdl(node)?;
 		let is_equipped = node.get_bool_opt("equipped")?.unwrap_or_default();
-		Ok(Self { is_equipped, item })
+		Ok(Self {
+			id_path: Vec::new(),
+			is_equipped,
+			item,
+		})
 	}
 }
 

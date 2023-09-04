@@ -22,25 +22,6 @@
 
 ## DnD5e Features
 
-- Spell Overview component
-	- use this component in item container UI/X
-	- add:
-		- Rank (if overriden/desired; not used for spell panel, but will be used for spell container)
-		- Required Components?
-- spell container item UI/X
-	- Editting the spells in an item opens the spell object dialog using a specific filter as defined by the spell container. The dialog contains the list of spells currently in the container and all spells which can be added to the container, much like the item object browser or spell selector.
-	- Item Details Modal
-		- Container info
-			- Are spells consumed? Is the item consumed?
-			- Spellcasting DC/Bonus
-			- capacity (number of spells, rank range + total)
-			- Can the container be transcribed from? Prepared from?
-		- Button to add spells to container
-		- List of spells currently contained (as card rows)
-			- with button to delete any of them
-			- include cast at rank and spell dc/bonus
-	- If castable, spells in the container show up in the spells panel.
-	- Casting a spell from the container can remove the spell from the container (consume_spell) and destroy the item if its the last spell (consume_item).
 - Wizards can add spells to spellbook
   req; spell containers
 - Wizard's can prepare spells from spellbook
@@ -85,6 +66,7 @@
 - spells with material components are displayed in the spell ui
 - a spell is only castable if you have the components for it. if there is no gold amount, it can be covered by a component pouch or spell casting focus. if there is a gold amount, you must have a matching `SpellComponent` item with the same name and a gold amount >= the required amount.
 - if a spell consumes one of these components w/ gold amount, the equivalent gold amount of items is removed from the inventory on cast.
+- show in spell overview? (used in spells panel and in spell containers)
 ```
 component "Material" {
 	item "Feather"

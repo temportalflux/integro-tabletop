@@ -98,6 +98,12 @@ impl Spellcasting {
 			.insert(entry.source.clone(), entry);
 	}
 
+	pub fn add_prepared_spell(&mut self, spell: &Spell, entry: SpellEntry) {
+		let id = spell.id.unversioned();
+		self.add_prepared(&id, entry);
+		self.always_prepared.get_mut(&id).unwrap().spell = Some(spell.clone());
+	}
+
 	pub async fn fetch_spell_objects(
 		&mut self,
 		provider: &ObjectCacheProvider,

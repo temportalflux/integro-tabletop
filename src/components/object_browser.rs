@@ -1,4 +1,7 @@
-use crate::{database::app::Criteria, system::dnd5e::{components::GeneralProp, data::character::spellcasting::AbilityOrStat}};
+use crate::{
+	database::app::Criteria,
+	system::dnd5e::{components::GeneralProp, data::character::spellcasting::AbilityOrStat},
+};
 use std::{collections::HashMap, path::PathBuf, rc::Rc, str::FromStr, sync::Arc};
 use yew::prelude::*;
 
@@ -118,14 +121,16 @@ impl ObjectBrowser for SpellBrowser {
 		let spell_entry = spellcasting::SpellEntry {
 			source: std::path::PathBuf::new(),
 			classified_as: None,
-			cast_via_slot: false,
-			cast_via_ritual: false,
-			cast_via_uses: None,
-			range: None,
-			rank: None,
+			method: spellcasting::CastingMethod::Cast {
+				can_use_slots: true,
+				can_use_ritual: true,
+			},
 			attack_bonus: AbilityOrStat::Ability(crate::system::dnd5e::data::Ability::Charisma),
 			save_dc: AbilityOrStat::Ability(crate::system::dnd5e::data::Ability::Charisma),
 			damage_ability: Some(crate::system::dnd5e::data::Ability::Charisma),
+			casting_duration: None,
+			rank: None,
+			range: None,
 		};
 
 		html! {<>
