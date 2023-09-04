@@ -1220,7 +1220,6 @@ where
 #[function_component]
 pub fn AvailableSpellList(props: &AvailableSpellListProps) -> Html {
 	use yew_hooks::{use_async_with_options, UseAsyncOptions};
-	log::debug!(target: "ui", "Render available spells");
 	let state = use_context::<CharacterHandle>().unwrap();
 	let database = use_context::<Database>().unwrap();
 	let system_depot = use_context::<system::Depot>().unwrap();
@@ -1233,14 +1232,8 @@ pub fn AvailableSpellList(props: &AvailableSpellListProps) -> Html {
 			} = props.clone();
 			let state = state.clone();
 			async move {
-				// TODO: Available spells section wont have togglable filters for max_rank or restriction,
-				// BUT when custom feats are a thing, users should be able to add a feat which grants them
-				// access to a spell that isnt in their normal class list.
-				// e.g. feat which allows the player to have access to a spell
-				// 			OR a feat which grants a spell as always prepared.
-
 				let mut sorted_info = Vec::<(String, u8)>::new();
-				let mut htmls = Vec::new();
+				let mut spells = Vec::new();
 
 				//let parsing_time = wasm_timer::Instant::now();
 				let mut stream =
@@ -1253,16 +1246,12 @@ pub fn AvailableSpellList(props: &AvailableSpellListProps) -> Html {
 						})
 						.unwrap_or_else(|err_idx| err_idx);
 					let info = (spell.name.clone(), spell.rank);
-					let html = {
-						let addon = (header_addon.0)(&spell);
-						spell_list_item("relevant", &state, &spell, entry.as_ref(), addon)
-					};
 					sorted_info.insert(idx, info);
-					htmls.insert(idx, html);
+					spells.insert(idx, spell);
 				}
 
 				//log::debug!("Finding and constructing spells took {}s", parsing_time.elapsed().as_secs_f32());
-				Ok(html! {<>{htmls}</>}) as Result<Html, ()>
+				Ok(spells) as Result<Vec<Spell>, ()>
 			}
 		},
 		UseAsyncOptions::default(),
@@ -1277,7 +1266,13 @@ pub fn AvailableSpellList(props: &AvailableSpellListProps) -> Html {
 		{match (load_data.loading, &load_data.data) {
 			(false, None) => html! {"Spells not loaded"},
 			(true, _) => html!(<Spinner />),
-			(false, Some(data)) => data.clone(),
+			(false, Some(data)) => {
+				let htmls = data.iter().map(|spell| {
+					let addon = (props.header_addon.0)(spell);
+					spell_list_item("relevant", &state, spell, props.entry.as_ref(), addon)
+				}).collect::<Vec<_>>();
+				html!(<>{htmls}</>)
+			}
 		}}
 	</>}
 }

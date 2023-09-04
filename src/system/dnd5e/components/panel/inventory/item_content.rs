@@ -630,38 +630,7 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 			Indirect::Custom(_spell) => None,
 		}
 	}).collect::<Vec<_>>());
-	let contained_ids = spell_container.spells.iter().map(|contained| {
-		match &contained.spell {
-			Indirect::Id(id) => id,
-			Indirect::Custom(spell) => &spell.id,
-		}.unversioned()
-	}).collect::<HashSet<_>>();
 
-	// TODO: When adding multiple spells, it keeps overwriting the first slot for some reason.
-	// Its like the item state is always empty when the add_to_container runs
-	log::debug!("#Spells {:?}", spell_container.spells.len());
-
-	let add_to_container = state.new_dispatch({
-		let id_path = value.clone();
-		move |spell: Indirect<Spell>, persistent: &mut Persistent| {
-			let Some(item) = get_inventory_item_mut(persistent, &id_path) else {
-				return MutatorImpact::None;
-			};
-			let Some(spell_container) = &mut item.spells else {
-				return MutatorImpact::None;
-			};
-			log::debug!("add_to_container #Spells {:?}", spell_container.spells.len());
-			spell_container.spells.push(ContainerSpell {
-				spell,
-				rank: None,
-				save_dc: None,
-				attack_bonus: None,
-			});
-			log::debug!("add_to_container #Spells {:?}", spell_container.spells.len());
-			// TODO: only recompile character when the modal is dismissed
-			return MutatorImpact::None;
-		}
-	});
 	let remove_from_container = state.new_dispatch({
 		let id_path = value.clone();
 		move |spell_idx: usize, persistent: &mut Persistent| {
@@ -676,6 +645,8 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 			return MutatorImpact::None;
 		}
 	});
+
+	// TODO: Prevent adding of new spells when any of the capacity axes are met
 
 	// TODO: implement SpellEntry for spell container when adding spells to the spell panel. For now lets just use /something/.
 	let (casting_atk_bonus, casting_dc) = match &spell_container.casting {
@@ -802,34 +773,31 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 					select_atk_bonus.emit((spell_idx, Some(value)));
 				}
 			});
-			match casting_atk_bonus {
-				Some(fixed_value) => html!(<div class="text-center">{format!("{fixed_value:+}")}</div>),
-				None => {
-					let mut class = classes!("form-select", "px-2", "py-1");
-					let selected = {
-						let mut selected = 0;
-						if let Some(value) = attack_bonus {
-							selected = *value;
-						}
-						else
-						{
-							class.push("missing-value");
-						}
-						selected
-					};
-					html! {
-						<select {class} onchange={select_atk_bonus}>
-							<option selected={attack_bonus.is_none()} value="" />
-							{(-20..=20).into_iter().map(|bonus| {
-								html! {
-									<option selected={bonus == selected} value={bonus.to_string()}>
-										{format!("{bonus:+}")}
-									</option>
-								}
-							}).collect::<Vec<_>>()}
-						</select>
-					}
+			let is_fixed = casting_atk_bonus.is_some();
+			let attack_bonus = casting_atk_bonus.or(*attack_bonus);
+			let mut class = classes!("form-select", "px-2", "py-1");
+			let selected = {
+				let mut selected = 0;
+				if let Some(value) = attack_bonus {
+					selected = value;
 				}
+				else
+				{
+					class.push("missing-value");
+				}
+				selected
+			};
+			html! {
+				<select {class} onchange={select_atk_bonus} disabled={is_fixed}>
+					<option selected={attack_bonus.is_none()} value="" />
+					{(-20..=20).into_iter().map(|bonus| {
+						html! {
+							<option selected={bonus == selected} value={bonus.to_string()}>
+								{format!("{bonus:+}")}
+							</option>
+						}
+					}).collect::<Vec<_>>()}
+				</select>
 			}
 		};
 		let field_save_dc = {
@@ -842,34 +810,31 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 					select_save_dc.emit((spell_idx, Some(value)));
 				}
 			});
-			match casting_dc {
-				Some(fixed_value) => html!(<div class="text-center">{fixed_value}</div>),
-				None => {
-					let mut class = classes!("form-select", "px-2", "py-1");
-					let selected = {
-						let mut selected = 0;
-						if let Some(value) = save_dc {
-							selected = *value;
-						}
-						else
-						{
-							class.push("missing-value");
-						}
-						selected
-					};
-					html! {
-						<select {class} onchange={select_save_dc}>
-							<option selected={save_dc.is_none()} value="" />
-							{(0..=35).into_iter().map(|dc| {
-								html! {
-									<option selected={dc == selected} value={dc.to_string()}>
-										{dc}
-									</option>
-								}
-							}).collect::<Vec<_>>()}
-						</select>
-					}
+			let is_fixed = casting_dc.is_some();
+			let save_dc = casting_dc.or(*save_dc);
+			let mut class = classes!("form-select", "px-2", "py-1");
+			let selected = {
+				let mut selected = 0;
+				if let Some(value) = save_dc {
+					selected = value;
 				}
+				else
+				{
+					class.push("missing-value");
+				}
+				selected
+			};
+			html! {
+				<select {class} onchange={select_save_dc} disabled={is_fixed}>
+					<option selected={save_dc.is_none()} value="" />
+					{(0..=35).into_iter().map(|dc| {
+						html! {
+							<option selected={dc == selected} value={dc.to_string()}>
+								{dc}
+							</option>
+						}
+					}).collect::<Vec<_>>()}
+				</select>
 			}
 		};
 
@@ -914,30 +879,13 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 			</div>
 			<AvailableSpellList
 				header_addon={HeaderAddon::from({
+					let id_path = value.clone();
 					move |spell: &Spell| -> Html {
-						let contained = contained_ids.contains(&spell.id.unversioned());
-						let mut classes = classes!("btn", "btn-xs", "select");
-						if contained {
-							classes.push("btn-outline-secondary");
-						}
-						else {
-							classes.push("btn-outline-theme");
-						}
 						html! {
-							<button
-								role="button"
-								class={classes}
-								disabled={contained}
-								onclick={add_to_container.reform({
-									let spell = Indirect::Id(spell.id.unversioned());
-									move |_| spell.clone()
-								})}
-							>
-								{match contained {
-									true => "Added",
-									false => "Add",
-								}}
-							</button>
+							<SpellListContainerAction
+								container_id={id_path.clone()}
+								spell_id={spell.id.unversioned()}
+							/>
 						}
 					}
 				})}
@@ -946,4 +894,76 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 			/>
 		</div>
 	</>}
+}
+
+#[derive(Clone, PartialEq, Properties)]
+struct SpellListContainerActionProps {
+	container_id: Vec<uuid::Uuid>,
+	spell_id: SourceId,
+}
+#[function_component]
+fn SpellListContainerAction(
+	SpellListContainerActionProps {
+		container_id,
+		spell_id,
+	}: &SpellListContainerActionProps,
+) -> Html {
+	let state = use_context::<CharacterHandle>().unwrap();
+	
+	let Some(item) = get_inventory_item(&state, container_id) else { return Html::default(); };
+	let Some(spell_container) = &item.spells else { return Html::default(); };
+	let contained_ids = spell_container.spells.iter().map(|contained| {
+		match &contained.spell {
+			Indirect::Id(id) => id,
+			Indirect::Custom(spell) => &spell.id,
+		}.unversioned()
+	}).collect::<HashSet<_>>();
+	
+	let mut classes = classes!("btn", "btn-xs", "select");
+	let disabled = contained_ids.contains(&spell_id);
+	if disabled {
+		classes.push("btn-outline-secondary");
+	}
+	else {
+		classes.push("btn-outline-theme");
+	}
+
+	let action_name = match disabled {
+		true => "Added",
+		false => "Add",
+	};
+
+	let onclick = Callback::from({
+		let state = state.clone();
+		let container_id = container_id.clone();
+		let spell_id = spell_id.clone();
+		move |evt: MouseEvent| {
+			evt.stop_propagation();
+			state.dispatch({
+				let container_id = container_id.clone();
+				let spell_id = spell_id.clone();
+				move |persistent: &mut Persistent| {
+					let Some(item) = get_inventory_item_mut(persistent, &container_id) else {
+						return MutatorImpact::None;
+					};
+					let Some(spell_container) = &mut item.spells else {
+						return MutatorImpact::None;
+					};
+					spell_container.spells.push(ContainerSpell {
+						spell: Indirect::Id(spell_id.clone()),
+						rank: None,
+						save_dc: None,
+						attack_bonus: None,
+					});
+					// TODO: only recompile character when the modal is dismissed
+					return MutatorImpact::None;
+				}
+			});
+		}
+	});
+	let onclick = (!disabled).then_some(onclick);
+
+	html! {
+		<button type="button" class={classes} {disabled} {onclick}>{action_name}</button>
+	}
 }
