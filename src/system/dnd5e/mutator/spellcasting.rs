@@ -274,6 +274,13 @@ impl FromKDL for Spellcasting {
 						.collect::<Vec<_>>();
 					Restriction { tags }
 				};
+				let prepare_from_item = match node.query_opt("scope() > source")? {
+					None => false,
+					Some(mut node) => match node.next_str_req()? {
+						"Item" => true,
+						_ => false,
+					},
+				};
 
 				let cantrip_capacity = match node.query_opt("scope() > cantrips")? {
 					None => None,
@@ -358,6 +365,7 @@ impl FromKDL for Spellcasting {
 					class_name,
 					ability,
 					restriction,
+					prepare_from_item,
 					cantrip_capacity,
 					standard_slots,
 					bonus_slots,
@@ -459,6 +467,13 @@ impl AsKdl for Spellcasting {
 					}
 					node.build("restriction")
 				});
+				if caster.prepare_from_item {
+					node.push_child({
+						let mut node = NodeBuilder::default();
+						node.push_entry("Item");
+						node.build("source")
+					});
+				}
 				if let Some(ritual_cap) = &caster.ritual_capability {
 					node.push_child({
 						let mut node = NodeBuilder::default();

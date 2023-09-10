@@ -77,6 +77,7 @@ impl Database {
 		&self,
 		key: crate::system::core::SourceId,
 		system_depot: crate::system::Depot,
+		criteria: Option<Criteria>,
 	) -> Result<Option<T>, FetchError>
 	where
 		T: crate::kdl_ext::KDLNode
@@ -86,6 +87,11 @@ impl Database {
 	{
 		use crate::system::core::System;
 		let Some(entry) = self.get::<Entry>(key.to_string()).await? else { return Ok(None); };
+		if let Some(criteria) = criteria {
+			if !criteria.is_relevant(&entry.metadata) {
+				return Ok(None);
+			}
+		}
 		// Parse the entry's kdl string:
 		// kdl string to document
 		let document = entry.kdl.parse::<kdl::KdlDocument>()?;

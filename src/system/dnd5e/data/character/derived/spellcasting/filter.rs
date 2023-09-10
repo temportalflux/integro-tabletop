@@ -1,4 +1,4 @@
-use crate::system::core::SourceId;
+use crate::system::{core::SourceId, dnd5e::data::Spell};
 use std::collections::HashSet;
 
 #[derive(Clone, Debug, PartialEq, Default)]
@@ -27,6 +27,41 @@ impl Filter {
 			None if !self.ranks.is_empty() => Some(self.ranks.iter().map(|i| *i).collect::<T>()),
 			None => None,
 		}
+	}
+
+	pub fn matches(&self, spell: &Spell) -> bool {
+		if let Some(rank_range) = self.rank_range::<Vec<_>>() {
+			if !rank_range.contains(&spell.rank) {
+				return false;
+			}
+		}
+
+		let mut has_any_tag_or_additional_id = false;
+		if !self.additional_ids.is_empty() {
+			let minimal_id = spell.id.without_basis().unversioned();
+			if self.additional_ids.contains(&minimal_id) {
+				has_any_tag_or_additional_id = true;
+			}
+		}
+		if !has_any_tag_or_additional_id && !self.tags.is_empty() {
+			for spell_tag in &spell.tags {
+				if self.tags.contains(spell_tag) {
+					has_any_tag_or_additional_id = true;
+					break;
+				}
+			}
+		}
+		if !has_any_tag_or_additional_id {
+			return false;
+		}
+
+		if let Some(ritual_flag) = &self.ritual {
+			if spell.casting_time.ritual != *ritual_flag {
+				return false;
+			}
+		}
+
+		true
 	}
 
 	pub fn as_criteria(&self) -> crate::database::app::Criteria {

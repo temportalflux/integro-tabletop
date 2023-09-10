@@ -16,6 +16,7 @@ pub struct Caster {
 	pub class_name: String,
 	pub ability: Ability,
 	pub restriction: Restriction,
+	pub prepare_from_item: bool,
 	pub cantrip_capacity: Option<BTreeMap<usize, usize>>,
 	pub standard_slots: Option<Slots>,
 	pub bonus_slots: Vec<Slots>,

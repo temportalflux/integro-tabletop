@@ -66,7 +66,11 @@ impl AdditionalObjectCache {
 				if object_type_id == Bundle::id() {
 					let bundle = provider
 						.database
-						.get_typed_entry::<Bundle>(object_id.clone(), provider.system_depot.clone())
+						.get_typed_entry::<Bundle>(
+							object_id.clone(),
+							provider.system_depot.clone(),
+							None,
+						)
 						.await?;
 					let Some(bundle) = bundle else {
 						log::error!(target: "object_cache", "Failed to find bundle {:?}, no such entry in database.", object_id.to_string());
@@ -80,6 +84,7 @@ impl AdditionalObjectCache {
 						.get_typed_entry::<Subclass>(
 							object_id.clone(),
 							provider.system_depot.clone(),
+							None,
 						)
 						.await?;
 					let Some(subclass) = subclass else {

@@ -62,6 +62,7 @@ pub struct AlwaysPreparedSpell {
 pub struct RitualSpellCache {
 	pub spells: HashMap<SourceId, Spell>,
 	pub caster_lists: MultiMap<String, SourceId>,
+	pub casters_which_prepare_from_item: HashSet<String>,
 }
 
 impl Spellcasting {
@@ -121,7 +122,7 @@ impl Spellcasting {
 		for (id, spell_entry) in &mut self.always_prepared {
 			spell_entry.spell = provider
 				.database
-				.get_typed_entry::<Spell>(id.clone(), provider.system_depot.clone())
+				.get_typed_entry::<Spell>(id.clone(), provider.system_depot.clone(), None)
 				.await?;
 		}
 		Ok(())
@@ -137,10 +138,9 @@ impl Spellcasting {
 		use crate::system::{core::System, dnd5e::DnD5e};
 		use futures_util::StreamExt;
 
-		// TODO: For wizards, this should check the spell source instead of always checking the database for spells.
-
 		let mut caster_query_criteria = Vec::new();
 		let mut caster_filters = HashMap::new();
+		let mut casters_which_prepare_from_item = HashSet::new();
 		for caster in self.iter_casters() {
 			let Some(ritual_capability) = &caster.ritual_capability else { continue; };
 			if !ritual_capability.available_spells {
@@ -156,6 +156,12 @@ impl Spellcasting {
 			let criteria = filter.as_criteria();
 			caster_query_criteria.push(criteria.clone());
 			caster_filters.insert(caster.name(), criteria);
+
+			// We only store the caster filter if the caster doesnt prepare from the item.
+			// Casters skipped here are handled manually in the spells panel.
+			if caster.prepare_from_item {
+				casters_which_prepare_from_item.insert(caster.name().clone());
+			}
 		}
 		let criteria = Criteria::Any(caster_query_criteria);
 
@@ -186,12 +192,20 @@ impl Spellcasting {
 		Ok(RitualSpellCache {
 			spells: ritual_spell_cache,
 			caster_lists: caster_ritual_list_cache,
+			casters_which_prepare_from_item,
 		})
 	}
 
 	pub fn iter_ritual_spells(&self) -> impl Iterator<Item = (&String, &Spell, &SpellEntry)> + '_ {
 		let iter = self.casters.iter();
 		let iter = iter.filter_map(|(caster_id, caster)| {
+			if self
+				.ritual_spells
+				.casters_which_prepare_from_item
+				.contains(caster_id)
+			{
+				return None;
+			}
 			match self.ritual_spells.caster_lists.get_vec(caster_id) {
 				Some(spell_ids) => Some((caster_id, &caster.spell_entry, spell_ids)),
 				None => None,
@@ -203,6 +217,16 @@ impl Spellcasting {
 			iter.map(move |spell| (caster_id, spell, caster_spell_entry))
 		});
 		iter.flatten()
+	}
+
+	pub fn get_ritual_spell_for(&self, caster_id: &String, spell_id: &SourceId) -> Option<&Spell> {
+		let Some(spell_ids) = self.ritual_spells.caster_lists.get_vec(caster_id) else {
+			return None;
+		};
+		if !spell_ids.contains(spell_id) {
+			return None;
+		}
+		self.ritual_spells.spells.get(spell_id)
 	}
 
 	pub fn cantrip_capacity(&self, persistent: &Persistent) -> Vec<(usize, &Restriction)> {

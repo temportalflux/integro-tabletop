@@ -1,6 +1,6 @@
 use crate::{
 	components::{database::use_typed_fetch_callback, modal, stop_propagation, Spinner},
-	database::app::{Database, QueryDeserialize},
+	database::app::{Criteria, Database, QueryDeserialize},
 	page::characters::sheet::joined::editor::{CollapsableCard, DescriptionSection},
 	page::characters::sheet::CharacterHandle,
 	page::characters::sheet::MutatorImpact,
@@ -18,7 +18,7 @@ use crate::{
 				},
 				proficiency,
 				spell::{self, CastingDuration, DurationKind},
-				AreaOfEffect, Spell,
+				AreaOfEffect, Indirect, Spell,
 			},
 			DnD5e,
 		},
@@ -143,7 +143,7 @@ fn ManageCasterButton(CasterNameProps { caster_id }: &CasterNameProps) -> Html {
 				centered: true,
 				scrollable: true,
 				root_classes: classes!("spells", "browse"),
-				content: html! {<ManagerCasterModal {caster_id} />},
+				content: html! {<ManageCasterModal {caster_id} />},
 				..Default::default()
 			})
 		}
@@ -208,8 +208,7 @@ impl<'c> SpellSections<'c> {
 			let Some(section) = self.sections.get_mut(&section_rank) else { continue; };
 			let can_cast_from_section = section_rank == 0 || section.slot_count.is_some();
 			let uses_cast_method = matches!(&entry.method, CastingMethod::Cast { .. });
-			if can_cast_from_section || !uses_cast_method
-			{
+			if can_cast_from_section || !uses_cast_method {
 				section.insert_spell(spell, entry, location);
 			}
 		}
@@ -261,6 +260,46 @@ impl<'c> SpellSections<'c> {
 				RitualSpellSource::Caster(caster_id.clone()),
 			);
 		}
+
+		// for casters which prepare from items, rituals are based on those in the items
+		let mut prepare_from_item_casters = Vec::new();
+		for caster in state.spellcasting().iter_casters() {
+			let Some(ritual_capability) = &caster.ritual_capability else { continue; };
+			if !ritual_capability.available_spells {
+				continue;
+			}
+			if !caster.prepare_from_item {
+				continue;
+			}
+			prepare_from_item_casters.push((caster.name(), &caster.spell_entry));
+		}
+		for equipable in state.inventory().entries() {
+			// gather all spells from containers which are equipped and can be prepared from
+			if !equipable.is_equipped {
+				continue;
+			}
+			let Some(spell_container) = &equipable.item.spells else {
+				continue;
+			};
+			if !spell_container.can_prepare_from {
+				continue;
+			}
+			for contained_spell in &spell_container.spells {
+				for (caster_id, spell_entry) in &prepare_from_item_casters {
+					let spell_id = contained_spell.spell_id().without_basis().unversioned();
+					if let Some(spell) = state
+						.spellcasting()
+						.get_ritual_spell_for(caster_id, &spell_id)
+					{
+						self.insert_as_ritual(
+							spell,
+							spell_entry,
+							RitualSpellSource::Caster((*caster_id).clone()),
+						);
+					}
+				}
+			}
+		}
 	}
 
 	fn insert_as_ritual(
@@ -271,7 +310,10 @@ impl<'c> SpellSections<'c> {
 	) {
 		match &spell_entry.method {
 			// ritual casting is allowed
-			CastingMethod::Cast { can_use_ritual: true, .. } => {}
+			CastingMethod::Cast {
+				can_use_ritual: true,
+				..
+			} => {}
 			// other casting, or any other method is not considered a ritual
 			_ => return,
 		}
@@ -597,10 +639,10 @@ fn spell_row<'c>(props: SpellRowProps<'c>) -> Html {
 					<UseSpellButton kind={use_kind} />
 				</div>
 				<div class="name-and-source">
-					{spell_name_and_icons(&state, spell, entry, use_ritual_only)}
+					{spell_name_and_icons(&state, spell, Some(entry), use_ritual_only)}
 					{spell_source_and_uses(&entry.source, src_text_suffix)}
 				</div>
-				{spell_overview_info(&state, spell, entry, Some(section_rank))}
+				{spell_overview_info(&state, spell, Some(entry), Some(section_rank))}
 			</div>
 		</SpellModalRowRoot>
 	}
@@ -609,12 +651,12 @@ fn spell_row<'c>(props: SpellRowProps<'c>) -> Html {
 pub fn spell_name_and_icons(
 	state: &CharacterHandle,
 	spell: &Spell,
-	entry: &SpellEntry,
+	entry: Option<&SpellEntry>,
 	ritual_only: bool,
 ) -> Html {
 	let can_ritual_cast = spell.casting_time.ritual && {
 		ritual_only || {
-			let classified = entry.classified_as.as_ref();
+			let classified = entry.as_ref().map(|entry| entry.classified_as.as_ref()).flatten();
 			let caster = classified
 				.map(|id| state.spellcasting().get_caster(id))
 				.flatten();
@@ -652,15 +694,25 @@ pub fn spell_source_and_uses(source: &Path, uses_suffix: Option<Html>) -> Html {
 pub fn spell_overview_info(
 	state: &CharacterHandle,
 	spell: &Spell,
-	entry: &SpellEntry,
+	entry: Option<&SpellEntry>,
 	override_rank: Option<u8>,
 ) -> Html {
+	let casting_duration = entry
+		.map(|entry| entry.casting_duration.as_ref())
+		.flatten().unwrap_or(&spell.casting_time.duration);
+	let range = entry
+		.map(|entry| entry.range.as_ref())
+		.flatten().unwrap_or(&spell.range);
+	let attack_bonus = entry.map(|entry| entry.attack_bonus).unwrap_or(AbilityOrStat::Stat(0));
+	let save_dc = entry.map(|entry| entry.save_dc).unwrap_or(AbilityOrStat::Stat(0));
+	let cast_at_rank = override_rank.or(entry.map(|entry| entry.rank).flatten());
+	let damage_modifier = entry.map(|entry| entry.damage_ability).flatten().map(|ability| state.ability_modifier(ability, Some(proficiency::Level::Full))).unwrap_or_default();
 	html! {
 		<div class="attributes">
 			<div class="attribute-row">
 				<span class="attribute casting-time">
 					<span class="label">{"Cast:"}</span>
-					{match entry.casting_duration.as_ref().unwrap_or(&spell.casting_time.duration) {
+					{match casting_duration {
 						CastingDuration::Action => html!("Action"),
 						CastingDuration::Bonus => html!("Bonus Action"),
 						CastingDuration::Reaction(_trigger) => html!("Reaction"),
@@ -684,7 +736,7 @@ pub fn spell_overview_info(
 				}}
 				<span class="attribute range">
 					<span class="label">{"Range:"}</span>
-					{match entry.range.as_ref().unwrap_or(&spell.range) {
+					{match range {
 						spell::Range::OnlySelf => html!("Self"),
 						spell::Range::Touch => html!("Touch"),
 						spell::Range::Unit { distance, unit } => html! {<>{distance}{" "}{unit}</>},
@@ -697,9 +749,9 @@ pub fn spell_overview_info(
 				{match &spell.check {
 					None => html!(),
 					Some(spell::Check::AttackRoll(_atk_kind)) => {
-						let modifier = match &entry.attack_bonus {
-							AbilityOrStat::Stat(modifier) => *modifier,
-							AbilityOrStat::Ability(ability) => state.ability_modifier(*ability, Some(proficiency::Level::Full)),
+						let modifier = match attack_bonus {
+							AbilityOrStat::Stat(modifier) => modifier,
+							AbilityOrStat::Ability(ability) => state.ability_modifier(ability, Some(proficiency::Level::Full)),
 						};
 						html! {<span class="attribute atk-roll">
 							<span class="label">{"Atk Roll:"}</span>
@@ -708,12 +760,12 @@ pub fn spell_overview_info(
 					}
 					Some(spell::Check::SavingThrow(ability, fixed_dc)) => {
 						let abb_name = ability.abbreviated_name().to_case(Case::Upper);
-						let dc = match &entry.save_dc {
-							AbilityOrStat::Stat(dc) => *dc as i32,
+						let dc = match save_dc {
+							AbilityOrStat::Stat(dc) => dc as i32,
 							AbilityOrStat::Ability(ability) => match fixed_dc {
 								Some(dc) => *dc as i32,
 								None => {
-									let modifier = state.ability_modifier(*ability, Some(proficiency::Level::Full));
+									let modifier = state.ability_modifier(ability, Some(proficiency::Level::Full));
 									8 + modifier
 								}
 							},
@@ -727,10 +779,8 @@ pub fn spell_overview_info(
 				{match &spell.damage {
 					None => html!(),
 					Some(damage) => {
-						let cast_at_rank = override_rank.or(entry.rank);
-						let modifier = entry.damage_ability.map(|ability| state.ability_modifier(ability, Some(proficiency::Level::Full))).unwrap_or_default();
 						let upcast_amt = cast_at_rank.map(|rank| rank - spell.rank).unwrap_or(0);
-						let (roll_set, bonus) = damage.evaluate(&*state, modifier, upcast_amt as u32);
+						let (roll_set, bonus) = damage.evaluate(&*state, damage_modifier, upcast_amt as u32);
 						let mut spans = roll_set.rolls().into_iter().enumerate().map(|(idx, roll)| {
 							html! {
 								<span>
@@ -825,7 +875,7 @@ fn SpellModal(
 }
 
 #[function_component]
-fn ManagerCasterModal(CasterNameProps { caster_id }: &CasterNameProps) -> Html {
+fn ManageCasterModal(CasterNameProps { caster_id }: &CasterNameProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let Some(caster) = state.spellcasting().get_caster(caster_id.as_str()) else {
 		return html! {<>
@@ -861,9 +911,13 @@ fn ManagerCasterModal(CasterNameProps { caster_id }: &CasterNameProps) -> Html {
 		.iter_caster(caster.name())
 	{
 		for spell in iter_selected {
-			// Since we are only processing one caster per section, we can assume the
-			// selected spells have already been sorted (rank then name) when they were loaded from kdl.
-			selected_spells.push(spell);
+			// Insertion sort by rank & name
+			let order_idx = selected_spells
+				.binary_search_by(|existing_spell: &&Spell| {
+					existing_spell.rank.cmp(&spell.rank).then(existing_spell.name.cmp(&spell.name))
+				})
+				.unwrap_or_else(|err_idx| err_idx);
+			selected_spells.insert(order_idx, spell);
 		}
 	}
 	let caster_info = ActionCasterInfo {
@@ -918,6 +972,10 @@ fn ManagerCasterModal(CasterNameProps { caster_id }: &CasterNameProps) -> Html {
 						})}
 						criteria={filter.as_criteria()}
 						entry={caster.spell_entry.clone()}
+						source={match caster.prepare_from_item {
+							false => SpellSource::Database,
+							true => SpellSource::Items,
+						}}
 					/>
 				</CollapsableCard>
 			</div>
@@ -1299,6 +1357,8 @@ pub struct AvailableSpellListProps {
 	pub criteria: Option<crate::database::app::Criteria>,
 	pub entry: Option<SpellEntry>,
 	pub header_addon: HeaderAddon,
+	#[prop_or(SpellSource::Database)]
+	pub source: SpellSource,
 }
 #[derive(Clone)]
 pub struct HeaderAddon(std::sync::Arc<dyn Fn(&Spell) -> Html>);
@@ -1315,28 +1375,67 @@ where
 		Self(std::sync::Arc::new(value))
 	}
 }
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum SpellSource {
+	Database,
+	Items,
+}
 #[function_component]
 pub fn AvailableSpellList(props: &AvailableSpellListProps) -> Html {
 	use yew_hooks::{use_async_with_options, UseAsyncOptions};
 	let state = use_context::<CharacterHandle>().unwrap();
 	let database = use_context::<Database>().unwrap();
 	let system_depot = use_context::<system::Depot>().unwrap();
+
+	let criteria_handle = use_state({
+		let criteria = props.criteria.clone();
+		move || criteria
+	});
+	use_effect_with_deps(
+		{
+			let criteria_handle = criteria_handle.clone();
+			move |criteria: &Option<Criteria>| {
+				criteria_handle.set(criteria.clone());
+			}
+		},
+		props.criteria.clone(),
+	);
+
+	let source_kind = props.source;
+	let mut contained_spells = Vec::new();
+	let mut indirect_ids_to_fetch = Vec::new();
+
+	// if we are looking for spells contained within items, lets gather all of the possible ids/objects
+	if source_kind == SpellSource::Items {
+		for equipable in state.inventory().entries() {
+			// gather all spells from containers which are equipped and can be prepared from
+			if !equipable.is_equipped {
+				continue;
+			}
+			let Some(spell_container) = &equipable.item.spells else {
+				continue;
+			};
+			if !spell_container.can_prepare_from {
+				continue;
+			}
+			contained_spells.extend(spell_container.spells.clone());
+			indirect_ids_to_fetch.reserve(spell_container.spells.len());
+			for contained_spell in &spell_container.spells {
+				if let Indirect::Id(id) = &contained_spell.spell {
+					indirect_ids_to_fetch.push(id.clone());
+				}
+			}
+		}
+	}
+
 	let load_data = use_async_with_options(
 		{
-			let AvailableSpellListProps {
-				criteria,
-				entry,
-				header_addon,
-			} = props.clone();
-			let state = state.clone();
+			let criteria_handle = criteria_handle.clone();
 			async move {
 				let mut sorted_info = Vec::<(String, u8)>::new();
 				let mut spells = Vec::new();
 
-				//let parsing_time = wasm_timer::Instant::now();
-				let mut stream =
-					FindRelevantSpells::new(database.clone(), &system_depot, criteria.clone());
-				while let Some(spell) = stream.next().await {
+				let mut insert_spell = |spell: Spell| {
 					// Insertion sort by rank & name
 					let idx = sorted_info
 						.binary_search_by(|(name, rank)| {
@@ -1346,18 +1445,69 @@ pub fn AvailableSpellList(props: &AvailableSpellListProps) -> Html {
 					let info = (spell.name.clone(), spell.rank);
 					sorted_info.insert(idx, info);
 					spells.insert(idx, spell);
+				};
+
+				match source_kind {
+					SpellSource::Database => {
+						use crate::system::core::System;
+						let criteria = (*criteria_handle).clone();
+						let stream_result = database
+							.query_typed::<Spell>(
+								DnD5e::id(),
+								system_depot.clone(),
+								criteria.map(|criteria| criteria.into()),
+							)
+							.await;
+						let mut stream = match stream_result {
+							Ok(stream) => stream,
+							Err(_err) => {
+								return Ok(spells);
+							}
+						};
+						while let Some(spell) = stream.next().await {
+							insert_spell(spell);
+						}
+					}
+					SpellSource::Items => {
+						for contained_spell in &contained_spells {
+							let Indirect::Custom(spell) = &contained_spell.spell else { continue; };
+							insert_spell(spell.clone());
+						}
+
+						for spell_id in &indirect_ids_to_fetch {
+							let query = database.get_typed_entry::<Spell>(
+								spell_id.clone(),
+								system_depot.clone(),
+								(*criteria_handle).clone(),
+							);
+							match query.await {
+								Ok(Some(spell)) => insert_spell(spell),
+								Ok(None) => {}
+								Err(_err) => {}
+							}
+						}
+					}
 				}
 
-				//log::debug!("Finding and constructing spells took {}s", parsing_time.elapsed().as_secs_f32());
 				Ok(spells) as Result<Vec<Spell>, ()>
 			}
 		},
 		UseAsyncOptions::default(),
 	);
+
 	// PERF: The relevant spell list could be searched when the character is opened, instead of doing it every time the modal is opened
 	if yew_hooks::use_is_first_mount() {
 		load_data.run();
 	}
+	use_effect_with_deps(
+		{
+			let load_data = load_data.clone();
+			move |_: &(UseStateHandle<Option<Criteria>>, SpellSource)| {
+				load_data.run();
+			}
+		},
+		(criteria_handle.clone(), props.source),
+	);
 
 	// TODO: Search bar for available spells section
 	html! {<>
@@ -1373,83 +1523,6 @@ pub fn AvailableSpellList(props: &AvailableSpellListProps) -> Html {
 			}
 		}}
 	</>}
-}
-
-struct FindRelevantSpells {
-	pending_query: Option<
-		Pin<Box<dyn futures_util::Future<Output = Result<QueryDeserialize<Spell>, idb::Error>>>>,
-	>,
-	query: Option<QueryDeserialize<Spell>>,
-}
-impl FindRelevantSpells {
-	fn new(
-		database: Database,
-		system_depot: &system::Depot,
-		criteria: Option<crate::database::app::Criteria>,
-	) -> Self {
-		use crate::system::core::System;
-		let pending_query = database.query_typed::<Spell>(
-			DnD5e::id(),
-			system_depot.clone(),
-			criteria.map(|criteria| criteria.into()),
-		);
-		Self {
-			pending_query: Some(Box::pin(pending_query)),
-			query: None,
-		}
-	}
-}
-impl FindRelevantSpells {
-	fn _pending_delay(cx: &mut std::task::Context<'_>, millis: u32) -> std::task::Poll<Html> {
-		use gloo_timers::callback::Timeout;
-		let waker = cx.waker().clone();
-		if millis > 0 {
-			Timeout::new(millis, move || waker.wake()).forget();
-		} else {
-			waker.wake();
-		}
-		std::task::Poll::Pending
-	}
-}
-impl futures_util::Stream for FindRelevantSpells {
-	type Item = Spell;
-
-	fn poll_next(
-		mut self: Pin<&mut Self>,
-		cx: &mut std::task::Context<'_>,
-	) -> std::task::Poll<Option<Self::Item>> {
-		use std::task::Poll;
-		if let Some(mut pending) = self.pending_query.take() {
-			match pending.poll_unpin(cx) {
-				Poll::Pending => {
-					self.pending_query = Some(pending);
-					return Poll::Pending;
-				}
-				Poll::Ready(Err(_db_error)) => {
-					return Poll::Ready(None);
-				}
-				Poll::Ready(Ok(query)) => {
-					self.query = Some(query);
-				}
-			}
-		}
-		loop {
-			let Some(mut query) = self.query.take() else { return Poll::Ready(None); };
-			// Poll to see if the next spell in the stream is available
-			let Poll::Ready(spell) = query.poll_next_unpin(cx) else {
-				// still pending, return the query to this struct for next poll.
-				self.query = Some(query);
-				return Poll::Pending;
-			};
-			// If there is no spell, the stream is finished and this future is complete.
-			let Some(spell) = spell else {
-				return Poll::Ready(None);
-			};
-			// There is a spell, so return the query here for the next loop or poll.
-			self.query = Some(query);
-			return Poll::Ready(Some(spell));
-		}
-	}
 }
 
 #[derive(Clone, PartialEq, Properties)]

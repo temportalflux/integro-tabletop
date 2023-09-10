@@ -67,6 +67,14 @@ pub struct ContainerSpell {
 	// The spell attack bonus that must be used for this spell.
 	pub attack_bonus: Option<i32>,
 }
+impl ContainerSpell {
+	pub fn spell_id(&self) -> &SourceId {
+		match &self.spell {
+			Indirect::Id(id) => id,
+			Indirect::Custom(spell) => &spell.id,
+		}
+	}
+}
 
 impl SpellContainer {
 	pub fn remove(&mut self, spell_id: &SourceId) {

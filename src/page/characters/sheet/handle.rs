@@ -106,7 +106,7 @@ impl CharacterHandle {
 
 				let entry = handle
 					.database
-					.get_typed_entry::<Persistent>(id.clone(), handle.system_depot.clone())
+					.get_typed_entry::<Persistent>(id.clone(), handle.system_depot.clone(), None)
 					.await?;
 				let persistent = match entry {
 					Some(known) => known,

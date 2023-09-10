@@ -36,7 +36,7 @@ pub struct SpellEntry {
 	pub range: Option<spell::Range>,
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum AbilityOrStat<T> {
 	Ability(Ability),
 	Stat(T),

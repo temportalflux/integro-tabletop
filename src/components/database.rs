@@ -365,7 +365,7 @@ where
 				async move {
 					let mut items = BTreeMap::new();
 					for id in &new_ids {
-						let Some(item) = database.get_typed_entry::<T>(id.clone(), system_depot.clone()).await? else {
+						let Some(item) = database.get_typed_entry::<T>(id.clone(), system_depot.clone(), None).await? else {
 							continue;
 						};
 						items.insert(id.clone(), item);
@@ -409,7 +409,7 @@ where
 		let system_depot = system_depot.clone();
 		let fn_item = fn_item.clone();
 		task_dispatch.spawn(task_name.clone(), None, async move {
-			let Some(item) = database.get_typed_entry::<Item>(source_id, system_depot).await? else {
+			let Some(item) = database.get_typed_entry::<Item>(source_id, system_depot, None).await? else {
 				return Ok(());
 			};
 			fn_item.emit(item);
@@ -436,7 +436,7 @@ where
 		let system_depot = system_depot.clone();
 		let fn_item = fn_item.clone();
 		task_dispatch.spawn(task_name.clone(), None, async move {
-			let Some(item) = database.get_typed_entry::<Item>(source_id.clone(), system_depot).await? else {
+			let Some(item) = database.get_typed_entry::<Item>(source_id.clone(), system_depot, None).await? else {
 				log::error!("No such database entry {:?}", source_id.to_string());
 				return Ok(());
 			};

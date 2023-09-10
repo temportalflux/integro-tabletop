@@ -22,6 +22,15 @@
 
 ## DnD5e Features
 
+- Available Spells List filters
+	Macros
+	- Spells I can cast using slots
+	- Spells I can cast
+	- Spells my caster class has access to at my level
+	List Filter
+	- Rank
+	- Contains str in name
+
 - Wizards can add spells to spellbook
   req; spell containers
 - Wizard's can prepare spells from spellbook

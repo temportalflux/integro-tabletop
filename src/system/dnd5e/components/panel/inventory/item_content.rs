@@ -628,6 +628,7 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 		{
 			let fetch_indirect_spells = fetch_indirect_spells.clone();
 			move |ids: &UseStateHandle<Vec<SourceId>>| {
+				let id_strs = (**ids).iter().map(SourceId::to_string).collect::<Vec<_>>();
 				fetch_indirect_spells.run((**ids).clone());
 			}
 		},
@@ -642,7 +643,7 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 			.spells
 			.iter()
 			.filter_map(|contained| match &contained.spell {
-				Indirect::Id(id) => Some(id.unversioned()),
+				Indirect::Id(id) => Some(id.without_basis().unversioned()),
 				Indirect::Custom(_spell) => None,
 			})
 			.collect::<Vec<_>>(),
@@ -663,6 +664,7 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 		}
 	});
 
+	let has_casting = spell_container.casting.is_some();
 	let (casting_atk_bonus, casting_dc) = match &spell_container.casting {
 		None => (None, None),
 		Some(casting) => (casting.attack_bonus, casting.save_dc),
@@ -670,7 +672,7 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 
 	let rank_min = spell_container.capacity.rank_min.unwrap_or(0);
 	let rank_max = spell_container.capacity.rank_max.unwrap_or(MAX_SPELL_RANK);
-	let criteria = Criteria::contains_prop(
+	let container_capacity_criteria = Criteria::contains_prop(
 		"rank",
 		Criteria::any(
 			(rank_min..=rank_max)
@@ -678,6 +680,10 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 				.map(|rank| Criteria::exact(rank)),
 		),
 	);
+	let criteria = use_state({
+		let criteria = container_capacity_criteria.clone();
+		move || criteria
+	});
 
 	let consumed_rank_sum: usize = spell_container
 		.spells
@@ -754,156 +760,245 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 		}
 	});
 
-	let contained_spells = spell_container.spells.iter().enumerate().map(|(spell_idx, contained)| {
-		let ContainerSpell {
-			spell,
-			rank,
-			save_dc,
-			attack_bonus,
-		} = contained;
-		let spell = match spell {
-			Indirect::Id(id) => match fetch_indirect_spells.status() {
-				QueryStatus::Success((_ids, spells_by_id)) => {
-					spells_by_id.get(id)
-				}
-				_ => None,
-			},
-			Indirect::Custom(spell) => Some(spell),
-		};
-		let Some(spell) = spell else { return Html::default(); };
-		let Some(entry) = spell_container.get_spell_entry(contained, Some((0, 0))) else { return Html::default(); };
+	let selected_section = match fetch_indirect_spells.status() {
+		QueryStatus::Pending => html!(<crate::components::Spinner />),
+		QueryStatus::Empty | QueryStatus::Failed(_) => html!("No selected spells"),
+		QueryStatus::Success((_ids, spells_by_id)) => {
+			let mut ordered_indices = Vec::with_capacity(spell_container.spells.len());
+			for (container_idx, contained) in spell_container.spells.iter().enumerate() {
+				let spell = match &contained.spell {
+					Indirect::Id(id) => match spells_by_id.get(&id.without_basis()) {
+						Some(spell) => spell,
+						None => continue,
+					},
+					Indirect::Custom(spell) => spell,
+				};
+				// Insertion sort by rank & name
+				let order_idx = ordered_indices
+					.binary_search_by(|(_, name, rank): &(usize, String, u8)| {
+						rank.cmp(&spell.rank).then(name.cmp(&spell.name))
+					})
+					.unwrap_or_else(|err_idx| err_idx);
+				ordered_indices.insert(order_idx, (container_idx, spell.name.clone(), spell.rank));
+			}
+			let mut contained_spells = Vec::with_capacity(ordered_indices.len());
+			for (contained_idx, _, _) in ordered_indices {
+				let Some(contained) = spell_container.spells.get(contained_idx) else { continue; };
+				let ContainerSpell {
+					spell,
+					rank,
+					save_dc,
+					attack_bonus,
+				} = contained;
+				let spell = match spell {
+					Indirect::Id(id) => match spells_by_id.get(&id.without_basis()) {
+						Some(spell) => spell,
+						None => return Html::default(),
+					},
+					Indirect::Custom(spell) => spell,
+				};
 
-		let field_rank = {
-			let select_rank = Callback::from({
-				let min_rank = spell.rank;
-				let select_rank = select_rank.clone();
-				move |evt: web_sys::Event| {
-					let Some(selected_rank) = evt.select_value_t::<u8>() else { return; };
-					select_rank.emit((spell_idx, (selected_rank != min_rank).then_some(selected_rank)));
-				}
-			});
-			let selected_rank = rank.unwrap_or(spell.rank);
-			let rank_min = spell.rank.max(rank_min);
-			let rank_max = spell.rank.max(match remaining_total_rank {
-				None => rank_max,
-				Some(remaining_total_rank) => rank_max.min(selected_rank.saturating_add(remaining_total_rank as u8)),
-			});
-			html! {
-				<select class="form-select px-2 py-1" onchange={select_rank}>
-					{(rank_min..=rank_max).into_iter().map(|option_rank| {
+				let casting_stats = match has_casting {
+					false => html!(),
+					true => {
+						let field_rank = {
+							let select_rank = Callback::from({
+								let min_rank = spell.rank;
+								let select_rank = select_rank.clone();
+								move |evt: web_sys::Event| {
+									let Some(selected_rank) = evt.select_value_t::<u8>() else { return; };
+									select_rank.emit((
+										contained_idx,
+										(selected_rank != min_rank).then_some(selected_rank),
+									));
+								}
+							});
+							let selected_rank = rank.unwrap_or(spell.rank);
+							let rank_min = spell.rank.max(rank_min);
+							let rank_max = spell.rank.max(match remaining_total_rank {
+								None => rank_max,
+								Some(remaining_total_rank) => rank_max
+									.min(selected_rank.saturating_add(remaining_total_rank as u8)),
+							});
+							html! {
+								<select class="form-select px-2 py-1" onchange={select_rank}>
+									{(rank_min..=rank_max).into_iter().map(|option_rank| {
+										html! {
+											<option selected={option_rank == selected_rank} value={option_rank.to_string()}>
+												{"Rank "}{option_rank}
+											</option>
+										}
+									}).collect::<Vec<_>>()}
+								</select>
+							}
+						};
+						let field_atk_bonus = {
+							let select_atk_bonus = Callback::from({
+								let select_atk_bonus = select_atk_bonus.clone();
+								move |evt: web_sys::Event| {
+									let Some(value) = evt.select_value() else { return; };
+									if value.is_empty() {
+										return;
+									}
+									let Ok(value) = value.parse::<i32>() else { return; };
+									select_atk_bonus.emit((contained_idx, Some(value)));
+								}
+							});
+							let is_fixed = casting_atk_bonus.is_some();
+							let attack_bonus = casting_atk_bonus.or(*attack_bonus);
+							let mut class = classes!("form-select", "px-2", "py-1");
+							let selected = {
+								let mut selected = 0;
+								if let Some(value) = attack_bonus {
+									selected = value;
+								} else {
+									class.push("missing-value");
+								}
+								selected
+							};
+							html! {
+								<select {class} onchange={select_atk_bonus} disabled={is_fixed}>
+									<option selected={attack_bonus.is_none()} value="" />
+									{(-20..=20).into_iter().map(|bonus| {
+										html! {
+											<option selected={bonus == selected} value={bonus.to_string()}>
+												{format!("{bonus:+}")}
+											</option>
+										}
+									}).collect::<Vec<_>>()}
+								</select>
+							}
+						};
+						let field_save_dc = {
+							let select_save_dc = Callback::from({
+								let select_save_dc = select_save_dc.clone();
+								move |evt: web_sys::Event| {
+									let Some(value) = evt.select_value() else { return; };
+									if value.is_empty() {
+										return;
+									}
+									let Ok(value) = value.parse::<u8>() else { return; };
+									select_save_dc.emit((contained_idx, Some(value)));
+								}
+							});
+							let is_fixed = casting_dc.is_some();
+							let save_dc = casting_dc.or(*save_dc);
+							let mut class = classes!("form-select", "px-2", "py-1");
+							let selected = {
+								let mut selected = 0;
+								if let Some(value) = save_dc {
+									selected = value;
+								} else {
+									class.push("missing-value");
+								}
+								selected
+							};
+							html! {
+								<select {class} onchange={select_save_dc} disabled={is_fixed}>
+									<option selected={save_dc.is_none()} value="" />
+									{(0..=35).into_iter().map(|dc| {
+										html! {
+											<option selected={dc == selected} value={dc.to_string()}>
+												{dc}
+											</option>
+										}
+									}).collect::<Vec<_>>()}
+								</select>
+							}
+						};
 						html! {
-							<option selected={option_rank == selected_rank} value={option_rank.to_string()}>
-								{"Rank "}{option_rank}
-							</option>
+							<div class="row flex-fill mt-1" style="font-size: 1rem;">
+								<div class="col">
+									<div class="text-center">{"Rank"}</div>
+									{field_rank}
+								</div>
+								<div class="col">
+									<div class="text-center">{"Attack Bonus"}</div>
+									{field_atk_bonus}
+								</div>
+								<div class="col">
+									<div class="text-center">{"Save DC"}</div>
+									{field_save_dc}
+								</div>
+							</div>
 						}
-					}).collect::<Vec<_>>()}
-				</select>
-			}
-		};
-		let field_atk_bonus = {
-			let select_atk_bonus = Callback::from({
-				let select_atk_bonus = select_atk_bonus.clone();
-				move |evt: web_sys::Event| {
-					let Some(value) = evt.select_value() else { return; };
-					if value.is_empty() { return; }
-					let Ok(value) = value.parse::<i32>() else { return; };
-					select_atk_bonus.emit((spell_idx, Some(value)));
-				}
-			});
-			let is_fixed = casting_atk_bonus.is_some();
-			let attack_bonus = casting_atk_bonus.or(*attack_bonus);
-			let mut class = classes!("form-select", "px-2", "py-1");
-			let selected = {
-				let mut selected = 0;
-				if let Some(value) = attack_bonus {
-					selected = value;
-				}
-				else
-				{
-					class.push("missing-value");
-				}
-				selected
-			};
-			html! {
-				<select {class} onchange={select_atk_bonus} disabled={is_fixed}>
-					<option selected={attack_bonus.is_none()} value="" />
-					{(-20..=20).into_iter().map(|bonus| {
-						html! {
-							<option selected={bonus == selected} value={bonus.to_string()}>
-								{format!("{bonus:+}")}
-							</option>
-						}
-					}).collect::<Vec<_>>()}
-				</select>
-			}
-		};
-		let field_save_dc = {
-			let select_save_dc = Callback::from({
-				let select_save_dc = select_save_dc.clone();
-				move |evt: web_sys::Event| {
-					let Some(value) = evt.select_value() else { return; };
-					if value.is_empty() { return; }
-					let Ok(value) = value.parse::<u8>() else { return; };
-					select_save_dc.emit((spell_idx, Some(value)));
-				}
-			});
-			let is_fixed = casting_dc.is_some();
-			let save_dc = casting_dc.or(*save_dc);
-			let mut class = classes!("form-select", "px-2", "py-1");
-			let selected = {
-				let mut selected = 0;
-				if let Some(value) = save_dc {
-					selected = value;
-				}
-				else
-				{
-					class.push("missing-value");
-				}
-				selected
-			};
-			html! {
-				<select {class} onchange={select_save_dc} disabled={is_fixed}>
-					<option selected={save_dc.is_none()} value="" />
-					{(0..=35).into_iter().map(|dc| {
-						html! {
-							<option selected={dc == selected} value={dc.to_string()}>
-								{dc}
-							</option>
-						}
-					}).collect::<Vec<_>>()}
-				</select>
-			}
-		};
+					}
+				};
 
-		html! {
-			<div class="spell-row">
-				<div class="flex-fill d-flex">
-					<div class="name-and-source">
-						{spell_name_and_icons(&state, spell, &entry, false)}
+				let entry = spell_container.get_spell_entry(contained, Some((0, 0)));
+
+				contained_spells.push(html! {
+					<div class="spell-row">
+						<div class="flex-fill d-flex">
+							<div class="name-and-source">
+								{spell_name_and_icons(&state, spell, entry.as_ref(), false)}
+							</div>
+							<button
+								type="button" class="btn btn-danger btn-xs ms-2"
+								onclick={remove_from_container.reform(move |_| contained_idx)}
+							>
+								<i class="bi bi-dash me-1" />
+								{"Remove"}
+							</button>
+						</div>
+						{spell_overview_info(&state, spell, entry.as_ref(), None)}
+						{casting_stats}
 					</div>
-					<button type="button" class="btn btn-danger btn-xs ms-2" onclick={remove_from_container.reform(move |_| spell_idx)}>
-						<i class="bi bi-dash me-1" />
-						{"Remove"}
-					</button>
+				});
+			}
+			html! {
+				<div class="spell-section">
+					{contained_spells}
 				</div>
-				{spell_overview_info(&state, spell, &entry, None)}
-				<div class="row flex-fill mt-1" style="font-size: 1rem;">
-					<div class="col">
-						<div class="text-center">{"Rank"}</div>
-						{field_rank}
-					</div>
-					<div class="col">
-						<div class="text-center">{"Attack Bonus"}</div>
-						{field_atk_bonus}
-					</div>
-					<div class="col">
-						<div class="text-center">{"Save DC"}</div>
-						{field_save_dc}
-					</div>
-				</div>
-			</div>
+			}
 		}
-	}).collect::<Vec<_>>();
+	};
+
+	let mut criteria_filter_btns = Vec::new();
+	if spell_container.can_prepare_from {
+		// casters which prepare from items
+		let valid_casters = state
+			.spellcasting()
+			.iter_casters()
+			.filter(|caster| caster.prepare_from_item)
+			.collect::<Vec<_>>();
+		if !valid_casters.is_empty() {
+			let set_filter_default = Callback::from({
+				let default_criteria = container_capacity_criteria.clone();
+				let criteria = criteria.clone();
+				move |_| {
+					criteria.set(default_criteria.clone());
+				}
+			});
+			criteria_filter_btns.push(html! {
+				<button type="button" class="btn btn-theme btn-xs mx-1" onclick={set_filter_default}>
+					{"All Spells"}
+				</button>
+			});
+			// NOTE: These filters do not abide by the rank bounds of the item.
+			// This is fine for now because the only item which is prepare-from-able
+			// is a wizard's spellbook (which has no rank bounds).
+			// In the future, the filter system should abide by both item and caster criterias.
+			for caster in valid_casters {
+				let current_level = state.persistent().level(Some(caster.name()));
+				let filter = state
+					.spellcasting()
+					.get_filter(caster.name(), state.persistent())
+					.unwrap_or_default();
+				let set_filter = Callback::from({
+					let criteria = criteria.clone();
+					move |_| {
+						criteria.set(filter.as_criteria());
+					}
+				});
+				criteria_filter_btns.push(html! {
+					<button type="button" class="btn btn-theme btn-xs mx-1" onclick={set_filter}>
+						{format!("{} Lvl {current_level} spells", caster.name())}
+					</button>
+				});
+			}
+		}
+	}
 
 	html! {<>
 		<div class="modal-header">
@@ -911,14 +1006,15 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
 		</div>
 		<div class="modal-body">
-			<div class="spell-section">
-				{contained_spells}
-			</div>
+			{selected_section}
 			<CollapsableCard
 				id={"available-spells"}
 				header_content={{html! { {"Available Spells"} }}}
 				body_classes={"spell-list"}
 			>
+				<div class="d-flex">
+					{criteria_filter_btns}
+				</div>
 				<AvailableSpellList
 					header_addon={HeaderAddon::from({
 						let id_path = value.clone();
@@ -935,7 +1031,7 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 							}
 						}
 					})}
-					criteria={criteria.clone()}
+					criteria={(*criteria).clone()}
 					entry={None}
 				/>
 			</CollapsableCard>
