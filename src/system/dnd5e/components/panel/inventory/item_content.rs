@@ -1,9 +1,9 @@
 use crate::{
 	components::{
-		database::{use_query_typed, QueryStatus, UseQueryAllHandle},
+		database::{use_query_typed, QueryStatus, UseQueryAllHandle, UseQueryDiscreteHandle},
 		modal, progress_bar,
 	},
-	database::app::Criteria,
+	database::app::{Criteria, FetchError},
 	page::characters::sheet::{joined::editor::CollapsableCard, CharacterHandle},
 	page::characters::sheet::{
 		joined::editor::{description, mutator_list},
@@ -621,6 +621,7 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 #[function_component]
 fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid>>) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
+	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 
 	let fetch_indirect_spells = use_query_typed::<Spell>();
 	let indirect_spell_ids = use_state_eq(|| Vec::new());
@@ -628,7 +629,6 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 		{
 			let fetch_indirect_spells = fetch_indirect_spells.clone();
 			move |ids: &UseStateHandle<Vec<SourceId>>| {
-				let id_strs = (**ids).iter().map(SourceId::to_string).collect::<Vec<_>>();
 				fetch_indirect_spells.run((**ids).clone());
 			}
 		},
@@ -648,42 +648,6 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 			})
 			.collect::<Vec<_>>(),
 	);
-
-	let remove_from_container = state.new_dispatch({
-		let id_path = value.clone();
-		move |spell_idx: usize, persistent: &mut Persistent| {
-			let Some(item) = get_inventory_item_mut(persistent, &id_path) else {
-				return MutatorImpact::None;
-			};
-			let Some(spell_container) = &mut item.spells else {
-				return MutatorImpact::None;
-			};
-			spell_container.spells.remove(spell_idx);
-			// TODO: only recompile character when the modal is dismissed
-			return MutatorImpact::Recompile;
-		}
-	});
-
-	let has_casting = spell_container.casting.is_some();
-	let (casting_atk_bonus, casting_dc) = match &spell_container.casting {
-		None => (None, None),
-		Some(casting) => (casting.attack_bonus, casting.save_dc),
-	};
-
-	let rank_min = spell_container.capacity.rank_min.unwrap_or(0);
-	let rank_max = spell_container.capacity.rank_max.unwrap_or(MAX_SPELL_RANK);
-	let container_capacity_criteria = Criteria::contains_prop(
-		"rank",
-		Criteria::any(
-			(rank_min..=rank_max)
-				.into_iter()
-				.map(|rank| Criteria::exact(rank)),
-		),
-	);
-	let criteria = use_state({
-		let criteria = container_capacity_criteria.clone();
-		move || criteria
-	});
 
 	let consumed_rank_sum: usize = spell_container
 		.spells
@@ -706,11 +670,83 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 		.capacity
 		.rank_total
 		.map(|total| total.saturating_sub(consumed_rank_sum));
-	let num_spells = spell_container.spells.len();
-	let remaining_total_spells = spell_container
-		.capacity
-		.max_count
-		.map(|total| total.saturating_sub(num_spells));
+	
+	let open_browser = {
+		let onclick = modal_dispatcher.callback({
+			let id_path = value.clone();
+			let fetch_indirect_spells = fetch_indirect_spells.clone();
+			move |_| {
+				modal::Action::Open(modal::Props {
+					centered: true,
+					scrollable: true,
+					root_classes: classes!("browse", "item-spell-container"),
+					content: html!(<ModalSpellContainerAvailableList
+						id_path={id_path.clone()}
+						fetch_indirect_spells={fetch_indirect_spells.clone()}
+					/>),
+					..Default::default()
+				})
+			}
+		});
+		html!(
+			<button class="btn btn-outline-theme btn-xs" type="button" {onclick}>
+				{"Browse Spells"}
+			</button>
+		)
+	};
+
+	html! {<>
+		<div class="modal-header">
+			<h1 class="modal-title fs-4">{"Spell Container Browser"}</h1>
+			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
+		</div>
+		<div class="modal-body">
+			{open_browser}
+			<ContainedSpellsSection
+				id_path={value.clone()}
+				fetch_indirect_spells={fetch_indirect_spells.clone()}
+				{remaining_total_rank}
+			/>
+		</div>
+	</>}
+}
+
+#[derive(Clone, PartialEq, Properties)]
+struct ContainedSpellsSectionProps {
+	id_path: Vec<uuid::Uuid>,
+	fetch_indirect_spells: UseQueryDiscreteHandle<Spell, FetchError>,
+	remaining_total_rank: Option<usize>,
+}
+#[function_component]
+fn ContainedSpellsSection(props: &ContainedSpellsSectionProps) -> Html {
+	let ContainedSpellsSectionProps {id_path, fetch_indirect_spells, remaining_total_rank} = props;
+	let state = use_context::<CharacterHandle>().unwrap();
+
+	let Some(item) = get_inventory_item(&state, id_path) else { return Html::default(); };
+	let Some(spell_container) = &item.spells else { return Html::default(); };
+	
+	let has_casting = spell_container.casting.is_some();
+	let (casting_atk_bonus, casting_dc) = match &spell_container.casting {
+		None => (None, None),
+		Some(casting) => (casting.attack_bonus, casting.save_dc),
+	};
+	let rank_min = spell_container.capacity.rank_min.unwrap_or(0);
+	let rank_max = spell_container.capacity.rank_max.unwrap_or(MAX_SPELL_RANK);
+
+	let remove_from_container = state.new_dispatch({
+		let id_path = id_path.clone();
+		move |spell_idx: usize, persistent: &mut Persistent| {
+			let Some(item) = get_inventory_item_mut(persistent, &id_path) else {
+				return MutatorImpact::None;
+			};
+			let Some(spell_container) = &mut item.spells else {
+				return MutatorImpact::None;
+			};
+			spell_container.spells.remove(spell_idx);
+			// TODO: only recompile character when the modal is dismissed
+			return MutatorImpact::Recompile;
+		}
+	});
 
 	fn get_container_spell<'c>(
 		persistent: &'c mut Persistent,
@@ -727,7 +763,7 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 	}
 
 	let select_rank = state.new_dispatch({
-		let id_path = value.clone();
+		let id_path = id_path.clone();
 		move |(spell_idx, desired_rank): (usize, Option<u8>), persistent: &mut Persistent| {
 			let Some(contained) = get_container_spell(persistent, &id_path, spell_idx) else {
 				return MutatorImpact::None;
@@ -738,7 +774,7 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 		}
 	});
 	let select_atk_bonus = state.new_dispatch({
-		let id_path = value.clone();
+		let id_path = id_path.clone();
 		move |(spell_idx, desired_bonus): (usize, Option<i32>), persistent: &mut Persistent| {
 			let Some(contained) = get_container_spell(persistent, &id_path, spell_idx) else {
 				return MutatorImpact::None;
@@ -749,7 +785,7 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 		}
 	});
 	let select_save_dc = state.new_dispatch({
-		let id_path = value.clone();
+		let id_path = id_path.clone();
 		move |(spell_idx, desired_dc): (usize, Option<u8>), persistent: &mut Persistent| {
 			let Some(contained) = get_container_spell(persistent, &id_path, spell_idx) else {
 				return MutatorImpact::None;
@@ -760,9 +796,9 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 		}
 	});
 
-	let selected_section = match fetch_indirect_spells.status() {
+	match fetch_indirect_spells.status() {
 		QueryStatus::Pending => html!(<crate::components::Spinner />),
-		QueryStatus::Empty | QueryStatus::Failed(_) => html!("No selected spells"),
+		QueryStatus::Empty | QueryStatus::Failed(_) => html!("No contained spells"),
 		QueryStatus::Success((_ids, spells_by_id)) => {
 			let mut ordered_indices = Vec::with_capacity(spell_container.spells.len());
 			for (container_idx, contained) in spell_container.spells.iter().enumerate() {
@@ -818,7 +854,7 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 							let rank_max = spell.rank.max(match remaining_total_rank {
 								None => rank_max,
 								Some(remaining_total_rank) => rank_max
-									.min(selected_rank.saturating_add(remaining_total_rank as u8)),
+									.min(selected_rank.saturating_add(*remaining_total_rank as u8)),
 							});
 							html! {
 								<select class="form-select px-2 py-1" onchange={select_rank}>
@@ -952,7 +988,61 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 				</div>
 			}
 		}
-	};
+	}
+}
+
+#[derive(Clone, PartialEq, Properties)]
+struct ModalSpellContainerAvailableListProps {
+	id_path: Vec<uuid::Uuid>,
+	fetch_indirect_spells: UseQueryDiscreteHandle<Spell, FetchError>,
+}
+#[function_component]
+fn ModalSpellContainerAvailableList(props: &ModalSpellContainerAvailableListProps) -> Html {
+	let state = use_context::<CharacterHandle>().unwrap();
+	let Some(item) = get_inventory_item(&state, &props.id_path) else { return Html::default(); };
+	let Some(spell_container) = &item.spells else { return Html::default(); };
+	
+	let rank_min = spell_container.capacity.rank_min.unwrap_or(0);
+	let rank_max = spell_container.capacity.rank_max.unwrap_or(MAX_SPELL_RANK);
+	let container_capacity_criteria = Criteria::contains_prop(
+		"rank",
+		Criteria::any(
+			(rank_min..=rank_max)
+				.into_iter()
+				.map(|rank| Criteria::exact(rank)),
+		),
+	);
+	let criteria = use_state({
+		let criteria = container_capacity_criteria.clone();
+		move || criteria
+	});
+	
+	let consumed_rank_sum: usize = spell_container
+		.spells
+		.iter()
+		.map(|contained| match contained.rank {
+			Some(fixed_rank) => fixed_rank as usize,
+			None => {
+				let spell = match &contained.spell {
+					Indirect::Id(id) => match props.fetch_indirect_spells.status() {
+						QueryStatus::Success((_ids, spells_by_id)) => spells_by_id.get(id),
+						_ => None,
+					},
+					Indirect::Custom(spell) => Some(spell),
+				};
+				spell.map(|spell| spell.rank as usize).unwrap_or(0)
+			}
+		})
+		.sum();
+	let remaining_total_rank = spell_container
+		.capacity
+		.rank_total
+		.map(|total| total.saturating_sub(consumed_rank_sum));
+	let num_spells = spell_container.spells.len();
+	let remaining_total_spells = spell_container
+		.capacity
+		.max_count
+		.map(|total| total.saturating_sub(num_spells));
 
 	let mut criteria_filter_btns = Vec::new();
 	if spell_container.can_prepare_from {
@@ -1002,39 +1092,32 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 
 	html! {<>
 		<div class="modal-header">
-			<h1 class="modal-title fs-4">{"Spell Container Browser"}</h1>
+			<h1 class="modal-title fs-4">{"Add Spells"}</h1>
 			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
 		</div>
 		<div class="modal-body">
-			{selected_section}
-			<CollapsableCard
-				id={"available-spells"}
-				header_content={{html! { {"Available Spells"} }}}
-				body_classes={"spell-list"}
-			>
-				<div class="d-flex">
-					{criteria_filter_btns}
-				</div>
-				<AvailableSpellList
-					header_addon={HeaderAddon::from({
-						let id_path = value.clone();
-						move |spell: &Spell| -> Html {
-							let has_rank_capacity = remaining_total_rank.map(|capacity| spell.rank as usize <= capacity).unwrap_or(true);
-							let has_count_capacity = remaining_total_spells.map(|capacity| capacity > 0).unwrap_or(true);
-							html! {
-								<SpellListContainerAction
-									container_id={id_path.clone()}
-									spell_id={spell.id.unversioned()}
-									{has_rank_capacity}
-									{has_count_capacity}
-								/>
-							}
+			<div class="d-flex">
+				{criteria_filter_btns}
+			</div>
+			<AvailableSpellList
+				header_addon={HeaderAddon::from({
+					let id_path = props.id_path.clone();
+					move |spell: &Spell| -> Html {
+						let has_rank_capacity = remaining_total_rank.map(|capacity| spell.rank as usize <= capacity).unwrap_or(true);
+						let has_count_capacity = remaining_total_spells.map(|capacity| capacity > 0).unwrap_or(true);
+						html! {
+							<SpellListContainerAction
+								container_id={id_path.clone()}
+								spell_id={spell.id.unversioned()}
+								{has_rank_capacity}
+								{has_count_capacity}
+							/>
 						}
-					})}
-					criteria={(*criteria).clone()}
-					entry={None}
-				/>
-			</CollapsableCard>
+					}
+				})}
+				criteria={(*criteria).clone()}
+				entry={None}
+			/>
 		</div>
 	</>}
 }

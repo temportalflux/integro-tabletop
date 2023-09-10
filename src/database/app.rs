@@ -183,7 +183,7 @@ impl std::ops::Deref for Database {
 	}
 }
 
-#[derive(thiserror::Error, Debug, Clone)]
+#[derive(thiserror::Error, Debug, Clone, PartialEq)]
 pub enum FetchError {
 	#[error(transparent)]
 	FindEntry(#[from] super::Error),
