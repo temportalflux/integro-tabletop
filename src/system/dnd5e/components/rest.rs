@@ -1,6 +1,6 @@
 use super::GeneralProp;
 use crate::{
-	components::{modal, stop_propagation},
+	components::{stop_propagation, context_menu},
 	page::characters::sheet::{CharacterHandle, MutatorImpact},
 	system::dnd5e::{
 		components::{glyph::Glyph, validate_uint_only},
@@ -17,18 +17,12 @@ use yew::prelude::*;
 
 #[function_component]
 pub fn Button(GeneralProp { value }: &GeneralProp<Rest>) -> Html {
-	let modal_dispatcher = use_context::<modal::Context>().unwrap();
-	let onclick = modal_dispatcher.callback({
+	let onclick = context_menu::use_control_action({
 		let rest = *value;
-		move |_| {
-			modal::Action::Open(modal::Props {
-				centered: true,
-				scrollable: true,
-				root_classes: classes!("rest"),
-				content: html! {<Modal value={rest} />},
-				..Default::default()
-			})
-		}
+		move |_: web_sys::MouseEvent| context_menu::Action::open_root(
+			format!("{rest} Rest"),
+			html!(<Modal value={rest} />)
+		)
 	});
 
 	let glyph_classes = classes!("rest", value.to_string().to_lowercase(), "me-1");
@@ -43,8 +37,8 @@ pub fn Button(GeneralProp { value }: &GeneralProp<Rest>) -> Html {
 #[function_component]
 fn Modal(GeneralProp { value }: &GeneralProp<Rest>) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 	let hit_dice_to_consume = use_state_eq(|| HitDiceToConsume::default());
+	let close_modal = context_menu::use_close_fn();
 
 	let constitution_mod = state.ability_modifier(Ability::Constitution, None);
 	let commit_rest = state.new_dispatch({
@@ -57,7 +51,6 @@ fn Modal(GeneralProp { value }: &GeneralProp<Rest>) -> Html {
 			.map(|rest| state.rest_resets().get(rest).clone().into_iter())
 			.flatten()
 			.collect::<Vec<_>>();
-		let close_modal = modal_dispatcher.callback(|_| modal::Action::Close);
 		move |_, persistent| {
 			let mut rng = rand::thread_rng();
 			let mut changes = Vec::new();
@@ -136,24 +129,18 @@ fn Modal(GeneralProp { value }: &GeneralProp<Rest>) -> Html {
 		}
 	});
 
-	let can_take_rest = hit_dice_to_consume.has_valid_input();
+	let can_take_rest = *value != Rest::Short || hit_dice_to_consume.has_valid_input();
 
 	html! {<>
-		<div class="modal-header">
-			<h1 class="modal-title fs-4">{value}{" Rest"}</h1>
-			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
-		</div>
-		<div class="modal-body">
-			<div class="text-block">{value.description()}</div>
-			{(*value == Rest::Short).then(|| html!(
-				<HitDiceSection value={hit_dice_to_consume.clone()} />
-			)).unwrap_or_default()}
-			<ProjectedRestorations value={*value} />
-			<div class="d-flex justify-content-center">
-				<button class="btn btn-success" disabled={!can_take_rest} onclick={commit_rest}>
-					{"Take "}{value}{" Rest"}
-				</button>
-			</div>
+		<div class="text-block">{value.description()}</div>
+		{(*value == Rest::Short).then(|| html!(
+			<HitDiceSection value={hit_dice_to_consume.clone()} />
+		)).unwrap_or_default()}
+		<ProjectedRestorations value={*value} />
+		<div class="d-flex justify-content-center">
+			<button class="btn btn-success" disabled={!can_take_rest} onclick={commit_rest}>
+				{"Take "}{value}{" Rest"}
+			</button>
 		</div>
 	</>}
 }
