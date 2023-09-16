@@ -1,0 +1,136 @@
+
+.context-menu {
+	--transition-duration-opacity: 0.5s;
+	--tab-height: 40px;
+
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	z-index: 1060;
+	
+	pointer-events: none;
+	
+	> .backdrop {
+		position: absolute;
+		width: 100%;
+		height: 100%;
+		background-color: var(--bs-dark-bg-subtle);
+		opacity: 0%;
+		transition: opacity var(--transition-duration-opacity) linear;
+	}
+
+	> .panel {
+		display: flex;
+		flex-direction: column;
+		width: 100%;
+		height: 100%;
+
+		> .spacer {
+			flex-grow: 1;
+			flex-shrink: 1;
+			flex-basis: auto;
+			transition: all var(--transition-duration-opacity);
+			min-height: 15%;
+		}
+
+		> .content-box {
+			position: relative;
+			flex-grow: 0.001;
+			transition: all var(--transition-duration-opacity);
+			
+			> .tab-origin {
+				position: absolute;
+				top: calc(-1 * var(--tab-height));
+				> .tab {
+					width: 120px;
+					height: var(--tab-height);
+
+					border: var(--bs-border-width) solid var(--bs-border-color-translucent);
+					border-top-left-radius: var(--bs-border-radius);
+					border-top-right-radius: var(--bs-border-radius);
+					border-bottom-width: 0;
+
+					background-color: var(--bs-body-bg);
+					pointer-events: all;
+					cursor: pointer;
+
+					font-size: 20px;
+					display: flex;
+					align-items: center;
+					justify-content: center;
+				}
+				> .tab.disabled {
+					color: var(--bs-gray-600);
+					pointer-events: none;
+				}
+			}
+
+			> .card {
+				height: 100%;
+				border-top-left-radius: 0;	
+				pointer-events: all;
+				> .card-header {
+					display: flex;
+					padding: 2px;
+
+					> nav {
+						--bs-breadcrumb-divider: url(assets/breadcrumb-divider.svg);
+						> ol.breadcrumb {
+							--bs-breadcrumb-font-size: 20px;
+							--bs-breadcrumb-margin-bottom: 0;
+						}
+					}
+
+					> button.close {
+						font-size: 17px;
+						padding: 0;
+						width: 80px
+					}
+				}
+				> .card-body {
+					overflow-x: hidden;
+					overflow-y: scroll;
+					overscroll-behavior: contain;
+				}
+			}
+		}
+	}
+}
+.context-menu:not(.active) {
+	> .panel > .content-box {
+		height: 0%;
+		> .card {
+			border: none;
+			height: 0;
+			> .card-header {
+				padding: 0;
+			}
+			> .card-body {
+				padding: 0;
+			}
+		}
+	}
+}
+.context-menu.active {
+	opacity: 100%;
+
+	> .backdrop {
+		opacity: 70%;
+		pointer-events: all;
+	}
+
+	> .panel {
+		> .spacer {
+			flex-grow: 0.1;
+		}
+		> .content-box {
+			flex-grow: 1;
+
+			> .card {
+				height: 100%;
+			}
+		}
+	}
+}
