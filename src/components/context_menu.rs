@@ -36,6 +36,17 @@ pub fn ContextMenu() -> Html {
 		root_classes.push("active");
 	}
 
+	let tab_content = match *is_active {
+		false => html!(<>
+			<i class="bi me-1 bi-chevron-double-up" />
+			{"Expand"}
+		</>),
+		true => html!(<>
+			<i class="bi me-1 bi-chevron-double-down" />
+			{"Collapse"}
+		</>),
+	};
+
 	html! {
 		<div class={root_classes}>
 			<div class="backdrop" onclick={toggle_activity.clone()} />
@@ -43,7 +54,9 @@ pub fn ContextMenu() -> Html {
 				<div class="spacer" />
 				<div class="content-box mx-3">
 					<div class="tab-origin">
-						<div class="tab" onclick={toggle_activity.clone()} />
+						<div class="tab px-2" onclick={toggle_activity.clone()}>
+							{tab_content}
+						</div>
 					</div>
 					<div class="card">
 						<div class="card-body">

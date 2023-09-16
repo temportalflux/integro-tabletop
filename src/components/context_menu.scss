@@ -3,11 +3,14 @@
 	--transition-duration-opacity: 0.5s;
 	--tab-height: 40px;
 
-	position: absolute;
-	z-index: 1055;
+	position: fixed;
+	top: 0;
+	left: 0;
 	width: 100%;
-	// 56px is the header height
-	height: calc(100% - 56px);
+	height: 100%;
+	z-index: 1060;
+	
+	pointer-events: none;
 	
 	> .backdrop {
 		position: absolute;
@@ -16,8 +19,6 @@
 		background-color: var(--bs-dark-bg-subtle);
 		opacity: 0%;
 		transition: opacity var(--transition-duration-opacity) linear;
-
-		pointer-events: none;
 	}
 
 	> .panel {
@@ -42,7 +43,7 @@
 				position: absolute;
 				top: calc(-1 * var(--tab-height));
 				> .tab {
-					width: 80px;
+					width: 120px;
 					height: var(--tab-height);
 
 					border: var(--bs-border-width) solid var(--bs-border-color-translucent);
@@ -51,12 +52,19 @@
 					border-bottom-width: 0;
 
 					background-color: var(--bs-body-bg);
+					pointer-events: all;
+
+					font-size: 20px;
+					display: flex;
+					align-items: center;
+					justify-content: center;
 				}
 			}
 
 			> .card {
 				height: 100%;
 				border-top-left-radius: 0;	
+				pointer-events: all;
 				> .card-body {
 					overflow: hidden;
 				}
