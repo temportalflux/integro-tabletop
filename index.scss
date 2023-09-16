@@ -3,6 +3,7 @@
 @use "src/bootstrap/scss/bootstrap.scss";
 
 @use "src/components/annotated_number.scss";
+@use "src/components/context_menu.scss";
 @use "src/components/nav_onesheet_tabs.scss";
 @use "src/components/tag.scss";
 @use "src/components/progress_bar/ticked.scss";
@@ -10,17 +11,17 @@
 @use "src/system/dnd5e/components/glyph.scss";
 
 html {
-	height: 100%;
+	//height: 100%;
 }
 body {
-	height: 100%;
-	display: flex;
-	flex-direction: column;
+	//display: flex;
+	//flex-direction: column;
+	overflow: hidden;
 }
 .page-root {
 	flex-grow: 1;
 	> .view-scaler {
-		height: 100%;
+		//height: 100%;
 		display: flex;
 		flex-direction: column;
 	}

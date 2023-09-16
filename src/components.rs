@@ -2,6 +2,7 @@ mod annotated_number;
 pub use annotated_number::*;
 
 pub mod auth;
+pub mod context_menu;
 pub mod database;
 mod media_query;
 pub use media_query::*;

@@ -42,7 +42,9 @@ fn ProviderChain(props: &html::ChildrenProps) -> Html {
 						<DatabaseProvider>
 							<object_browser::Provider>
 								<crate::components::modal::Provider>
-									{props.children.clone()}
+									<crate::components::context_menu::Provider>
+										{props.children.clone()}
+									</crate::components::context_menu::Provider>
 								</crate::components::modal::Provider>
 							</object_browser::Provider>
 						</DatabaseProvider>
