@@ -1,5 +1,5 @@
 use crate::{
-	components::{modal, context_menu},
+	components::{context_menu, modal},
 	page::characters::sheet::CharacterHandle,
 	system::dnd5e::data::bounded::{BoundKind, BoundedValue},
 };
@@ -91,10 +91,7 @@ pub fn SpeedAndSenses() -> Html {
 	};
 
 	let onclick = context_menu::use_control_action({
-		move |_| context_menu::Action::open_root(
-			format!("Speeds & Senses"),
-			html!(<Modal />)
-		)
+		move |_| context_menu::Action::open_root(format!("Speeds & Senses"), html!(<Modal />))
 	});
 
 	html! {

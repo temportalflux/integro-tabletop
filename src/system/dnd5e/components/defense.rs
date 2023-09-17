@@ -1,6 +1,6 @@
 use crate::{
 	bootstrap::components::Tooltip,
-	components::{modal, Tag, Tags, context_menu},
+	components::{context_menu, modal, Tag, Tags},
 	page::characters::sheet::CharacterHandle,
 	system::dnd5e::components::glyph,
 };
@@ -27,10 +27,9 @@ half against the creature, not reduced by three-quarters.";
 pub fn DefensesCard() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let onclick = context_menu::use_control_action({
-		|_: web_sys::MouseEvent| context_menu::Action::open_root(
-			format!("Defenses"),
-			html!(<Modal />)
-		)
+		|_: web_sys::MouseEvent| {
+			context_menu::Action::open_root(format!("Defenses"), html!(<Modal />))
+		}
 	});
 	let defenses = state
 		.defenses()

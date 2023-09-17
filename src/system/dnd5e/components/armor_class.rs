@@ -1,5 +1,5 @@
 use crate::{
-	components::{AnnotatedNumber, AnnotatedNumberCard, context_menu},
+	components::{context_menu, AnnotatedNumber, AnnotatedNumberCard},
 	page::characters::sheet::CharacterHandle,
 	system::dnd5e::data::ArmorClassFormula,
 };
@@ -17,10 +17,7 @@ Without armor or a shield, your character's AC equals 10 + their Dexterity modif
 pub fn ArmorClass() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let on_click = context_menu::use_control_action({
-		|_| context_menu::Action::open_root(
-			format!("Armor Class"),
-			html!(<Modal />)
-		)
+		|_| context_menu::Action::open_root(format!("Armor Class"), html!(<Modal />))
 	});
 	html! {
 		<AnnotatedNumberCard header={"Armor"} footer={"Class"} {on_click}>

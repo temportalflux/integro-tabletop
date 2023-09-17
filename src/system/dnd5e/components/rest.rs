@@ -1,6 +1,6 @@
 use super::GeneralProp;
 use crate::{
-	components::{stop_propagation, context_menu},
+	components::{context_menu, stop_propagation},
 	page::characters::sheet::{CharacterHandle, MutatorImpact},
 	system::dnd5e::{
 		components::{glyph::Glyph, validate_uint_only},
@@ -19,10 +19,9 @@ use yew::prelude::*;
 pub fn Button(GeneralProp { value }: &GeneralProp<Rest>) -> Html {
 	let onclick = context_menu::use_control_action({
 		let rest = *value;
-		move |_: web_sys::MouseEvent| context_menu::Action::open_root(
-			format!("{rest} Rest"),
-			html!(<Modal value={rest} />)
-		)
+		move |_: web_sys::MouseEvent| {
+			context_menu::Action::open_root(format!("{rest} Rest"), html!(<Modal value={rest} />))
+		}
 	});
 
 	let glyph_classes = classes!("rest", value.to_string().to_lowercase(), "me-1");

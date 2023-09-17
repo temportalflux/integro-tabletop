@@ -1,5 +1,5 @@
 use crate::{
-	components::{AnnotatedNumber, AnnotatedNumberCard, context_menu},
+	components::{context_menu, AnnotatedNumber, AnnotatedNumberCard},
 	page::characters::sheet::CharacterHandle,
 	system::dnd5e::data::Ability,
 };
@@ -24,18 +24,20 @@ pub fn InitiativeBonus() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let value = state.initiative_bonus();
 	let on_click = context_menu::use_control_action({
-		move |_| context_menu::Action::open_root(
-			format!("Initiative Bonus"),
-			html! {<>
-				<div class="text-center fs-5" style="width: 100%; margin-bottom: 10px;">
-					<span>{Ability::Dexterity.long_name()}{":"}</span>
-					<span style="margin-left: 5px;">{match value >= 0 { true => "+", false => "-", }}{value.abs()}</span>
-				</div>
-				<div class="text-block">
-					{TEXT}
-				</div>
-			</>}
-		)
+		move |_| {
+			context_menu::Action::open_root(
+				format!("Initiative Bonus"),
+				html! {<>
+					<div class="text-center fs-5" style="width: 100%; margin-bottom: 10px;">
+						<span>{Ability::Dexterity.long_name()}{":"}</span>
+						<span style="margin-left: 5px;">{match value >= 0 { true => "+", false => "-", }}{value.abs()}</span>
+					</div>
+					<div class="text-block">
+						{TEXT}
+					</div>
+				</>},
+			)
+		}
 	});
 	html! {
 		<AnnotatedNumberCard header={"Initiative"} footer={"Bonus"} {on_click}>

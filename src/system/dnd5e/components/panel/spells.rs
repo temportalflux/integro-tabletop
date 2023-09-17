@@ -1,5 +1,7 @@
 use crate::{
-	components::{database::use_typed_fetch_callback, modal, stop_propagation, Spinner},
+	components::{
+		context_menu, database::use_typed_fetch_callback, modal, stop_propagation, Spinner,
+	},
 	database::app::{Criteria, Database, QueryDeserialize},
 	page::characters::sheet::joined::editor::{CollapsableCard, DescriptionSection},
 	page::characters::sheet::CharacterHandle,
@@ -134,18 +136,18 @@ struct CasterNameProps {
 }
 #[function_component]
 fn ManageCasterButton(CasterNameProps { caster_id }: &CasterNameProps) -> Html {
-	let modal_dispatcher = use_context::<modal::Context>().unwrap();
-	let open_browser = modal_dispatcher.callback({
+	let state = use_context::<CharacterHandle>().unwrap();
+	let context_menu = use_context::<context_menu::Control>().unwrap();
+	let open_browser = Callback::from({
+		let state = state.clone();
+		let context_menu = context_menu.clone();
 		let caster_id = caster_id.clone();
 		move |_| {
-			let caster_id = caster_id.clone();
-			modal::Action::Open(modal::Props {
-				centered: true,
-				scrollable: true,
-				root_classes: classes!("spells", "browse"),
-				content: html! {<ManageCasterModal {caster_id} />},
-				..Default::default()
-			})
+			let Some(caster) = state.spellcasting().get_caster(caster_id.as_str()) else { return; };
+			context_menu.dispatch(context_menu::Action::open_root(
+				format!("{} Spellcasting", caster.name()),
+				html!(<ManageCasterModal caster_id={caster_id.clone()} />),
+			));
 		}
 	});
 	html! {
@@ -656,7 +658,10 @@ pub fn spell_name_and_icons(
 ) -> Html {
 	let can_ritual_cast = spell.casting_time.ritual && {
 		ritual_only || {
-			let classified = entry.as_ref().map(|entry| entry.classified_as.as_ref()).flatten();
+			let classified = entry
+				.as_ref()
+				.map(|entry| entry.classified_as.as_ref())
+				.flatten();
 			let caster = classified
 				.map(|id| state.spellcasting().get_caster(id))
 				.flatten();
@@ -699,14 +704,24 @@ pub fn spell_overview_info(
 ) -> Html {
 	let casting_duration = entry
 		.map(|entry| entry.casting_duration.as_ref())
-		.flatten().unwrap_or(&spell.casting_time.duration);
+		.flatten()
+		.unwrap_or(&spell.casting_time.duration);
 	let range = entry
 		.map(|entry| entry.range.as_ref())
-		.flatten().unwrap_or(&spell.range);
-	let attack_bonus = entry.map(|entry| entry.attack_bonus).unwrap_or(AbilityOrStat::Stat(0));
-	let save_dc = entry.map(|entry| entry.save_dc).unwrap_or(AbilityOrStat::Stat(0));
+		.flatten()
+		.unwrap_or(&spell.range);
+	let attack_bonus = entry
+		.map(|entry| entry.attack_bonus)
+		.unwrap_or(AbilityOrStat::Stat(0));
+	let save_dc = entry
+		.map(|entry| entry.save_dc)
+		.unwrap_or(AbilityOrStat::Stat(0));
 	let cast_at_rank = override_rank.or(entry.map(|entry| entry.rank).flatten());
-	let damage_modifier = entry.map(|entry| entry.damage_ability).flatten().map(|ability| state.ability_modifier(ability, Some(proficiency::Level::Full))).unwrap_or_default();
+	let damage_modifier = entry
+		.map(|entry| entry.damage_ability)
+		.flatten()
+		.map(|ability| state.ability_modifier(ability, Some(proficiency::Level::Full)))
+		.unwrap_or_default();
 	html! {
 		<div class="attributes">
 			<div class="attribute-row">
@@ -823,18 +838,16 @@ pub fn spell_overview_info(
 
 #[function_component]
 fn SpellModalRowRoot(SpellModalProps { location, children }: &SpellModalProps) -> Html {
-	let modal_dispatcher = use_context::<modal::Context>().unwrap();
-	let open_browser = modal_dispatcher.callback({
+	let state = use_context::<CharacterHandle>().unwrap();
+	let context_menu = use_context::<context_menu::Control>().unwrap();
+	let open_browser = Callback::from({
+		let state = state.clone();
+		let context_menu = context_menu.clone();
 		let location = location.clone();
 		move |_| {
+			let Some((spell, _entry)) = location.get(&state) else { return; };
 			let location = location.clone();
-			modal::Action::Open(modal::Props {
-				centered: true,
-				scrollable: true,
-				root_classes: classes!("spell"),
-				content: html! {<SpellModal {location} />},
-				..Default::default()
-			})
+			context_menu.dispatch(context_menu::Action::open_root(spell.name.clone(), html!(<SpellModal {location} />)));
 		}
 	});
 	html! {
@@ -914,7 +927,10 @@ fn ManageCasterModal(CasterNameProps { caster_id }: &CasterNameProps) -> Html {
 			// Insertion sort by rank & name
 			let order_idx = selected_spells
 				.binary_search_by(|existing_spell: &&Spell| {
-					existing_spell.rank.cmp(&spell.rank).then(existing_spell.name.cmp(&spell.name))
+					existing_spell
+						.rank
+						.cmp(&spell.rank)
+						.then(existing_spell.name.cmp(&spell.name))
 				})
 				.unwrap_or_else(|err_idx| err_idx);
 			selected_spells.insert(order_idx, spell);
@@ -930,11 +946,7 @@ fn ManageCasterModal(CasterNameProps { caster_id }: &CasterNameProps) -> Html {
 	// TODO: Display restriction info for the caster's spell list.
 	// TODO: Display rules for when spells can be selected or swapped out.
 	html! {<>
-		<div class="modal-header">
-			<h1 class="modal-title fs-4">{caster.name().clone()}{" Spellcasting"}</h1>
-			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
-		</div>
-		<div class="modal-body">
+		<div class="details spells browse">
 			<div>
 				<CollapsableCard
 					id={"selected-spells"}
@@ -979,10 +991,10 @@ fn ManageCasterModal(CasterNameProps { caster_id }: &CasterNameProps) -> Html {
 					/>
 				</CollapsableCard>
 			</div>
-		</div>
-		<div class="modal-footer">
-			<SpellCapacity name={"Cantrips"} num={num_cantrips} max={max_cantrips} />
-			<SpellCapacity name={"Spells"} num={num_spells} max={max_spells} />
+			<div class="footer">
+				<SpellCapacity name={"Cantrips"} num={num_cantrips} max={max_cantrips} />
+				<SpellCapacity name={"Spells"} num={num_spells} max={max_spells} />
+			</div>
 		</div>
 	</>}
 }

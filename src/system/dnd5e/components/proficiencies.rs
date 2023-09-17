@@ -1,6 +1,6 @@
 use crate::{
 	bootstrap::components::Tooltip,
-	components::{context_menu},
+	components::context_menu,
 	page::characters::sheet::CharacterHandle,
 	system::dnd5e::data::{AttributedValueMap, WeaponProficiency},
 };
@@ -23,7 +23,7 @@ pub fn Proficiencies() -> Html {
 					})}
 					{make_proficiencies_section_long("Weapons", &proficiencies.weapons, WeaponProficiency::display_name)}
 					{make_proficiencies_section_long("Tools", &proficiencies.tools, String::to_string)}
-				</>}
+				</>},
 			)
 		}
 	});

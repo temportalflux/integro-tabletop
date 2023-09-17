@@ -1,5 +1,5 @@
 use crate::{
-	components::{context_menu},
+	components::context_menu,
 	page::characters::sheet::joined::editor::AutoExchangeSwitch,
 	page::characters::sheet::CharacterHandle,
 	page::characters::sheet::MutatorImpact,
@@ -69,10 +69,7 @@ pub fn WalletInlineButton(WalletContainerProps { id }: &WalletContainerProps) ->
 		let id = id.clone();
 		move |evt: MouseEvent| {
 			evt.stop_propagation();
-			context_menu::Action::open_root(
-				"Coin Pouch",
-				html!(<Modal {id} />)
-			)
+			context_menu::Action::open_root("Coin Pouch", html!(<Modal {id} />))
 		}
 	});
 

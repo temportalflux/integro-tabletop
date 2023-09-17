@@ -5,8 +5,6 @@ use crate::{
 use std::{collections::HashMap, path::PathBuf, rc::Rc, str::FromStr, sync::Arc};
 use yew::prelude::*;
 
-use super::modal;
-
 #[function_component]
 pub fn Provider(props: &html::ChildrenProps) -> Html {
 	let registry = use_state(|| Registry::new());
@@ -46,20 +44,6 @@ trait ObjectBrowser {
 	fn modal(&self, props: &ModalProps) -> Html;
 }
 
-pub fn open_modal(modal_dispatcher: &modal::Context, props: ModalProps) -> Callback<MouseEvent> {
-	modal_dispatcher.callback({
-		move |_| {
-			let props = props.clone();
-			modal::Action::Open(modal::Props {
-				centered: true,
-				scrollable: true,
-				root_classes: classes!("browse", "objects"),
-				content: html! {<Modal ..props />},
-				..Default::default()
-			})
-		}
-	})
-}
 #[derive(Clone, PartialEq, Properties)]
 pub struct ModalProps {
 	pub data_path: PathBuf,
@@ -68,24 +52,19 @@ pub struct ModalProps {
 	pub criteria: Option<Criteria>,
 }
 #[function_component]
-fn Modal(props: &ModalProps) -> Html {
+pub fn Modal(props: &ModalProps) -> Html {
 	let registry = use_context::<Registry>().unwrap();
 	if let Some(browser) = registry.get(props.category.as_str()) {
 		return browser.modal(props);
 	}
 	html! {<>
-		<div class="modal-header">
-			<h1 class="modal-title fs-4">{"Unsupported object category"}</h1>
-			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
-		</div>
-		<div class="modal-body">
-			{format!(
-				"There is no browser registry item for the object type \"{}\". \
-				You may need to add a new browser object entry to the registry. \
-				The currently supported types are: {:?}",
-				props.category.as_str(), registry.0.as_ref().keys().collect::<Vec<_>>()
-			)}
-		</div>
+		<h1>{"Unsupported object category"}</h1>
+		{format!(
+			"There is no browser registry item for the object type \"{}\". \
+			You may need to add a new browser object entry to the registry. \
+			The currently supported types are: {:?}",
+			props.category.as_str(), registry.0.as_ref().keys().collect::<Vec<_>>()
+		)}
 	</>}
 }
 
@@ -134,11 +113,7 @@ impl ObjectBrowser for SpellBrowser {
 		};
 
 		html! {<>
-			<div class="modal-header">
-				<h1 class="modal-title fs-4">{"Browse Spells"}</h1>
-				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
-			</div>
-			<div class="modal-body spell-list">
+			<div class="browse objects spell-list">
 				<AvailableSpellList
 					{header_addon}
 					criteria={props.criteria.clone()}
@@ -158,11 +133,7 @@ impl ObjectBrowser for BundleBrowser {
 
 	fn modal(&self, props: &ModalProps) -> Html {
 		html! {<>
-			<div class="modal-header">
-				<h1 class="modal-title fs-4">{"Browse Bundles"}</h1>
-				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
-			</div>
-			<div class="modal-body list">
+			<div class="browse objects list">
 				<BundleList
 					data_path={props.data_path.clone()}
 					capacity={props.capacity}

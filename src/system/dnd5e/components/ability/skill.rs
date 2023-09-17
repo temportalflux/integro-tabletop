@@ -1,10 +1,11 @@
 use crate::{
 	bootstrap::components::Tooltip,
+	components::context_menu,
 	page::characters::sheet::CharacterHandle,
 	system::dnd5e::{
 		components::glyph,
 		data::{Ability, Skill},
-	}, components::context_menu,
+	},
 };
 use enumset::{EnumSet, EnumSetType};
 use multimap::MultiMap;
@@ -224,10 +225,12 @@ fn Row(
 
 	let onclick = context_menu::use_control_action({
 		let skill = *skill;
-		move |_| context_menu::Action::open_root(
-			format!("{} ({})", skill.display_name(), skill.ability().long_name()),
-			html!(<SkillModal {skill} />)
-		)
+		move |_| {
+			context_menu::Action::open_root(
+				format!("{} ({})", skill.display_name(), skill.ability().long_name()),
+				html!(<SkillModal {skill} />),
+			)
+		}
 	});
 
 	html! {<tr {onclick}>{table_data}</tr>}

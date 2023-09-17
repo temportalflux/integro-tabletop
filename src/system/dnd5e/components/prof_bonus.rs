@@ -1,5 +1,5 @@
 use crate::{
-	components::{AnnotatedNumber, AnnotatedNumberCard, context_menu},
+	components::{context_menu, AnnotatedNumber, AnnotatedNumberCard},
 	page::characters::sheet::CharacterHandle,
 	system::dnd5e::data::proficiency,
 };
@@ -31,35 +31,37 @@ If a feature or effect allows you to do so, these same rules apply.";
 pub fn ProfBonus() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let on_click = context_menu::use_control_action({
-		move |_| context_menu::Action::open_root(
-			format!("Proficiency Bonus"),
-			html! {<>
-				<div class="text-center" style="margin-bottom: 10px;">
-					<table class="table table-compact table-striped m-0">
-						<thead>
-							<tr>
-								<th scope="col">{"Charcter Level"}</th>
-								<th scope="col">{"Bonus"}</th>
-							</tr>
-						</thead>
-						<tbody>
-							{proficiency::level_map().iter().map(|(min, max, bonus)| html! {
+		move |_| {
+			context_menu::Action::open_root(
+				format!("Proficiency Bonus"),
+				html! {<>
+					<div class="text-center" style="margin-bottom: 10px;">
+						<table class="table table-compact table-striped m-0">
+							<thead>
 								<tr>
-									<td>{match (*min, *max) {
-										(min, Some(max)) => html! {<span>{min}{"-"}{max}</span>},
-										(min, None) => html! {<>{min}{"+"}</>},
-									}}</td>
-									<td>{"+"}{*bonus}</td>
+									<th scope="col">{"Charcter Level"}</th>
+									<th scope="col">{"Bonus"}</th>
 								</tr>
-							}).collect::<Vec<_>>()}
-						</tbody>
-					</table>
-				</div>
-				<div class="text-block">
-					{TEXT}
-				</div>
-			</>}
-		)
+							</thead>
+							<tbody>
+								{proficiency::level_map().iter().map(|(min, max, bonus)| html! {
+									<tr>
+										<td>{match (*min, *max) {
+											(min, Some(max)) => html! {<span>{min}{"-"}{max}</span>},
+											(min, None) => html! {<>{min}{"+"}</>},
+										}}</td>
+										<td>{"+"}{*bonus}</td>
+									</tr>
+								}).collect::<Vec<_>>()}
+							</tbody>
+						</table>
+					</div>
+					<div class="text-block">
+						{TEXT}
+					</div>
+				</>},
+			)
+		}
 	});
 	html! {
 		<AnnotatedNumberCard header={"Proficiency"} footer={"Bonus"} {on_click}>

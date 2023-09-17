@@ -1,5 +1,5 @@
 use crate::{
-	components::{modal, stop_propagation, context_menu},
+	components::{context_menu, modal, stop_propagation},
 	page::characters::sheet::CharacterHandle,
 	page::characters::sheet::MutatorImpact,
 	system::dnd5e::{
@@ -112,10 +112,9 @@ healed regains 1 hit point after 1d4 hours.";
 pub fn HitPointMgmtCard() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let on_open_modal = context_menu::use_control_action({
-		|_: web_sys::MouseEvent| context_menu::Action::open_root(
-			format!("Hit Points"),
-			html!(<Modal />)
-		)
+		|_: web_sys::MouseEvent| {
+			context_menu::Action::open_root(format!("Hit Points"), html!(<Modal />))
+		}
 	});
 	let current_hp = state.get_hp(HitPoint::Current);
 	html! {

@@ -408,12 +408,10 @@ input.slot[type="checkbox"]:checked:before {
 	--bs-collapse-btn-active-icon: url(assets/arrow/active_dark.svg);
 }
 
-.modal.spells.browse {
-	.modal-body {
-		height: 600px;
-	}
-	.modal-footer {
-		--bs-modal-padding: 0.5rem;
+.details.spells.browse {
+	height: 600px;
+	.footer {
+		padding: 0.5rem;
 		> .alert {
 			flex-grow: 1;
 			text-align: center;
@@ -541,7 +539,7 @@ button.collapse_trigger.arrow_right.collapsed::after {
 .feature.short .conditions > button {
 	min-width: 60px;
 }
-.feature.modal .modal-body {
+.details.feature {
 	font-size: 12px;
 	> .description {
 		margin-top: 0.5rem;

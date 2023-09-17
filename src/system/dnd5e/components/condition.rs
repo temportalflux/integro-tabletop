@@ -1,7 +1,8 @@
 use crate::{
 	components::{
+		context_menu,
 		database::{use_query_all_typed, use_typed_fetch_callback, QueryAllArgs, QueryStatus},
-		Spinner, Tag, Tags, context_menu,
+		Spinner, Tag, Tags,
 	},
 	page::characters::sheet::joined::editor::{mutator_list, CollapsableCard},
 	page::characters::sheet::CharacterHandle,
@@ -22,10 +23,7 @@ use yew::prelude::*;
 pub fn ConditionsCard() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let onclick = context_menu::use_control_action({
-		|_| context_menu::Action::open_root(
-			"Conditions",
-			html!(<Modal />)
-		)
+		|_| context_menu::Action::open_root("Conditions", html!(<Modal />))
 	});
 	let conditions = state
 		.persistent()

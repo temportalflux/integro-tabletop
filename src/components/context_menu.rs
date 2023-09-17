@@ -23,11 +23,18 @@ pub struct State {
 	stack: VecDeque<Item>,
 }
 
-
 #[derive(Clone, PartialEq)]
 pub struct Item {
 	pub display_name: AttrValue,
 	pub html: Html,
+}
+impl Item {
+	pub fn new(display_name: impl Into<AttrValue>, html: impl Into<Html>) -> Self {
+		Self {
+			display_name: display_name.into(),
+			html: html.into(),
+		}
+	}
 }
 
 #[derive(Clone, PartialEq)]
@@ -42,11 +49,11 @@ pub enum Action {
 
 impl Action {
 	pub fn open_root(display_name: impl Into<AttrValue>, html: impl Into<Html>) -> Self {
-		Self::OpenRoot(Item { display_name: display_name.into(), html: html.into() })
+		Self::OpenRoot(Item::new(display_name, html))
 	}
-	
+
 	pub fn open_child(display_name: impl Into<AttrValue>, html: impl Into<Html>) -> Self {
-		Self::OpenSubpage(Item { display_name: display_name.into(), html: html.into() })
+		Self::OpenSubpage(Item::new(display_name, html))
 	}
 }
 
@@ -55,24 +62,18 @@ impl Reducible for State {
 
 	fn reduce(self: Rc<Self>, action: Self::Action) -> Rc<Self> {
 		match action {
-			Action::Expand => {
-				Rc::new(Self {
-					is_shown: true,
-					stack: self.stack.clone(),
-				})
-			}
-			Action::Collapse => {
-				Rc::new(Self {
-					is_shown: false,
-					stack: self.stack.clone(),
-				})
-			}
-			Action::OpenRoot(item) => {
-				Rc::new(Self {
-					is_shown: true,
-					stack: vec![item].into(),
-				})
-			}
+			Action::Expand => Rc::new(Self {
+				is_shown: true,
+				stack: self.stack.clone(),
+			}),
+			Action::Collapse => Rc::new(Self {
+				is_shown: false,
+				stack: self.stack.clone(),
+			}),
+			Action::OpenRoot(item) => Rc::new(Self {
+				is_shown: true,
+				stack: vec![item].into(),
+			}),
 			Action::OpenSubpage(item) => {
 				let mut stack = self.stack.clone();
 				stack.push_back(item);
@@ -114,7 +115,7 @@ impl Control {
 			}
 		})
 	}
-	
+
 	fn close_current(&self) {
 		self.dispatch(Action::CloseCurrent);
 	}
@@ -138,7 +139,10 @@ pub fn Provider(props: &ChildrenProps) -> Html {
 }
 
 #[hook]
-pub fn use_control_action<F, FnIn>(callback: F) -> Callback<FnIn, ()> where F: Fn(FnIn) -> Action + 'static {
+pub fn use_control_action<F, FnIn>(callback: F) -> Callback<FnIn, ()>
+where
+	F: Fn(FnIn) -> Action + 'static,
+{
 	let control = use_context::<Control>().unwrap();
 	Callback::from(move |arg: FnIn| {
 		control.0.dispatch(callback(arg));
@@ -150,6 +154,9 @@ pub fn use_close_fn<FnIn>() -> Callback<FnIn, ()> {
 	let control = use_context::<Control>().unwrap();
 	control.close_current_fn()
 }
+
+#[derive(Clone, PartialEq)]
+pub struct ActiveContext;
 
 #[function_component]
 pub fn ContextMenu() -> Html {
@@ -175,10 +182,12 @@ pub fn ContextMenu() -> Html {
 							<BackButton />
 						</div>
 						<div class="card-body">
-							{match control.stack.back() {
-								None => html!(),
-								Some(item) => item.html.clone(),
-							}}
+							<ContextProvider<ActiveContext> context={ActiveContext}>
+								{match control.stack.back() {
+									None => html!(),
+									Some(item) => item.html.clone(),
+								}}
+							</ContextProvider<ActiveContext>>
 						</div>
 					</div>
 				</div>
@@ -216,9 +225,11 @@ fn TabButton() -> Html {
 #[function_component]
 fn BackButton() -> Html {
 	let control = use_context::<Control>().unwrap();
-	let onclick = control.close_current_fn().reform(|evt: web_sys::MouseEvent| {
-		evt.stop_propagation();
-	});
+	let onclick = control
+		.close_current_fn()
+		.reform(|evt: web_sys::MouseEvent| {
+			evt.stop_propagation();
+		});
 	html! {
 		<button type="button" class="btn close ms-auto" {onclick}>
 			{match control.stack.len() {

@@ -1,6 +1,6 @@
 use crate::{
 	bootstrap::components::Tooltip,
-	components::{context_menu},
+	components::context_menu,
 	page::characters::sheet::CharacterHandle,
 	system::dnd5e::{
 		components::glyph,
@@ -80,10 +80,7 @@ pub fn SavingThrow(
 #[function_component]
 pub fn SavingThrowContainer() -> Html {
 	let on_click = context_menu::use_control_action({
-		|_| context_menu::Action::open_root(
-			"Saving Throws",
-			html!(<Modal />)
-		)
+		|_| context_menu::Action::open_root("Saving Throws", html!(<Modal />))
 	});
 
 	html! {

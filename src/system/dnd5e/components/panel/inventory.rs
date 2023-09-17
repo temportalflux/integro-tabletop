@@ -1,5 +1,5 @@
 use crate::{
-	components::{context_menu},
+	components::context_menu,
 	page::characters::sheet::CharacterHandle,
 	system::{
 		core::SourceId,
@@ -34,10 +34,7 @@ pub struct InventoryItemProps {
 pub fn Inventory() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let open_browser = context_menu::use_control_action({
-		|_| context_menu::Action::open_root(
-			"Item Browser",
-			html!(<BrowseModal />)
-		)
+		|_| context_menu::Action::open_root("Item Browser", html!(<BrowseModal />))
 	});
 
 	// TODO: If the player's persistent inventory is empty,
@@ -118,10 +115,12 @@ fn ContainerSection(ContainerSectionProps { container_id }: &ContainerSectionPro
 				let context_menu = context_menu.clone();
 				let id_path = vec![container_id.clone()];
 				let name = AttrValue::from(item.name.clone());
-				move |_| context_menu.dispatch(context_menu::Action::open_root(
-					name.clone(),
-					html!(<ItemModal id_path={id_path.clone()} />)
-				))
+				move |_| {
+					context_menu.dispatch(context_menu::Action::open_root(
+						name.clone(),
+						html!(<ItemModal id_path={id_path.clone()} />),
+					))
+				}
 			}));
 		}
 	}

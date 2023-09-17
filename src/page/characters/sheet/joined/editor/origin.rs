@@ -3,7 +3,7 @@ use crate::{
 		database::{use_query_all_typed, use_typed_fetch_callback, QueryAllArgs, QueryStatus},
 		modal,
 		object_browser::{self, ObjectSelectorList},
-		Spinner,
+		Spinner, context_menu,
 	},
 	database::app::Criteria,
 	page::characters::sheet::{CharacterHandle, MutatorImpact},
@@ -613,7 +613,8 @@ fn SelectorField(
 	}: &SelectorFieldProps,
 ) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let modal_dispatcher = use_context::<modal::Context>().unwrap();
+	let context_menu = use_context::<context_menu::Control>().unwrap();
+	let active_details = use_context::<context_menu::ActiveContext>();
 	let value = state.get_first_selection(data_path);
 
 	let save_value = Callback::from({
@@ -706,15 +707,24 @@ fn SelectorField(
 			object_category,
 			criteria,
 		} => {
-			let browse = object_browser::open_modal(
-				&modal_dispatcher,
-				object_browser::ModalProps {
+			let browse = Callback::from({
+				let context_menu = context_menu.clone();
+				let props = object_browser::ModalProps {
 					data_path: data_path.clone(),
 					category: object_category.clone().into(),
 					capacity: *amount,
 					criteria: criteria.clone(),
-				},
-			);
+				};
+				let title = format!("Browse {object_category}");
+				move |_| {
+					let props = props.clone();
+					let item = context_menu::Item::new(title.clone(), html!(<object_browser::Modal ..props />));
+					context_menu.dispatch(match active_details {
+						None => context_menu::Action::OpenRoot(item),
+						Some(_) => context_menu::Action::OpenSubpage(item),
+					});
+				}
+			});
 			let btn_classes = classes!("btn", "btn-outline-theme", "btn-xs", missing_value);
 			let selection_count = state
 				.get_selections_at(data_path)

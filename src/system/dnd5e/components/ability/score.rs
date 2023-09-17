@@ -1,6 +1,6 @@
 use crate::{
 	bootstrap::components::Tooltip,
-	components::{mobile, modal, AnnotatedNumber, context_menu},
+	components::{context_menu, mobile, modal, AnnotatedNumber},
 	page::characters::sheet::CharacterHandle,
 	system::dnd5e::{
 		components::glyph,
@@ -24,13 +24,10 @@ pub fn Score(ScoreProps { ability }: &ScoreProps) -> Html {
 	// Data is stored in `state.skills().iter_ability_modifiers()`
 
 	let ability_score = state.ability_scores().get(*ability);
-	
+
 	let onclick = context_menu::use_control_action({
 		let ability = *ability;
-		move |_| context_menu::Action::open_root(
-			ability.long_name(),
-			html!(<Modal {ability} />)
-		)
+		move |_| context_menu::Action::open_root(ability.long_name(), html!(<Modal {ability} />))
 	});
 
 	let tooltip = (ability_score.iter_bonuses().count() > 0).then(|| {

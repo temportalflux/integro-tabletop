@@ -3,9 +3,10 @@ use crate::{
 		database::{use_query_typed, QueryStatus},
 		*,
 	},
-	page::characters::sheet::joined::editor::{description, mutator_list},
-	page::characters::sheet::CharacterHandle,
-	page::characters::sheet::MutatorImpact,
+	page::characters::sheet::{
+		joined::editor::{description, mutator_list},
+		CharacterHandle, MutatorImpact,
+	},
 	system::{
 		core::SourceId,
 		dnd5e::{
@@ -64,8 +65,20 @@ impl ActionTag {
 #[function_component]
 pub fn Actions() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 	let selected_tags = use_state(|| EnumSet::<ActionTag>::all());
+
+	let context_menu = use_context::<context_menu::Control>().unwrap();
+	let open_feature_details = Callback::from({
+		let context_menu = context_menu.clone();
+		let state = state.clone();
+		move |feature_path: PathBuf| {
+			let Some(feature) = state.features().path_map.get_first(&feature_path) else { return; };
+			context_menu.dispatch(context_menu::Action::open_root(
+				feature.name.clone(),
+				html!(<Modal path={feature_path} />),
+			));
+		}
+	});
 
 	let make_tag_html = {
 		let selected_tags = selected_tags.clone();
@@ -136,18 +149,6 @@ pub fn Actions() -> Html {
 			features
 		};
 
-		let open_attack_modal = modal_dispatcher.callback({
-			move |feature_path| {
-				modal::Action::Open(modal::Props {
-					centered: true,
-					scrollable: true,
-					root_classes: classes!("feature"),
-					content: html! {<Modal path={feature_path} />},
-					..Default::default()
-				})
-			}
-		});
-
 		panes.push(html! {
 			<table class="table table-compact m-0 mb-3">
 				<thead>
@@ -167,7 +168,7 @@ pub fn Actions() -> Html {
 						let Some(attack) = &action.attack else {
 							return None;
 						};
-						let onclick = open_attack_modal.reform(move |_| feature_path.clone());
+						let onclick = open_feature_details.reform(move |_| feature_path.clone());
 
 						let (_check_ability, atk_bonus, dmg_bonus) = attack.evaluate_bonuses(&*state);
 						Some(html! {
@@ -418,17 +419,14 @@ struct ActionProps {
 
 #[function_component]
 fn CollapsedFeature(ActionProps { entry }: &ActionProps) -> Html {
-	let modal_dispatcher = use_context::<modal::Context>().unwrap();
-	let onclick = modal_dispatcher.callback({
+	let onclick = context_menu::use_control_action({
 		let feature_path: PathBuf = entry.feature_path.clone();
+		let feature_name = AttrValue::from(entry.feature.name.clone());
 		move |_| {
-			modal::Action::Open(modal::Props {
-				centered: true,
-				scrollable: true,
-				root_classes: classes!("feature"),
-				content: html! {<Modal path={feature_path.clone()} />},
-				..Default::default()
-			})
+			context_menu::Action::open_root(
+				feature_name.clone(),
+				html!(<Modal path={feature_path.clone()} />),
+			)
 		}
 	});
 	html! {
@@ -440,17 +438,14 @@ fn CollapsedFeature(ActionProps { entry }: &ActionProps) -> Html {
 fn ActionOverview(ActionProps { entry }: &ActionProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 
-	let modal_dispatcher = use_context::<modal::Context>().unwrap();
-	let onclick = modal_dispatcher.callback({
-		let feature_path = entry.feature_path.clone();
+	let onclick = context_menu::use_control_action({
+		let feature_path: PathBuf = entry.feature_path.clone();
+		let feature_name = AttrValue::from(entry.feature.name.clone());
 		move |_| {
-			modal::Action::Open(modal::Props {
-				centered: true,
-				scrollable: true,
-				root_classes: classes!("feature"),
-				content: html! {<Modal path={feature_path.clone()} />},
-				..Default::default()
-			})
+			context_menu::Action::open_root(
+				feature_name.clone(),
+				html!(<Modal path={feature_path.clone()} />),
+			)
 		}
 	});
 
@@ -615,13 +610,8 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 
 	let Some(feature) = state.features().path_map.get_first(&path) else {
 		return html! {<>
-			<div class="modal-header">
-			<h1 class="modal-title fs-4">{"Missing Feature"}</h1>
-				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
-			</div>
-			<div class="modal-body">
-				{crate::data::as_feature_path_text(&path)}
-			</div>
+			{"Missing Feature: "}
+			{crate::data::as_feature_path_text(&path)}
 		</>};
 	};
 
@@ -910,11 +900,7 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 	}
 
 	html! {<>
-		<div class="modal-header">
-			<h1 class="modal-title fs-4">{feature.name.clone()}</h1>
-			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
-		</div>
-		<div class="modal-body">
+		<div class="details feature">
 			{sections}
 		</div>
 	</>}

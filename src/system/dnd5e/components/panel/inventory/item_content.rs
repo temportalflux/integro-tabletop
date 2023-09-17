@@ -1,7 +1,7 @@
 use crate::{
 	components::{
 		database::{use_query_typed, QueryStatus, UseQueryAllHandle, UseQueryDiscreteHandle},
-		modal, progress_bar,
+		modal, progress_bar, context_menu,
 	},
 	database::app::{Criteria, FetchError},
 	page::characters::sheet::{joined::editor::CollapsableCard, CharacterHandle},
@@ -103,7 +103,7 @@ pub struct ItemBodyProps {
 #[function_component]
 pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let modal_dispatcher = use_context::<modal::Context>().unwrap();
+	let context_menu = use_context::<context_menu::Control>().unwrap();
 
 	let Some(item) = props.location.resolve(&state) else { return Html::default(); };
 
@@ -557,16 +557,13 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 		let browse = match &props.location {
 			ItemLocation::Database { .. } => html!(),
 			ItemLocation::Inventory { id_path } => {
-				let onclick = modal_dispatcher.callback({
+				let onclick = Callback::from({
+					let context_menu = context_menu.clone();
 					let id_path = id_path.clone();
 					move |_| {
-						modal::Action::Open(modal::Props {
-							centered: true,
-							scrollable: true,
-							root_classes: classes!("browse", "item-spell-container"),
-							content: html! {<ModalSpellContainerBrowser value={id_path.clone()} />},
-							..Default::default()
-						})
+						context_menu.dispatch(context_menu::Action::open_child(
+							"Spell Container", html!(<ModalSpellContainerBrowser value={id_path.clone()} />)
+						));
 					}
 				});
 				html!(
@@ -621,7 +618,7 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 #[function_component]
 fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid>>) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let modal_dispatcher = use_context::<modal::Context>().unwrap();
+	let context_menu = use_context::<context_menu::Control>().unwrap();
 
 	let fetch_indirect_spells = use_query_typed::<Spell>();
 	let indirect_spell_ids = use_state_eq(|| Vec::new());
@@ -670,22 +667,19 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 		.capacity
 		.rank_total
 		.map(|total| total.saturating_sub(consumed_rank_sum));
-	
+
 	let open_browser = {
-		let onclick = modal_dispatcher.callback({
+		let onclick = Callback::from({
+			let context_menu = context_menu.clone();
 			let id_path = value.clone();
 			let fetch_indirect_spells = fetch_indirect_spells.clone();
 			move |_| {
-				modal::Action::Open(modal::Props {
-					centered: true,
-					scrollable: true,
-					root_classes: classes!("browse", "item-spell-container"),
-					content: html!(<ModalSpellContainerAvailableList
+				context_menu.dispatch(context_menu::Action::open_child(
+					"Add Spells", html!(<ModalSpellContainerAvailableList
 						id_path={id_path.clone()}
 						fetch_indirect_spells={fetch_indirect_spells.clone()}
-					/>),
-					..Default::default()
-				})
+					/>)
+				));
 			}
 		});
 		html!(
@@ -696,11 +690,7 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 	};
 
 	html! {<>
-		<div class="modal-header">
-			<h1 class="modal-title fs-4">{"Spell Container Browser"}</h1>
-			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
-		</div>
-		<div class="modal-body">
+		<div class="details browse item-spell-container">
 			{open_browser}
 			<ContainedSpellsSection
 				id_path={value.clone()}
@@ -719,12 +709,16 @@ struct ContainedSpellsSectionProps {
 }
 #[function_component]
 fn ContainedSpellsSection(props: &ContainedSpellsSectionProps) -> Html {
-	let ContainedSpellsSectionProps {id_path, fetch_indirect_spells, remaining_total_rank} = props;
+	let ContainedSpellsSectionProps {
+		id_path,
+		fetch_indirect_spells,
+		remaining_total_rank,
+	} = props;
 	let state = use_context::<CharacterHandle>().unwrap();
 
 	let Some(item) = get_inventory_item(&state, id_path) else { return Html::default(); };
 	let Some(spell_container) = &item.spells else { return Html::default(); };
-	
+
 	let has_casting = spell_container.casting.is_some();
 	let (casting_atk_bonus, casting_dc) = match &spell_container.casting {
 		None => (None, None),
@@ -1001,7 +995,7 @@ fn ModalSpellContainerAvailableList(props: &ModalSpellContainerAvailableListProp
 	let state = use_context::<CharacterHandle>().unwrap();
 	let Some(item) = get_inventory_item(&state, &props.id_path) else { return Html::default(); };
 	let Some(spell_container) = &item.spells else { return Html::default(); };
-	
+
 	let rank_min = spell_container.capacity.rank_min.unwrap_or(0);
 	let rank_max = spell_container.capacity.rank_max.unwrap_or(MAX_SPELL_RANK);
 	let container_capacity_criteria = Criteria::contains_prop(
@@ -1016,7 +1010,7 @@ fn ModalSpellContainerAvailableList(props: &ModalSpellContainerAvailableListProp
 		let criteria = container_capacity_criteria.clone();
 		move || criteria
 	});
-	
+
 	let consumed_rank_sum: usize = spell_container
 		.spells
 		.iter()
@@ -1091,34 +1085,28 @@ fn ModalSpellContainerAvailableList(props: &ModalSpellContainerAvailableListProp
 	}
 
 	html! {<>
-		<div class="modal-header">
-			<h1 class="modal-title fs-4">{"Add Spells"}</h1>
-			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
+		<div class="d-flex">
+			{criteria_filter_btns}
 		</div>
-		<div class="modal-body">
-			<div class="d-flex">
-				{criteria_filter_btns}
-			</div>
-			<AvailableSpellList
-				header_addon={HeaderAddon::from({
-					let id_path = props.id_path.clone();
-					move |spell: &Spell| -> Html {
-						let has_rank_capacity = remaining_total_rank.map(|capacity| spell.rank as usize <= capacity).unwrap_or(true);
-						let has_count_capacity = remaining_total_spells.map(|capacity| capacity > 0).unwrap_or(true);
-						html! {
-							<SpellListContainerAction
-								container_id={id_path.clone()}
-								spell_id={spell.id.unversioned()}
-								{has_rank_capacity}
-								{has_count_capacity}
-							/>
-						}
+		<AvailableSpellList
+			header_addon={HeaderAddon::from({
+				let id_path = props.id_path.clone();
+				move |spell: &Spell| -> Html {
+					let has_rank_capacity = remaining_total_rank.map(|capacity| spell.rank as usize <= capacity).unwrap_or(true);
+					let has_count_capacity = remaining_total_spells.map(|capacity| capacity > 0).unwrap_or(true);
+					html! {
+						<SpellListContainerAction
+							container_id={id_path.clone()}
+							spell_id={spell.id.unversioned()}
+							{has_rank_capacity}
+							{has_count_capacity}
+						/>
 					}
-				})}
-				criteria={(*criteria).clone()}
-				entry={None}
-			/>
-		</div>
+				}
+			})}
+			criteria={(*criteria).clone()}
+			entry={None}
+		/>
 	</>}
 }
 
