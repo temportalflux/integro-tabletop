@@ -1,5 +1,5 @@
 use crate::{
-	components::{modal, AnnotatedNumber, AnnotatedNumberCard},
+	components::{AnnotatedNumber, AnnotatedNumberCard, context_menu},
 	page::characters::sheet::CharacterHandle,
 	system::dnd5e::data::ArmorClassFormula,
 };
@@ -16,16 +16,11 @@ Without armor or a shield, your character's AC equals 10 + their Dexterity modif
 #[function_component]
 pub fn ArmorClass() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let modal_dispatcher = use_context::<modal::Context>().unwrap();
-	let on_click = modal_dispatcher.callback({
-		move |_| {
-			modal::Action::Open(modal::Props {
-				centered: true,
-				scrollable: true,
-				content: html! {<Modal />},
-				..Default::default()
-			})
-		}
+	let on_click = context_menu::use_control_action({
+		|_| context_menu::Action::open_root(
+			format!("Armor Class"),
+			html!(<Modal />)
+		)
 	});
 	html! {
 		<AnnotatedNumberCard header={"Armor"} footer={"Class"} {on_click}>
@@ -130,16 +125,10 @@ fn Modal() -> Html {
 	};
 
 	html! {<>
-		<div class="modal-header">
-			<h1 class="modal-title fs-4">{format!("Armor Class ({value})")}</h1>
-			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
-		</div>
-		<div class="modal-body">
-			{formula_table}
-			{bonuses_table}
-			<div class="text-block">
-				{TEXT}
-			</div>
+		{formula_table}
+		{bonuses_table}
+		<div class="text-block">
+			{TEXT}
 		</div>
 	</>}
 }

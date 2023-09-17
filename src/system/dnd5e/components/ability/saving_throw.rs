@@ -1,6 +1,6 @@
 use crate::{
 	bootstrap::components::Tooltip,
-	components::modal,
+	components::{context_menu},
 	page::characters::sheet::CharacterHandle,
 	system::dnd5e::{
 		components::glyph,
@@ -79,17 +79,11 @@ pub fn SavingThrow(
 
 #[function_component]
 pub fn SavingThrowContainer() -> Html {
-	let modal_dispatcher = use_context::<modal::Context>().unwrap();
-
-	let on_click = modal_dispatcher.callback({
-		move |_| {
-			modal::Action::Open(modal::Props {
-				centered: true,
-				scrollable: true,
-				content: html! {<Modal />},
-				..Default::default()
-			})
-		}
+	let on_click = context_menu::use_control_action({
+		|_| context_menu::Action::open_root(
+			"Saving Throws",
+			html!(<Modal />)
+		)
 	});
 
 	html! {
@@ -237,30 +231,24 @@ fn Modal() -> Html {
 	};
 
 	html! {<>
-		<div class="modal-header">
-			<h1 class="modal-title fs-4">{"Saving Throws"}</h1>
-			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
-		</div>
-		<div class="modal-body">
-			<table class="table table-compact table-striped m-0">
-				<thead>
-					<tr class="text-center" style="color: var(--bs-heading-color);">
-						<th scope="col">{"Prof"}</th>
-						<th scope="col">{"Ability"}</th>
-						<th scope="col">{"Bonus"}</th>
-						<th scope="col">{"Sources"}</th>
-					</tr>
-				</thead>
-				<tbody>
-					{abilities.into_iter().map(|ability| html! {
-						<SavingThrow {ability} abbreviated={false} />
-					}).collect::<Vec<_>>()}
-				</tbody>
-			</table>
-			{modifiers_section}
-			<div class="text-block" style="margin-top: 15px;">
-				{TEXT}
-			</div>
+		<table class="table table-compact table-striped m-0">
+			<thead>
+				<tr class="text-center" style="color: var(--bs-heading-color);">
+					<th scope="col">{"Prof"}</th>
+					<th scope="col">{"Ability"}</th>
+					<th scope="col">{"Bonus"}</th>
+					<th scope="col">{"Sources"}</th>
+				</tr>
+			</thead>
+			<tbody>
+				{abilities.into_iter().map(|ability| html! {
+					<SavingThrow {ability} abbreviated={false} />
+				}).collect::<Vec<_>>()}
+			</tbody>
+		</table>
+		{modifiers_section}
+		<div class="text-block" style="margin-top: 15px;">
+			{TEXT}
 		</div>
 	</>}
 }

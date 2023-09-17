@@ -1,5 +1,5 @@
 use crate::{
-	components::modal,
+	components::{context_menu},
 	page::characters::sheet::CharacterHandle,
 	system::{
 		core::SourceId,
@@ -33,15 +33,11 @@ pub struct InventoryItemProps {
 #[function_component]
 pub fn Inventory() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let modal_dispatcher = use_context::<modal::Context>().unwrap();
-	let open_browser = modal_dispatcher.callback(|_| {
-		modal::Action::Open(modal::Props {
-			centered: true,
-			scrollable: true,
-			root_classes: classes!("inventory"),
-			content: html! {<BrowseModal />},
-			..Default::default()
-		})
+	let open_browser = context_menu::use_control_action({
+		|_| context_menu::Action::open_root(
+			"Item Browser",
+			html!(<BrowseModal />)
+		)
 	});
 
 	// TODO: If the player's persistent inventory is empty,
@@ -81,28 +77,13 @@ struct ContainerSectionProps {
 #[function_component]
 fn ContainerSection(ContainerSectionProps { container_id }: &ContainerSectionProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let modal_dispatcher = use_context::<modal::Context>().unwrap();
-
-	let open_modal = match container_id {
-		None => None,
-		Some(id) => Some(modal_dispatcher.callback({
-			let id_path = vec![id.clone()];
-			move |_| {
-				modal::Action::Open(modal::Props {
-					centered: true,
-					scrollable: true,
-					root_classes: classes!("item"),
-					content: html! {<ItemModal id_path={id_path.clone()} />},
-					..Default::default()
-				})
-			}
-		})),
-	};
+	let context_menu = use_context::<context_menu::Control>().unwrap();
 
 	let title: AttrValue;
 	let wallet: Option<Html>;
 	let rows: Vec<Html>;
 	let can_equip_from = container_id.is_none();
+	let open_modal: Option<Callback<MouseEvent>>;
 	match container_id {
 		None => {
 			let container = state.inventory();
@@ -117,6 +98,7 @@ fn ContainerSection(ContainerSectionProps { container_id }: &ContainerSectionPro
 					}
 				})
 				.collect::<Vec<_>>();
+			open_modal = None;
 		}
 		Some(container_id) => {
 			let Some(item) = state.inventory().get_item(container_id) else { return Html::default(); };
@@ -132,6 +114,15 @@ fn ContainerSection(ContainerSectionProps { container_id }: &ContainerSectionPro
 					}
 				})
 				.collect::<Vec<_>>();
+			open_modal = Some(Callback::from({
+				let context_menu = context_menu.clone();
+				let id_path = vec![container_id.clone()];
+				let name = AttrValue::from(item.name.clone());
+				move |_| context_menu.dispatch(context_menu::Action::open_root(
+					name.clone(),
+					html!(<ItemModal id_path={id_path.clone()} />)
+				))
+			}));
 		}
 	}
 	html! {

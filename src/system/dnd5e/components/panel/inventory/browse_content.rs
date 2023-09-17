@@ -108,15 +108,9 @@ pub fn BrowseModal() -> Html {
 	};
 
 	html! {<>
-		<div class="modal-header">
-			<h1 class="modal-title fs-4">{"Item Browser"}</h1>
-			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
-		</div>
-		<div class="modal-body">
-			<SearchInput on_change={on_search_changed} />
-			<div style="height: 600px">
-				{found_item_listings}
-			</div>
+		<SearchInput on_change={on_search_changed} />
+		<div style="height: 600px">
+			{found_item_listings}
 		</div>
 	</>}
 }

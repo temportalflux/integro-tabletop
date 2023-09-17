@@ -1,5 +1,5 @@
 use crate::{
-	components::{modal, AnnotatedNumber, AnnotatedNumberCard},
+	components::{AnnotatedNumber, AnnotatedNumberCard, context_menu},
 	page::characters::sheet::CharacterHandle,
 	system::dnd5e::data::proficiency,
 };
@@ -30,47 +30,36 @@ If a feature or effect allows you to do so, these same rules apply.";
 #[function_component]
 pub fn ProfBonus() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let modal_dispatcher = use_context::<modal::Context>().unwrap();
-	let on_click = modal_dispatcher.callback({
-		move |_| {
-			modal::Action::Open(modal::Props {
-				centered: true,
-				scrollable: true,
-				content: html! {<>
-					<div class="modal-header">
-						<h1 class="modal-title fs-4">{"Proficiency Bonus"}</h1>
-						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
-					</div>
-					<div class="modal-body">
-						<div class="text-center" style="margin-bottom: 10px;">
-							<table class="table table-compact table-striped m-0">
-								<thead>
-									<tr>
-										<th scope="col">{"Charcter Level"}</th>
-										<th scope="col">{"Bonus"}</th>
-									</tr>
-								</thead>
-								<tbody>
-									{proficiency::level_map().iter().map(|(min, max, bonus)| html! {
-										<tr>
-											<td>{match (*min, *max) {
-												(min, Some(max)) => html! {<span>{min}{"-"}{max}</span>},
-												(min, None) => html! {<>{min}{"+"}</>},
-											}}</td>
-											<td>{"+"}{*bonus}</td>
-										</tr>
-									}).collect::<Vec<_>>()}
-								</tbody>
-							</table>
-						</div>
-						<div class="text-block">
-							{TEXT}
-						</div>
-					</div>
-				</>},
-				..Default::default()
-			})
-		}
+	let on_click = context_menu::use_control_action({
+		move |_| context_menu::Action::open_root(
+			format!("Proficiency Bonus"),
+			html! {<>
+				<div class="text-center" style="margin-bottom: 10px;">
+					<table class="table table-compact table-striped m-0">
+						<thead>
+							<tr>
+								<th scope="col">{"Charcter Level"}</th>
+								<th scope="col">{"Bonus"}</th>
+							</tr>
+						</thead>
+						<tbody>
+							{proficiency::level_map().iter().map(|(min, max, bonus)| html! {
+								<tr>
+									<td>{match (*min, *max) {
+										(min, Some(max)) => html! {<span>{min}{"-"}{max}</span>},
+										(min, None) => html! {<>{min}{"+"}</>},
+									}}</td>
+									<td>{"+"}{*bonus}</td>
+								</tr>
+							}).collect::<Vec<_>>()}
+						</tbody>
+					</table>
+				</div>
+				<div class="text-block">
+					{TEXT}
+				</div>
+			</>}
+		)
 	});
 	html! {
 		<AnnotatedNumberCard header={"Proficiency"} footer={"Bonus"} {on_click}>

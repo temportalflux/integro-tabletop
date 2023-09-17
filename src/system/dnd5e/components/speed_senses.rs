@@ -1,5 +1,5 @@
 use crate::{
-	components::modal,
+	components::{modal, context_menu},
 	page::characters::sheet::CharacterHandle,
 	system::dnd5e::data::bounded::{BoundKind, BoundedValue},
 };
@@ -29,7 +29,6 @@ fn SingleValue(SingleValueProps { title, amount }: &SingleValueProps) -> Html {
 #[function_component]
 pub fn SpeedAndSenses() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 
 	let divider = (state.speeds().len() > 0 && state.senses().len() > 0)
 		.then(|| {
@@ -91,15 +90,11 @@ pub fn SpeedAndSenses() -> Html {
 		_ => "100%",
 	};
 
-	let onclick = modal_dispatcher.callback({
-		move |_| {
-			modal::Action::Open(modal::Props {
-				centered: true,
-				scrollable: true,
-				content: html! {<Modal />},
-				..Default::default()
-			})
-		}
+	let onclick = context_menu::use_control_action({
+		move |_| context_menu::Action::open_root(
+			format!("Speeds & Senses"),
+			html!(<Modal />)
+		)
 	});
 
 	html! {
@@ -146,30 +141,23 @@ static SENSE_DESC: [(&'static str, &'static str); 3] = [
 fn Modal() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	html! {<>
-		<div class="modal-header">
-			<h1 class="modal-title fs-4">{"Speeds & Senses"}</h1>
-			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
-		</div>
-		<div class="modal-body">
-			{state.speeds().iter().map(|(name, bounded)| {
-				bounded_value("Speed", &name, bounded)
-			}).collect::<Vec<_>>()}
-			{state.senses().iter().map(|(name, bounded)| {
-				bounded_value("Sense", &name, bounded)
-			}).collect::<Vec<_>>()}
+		{state.speeds().iter().map(|(name, bounded)| {
+			bounded_value("Speed", &name, bounded)
+		}).collect::<Vec<_>>()}
+		{state.senses().iter().map(|(name, bounded)| {
+			bounded_value("Sense", &name, bounded)
+		}).collect::<Vec<_>>()}
 
-			<div>
-				<h6>{"Additional Information"}</h6>
-				{SENSE_DESC.iter().map(|(title, desc)| html! {
-					<div>
-						<strong>{*title}{". "}</strong>
-						<span class="text-block" style="font-size: 14px;">
-							{*desc}
-						</span>
-					</div>
-				}).collect::<Vec<_>>()}
-			</div>
-
+		<div>
+			<h6>{"Additional Information"}</h6>
+			{SENSE_DESC.iter().map(|(title, desc)| html! {
+				<div>
+					<strong>{*title}{". "}</strong>
+					<span class="text-block" style="font-size: 14px;">
+						{*desc}
+					</span>
+				</div>
+			}).collect::<Vec<_>>()}
 		</div>
 	</>}
 }

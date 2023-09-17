@@ -1,5 +1,5 @@
 use crate::{
-	components::{modal, AnnotatedNumber, AnnotatedNumberCard},
+	components::{AnnotatedNumber, AnnotatedNumberCard, context_menu},
 	page::characters::sheet::CharacterHandle,
 	system::dnd5e::data::Ability,
 };
@@ -22,31 +22,20 @@ a d20 to determine the order, highest roll going first.";
 #[function_component]
 pub fn InitiativeBonus() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 	let value = state.initiative_bonus();
-	let on_click = modal_dispatcher.callback({
-		move |_| {
-			modal::Action::Open(modal::Props {
-				centered: true,
-				scrollable: true,
-				content: html! {<>
-					<div class="modal-header">
-						<h1 class="modal-title fs-4">{"Initiative Bonus"}</h1>
-						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
-					</div>
-					<div class="modal-body">
-						<div class="text-center fs-5" style="width: 100%; margin-bottom: 10px;">
-							<span>{Ability::Dexterity.long_name()}{":"}</span>
-							<span style="margin-left: 5px;">{match value >= 0 { true => "+", false => "-", }}{value.abs()}</span>
-						</div>
-						<div class="text-block">
-							{TEXT}
-						</div>
-					</div>
-				</>},
-				..Default::default()
-			})
-		}
+	let on_click = context_menu::use_control_action({
+		move |_| context_menu::Action::open_root(
+			format!("Initiative Bonus"),
+			html! {<>
+				<div class="text-center fs-5" style="width: 100%; margin-bottom: 10px;">
+					<span>{Ability::Dexterity.long_name()}{":"}</span>
+					<span style="margin-left: 5px;">{match value >= 0 { true => "+", false => "-", }}{value.abs()}</span>
+				</div>
+				<div class="text-block">
+					{TEXT}
+				</div>
+			</>}
+		)
 	});
 	html! {
 		<AnnotatedNumberCard header={"Initiative"} footer={"Bonus"} {on_click}>

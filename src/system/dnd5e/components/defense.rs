@@ -1,6 +1,6 @@
 use crate::{
 	bootstrap::components::Tooltip,
-	components::{modal, Tag, Tags},
+	components::{modal, Tag, Tags, context_menu},
 	page::characters::sheet::CharacterHandle,
 	system::dnd5e::components::glyph,
 };
@@ -26,15 +26,11 @@ half against the creature, not reduced by three-quarters.";
 #[function_component]
 pub fn DefensesCard() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let modal_dispatcher = use_context::<modal::Context>().unwrap();
-	let onclick = modal_dispatcher.callback(|_| {
-		modal::Action::Open(modal::Props {
-			centered: true,
-			scrollable: true,
-			root_classes: classes!("defense"),
-			content: html! {<Modal />},
-			..Default::default()
-		})
+	let onclick = context_menu::use_control_action({
+		|_: web_sys::MouseEvent| context_menu::Action::open_root(
+			format!("Defenses"),
+			html!(<Modal />)
+		)
 	});
 	let defenses = state
 		.defenses()
@@ -129,14 +125,10 @@ fn Modal() -> Html {
 			</div>
 		});
 	}
-	html! {<>
-		<div class="modal-header">
-			<h1 class="modal-title fs-4">{"Defenses"}</h1>
-			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
-		</div>
-		<div class="modal-body">
+	html! {
+		<div class="details defense">
 			{sections}
 			<div class="text-block">{RULES_DESC}</div>
 		</div>
-	</>}
+	}
 }

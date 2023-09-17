@@ -94,8 +94,12 @@ impl Reducible for State {
 }
 
 impl Control {
+	pub fn dispatch(&self, action: Action) {
+		self.0.dispatch(action);
+	}
+
 	fn toggle_shown(&self) {
-		self.0.dispatch(match self.is_shown {
+		self.dispatch(match self.is_shown {
 			true => Action::Collapse,
 			false => Action::Expand,
 		});
@@ -112,7 +116,7 @@ impl Control {
 	}
 	
 	fn close_current(&self) {
-		self.0.dispatch(Action::CloseCurrent);
+		self.dispatch(Action::CloseCurrent);
 	}
 
 	fn close_current_fn<FnIn>(&self) -> Callback<FnIn, ()> {

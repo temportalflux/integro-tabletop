@@ -1,5 +1,5 @@
 use crate::{
-	components::{modal, stop_propagation},
+	components::{modal, stop_propagation, context_menu},
 	page::characters::sheet::CharacterHandle,
 	page::characters::sheet::MutatorImpact,
 	system::dnd5e::{
@@ -111,15 +111,11 @@ healed regains 1 hit point after 1d4 hours.";
 #[function_component]
 pub fn HitPointMgmtCard() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let modal_dispatcher = use_context::<modal::Context>().unwrap();
-	let on_open_modal = modal_dispatcher.callback(|_| {
-		modal::Action::Open(modal::Props {
-			centered: true,
-			scrollable: true,
-			root_classes: classes!("hit-points"),
-			content: html! {<Modal />},
-			..Default::default()
-		})
+	let on_open_modal = context_menu::use_control_action({
+		|_: web_sys::MouseEvent| context_menu::Action::open_root(
+			format!("Hit Points"),
+			html!(<Modal />)
+		)
 	});
 	let current_hp = state.get_hp(HitPoint::Current);
 	html! {
@@ -178,7 +174,7 @@ fn HitPointsBody(BodyProps { on_open_modal }: &BodyProps) -> Html {
 	});
 
 	html! {
-		<div class="d-flex">
+		<div class="d-flex details hit-points">
 			<div class="flex-grow-1" onclick={on_open_modal.clone()}>
 				<h5 class="text-center" style="font-size: 0.8rem; color: var(--bs-card-title-color); margin: 0 0 2px 0;">{"Hit Points"}</h5>
 				<div class="row text-center m-0" style="--bs-gutter-x: 0;">
@@ -261,20 +257,14 @@ pub fn validate_uint_only() -> Callback<KeyboardEvent> {
 #[function_component]
 fn Modal() -> Html {
 	html! {<>
-		<div class="modal-header">
-			<h1 class="modal-title fs-4">{"Hit Point Management"}</h1>
-			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
-		</div>
-		<div class="modal-body">
-			<ModalSectionDeathSaves />
-			<ModalSectionCurrentStats />
-			<span class="hr my-3" />
-			<ModalSectionApplyChangeForm />
-			<span class="hr my-3" />
-			<ModalSectionHitDice />
-			<span class="hr my-3" />
-			<ModalSectionInfo />
-		</div>
+		<ModalSectionDeathSaves />
+		<ModalSectionCurrentStats />
+		<span class="hr my-3" />
+		<ModalSectionApplyChangeForm />
+		<span class="hr my-3" />
+		<ModalSectionHitDice />
+		<span class="hr my-3" />
+		<ModalSectionInfo />
 	</>}
 }
 

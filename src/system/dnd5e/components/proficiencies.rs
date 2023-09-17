@@ -1,6 +1,6 @@
 use crate::{
 	bootstrap::components::Tooltip,
-	components::modal,
+	components::{context_menu},
 	page::characters::sheet::CharacterHandle,
 	system::dnd5e::data::{AttributedValueMap, WeaponProficiency},
 };
@@ -9,31 +9,22 @@ use yew::prelude::*;
 #[function_component]
 pub fn Proficiencies() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 	let proficiencies = state.other_proficiencies();
-	let onclick = modal_dispatcher.callback({
+	let onclick = context_menu::use_control_action({
 		let state = state.clone();
 		move |_| {
 			let proficiencies = state.other_proficiencies();
-			modal::Action::Open(modal::Props {
-				centered: true,
-				scrollable: true,
-				content: html! {<>
-					<div class="modal-header">
-						<h1 class="modal-title fs-4">{"General Proficiencies"}</h1>
-						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
-					</div>
-					<div class="modal-body">
-						{make_proficiencies_section_long("Languages", &proficiencies.languages, String::to_string)}
-						{make_proficiencies_section_long("Armor", &proficiencies.armor, |(value, context)| {
-							format!("{}{}", value.to_string(), context.as_ref().map(|s| format!(" ({s})")).unwrap_or_default())
-						})}
-						{make_proficiencies_section_long("Weapons", &proficiencies.weapons, WeaponProficiency::display_name)}
-						{make_proficiencies_section_long("Tools", &proficiencies.tools, String::to_string)}
-					</div>
-				</>},
-				..Default::default()
-			})
+			context_menu::Action::open_root(
+				"General Proficiencies",
+				html! {<>
+					{make_proficiencies_section_long("Languages", &proficiencies.languages, String::to_string)}
+					{make_proficiencies_section_long("Armor", &proficiencies.armor, |(value, context)| {
+						format!("{}{}", value.to_string(), context.as_ref().map(|s| format!(" ({s})")).unwrap_or_default())
+					})}
+					{make_proficiencies_section_long("Weapons", &proficiencies.weapons, WeaponProficiency::display_name)}
+					{make_proficiencies_section_long("Tools", &proficiencies.tools, String::to_string)}
+				</>}
+			)
 		}
 	});
 	html! {

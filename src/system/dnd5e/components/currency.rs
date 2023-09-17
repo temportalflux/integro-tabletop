@@ -1,5 +1,5 @@
 use crate::{
-	components::modal,
+	components::{context_menu},
 	page::characters::sheet::joined::editor::AutoExchangeSwitch,
 	page::characters::sheet::CharacterHandle,
 	page::characters::sheet::MutatorImpact,
@@ -65,19 +65,14 @@ fn get_wallet_mut<'c>(persistent: &'c mut Persistent, id: &Option<Uuid>) -> Opti
 #[function_component]
 pub fn WalletInlineButton(WalletContainerProps { id }: &WalletContainerProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let modal_dispatcher = use_context::<modal::Context>().unwrap();
-
-	let onclick = modal_dispatcher.callback({
+	let onclick = context_menu::use_control_action({
 		let id = id.clone();
 		move |evt: MouseEvent| {
 			evt.stop_propagation();
-			modal::Action::Open(modal::Props {
-				centered: true,
-				scrollable: true,
-				root_classes: classes!("wallet"),
-				content: html! {<Modal {id} />},
-				..Default::default()
-			})
+			context_menu::Action::open_root(
+				"Coin Pouch",
+				html!(<Modal {id} />)
+			)
 		}
 	});
 
@@ -279,21 +274,15 @@ fn Modal(WalletContainerProps { id }: &WalletContainerProps) -> Html {
 		}
 	};
 	html! {<>
-		<div class="modal-header">
-			<h1 class="modal-title fs-4">{"Coin Pouch"}</h1>
-			<button
-				type="button" class="btn btn-secondary btn-sm px-1 py-0 ms-2"
-				data-bs-toggle="collapse" data-bs-target="#settingsCollapse"
-			>
-				<i class="bi bi-gear-fill me-2" />
-				{"Settings"}
-			</button>
-			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
-		</div>
-		<div class="modal-body">
-			{settings}
-			{balance_display}
-			{adjustment_form}
-		</div>
+		<button
+			type="button" class="btn btn-secondary btn-sm px-1 py-0 ms-2"
+			data-bs-toggle="collapse" data-bs-target="#settingsCollapse"
+		>
+			<i class="bi bi-gear-fill me-2" />
+			{"Settings"}
+		</button>
+		{settings}
+		{balance_display}
+		{adjustment_form}
 	</>}
 }

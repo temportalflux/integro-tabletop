@@ -1,11 +1,10 @@
 use crate::{
 	bootstrap::components::Tooltip,
-	components::modal,
 	page::characters::sheet::CharacterHandle,
 	system::dnd5e::{
 		components::glyph,
 		data::{Ability, Skill},
-	},
+	}, components::context_menu,
 };
 use enumset::{EnumSet, EnumSetType};
 use multimap::MultiMap;
@@ -153,7 +152,6 @@ fn Row(
 	}: &RowProps,
 ) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 
 	let proficiency = state.skills().proficiency(*skill);
 
@@ -224,16 +222,12 @@ fn Row(
 		);
 	}
 
-	let onclick = modal_dispatcher.callback({
+	let onclick = context_menu::use_control_action({
 		let skill = *skill;
-		move |_| {
-			modal::Action::Open(modal::Props {
-				centered: true,
-				scrollable: true,
-				content: html! {<SkillModal {skill} />},
-				..Default::default()
-			})
-		}
+		move |_| context_menu::Action::open_root(
+			format!("{} ({})", skill.display_name(), skill.ability().long_name()),
+			html!(<SkillModal {skill} />)
+		)
 	});
 
 	html! {<tr {onclick}>{table_data}</tr>}
@@ -320,21 +314,12 @@ fn SkillModal(SkillModalProps { skill }: &SkillModalProps) -> Html {
 	};
 
 	html! {<>
-		<div class="modal-header">
-			<h1 class="modal-title fs-4">
-				{skill.display_name()}
-				<span style="margin-left: 10px;">{format!("({})", skill.ability().long_name())}</span>
-			</h1>
-			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
+		<div class="text-center fs-5" style="width: 100%; margin-bottom: 10px;">
+			<span>{"Bonus:"}</span>
+			<span style="margin-left: 5px;">{match bonus >= 0 { true => "+", false => "-", }}{bonus.abs()}</span>
 		</div>
-		<div class="modal-body">
-			<div class="text-center fs-5" style="width: 100%; margin-bottom: 10px;">
-				<span>{"Bonus:"}</span>
-				<span style="margin-left: 5px;">{match bonus >= 0 { true => "+", false => "-", }}{bonus.abs()}</span>
-			</div>
-			{prof_table}
-			{roll_modifiers_table}
-			<div class="text-block">{skill.description()}</div>
-		</div>
+		{prof_table}
+		{roll_modifiers_table}
+		<div class="text-block">{skill.description()}</div>
 	</>}
 }

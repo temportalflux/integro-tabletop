@@ -1,7 +1,7 @@
 use crate::{
 	components::{
 		database::{use_query_all_typed, use_typed_fetch_callback, QueryAllArgs, QueryStatus},
-		modal, Spinner, Tag, Tags,
+		Spinner, Tag, Tags, context_menu,
 	},
 	page::characters::sheet::joined::editor::{mutator_list, CollapsableCard},
 	page::characters::sheet::CharacterHandle,
@@ -21,15 +21,11 @@ use yew::prelude::*;
 #[function_component]
 pub fn ConditionsCard() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let modal_dispatcher = use_context::<modal::Context>().unwrap();
-	let onclick = modal_dispatcher.callback(|_| {
-		modal::Action::Open(modal::Props {
-			centered: true,
-			scrollable: true,
-			root_classes: classes!("condition"),
-			content: html! {<Modal />},
-			..Default::default()
-		})
+	let onclick = context_menu::use_control_action({
+		|_| context_menu::Action::open_root(
+			"Conditions",
+			html!(<Modal />)
+		)
 	});
 	let conditions = state
 		.persistent()
@@ -138,39 +134,33 @@ fn Modal() -> Html {
 	});
 
 	html! {<>
-		<div class="modal-header">
-			<h1 class="modal-title fs-4">{"Conditions"}</h1>
-			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
-		</div>
-		<div class="modal-body">
-			{add_condition_section}
-			<div>
-				{state.persistent().conditions.iter_keyed().map(|(key, condition)| {
-					let on_remove = on_remove_condition.reform({
-						let key = key.clone();
-						move |_| key.clone()
-					});
-					let ref_id = condition.name.replace(" ", "");
-					// TODO: Show degrees in body of collapsable card
-					html! {
-						<CollapsableCard
-							id={ref_id}
-							header_content={{
-								html! {<>
-									<span>{condition.name.clone()}</span>
-									<button
-										type="button" class="btn-close ms-auto" aria-label="Close"
-										onclick={on_remove}
-									/>
-								</>}
-							}}
-						>
-							<div class="text-block">{condition.description.clone()}</div>
-							{mutator_list(&condition.mutators, Some(&state))}
-						</CollapsableCard>
-					}
-				}).collect::<Vec<_>>()}
-			</div>
+		{add_condition_section}
+		<div>
+			{state.persistent().conditions.iter_keyed().map(|(key, condition)| {
+				let on_remove = on_remove_condition.reform({
+					let key = key.clone();
+					move |_| key.clone()
+				});
+				let ref_id = condition.name.replace(" ", "");
+				// TODO: Show degrees in body of collapsable card
+				html! {
+					<CollapsableCard
+						id={ref_id}
+						header_content={{
+							html! {<>
+								<span>{condition.name.clone()}</span>
+								<button
+									type="button" class="btn-close ms-auto" aria-label="Close"
+									onclick={on_remove}
+								/>
+							</>}
+						}}
+					>
+						<div class="text-block">{condition.description.clone()}</div>
+						{mutator_list(&condition.mutators, Some(&state))}
+					</CollapsableCard>
+				}
+			}).collect::<Vec<_>>()}
 		</div>
 	</>}
 }

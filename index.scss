@@ -203,7 +203,7 @@ option:disabled {
 	width: 12px;
 	height: 12px;
 }
-.modal.defense .defense-section .icon {
+.details.defense .defense-section .icon {
 	width: 20px;
 	height: 20px;
 	margin-right: 10px;
@@ -225,26 +225,26 @@ button.sub:before {
 	background-position: -17px 0;
 }
 
-.modal.hit-points button.hp-action {
+.details.hit-points button.hp-action {
 	margin-left: 0.8rem!important;
 	margin-right: 0.8rem!important;
 	padding-top: 0.7rem!important;
 	padding-bottom: 0.7rem!important;
 }
-.modal.hit-points button.hp-action:before {
+.details.hit-points button.hp-action:before {
 	height: 16px;
 	width: 16px;
 }
-.modal.hit-points .heal {
+.details.hit-points .heal {
 	color: var(--theme-healing);
 }
-.modal.hit-points .damage {
+.details.hit-points .damage {
 	color: var(--theme-damage);
 }
-.modal.hit-points .heal .new-hp-header {
+.details.hit-points .heal .new-hp-header {
 	color: var(--theme-healing);
 }
-.modal.hit-points .damage .new-hp-header {
+.details.hit-points .damage .new-hp-header {
 	color: var(--theme-damage);
 }
 
@@ -280,13 +280,13 @@ button.sub:before {
 	margin: 1px 2px 1px 2px;
 	background-size: 16px;
 }
-.modal.hit-points .death-saves input[type="checkbox"] {
+.details.hit-points .death-saves input[type="checkbox"] {
 	width: 40px;
 	height: 40px;
 	margin: 1px 0px 1px 0px;
 	background-size: 30px;
 }
-.modal.hit-points .death-saves input[type="checkbox"]:not(:last-child) {
+.details.hit-points .death-saves input[type="checkbox"]:not(:last-child) {
 	margin-right: 10px;
 }
 input[type="checkbox"].failure:checked {
