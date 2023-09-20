@@ -1,6 +1,6 @@
 use crate::{
 	bootstrap::components::Tooltip,
-	components::{context_menu, mobile, modal, AnnotatedNumber},
+	components::{context_menu, mobile, AnnotatedNumber},
 	page::characters::sheet::CharacterHandle,
 	system::dnd5e::{
 		components::glyph,

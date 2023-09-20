@@ -1,8 +1,6 @@
 use crate::{
-	components::{
-		context_menu, database::use_typed_fetch_callback, modal, stop_propagation, Spinner,
-	},
-	database::app::{Criteria, Database, QueryDeserialize},
+	components::{context_menu, database::use_typed_fetch_callback, stop_propagation, Spinner},
+	database::app::{Criteria, Database},
 	page::characters::sheet::joined::editor::{CollapsableCard, DescriptionSection},
 	page::characters::sheet::CharacterHandle,
 	page::characters::sheet::MutatorImpact,
@@ -28,9 +26,9 @@ use crate::{
 	utility::InputExt,
 };
 use convert_case::{Case, Casing};
-use futures_util::{FutureExt, StreamExt};
+use futures_util::StreamExt;
 use itertools::Itertools;
-use std::{collections::BTreeMap, path::Path, pin::Pin};
+use std::{collections::BTreeMap, path::Path};
 use yew::prelude::*;
 
 fn rank_suffix(rank: u8) -> &'static str {
@@ -847,7 +845,10 @@ fn SpellModalRowRoot(SpellModalProps { location, children }: &SpellModalProps) -
 		move |_| {
 			let Some((spell, _entry)) = location.get(&state) else { return; };
 			let location = location.clone();
-			context_menu.dispatch(context_menu::Action::open_root(spell.name.clone(), html!(<SpellModal {location} />)));
+			context_menu.dispatch(context_menu::Action::open_root(
+				spell.name.clone(),
+				html!(<SpellModal {location} />),
+			));
 		}
 	});
 	html! {

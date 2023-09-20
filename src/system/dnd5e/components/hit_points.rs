@@ -1,5 +1,5 @@
 use crate::{
-	components::{context_menu, modal, stop_propagation},
+	components::{context_menu, stop_propagation},
 	page::characters::sheet::CharacterHandle,
 	page::characters::sheet::MutatorImpact,
 	system::dnd5e::{

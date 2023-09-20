@@ -58,7 +58,6 @@ pub fn FormulaInline(FormulaProps { formula }: &FormulaProps) -> Html {
 #[function_component]
 fn Modal() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let value = state.armor_class().evaluate(&*state);
 
 	let formula_table = {
 		let rows = state

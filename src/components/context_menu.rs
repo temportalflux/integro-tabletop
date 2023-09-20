@@ -123,7 +123,7 @@ impl Control {
 	fn close_current_fn<FnIn>(&self) -> Callback<FnIn, ()> {
 		Callback::from({
 			let control = self.clone();
-			move |evt: FnIn| control.close_current()
+			move |_: FnIn| control.close_current()
 		})
 	}
 }

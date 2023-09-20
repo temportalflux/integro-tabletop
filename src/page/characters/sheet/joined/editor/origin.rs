@@ -1,9 +1,9 @@
 use crate::{
 	components::{
+		context_menu,
 		database::{use_query_all_typed, use_typed_fetch_callback, QueryAllArgs, QueryStatus},
-		modal,
 		object_browser::{self, ObjectSelectorList},
-		Spinner, context_menu,
+		Spinner,
 	},
 	database::app::Criteria,
 	page::characters::sheet::{CharacterHandle, MutatorImpact},
@@ -718,7 +718,10 @@ fn SelectorField(
 				let title = format!("Browse {object_category}");
 				move |_| {
 					let props = props.clone();
-					let item = context_menu::Item::new(title.clone(), html!(<object_browser::Modal ..props />));
+					let item = context_menu::Item::new(
+						title.clone(),
+						html!(<object_browser::Modal ..props />),
+					);
 					context_menu.dispatch(match active_details {
 						None => context_menu::Action::OpenRoot(item),
 						Some(_) => context_menu::Action::OpenSubpage(item),

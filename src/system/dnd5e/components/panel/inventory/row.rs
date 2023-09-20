@@ -1,6 +1,6 @@
 use super::InventoryItemProps;
 use crate::{
-	components::{context_menu, modal},
+	components::context_menu,
 	page::characters::sheet::CharacterHandle,
 	page::characters::sheet::MutatorImpact,
 	system::dnd5e::{

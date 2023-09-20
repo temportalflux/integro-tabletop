@@ -1,10 +1,11 @@
 use crate::{
 	components::{
+		context_menu,
 		database::{use_query_typed, QueryStatus, UseQueryAllHandle, UseQueryDiscreteHandle},
-		modal, progress_bar, context_menu,
+		progress_bar,
 	},
 	database::app::{Criteria, FetchError},
-	page::characters::sheet::{joined::editor::CollapsableCard, CharacterHandle},
+	page::characters::sheet::CharacterHandle,
 	page::characters::sheet::{
 		joined::editor::{description, mutator_list},
 		MutatorImpact,
@@ -19,11 +20,7 @@ use crate::{
 				validate_uint_only, FormulaInline, GeneralProp, WalletInline,
 			},
 			data::{
-				action::ActivationKind,
-				character::{
-					spellcasting::{AbilityOrStat, CastingMethod, SpellEntry},
-					Persistent, MAX_SPELL_RANK,
-				},
+				character::{Persistent, MAX_SPELL_RANK},
 				item::{self, container::spell::ContainerSpell, Item},
 				spell::CastingDuration,
 				ArmorExtended, Indirect, Spell, WeaponProficiency,
@@ -34,7 +31,7 @@ use crate::{
 	utility::{Evaluator, InputExt},
 };
 use any_range::AnyRange;
-use std::{collections::HashSet, path::PathBuf};
+use std::collections::HashSet;
 use yew::prelude::*;
 
 pub fn get_inventory_item<'c>(
@@ -562,7 +559,8 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 					let id_path = id_path.clone();
 					move |_| {
 						context_menu.dispatch(context_menu::Action::open_child(
-							"Spell Container", html!(<ModalSpellContainerBrowser value={id_path.clone()} />)
+							"Spell Container",
+							html!(<ModalSpellContainerBrowser value={id_path.clone()} />),
 						));
 					}
 				});
@@ -675,10 +673,11 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 			let fetch_indirect_spells = fetch_indirect_spells.clone();
 			move |_| {
 				context_menu.dispatch(context_menu::Action::open_child(
-					"Add Spells", html!(<ModalSpellContainerAvailableList
+					"Add Spells",
+					html!(<ModalSpellContainerAvailableList
 						id_path={id_path.clone()}
 						fetch_indirect_spells={fetch_indirect_spells.clone()}
-					/>)
+					/>),
 				));
 			}
 		});

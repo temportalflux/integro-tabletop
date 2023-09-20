@@ -1,6 +1,6 @@
 use crate::{
 	bootstrap::components::Tooltip,
-	components::{context_menu, modal, Tag, Tags},
+	components::{context_menu, Tag, Tags},
 	page::characters::sheet::CharacterHandle,
 	system::dnd5e::components::glyph,
 };

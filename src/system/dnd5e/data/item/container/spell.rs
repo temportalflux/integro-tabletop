@@ -5,7 +5,6 @@ use crate::{
 	system::{
 		core::SourceId,
 		dnd5e::data::{
-			action::ActivationKind,
 			character::{
 				spellcasting::{AbilityOrStat, CastingMethod, SpellEntry},
 				Character,
