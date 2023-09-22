@@ -37,7 +37,6 @@ completedColumns:
 
 ## Pending
 
-- [starting-equipment-ui](tasks/starting-equipment-ui.md)
 - [bonus-damage-for-spells](tasks/bonus-damage-for-spells.md)
 - [conditions-imply-other-conditions](tasks/conditions-imply-other-conditions.md)
 - [condition-degrees](tasks/condition-degrees.md)
@@ -53,5 +52,7 @@ completedColumns:
 - [notes-for-spells](tasks/notes-for-spells.md)
 
 ## In Progress
+
+- [starting-equipment-ui](tasks/starting-equipment-ui.md)
 
 ## Done

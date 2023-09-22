@@ -333,7 +333,7 @@ pub fn Display(ViewProps { swap_view }: &ViewProps) -> Html {
 					{above_panels_content}
 
 					<div class="card m-1" style="height: 550px;">
-						<div class="card-body" style="padding: 5px;">
+						<div class="card-body d-flex flex-column" style="padding: 5px;">
 							<Nav root_classes={"onesheet-tabs"} disp={NavDisplay::Tabs} default_tab_id={"actions"}>
 								<TabContent id="actions" title={html! {{"Actions"}}}>
 									<panel::Actions />

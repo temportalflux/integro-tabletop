@@ -1,15 +1,40 @@
 
-.onesheet-tabs > .nav {
-	margin-bottom: 5px;
-}
+.onesheet-tabs {
+	flex-grow: 1;
 
-.onesheet-tabs > .nav > .nav-item > .nav-link {
-	padding: 1px 6px;
-	border-style: none;
-	color: var(--bs-card-title-color);
-}
+	display: flex;
+	flex-direction: column;
 
-.onesheet-tabs > .nav > .nav-item > .nav-link.active {
-	border-bottom: var(--bs-nav-tabs-border-width) solid var(--theme-frame-color);
-	color: var(--bs-nav-tabs-link-active-color);
+	> .nav {
+		margin-bottom: 5px;
+		> .nav-item {
+			> .nav-link {
+				padding: 1px 6px;
+				border-style: none;
+				color: var(--bs-card-title-color);
+			}
+			> .nav-link.active {
+				border-bottom: var(--bs-nav-tabs-border-width) solid var(--theme-frame-color);
+				color: var(--bs-nav-tabs-link-active-color);
+			}
+		}
+	}
+
+	> .tab-content {
+		flex-grow: 1;
+
+		display: flex;
+		flex-direction: column;
+		
+		> .tab-pane.active {
+			flex-grow: 1;
+
+			display: flex;
+			flex-direction: column;
+
+			> .panel {
+				flex-grow: 1;
+			}
+		}
+	}
 }

@@ -125,6 +125,15 @@ impl SourceId {
 		self
 	}
 
+	pub fn minimal(&self) -> std::borrow::Cow<Self> {
+		if self.basis.is_some() || self.version.is_some() {
+			std::borrow::Cow::Owned(self.without_basis().into_unversioned())
+		}
+		else {
+			std::borrow::Cow::Borrowed(self)
+		}
+	}
+
 	pub fn has_path(&self) -> bool {
 		!self.path.as_os_str().is_empty()
 	}
@@ -228,6 +237,8 @@ impl AsKdl for SourceId {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 		let baseless = self.relative_to_basis();
+		// TODO: Baseless must then be reformatted to be relative to whatever the current module is.
+		// That requires that as_kdl know the context of the current module.
 		if baseless != Self::default() {
 			let as_str = baseless.to_string();
 			if !as_str.is_empty() {

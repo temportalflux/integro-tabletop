@@ -23,6 +23,7 @@ impl Mutator for AddStartingEquipment {
 	}
 
 	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
+		log::debug!("{:?}", self.0);
 		stats.add_starting_equipment(&self.0, parent);
 	}
 }

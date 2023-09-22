@@ -408,8 +408,10 @@ where
 		let database = database.clone();
 		let system_depot = system_depot.clone();
 		let fn_item = fn_item.clone();
+		log::debug!("Fetch {:?}", source_id.to_string());
 		task_dispatch.spawn(task_name.clone(), None, async move {
 			let Some(item) = database.get_typed_entry::<Item>(source_id, system_depot, None).await? else {
+				log::debug!("failed to find entry");
 				return Ok(());
 			};
 			fn_item.emit(item);

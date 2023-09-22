@@ -80,7 +80,7 @@ impl FromKDL for StartingEquipment {
 				kind => Err(NotInList(kind.into(), vec!["Specific", "Custom", "Select"]).into()),
 			},
 			name => {
-				Err(NotInList(name.into(), vec!["item", "currency", "pick-one", "group"]).into())
+				Err(NotInList(name.into(), vec!["item", "currency", "group"]).into())
 			}
 		}
 	}

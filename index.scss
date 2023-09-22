@@ -772,9 +772,26 @@ button.collapse_trigger.arrow_right.collapsed::after {
 		height: 400px;
 	}
 
-	.panel.inventory > .sections {
-		overflow-y: auto;
-		height: 470px;
+	.panel.inventory {
+		display: flex;
+		flex-direction: column;
+
+		> .empty-prompt {
+			flex-grow: 1;
+
+			display: flex;
+			flex-direction: column;
+			
+			justify-content: center;
+			align-items: center;
+			
+			text-align: center;
+		}
+
+		> .sections {
+			overflow-y: auto;
+			height: 470px;
+		}
 	}
 
 	.panel.description {

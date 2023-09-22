@@ -1,9 +1,17 @@
+use std::collections::HashMap;
+
 use crate::{
-	components::context_menu,
+	components::{context_menu, database::use_typed_fetch_callback, Spinner},
 	page::characters::sheet::CharacterHandle,
 	system::{
 		core::SourceId,
-		dnd5e::{components::WalletInlineButton, data::item::container::item::AsItem},
+		dnd5e::{
+			components::{GeneralProp, WalletInline, WalletInlineButton},
+			data::{
+				character::{IndirectItem, StartingEquipment},
+				item::{container::item::AsItem, Item},
+			},
+		},
 	},
 };
 use uuid::Uuid;
@@ -19,6 +27,7 @@ mod item_content;
 pub use item_content::*;
 mod row;
 pub use row::*;
+use yew_hooks::use_is_first_mount;
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct SystemItemProps {
@@ -36,10 +45,25 @@ pub fn Inventory() -> Html {
 	let open_browser = context_menu::use_control_action({
 		|_| context_menu::Action::open_root("Item Browser", html!(<BrowseModal />))
 	});
+	let open_starting_equipment = context_menu::use_control_action({
+		|_| {
+			context_menu::Action::open_root(
+				"Starting Equipment",
+				html!(<BrowseStartingEquipment />),
+			)
+		}
+	});
 
-	// TODO: If the player's persistent inventory is empty,
-	// show an option to add items based on their StartingEquipment.
-	//log::debug!(target: "inventory", "{:?}", state.starting_equipment());
+	if state.inventory().is_empty() {
+		return html! {
+			<div class="panel inventory">
+				<div class="empty-prompt">
+					<div class="text">{"Your inventory is empty. Do you want to select starting equipment?"}</div>
+					<button type="button" class="btn btn-sm btn-theme mt-2" onclick={open_starting_equipment}>{"Add Starting Equipment"}</button>
+				</div>
+			</div>
+		};
+	}
 
 	// TODO: Implement search-inventory functionality
 	// TODO: tag buttons to browse item containers
@@ -149,4 +173,84 @@ fn ContainerSection(ContainerSectionProps { container_id }: &ContainerSectionPro
 			</table>
 		</div>
 	}
+}
+
+#[function_component]
+fn BrowseStartingEquipment() -> Html {
+	let state = use_context::<CharacterHandle>().unwrap();
+
+	// TODO: If the player's persistent inventory is empty,
+	// show an option to add items based on their StartingEquipment.
+	log::debug!(target: "inventory", "{:?}", state.starting_equipment());
+
+	let mut sections = Vec::with_capacity(state.starting_equipment().len());
+	for (options, source) in state.starting_equipment() {
+		sections.push(html! {
+			<>
+				<div class="section-name">
+					{crate::data::as_feature_path_text(source)}
+				</div>
+				{options.iter().map(|group| html!(<StartingEquipmentSection value={group.clone()} />)).collect::<Vec<_>>()}
+			</>
+		});
+	}
+
+	html! {
+		<div class="starting-equipment">
+			{sections}
+		</div>
+	}
+}
+
+#[function_component]
+fn StartingEquipmentSection(GeneralProp { value }: &GeneralProp<StartingEquipment>) -> Html {
+	let content = match value {
+		StartingEquipment::Currency(wallet) => html! {
+			<div class="currency">
+				<WalletInline wallet={*wallet} />
+			</div>
+		},
+		StartingEquipment::IndirectItem(IndirectItem::Specific(id, quantity)) => {
+			html!(<StartingEquipmentSpecific value={(id.minimal().into_owned(), *quantity)} />)
+		},
+		StartingEquipment::IndirectItem(IndirectItem::Custom(item)) => {
+			// TODO: Display item as an expandable card
+			html!({&item.name})
+		},
+		StartingEquipment::Group { entries, pick } => {
+			// TODO: label indicating how many to select
+			// TODO: checkbox next to each section (disabled if maxed, autoclear old if pick is 1)
+			html!(format!("Group: x{pick:?} {entries:?}"))
+		}
+		StartingEquipment::SelectItem(filter) => {
+			// dropdown to show all items which match the filter
+			// display item card when any are selected
+			html!(format!("Select: {filter:?}"))
+		}
+	};
+	html!(<div class="section">{content}</div>)
+}
+
+#[function_component]
+fn StartingEquipmentSpecific(GeneralProp { value: (id, quantity) }: &GeneralProp<(SourceId, usize)>) -> Html {
+	let found_item = use_state(|| None::<Item>);
+	let fetch_item = use_typed_fetch_callback(
+		"Fetch Item".into(),
+		Callback::from({
+			let found_item = found_item.clone();
+			move |item: Item| {
+				found_item.set(Some(item));
+			}
+		}),
+	);
+	if use_is_first_mount() {
+		fetch_item.emit(id.clone());
+	}
+	let Some(item) = &*found_item else {
+		return html!(<Spinner />);
+	};
+
+	// TODO: Display starting-equipment quantity
+	// TODO: Display item as an expandable card
+	html!({&item.name})
 }

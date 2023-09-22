@@ -1,10 +1,11 @@
 ---
 created: 2023-09-20T13:29:02.294Z
-updated: 2023-09-21T15:28:56.288Z
+updated: 2023-09-22T17:36:05.358Z
 assigned: ""
 progress: 0
 tags:
   - MVP
+started: 2023-09-22T17:36:05.358Z
 ---
 
 # Starting Equipment UI

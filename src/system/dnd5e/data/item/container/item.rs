@@ -54,6 +54,10 @@ impl<T> ItemContainer<T> {
 		}
 	}
 
+	pub fn is_empty(&self) -> bool {
+		self.items_by_id.is_empty()
+	}
+
 	pub fn wallet(&self) -> &Wallet {
 		&self.wallet
 	}
