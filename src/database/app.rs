@@ -86,7 +86,9 @@ impl Database {
 			+ Unpin,
 	{
 		use crate::system::core::System;
-		let Some(entry) = self.get::<Entry>(key.to_string()).await? else { return Ok(None); };
+		let Some(entry) = self.get::<Entry>(key.to_string()).await? else {
+			return Ok(None);
+		};
 		if let Some(criteria) = criteria {
 			if !criteria.is_relevant(&entry.metadata) {
 				return Ok(None);

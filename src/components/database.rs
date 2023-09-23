@@ -393,12 +393,12 @@ where
 }
 
 #[hook]
-pub fn use_typed_fetch_callback<Item>(
+pub fn use_typed_fetch_callback<EntryContent>(
 	task_name: String,
-	fn_item: Callback<Item>,
+	fn_item: Callback<EntryContent>,
 ) -> Callback<SourceId>
 where
-	Item: 'static + KDLNode + FromKDL + SystemComponent + Unpin,
+	EntryContent: 'static + KDLNode + FromKDL + SystemComponent + Unpin,
 	Event: 'static,
 {
 	let database = use_context::<Database>().unwrap();
@@ -408,10 +408,8 @@ where
 		let database = database.clone();
 		let system_depot = system_depot.clone();
 		let fn_item = fn_item.clone();
-		log::debug!("Fetch {:?}", source_id.to_string());
 		task_dispatch.spawn(task_name.clone(), None, async move {
-			let Some(item) = database.get_typed_entry::<Item>(source_id, system_depot, None).await? else {
-				log::debug!("failed to find entry");
+			let Some(item) = database.get_typed_entry::<EntryContent>(source_id.clone(), system_depot, None).await? else {
 				return Ok(());
 			};
 			fn_item.emit(item);

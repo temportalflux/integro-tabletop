@@ -190,7 +190,6 @@ fn BrowsedItemCard(props: &GeneralProp<ItemLocation>) -> Html {
 	let add_item = add_item.reform({
 		let id = item.id.unversioned();
 		move |container_id| {
-			log::debug!("{:?} {container_id:?}", id.to_string());
 			(id.clone(), container_id)
 		}
 	});
@@ -281,7 +280,6 @@ fn AddItemActions(
 						.wallet_mut()
 						.remove(cost, auto_exchange);
 				}
-				log::debug!("add items {:?}", items);
 				for item in items {
 					persistent.inventory.insert_to(item, &container_id);
 				}
@@ -292,7 +290,6 @@ fn AddItemActions(
 	let add_items = add_items.reform({
 		let id = id.clone();
 		move |args| {
-			log::debug!("{:?} {args:?}", id.to_string());
 			(id.clone(), args)
 		}
 	});
