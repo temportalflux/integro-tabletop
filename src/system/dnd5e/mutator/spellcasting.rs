@@ -378,7 +378,7 @@ impl FromKDL for Spellcasting {
 				let class_name = node.get_str_req("class")?.to_owned();
 				let mut spell_ids = Vec::new();
 				for s in node.query_str_all("scope() > spell", 0)? {
-					spell_ids.push(SourceId::from_str(s)?.with_basis(node.id(), false));
+					spell_ids.push(SourceId::from_str(s)?.with_relative_basis(node.id(), false));
 				}
 				Operation::AddSource {
 					class_name,
@@ -392,7 +392,7 @@ impl FromKDL for Spellcasting {
 				let mut specific_spells = Vec::new();
 				for mut node in &mut node.query_all("scope() > spell")? {
 					let id = node.next_str_req()?;
-					let id = SourceId::from_str(id)?.with_basis(node.id(), false);
+					let id = SourceId::from_str(id)?.with_relative_basis(node.id(), false);
 					let info = PreparedInfo::from_kdl(&mut node)?;
 					specific_spells.push((id, info));
 				}

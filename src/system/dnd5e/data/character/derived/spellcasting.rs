@@ -87,7 +87,7 @@ impl Spellcasting {
 	}
 
 	pub fn add_prepared(&mut self, spell_id: &SourceId, entry: SpellEntry) {
-		let spell_id = spell_id.without_basis().unversioned();
+		let spell_id = spell_id.unversioned();
 		if !self.always_prepared.contains_key(&spell_id) {
 			self.always_prepared
 				.insert(spell_id.clone(), AlwaysPreparedSpell::default());

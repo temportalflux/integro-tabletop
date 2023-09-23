@@ -1,12 +1,12 @@
 use crate::{
 	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
-	system::dnd5e::data::{
+	system::{dnd5e::data::{
 		character::Character,
 		item::{container::item::AsItem, Item, Kind},
-	},
+	}, core::SourceId},
 	utility::MutatorGroup,
 };
-use std::path::Path;
+use std::{path::Path, sync::Arc};
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct EquipableEntry {

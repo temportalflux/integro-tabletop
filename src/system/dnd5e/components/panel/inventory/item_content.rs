@@ -638,7 +638,7 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 			.spells
 			.iter()
 			.filter_map(|contained| match &contained.spell {
-				Indirect::Id(id) => Some(id.without_basis().unversioned()),
+				Indirect::Id(id) => Some(id.unversioned()),
 				Indirect::Custom(_spell) => None,
 			})
 			.collect::<Vec<_>>(),
@@ -796,7 +796,7 @@ fn ContainedSpellsSection(props: &ContainedSpellsSectionProps) -> Html {
 			let mut ordered_indices = Vec::with_capacity(spell_container.spells.len());
 			for (container_idx, contained) in spell_container.spells.iter().enumerate() {
 				let spell = match &contained.spell {
-					Indirect::Id(id) => match spells_by_id.get(&id.without_basis()) {
+					Indirect::Id(id) => match spells_by_id.get(&*id.minimal()) {
 						Some(spell) => spell,
 						None => continue,
 					},
@@ -820,7 +820,7 @@ fn ContainedSpellsSection(props: &ContainedSpellsSectionProps) -> Html {
 					attack_bonus,
 				} = contained;
 				let spell = match spell {
-					Indirect::Id(id) => match spells_by_id.get(&id.without_basis()) {
+					Indirect::Id(id) => match spells_by_id.get(&*id.minimal()) {
 						Some(spell) => spell,
 						None => return Html::default(),
 					},

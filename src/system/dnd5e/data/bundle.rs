@@ -12,7 +12,7 @@ use crate::{
 };
 use std::{
 	collections::HashMap,
-	path::{Path, PathBuf},
+	path::{Path, PathBuf}, sync::Arc,
 };
 
 #[derive(Default, Clone, PartialEq, Debug)]

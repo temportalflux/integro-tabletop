@@ -5,7 +5,7 @@ use super::{
 };
 use crate::{
 	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
-	system::dnd5e::BoxedMutator,
+	system::{dnd5e::BoxedMutator, core::SourceId},
 	utility::MutatorGroup,
 };
 use derivative::Derivative;

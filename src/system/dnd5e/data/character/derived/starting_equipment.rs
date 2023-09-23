@@ -161,7 +161,7 @@ impl FromKDL for IndirectItem {
 		match node.next_str_req()? {
 			"Specific" => {
 				let id = node.next_str_req_t::<SourceId>()?;
-				let id = id.with_basis(node.id(), false);
+				let id = id.with_relative_basis(node.id(), false);
 				let count = node.next_i64_opt()?.unwrap_or(1) as usize;
 				Ok(Self::Specific(id, count))
 			}

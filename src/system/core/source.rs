@@ -1,7 +1,8 @@
+use derivative::Derivative;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::sync::Mutex;
+use std::{path::PathBuf, sync::Arc};
 use std::str::FromStr;
-
 use crate::kdl_ext::{AsKdl, NodeBuilder};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
@@ -33,30 +34,23 @@ impl ToString for ModuleId {
 	}
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Default, Hash, PartialOrd, Ord, Derivative)]
+#[derivative(Debug, PartialEq, Eq)]
 pub struct SourceId {
 	pub module: Option<ModuleId>,
 	pub system: Option<String>,
 	pub path: PathBuf,
 	pub version: Option<String>,
 	pub node_idx: usize,
-	pub basis: Option<Box<SourceId>>,
 }
 
 impl SourceId {
-	pub fn set_basis(&mut self, other: &Self, include_version: bool) {
+	pub fn set_relative_basis(&mut self, other: &Self, include_version: bool) {
 		// Ignore any basis which is empty or is exactly equal to the current id.
 		// The latter can happen when parsing bundles from their source file for instance.
 		if other == &Self::default() || other == self {
 			return;
 		}
-		self.basis = Some(
-			match include_version {
-				true => other.clone(),
-				false => other.unversioned(),
-			}
-			.into(),
-		);
 		if self.module.is_none() {
 			self.module = other.module.clone();
 		}
@@ -68,38 +62,31 @@ impl SourceId {
 		}
 	}
 
-	pub fn relative_to_basis(&self) -> Self {
-		let mut id = self.without_basis();
-		if let Some(basis) = &self.basis {
-			if **basis != id {
-				if id.module == basis.module {
-					id.module = None;
-				}
-				if id.module.is_none() && id.system == basis.system {
-					id.system = None;
-				}
-				if id.module.is_none() && id.version == basis.version {
-					id.version = None;
-				}
-				if id.module.is_none() && id.system.is_none() {
-					if id.path == basis.path {
-						id.path = PathBuf::default();
-					}
-				}
-			}
-		}
-		id
-	}
-
-	pub fn without_basis(&self) -> Self {
-		let mut id = self.clone();
-		id.basis = None;
-		id
-	}
-
-	pub fn with_basis(mut self, other: &Self, include_version: bool) -> Self {
-		self.set_basis(other, include_version);
+	pub fn with_relative_basis(mut self, other: &Self, include_version: bool) -> Self {
+		self.set_relative_basis(other, include_version);
 		self
+	}
+
+	pub fn unversioned(&self) -> Self {
+		self.clone().into_unversioned()
+	}
+
+	pub fn into_unversioned(mut self) -> Self {
+		self.version = None;
+		self
+	}
+
+	pub fn minimal(&self) -> std::borrow::Cow<Self> {
+		if self.version.is_some() {
+			std::borrow::Cow::Owned(self.unversioned())
+		}
+		else {
+			std::borrow::Cow::Borrowed(self)
+		}
+	}
+
+	pub fn has_path(&self) -> bool {
+		!self.path.as_os_str().is_empty()
 	}
 
 	pub fn ref_id(&self) -> String {
@@ -114,28 +101,6 @@ impl SourceId {
 		let name = self.path.with_extension("").display().to_string();
 		let name = name.replace("\\", "/").replace("/", "_");
 		format!("{prefix}{name}")
-	}
-
-	pub fn unversioned(&self) -> Self {
-		self.clone().into_unversioned()
-	}
-
-	pub fn into_unversioned(mut self) -> Self {
-		self.version = None;
-		self
-	}
-
-	pub fn minimal(&self) -> std::borrow::Cow<Self> {
-		if self.basis.is_some() || self.version.is_some() {
-			std::borrow::Cow::Owned(self.without_basis().into_unversioned())
-		}
-		else {
-			std::borrow::Cow::Borrowed(self)
-		}
-	}
-
-	pub fn has_path(&self) -> bool {
-		!self.path.as_os_str().is_empty()
 	}
 }
 
@@ -228,7 +193,6 @@ impl FromStr for SourceId {
 			path,
 			version,
 			node_idx,
-			basis: None,
 		})
 	}
 }
@@ -236,11 +200,8 @@ impl FromStr for SourceId {
 impl AsKdl for SourceId {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
-		let baseless = self.relative_to_basis();
-		// TODO: Baseless must then be reformatted to be relative to whatever the current module is.
-		// That requires that as_kdl know the context of the current module.
-		if baseless != Self::default() {
-			let as_str = baseless.to_string();
+		if *self != Self::default() {
+			let as_str = self.to_string();
 			if !as_str.is_empty() {
 				node.push_entry(as_str);
 			}
@@ -283,7 +244,6 @@ mod test {
 				path: "items/trinket.kdl".into(),
 				version: None,
 				node_idx: 0,
-				basis: None,
 			}
 		);
 		Ok(())
@@ -303,7 +263,6 @@ mod test {
 				path: "items/trinket.kdl".into(),
 				version: None,
 				node_idx: 32,
-				basis: None,
 			}
 		);
 		Ok(())
@@ -319,7 +278,6 @@ mod test {
 			path: "items/trinket.kdl".into(),
 			version: None,
 			node_idx: 0,
-			basis: None,
 		};
 		assert_eq!(
 			source.to_string(),
@@ -342,7 +300,6 @@ mod test {
 				path: "items/trinket.kdl".into(),
 				version: Some("4b37d0e2a".into()),
 				node_idx: 5,
-				basis: None,
 			}
 		);
 		Ok(())
@@ -359,7 +316,6 @@ mod test {
 			path: "items/trinket.kdl".into(),
 			version: Some("4b37d0e2a".into()),
 			node_idx: 7,
-			basis: None,
 		};
 		assert_eq!(
 			source.to_string(),
@@ -375,7 +331,6 @@ mod test {
 			path: "items/trinket.kdl".into(),
 			version: None,
 			node_idx: 0,
-			basis: None,
 		};
 		assert_eq!(source.to_string(), "items/trinket.kdl");
 	}
@@ -385,10 +340,9 @@ mod test {
 		let basis =
 			SourceId::from_str("local://module-name@mysystem/item/gear.kdl?version=e812da2c")?;
 		let mut relative = SourceId::from_str("feat/initiate.kdl")?;
-		relative.set_basis(&basis, true);
+		relative.set_relative_basis(&basis, true);
 		let mut expected =
 			SourceId::from_str("local://module-name@mysystem/feat/initiate.kdl?version=e812da2c")?;
-		expected.basis = Some(basis.into());
 		assert_eq!(relative, expected);
 		Ok(())
 	}

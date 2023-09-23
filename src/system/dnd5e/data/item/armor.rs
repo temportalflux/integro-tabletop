@@ -1,13 +1,13 @@
 use crate::{
 	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
-	system::dnd5e::{
+	system::{dnd5e::{
 		data::{character::Character, ArmorClassFormula},
 		mutator::ArmorStrengthRequirement,
-	},
+	}, core::SourceId},
 	utility::{InvalidEnumStr, MutatorGroup},
 };
 use enumset::EnumSetType;
-use std::{path::Path, str::FromStr};
+use std::{path::Path, str::FromStr, sync::Arc};
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Armor {

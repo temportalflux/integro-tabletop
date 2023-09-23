@@ -1,13 +1,13 @@
 use crate::{
 	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
-	system::dnd5e::data::{
+	system::{dnd5e::data::{
 		character::Character,
 		currency::Wallet,
 		item::{Item, Restriction},
-	},
+	}, core::SourceId},
 	utility::MutatorGroup,
 };
-use std::{collections::HashMap, path::Path};
+use std::{collections::HashMap, path::Path, sync::Arc};
 use uuid::Uuid;
 
 mod as_item;

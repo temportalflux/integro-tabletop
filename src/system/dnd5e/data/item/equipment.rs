@@ -1,10 +1,10 @@
 use super::{armor::Armor, weapon::Weapon};
 use crate::{
 	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
-	system::dnd5e::{data::character::Character, BoxedCriteria, BoxedMutator},
+	system::{dnd5e::{data::character::Character, BoxedCriteria, BoxedMutator}, core::SourceId},
 	utility::MutatorGroup,
 };
-use std::path::Path;
+use std::{path::Path, sync::Arc};
 
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct Equipment {

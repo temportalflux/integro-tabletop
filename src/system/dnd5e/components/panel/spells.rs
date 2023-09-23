@@ -286,7 +286,7 @@ impl<'c> SpellSections<'c> {
 			}
 			for contained_spell in &spell_container.spells {
 				for (caster_id, spell_entry) in &prepare_from_item_casters {
-					let spell_id = contained_spell.spell_id().without_basis().unversioned();
+					let spell_id = contained_spell.spell_id().unversioned();
 					if let Some(spell) = state
 						.spellcasting()
 						.get_ritual_spell_for(caster_id, &spell_id)

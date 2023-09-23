@@ -431,6 +431,10 @@ impl Conditions {
 		self.by_id.values().chain(self.custom.iter())
 	}
 
+	pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Condition> {
+		self.by_id.values_mut().chain(self.custom.iter_mut())
+	}
+
 	pub fn iter_keyed(&self) -> impl Iterator<Item = (IdOrIndex, &Condition)> {
 		let ids = self
 			.by_id

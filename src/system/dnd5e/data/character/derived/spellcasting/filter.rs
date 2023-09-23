@@ -38,7 +38,7 @@ impl Filter {
 
 		let mut has_any_tag_or_additional_id = false;
 		if !self.additional_ids.is_empty() {
-			let minimal_id = spell.id.without_basis().unversioned();
+			let minimal_id = spell.id.unversioned();
 			if self.additional_ids.contains(&minimal_id) {
 				has_any_tag_or_additional_id = true;
 			}

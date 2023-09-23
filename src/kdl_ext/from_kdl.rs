@@ -399,9 +399,9 @@ impl<'doc> NodeReader<'doc> {
 	pub fn query_source_opt(&self) -> anyhow::Result<Option<SourceId>> {
 		match self.query_str_opt("scope() > source", 0)? {
 			Some(id_str) => Ok(Some(
-				SourceId::from_str(id_str)?.with_basis(self.id(), true),
+				SourceId::from_str(id_str)?.with_relative_basis(self.id(), true),
 			)),
-			None if self.is_root => Ok(Some(self.id().clone().with_basis(self.id(), true))),
+			None if self.is_root => Ok(Some(self.id().clone().with_relative_basis(self.id(), true))),
 			None => Ok(None),
 		}
 	}
