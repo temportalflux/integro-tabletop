@@ -43,10 +43,10 @@ pub struct InventoryItemProps {
 pub fn Inventory() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let open_browser = context_menu::use_control_action({
-		|_| context_menu::Action::open_root("Item Browser", html!(<BrowseModal />))
+		|_, context| context_menu::Action::open_root("Item Browser", html!(<BrowseModal />))
 	});
 	let open_starting_equipment = context_menu::use_control_action({
-		|_| {
+		|_, context| {
 			context_menu::Action::open_root(
 				"Starting Equipment",
 				html!(<BrowseStartingEquipment />),
@@ -54,9 +54,21 @@ pub fn Inventory() -> Html {
 		}
 	});
 
+	let search_header = html! {
+		<div class="input-group mt-2">
+			<span class="input-group-text"><i class="bi bi-search"/></span>
+			<input
+				type="text" class="form-control"
+				placeholder="Search item names, types, rarities, or tags"
+			/>
+			<button type="button" class="btn btn-outline-theme" onclick={open_browser}>{"Browse Items"}</button>
+		</div>
+	};
+
 	if state.inventory().is_empty() {
 		return html! {
 			<div class="panel inventory">
+				{search_header}
 				<div class="empty-prompt">
 					<div class="text">{"Your inventory is empty. Do you want to select starting equipment?"}</div>
 					<button type="button" class="btn btn-sm btn-theme mt-2" onclick={open_starting_equipment}>{"Add Starting Equipment"}</button>
@@ -75,14 +87,7 @@ pub fn Inventory() -> Html {
 		.collect::<Vec<_>>();
 	html! {
 		<div class="panel inventory">
-			<div class="input-group mt-2">
-				<span class="input-group-text"><i class="bi bi-search"/></span>
-				<input
-					type="text" class="form-control"
-					placeholder="Search item names, types, rarities, or tags"
-				/>
-				<button type="button" class="btn btn-outline-theme" onclick={open_browser}>{"Browse Items"}</button>
-			</div>
+			{search_header}
 			<div class="sections">
 				<ContainerSection container_id={None} />
 				{containers}
@@ -186,14 +191,16 @@ fn BrowseStartingEquipment() -> Html {
 	let mut sections = Vec::with_capacity(state.starting_equipment().len());
 	for (options, source) in state.starting_equipment() {
 		sections.push(html! {
-			<>
-				<div class="section-name">
+			<div class="section-group">
+				<h4 class="title">
 					{crate::data::as_feature_path_text(source)}
-				</div>
-				{options.iter().map(|group| html!(<StartingEquipmentSection value={group.clone()} />)).collect::<Vec<_>>()}
-			</>
+				</h4>
+				{options.iter().map(|group| html!(<Section kind={group.clone()} />)).collect::<Vec<_>>()}
+			</div>
 		});
 	}
+
+	// TODO: Needs a button to confirm, apply items, and close panel
 
 	html! {
 		<div class="starting-equipment">
@@ -202,44 +209,96 @@ fn BrowseStartingEquipment() -> Html {
 	}
 }
 
+#[derive(Clone, PartialEq, Properties)]
+struct SectionProps {
+	kind: StartingEquipment,
+	#[prop_or_default]
+	prefix: Html,
+	#[prop_or_default]
+	disabled: bool,
+}
+
 #[function_component]
-fn StartingEquipmentSection(GeneralProp { value }: &GeneralProp<StartingEquipment>) -> Html {
-	let content = match value {
-		StartingEquipment::Currency(wallet) => html! {
-			<div class="currency">
+fn Section(SectionProps { kind, prefix, disabled }: &SectionProps) -> Html {
+	// TODO: propogate disabled status for when an option in a group is not active
+	let content = match kind {
+		StartingEquipment::Currency(wallet) => html! {<>
+			<div class="label">
+				{prefix.clone()}
+				<span>{"Get Currency"}</span>
+			</div>
+			<div class="wallet">
 				<WalletInline wallet={*wallet} />
 			</div>
-		},
+		</>},
 		StartingEquipment::IndirectItem(IndirectItem::Specific(id, quantity)) => {
-			html!(<StartingEquipmentSpecific value={(id.minimal().into_owned(), *quantity)} />)
+			html!(<ItemById
+				id={id.minimal().into_owned()} quantity={*quantity}
+				prefix={prefix.clone()} disabled={*disabled}
+			/>)
 		},
 		StartingEquipment::IndirectItem(IndirectItem::Custom(item)) => {
-			// TODO: Display item as an expandable card
-			html!({&item.name})
+			html!(<SpecificItem
+				item={std::rc::Rc::new(item.clone())} quantity={1}
+				prefix={prefix.clone()} disabled={*disabled}
+			/>)
 		},
 		StartingEquipment::Group { entries, pick } => {
-			// TODO: label indicating how many to select
 			// TODO: checkbox next to each section (disabled if maxed, autoclear old if pick is 1)
-			html!(format!("Group: x{pick:?} {entries:?}"))
+			// TODO: Pick should always be a number, never none
+			let checkbox = html!(<input type="checkbox" class="form-check-input slot missing-value" />);
+			html! {<>
+				<div class="label">
+					{prefix.clone()}
+					<span>{format!("Pick {} of", pick.unwrap_or(1))}</span>
+				</div>
+				<div class="group">
+					{entries.iter().map(|group_option| {
+						html!(<Section kind={group_option.clone()} prefix={checkbox.clone()} disabled={true} />)
+					}).collect::<Vec<_>>()}
+				</div>
+			</>}
 		}
 		StartingEquipment::SelectItem(filter) => {
-			// dropdown to show all items which match the filter
-			// display item card when any are selected
-			html!(format!("Select: {filter:?}"))
+			// TODO: dropdown to show all items which match the filter
+			// TODO: display item card when any are selected
+			html! {<>
+				<div class="label">
+					{prefix.clone()}
+					<span>{"Select an item"}</span>
+				</div>
+				<div class="select-item">
+					<select class="form-select missing-value" disabled={*disabled}>
+						<option selected={true}>{"Select Item..."}</option>
+						<option value="id1">{"Item 1"}</option>
+						<option value="id2">{"Item 2"}</option>
+						<option value="id3">{"Item 3"}</option>
+					</select>
+				</div>
+			</>}
 		}
 	};
 	html!(<div class="section">{content}</div>)
 }
 
+#[derive(Clone, PartialEq, Properties)]
+struct ItemByIdProps {
+	id: SourceId,
+	quantity: usize,
+	#[prop_or_default]
+	prefix: Html,
+	#[prop_or_default]
+	disabled: bool,
+}
 #[function_component]
-fn StartingEquipmentSpecific(GeneralProp { value: (id, quantity) }: &GeneralProp<(SourceId, usize)>) -> Html {
-	let found_item = use_state(|| None::<Item>);
+fn ItemById(ItemByIdProps { id, quantity, prefix, disabled }: &ItemByIdProps) -> Html {
+	let found_item = use_state(|| None::<std::rc::Rc<Item>>);
 	let fetch_item = use_typed_fetch_callback(
 		"Fetch Item".into(),
 		Callback::from({
 			let found_item = found_item.clone();
 			move |item: Item| {
-				found_item.set(Some(item));
+				found_item.set(Some(std::rc::Rc::new(item)));
 			}
 		}),
 	);
@@ -249,8 +308,64 @@ fn StartingEquipmentSpecific(GeneralProp { value: (id, quantity) }: &GeneralProp
 	let Some(item) = &*found_item else {
 		return html!(<Spinner />);
 	};
+	html!(<SpecificItem item={item.clone()} quantity={*quantity} prefix={prefix.clone()} disabled={*disabled} />)
+}
 
-	// TODO: Display starting-equipment quantity
-	// TODO: Display item as an expandable card
-	html!({&item.name})
+#[derive(Clone, PartialEq, Properties)]
+struct SpecificItemProps {
+	item: std::rc::Rc<Item>,
+	quantity: usize,
+	#[prop_or_default]
+	prefix: Html,
+	#[prop_or_default]
+	disabled: bool,
+}
+#[function_component]
+fn SpecificItem(SpecificItemProps { item, quantity, prefix, disabled }: &SpecificItemProps) -> Html {
+	html! {<>
+		<div class="label">
+			{prefix.clone()}
+			<span>
+				{"Get Item"}
+				{(*quantity > 1).then(|| html!(format!(" (x{quantity})"))).unwrap_or_default()}
+			</span>
+		</div>
+		<div class="specific-item">
+			<ItemCard item={item.clone()} disabled={*disabled} />
+		</div>
+	</>}
+}
+
+#[derive(Clone, PartialEq, Properties)]
+struct ItemCardProps {
+	item: std::rc::Rc<Item>,
+	#[prop_or_default]
+	disabled: bool,
+}
+
+#[function_component]
+fn ItemCard(ItemCardProps { item, disabled }: &ItemCardProps) -> Html {
+	let onclick = context_menu::use_control_action({
+		let item = item.clone();
+		move |_, context| context_menu::Action::open(
+			&context,
+			item.name.clone(),
+			html!(<ItemInfo item={item.clone()} />),
+		)
+	});
+	let mut classes = classes!("card", "item");
+	if *disabled {
+		classes.push("disabled");
+	}
+
+	html! {
+		<div class={classes} {onclick}>
+			<div class="card-body">
+				<p class="card-title">{&item.name}</p>
+				<button class="btn btn-theme btn-xs">
+					<i class="bi bi-chevron-right" />
+				</button>
+			</div>
+		</div>
+	}
 }

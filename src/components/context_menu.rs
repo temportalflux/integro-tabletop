@@ -48,6 +48,13 @@ pub enum Action {
 }
 
 impl Action {
+	pub fn open(context: &Option<ActiveContext>, display_name: impl Into<AttrValue>, html: impl Into<Html>) -> Self {
+		match context {
+			None => Self::open_root(display_name, html),
+			Some(_) => Self::open_child(display_name, html),
+		}
+	}
+
 	pub fn open_root(display_name: impl Into<AttrValue>, html: impl Into<Html>) -> Self {
 		Self::OpenRoot(Item::new(display_name, html))
 	}
@@ -141,11 +148,15 @@ pub fn Provider(props: &ChildrenProps) -> Html {
 #[hook]
 pub fn use_control_action<F, FnIn>(callback: F) -> Callback<FnIn, ()>
 where
-	F: Fn(FnIn) -> Action + 'static,
+	F: Fn(FnIn, Option<ActiveContext>) -> Action + 'static,
 {
 	let control = use_context::<Control>().unwrap();
-	Callback::from(move |arg: FnIn| {
-		control.0.dispatch(callback(arg));
+	let active_details = use_context::<ActiveContext>();
+	Callback::from({
+		let active_details = active_details.clone();
+		move |arg: FnIn| {
+			control.0.dispatch(callback(arg, active_details.clone()));
+		}
 	})
 }
 

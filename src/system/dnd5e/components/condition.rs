@@ -23,7 +23,7 @@ use yew::prelude::*;
 pub fn ConditionsCard() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let onclick = context_menu::use_control_action({
-		|_| context_menu::Action::open_root("Conditions", html!(<Modal />))
+		|_, context| context_menu::Action::open_root("Conditions", html!(<Modal />))
 	});
 	let conditions = state
 		.persistent()

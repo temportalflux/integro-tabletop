@@ -12,7 +12,7 @@ pub fn Proficiencies() -> Html {
 	let proficiencies = state.other_proficiencies();
 	let onclick = context_menu::use_control_action({
 		let state = state.clone();
-		move |_| {
+		move |_, context| {
 			let proficiencies = state.other_proficiencies();
 			context_menu::Action::open_root(
 				"General Proficiencies",

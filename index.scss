@@ -848,3 +848,88 @@ $Pages: Abilities, Attributes, Features, Spells, Inventory, Description;
 	--tick-scale-y: 2.5;
 	--bar-color: var(--theme-frame-color);
 }
+
+.context-menu .starting-equipment {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: wrap;
+
+	> .section-group {
+		margin-right: 1.0rem;
+		margin-bottom: 1.0rem;
+	}
+	.section {
+		display: flex;
+		flex-direction: column;
+		margin: 0.5rem 0 0.5rem 0.75rem;
+
+		> .label {
+			display: flex;
+			flex-direction: row;
+			margin-bottom: 0.25rem;
+			> input[type="checkbox"] {
+				margin-right: 0.5rem;
+			}
+		}
+		
+		.group {
+			display: flex;
+			flex-direction: row;
+			flex-wrap: wrap;
+			margin: 0 0 0 0.75rem;
+
+			> .section {
+				margin: 0 0.25rem 0.25rem 0.25rem;
+			}
+		}
+		.select-item {
+			display: flex;
+			flex-direction: row;
+			> select {
+				width: auto;
+			}
+		}
+
+		.wallet > span {
+			font-size: 1.25rem;
+			> .glyph.currency {
+				width: 25px;
+				height: 25px;
+				margin-bottom: -6px;
+			}
+		}
+		.specific-item {
+			display: flex;
+			
+			> .card.item.disabled {
+				background-color: var(--bs-secondary-bg);
+			}
+			> .card.item > .card-body {
+				display: flex;
+				padding: 0.5rem;
+				
+				> .card-title {
+					margin: 0;
+				}
+	
+				> .btn:has(> .bi-chevron-right) {
+					margin-left: 0.5rem;
+				}
+			}
+			> .card.item:hover > .card-body {
+				> .btn:has(> .bi-chevron-right) {
+					color: var(--bs-btn-hover-color);
+					background-color: var(--bs-btn-hover-bg);
+					border-color: var(--bs-btn-hover-border-color);
+				}
+			}
+			> .card.item:active > .card-body {
+				> .btn:has(> .bi-chevron-right) {
+					color: var(--bs-btn-active-color);
+					background-color: var(--bs-btn-active-bg);
+					border-color: var(--bs-btn-active-border-color);
+				}
+			}
+		}
+	}
+}

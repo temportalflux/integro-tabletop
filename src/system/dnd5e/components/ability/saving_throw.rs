@@ -80,7 +80,7 @@ pub fn SavingThrow(
 #[function_component]
 pub fn SavingThrowContainer() -> Html {
 	let on_click = context_menu::use_control_action({
-		|_| context_menu::Action::open_root("Saving Throws", html!(<Modal />))
+		|_, context| context_menu::Action::open_root("Saving Throws", html!(<Modal />))
 	});
 
 	html! {

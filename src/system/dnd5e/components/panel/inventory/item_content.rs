@@ -87,9 +87,12 @@ impl ItemLocation {
 	}
 }
 
-#[derive(Clone, PartialEq, Properties)]
+#[derive(Clone, PartialEq, Properties, Default)]
 pub struct ItemBodyProps {
-	pub location: ItemLocation,
+	#[prop_or_default]
+	pub location: Option<ItemLocation>,
+	#[prop_or_default]
+	pub item: Option<std::rc::Rc<Item>>,
 	#[prop_or_default]
 	pub on_quantity_changed: Option<Callback<u32>>,
 	#[prop_or_default]
@@ -102,7 +105,14 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let context_menu = use_context::<context_menu::Control>().unwrap();
 
-	let Some(item) = props.location.resolve(&state) else { return Html::default(); };
+	let item_opt = match &props.location {
+		None => props.item.as_ref().map(|item| &**item),
+		Some(location) => location.resolve(&state),
+	};
+	let item = match item_opt {
+		Some(item) => item,
+		None => return Html::default(),
+	};
 
 	let mut sections = Vec::new();
 	if IsProficientWith::Tool(item.name.clone()).evaluate(&state) {
@@ -552,8 +562,9 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 		}
 
 		let browse = match &props.location {
-			ItemLocation::Database { .. } => html!(),
-			ItemLocation::Inventory { id_path } => {
+			None => html!(),
+			Some(ItemLocation::Database { .. }) => html!(),
+			Some(ItemLocation::Inventory { id_path }) => {
 				let onclick = Callback::from({
 					let context_menu = context_menu.clone();
 					let id_path = id_path.clone();

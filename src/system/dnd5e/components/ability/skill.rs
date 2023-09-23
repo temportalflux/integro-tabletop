@@ -225,7 +225,7 @@ fn Row(
 
 	let onclick = context_menu::use_control_action({
 		let skill = *skill;
-		move |_| {
+		move |_, context| {
 			context_menu::Action::open_root(
 				format!("{} ({})", skill.display_name(), skill.ability().long_name()),
 				html!(<SkillModal {skill} />),

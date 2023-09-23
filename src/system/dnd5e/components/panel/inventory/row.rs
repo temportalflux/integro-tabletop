@@ -33,7 +33,7 @@ pub fn ItemRow(
 	let open_modal = context_menu::use_control_action({
 		let id_path = id_path.clone();
 		let name = AttrValue::from(item.name.clone());
-		move |_| {
+		move |_, context| {
 			context_menu::Action::open_root(
 				name.clone(),
 				html!(<ItemModal id_path={id_path.clone()} />),
@@ -90,12 +90,10 @@ pub fn ItemModal(InventoryItemProps { id_path }: &InventoryItemProps) -> Html {
 		}
 	});
 	let mut item_props = ItemBodyProps {
-		location: ItemLocation::Inventory {
+		location: Some(ItemLocation::Inventory {
 			id_path: id_path.clone(),
-		},
-		on_quantity_changed: None,
-		is_equipped: false,
-		set_equipped: None,
+		}),
+		..Default::default()
 	};
 	match &item.kind {
 		item::Kind::Simple { .. } => {

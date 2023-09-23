@@ -91,7 +91,7 @@ pub fn SpeedAndSenses() -> Html {
 	};
 
 	let onclick = context_menu::use_control_action({
-		move |_| context_menu::Action::open_root(format!("Speeds & Senses"), html!(<Modal />))
+		move |_, context| context_menu::Action::open_root(format!("Speeds & Senses"), html!(<Modal />))
 	});
 
 	html! {

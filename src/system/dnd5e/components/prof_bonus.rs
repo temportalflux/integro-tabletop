@@ -31,7 +31,7 @@ If a feature or effect allows you to do so, these same rules apply.";
 pub fn ProfBonus() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let on_click = context_menu::use_control_action({
-		move |_| {
+		move |_, context| {
 			context_menu::Action::open_root(
 				format!("Proficiency Bonus"),
 				html! {<>
