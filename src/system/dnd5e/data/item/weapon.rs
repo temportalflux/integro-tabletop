@@ -13,6 +13,7 @@ use crate::{
 		Value,
 	},
 };
+use std::collections::HashMap;
 
 mod damage;
 pub use damage::*;
@@ -33,6 +34,19 @@ pub struct Weapon {
 }
 
 impl Weapon {
+	pub fn to_metadata(self) -> serde_json::Value {
+		let mut contents: HashMap<&'static str, serde_json::Value> =
+			[("kind", self.kind.to_string().into())].into();
+		if !self.classification.is_empty() {
+			contents.insert("classification", self.classification.into());
+		}
+		if let Some(damage) = self.damage {
+			contents.insert("damage_type", damage.damage_type.to_string().into());
+		}
+		contents.insert("has_range", self.range.is_some().into());
+		serde_json::json!(contents)
+	}
+
 	pub fn melee_reach(&self) -> Option<u32> {
 		match &self.range {
 			None => {

@@ -1,9 +1,12 @@
 use crate::{
 	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
-	system::{dnd5e::{
-		data::{character::Character, ArmorClassFormula},
-		mutator::ArmorStrengthRequirement,
-	}, core::SourceId},
+	system::{
+		core::SourceId,
+		dnd5e::{
+			data::{character::Character, ArmorClassFormula},
+			mutator::ArmorStrengthRequirement,
+		},
+	},
 	utility::{InvalidEnumStr, MutatorGroup},
 };
 use enumset::EnumSetType;

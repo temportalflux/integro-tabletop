@@ -1,9 +1,12 @@
 use crate::{
 	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
-	system::{dnd5e::data::{
-		character::Character,
-		item::{container::item::AsItem, Item, Kind},
-	}, core::SourceId},
+	system::{
+		core::SourceId,
+		dnd5e::data::{
+			character::Character,
+			item::{container::item::AsItem, Item, Kind},
+		},
+	},
 	utility::MutatorGroup,
 };
 use std::{path::Path, sync::Arc};

@@ -1,10 +1,13 @@
 use crate::{
 	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
-	system::{dnd5e::data::{
-		character::Character,
-		currency::Wallet,
-		item::{Item, Restriction},
-	}, core::SourceId},
+	system::{
+		core::SourceId,
+		dnd5e::data::{
+			character::Character,
+			currency::Wallet,
+			item::{Item, Restriction},
+		},
+	},
 	utility::MutatorGroup,
 };
 use std::{collections::HashMap, path::Path, sync::Arc};
@@ -207,7 +210,7 @@ impl<T: AsItem + FromKDL> FromKDL for ItemContainer<T> {
 			Some(node) => {
 				let tags = node.query_str_all("scope() > tag", 0)?;
 				let tags = tags.into_iter().map(str::to_owned).collect::<Vec<_>>();
-				Some(Restriction { tags })
+				Some(Restriction { tags, weapon: None })
 			}
 			None => None,
 		};

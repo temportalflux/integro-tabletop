@@ -1,9 +1,9 @@
+use crate::kdl_ext::{AsKdl, NodeBuilder};
 use derivative::Derivative;
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 use std::sync::Mutex;
 use std::{path::PathBuf, sync::Arc};
-use std::str::FromStr;
-use crate::kdl_ext::{AsKdl, NodeBuilder};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum ModuleId {
@@ -79,8 +79,7 @@ impl SourceId {
 	pub fn minimal(&self) -> std::borrow::Cow<Self> {
 		if self.version.is_some() {
 			std::borrow::Cow::Owned(self.unversioned())
-		}
-		else {
+		} else {
 			std::borrow::Cow::Borrowed(self)
 		}
 	}

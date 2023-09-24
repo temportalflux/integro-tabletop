@@ -1,10 +1,10 @@
 use super::{armor::Armor, weapon::Weapon};
 use crate::{
 	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
-	system::{dnd5e::{data::character::Character, BoxedCriteria, BoxedMutator}, core::SourceId},
+	system::dnd5e::{data::character::Character, BoxedCriteria, BoxedMutator},
 	utility::MutatorGroup,
 };
-use std::{path::Path, sync::Arc};
+use std::{collections::HashMap, path::Path};
 
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct Equipment {
@@ -50,6 +50,14 @@ impl MutatorGroup for Equipment {
 }
 
 impl Equipment {
+	pub fn to_metadata(self) -> serde_json::Value {
+		let mut contents: HashMap<&'static str, serde_json::Value> = [].into();
+		if let Some(weapon) = self.weapon {
+			contents.insert("weapon", weapon.to_metadata());
+		}
+		serde_json::json!(contents)
+	}
+
 	/// Returs Ok if the item can currently be equipped, otherwise returns a user-displayable reason why it cannot be equipped.
 	pub fn can_be_equipped(&self, state: &Character) -> Result<(), String> {
 		match &self.criteria {

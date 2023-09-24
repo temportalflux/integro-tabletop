@@ -48,7 +48,11 @@ pub enum Action {
 }
 
 impl Action {
-	pub fn open(context: &Option<ActiveContext>, display_name: impl Into<AttrValue>, html: impl Into<Html>) -> Self {
+	pub fn open(
+		context: &Option<ActiveContext>,
+		display_name: impl Into<AttrValue>,
+		html: impl Into<Html>,
+	) -> Self {
 		match context {
 			None => Self::open_root(display_name, html),
 			Some(_) => Self::open_child(display_name, html),

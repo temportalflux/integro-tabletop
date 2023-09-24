@@ -9,13 +9,15 @@ use crate::{
 		},
 	},
 };
-use std::str::FromStr;
+use std::{collections::HashMap, str::FromStr};
 
 mod kind;
 pub use kind::*;
 pub mod armor;
 pub mod container;
 pub mod equipment;
+pub mod restriction;
+pub use restriction::Restriction;
 pub mod weapon;
 
 #[derive(Clone, PartialEq, Default, Debug)]
@@ -106,9 +108,12 @@ impl Item {
 
 impl SystemComponent for Item {
 	fn to_metadata(self) -> serde_json::Value {
-		serde_json::json!({
-			"name": self.name.clone(),
-		})
+		let mut contents: HashMap<&'static str, serde_json::Value> =
+			[("name", self.name.into()), ("tags", self.tags.into())].into();
+		if let Kind::Equipment(equipment) = self.kind {
+			contents.insert("equipment", equipment.to_metadata());
+		}
+		serde_json::json!(contents)
 	}
 }
 
@@ -232,11 +237,6 @@ impl AsKdl for Item {
 
 		node
 	}
-}
-
-#[derive(Clone, Default, PartialEq, Debug)]
-pub struct Restriction {
-	pub tags: Vec<String>,
 }
 
 #[cfg(test)]

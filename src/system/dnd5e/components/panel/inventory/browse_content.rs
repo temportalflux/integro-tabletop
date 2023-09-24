@@ -189,9 +189,7 @@ fn BrowsedItemCard(props: &GeneralProp<ItemLocation>) -> Html {
 	);
 	let add_item = add_item.reform({
 		let id = item.id.unversioned();
-		move |container_id| {
-			(id.clone(), container_id)
-		}
+		move |container_id| (id.clone(), container_id)
 	});
 
 	let card_id = format!(
@@ -289,9 +287,7 @@ fn AddItemActions(
 	);
 	let add_items = add_items.reform({
 		let id = id.clone();
-		move |args| {
-			(id.clone(), args)
-		}
+		move |args| (id.clone(), args)
 	});
 
 	let section_add_amt = match batch_size {

@@ -50,9 +50,9 @@ mod test {
 				core::SourceId,
 				dnd5e::{
 					data::{
-						character::{IndirectItem, ItemFilter, WeaponFilter},
+						character::IndirectItem,
 						currency::{self, Wallet},
-						item::{weapon, Item},
+						item::{restriction, weapon, Item, Restriction},
 					},
 					mutator::test::test_utils,
 				},
@@ -120,7 +120,7 @@ mod test {
 				|    }
 				|}
 			";
-			let data = AddStartingEquipment(vec![StartingEquipment::SelectItem(ItemFilter {
+			let data = AddStartingEquipment(vec![StartingEquipment::SelectItem(Restriction {
 				tags: vec!["Arcane Focus".into()],
 				..Default::default()
 			})]);
@@ -138,8 +138,8 @@ mod test {
 				|    }
 				|}
 			";
-			let data = AddStartingEquipment(vec![StartingEquipment::SelectItem(ItemFilter {
-				weapon: Some(WeaponFilter {
+			let data = AddStartingEquipment(vec![StartingEquipment::SelectItem(Restriction {
+				weapon: Some(restriction::Weapon {
 					kind: Some(weapon::Kind::Simple),
 					..Default::default()
 				}),
@@ -159,8 +159,8 @@ mod test {
 				|    }
 				|}
 			";
-			let data = AddStartingEquipment(vec![StartingEquipment::SelectItem(ItemFilter {
-				weapon: Some(WeaponFilter {
+			let data = AddStartingEquipment(vec![StartingEquipment::SelectItem(Restriction {
+				weapon: Some(restriction::Weapon {
 					kind: Some(weapon::Kind::Martial),
 					has_melee: Some(true),
 					..Default::default()

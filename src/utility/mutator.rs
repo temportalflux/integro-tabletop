@@ -1,7 +1,7 @@
 use super::{AsTraitEq, Dependencies, TraitEq};
 use crate::{
 	kdl_ext::{AsKdl, KDLNode},
-	system::{dnd5e::data::description, core::SourceId},
+	system::{core::SourceId, dnd5e::data::description},
 };
 use std::{fmt::Debug, path::Path, sync::Arc};
 
@@ -63,9 +63,9 @@ impl<T> std::ops::Deref for GenericMutator<T> {
 	}
 }
 impl<T> std::ops::DerefMut for GenericMutator<T> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-			&mut self.0
-    }
+	fn deref_mut(&mut self) -> &mut Self::Target {
+		&mut self.0
+	}
 }
 
 impl<T> std::fmt::Debug for GenericMutator<T> {

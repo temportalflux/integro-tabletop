@@ -1,19 +1,23 @@
-use std::collections::HashMap;
-
 use crate::{
-	components::{context_menu, database::use_typed_fetch_callback, Spinner},
+	components::{
+		context_menu,
+		database::{use_query_all_typed, use_typed_fetch_callback, QueryAllArgs, QueryStatus},
+		Spinner,
+	},
 	page::characters::sheet::CharacterHandle,
 	system::{
-		core::SourceId,
+		core::{SourceId, System},
 		dnd5e::{
-			components::{GeneralProp, WalletInline, WalletInlineButton},
+			components::{WalletInline, WalletInlineButton},
 			data::{
 				character::{IndirectItem, StartingEquipment},
-				item::{container::item::AsItem, Item},
+				item::{self, container::item::AsItem, Item},
 			},
 		},
 	},
+	utility::InputExt,
 };
+use std::rc::Rc;
 use uuid::Uuid;
 use yew::prelude::*;
 
@@ -43,10 +47,10 @@ pub struct InventoryItemProps {
 pub fn Inventory() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let open_browser = context_menu::use_control_action({
-		|_, context| context_menu::Action::open_root("Item Browser", html!(<BrowseModal />))
+		|_, _context| context_menu::Action::open_root("Item Browser", html!(<BrowseModal />))
 	});
 	let open_starting_equipment = context_menu::use_control_action({
-		|_, context| {
+		|_, _context| {
 			context_menu::Action::open_root(
 				"Starting Equipment",
 				html!(<BrowseStartingEquipment />),
@@ -219,7 +223,13 @@ struct SectionProps {
 }
 
 #[function_component]
-fn Section(SectionProps { kind, prefix, disabled }: &SectionProps) -> Html {
+fn Section(
+	SectionProps {
+		kind,
+		prefix,
+		disabled,
+	}: &SectionProps,
+) -> Html {
 	// TODO: propogate disabled status for when an option in a group is not active
 	let content = match kind {
 		StartingEquipment::Currency(wallet) => html! {<>
@@ -236,17 +246,18 @@ fn Section(SectionProps { kind, prefix, disabled }: &SectionProps) -> Html {
 				id={id.minimal().into_owned()} quantity={*quantity}
 				prefix={prefix.clone()} disabled={*disabled}
 			/>)
-		},
+		}
 		StartingEquipment::IndirectItem(IndirectItem::Custom(item)) => {
 			html!(<SpecificItem
 				item={std::rc::Rc::new(item.clone())} quantity={1}
 				prefix={prefix.clone()} disabled={*disabled}
 			/>)
-		},
+		}
 		StartingEquipment::Group { entries, pick } => {
 			// TODO: checkbox next to each section (disabled if maxed, autoclear old if pick is 1)
 			// TODO: Pick should always be a number, never none
-			let checkbox = html!(<input type="checkbox" class="form-check-input slot missing-value" />);
+			let checkbox =
+				html!(<input type="checkbox" class="form-check-input slot missing-value" />);
 			html! {<>
 				<div class="label">
 					{prefix.clone()}
@@ -260,22 +271,10 @@ fn Section(SectionProps { kind, prefix, disabled }: &SectionProps) -> Html {
 			</>}
 		}
 		StartingEquipment::SelectItem(filter) => {
-			// TODO: dropdown to show all items which match the filter
-			// TODO: display item card when any are selected
-			html! {<>
-				<div class="label">
-					{prefix.clone()}
-					<span>{"Select an item"}</span>
-				</div>
-				<div class="select-item">
-					<select class="form-select missing-value" disabled={*disabled}>
-						<option selected={true}>{"Select Item..."}</option>
-						<option value="id1">{"Item 1"}</option>
-						<option value="id2">{"Item 2"}</option>
-						<option value="id3">{"Item 3"}</option>
-					</select>
-				</div>
-			</>}
+			html!(<SelectItem
+				filter={filter.clone()}
+				prefix={prefix.clone()} disabled={*disabled}
+			/>)
 		}
 	};
 	html!(<div class="section">{content}</div>)
@@ -291,7 +290,14 @@ struct ItemByIdProps {
 	disabled: bool,
 }
 #[function_component]
-fn ItemById(ItemByIdProps { id, quantity, prefix, disabled }: &ItemByIdProps) -> Html {
+fn ItemById(
+	ItemByIdProps {
+		id,
+		quantity,
+		prefix,
+		disabled,
+	}: &ItemByIdProps,
+) -> Html {
 	let found_item = use_state(|| None::<std::rc::Rc<Item>>);
 	let fetch_item = use_typed_fetch_callback(
 		"Fetch Item".into(),
@@ -321,7 +327,14 @@ struct SpecificItemProps {
 	disabled: bool,
 }
 #[function_component]
-fn SpecificItem(SpecificItemProps { item, quantity, prefix, disabled }: &SpecificItemProps) -> Html {
+fn SpecificItem(
+	SpecificItemProps {
+		item,
+		quantity,
+		prefix,
+		disabled,
+	}: &SpecificItemProps,
+) -> Html {
 	html! {<>
 		<div class="label">
 			{prefix.clone()}
@@ -337,6 +350,104 @@ fn SpecificItem(SpecificItemProps { item, quantity, prefix, disabled }: &Specifi
 }
 
 #[derive(Clone, PartialEq, Properties)]
+struct SelectItemProps {
+	filter: item::Restriction,
+	#[prop_or_default]
+	prefix: Html,
+	#[prop_or_default]
+	disabled: bool,
+}
+#[function_component]
+fn SelectItem(
+	SelectItemProps {
+		filter,
+		prefix,
+		disabled,
+	}: &SelectItemProps,
+) -> Html {
+	let selected = use_state_eq(|| String::new());
+	let selected_item = use_state(|| None::<Rc<Item>>);
+	let query_handle = use_query_all_typed::<Item>(
+		true,
+		Some(QueryAllArgs {
+			system: crate::system::dnd5e::DnD5e::id().into(),
+			criteria: Some(filter.as_criteria().into()),
+			..Default::default()
+		}),
+	);
+	let onchange = Callback::from({
+		let selected = selected.clone();
+		let selected_item = selected_item.clone();
+		let query_handle = query_handle.clone();
+		move |evt: web_sys::Event| {
+			let Some(value) = evt.select_value() else { return; };
+
+			let mut rc_item = None;
+			if let QueryStatus::Success(items) = query_handle.status() {
+				for item in items {
+					if item.id.to_string() == value {
+						rc_item = Some(Rc::new(item.clone()));
+						break;
+					}
+				}
+			}
+
+			selected.set(value);
+			selected_item.set(rc_item);
+		}
+	});
+	let empty_option = {
+		let selected = selected.clone();
+		move |text: &'static str| html!(<option selected={selected.is_empty()}>{text}</option>)
+	};
+	let options = match query_handle.status() {
+		QueryStatus::Pending => empty_option("Pending..."),
+		QueryStatus::Empty => empty_option("No Options"),
+		QueryStatus::Failed(err) => {
+			log::error!(target: "starting-equipment", "Failed to find items for {filter:?}: {err:?}");
+			empty_option("Unavailable")
+		}
+		QueryStatus::Success(items) => {
+			let mut options = vec![empty_option("Select Item...")];
+			for item in items {
+				let id_str = item.id.to_string();
+				let is_selected = *selected == id_str;
+				options.push(html! {
+					<option selected={is_selected} value={id_str}>
+						{&item.name}
+					</option>
+				});
+			}
+			html!(<>{options}</>)
+		}
+	};
+	let mut select_class = classes!("form-select");
+	if selected.is_empty() && !*disabled {
+		select_class.push("missing-value");
+	}
+	html! {<>
+		<div class="label">
+			{prefix.clone()}
+			<span>{"Select an item"}</span>
+		</div>
+		<div class="select-item">
+			<div class="content">
+				<select
+					class={select_class}
+					disabled={*disabled}
+					{onchange}
+				>
+					{options}
+				</select>
+				{selected_item.as_ref().map(|rc_item| html! {
+					<ItemCard item={rc_item.clone()} disabled={*disabled} />
+				})}
+			</div>
+		</div>
+	</>}
+}
+
+#[derive(Clone, PartialEq, Properties)]
 struct ItemCardProps {
 	item: std::rc::Rc<Item>,
 	#[prop_or_default]
@@ -347,11 +458,13 @@ struct ItemCardProps {
 fn ItemCard(ItemCardProps { item, disabled }: &ItemCardProps) -> Html {
 	let onclick = context_menu::use_control_action({
 		let item = item.clone();
-		move |_, context| context_menu::Action::open(
-			&context,
-			item.name.clone(),
-			html!(<ItemInfo item={item.clone()} />),
-		)
+		move |_, context| {
+			context_menu::Action::open(
+				&context,
+				item.name.clone(),
+				html!(<ItemInfo item={item.clone()} />),
+			)
+		}
 	});
 	let mut classes = classes!("card", "item");
 	if *disabled {

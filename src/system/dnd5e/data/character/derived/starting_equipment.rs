@@ -1,35 +1,25 @@
-use crate::kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder};
-use crate::system::{
-	core::SourceId,
-	dnd5e::data::{
-		currency::Wallet,
-		item::{weapon, Item},
+use crate::{
+	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
+	system::{
+		core::SourceId,
+		dnd5e::data::{
+			currency::Wallet,
+			item::{self, weapon, Item},
+		},
 	},
+	utility::NotInList,
 };
-use crate::utility::NotInList;
 use std::str::FromStr;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum StartingEquipment {
 	Currency(Wallet),
 	IndirectItem(IndirectItem),
-	SelectItem(ItemFilter),
+	SelectItem(item::Restriction),
 	Group {
 		entries: Vec<StartingEquipment>,
 		pick: Option<usize>,
 	},
-}
-
-#[derive(Clone, Debug, PartialEq, Default)]
-pub struct ItemFilter {
-	pub tags: Vec<String>,
-	pub weapon: Option<WeaponFilter>,
-}
-
-#[derive(Clone, Debug, PartialEq, Default)]
-pub struct WeaponFilter {
-	pub kind: Option<weapon::Kind>,
-	pub has_melee: Option<bool>,
 }
 
 impl StartingEquipment {
@@ -75,13 +65,11 @@ impl FromKDL for StartingEquipment {
 				"Specific" | "Custom" => Ok(Self::IndirectItem(IndirectItem::from_kdl(node)?)),
 				"Select" => {
 					let _ = node.next_str_req()?;
-					Ok(Self::SelectItem(ItemFilter::from_kdl(node)?))
+					Ok(Self::SelectItem(item::Restriction::from_kdl(node)?))
 				}
 				kind => Err(NotInList(kind.into(), vec!["Specific", "Custom", "Select"]).into()),
 			},
-			name => {
-				Err(NotInList(name.into(), vec!["item", "currency", "group"]).into())
-			}
+			name => Err(NotInList(name.into(), vec!["item", "currency", "group"]).into()),
 		}
 	}
 }
@@ -101,53 +89,6 @@ impl AsKdl for StartingEquipment {
 				node
 			}
 		}
-	}
-}
-
-impl FromKDL for ItemFilter {
-	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
-		let tags = node
-			.query_str_all("scope() > tag", 0)?
-			.into_iter()
-			.map(str::to_owned)
-			.collect::<Vec<_>>();
-		let weapon = node.query_opt_t::<WeaponFilter>("scope() > weapon")?;
-		Ok(Self { tags, weapon })
-	}
-}
-impl AsKdl for ItemFilter {
-	fn as_kdl(&self) -> NodeBuilder {
-		let mut node = NodeBuilder::default();
-		for tag in &self.tags {
-			node.push_child_t("tag", tag);
-		}
-		if let Some(weapon_filter) = &self.weapon {
-			node.push_child_t("weapon", weapon_filter);
-		}
-		node
-	}
-}
-
-impl FromKDL for WeaponFilter {
-	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
-		let kind = match node.get_str_opt("kind")? {
-			None => None,
-			Some(str) => Some(weapon::Kind::from_str(str)?),
-		};
-		let has_melee = node.get_bool_opt("has_melee")?;
-		Ok(Self { kind, has_melee })
-	}
-}
-impl AsKdl for WeaponFilter {
-	fn as_kdl(&self) -> NodeBuilder {
-		let mut node = NodeBuilder::default();
-		if let Some(kind) = &self.kind {
-			node.push_entry(("kind", kind.to_string()));
-		}
-		if let Some(has_melee) = &self.has_melee {
-			node.push_entry(("has_melee", *has_melee));
-		}
-		node
 	}
 }
 

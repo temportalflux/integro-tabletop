@@ -885,8 +885,12 @@ $Pages: Abilities, Attributes, Features, Spells, Inventory, Description;
 		.select-item {
 			display: flex;
 			flex-direction: row;
-			> select {
-				width: auto;
+			> .content {
+				display: flex;
+				flex-direction: column;
+				> select {
+					width: auto;
+				}
 			}
 		}
 
@@ -900,35 +904,35 @@ $Pages: Abilities, Attributes, Features, Spells, Inventory, Description;
 		}
 		.specific-item {
 			display: flex;
+		}
+
+		.card.item.disabled {
+			background-color: var(--bs-secondary-bg);
+		}
+		.card.item > .card-body {
+			display: flex;
+			padding: 0.5rem;
 			
-			> .card.item.disabled {
-				background-color: var(--bs-secondary-bg);
+			> .card-title {
+				margin: 0;
 			}
-			> .card.item > .card-body {
-				display: flex;
-				padding: 0.5rem;
-				
-				> .card-title {
-					margin: 0;
-				}
-	
-				> .btn:has(> .bi-chevron-right) {
-					margin-left: 0.5rem;
-				}
+
+			> .btn:has(> .bi-chevron-right) {
+				margin-left: 0.5rem;
 			}
-			> .card.item:hover > .card-body {
-				> .btn:has(> .bi-chevron-right) {
-					color: var(--bs-btn-hover-color);
-					background-color: var(--bs-btn-hover-bg);
-					border-color: var(--bs-btn-hover-border-color);
-				}
+		}
+		.card.item:hover > .card-body {
+			> .btn:has(> .bi-chevron-right) {
+				color: var(--bs-btn-hover-color);
+				background-color: var(--bs-btn-hover-bg);
+				border-color: var(--bs-btn-hover-border-color);
 			}
-			> .card.item:active > .card-body {
-				> .btn:has(> .bi-chevron-right) {
-					color: var(--bs-btn-active-color);
-					background-color: var(--bs-btn-active-bg);
-					border-color: var(--bs-btn-active-border-color);
-				}
+		}
+		.card.item:active > .card-body {
+			> .btn:has(> .bi-chevron-right) {
+				color: var(--bs-btn-active-color);
+				background-color: var(--bs-btn-active-bg);
+				border-color: var(--bs-btn-active-border-color);
 			}
 		}
 	}
