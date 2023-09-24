@@ -2,7 +2,7 @@ use crate::{
 	components::{
 		context_menu,
 		database::{use_query_all_typed, use_typed_fetch_callback, QueryAllArgs, QueryStatus},
-		Spinner,
+		Spinner, stop_propagation,
 	},
 	page::characters::sheet::{CharacterHandle, MutatorImpact},
 	system::{
@@ -187,27 +187,58 @@ fn ContainerSection(ContainerSectionProps { container_id }: &ContainerSectionPro
 #[function_component]
 fn BrowseStartingEquipment() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
+	let close_details = context_menu::use_close_fn::<()>();
 
+	let mut missing_selections = false;
 	let mut sections = Vec::with_capacity(state.starting_equipment().len());
-	let mut selection_path = Path::new("starting_equipment").to_owned();
-	for (options, source) in state.starting_equipment() {
+	let selection_path = Path::new("starting_equipment").to_owned();
+	for (idx, (options, source)) in state.starting_equipment().iter().enumerate() {
+		let selection_path = selection_path.join(idx.to_string());
+		let mut subsections = Vec::with_capacity(options.len());
+		for (idx, element) in options.iter().enumerate() {
+			let selection_path = selection_path.join(idx.to_string());
+			if !missing_selections {
+				// TODO: This doesnt account for groups which are not selected but contain a select-item, therefore always being missing
+				for selection_key in element.get_required_selection_keys(&selection_path) {
+					if state.get_first_selection(&selection_key).is_none() {
+						missing_selections = true;
+						break;
+					}
+				}
+			}
+			subsections.push(html!(<Section kind={element.clone()} {selection_path} />));
+		}
 		sections.push(html! {
 			<div class="section-group">
 				<h4 class="title">
 					{crate::data::as_feature_path_text(source)}
 				</h4>
-				{options.iter().enumerate().map(|(idx, group)| {
-					let selection_path = selection_path.join(idx.to_string());
-					html!(<Section kind={group.clone()} {selection_path} />)
-				}).collect::<Vec<_>>()}
+				{subsections}
 			</div>
 		});
 	}
 
 	// TODO: Needs a button to confirm, apply items, and close panel
+	let submit = Callback::from({
+		let close_details = close_details.clone();
+		move |_| {
+			if missing_selections { return; };
+			
+			
+			close_details.emit(());
+		}
+	});
 
 	html! {
 		<div class="starting-equipment">
+			<div class="actions">
+				<button type="button" onclick={submit} class={classes!(
+					"btn", "btn-sm", "btn-success",
+					missing_selections.then(|| "disabled")
+				)}>
+					{"Add Equipment & Close"}
+				</button>
+			</div>
 			{sections}
 		</div>
 	}
@@ -255,36 +286,155 @@ fn Section(
 				prefix={prefix.clone()} disabled={*disabled}
 			/>)
 		}
-		StartingEquipment::Group { entries, pick } => {
-			// TODO: checkbox next to each section (disabled if maxed, autoclear old if pick is 1)
-			// TODO: Pick should always be a number, never none
-			let checkbox =
-				html!(<input type="checkbox" class="form-check-input slot missing-value" />);
-			html! {<>
-				<div class="label">
-					{prefix.clone()}
-					<span>{format!("Pick {} of", pick.unwrap_or(1))}</span>
-				</div>
-				<div class="group">
-					{entries.iter().enumerate().map(|(idx, group_option)| {
-						let selection_path = selection_path.join(idx.to_string());
-						html!(<Section
-							{selection_path} kind={group_option.clone()}
-							prefix={checkbox.clone()} disabled={true}
-						/>)
-					}).collect::<Vec<_>>()}
-				</div>
-			</>}
-		}
-		StartingEquipment::SelectItem(filter) => {
-			html!(<SelectItem
+		// TODO: Pick should always be a number, never none
+		StartingEquipment::Group { entries, pick } => html!(
+			<Group
+				entries={entries.clone()} pick_max={pick.unwrap_or(1)}
+				selection_path={selection_path.clone()}
+				prefix={prefix.clone()} disabled={*disabled}
+			/>
+		),
+		StartingEquipment::SelectItem(filter) => html!(
+			<SelectItem
 				filter={filter.clone()}
 				selection_path={selection_path.clone()}
 				prefix={prefix.clone()} disabled={*disabled}
-			/>)
-		}
+			/>
+		),
 	};
 	html!(<div class="section">{content}</div>)
+}
+
+#[derive(Clone, PartialEq, Properties)]
+struct GroupProps {
+	entries: Vec<StartingEquipment>,
+	pick_max: usize,
+	selection_path: PathBuf,
+	#[prop_or_default]
+	prefix: Html,
+	#[prop_or_default]
+	disabled: bool,
+}
+#[function_component]
+fn Group(props: &GroupProps) -> Html {
+	let GroupProps {
+		entries,
+		pick_max,
+		selection_path,
+		prefix,
+		disabled,
+	} = props;
+	let state = use_context::<CharacterHandle>().unwrap();
+
+	fn get_selected_indices(values: Option<&Vec<String>>) -> Vec<usize> {
+		values.map(|values| {
+			values.iter().filter_map(|s| s.parse::<usize>().ok()).collect::<Vec<_>>()
+		}).unwrap_or_default()
+	}
+	let values = get_selected_indices(state.get_selections_at(&selection_path));
+	let selected_options = use_state_eq(move || values);
+
+	let set_option_selected = Callback::from({
+		let state = state.clone();
+		let selection_path = selection_path.clone();
+		let pick_max = *pick_max;
+		let selected_options = selected_options.clone();
+		move |(idx, should_be_selected): (usize, bool)| {
+			let key = selection_path.clone();
+			let value = idx.to_string();
+			let selected_options = selected_options.clone();
+			state.dispatch(move |persistent| {
+				match (should_be_selected, pick_max) {
+					(false, _) => {
+						persistent.remove_selected_value(&key, value);
+					}
+					(true, 1) => {
+						persistent.set_selected_value(&key, value);
+					}
+					(true, _) => {
+						persistent.insert_selection(&key, value);
+					}
+				}
+
+				let values = get_selected_indices(persistent.get_selections_at(&key));
+				selected_options.set(values);
+
+				MutatorImpact::None
+			});
+		}
+	});
+
+	let can_select_new = *pick_max == 1 || selected_options.len() < *pick_max;
+
+	html! {<>
+		<div class="label">
+			{prefix.clone()}
+			<span>{format!("Pick {pick_max} of")}</span>
+		</div>
+		<div class="group">
+			{entries.iter().enumerate().map(move |(idx, group_option)| {
+				html!(<GroupOption
+					group_option={group_option.clone()}
+
+					{can_select_new}
+					has_any_selected={!selected_options.is_empty()}
+					is_selected={selected_options.contains(&idx)}
+					set_option_selected={set_option_selected.reform(move |toggle| (idx, toggle))}
+
+					selection_path={selection_path.join(idx.to_string())}
+					disabled={*disabled}
+				/>)
+			}).collect::<Vec<_>>()}
+		</div>
+	</>}
+}
+
+#[derive(Clone, PartialEq, Properties)]
+struct GroupOptionProps {
+	group_option: StartingEquipment,
+
+	can_select_new: bool,
+	has_any_selected: bool,
+	is_selected: bool,
+	set_option_selected: Callback<bool>,
+
+	selection_path: PathBuf,
+	#[prop_or_default]
+	disabled: bool,
+}
+#[function_component]
+fn GroupOption(props: &GroupOptionProps) -> Html {
+	let GroupOptionProps {
+		group_option,
+		can_select_new, has_any_selected,
+		is_selected, set_option_selected,
+		selection_path, disabled
+	} = props;
+
+	let onchange = Callback::from({
+		let set_option_selected = set_option_selected.clone();
+		move |evt: web_sys::Event| {
+			let Some(should_be_picked) = evt.input_checked() else { return; };
+			set_option_selected.emit(should_be_picked);
+		}
+	});
+
+	let checkbox = html!(<input
+		type="checkbox"
+		class={classes!(
+			"form-check-input", "slot",
+			(!disabled && !has_any_selected).then(|| "missing-value"),
+		)}
+		checked={*is_selected}
+		disabled={*disabled || (!can_select_new && !is_selected)}
+		onclick={stop_propagation()}
+		{onchange}
+	/>);
+	html!(<Section
+		kind={group_option.clone()}
+		selection_path={selection_path.clone()}
+		prefix={checkbox.clone()} disabled={*disabled || !is_selected}
+	/>)
 }
 
 #[derive(Clone, PartialEq, Properties)]

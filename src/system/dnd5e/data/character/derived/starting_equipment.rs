@@ -1,3 +1,5 @@
+use std::path::{Path, PathBuf};
+
 use crate::{
 	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
 	system::{
@@ -9,7 +11,6 @@ use crate::{
 	},
 	utility::NotInList,
 };
-use std::str::FromStr;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum StartingEquipment {
@@ -23,6 +24,16 @@ pub enum StartingEquipment {
 }
 
 impl StartingEquipment {
+	pub fn get_required_selection_keys(&self, parent: &Path) -> Vec<PathBuf> {
+		match self {
+			Self::Currency(_) | Self::IndirectItem(_) => Vec::new(),
+			Self::SelectItem(_) => vec![parent.to_owned()],
+			Self::Group { entries, .. } => {
+				entries.iter().enumerate().map(|(idx, _)| parent.join(idx.to_string())).collect()
+			}
+		}
+	}
+
 	fn node_name(&self) -> &'static str {
 		match self {
 			Self::Currency(_) => "currency",

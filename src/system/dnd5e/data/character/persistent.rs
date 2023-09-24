@@ -167,6 +167,12 @@ impl Persistent {
 		}
 	}
 
+	pub fn remove_selected_value(&mut self, key: impl AsRef<Path>, value: impl Into<String>) {
+		let Some(values) = self.selected_values.get_mut(key) else { return; };
+		let target: String = value.into();
+		values.retain(|value| *value != target);
+	}
+
 	pub fn export_as_kdl(&self) -> kdl::KdlDocument {
 		let mut doc = kdl::KdlDocument::new();
 		doc.nodes_mut().push(self.as_kdl().build("character"));
