@@ -4,7 +4,7 @@ use crate::{
 		database::{use_query_all_typed, use_typed_fetch_callback, QueryAllArgs, QueryStatus},
 		Spinner,
 	},
-	page::characters::sheet::CharacterHandle,
+	page::characters::sheet::{CharacterHandle, MutatorImpact},
 	system::{
 		core::{SourceId, System},
 		dnd5e::{
@@ -17,7 +17,7 @@ use crate::{
 	},
 	utility::InputExt,
 };
-use std::rc::Rc;
+use std::{rc::Rc, path::{Path, PathBuf}};
 use uuid::Uuid;
 use yew::prelude::*;
 
@@ -188,18 +188,18 @@ fn ContainerSection(ContainerSectionProps { container_id }: &ContainerSectionPro
 fn BrowseStartingEquipment() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 
-	// TODO: If the player's persistent inventory is empty,
-	// show an option to add items based on their StartingEquipment.
-	log::debug!(target: "inventory", "{:?}", state.starting_equipment());
-
 	let mut sections = Vec::with_capacity(state.starting_equipment().len());
+	let mut selection_path = Path::new("starting_equipment").to_owned();
 	for (options, source) in state.starting_equipment() {
 		sections.push(html! {
 			<div class="section-group">
 				<h4 class="title">
 					{crate::data::as_feature_path_text(source)}
 				</h4>
-				{options.iter().map(|group| html!(<Section kind={group.clone()} />)).collect::<Vec<_>>()}
+				{options.iter().enumerate().map(|(idx, group)| {
+					let selection_path = selection_path.join(idx.to_string());
+					html!(<Section kind={group.clone()} {selection_path} />)
+				}).collect::<Vec<_>>()}
 			</div>
 		});
 	}
@@ -215,6 +215,7 @@ fn BrowseStartingEquipment() -> Html {
 
 #[derive(Clone, PartialEq, Properties)]
 struct SectionProps {
+	selection_path: PathBuf,
 	kind: StartingEquipment,
 	#[prop_or_default]
 	prefix: Html,
@@ -225,6 +226,7 @@ struct SectionProps {
 #[function_component]
 fn Section(
 	SectionProps {
+		selection_path,
 		kind,
 		prefix,
 		disabled,
@@ -264,8 +266,12 @@ fn Section(
 					<span>{format!("Pick {} of", pick.unwrap_or(1))}</span>
 				</div>
 				<div class="group">
-					{entries.iter().map(|group_option| {
-						html!(<Section kind={group_option.clone()} prefix={checkbox.clone()} disabled={true} />)
+					{entries.iter().enumerate().map(|(idx, group_option)| {
+						let selection_path = selection_path.join(idx.to_string());
+						html!(<Section
+							{selection_path} kind={group_option.clone()}
+							prefix={checkbox.clone()} disabled={true}
+						/>)
 					}).collect::<Vec<_>>()}
 				</div>
 			</>}
@@ -273,6 +279,7 @@ fn Section(
 		StartingEquipment::SelectItem(filter) => {
 			html!(<SelectItem
 				filter={filter.clone()}
+				selection_path={selection_path.clone()}
 				prefix={prefix.clone()} disabled={*disabled}
 			/>)
 		}
@@ -352,6 +359,7 @@ fn SpecificItem(
 #[derive(Clone, PartialEq, Properties)]
 struct SelectItemProps {
 	filter: item::Restriction,
+	selection_path: PathBuf,
 	#[prop_or_default]
 	prefix: Html,
 	#[prop_or_default]
@@ -361,12 +369,14 @@ struct SelectItemProps {
 fn SelectItem(
 	SelectItemProps {
 		filter,
+		selection_path,
 		prefix,
 		disabled,
 	}: &SelectItemProps,
 ) -> Html {
-	let selected = use_state_eq(|| String::new());
-	let selected_item = use_state(|| None::<Rc<Item>>);
+	let state = use_context::<CharacterHandle>().unwrap();
+	let selected = state.get_first_selection(&selection_path).cloned();
+	
 	let query_handle = use_query_all_typed::<Item>(
 		true,
 		Some(QueryAllArgs {
@@ -376,29 +386,34 @@ fn SelectItem(
 		}),
 	);
 	let onchange = Callback::from({
-		let selected = selected.clone();
-		let selected_item = selected_item.clone();
-		let query_handle = query_handle.clone();
+		let state = state.clone();
+		let key = selection_path.clone();
 		move |evt: web_sys::Event| {
 			let Some(value) = evt.select_value() else { return; };
-
-			let mut rc_item = None;
-			if let QueryStatus::Success(items) = query_handle.status() {
-				for item in items {
-					if item.id.to_string() == value {
-						rc_item = Some(Rc::new(item.clone()));
-						break;
-					}
-				}
-			}
-
-			selected.set(value);
-			selected_item.set(rc_item);
+			let next_value = (!value.is_empty()).then(move || value);
+			let key = key.clone();
+			state.dispatch(move |persistent| {
+				persistent.set_selected(key, next_value);
+				MutatorImpact::None
+			});
 		}
 	});
-	let empty_option = {
-		let selected = selected.clone();
-		move |text: &'static str| html!(<option selected={selected.is_empty()}>{text}</option>)
+
+	let mut selected_item = None;
+	match (&selected, query_handle.status()) {
+		(Some(id_str), QueryStatus::Success(items)) => {
+			for item in items {
+				if item.id.to_string() == *id_str {
+					selected_item = Some(Rc::new(item.clone()));
+					break;
+				}
+			}
+		}
+		_ => {}
+	};
+
+	let empty_option = |text: &'static str| {
+		html!(<option selected={selected.is_none()}>{text}</option>)
 	};
 	let options = match query_handle.status() {
 		QueryStatus::Pending => empty_option("Pending..."),
@@ -411,7 +426,7 @@ fn SelectItem(
 			let mut options = vec![empty_option("Select Item...")];
 			for item in items {
 				let id_str = item.id.to_string();
-				let is_selected = *selected == id_str;
+				let is_selected = selected.as_ref() == Some(&id_str);
 				options.push(html! {
 					<option selected={is_selected} value={id_str}>
 						{&item.name}
@@ -422,7 +437,7 @@ fn SelectItem(
 		}
 	};
 	let mut select_class = classes!("form-select");
-	if selected.is_empty() && !*disabled {
+	if selected.is_none() && !*disabled {
 		select_class.push("missing-value");
 	}
 	html! {<>
@@ -439,8 +454,8 @@ fn SelectItem(
 				>
 					{options}
 				</select>
-				{selected_item.as_ref().map(|rc_item| html! {
-					<ItemCard item={rc_item.clone()} disabled={*disabled} />
+				{selected_item.map(|item| html! {
+					<ItemCard {item} disabled={*disabled} />
 				})}
 			</div>
 		</div>

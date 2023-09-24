@@ -1,4 +1,3 @@
-use std::collections::VecDeque;
 use std::rc::Rc;
 use yew::html::ChildrenProps;
 use yew::prelude::*;
@@ -20,7 +19,7 @@ impl std::ops::Deref for Control {
 #[derive(Clone, PartialEq, Default)]
 pub struct State {
 	is_shown: bool,
-	stack: VecDeque<Item>,
+	stack: Vec<Item>,
 }
 
 #[derive(Clone, PartialEq)]
@@ -32,7 +31,11 @@ impl Item {
 	pub fn new(display_name: impl Into<AttrValue>, html: impl Into<Html>) -> Self {
 		Self {
 			display_name: display_name.into(),
-			html: html.into(),
+			html: html! {
+				<div class="layer">
+					{html.into()}
+				</div>
+			},
 		}
 	}
 }
@@ -83,11 +86,11 @@ impl Reducible for State {
 			}),
 			Action::OpenRoot(item) => Rc::new(Self {
 				is_shown: true,
-				stack: vec![item].into(),
+				stack: vec![item],
 			}),
 			Action::OpenSubpage(item) => {
 				let mut stack = self.stack.clone();
-				stack.push_back(item);
+				stack.push(item);
 				Rc::new(Self {
 					is_shown: true,
 					stack,
@@ -95,7 +98,7 @@ impl Reducible for State {
 			}
 			Action::CloseCurrent => {
 				let mut stack = self.stack.clone();
-				stack.pop_back();
+				stack.pop();
 				Rc::new(Self {
 					is_shown: !stack.is_empty(),
 					stack,
@@ -176,14 +179,8 @@ pub struct ActiveContext;
 #[function_component]
 pub fn ContextMenu() -> Html {
 	let control = use_context::<Control>().unwrap();
-
-	let mut root_classes = classes!("context-menu");
-	if control.is_shown {
-		root_classes.push("active");
-	}
-
 	html! {
-		<div class={root_classes}>
+		<div class={classes!("context-menu", control.is_shown.then(|| "active"))}>
 			<div class="backdrop" onclick={control.toggle_shown_fn()} />
 			<div class="panel">
 				<div class="spacer" />
@@ -198,10 +195,7 @@ pub fn ContextMenu() -> Html {
 						</div>
 						<div class="card-body">
 							<ContextProvider<ActiveContext> context={ActiveContext}>
-								{match control.stack.back() {
-									None => html!(),
-									Some(item) => item.html.clone(),
-								}}
+								{control.stack.iter().map(|item| item.html.clone()).collect::<Vec<_>>()}
 							</ContextProvider<ActiveContext>>
 						</div>
 					</div>

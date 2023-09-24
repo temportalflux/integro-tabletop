@@ -94,6 +94,13 @@
 					overflow-y: scroll;
 					overscroll-behavior: contain;
 					height: 100px;
+
+					> .layer {
+						display: none;
+					}
+					> .layer:last-child {
+						display: block;
+					}
 				}
 			}
 		}
