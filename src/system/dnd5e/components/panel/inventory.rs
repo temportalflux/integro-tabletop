@@ -2,7 +2,7 @@ use crate::{
 	components::{
 		context_menu,
 		database::{use_query_all_typed, use_typed_fetch_callback, QueryAllArgs, QueryStatus},
-		Spinner, stop_propagation,
+		stop_propagation, Spinner,
 	},
 	page::characters::sheet::{CharacterHandle, MutatorImpact},
 	system::{
@@ -10,14 +10,19 @@ use crate::{
 		dnd5e::{
 			components::{WalletInline, WalletInlineButton},
 			data::{
-				character::{IndirectItem, StartingEquipment},
+				character::{IndirectItem, Persistent, StartingEquipment},
+				currency::Wallet,
 				item::{self, container::item::AsItem, Item},
 			},
-		},
+		}, self,
 	},
-	utility::InputExt,
+	utility::InputExt, database::app::Database,
 };
-use std::{rc::Rc, path::{Path, PathBuf}};
+use std::{
+	path::{Path, PathBuf},
+	rc::Rc,
+	str::FromStr, collections::HashMap,
+};
 use uuid::Uuid;
 use yew::prelude::*;
 
@@ -184,12 +189,81 @@ fn ContainerSection(ContainerSectionProps { container_id }: &ContainerSectionPro
 	}
 }
 
+#[derive(Clone, Default, Debug)]
+struct SelectedEquipment {
+	wallet: Wallet,
+	item_ids: Vec<SourceId>,
+	items: Vec<Item>,
+	missing_selections: Vec<PathBuf>,
+}
+impl SelectedEquipment {
+	fn find_selections(element: &StartingEquipment, path: &Path, persistent: &Persistent) -> Self {
+		match element {
+			StartingEquipment::Currency(wallet) => Self {
+				wallet: *wallet,
+				..Default::default()
+			},
+			StartingEquipment::IndirectItem(IndirectItem::Specific(item_id, quantity)) => Self {
+				item_ids: vec![item_id.clone(); *quantity],
+				..Default::default()
+			},
+			StartingEquipment::IndirectItem(IndirectItem::Custom(item)) => Self {
+				items: vec![item.clone()],
+				..Default::default()
+			},
+			StartingEquipment::SelectItem(_filter) => {
+				let Some(id_str) = persistent.get_first_selection(&path) else {
+					return Self { missing_selections: vec![path.to_owned()], ..Default::default() };
+				};
+				let Ok(id) = SourceId::from_str(id_str) else { return Self::default(); };
+				Self {
+					item_ids: vec![id],
+					..Default::default()
+				}
+			}
+			StartingEquipment::Group { entries, .. } => {
+				let idx_strs = match persistent.get_selections_at(&path) {
+					Some(idx_strs) if !idx_strs.is_empty() => idx_strs,
+					_ => {
+						return Self {
+							missing_selections: vec![path.to_owned()],
+							..Default::default()
+						}
+					}
+				};
+				let mut selected = Self::default();
+				for idx_str in idx_strs {
+					let Ok(idx) = idx_str.parse::<usize>() else { continue; };
+					let Some(entry) = entries.get(idx) else { continue; };
+					let selection_path = path.join(idx.to_string());
+					selected.extend(Self::find_selections(entry, &selection_path, persistent));
+				}
+				selected
+			}
+		}
+	}
+
+	fn extend(&mut self, other: Self) {
+		self.wallet += other.wallet;
+		self.item_ids.extend(other.item_ids);
+		self.items.extend(other.items);
+		self.missing_selections.extend(other.missing_selections);
+	}
+
+	fn is_missing_selections(&self) -> bool {
+		!self.missing_selections.is_empty()
+	}
+}
+
 #[function_component]
 fn BrowseStartingEquipment() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
+	let database = use_context::<Database>().unwrap();
+	let system_depot = use_context::<system::Depot>().unwrap();
+	let task_dispatch = use_context::<crate::task::Dispatch>().unwrap();
 	let close_details = context_menu::use_close_fn::<()>();
 
-	let mut missing_selections = false;
+	let mut selected_equipment = SelectedEquipment::default();
 	let mut sections = Vec::with_capacity(state.starting_equipment().len());
 	let selection_path = Path::new("starting_equipment").to_owned();
 	for (idx, (options, source)) in state.starting_equipment().iter().enumerate() {
@@ -197,15 +271,11 @@ fn BrowseStartingEquipment() -> Html {
 		let mut subsections = Vec::with_capacity(options.len());
 		for (idx, element) in options.iter().enumerate() {
 			let selection_path = selection_path.join(idx.to_string());
-			if !missing_selections {
-				// TODO: This doesnt account for groups which are not selected but contain a select-item, therefore always being missing
-				for selection_key in element.get_required_selection_keys(&selection_path) {
-					if state.get_first_selection(&selection_key).is_none() {
-						missing_selections = true;
-						break;
-					}
-				}
-			}
+			selected_equipment.extend(SelectedEquipment::find_selections(
+				element,
+				&selection_path,
+				state.persistent(),
+			));
 			subsections.push(html!(<Section kind={element.clone()} {selection_path} />));
 		}
 		sections.push(html! {
@@ -217,15 +287,78 @@ fn BrowseStartingEquipment() -> Html {
 			</div>
 		});
 	}
+	let is_missing_selections = selected_equipment.is_missing_selections();
 
-	// TODO: Needs a button to confirm, apply items, and close panel
+	// Consumes `selected_equipment` to add all the resulting items to
+	// the character's inventory and close the details panel.
 	let submit = Callback::from({
+		let state = state.clone();
+		let database = database.clone();
+		let system_depot = system_depot.clone();
+		let task_dispatch = task_dispatch.clone();
 		let close_details = close_details.clone();
 		move |_| {
-			if missing_selections { return; };
-			
-			
-			close_details.emit(());
+			if selected_equipment.is_missing_selections() {
+				return;
+			};
+			let database = database.clone();
+			let system_depot = system_depot.clone();
+			let state = state.clone();
+			let close_details = close_details.clone();
+			let mut selected_equipment = selected_equipment.clone();
+			// task required so we can get items from the database
+			task_dispatch.spawn("Add Starting Equipment", None, async move {
+				let item_ids = selected_equipment.item_ids.drain(..).collect::<Vec<_>>();
+				let mut fetched_items = HashMap::<SourceId, (Item, usize)>::new();
+				// Fetch each item from the database, counting the number of duplicates.
+				for item_id in item_ids {
+					match fetched_items.get_mut(&item_id) {
+						Some((item, count)) => {
+							// simple items (which can stack) applies the count directly to the item
+							// equipment (cannot stack) keeps track of the quantity in `fetched_items`
+							match &mut item.kind {
+								item::Kind::Simple { count } => {
+									*count += 1;
+								}
+								_ => {
+									*count += 1;
+								}
+							}
+						}
+						// fetch yet-unfetched items from database
+						None => {
+							let Some(item) = database.get_typed_entry::<Item>(item_id.clone(), system_depot.clone(), None).await? else {
+								return Ok(());
+							};
+							fetched_items.insert(item_id, (item, 1));
+						}
+					}
+				}
+				// Move fetched instances into `selected_equipment`
+				for (_item_id, (item, count)) in fetched_items {
+					// only 1 instance required, push directly
+					if count == 1 {
+						selected_equipment.items.push(item);
+					}
+					// clone the equipment/unstackable item to match the needed quantity
+					else {
+						let mut instances = Vec::with_capacity(count);
+						instances.fill(item);
+						selected_equipment.items.extend(instances);
+					}
+				}
+				// finally, actually add the wallet and items to the inventory,
+				// and then close the details
+				state.dispatch(move |persistent| {
+					*persistent.inventory.wallet_mut() += selected_equipment.wallet;
+					for item in selected_equipment.items {
+						persistent.inventory.insert(item);
+					}
+					close_details.emit(());
+					MutatorImpact::None
+				});
+				Ok(()) as Result<(), crate::database::app::FetchError>
+			});
 		}
 	});
 
@@ -234,7 +367,7 @@ fn BrowseStartingEquipment() -> Html {
 			<div class="actions">
 				<button type="button" onclick={submit} class={classes!(
 					"btn", "btn-sm", "btn-success",
-					missing_selections.then(|| "disabled")
+					is_missing_selections.then(|| "disabled")
 				)}>
 					{"Add Equipment & Close"}
 				</button>
@@ -263,7 +396,6 @@ fn Section(
 		disabled,
 	}: &SectionProps,
 ) -> Html {
-	// TODO: propogate disabled status for when an option in a group is not active
 	let content = match kind {
 		StartingEquipment::Currency(wallet) => html! {<>
 			<div class="label">
@@ -327,9 +459,14 @@ fn Group(props: &GroupProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 
 	fn get_selected_indices(values: Option<&Vec<String>>) -> Vec<usize> {
-		values.map(|values| {
-			values.iter().filter_map(|s| s.parse::<usize>().ok()).collect::<Vec<_>>()
-		}).unwrap_or_default()
+		values
+			.map(|values| {
+				values
+					.iter()
+					.filter_map(|s| s.parse::<usize>().ok())
+					.collect::<Vec<_>>()
+			})
+			.unwrap_or_default()
 	}
 	let values = get_selected_indices(state.get_selections_at(&selection_path));
 	let selected_options = use_state_eq(move || values);
@@ -406,9 +543,12 @@ struct GroupOptionProps {
 fn GroupOption(props: &GroupOptionProps) -> Html {
 	let GroupOptionProps {
 		group_option,
-		can_select_new, has_any_selected,
-		is_selected, set_option_selected,
-		selection_path, disabled
+		can_select_new,
+		has_any_selected,
+		is_selected,
+		set_option_selected,
+		selection_path,
+		disabled,
 	} = props;
 
 	let onchange = Callback::from({
@@ -526,7 +666,7 @@ fn SelectItem(
 ) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let selected = state.get_first_selection(&selection_path).cloned();
-	
+
 	let query_handle = use_query_all_typed::<Item>(
 		true,
 		Some(QueryAllArgs {
@@ -562,9 +702,8 @@ fn SelectItem(
 		_ => {}
 	};
 
-	let empty_option = |text: &'static str| {
-		html!(<option selected={selected.is_none()}>{text}</option>)
-	};
+	let empty_option =
+		|text: &'static str| html!(<option selected={selected.is_none()}>{text}</option>);
 	let options = match query_handle.status() {
 		QueryStatus::Pending => empty_option("Pending..."),
 		QueryStatus::Empty => empty_option("No Options"),
@@ -575,7 +714,7 @@ fn SelectItem(
 		QueryStatus::Success(items) => {
 			let mut options = vec![empty_option("Select Item...")];
 			for item in items {
-				let id_str = item.id.to_string();
+				let id_str = item.id.minimal().to_string();
 				let is_selected = selected.as_ref() == Some(&id_str);
 				options.push(html! {
 					<option selected={is_selected} value={id_str}>

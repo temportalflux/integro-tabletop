@@ -53,6 +53,8 @@ completedColumns:
 
 ## In Progress
 
-- [starting-equipment-ui](tasks/starting-equipment-ui.md)
+- [item-bundles-packs-do-not-have-contents](tasks/item-bundles-packs-do-not-have-contents.md)
 
 ## Done
+
+- [starting-equipment-ui](tasks/starting-equipment-ui.md)
