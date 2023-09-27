@@ -4,8 +4,10 @@ use crate::{
 		database::{use_query_all_typed, use_typed_fetch_callback, QueryAllArgs, QueryStatus},
 		stop_propagation, Spinner,
 	},
+	database::app::Database,
 	page::characters::sheet::{CharacterHandle, MutatorImpact},
 	system::{
+		self,
 		core::{SourceId, System},
 		dnd5e::{
 			components::{WalletInline, WalletInlineButton},
@@ -14,14 +16,15 @@ use crate::{
 				currency::Wallet,
 				item::{self, container::item::AsItem, Item},
 			},
-		}, self,
+		},
 	},
-	utility::InputExt, database::app::Database,
+	utility::InputExt,
 };
 use std::{
+	collections::HashMap,
 	path::{Path, PathBuf},
 	rc::Rc,
-	str::FromStr, collections::HashMap,
+	str::FromStr,
 };
 use uuid::Uuid;
 use yew::prelude::*;
@@ -336,16 +339,7 @@ fn BrowseStartingEquipment() -> Html {
 				}
 				// Move fetched instances into `selected_equipment`
 				for (_item_id, (item, count)) in fetched_items {
-					// only 1 instance required, push directly
-					if count == 1 {
-						selected_equipment.items.push(item);
-					}
-					// clone the equipment/unstackable item to match the needed quantity
-					else {
-						let mut instances = Vec::with_capacity(count);
-						instances.fill(item);
-						selected_equipment.items.extend(instances);
-					}
+					selected_equipment.items.extend(item.create_stack(count));
 				}
 				// finally, actually add the wallet and items to the inventory,
 				// and then close the details
@@ -355,7 +349,8 @@ fn BrowseStartingEquipment() -> Html {
 						persistent.inventory.insert(item);
 					}
 					close_details.emit(());
-					MutatorImpact::None
+					// recompiling for resolving item indirection
+					MutatorImpact::Recompile
 				});
 				Ok(()) as Result<(), crate::database::app::FetchError>
 			});

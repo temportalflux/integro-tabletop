@@ -1,12 +1,10 @@
-use std::path::{Path, PathBuf};
-
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
+	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::{
 		core::SourceId,
 		dnd5e::data::{
 			currency::Wallet,
-			item::{self, weapon, Item},
+			item::{self, Item},
 		},
 	},
 	utility::NotInList,

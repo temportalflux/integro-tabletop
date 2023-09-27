@@ -3,14 +3,16 @@ use crate::{
 	system::{
 		core::SourceId,
 		dnd5e::data::{
-			character::Character,
+			character::{Character, ObjectCacheProvider},
 			currency::Wallet,
 			item::{Item, Restriction},
+			Indirect, Spell,
 		},
 	},
 	utility::MutatorGroup,
 };
-use std::{collections::HashMap, path::Path, sync::Arc};
+use async_recursion::async_recursion;
+use std::{collections::HashMap, path::Path};
 use uuid::Uuid;
 
 mod as_item;
@@ -27,6 +29,7 @@ pub struct ItemContainer<T> {
 	parent_item_id: Vec<Uuid>,
 	pub capacity: Capacity,
 	pub restriction: Option<Restriction>,
+	item_templates: HashMap<SourceId, usize>,
 	items_by_id: HashMap<Uuid, T>,
 	itemids_by_name: Vec<Uuid>,
 	wallet: Wallet,
@@ -38,6 +41,7 @@ impl<T> Default for ItemContainer<T> {
 			parent_item_id: Default::default(),
 			capacity: Default::default(),
 			restriction: Default::default(),
+			item_templates: Default::default(),
 			items_by_id: Default::default(),
 			itemids_by_name: Default::default(),
 			wallet: Default::default(),
@@ -51,6 +55,7 @@ impl<T> ItemContainer<T> {
 			parent_item_id: Default::default(),
 			capacity: Capacity::default(),
 			restriction: None,
+			item_templates: HashMap::new(),
 			items_by_id: HashMap::new(),
 			itemids_by_name: Vec::new(),
 			wallet: Wallet::default(),
@@ -184,6 +189,50 @@ impl<T: AsItem> ItemContainer<T> {
 		}
 		None
 	}
+
+	// Expands all Indirect items and spells contained within the container,
+	// recursively visiting all items which contain other items or spells.
+	#[async_recursion(?Send)]
+	pub async fn resolve_indirection(
+		&mut self,
+		provider: &ObjectCacheProvider,
+	) -> anyhow::Result<()> {
+		// Any item templates need to be resolved to their full items
+		for (item_id, count) in self.item_templates.drain().collect::<Vec<_>>() {
+			let Some(item) = provider.database.get_typed_entry::<Item>(
+				item_id.unversioned(), provider.system_depot.clone(), None
+			).await? else {
+				log::error!(target: "inventory", "failed to find item {:?}", item_id.to_string());
+				continue;
+			};
+			for item in item.create_stack(count) {
+				self.insert(item);
+			}
+		}
+
+		// Then we process all fully defined items (including those fetched in the loop above),
+		// to expand any items or spells each item contains.
+		for (_item_id, entry) in &mut self.items_by_id {
+			if let Some(container) = &mut entry.as_item_mut().items {
+				container.resolve_indirection(provider).await?;
+			}
+			if let Some(container) = &mut entry.as_item_mut().spells {
+				for entry in &mut container.spells {
+					if let Indirect::Id(spell_id) = &entry.spell {
+						let Some(spell) = provider.database.get_typed_entry::<Spell>(
+							spell_id.unversioned(), provider.system_depot.clone(), None
+						).await? else {
+							log::error!(target: "inventory", "failed to find spell {:?}", spell_id.to_string());
+							continue;
+						};
+						entry.spell = Indirect::Custom(spell);
+					}
+				}
+			}
+		}
+
+		Ok(())
+	}
 }
 
 impl<T: AsItem + FromKDL> FromKDL for ItemContainer<T> {
@@ -220,12 +269,26 @@ impl<T: AsItem + FromKDL> FromKDL for ItemContainer<T> {
 			wallet,
 			capacity,
 			restriction,
+			item_templates: HashMap::new(),
 			items_by_id: HashMap::new(),
 			itemids_by_name: Vec::new(),
 		};
 
-		for mut node in &mut node.query_all("scope() > item")? {
-			let item = T::from_kdl(&mut node)?;
+		for node in &mut node.query_all("scope() > item_id")? {
+			let id = node.next_str_req_t::<SourceId>()?;
+			let id = id.with_relative_basis(node.id(), false);
+			let count = node.get_i64_opt("count")?.unwrap_or(1) as usize;
+			match inventory.item_templates.get_mut(&id) {
+				None => {
+					inventory.item_templates.insert(id, count);
+				}
+				Some(amount) => {
+					*amount += count;
+				}
+			}
+		}
+		for node in &mut node.query_all("scope() > item")? {
+			let item = T::from_kdl(node)?;
 			inventory.push_entry(item);
 		}
 
@@ -261,6 +324,14 @@ impl<T: AsKdl> AsKdl for ItemContainer<T> {
 			node.push_child_opt(restriction_node.build("restriction"));
 		}
 
+		for (id, count) in &self.item_templates {
+			let mut item_node = NodeBuilder::default();
+			item_node += id.as_kdl();
+			if *count > 1 {
+				item_node.push_entry(("count", *count as i64));
+			}
+			node.push_child(item_node.build("item_id"));
+		}
 		for id in &self.itemids_by_name {
 			let Some(entry) = self.items_by_id.get(id) else { continue; };
 			node.push_child(entry.as_kdl().build("item"));

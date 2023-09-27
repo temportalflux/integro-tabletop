@@ -1,9 +1,8 @@
 use crate::kdl_ext::{AsKdl, NodeBuilder};
 use derivative::Derivative;
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 use std::str::FromStr;
-use std::sync::Mutex;
-use std::{path::PathBuf, sync::Arc};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum ModuleId {

@@ -104,6 +104,26 @@ impl Item {
 			}
 		}
 	}
+
+	pub fn create_stack(mut self, quantity: usize) -> Vec<Self> {
+		let mut stack = Vec::with_capacity(1);
+		let single = match (quantity, &mut self.kind) {
+			(1, _) => Some(self),
+			(n, Kind::Simple { count }) => {
+				*count = n as u32;
+				Some(self)
+			}
+			(n, _) => {
+				stack.reserve(n - 1);
+				stack.fill(self);
+				None
+			}
+		};
+		if let Some(single) = single {
+			stack.push(single);
+		}
+		stack
+	}
 }
 
 impl SystemComponent for Item {
