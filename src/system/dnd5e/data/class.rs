@@ -7,7 +7,7 @@ use crate::{
 	},
 	utility::{selector, MutatorGroup},
 };
-use std::{path::Path, str::FromStr, sync::Arc};
+use std::{path::Path, str::FromStr};
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Class {

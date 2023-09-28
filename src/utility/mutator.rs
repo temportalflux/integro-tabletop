@@ -1,7 +1,7 @@
 use super::{AsTraitEq, Dependencies, TraitEq};
 use crate::{
 	kdl_ext::{AsKdl, KDLNode},
-	system::{core::SourceId, dnd5e::data::description},
+	system::dnd5e::data::description,
 };
 use std::{fmt::Debug, path::Path, sync::Arc};
 

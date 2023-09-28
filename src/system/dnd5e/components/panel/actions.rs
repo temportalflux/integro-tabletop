@@ -422,7 +422,7 @@ fn CollapsedFeature(ActionProps { entry }: &ActionProps) -> Html {
 	let onclick = context_menu::use_control_action({
 		let feature_path: PathBuf = entry.feature_path.clone();
 		let feature_name = AttrValue::from(entry.feature.name.clone());
-		move |_, context| {
+		move |_, _context| {
 			context_menu::Action::open_root(
 				feature_name.clone(),
 				html!(<Modal path={feature_path.clone()} />),
@@ -441,7 +441,7 @@ fn ActionOverview(ActionProps { entry }: &ActionProps) -> Html {
 	let onclick = context_menu::use_control_action({
 		let feature_path: PathBuf = entry.feature_path.clone();
 		let feature_name = AttrValue::from(entry.feature.name.clone());
-		move |_, context| {
+		move |_, _context| {
 			context_menu::Action::open_root(
 				feature_name.clone(),
 				html!(<Modal path={feature_path.clone()} />),

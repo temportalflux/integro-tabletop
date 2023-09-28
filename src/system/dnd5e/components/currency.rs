@@ -67,7 +67,7 @@ pub fn WalletInlineButton(WalletContainerProps { id }: &WalletContainerProps) ->
 	let state = use_context::<CharacterHandle>().unwrap();
 	let onclick = context_menu::use_control_action({
 		let id = id.clone();
-		move |evt: MouseEvent, context| {
+		move |evt: MouseEvent, _context| {
 			evt.stop_propagation();
 			context_menu::Action::open_root("Coin Pouch", html!(<Modal {id} />))
 		}

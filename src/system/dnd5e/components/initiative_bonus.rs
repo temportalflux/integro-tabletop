@@ -24,7 +24,7 @@ pub fn InitiativeBonus() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let value = state.initiative_bonus();
 	let on_click = context_menu::use_control_action({
-		move |_, context| {
+		move |_, _context| {
 			context_menu::Action::open_root(
 				format!("Initiative Bonus"),
 				html! {<>

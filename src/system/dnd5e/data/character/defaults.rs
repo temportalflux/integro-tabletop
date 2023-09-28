@@ -7,7 +7,7 @@ use crate::{
 	},
 	utility::MutatorGroup,
 };
-use std::{path::Path, sync::Arc};
+use std::path::Path;
 
 /// Contains mutators and features which are applied to every character using the module it is present in.
 #[derive(Clone, PartialEq, Debug)]

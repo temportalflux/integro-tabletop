@@ -27,7 +27,7 @@ pub fn Score(ScoreProps { ability }: &ScoreProps) -> Html {
 
 	let onclick = context_menu::use_control_action({
 		let ability = *ability;
-		move |_, context| {
+		move |_, _context| {
 			context_menu::Action::open_root(ability.long_name(), html!(<Modal {ability} />))
 		}
 	});

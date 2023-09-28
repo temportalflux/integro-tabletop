@@ -27,7 +27,7 @@ half against the creature, not reduced by three-quarters.";
 pub fn DefensesCard() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let onclick = context_menu::use_control_action({
-		|_: web_sys::MouseEvent, context| {
+		|_: web_sys::MouseEvent, _context| {
 			context_menu::Action::open_root(format!("Defenses"), html!(<Modal />))
 		}
 	});

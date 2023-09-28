@@ -7,7 +7,7 @@ use crate::{
 	},
 	utility::MutatorGroup,
 };
-use std::{path::Path, sync::Arc};
+use std::path::Path;
 
 mod indirect;
 pub use indirect::*;

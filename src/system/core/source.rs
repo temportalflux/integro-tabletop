@@ -339,7 +339,7 @@ mod test {
 			SourceId::from_str("local://module-name@mysystem/item/gear.kdl?version=e812da2c")?;
 		let mut relative = SourceId::from_str("feat/initiate.kdl")?;
 		relative.set_relative_basis(&basis, true);
-		let mut expected =
+		let expected =
 			SourceId::from_str("local://module-name@mysystem/feat/initiate.kdl?version=e812da2c")?;
 		assert_eq!(relative, expected);
 		Ok(())

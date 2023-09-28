@@ -112,7 +112,7 @@ healed regains 1 hit point after 1d4 hours.";
 pub fn HitPointMgmtCard() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let on_open_modal = context_menu::use_control_action({
-		|_: web_sys::MouseEvent, context| {
+		|_: web_sys::MouseEvent, _context| {
 			context_menu::Action::open_root(format!("Hit Points"), html!(<Modal />))
 		}
 	});

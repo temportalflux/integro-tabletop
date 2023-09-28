@@ -33,7 +33,7 @@ pub fn ItemRow(
 	let open_modal = context_menu::use_control_action({
 		let id_path = id_path.clone();
 		let name = AttrValue::from(item.name.clone());
-		move |_, context| {
+		move |_, _context| {
 			context_menu::Action::open_root(
 				name.clone(),
 				html!(<ItemModal id_path={id_path.clone()} />),

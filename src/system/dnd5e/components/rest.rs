@@ -19,7 +19,7 @@ use yew::prelude::*;
 pub fn Button(GeneralProp { value }: &GeneralProp<Rest>) -> Html {
 	let onclick = context_menu::use_control_action({
 		let rest = *value;
-		move |_: web_sys::MouseEvent, context| {
+		move |_: web_sys::MouseEvent, _context| {
 			context_menu::Action::open_root(format!("{rest} Rest"), html!(<Modal value={rest} />))
 		}
 	});
