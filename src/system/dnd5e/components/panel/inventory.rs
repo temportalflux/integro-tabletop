@@ -367,7 +367,9 @@ fn BrowseStartingEquipment() -> Html {
 					{"Add Equipment & Close"}
 				</button>
 			</div>
-			{sections}
+			<div class="body">
+				{sections}
+			</div>
 		</div>
 	}
 }
