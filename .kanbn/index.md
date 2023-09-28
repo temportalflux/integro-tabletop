@@ -37,7 +37,6 @@ completedColumns:
 
 ## Pending
 
-- [bonus-damage-for-spells](tasks/bonus-damage-for-spells.md)
 - [conditions-imply-other-conditions](tasks/conditions-imply-other-conditions.md)
 - [condition-degrees](tasks/condition-degrees.md)
 - [item-charges](tasks/item-charges.md)
@@ -53,8 +52,8 @@ completedColumns:
 
 ## In Progress
 
-- [item-bundles-packs-do-not-have-contents](tasks/item-bundles-packs-do-not-have-contents.md)
-
 ## Done
 
+- [bonus-damage-for-spells](tasks/bonus-damage-for-spells.md)
+- [item-bundles-packs-do-not-have-contents](tasks/item-bundles-packs-do-not-have-contents.md)
 - [starting-equipment-ui](tasks/starting-equipment-ui.md)

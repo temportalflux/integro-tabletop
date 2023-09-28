@@ -4,7 +4,7 @@ use crate::system::dnd5e::{
 		action::AttackQuery,
 		proficiency,
 		roll::{Modifier, Roll},
-		Ability, ArmorClass, DamageType, OtherProficiencies, Rest, Skill,
+		Ability, ArmorClass, DamageType, OtherProficiencies, Rest, Skill, Spell,
 	},
 	mutator::{Defense, Flag},
 };
@@ -319,6 +319,7 @@ pub struct AttackBonuses {
 	attack_roll: Vec<AttackRollBonus>,
 	attack_damage: Vec<AttackDamageBonus>,
 	attack_ability: Vec<AttackAbility>,
+	spell_damage: Vec<SpellDamageBonus>,
 }
 #[derive(Clone, PartialEq, Debug)]
 struct AttackRollBonus {
@@ -331,6 +332,12 @@ struct AttackDamageBonus {
 	amount: Roll,
 	damage_type: Option<DamageType>,
 	queries: Vec<AttackQuery>,
+	source: PathBuf,
+}
+#[derive(Clone, PartialEq, Debug)]
+struct SpellDamageBonus {
+	amount: Roll,
+	queries: Vec<spellcasting::Filter>,
 	source: PathBuf,
 }
 #[derive(Clone, PartialEq, Debug)]
@@ -376,6 +383,19 @@ impl AttackBonuses {
 	) {
 		self.attack_ability.push(AttackAbility {
 			ability,
+			queries,
+			source,
+		});
+	}
+
+	pub fn add_to_spell_damage(
+		&mut self,
+		amount: Roll,
+		queries: Vec<spellcasting::Filter>,
+		source: PathBuf,
+	) {
+		self.spell_damage.push(SpellDamageBonus {
+			amount,
 			queries,
 			source,
 		});
@@ -432,6 +452,20 @@ impl AttackBonuses {
 			}
 		}
 		abilities
+	}
+
+	pub fn get_spell_damage(&self, spell: &Spell) -> Vec<(&Roll, &Path)> {
+		let mut bonuses = Vec::new();
+		for bonus in &self.spell_damage {
+			// Filter out any bonuses which do not meet the restriction
+			'iter_query: for query in &bonus.queries {
+				if query.matches(spell) {
+					bonuses.push((&bonus.amount, bonus.source.as_path()));
+					break 'iter_query;
+				}
+			}
+		}
+		bonuses
 	}
 }
 

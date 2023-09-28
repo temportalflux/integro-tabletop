@@ -411,22 +411,9 @@ impl FromKDL for Spellcasting {
 							amount,
 							criteria: None,
 						};
-						if let Some(node) = node.query_opt("scope() > filter")? {
-							let spell_filter = {
-								let ranks = node.query_i64_all("scope() > rank", 0)?;
-								let ranks =
-									ranks.into_iter().map(|v| v as u8).collect::<HashSet<_>>();
-								let tags = node.query_str_all("scope() > tag", 0)?;
-								let tags =
-									tags.into_iter().map(str::to_owned).collect::<HashSet<_>>();
-								spellcasting::Filter {
-									ranks,
-									tags,
-									..Default::default()
-								}
-							};
-							selector.set_criteria(spell_filter.as_criteria());
-							filter = Some(spell_filter);
+						filter = node.query_opt_t::<spellcasting::Filter>("scope() > filter")?;
+						if let Some(filter) = &filter {
+							selector.set_criteria(filter.as_criteria());
 						}
 						Some(SelectableSpells {
 							filter,
@@ -579,16 +566,7 @@ impl AsKdl for Spellcasting {
 						node += selectable.prepared.as_kdl();
 						node.push_child_t("amount", &selectable.selector.amount);
 						if let Some(filter) = &selectable.filter {
-							node.push_child({
-								let mut node = NodeBuilder::default();
-								for rank in filter.ranks.iter().sorted() {
-									node.push_child_t("rank", rank);
-								}
-								for tag in filter.tags.iter().sorted() {
-									node.push_child_t("tag", tag);
-								}
-								node.build("filter")
-							});
+							node.push_child_t("filter", filter);
 						}
 						node.build("options")
 					});

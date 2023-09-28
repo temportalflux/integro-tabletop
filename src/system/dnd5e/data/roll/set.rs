@@ -53,6 +53,12 @@ impl RollSet {
 		true
 	}
 
+	pub fn take_flat_bonus(&mut self) -> u32 {
+		let out = self.1;
+		self.1 = 0;
+		out
+	}
+
 	pub fn rolls(&self) -> Vec<Roll> {
 		let mut rolls = Vec::with_capacity(Die::LENGTH + 1);
 		for (die, amt) in &self.0 {

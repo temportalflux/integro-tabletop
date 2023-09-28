@@ -1,8 +1,11 @@
 use crate::{
 	kdl_ext::{DocumentExt, EntryExt, FromKDL, NodeBuilder, ValueExt},
 	system::dnd5e::data::{
-		action::AttackQuery, character::Character, description, roll::EvaluatedRoll, Ability,
-		DamageType,
+		action::AttackQuery,
+		character::{spellcasting, Character},
+		description,
+		roll::EvaluatedRoll,
+		Ability, DamageType,
 	},
 	utility::{Dependencies, Mutator, NotInList},
 };
@@ -21,6 +24,10 @@ pub enum Bonus {
 	AttackAbilityModifier {
 		ability: Ability,
 		query: Vec<AttackQuery>,
+	},
+	SpellDamage {
+		damage: EvaluatedRoll,
+		query: Vec<spellcasting::Filter>,
 	},
 	ArmorClass {
 		bonus: i32,
@@ -49,9 +56,12 @@ impl Mutator for Bonus {
 		match self {
 			Self::AttackRoll { .. } => {}
 			Self::AttackDamage { damage, .. } => {
-				deps = deps.join(damage.dependencies());
+				deps += damage.dependencies();
 			}
 			Self::AttackAbilityModifier { .. } => {}
+			Self::SpellDamage { damage, .. } => {
+				deps += damage.dependencies();
+			}
 			Self::ArmorClass { .. } => {}
 		}
 		deps
@@ -82,6 +92,14 @@ impl Mutator for Bonus {
 			Self::AttackAbilityModifier { ability, query } => {
 				stats.attack_bonuses_mut().add_ability_modifier(
 					*ability,
+					query.clone(),
+					parent.to_owned(),
+				);
+			}
+			Self::SpellDamage { damage, query } => {
+				let bonus = damage.evaluate(stats);
+				stats.attack_bonuses_mut().add_to_spell_damage(
+					bonus,
 					query.clone(),
 					parent.to_owned(),
 				);
@@ -119,6 +137,11 @@ impl FromKDL for Bonus {
 				let query = node.query_all_t::<AttackQuery>("scope() > query")?;
 				Ok(Self::AttackAbilityModifier { ability, query })
 			}
+			(Some("Spell"), "Damage") => {
+				let damage = node.query_req_t::<EvaluatedRoll>("scope() > damage")?;
+				let query = node.query_all_t::<spellcasting::Filter>("scope() > query")?;
+				Ok(Self::SpellDamage { damage, query })
+			}
 			(None, "ArmorClass") => {
 				let bonus = node.next_i64_req()? as i32;
 				let context = node.get_str_opt("context")?.map(str::to_owned);
@@ -133,6 +156,7 @@ impl FromKDL for Bonus {
 					"(Attack)Damage",
 					"(Attack)Roll",
 					"(Attack)AbilityModifier",
+					"(Spell)Damage",
 					"ArmorClass",
 				],
 			)
@@ -181,6 +205,14 @@ impl crate::kdl_ext::AsKdl for Bonus {
 				node.push_entry(*bonus as i64);
 				if let Some(context) = context {
 					node.push_entry(("context", context.clone()));
+				}
+				node
+			}
+			Self::SpellDamage { damage, query } => {
+				node.push_entry_typed("Damage", "Spell");
+				node.push_child_t("damage", damage);
+				for query in query {
+					node.push_child_t("query", query);
 				}
 				node
 			}

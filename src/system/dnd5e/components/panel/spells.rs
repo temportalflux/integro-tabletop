@@ -793,7 +793,11 @@ pub fn spell_overview_info(
 					None => html!(),
 					Some(damage) => {
 						let upcast_amt = cast_at_rank.map(|rank| rank - spell.rank).unwrap_or(0);
-						let (roll_set, bonus) = damage.evaluate(&*state, damage_modifier, upcast_amt as u32);
+						let (mut roll_set, mut bonus) = damage.evaluate(&*state, damage_modifier, upcast_amt as u32);
+						for (bonus_dmg_roll, _source) in state.attack_bonuses().get_spell_damage(&spell) {
+							roll_set.push(*bonus_dmg_roll);
+						}
+						bonus += roll_set.take_flat_bonus() as i32;
 						let mut spans = roll_set.rolls().into_iter().enumerate().map(|(idx, roll)| {
 							html! {
 								<span>
@@ -1357,6 +1361,8 @@ fn spell_content(spell: &Spell, entry: Option<&SpellEntry>, state: &CharacterHan
 			})
 			.collect::<Vec<_>>()
 	};
+
+	// TODO: Show evaluated attack/save dc + damage + damage type + damage bonuses (and sources)
 
 	html! {<>
 		{sections}

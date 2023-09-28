@@ -178,3 +178,11 @@ impl Deref for Dependencies {
 		&self.0
 	}
 }
+
+impl std::ops::AddAssign for Dependencies {
+	fn add_assign(&mut self, rhs: Self) {
+		let mut tmp = Self::default();
+		std::mem::swap(self, &mut tmp);
+		*self = tmp.join(rhs);
+	}
+}
