@@ -123,6 +123,10 @@ impl Character {
 		self.apply_cached_mutators();
 
 		self.inventory_mut().resolve_indirection(&provider).await?;
+		self.persistent_mut()
+			.conditions
+			.resolve_indirection(&provider)
+			.await?;
 		self.derived
 			.spellcasting
 			.fetch_spell_objects(&provider, &self.character)

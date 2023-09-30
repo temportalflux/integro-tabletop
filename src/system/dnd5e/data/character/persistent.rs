@@ -27,7 +27,7 @@ use std::{
 mod description;
 pub use description::*;
 
-use super::RestEntry;
+use super::{ObjectCacheProvider, RestEntry};
 
 pub static MAX_SPELL_RANK: u8 = 9;
 
@@ -410,6 +410,16 @@ pub struct Conditions {
 	custom: Vec<Condition>,
 }
 impl Conditions {
+	pub async fn resolve_indirection(
+		&mut self,
+		provider: &ObjectCacheProvider,
+	) -> anyhow::Result<()> {
+		for condition in self.iter_mut() {
+			condition.resolve_indirection(provider).await?;
+		}
+		Ok(())
+	}
+
 	pub fn insert(&mut self, condition: Condition) {
 		match &condition.id {
 			Some(id) => {

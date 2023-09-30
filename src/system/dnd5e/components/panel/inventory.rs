@@ -2,7 +2,7 @@ use crate::{
 	components::{
 		context_menu,
 		database::{use_query_all_typed, use_typed_fetch_callback, QueryAllArgs, QueryStatus},
-		stop_propagation, Spinner,
+		stop_propagation, IndirectFetch, ObjectLink, Spinner,
 	},
 	database::app::Database,
 	page::characters::sheet::{CharacterHandle, MutatorImpact},
@@ -15,6 +15,7 @@ use crate::{
 				character::{IndirectItem, Persistent, StartingEquipment},
 				currency::Wallet,
 				item::{self, container::item::AsItem, Item},
+				Indirect,
 			},
 		},
 	},
@@ -592,23 +593,17 @@ fn ItemById(
 		disabled,
 	}: &ItemByIdProps,
 ) -> Html {
-	let found_item = use_state(|| None::<std::rc::Rc<Item>>);
-	let fetch_item = use_typed_fetch_callback(
-		"Fetch Item".into(),
-		Callback::from({
-			let found_item = found_item.clone();
-			move |item: Item| {
-				found_item.set(Some(std::rc::Rc::new(item)));
+	html!(<IndirectFetch<Item>
+		indirect={Indirect::Id(id.clone())}
+		to_inner={Callback::from({
+			let quantity = *quantity;
+			let disabled = *disabled;
+			let prefix = prefix.clone();
+			move |item: Rc<Item>| html! {
+				<SpecificItem item={item.clone()} {quantity} prefix={prefix.clone()} {disabled} />
 			}
-		}),
-	);
-	if use_is_first_mount() {
-		fetch_item.emit(id.clone());
-	}
-	let Some(item) = &*found_item else {
-		return html!(<Spinner />);
-	};
-	html!(<SpecificItem item={item.clone()} quantity={*quantity} prefix={prefix.clone()} disabled={*disabled} />)
+		})}
+	/>)
 }
 
 #[derive(Clone, PartialEq, Properties)]
@@ -629,6 +624,16 @@ fn SpecificItem(
 		disabled,
 	}: &SpecificItemProps,
 ) -> Html {
+	let onclick = context_menu::use_control_action({
+		let item = item.clone();
+		move |_, context| {
+			context_menu::Action::open(
+				&context,
+				item.name.clone(),
+				html!(<ItemInfo item={item.clone()} />),
+			)
+		}
+	});
 	html! {<>
 		<div class="label">
 			{prefix.clone()}
@@ -638,7 +643,11 @@ fn SpecificItem(
 			</span>
 		</div>
 		<div class="specific-item">
-			<ItemCard item={item.clone()} disabled={*disabled} />
+			<ObjectLink
+				title={item.name.clone()}
+				{onclick}
+				disabled={*disabled}
+			/>
 		</div>
 	</>}
 }
@@ -726,6 +735,15 @@ fn SelectItem(
 	if selected.is_none() && !*disabled {
 		select_class.push("missing-value");
 	}
+	let onclick_selected = context_menu::use_control_action({
+		move |rc_item: Rc<Item>, context| {
+			context_menu::Action::open(
+				&context,
+				rc_item.name.clone(),
+				html!(<ItemInfo item={rc_item.clone()} />),
+			)
+		}
+	});
 	html! {<>
 		<div class="label">
 			{prefix.clone()}
@@ -741,45 +759,16 @@ fn SelectItem(
 					{options}
 				</select>
 				{selected_item.map(|item| html! {
-					<ItemCard {item} disabled={*disabled} />
+					<ObjectLink
+						title={item.name.clone()}
+						onclick={onclick_selected.reform({
+							let item = item.clone();
+							move |_| item.clone()
+						})}
+						disabled={*disabled}
+					/>
 				})}
 			</div>
 		</div>
 	</>}
-}
-
-#[derive(Clone, PartialEq, Properties)]
-struct ItemCardProps {
-	item: std::rc::Rc<Item>,
-	#[prop_or_default]
-	disabled: bool,
-}
-
-#[function_component]
-fn ItemCard(ItemCardProps { item, disabled }: &ItemCardProps) -> Html {
-	let onclick = context_menu::use_control_action({
-		let item = item.clone();
-		move |_, context| {
-			context_menu::Action::open(
-				&context,
-				item.name.clone(),
-				html!(<ItemInfo item={item.clone()} />),
-			)
-		}
-	});
-	let mut classes = classes!("card", "item");
-	if *disabled {
-		classes.push("disabled");
-	}
-
-	html! {
-		<div class={classes} {onclick}>
-			<div class="card-body">
-				<p class="card-title">{&item.name}</p>
-				<button class="btn btn-theme btn-xs">
-					<i class="bi bi-chevron-right" />
-				</button>
-			</div>
-		</div>
-	}
 }

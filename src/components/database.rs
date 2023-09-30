@@ -410,6 +410,7 @@ where
 		let fn_item = fn_item.clone();
 		task_dispatch.spawn(task_name.clone(), None, async move {
 			let Some(item) = database.get_typed_entry::<EntryContent>(source_id.clone(), system_depot, None).await? else {
+				log::error!(target: "database", "Failed to find entry for {:?}", source_id.to_string());
 				return Ok(());
 			};
 			fn_item.emit(item);

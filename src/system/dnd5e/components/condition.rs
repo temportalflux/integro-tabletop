@@ -1,8 +1,9 @@
+use super::GeneralProp;
 use crate::{
 	components::{
 		context_menu,
 		database::{use_query_all_typed, use_typed_fetch_callback, QueryAllArgs, QueryStatus},
-		Spinner, Tag, Tags,
+		IndirectFetch, ObjectLink, Spinner, Tag, Tags,
 	},
 	page::characters::sheet::joined::editor::{mutator_list, CollapsableCard},
 	page::characters::sheet::CharacterHandle,
@@ -10,14 +11,24 @@ use crate::{
 	system::{
 		core::SourceId,
 		dnd5e::{
-			data::{character::Persistent, Condition},
+			data::{character::Persistent, Condition, Indirect},
 			DnD5e,
 		},
 	},
 	utility::InputExt,
 };
-use std::str::FromStr;
+use std::{rc::Rc, str::FromStr};
+use itertools::Itertools;
 use yew::prelude::*;
+
+fn insert_condition_tag(out: &mut Vec<String>, condition: &Condition) {
+	out.push(condition.name.clone());
+	for implied in &condition.implied {
+		if let Indirect::Custom(condition) = &implied {
+			insert_condition_tag(out, condition);
+		}
+	}
+}
 
 #[function_component]
 pub fn ConditionsCard() -> Html {
@@ -25,26 +36,24 @@ pub fn ConditionsCard() -> Html {
 	let onclick = context_menu::use_control_action({
 		|_, _context| context_menu::Action::open_root("Conditions", html!(<Modal />))
 	});
-	let conditions = state
-		.persistent()
-		.conditions
-		.iter()
-		.map(|condition| {
-			html! {
-				<Tag>
-					{condition.name.clone()}
-				</Tag>
-			}
-		})
-		.collect::<Vec<_>>();
+	let mut condition_names = Vec::new();
+	for condition in state.persistent().conditions.iter() {
+		insert_condition_tag(&mut condition_names, condition);
+	}
 	html! {
 		<div class="card m-1" style="height: 80px;" {onclick}>
 			<div class="card-body text-center" style="padding: 5px 5px;">
 				<h6 class="card-title mb-1" style="font-size: 0.8rem;">{"Conditions"}</h6>
 				<div class="d-flex justify-content-center pe-1" style="overflow: auto; height: 53px;">
-					{match conditions.is_empty() {
-						true => html! { "None" },
-						false => html! {<Tags classes={"scroll-content"}> {conditions} </Tags>},
+					{match condition_names.is_empty() {
+						true => html!("None"),
+						false => html! {
+							<Tags classes={"scroll-content"}>
+								{condition_names.into_iter().sorted().map(|name| {
+									html!(<Tag>{name}</Tag>)
+								}).collect::<Vec<_>>()}
+							</Tags>
+						},
 					}}
 				</div>
 			</div>
@@ -140,6 +149,7 @@ fn Modal() -> Html {
 					move |_| key.clone()
 				});
 				let ref_id = condition.name.replace(" ", "");
+
 				// TODO: Show degrees in body of collapsable card
 				html! {
 					<CollapsableCard
@@ -154,11 +164,57 @@ fn Modal() -> Html {
 							</>}
 						}}
 					>
-						<div class="text-block">{condition.description.clone()}</div>
-						{mutator_list(&condition.mutators, Some(&state))}
+						<ConditionBody value={Rc::new(condition.clone())} />
 					</CollapsableCard>
 				}
 			}).collect::<Vec<_>>()}
 		</div>
+	</>}
+}
+
+#[function_component]
+fn ConditionBody(GeneralProp { value: condition }: &GeneralProp<Rc<Condition>>) -> Html {
+	let state = use_context::<CharacterHandle>().unwrap();
+
+	let open_details = context_menu::use_control_action({
+		move |condition: Rc<Condition>, context| {
+			context_menu::Action::open(
+				&context,
+				condition.name.clone(),
+				html!(<ConditionBody value={condition.clone()} />),
+			)
+		}
+	});
+
+	let mut implications = Vec::with_capacity(condition.implied.len());
+	for implied in &condition.implied {
+		implications.push(html!(<IndirectFetch<Condition>
+			indirect={implied.clone()}
+			to_inner={Callback::from({
+				let open_details = open_details.clone();
+				move |condition: Rc<Condition>| html! {
+					<ObjectLink
+						title={condition.name.clone()}
+						subtitle={"Condition"}
+						disabled={false}
+						onclick={open_details.reform({
+							let condition = condition.clone();
+							move |_| condition.clone()
+						})}
+					/>
+				}
+			})}
+		/>));
+	}
+
+	html! {<>
+		<div class="text-block">{condition.description.clone()}</div>
+		{(!implications.is_empty()).then(|| html! {
+			<div class="d-flex flex-row">
+				<span class="me-2">{"Implied Conditions:"}</span>
+				<div>{implications}</div>
+			</div>
+		})}
+		{mutator_list(&condition.mutators, Some(&state))}
 	</>}
 }

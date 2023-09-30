@@ -65,13 +65,13 @@ mod test {
 		fn item_specific() -> anyhow::Result<()> {
 			let doc = "
 				|mutator \"add_starting_equipment\" {
-				|    item \"Specific\" \"items/weapon/rapier.kdl\"
+				|    item \"Specific\" \"items/weapons/rapier.kdl\"
 				|}
 			";
 			let data = AddStartingEquipment(vec![StartingEquipment::IndirectItem(
 				IndirectItem::Specific(
 					SourceId {
-						path: "items/weapon/rapier.kdl".into(),
+						path: "items/weapons/rapier.kdl".into(),
 						..Default::default()
 					},
 					1,
@@ -193,8 +193,8 @@ mod test {
 			let doc = "
 				|mutator \"add_starting_equipment\" {
 				|    group pick=1 {
-				|        item \"Specific\" \"items/weapon/rapier.kdl\"
-				|        item \"Specific\" \"items/weapon/longsword.kdl\"
+				|        item \"Specific\" \"items/weapons/rapier.kdl\"
+				|        item \"Specific\" \"items/weapons/longsword.kdl\"
 				|    }
 				|}
 			";
@@ -202,14 +202,14 @@ mod test {
 				entries: vec![
 					StartingEquipment::IndirectItem(IndirectItem::Specific(
 						SourceId {
-							path: "items/weapon/rapier.kdl".into(),
+							path: "items/weapons/rapier.kdl".into(),
 							..Default::default()
 						},
 						1,
 					)),
 					StartingEquipment::IndirectItem(IndirectItem::Specific(
 						SourceId {
-							path: "items/weapon/longsword.kdl".into(),
+							path: "items/weapons/longsword.kdl".into(),
 							..Default::default()
 						},
 						1,
