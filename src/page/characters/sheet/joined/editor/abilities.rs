@@ -142,7 +142,8 @@ fn GenerationSection() -> Html {
 			}));
 		}
 	});
-	use_effect_with_deps(
+	use_effect_with(
+		(*method).clone(),
 		{
 			let scores = scores.clone();
 			let state = state.clone();
@@ -180,7 +181,6 @@ fn GenerationSection() -> Html {
 				}),
 			}
 		},
-		(*method).clone(),
 	);
 	let has_changes = method.is_some() && *scores != state.persistent().ability_scores;
 	html! {

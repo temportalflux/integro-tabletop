@@ -40,7 +40,8 @@ pub fn BrowseModal() -> Html {
 	let result_limit = use_state_eq(|| Some(DEFAULT_RESULT_LIMIT));
 	let query_handle = use_query_all_typed::<Item>(false, None);
 
-	use_effect_with_deps(
+	use_effect_with(
+		(search_params.clone(), result_limit.clone()),
 		{
 			let query_handle = query_handle.clone();
 			move |(params, limit): &(
@@ -59,7 +60,6 @@ pub fn BrowseModal() -> Html {
 				query_handle.run(Some(args));
 			}
 		},
-		(search_params.clone(), result_limit.clone()),
 	);
 
 	let on_search_changed = Callback::from({

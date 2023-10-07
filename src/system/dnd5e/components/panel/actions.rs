@@ -318,10 +318,10 @@ pub fn Actions() -> Html {
 								<div>
 									<strong>{tag.display_name()}{": "}</strong>
 									<span>
-										{nodes.into_iter().with_position().map(|position| {
+										{nodes.into_iter().with_position().map(|(position, node)| {
 											{match position {
-												Position::Only(node) | Position::Last(node) => node,
-												Position::First(node) | Position::Middle(node) => html! {
+												Position::Only | Position::Last => node,
+												Position::First | Position::Middle => html! {
 													<span>{node}{", "}</span>
 												},
 											}}
@@ -451,14 +451,14 @@ fn ActionOverview(ActionProps { entry }: &ActionProps) -> Html {
 
 	let fetch_indirect_conditions = use_query_typed::<Condition>();
 	let indirect_condition_ids = use_state_eq(|| Vec::new());
-	use_effect_with_deps(
+	use_effect_with(
+		indirect_condition_ids.clone(),
 		{
 			let fetch_indirect_conditions = fetch_indirect_conditions.clone();
 			move |ids: &UseStateHandle<Vec<SourceId>>| {
 				fetch_indirect_conditions.run((**ids).clone());
 			}
 		},
-		indirect_condition_ids.clone(),
 	);
 
 	let mut conditions_content = html!();
@@ -598,14 +598,14 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let fetch_indirect_conditions = use_query_typed::<Condition>();
 	let indirect_condition_ids = use_state_eq(|| Vec::new());
-	use_effect_with_deps(
+	use_effect_with(
+		indirect_condition_ids.clone(),
 		{
 			let fetch_indirect_conditions = fetch_indirect_conditions.clone();
 			move |ids: &UseStateHandle<Vec<SourceId>>| {
 				fetch_indirect_conditions.run((**ids).clone());
 			}
 		},
-		indirect_condition_ids.clone(),
 	);
 
 	let Some(feature) = state.features().path_map.get_first(&path) else {
@@ -634,7 +634,7 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 		action_sections.push(html! {
 			<div class="property">
 				<strong>{"Action Type:"}</strong>
-				<span>{action.activation_kind}</span>
+				<span>{action.activation_kind.to_string()}</span>
 			</div>
 		});
 

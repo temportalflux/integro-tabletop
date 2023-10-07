@@ -10,13 +10,13 @@ pub fn use_on_auth_success<F>(callback: F) where F: Fn(&std::rc::Rc<auth::Status
 		let auth_status = auth_status.clone();
 		move || matches!(*auth_status, auth::Status::Successful { .. })
 	});
-	use_effect_with_deps(move |(status, was_authenticated)| {
+	use_effect_with((auth_status, was_success), move |(status, was_authenticated)| {
 		let is_authenticated = matches!(**status, auth::Status::Successful { .. });
 		if is_authenticated && !**was_authenticated {
 			(*callback.current())(status);
 		}
 		was_authenticated.set(is_authenticated);
-	}, (auth_status, was_success));
+	});
 }
 
 #[function_component]

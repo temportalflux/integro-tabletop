@@ -257,7 +257,7 @@ fn PersonalityCard(GeneralProp { value }: &GeneralProp<PersonalityKind>) -> Html
 	};
 	html! {
 		<div class="mb-4">
-			<h5>{*value}</h5>
+			<h5>{value.to_string()}</h5>
 			{selected_values}
 			{info_collapse}
 			{suggestions_collapsable}

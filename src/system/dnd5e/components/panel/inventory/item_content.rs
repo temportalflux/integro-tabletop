@@ -127,7 +127,7 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 		sections.push(html! {
 			<div class="property">
 				<strong>{"Rarity:"}</strong>
-				<span>{rarity}</span>
+				<span>{rarity.to_string()}</span>
 			</div>
 		});
 	}
@@ -298,7 +298,7 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 				weapon_sections.push(html! {
 					<div class="property">
 						<strong>{"Type:"}</strong>
-						<span>{weapon.kind}</span>
+						<span>{weapon.kind.to_string()}</span>
 					</div>
 				});
 				weapon_sections.push(html! {
@@ -631,14 +631,14 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 
 	let fetch_indirect_spells = use_query_typed::<Spell>();
 	let indirect_spell_ids = use_state_eq(|| Vec::new());
-	use_effect_with_deps(
+	use_effect_with(
+		indirect_spell_ids.clone(),
 		{
 			let fetch_indirect_spells = fetch_indirect_spells.clone();
 			move |ids: &UseStateHandle<Vec<SourceId>>| {
 				fetch_indirect_spells.run((**ids).clone());
 			}
 		},
-		indirect_spell_ids.clone(),
 	);
 
 	let Some(item) = get_inventory_item(&state, value) else { return Html::default(); };

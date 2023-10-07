@@ -7,6 +7,7 @@ pub fn use_media_query(query: impl AsRef<str>) -> UseStateHandle<bool> {
 
 	let query_result = use_state_eq(|| false);
 	let js_on_media_query_changed = use_memo(
+		(),
 		{
 			let query_result = query_result.clone();
 			move |_| {
@@ -15,7 +16,6 @@ pub fn use_media_query(query: impl AsRef<str>) -> UseStateHandle<bool> {
 				})
 			}
 		},
-		(),
 	);
 
 	let window = web_sys::window().unwrap();

@@ -37,6 +37,7 @@ where
 {
 	let callback = std::rc::Rc::new(callback);
 	let js_on_resize = use_memo(
+		(),
 		{
 			move |_| {
 				let callback = callback.clone();
@@ -45,7 +46,6 @@ where
 				})
 			}
 		},
-		(),
 	);
 	let window = web_sys::window().unwrap();
 	window.set_onresize(Some((*js_on_resize).as_ref().unchecked_ref()));

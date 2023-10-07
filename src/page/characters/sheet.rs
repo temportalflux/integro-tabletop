@@ -48,7 +48,8 @@ pub fn Sheet(props: &GeneralProp<SourceId>) -> Html {
 		}
 	});
 
-	use_effect_with_deps(
+	use_effect_with(
+		props.value.clone(),
 		{
 			let character = character.clone();
 			move |id: &SourceId| {
@@ -58,7 +59,6 @@ pub fn Sheet(props: &GeneralProp<SourceId>) -> Html {
 				}
 			}
 		},
-		props.value.clone(),
 	);
 	if !character.is_loaded() {
 		return html!(<Spinner />);

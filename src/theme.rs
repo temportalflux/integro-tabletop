@@ -79,7 +79,8 @@ pub fn Dropdown() -> Html {
 	let theme = use_state(|| gloo_storage::LocalStorage::get::<Theme>("theme").unwrap_or_default());
 
 	// Update the theme in storage and html when the theme value has changed
-	use_effect_with_deps(
+	use_effect_with(
+		(*theme).clone(),
 		move |theme| {
 			log::debug!("Setting theme to {:?}", theme);
 			// Write the theme to local-storage, deleting if the desired value is automatic.
@@ -107,7 +108,6 @@ pub fn Dropdown() -> Html {
 				}
 			}
 		},
-		(*theme).clone(),
 	);
 
 	let onclick = {

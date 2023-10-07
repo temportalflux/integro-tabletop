@@ -101,7 +101,8 @@ fn CategoryBrowser(CategoryBrowserProps { use_lineages: _ }: &CategoryBrowserPro
 	let selected_category = use_state(|| None::<AttrValue>);
 	let query_bundles = use_query_all_typed::<Bundle>(false, None);
 	// Query for bundles when the category changes
-	use_effect_with_deps(
+	use_effect_with(
+		selected_category.clone(),
 		{
 			let query_bundles = query_bundles.clone();
 			move |selected: &UseStateHandle<Option<AttrValue>>| {
@@ -127,7 +128,6 @@ fn CategoryBrowser(CategoryBrowserProps { use_lineages: _ }: &CategoryBrowserPro
 				}
 			}
 		},
-		selected_category.clone(),
 	);
 
 	let options = vec![

@@ -312,7 +312,8 @@ pub fn ObjectSelectorList(props: &GeneralProp<std::path::PathBuf>) -> Html {
 
 	let state = use_context::<CharacterHandle>().unwrap();
 	let fetched_entries = use_query_entries();
-	use_effect_with_deps(
+	use_effect_with(
+		state.clone(),
 		{
 			let data_path = props.value.clone();
 			let fetched_entries = fetched_entries.clone();
@@ -329,7 +330,6 @@ pub fn ObjectSelectorList(props: &GeneralProp<std::path::PathBuf>) -> Html {
 				fetched_entries.run(ids);
 			}
 		},
-		state.clone(),
 	);
 
 	match fetched_entries.status() {

@@ -95,13 +95,13 @@ pub fn ActionProvider(ChildrenProps { children }: &ChildrenProps) -> Html {
 		}
 	}, yew_hooks::UseAsyncOptions::enable_auto());
 	let on_window_message = use_memo(
+		(),
 		|_| {
 			let send_msg = message_channel.0.clone();
 			Closure::<dyn Fn(_)>::new(move |evt: MessageEvent| {
 				let _ = send_msg.try_send(AuthMessage::Event(evt));
 			})
 		},
-		(),
 	);
 	let logout = Callback::from({
 		let dispatch = dispatch.clone();
@@ -112,6 +112,7 @@ pub fn ActionProvider(ChildrenProps { children }: &ChildrenProps) -> Html {
 		}
 	});
 	let reset_auth_state = use_memo(
+		(),
 		|_| {
 			let auth_status = auth_status.clone();
 			let logout = logout.clone();
@@ -122,7 +123,6 @@ pub fn ActionProvider(ChildrenProps { children }: &ChildrenProps) -> Html {
 				}
 			})
 		},
-		(),
 	);
 	let login = Callback::from({
 		let send_msg = message_channel.0.clone();

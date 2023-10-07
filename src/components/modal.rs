@@ -177,6 +177,7 @@ pub fn GeneralPurpose() -> Html {
 
 	// Callback sent to bootstrap-js to be emited when the animation has finished.
 	let js_on_hidden: Rc<Closure<dyn Fn()>> = use_memo(
+		(),
 		{
 			let context = context.clone();
 			move |_| {
@@ -189,12 +190,12 @@ pub fn GeneralPurpose() -> Html {
 				})
 			}
 		},
-		(),
 	);
 
 	// Generate the bootstrap-js modal when a node is found.
 	// Also subscribe to event listeners on that node, which are emited by bootstrap.
-	use_effect_with_deps(
+	use_effect_with(
+		node.clone(),
 		{
 			let bootstrap = bootstrap.clone();
 			let on_hidden = js_on_hidden.clone();
@@ -208,11 +209,11 @@ pub fn GeneralPurpose() -> Html {
 				}
 			}
 		},
-		node.clone(),
 	);
 
 	// Trigger bootstrap-js modal functions when context updates (for showing/hiding).
-	use_effect_with_deps(
+	use_effect_with(
+		(context.clone(), bootstrap.is_some()),
 		{
 			let bootstrap = bootstrap.clone();
 			move |(context, _has_modal): &(Context, bool)| {
@@ -235,7 +236,6 @@ pub fn GeneralPurpose() -> Html {
 				}
 			}
 		},
-		(context.clone(), bootstrap.is_some()),
 	);
 
 	let mut root_classes = classes!("modal", "fade");
