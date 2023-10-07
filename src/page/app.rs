@@ -4,6 +4,9 @@ use yew_router::prelude::*;
 
 #[function_component]
 pub fn App() -> Html {
+	auth::use_on_auth_success(|auth_status| {
+		log::debug!(target: "autosync", "Successful auth, poke storage for latest versions of all installed modules");
+	});
 	html! {
 		<BrowserRouter>
 			<Header />

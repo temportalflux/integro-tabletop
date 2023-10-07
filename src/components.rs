@@ -4,6 +4,7 @@ pub use annotated_number::*;
 pub mod auth;
 pub mod context_menu;
 pub mod database;
+pub mod hook;
 pub mod indirect;
 pub use indirect::*;
 pub mod link_object;

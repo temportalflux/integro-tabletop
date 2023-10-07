@@ -24,6 +24,12 @@ pub struct ViewProps {
 pub fn Sheet(props: &GeneralProp<SourceId>) -> Html {
 	let character = use_character(props.value.clone());
 
+	crate::components::hook::use_document_visibility(|vis| {
+		if vis == web_sys::VisibilityState::Visible {
+			log::debug!(target: "autosync", "Tab resumed, time to poke storage for latest version.");
+		}
+	});
+
 	let screen_size = mobile::use_mobile_kind();
 	let view_handle = use_state_eq({
 		let is_new = !props.value.has_path();

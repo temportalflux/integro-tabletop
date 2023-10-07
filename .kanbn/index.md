@@ -16,12 +16,12 @@ columnSorting:
 
 - [hit-die-mutator](tasks/hit-die-mutator.md)
 - [condition-supression](tasks/condition-supression.md)
-- [dodge-action-applies-a-condition](tasks/dodge-action-applies-a-condition.md)
 - [expanded-object-cache](tasks/expanded-object-cache.md)
 - [item-browser-filters](tasks/item-browser-filters.md)
 - [spell-browser-filters](tasks/spell-browser-filters.md)
 - [add-restore-uses-mutator](tasks/add-restore-uses-mutator.md)
 - [character-modules](tasks/character-modules.md)
+- [dodge-action-applies-a-condition](tasks/dodge-action-applies-a-condition.md)
 - [details-drawer-layouts-evaluations](tasks/details-drawer-layouts-evaluations.md)
 - [view-scaler-re-eval](tasks/view-scaler-re-eval.md)
 - [create-tasks-for-content-todos](tasks/create-tasks-for-content-todos.md)
@@ -53,10 +53,11 @@ columnSorting:
 - [notes-for-items](tasks/notes-for-items.md)
 - [notes-for-spells](tasks/notes-for-spells.md)
 - [inventory-search-bar](tasks/inventory-search-bar.md)
-- [auto-sync](tasks/auto-sync.md)
 - [autosave](tasks/autosave.md)
 
 ## In Progress
+
+- [auto-sync](tasks/auto-sync.md)
 
 ## Done
 

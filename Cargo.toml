@@ -14,11 +14,12 @@ log = { version = "0.4", features = ["std"] }
 yew = { version = "0.20", features = ["csr"] }
 yew-router = { version = "0.17" }
 yewdux = "0.9"
+gloo-events = "0.2"
 gloo-storage = "0.2"
 gloo-utils = "0.1"
 gloo-timers = { version = "0.2", features = ["futures"] }
 web-sys = { version = "0.3", features = [
-	"DataTransfer", "Document", "DomTokenList",
+	"DataTransfer", "Document", "DomTokenList", "VisibilityState",
 	"HtmlCollection", "HtmlSelectElement", "HtmlInputElement", "HtmlTextAreaElement",
 	"Request", "Storage", "Window",
 	"Node", "NodeList",

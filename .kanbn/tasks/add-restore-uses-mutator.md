@@ -1,10 +1,10 @@
 ---
 created: 2023-09-29T22:25:16.360Z
-updated: 2023-09-29T22:25:26.678Z
+updated: 2023-10-01T17:13:20.001Z
 assigned: ""
 progress: 0
 tags:
-  - Mutator
+  - Capability
 ---
 
 # Add "restore_uses" mutator

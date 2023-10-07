@@ -17,8 +17,8 @@ use crate::{
 	},
 	utility::InputExt,
 };
-use std::{rc::Rc, str::FromStr};
 use itertools::Itertools;
+use std::{rc::Rc, str::FromStr};
 use yew::prelude::*;
 
 fn insert_condition_tag(out: &mut Vec<String>, condition: &Condition) {

@@ -1,6 +1,6 @@
 use gloo_utils::format::JsValueSerdeExt;
 use serde::{Deserialize, Serialize};
-use std::rc::Rc;
+use std::{rc::Rc, collections::VecDeque};
 use std::sync::Mutex;
 use wasm_bindgen::{prelude::Closure, JsCast};
 use web_sys::MessageEvent;
@@ -47,29 +47,68 @@ impl OAuthProvider {
 	}
 }
 
+enum AuthMessage {
+	State(PendingAuthState),
+	Event(MessageEvent),
+	ClearPending,
+	Reset,
+}
+
 #[function_component]
 pub fn ActionProvider(ChildrenProps { children }: &ChildrenProps) -> Html {
 	let (auth_status, dispatch) = use_store::<Status>();
-	let pending_auth_state = use_memo(|_| Mutex::new(None::<PendingAuthState>), ());
+	let message_channel = use_state(|| async_channel::unbounded::<AuthMessage>());
+	yew_hooks::use_async_with_options({
+		let recv_msg = message_channel.1.clone();
+		async move {
+			let mut state = None::<PendingAuthState>;
+			let mut backlog = VecDeque::new();
+			while let Ok(event) = recv_msg.recv().await {
+				match event {
+					AuthMessage::Reset => {
+						backlog.clear();
+					}
+					AuthMessage::Event(evt) => {
+						backlog.push_back(evt);
+					}
+					AuthMessage::State(new_state) => {
+						state = Some(new_state);
+					}
+					AuthMessage::ClearPending => {
+						state = None;
+					}
+				}
+				if state.is_some() && !backlog.is_empty() {
+					let mut tabled = VecDeque::new();
+					for evt in backlog.drain(..) {
+						match state.take() {
+							None => tabled.push_back(evt),
+							Some(old_state) => {
+								state = old_state.handle_event(evt);
+							}
+						}
+					}
+					backlog = tabled;
+				}
+			}
+			Ok(()) as Result<(), ()>
+		}
+	}, yew_hooks::UseAsyncOptions::enable_auto());
 	let on_window_message = use_memo(
 		|_| {
-			let state = pending_auth_state.clone();
+			let send_msg = message_channel.0.clone();
 			Closure::<dyn Fn(_)>::new(move |evt: MessageEvent| {
-				let Ok(mut state) = state.lock() else { return; };
-				if let Some(pending) = state.take() {
-					*state = pending.handle_event(evt);
-				}
+				let _ = send_msg.try_send(AuthMessage::Event(evt));
 			})
 		},
 		(),
 	);
 	let logout = Callback::from({
 		let dispatch = dispatch.clone();
-		let state = pending_auth_state.clone();
+		let send_msg = message_channel.0.clone();
 		move |_: ()| {
 			dispatch.set(Status::None);
-			let Ok(mut state) = state.lock() else { return; };
-			let _ = state.take();
+			let _ = send_msg.try_send(AuthMessage::ClearPending);
 		}
 	});
 	let reset_auth_state = use_memo(
@@ -85,20 +124,22 @@ pub fn ActionProvider(ChildrenProps { children }: &ChildrenProps) -> Html {
 		},
 		(),
 	);
-	let login = Callback::from(move |provider| match &*auth_status {
+	let login = Callback::from({
+		let send_msg = message_channel.0.clone();
+		move |provider| match &*auth_status {
 		Status::Successful { .. } => {}
 		Status::Authorizing | Status::None | Status::Failed { error: _ } => {
+			let _ = send_msg.try_send(AuthMessage::Reset);
 			if let Some(auth_state) = PendingAuthState::authenticate(
 				provider,
 				&on_window_message,
 				&reset_auth_state,
 				&dispatch,
 			) {
-				let Ok(mut state) = pending_auth_state.lock() else { return; };
-				*state = Some(auth_state);
+				let _ = send_msg.try_send(AuthMessage::State(auth_state));
 			}
 		}
-	});
+	}});
 	let auth = Auth { login, logout };
 	html! {
 		<ContextProvider<Auth> context={auth.clone()}>
@@ -175,7 +216,8 @@ impl PendingAuthState {
 		]
 		.join(", ");
 		let features = format!("{const_features}, {dyn_features}");
-		let Ok(Some(auth_window)) = window.open_with_url_and_target_and_features(&auth_url, "Tabletop Tools Authorization", &features) else { return None; };
+		log::debug!(target: "auth", "Initializing login");
+		let Ok(Some(auth_window)) = window.open_with_url_and_target_and_features(&auth_url, "Integro Authorization", &features) else { return None; };
 
 		let timeout_ms = 1000 * 60;
 		let _ = window.remove_event_listener_with_callback(
@@ -202,7 +244,9 @@ impl PendingAuthState {
 	}
 
 	fn handle_event(mut self, evt: MessageEvent) -> Option<Self> {
-		let Ok(data_str) = evt.data().into_serde::<String>() else { return None; };
+		let Ok(data_str) = evt.data().into_serde::<String>() else {
+			return Some(self);
+		};
 
 		let prefix = match self.handshake_established {
 			false => "authorizing",
@@ -210,31 +254,52 @@ impl PendingAuthState {
 		};
 		let auth_header = format!("{prefix}:{}", self.provider.oauth_id());
 		if !data_str.starts_with(&auth_header) || evt.origin() != self.base_url {
-			return None;
+			log::error!(target: "auth", "Failed to find auth header: {auth_header:?}?={data_str:?} {:?}?={:?}", evt.origin(), self.base_url);
+			return Some(self);
 		}
 		if !self.handshake_established {
+			log::debug!(target: "auth", "Handshake established");
 			self.handshake_established = true;
 			let _ = self.auth_window.post_message(&evt.data(), &evt.origin());
 			return Some(self);
 		}
 
+		log::debug!(target: "auth", "Closing auth window");
+
 		let _ = self.auth_window.close();
-		let Some(data_state) = data_str.strip_prefix(&format!("{auth_header}:")) else { return None; };
-		if let Some(success_data) = data_state.strip_prefix("success:") {
-			let Ok(data) = serde_json::from_str::<serde_json::Value>(success_data) else {return None;};
-			let Some(auth_token) = data.get("token") else { return None; };
-			let Some(token) = auth_token.as_str() else { return None; };
-			self.auth_status.set(Status::Successful {
+		let Some(data_state) = data_str.strip_prefix(&format!("{auth_header}:")) else {
+			log::error!(target: "auth", "Invalid data header {auth_header:?}?={data_str:?}");
+			return Some(self);
+		};
+		let status = if let Some(success_data) = data_state.strip_prefix("success:") {
+			let Ok(data) = serde_json::from_str::<serde_json::Value>(success_data) else {
+				log::error!(target: "auth", "Failed to deserialize success from {success_data:?}");
+				return Some(self);
+			};
+			let Some(auth_token) = data.get("token") else {
+				log::error!(target: "auth", "Failed to deserialize auth token from {data:?}");
+				return Some(self);
+			};
+			let Some(token) = auth_token.as_str() else {
+				log::error!(target: "auth", "Failed to parse auth token from {auth_token:?}");
+				return Some(self);
+			};
+			Status::Successful {
 				provider: self.provider,
 				token: token.to_owned(),
-			});
+			}
 		} else if let Some(error_data) = data_state.strip_prefix("error:") {
-			let Ok(data) = serde_json::from_str::<serde_json::Value>(error_data) else {return None;};
+			let Ok(data) = serde_json::from_str::<serde_json::Value>(error_data) else {
+				log::error!(target: "auth", "Failed to deserialize error from {error_data:?}");
+				return Some(self);
+			};
 			log::debug!("error: {data:?}");
-			self.auth_status.set(Status::Failed { error: "".into() });
+			Status::Failed { error: "".into() }
 		} else {
-			self.auth_status.set(Status::None);
-		}
+			Status::None
+		};
+		log::debug!(target: "auth", "Updating auth status to {status:?}");
+		self.auth_status.set(status);
 		None
 	}
 }
