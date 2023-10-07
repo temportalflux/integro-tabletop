@@ -1,7 +1,6 @@
-use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
-	utility::NotInList,
-};
+use crate::kdl_ext::NodeContext;
+use crate::utility::NotInList;
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 
 // Components:
 // Verbal
@@ -15,7 +14,8 @@ pub struct Components {
 	pub materials: Vec<(String, /*consumes on cast*/ bool)>,
 }
 
-impl FromKDL for Components {
+impl FromKdl<NodeContext> for Components {
+	type Error = anyhow::Error;
 	/// Queries the children of `parent` for any nodes named `component`,
 	/// and extends the default `Components` with all identified children.
 	fn from_kdl<'doc>(parent: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
@@ -29,11 +29,7 @@ impl FromKDL for Components {
 					let consume_on_cast = node.get_bool_opt("consumes")?.unwrap_or_default();
 					components.materials.push((material, consume_on_cast));
 				}
-				name => {
-					return Err(
-						NotInList(name.into(), vec!["Verbal", "Somatic", "Material"]).into(),
-					)
-				}
+				name => return Err(NotInList(name.into(), vec!["Verbal", "Somatic", "Material"]).into()),
 			}
 		}
 		Ok(components)

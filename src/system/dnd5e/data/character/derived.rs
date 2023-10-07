@@ -122,9 +122,7 @@ impl SavingThrows {
 		&self.by_ability[ability].modifiers
 	}
 
-	pub fn iter_modifiers(
-		&self,
-	) -> impl Iterator<Item = (Option<Ability>, Modifier, &ModifierMapItem)> {
+	pub fn iter_modifiers(&self) -> impl Iterator<Item = (Option<Ability>, Modifier, &ModifierMapItem)> {
 		self.by_ability
 			.iter()
 			.map(|(ability, saving_throw)| {
@@ -218,16 +216,8 @@ impl Skills {
 		self.ability_modifiers[ability].insert(modifier, (context, source).into());
 	}
 
-	pub fn add_skill_modifier(
-		&mut self,
-		skill: Skill,
-		modifier: Modifier,
-		context: Option<String>,
-		source: PathBuf,
-	) {
-		self.skills[skill]
-			.modifiers
-			.insert(modifier, (context, source).into());
+	pub fn add_skill_modifier(&mut self, skill: Skill, modifier: Modifier, context: Option<String>, source: PathBuf) {
+		self.skills[skill].modifiers.insert(modifier, (context, source).into());
 	}
 
 	pub fn proficiency(&self, skill: Skill) -> &AttributedValue<proficiency::Level> {
@@ -242,17 +232,11 @@ impl Skills {
 		&self.skills[skill].modifiers
 	}
 
-	pub fn iter_ability_modifiers(
-		&self,
-		ability: Ability,
-	) -> impl Iterator<Item = (Modifier, &Vec<ModifierMapItem>)> {
+	pub fn iter_ability_modifiers(&self, ability: Ability) -> impl Iterator<Item = (Modifier, &Vec<ModifierMapItem>)> {
 		self.ability_modifiers[ability].iter()
 	}
 
-	pub fn iter_skill_modifiers(
-		&self,
-		skill: Skill,
-	) -> impl Iterator<Item = (Modifier, &Vec<ModifierMapItem>)> {
+	pub fn iter_skill_modifiers(&self, skill: Skill) -> impl Iterator<Item = (Modifier, &Vec<ModifierMapItem>)> {
 		self.ability_modifiers[skill.ability()]
 			.iter()
 			.chain(self.skills[skill].modifiers().iter())
@@ -268,13 +252,7 @@ pub struct DefenseEntry {
 	pub source: PathBuf,
 }
 impl Defenses {
-	pub fn push(
-		&mut self,
-		kind: Defense,
-		damage_type: Option<DamageType>,
-		context: Option<String>,
-		source: PathBuf,
-	) {
+	pub fn push(&mut self, kind: Defense, damage_type: Option<DamageType>, context: Option<String>, source: PathBuf) {
 		self.0[kind].push(DefenseEntry {
 			damage_type,
 			context,
@@ -347,17 +325,8 @@ struct AttackAbility {
 	source: PathBuf,
 }
 impl AttackBonuses {
-	pub fn add_to_weapon_attacks(
-		&mut self,
-		bonus: i32,
-		queries: Vec<AttackQuery>,
-		source: PathBuf,
-	) {
-		self.attack_roll.push(AttackRollBonus {
-			bonus,
-			queries,
-			source,
-		});
+	pub fn add_to_weapon_attacks(&mut self, bonus: i32, queries: Vec<AttackQuery>, source: PathBuf) {
+		self.attack_roll.push(AttackRollBonus { bonus, queries, source });
 	}
 
 	pub fn add_to_weapon_damage(
@@ -375,12 +344,7 @@ impl AttackBonuses {
 		});
 	}
 
-	pub fn add_ability_modifier(
-		&mut self,
-		ability: Ability,
-		queries: Vec<AttackQuery>,
-		source: PathBuf,
-	) {
+	pub fn add_ability_modifier(&mut self, ability: Ability, queries: Vec<AttackQuery>, source: PathBuf) {
 		self.attack_ability.push(AttackAbility {
 			ability,
 			queries,
@@ -388,12 +352,7 @@ impl AttackBonuses {
 		});
 	}
 
-	pub fn add_to_spell_damage(
-		&mut self,
-		amount: Roll,
-		queries: Vec<spellcasting::Filter>,
-		source: PathBuf,
-	) {
+	pub fn add_to_spell_damage(&mut self, amount: Roll, queries: Vec<spellcasting::Filter>, source: PathBuf) {
 		self.spell_damage.push(SpellDamageBonus {
 			amount,
 			queries,
@@ -401,10 +360,7 @@ impl AttackBonuses {
 		});
 	}
 
-	pub fn get_weapon_attack(
-		&self,
-		action: &crate::system::dnd5e::data::action::Action,
-	) -> Vec<(i32, &Path)> {
+	pub fn get_weapon_attack(&self, action: &crate::system::dnd5e::data::action::Action) -> Vec<(i32, &Path)> {
 		let mut bonuses = Vec::new();
 		let Some(attack) = &action.attack else { return bonuses; };
 		for bonus in &self.attack_roll {
@@ -437,10 +393,7 @@ impl AttackBonuses {
 		bonuses
 	}
 
-	pub fn get_attack_ability_variants(
-		&self,
-		attack: &crate::system::dnd5e::data::action::Attack,
-	) -> HashSet<Ability> {
+	pub fn get_attack_ability_variants(&self, attack: &crate::system::dnd5e::data::action::Attack) -> HashSet<Ability> {
 		// TODO: this doesnt report out the sources for the ability variants
 		let mut abilities = HashSet::default();
 		for bonus in &self.attack_ability {

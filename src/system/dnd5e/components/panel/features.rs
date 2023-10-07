@@ -113,11 +113,7 @@ fn FeatureBlock(
 	let name = feature.name.to_case(Case::Title);
 	let mut selected_values = Vec::new();
 	if let Some(value_map) = selected_value_map {
-		selected_values = value_map
-			.as_vec()
-			.iter()
-			.map(|(_, value)| (*value).clone())
-			.collect();
+		selected_values = value_map.as_vec().iter().map(|(_, value)| (*value).clone()).collect();
 	}
 
 	html! {

@@ -1,11 +1,12 @@
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::dnd5e::{
 		data::{character::Character, description},
 		Value,
 	},
 	utility::{Dependencies, Mutator},
 };
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AddMaxHitPoints {
@@ -14,7 +15,7 @@ pub struct AddMaxHitPoints {
 }
 
 crate::impl_trait_eq!(AddMaxHitPoints);
-crate::impl_kdl_node!(AddMaxHitPoints, "add_max_hit_points");
+kdlize::impl_kdl_node!(AddMaxHitPoints, "add_max_hit_points");
 
 impl Mutator for AddMaxHitPoints {
 	type Target = Character;
@@ -51,7 +52,8 @@ impl Mutator for AddMaxHitPoints {
 	}
 }
 
-impl FromKDL for AddMaxHitPoints {
+impl FromKdl<NodeContext> for AddMaxHitPoints {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let id = node.get_str_opt("id")?.map(str::to_owned);
 		let value = Value::from_kdl(node)?;

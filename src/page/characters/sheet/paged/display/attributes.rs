@@ -1,6 +1,5 @@
 use crate::system::dnd5e::components::{
-	ArmorClass, ConditionsCard, DefensesCard, InitiativeBonus, ProfBonus, Proficiencies,
-	SpeedAndSenses,
+	ArmorClass, ConditionsCard, DefensesCard, InitiativeBonus, ProfBonus, Proficiencies, SpeedAndSenses,
 };
 use yew::prelude::*;
 

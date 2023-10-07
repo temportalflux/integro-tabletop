@@ -1,11 +1,12 @@
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
 	system::dnd5e::data::{
 		character::{Character, PersonalityKind},
 		description,
 	},
 	utility::{Mutator, NotInList},
 };
+use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct SuggestedPersonality {
@@ -14,7 +15,7 @@ pub struct SuggestedPersonality {
 }
 
 crate::impl_trait_eq!(SuggestedPersonality);
-crate::impl_kdl_node!(SuggestedPersonality, "suggested_personality");
+kdlize::impl_kdl_node!(SuggestedPersonality, "suggested_personality");
 
 impl Mutator for SuggestedPersonality {
 	type Target = Character;
@@ -33,16 +34,15 @@ impl Mutator for SuggestedPersonality {
 	}
 }
 
-impl FromKDL for SuggestedPersonality {
+impl FromKdl<NodeContext> for SuggestedPersonality {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let kind = match node.next_str_req()? {
 			"Trait" => PersonalityKind::Trait,
 			"Ideal" => PersonalityKind::Ideal,
 			"Bond" => PersonalityKind::Bond,
 			"Flaw" => PersonalityKind::Flaw,
-			name => {
-				return Err(NotInList(name.into(), vec!["Trait", "Ideal", "Bond", "Flaw"]).into())
-			}
+			name => return Err(NotInList(name.into(), vec!["Trait", "Ideal", "Bond", "Flaw"]).into()),
 		};
 		let options = node.query_str_all("scope() > option", 0)?;
 		let options = options.into_iter().map(str::to_owned).collect::<Vec<_>>();

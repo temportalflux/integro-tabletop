@@ -1,0 +1,11 @@
+[package]
+name = "kdlize"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+kdl = { version = "5.0.0-alpha.0", git = "https://github.com/kdl-org/kdl-rs" }
+thiserror = "1.0"
+anyhow = "1.0"

@@ -112,9 +112,7 @@ healed regains 1 hit point after 1d4 hours.";
 pub fn HitPointMgmtCard() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let on_open_modal = context_menu::use_control_action({
-		|_: web_sys::MouseEvent, _context| {
-			context_menu::Action::open_root(format!("Hit Points"), html!(<Modal />))
-		}
+		|_: web_sys::MouseEvent, _context| context_menu::Action::open_root(format!("Hit Points"), html!(<Modal />))
 	});
 	let current_hp = state.get_hp(HitPoint::Current);
 	html! {
@@ -351,9 +349,7 @@ fn ModalSectionApplyChangeForm() -> Html {
 		Ordering::Less => classes!("damage"),
 		Ordering::Equal => classes!(),
 	};
-	let temp_hp_classes = (prev_temp <= 0)
-		.then(|| classes!("d-none"))
-		.unwrap_or_default();
+	let temp_hp_classes = (prev_temp <= 0).then(|| classes!("d-none")).unwrap_or_default();
 
 	let onchange_healing = Callback::from({
 		let delta = delta.clone();
@@ -536,20 +532,19 @@ fn ModalSectionHitDice() -> Html {
 #[function_component]
 fn MaxHitPointsTable() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let rows =
-		state
-			.max_hit_points()
-			.sources()
-			.iter()
-			.fold(Vec::new(), |mut html, (source, bonus)| {
-				html.push(html! {
-					<tr>
-						<td class="text-center">{*bonus}</td>
-						<td>{crate::data::as_feature_path_text(source).unwrap_or_default()}</td>
-					</tr>
-				});
-				html
+	let rows = state
+		.max_hit_points()
+		.sources()
+		.iter()
+		.fold(Vec::new(), |mut html, (source, bonus)| {
+			html.push(html! {
+				<tr>
+					<td class="text-center">{*bonus}</td>
+					<td>{crate::data::as_feature_path_text(source).unwrap_or_default()}</td>
+				</tr>
 			});
+			html
+		});
 	html! {
 		<table class="table table-compact table-striped m-0">
 			<thead>

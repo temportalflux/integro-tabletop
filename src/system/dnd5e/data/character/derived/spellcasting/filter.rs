@@ -1,8 +1,7 @@
-use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
-	system::{core::SourceId, dnd5e::data::Spell},
-};
+use crate::kdl_ext::NodeContext;
+use crate::system::{core::SourceId, dnd5e::data::Spell};
 use itertools::Itertools;
+use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
 use std::collections::HashSet;
 
 #[derive(Clone, Debug, PartialEq, Default)]
@@ -22,15 +21,14 @@ pub struct Filter {
 	pub additional_ids: HashSet<SourceId>,
 }
 
-impl FromKDL for Filter {
+impl FromKdl<NodeContext> for Filter {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let ranks = node.query_i64_all("scope() > rank", 0)?;
 		let ranks = ranks.into_iter().map(|v| v as u8).collect::<HashSet<_>>();
 		let tags = node.query_str_all("scope() > tag", 0)?;
 		let tags = tags.into_iter().map(str::to_owned).collect::<HashSet<_>>();
-		let school_tag = node
-			.query_str_opt("scope() > school", 0)?
-			.map(str::to_owned);
+		let school_tag = node.query_str_opt("scope() > school", 0)?.map(str::to_owned);
 		Ok(Filter {
 			ranks,
 			tags,
@@ -130,8 +128,7 @@ impl Filter {
 		criteria.push(Criteria::any({
 			let mut criteria = Vec::with_capacity(2);
 			if let Some(tag) = &self.school_tag {
-				criteria
-					.push(Criteria::contains_prop("school", Criteria::exact(tag.as_str())).into());
+				criteria.push(Criteria::contains_prop("school", Criteria::exact(tag.as_str())).into());
 			}
 			if !self.tags.is_empty() {
 				// What this means:

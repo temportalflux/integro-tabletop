@@ -71,14 +71,7 @@ mod test {
 			";
 			let data = Value::<u32>::Scaled(Basis::Level {
 				class_name: Some("Barbarian".into()),
-				level_map: [
-					(1, Some(2)),
-					(4, Some(3)),
-					(7, Some(4)),
-					(14, Some(5)),
-					(18, None),
-				]
-				.into(),
+				level_map: [(1, Some(2)), (4, Some(3)), (7, Some(4)), (14, Some(5)), (18, None)].into(),
 			});
 			assert_eq_fromkdl!(Value<u32>, doc, data);
 			assert_eq_askdl!(&data, doc);
@@ -147,10 +140,7 @@ mod test {
 			});
 			assert_eq!(scaling.evaluate(&character(&[])), Some(0));
 			assert_eq!(scaling.evaluate(&character(&[("Any", 4)])), Some(4));
-			assert_eq!(
-				scaling.evaluate(&character(&[("Any", 4), ("Another", 5)])),
-				Some(9)
-			);
+			assert_eq!(scaling.evaluate(&character(&[("Any", 4), ("Another", 5)])), Some(9));
 		}
 
 		#[test]
@@ -170,31 +160,13 @@ mod test {
 			assert_eq!(scaling.evaluate(&character(&[])), None);
 			assert_eq!(scaling.evaluate(&character(&[("Any", 1)])), Some(4));
 			assert_eq!(scaling.evaluate(&character(&[("Any", 2)])), Some(4));
-			assert_eq!(
-				scaling.evaluate(&character(&[("Any", 2), ("Lvl", 1)])),
-				Some(5)
-			);
-			assert_eq!(
-				scaling.evaluate(&character(&[("Any", 5), ("Lvl", 2)])),
-				Some(5)
-			);
-			assert_eq!(
-				scaling.evaluate(&character(&[("Any", 5), ("Lvl", 3)])),
-				Some(10)
-			);
+			assert_eq!(scaling.evaluate(&character(&[("Any", 2), ("Lvl", 1)])), Some(5));
+			assert_eq!(scaling.evaluate(&character(&[("Any", 5), ("Lvl", 2)])), Some(5));
+			assert_eq!(scaling.evaluate(&character(&[("Any", 5), ("Lvl", 3)])), Some(10));
 			assert_eq!(scaling.evaluate(&character(&[("Any", 13)])), Some(10));
-			assert_eq!(
-				scaling.evaluate(&character(&[("Any", 12), ("Lvl", 4)])),
-				Some(14)
-			);
-			assert_eq!(
-				scaling.evaluate(&character(&[("Any", 11), ("Lvl", 7)])),
-				Some(14)
-			);
-			assert_eq!(
-				scaling.evaluate(&character(&[("Any", 10), ("Lvl", 9)])),
-				Some(15)
-			);
+			assert_eq!(scaling.evaluate(&character(&[("Any", 12), ("Lvl", 4)])), Some(14));
+			assert_eq!(scaling.evaluate(&character(&[("Any", 11), ("Lvl", 7)])), Some(14));
+			assert_eq!(scaling.evaluate(&character(&[("Any", 10), ("Lvl", 9)])), Some(15));
 			assert_eq!(scaling.evaluate(&character(&[("Any", 20)])), None);
 		}
 
@@ -207,10 +179,7 @@ mod test {
 			assert_eq!(scaling.evaluate(&character(&[])), Some(0));
 			assert_eq!(scaling.evaluate(&character(&[("ClassA", 1)])), Some(1));
 			assert_eq!(scaling.evaluate(&character(&[("ClassB", 2)])), Some(0));
-			assert_eq!(
-				scaling.evaluate(&character(&[("ClassA", 3), ("ClassB", 2)])),
-				Some(3)
-			);
+			assert_eq!(scaling.evaluate(&character(&[("ClassA", 3), ("ClassB", 2)])), Some(3));
 		}
 
 		#[test]
@@ -234,30 +203,12 @@ mod test {
 			assert_eq!(scaling.evaluate(&character(&[("ClassA", 5)])), Some(2));
 			assert_eq!(scaling.evaluate(&character(&[("ClassA", 6)])), Some(3));
 			assert_eq!(scaling.evaluate(&character(&[("ClassA", 7)])), Some(3));
-			assert_eq!(
-				scaling.evaluate(&character(&[("ClassA", 9), ("Any", 1)])),
-				Some(3)
-			);
-			assert_eq!(
-				scaling.evaluate(&character(&[("ClassA", 10), ("Any", 2)])),
-				Some(5)
-			);
-			assert_eq!(
-				scaling.evaluate(&character(&[("ClassA", 14), ("Any", 3)])),
-				Some(5)
-			);
-			assert_eq!(
-				scaling.evaluate(&character(&[("ClassA", 15), ("Any", 4)])),
-				Some(8)
-			);
-			assert_eq!(
-				scaling.evaluate(&character(&[("ClassA", 19), ("Any", 5)])),
-				Some(8)
-			);
-			assert_eq!(
-				scaling.evaluate(&character(&[("ClassA", 20), ("Any", 6)])),
-				None
-			);
+			assert_eq!(scaling.evaluate(&character(&[("ClassA", 9), ("Any", 1)])), Some(3));
+			assert_eq!(scaling.evaluate(&character(&[("ClassA", 10), ("Any", 2)])), Some(5));
+			assert_eq!(scaling.evaluate(&character(&[("ClassA", 14), ("Any", 3)])), Some(5));
+			assert_eq!(scaling.evaluate(&character(&[("ClassA", 15), ("Any", 4)])), Some(8));
+			assert_eq!(scaling.evaluate(&character(&[("ClassA", 19), ("Any", 5)])), Some(8));
+			assert_eq!(scaling.evaluate(&character(&[("ClassA", 20), ("Any", 6)])), None);
 		}
 	}
 }

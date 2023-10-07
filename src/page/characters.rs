@@ -2,7 +2,6 @@ use super::app;
 use crate::{
 	components::{modal, Spinner},
 	database::{app::Database, ObjectStoreExt, TransactionExt},
-	kdl_ext::KDLNode,
 	system::{
 		core::{ModuleId, SourceId, System},
 		dnd5e::{
@@ -16,6 +15,7 @@ use crate::{
 	GeneralError,
 };
 use itertools::Itertools;
+use kdlize::NodeId;
 use std::{path::Path, rc::Rc};
 use yew::prelude::*;
 use yew_router::{
@@ -62,10 +62,7 @@ impl Route {
 		let Some(system) = &id.system else { return Self::NotFound; };
 		let (storage, module) = match module_id {
 			ModuleId::Local { name } => ("local", name.clone()),
-			ModuleId::Github {
-				user_org,
-				repository,
-			} => ("github", format!("{user_org}:{repository}")),
+			ModuleId::Github { user_org, repository } => ("github", format!("{user_org}:{repository}")),
 		};
 		Self::Sheet {
 			storage: storage.to_owned(),
@@ -75,12 +72,7 @@ impl Route {
 		}
 	}
 
-	fn sheet_id(
-		storage: String,
-		module: String,
-		system: String,
-		path: Option<String>,
-	) -> Option<SourceId> {
+	fn sheet_id(storage: String, module: String, system: String, path: Option<String>) -> Option<SourceId> {
 		let module = match storage.as_str() {
 			"local" => ModuleId::Local { name: module },
 			"github" => {
@@ -199,17 +191,15 @@ pub fn CharacterLanding() -> Html {
 }
 
 #[function_component]
-fn CharacterList(
-	GeneralProp { value: on_delete }: &GeneralProp<Callback<ModalDeleteProps>>,
-) -> Html {
+fn CharacterList(GeneralProp { value: on_delete }: &GeneralProp<Callback<ModalDeleteProps>>) -> Html {
 	use crate::{
 		components::database::{use_query_all, QueryAllArgs, QueryStatus},
-		kdl_ext::KDLNode,
 		system::{
 			core::System,
 			dnd5e::{data::character::Persistent, DnD5e},
 		},
 	};
+	use kdlize::NodeId;
 	let query_args = Some(QueryAllArgs {
 		system: DnD5e::id().to_owned(),
 		..Default::default()
@@ -501,13 +491,7 @@ struct ModalDeleteProps {
 	on_click: Callback<()>,
 }
 #[function_component]
-fn ModalDelete(
-	ModalDeleteProps {
-		id,
-		file_id,
-		on_click,
-	}: &ModalDeleteProps,
-) -> Html {
+fn ModalDelete(ModalDeleteProps { id, file_id, on_click }: &ModalDeleteProps) -> Html {
 	let (auth_status, _dispatch) = use_store::<crate::auth::Status>();
 	let task_dispatch = use_context::<crate::task::Dispatch>().unwrap();
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();

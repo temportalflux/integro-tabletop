@@ -61,12 +61,7 @@ pub fn ViewScaler(
 ) -> Html {
 	fn get_width() -> f64 {
 		let window = web_sys::window().unwrap();
-		window
-			.inner_width()
-			.ok()
-			.map(|js| js.as_f64())
-			.flatten()
-			.unwrap_or(0.0)
+		window.inner_width().ok().map(|js| js.as_f64()).flatten().unwrap_or(0.0)
 	}
 
 	let window_width = use_state_eq(|| get_width());

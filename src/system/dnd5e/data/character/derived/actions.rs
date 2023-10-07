@@ -20,8 +20,7 @@ pub struct Features {
 
 impl Features {
 	pub fn register_usage(&mut self, usage_data: &UseCounterData, path: impl AsRef<Path>) {
-		self.uses
-			.insert(path.as_ref().to_owned(), usage_data.clone());
+		self.uses.insert(path.as_ref().to_owned(), usage_data.clone());
 	}
 
 	pub fn iter_all(&self) -> impl Iterator<Item = (PathBuf, &Feature)> + '_ {

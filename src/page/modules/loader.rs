@@ -2,8 +2,8 @@ use crate::{
 	database::app::Database,
 	storage::{
 		github::{
-			ChangedFileStatus, CreateRepoArgs, FileContentArgs, FilesChangedArgs, GetTreeArgs,
-			GithubClient, RepositoryMetadata, SetRepoTopicsArgs,
+			ChangedFileStatus, CreateRepoArgs, FileContentArgs, FilesChangedArgs, GetTreeArgs, GithubClient,
+			RepositoryMetadata, SetRepoTopicsArgs,
 		},
 		USER_HOMEBREW_REPO_NAME,
 	},
@@ -95,9 +95,7 @@ struct TaskCreateViewerHomebrew {
 }
 impl TaskCreateViewerHomebrew {
 	fn new(client: &GithubClient) -> Self {
-		Self {
-			client: client.clone(),
-		}
+		Self { client: client.clone() }
 	}
 
 	async fn spawn(self, task_dispatch: task::Dispatch) {
@@ -141,10 +139,7 @@ impl TaskSearchForRelevantRepos {
 		signal.output().await
 	}
 
-	async fn run(
-		self,
-		mut progress: task::ProgressHandle,
-	) -> anyhow::Result<Vec<RepositoryMetadata>> {
+	async fn run(self, mut progress: task::ProgressHandle) -> anyhow::Result<Vec<RepositoryMetadata>> {
 		use futures_util::stream::StreamExt;
 		// Regardless of if the homebrew already existed, lets gather ALL of the relevant
 		// repositories which are content modules. This will always include the homebrew repo,
@@ -212,9 +207,7 @@ impl TaskScanRepository {
 		}
 		match self.version_in_ddb {
 			None => Self::scan_for_download(self.client, self.repository, progress).await,
-			Some(version) => {
-				Self::scan_for_update(self.client, self.repository, version, progress).await
-			}
+			Some(version) => Self::scan_for_update(self.client, self.repository, version, progress).await,
 		}
 	}
 
@@ -330,19 +323,13 @@ impl TaskFetchModuleFiles {
 		let progress = task_dispatch.new_progress(self.files.len() as u32);
 		task_with_output(
 			task_dispatch,
-			format!(
-				"Downloading {}/{}",
-				self.repository.owner, self.repository.name
-			),
+			format!("Downloading {}/{}", self.repository.owner, self.repository.name),
 			Some(progress.clone()),
 			self.run(progress),
 		)
 	}
 
-	async fn run(
-		mut self,
-		mut progress: task::ProgressHandle,
-	) -> anyhow::Result<ParsedModuleRecords> {
+	async fn run(mut self, mut progress: task::ProgressHandle) -> anyhow::Result<ParsedModuleRecords> {
 		// Wait for the previous scan to finish (only 1 active scan is allowed at a time)
 		if let Some(prev) = &self.prev_update_signal {
 			prev.wait_true().await;
@@ -371,8 +358,7 @@ impl TaskFetchModuleFiles {
 				| ChangedFileStatus::Copied
 				| ChangedFileStatus::Changed => {
 					let content = self.client.get_file_content(args).await?;
-					let parsed_entries =
-						self.parse_content(system, path_in_repo, file_id, content)?;
+					let parsed_entries = self.parse_content(system, path_in_repo, file_id, content)?;
 					entries.extend(parsed_entries);
 				}
 				ChangedFileStatus::Removed => {
@@ -486,10 +472,7 @@ impl Loader {
 		}
 	}
 
-	async fn query_for_module_updates(
-		&self,
-		metadata: Vec<RepositoryMetadata>,
-	) -> Vec<ModuleUpdate> {
+	async fn query_for_module_updates(&self, metadata: Vec<RepositoryMetadata>) -> Vec<ModuleUpdate> {
 		// Check each module to see what needs being updated.
 		let mut prev_update_signal = None::<task::Signal>;
 		let mut output_asyncs = Vec::with_capacity(metadata.len());
@@ -536,10 +519,7 @@ impl Loader {
 		updates
 	}
 
-	async fn fetch_updates_from_storage(
-		&self,
-		remote_updates: Vec<ModuleUpdate>,
-	) -> Vec<ParsedModuleRecords> {
+	async fn fetch_updates_from_storage(&self, remote_updates: Vec<ModuleUpdate>) -> Vec<ParsedModuleRecords> {
 		let mut prev_update_signal = None::<task::Signal>;
 		let mut output_asyncs = Vec::with_capacity(remote_updates.len());
 		for update in remote_updates {
@@ -571,10 +551,7 @@ impl Loader {
 		updates
 	}
 
-	async fn commit_record_updates(
-		&self,
-		module_records: ParsedModuleRecords,
-	) -> Result<(), crate::database::Error> {
+	async fn commit_record_updates(&self, module_records: ParsedModuleRecords) -> Result<(), crate::database::Error> {
 		use crate::database::{
 			app::{entry, Entry, Module},
 			ObjectStoreExt, TransactionExt,
@@ -600,9 +577,7 @@ impl Loader {
 			use futures_util::StreamExt;
 			let idx_module = entry_store.index_of::<entry::Module>()?;
 			let module = repository.module_id().to_string();
-			let mut cursor = idx_module
-				.open_cursor(Some(&entry::Module { module }))
-				.await?;
+			let mut cursor = idx_module.open_cursor(Some(&entry::Module { module })).await?;
 			let mut entry_ids_to_remove = Vec::with_capacity(removed_file_ids.len());
 			while let Some(entry) = cursor.next().await {
 				let Some(file_id) = &entry.file_id else { continue; };
@@ -625,10 +600,7 @@ impl Loader {
 			};
 			module_store.put_record(&record).await?;
 		} else {
-			let mut module = module_store
-				.get_record::<Module>(module_id.to_string())
-				.await?
-				.unwrap();
+			let mut module = module_store.get_record::<Module>(module_id.to_string()).await?.unwrap();
 			module.version = repository.version;
 			module_store.put_record(&module).await?;
 		}

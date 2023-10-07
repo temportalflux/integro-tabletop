@@ -66,13 +66,11 @@ impl Drop for Client {
 
 impl Client {
 	pub fn read_only<T: super::Record>(&self) -> Result<idb::Transaction, idb::Error> {
-		self.0
-			.transaction(&[T::store_id()], idb::TransactionMode::ReadOnly)
+		self.0.transaction(&[T::store_id()], idb::TransactionMode::ReadOnly)
 	}
 
 	pub fn read_write<T: super::Record>(&self) -> Result<idb::Transaction, idb::Error> {
-		self.0
-			.transaction(&[T::store_id()], idb::TransactionMode::ReadWrite)
+		self.0.transaction(&[T::store_id()], idb::TransactionMode::ReadWrite)
 	}
 }
 

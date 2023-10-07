@@ -71,7 +71,7 @@ pub fn Modal(props: &ModalProps) -> Html {
 struct SpellBrowser;
 impl ObjectBrowser for SpellBrowser {
 	fn id() -> &'static str {
-		use crate::kdl_ext::KDLNode;
+		use kdlize::NodeId;
 		crate::system::dnd5e::data::Spell::id()
 	}
 
@@ -127,7 +127,7 @@ impl ObjectBrowser for SpellBrowser {
 struct BundleBrowser;
 impl ObjectBrowser for BundleBrowser {
 	fn id() -> &'static str {
-		use crate::kdl_ext::KDLNode;
+		use kdlize::NodeId;
 		crate::system::dnd5e::data::Bundle::id()
 	}
 
@@ -215,7 +215,7 @@ fn BundleList(props: &BundleListProps) -> Html {
 struct SubclassBrowser;
 impl ObjectBrowser for SubclassBrowser {
 	fn id() -> &'static str {
-		use crate::kdl_ext::KDLNode;
+		use kdlize::NodeId;
 		crate::system::dnd5e::data::Subclass::id()
 	}
 

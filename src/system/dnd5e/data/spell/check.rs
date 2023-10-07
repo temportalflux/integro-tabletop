@@ -1,8 +1,9 @@
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::dnd5e::data::{action::AttackKind, Ability},
 	utility::NotInList,
 };
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::str::FromStr;
 
 #[derive(Clone, PartialEq, Debug)]
@@ -11,12 +12,11 @@ pub enum Check {
 	SavingThrow(Ability, Option<u8>),
 }
 
-impl FromKDL for Check {
+impl FromKdl<NodeContext> for Check {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		match node.next_str_req()? {
-			"AttackRoll" => Ok(Self::AttackRoll(AttackKind::from_str(
-				node.next_str_req()?,
-			)?)),
+			"AttackRoll" => Ok(Self::AttackRoll(AttackKind::from_str(node.next_str_req()?)?)),
 			"SavingThrow" => {
 				let ability = node.next_str_req_t::<Ability>()?;
 				let dc = node.get_i64_opt("dc")?.map(|v| v as u8);
@@ -30,14 +30,10 @@ impl FromKDL for Check {
 impl AsKdl for Check {
 	fn as_kdl(&self) -> NodeBuilder {
 		match self {
-			Self::AttackRoll(kind) => {
-				NodeBuilder::default()
-					.with_entry("AttackRoll")
-					.with_entry(match kind {
-						AttackKind::Melee => "Melee",
-						AttackKind::Ranged => "Ranged",
-					})
-			}
+			Self::AttackRoll(kind) => NodeBuilder::default().with_entry("AttackRoll").with_entry(match kind {
+				AttackKind::Melee => "Melee",
+				AttackKind::Ranged => "Ranged",
+			}),
 			Self::SavingThrow(ability, dc) => {
 				let mut node = NodeBuilder::default().with_entry("SavingThrow");
 				node.push_entry({

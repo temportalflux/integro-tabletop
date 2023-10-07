@@ -1,25 +1,24 @@
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::dnd5e::data::{
 		character::{Character, StartingEquipment},
 		description,
 	},
 	utility::Mutator,
 };
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AddStartingEquipment(Vec<StartingEquipment>);
 
 crate::impl_trait_eq!(AddStartingEquipment);
-crate::impl_kdl_node!(AddStartingEquipment, "add_starting_equipment");
+kdlize::impl_kdl_node!(AddStartingEquipment, "add_starting_equipment");
 
 impl Mutator for AddStartingEquipment {
 	type Target = Character;
 
 	fn description(&self, _state: Option<&Character>) -> description::Section {
-		description::Section {
-			..Default::default()
-		}
+		description::Section { ..Default::default() }
 	}
 
 	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
@@ -27,7 +26,8 @@ impl Mutator for AddStartingEquipment {
 	}
 }
 
-impl FromKDL for AddStartingEquipment {
+impl FromKdl<NodeContext> for AddStartingEquipment {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		Ok(Self(StartingEquipment::from_kdl_vec(node)?))
 	}
@@ -68,15 +68,13 @@ mod test {
 				|    item \"Specific\" \"items/weapons/rapier.kdl\"
 				|}
 			";
-			let data = AddStartingEquipment(vec![StartingEquipment::IndirectItem(
-				IndirectItem::Specific(
-					SourceId {
-						path: "items/weapons/rapier.kdl".into(),
-						..Default::default()
-					},
-					1,
-				),
-			)]);
+			let data = AddStartingEquipment(vec![StartingEquipment::IndirectItem(IndirectItem::Specific(
+				SourceId {
+					path: "items/weapons/rapier.kdl".into(),
+					..Default::default()
+				},
+				1,
+			))]);
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -91,21 +89,17 @@ mod test {
 				|    }
 				|}
 			";
-			let data = AddStartingEquipment(vec![StartingEquipment::IndirectItem(
-				IndirectItem::Custom(Item {
-					name: "Trophy".into(),
-					description: description::Info {
-						sections: vec![description::Section {
-							content: description::SectionContent::Body(
-								"trophy taken from a fallen enemy".into(),
-							),
-							..Default::default()
-						}],
+			let data = AddStartingEquipment(vec![StartingEquipment::IndirectItem(IndirectItem::Custom(Item {
+				name: "Trophy".into(),
+				description: description::Info {
+					sections: vec![description::Section {
+						content: description::SectionContent::Body("trophy taken from a fallen enemy".into()),
 						..Default::default()
-					},
+					}],
 					..Default::default()
-				}),
-			)]);
+				},
+				..Default::default()
+			}))]);
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())

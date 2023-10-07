@@ -23,12 +23,7 @@ pub enum Kind {
 }
 
 #[function_component]
-pub fn Provider(
-	MobileProps {
-		threshold,
-		children,
-	}: &MobileProps,
-) -> Html {
+pub fn Provider(MobileProps { threshold, children }: &MobileProps) -> Html {
 	let is_larger_than_mobile = use_media_query(&format!("(min-width: {threshold}px)"));
 	html! {
 		<ContextProvider<MobileState> context={MobileState(is_larger_than_mobile)}>

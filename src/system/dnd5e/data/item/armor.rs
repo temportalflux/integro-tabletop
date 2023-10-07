@@ -1,5 +1,5 @@
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
 	system::dnd5e::{
 		data::{character::Character, ArmorClassFormula},
 		mutator::ArmorStrengthRequirement,
@@ -7,6 +7,7 @@ use crate::{
 	utility::{InvalidEnumStr, MutatorGroup},
 };
 use enumset::EnumSetType;
+use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
 use std::{path::Path, str::FromStr};
 
 #[derive(Clone, PartialEq, Debug)]
@@ -18,13 +19,12 @@ pub struct Armor {
 	pub min_strength_score: Option<u32>,
 }
 
-impl FromKDL for Armor {
+impl FromKdl<NodeContext> for Armor {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let kind = node.next_str_req_t::<Kind>()?;
 		let formula = node.query_req_t::<ArmorClassFormula>("scope() > formula")?;
-		let min_strength_score = node
-			.query_i64_opt("scope() > min-strength", 0)?
-			.map(|v| v as u32);
+		let min_strength_score = node.query_i64_opt("scope() > min-strength", 0)?.map(|v| v as u32);
 		Ok(Self {
 			kind,
 			formula,

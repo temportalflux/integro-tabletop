@@ -1,10 +1,11 @@
 use super::id::IdPath;
-use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, ValueExt},
-	utility::NotInList,
-};
+use crate::{kdl_ext::NodeContext, utility::NotInList};
 use anyhow::Context;
 use enumset::{EnumSet, EnumSetType};
+use kdlize::{
+	ext::{DocumentExt, ValueExt},
+	AsKdl, FromKdl, NodeBuilder,
+};
 use std::{
 	collections::BTreeSet,
 	path::{Path, PathBuf},
@@ -118,12 +119,14 @@ where
 	}
 }
 
-impl<Context, T> FromKDL for Value<Context, T>
+impl<Context, T> FromKdl<NodeContext> for Value<Context, T>
 where
 	T: ToString + FromStr + Ord,
 	T::Err: std::error::Error + Send + Sync + 'static,
-	crate::utility::Value<Context, i32>: FromKDL,
+	crate::utility::Value<Context, i32>: FromKdl<NodeContext>,
+	anyhow::Error: From<<crate::utility::Value<Context, i32> as FromKdl<NodeContext>>::Error>,
 {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let entry = node.next_req()?;
 		let key = entry
@@ -221,10 +224,7 @@ where
 				}
 			}
 		}
-		let cannot_match = cannot_match
-			.iter()
-			.filter_map(super::IdPath::as_path)
-			.collect();
+		let cannot_match = cannot_match.iter().filter_map(super::IdPath::as_path).collect();
 		Ok(Some(super::DataOption {
 			data_path,
 			name: name.into(),

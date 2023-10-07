@@ -1,6 +1,7 @@
 use super::Entry;
-use crate::{database::Cursor, kdl_ext::FromKDL, system::core::NodeRegistry};
+use crate::{database::Cursor, kdl_ext::NodeContext, system::core::NodeRegistry};
 use futures_util::StreamExt;
+use kdlize::FromKdl;
 use std::{pin::Pin, sync::Arc, task::Poll};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -116,10 +117,7 @@ pub struct Query {
 impl futures_util::stream::Stream for Query {
 	type Item = Entry;
 
-	fn poll_next(
-		mut self: Pin<&mut Self>,
-		cx: &mut std::task::Context<'_>,
-	) -> Poll<Option<Self::Item>> {
+	fn poll_next(mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Option<Self::Item>> {
 		loop {
 			let Poll::Ready(entry) = self.cursor.poll_next_unpin(cx) else { return Poll::Pending };
 			let Some(entry) = entry else { return Poll::Ready(None); };
@@ -142,14 +140,11 @@ pub struct QueryDeserialize<Output> {
 }
 impl<Output> futures_util::stream::Stream for QueryDeserialize<Output>
 where
-	Output: FromKDL + Unpin,
+	Output: FromKdl<NodeContext> + Unpin,
 {
 	type Item = Output;
 
-	fn poll_next(
-		mut self: Pin<&mut Self>,
-		cx: &mut std::task::Context<'_>,
-	) -> Poll<Option<Self::Item>> {
+	fn poll_next(mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Option<Self::Item>> {
 		loop {
 			// Get the next database entry based on the query and underlying cursor
 			let Poll::Ready(entry) = self.query.poll_next_unpin(cx) else { return Poll::Pending };
@@ -162,7 +157,7 @@ where
 }
 impl<Output> QueryDeserialize<Output>
 where
-	Output: FromKDL + Unpin,
+	Output: FromKdl<NodeContext> + Unpin,
 {
 	pub async fn first_n(mut self, limit: Option<usize>) -> Vec<Output> {
 		let mut items = Vec::new();

@@ -1,6 +1,6 @@
 use super::{
-	spellcasting, AttackBonuses, DefaultsBlock, Features, HitPoint, HitPoints, RestResets,
-	Spellcasting, StartingEquipment,
+	spellcasting, AttackBonuses, DefaultsBlock, Features, HitPoint, HitPoints, RestResets, Spellcasting,
+	StartingEquipment,
 };
 use crate::{
 	path_map::PathMap,
@@ -9,8 +9,8 @@ use crate::{
 		dnd5e::{
 			data::{
 				character::{
-					AbilityScores, Defenses, Derived, DerivedDescription, MaxHitPoints, Persistent,
-					SavingThrows, Senses, Skills, Speeds,
+					AbilityScores, Defenses, Derived, DerivedDescription, MaxHitPoints, Persistent, SavingThrows,
+					Senses, Skills, Speeds,
 				},
 				item::container::Inventory,
 				proficiency, Ability, ArmorClass, Feature, OtherProficiencies,
@@ -123,10 +123,7 @@ impl Character {
 		self.apply_cached_mutators();
 
 		self.inventory_mut().resolve_indirection(&provider).await?;
-		self.persistent_mut()
-			.conditions
-			.resolve_indirection(&provider)
-			.await?;
+		self.persistent_mut().conditions.resolve_indirection(&provider).await?;
 		self.derived
 			.spellcasting
 			.fetch_spell_objects(&provider, &self.character)
@@ -215,10 +212,7 @@ impl Character {
 		self.character.get_first_selection(path)
 	}
 
-	pub fn get_first_selection_at<T>(
-		&self,
-		data_path: impl AsRef<Path>,
-	) -> Option<Result<T, <T as FromStr>::Err>>
+	pub fn get_first_selection_at<T>(&self, data_path: impl AsRef<Path>) -> Option<Result<T, <T as FromStr>::Err>>
 	where
 		T: Clone + 'static + FromStr,
 	{
@@ -315,11 +309,7 @@ impl Character {
 		&mut self.derived.ability_scores
 	}
 
-	pub fn ability_modifier(
-		&self,
-		ability: Ability,
-		proficiency: Option<proficiency::Level>,
-	) -> i32 {
+	pub fn ability_modifier(&self, ability: Ability, proficiency: Option<proficiency::Level>) -> i32 {
 		let modifier = self.ability_scores().get(ability).score().modifier();
 		let bonus = match proficiency {
 			Some(proficiency) => proficiency * self.proficiency_bonus(),

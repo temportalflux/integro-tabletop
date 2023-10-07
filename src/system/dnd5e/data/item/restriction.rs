@@ -1,5 +1,6 @@
 use super::weapon;
-use crate::kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder};
+use crate::kdl_ext::NodeContext;
+use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
 use std::str::FromStr;
 
 #[derive(Clone, Default, PartialEq, Debug)]
@@ -14,7 +15,8 @@ pub struct Weapon {
 	pub has_melee: Option<bool>,
 }
 
-impl FromKDL for Restriction {
+impl FromKdl<NodeContext> for Restriction {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let tags = node
 			.query_str_all("scope() > tag", 0)?
@@ -38,7 +40,8 @@ impl AsKdl for Restriction {
 	}
 }
 
-impl FromKDL for Weapon {
+impl FromKdl<NodeContext> for Weapon {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let kind = match node.get_str_opt("kind")? {
 			None => None,
@@ -79,16 +82,10 @@ impl Restriction {
 		if let Some(weapon) = &self.weapon {
 			let mut weapon_requirements = Vec::new();
 			if let Some(kind) = &weapon.kind {
-				weapon_requirements.push(Criteria::contains_prop(
-					"kind",
-					Criteria::exact(kind.to_string()),
-				));
+				weapon_requirements.push(Criteria::contains_prop("kind", Criteria::exact(kind.to_string())));
 			}
 			if let Some(has_melee) = &weapon.has_melee {
-				weapon_requirements.push(Criteria::contains_prop(
-					"has_range",
-					Criteria::exact(!*has_melee),
-				));
+				weapon_requirements.push(Criteria::contains_prop("has_range", Criteria::exact(!*has_melee)));
 			}
 			let weapon_criteria = Criteria::all(weapon_requirements);
 			let equipment_criteria = Criteria::contains_prop("weapon", weapon_criteria);

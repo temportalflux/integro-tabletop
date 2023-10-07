@@ -1,9 +1,11 @@
 use super::GenericEvaluator;
-use crate::{
-	kdl_ext::{AsKdl, EntryExt, NodeBuilder, ValueExt},
-	system::dnd5e::data::character::Character,
-};
+use crate::kdl_ext::NodeContext;
+use crate::system::dnd5e::data::character::Character;
 use anyhow::Context;
+use kdlize::{
+	ext::{EntryExt, ValueExt},
+	AsKdl, FromKdl, NodeBuilder,
+};
 use std::{collections::HashSet, fmt::Debug, ops::Deref};
 
 #[derive(Clone)]
@@ -85,12 +87,12 @@ where
 }
 
 pub trait FromKdlValue {
-	fn parse(value: &kdl::KdlValue) -> anyhow::Result<Self>
+	fn parse(value: &kdl::KdlValue) -> Result<Self, kdlize::error::InvalidValueType>
 	where
 		Self: Sized;
 }
 impl FromKdlValue for bool {
-	fn parse(value: &kdl::KdlValue) -> anyhow::Result<Self>
+	fn parse(value: &kdl::KdlValue) -> Result<Self, kdlize::error::InvalidValueType>
 	where
 		Self: Sized,
 	{
@@ -98,7 +100,7 @@ impl FromKdlValue for bool {
 	}
 }
 impl FromKdlValue for i32 {
-	fn parse(value: &kdl::KdlValue) -> anyhow::Result<Self>
+	fn parse(value: &kdl::KdlValue) -> Result<Self, kdlize::error::InvalidValueType>
 	where
 		Self: Sized,
 	{
@@ -106,7 +108,7 @@ impl FromKdlValue for i32 {
 	}
 }
 impl FromKdlValue for String {
-	fn parse(value: &kdl::KdlValue) -> anyhow::Result<Self>
+	fn parse(value: &kdl::KdlValue) -> Result<Self, kdlize::error::InvalidValueType>
 	where
 		Self: Sized,
 	{
@@ -115,10 +117,11 @@ impl FromKdlValue for String {
 }
 
 // TODO: Test Value::from_kdl/as_kdl
-impl<V> crate::kdl_ext::FromKDL for Value<Character, V>
+impl<V> kdlize::FromKdl<NodeContext> for Value<Character, V>
 where
 	V: 'static + FromKdlValue,
 {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let entry = node.next_req()?;
 		match entry.type_opt() {
@@ -126,7 +129,7 @@ where
 				let eval_id = entry
 					.as_str_req()
 					.context("Evaluator values must be a string containing the evaluator id")?;
-				let node_reg = node.node_reg().clone();
+				let node_reg = node.context().node_reg().clone();
 				let factory = node_reg.get_evaluator_factory(eval_id)?;
 				Ok(Self::Evaluated(factory.from_kdl::<Character, V>(node)?))
 			}

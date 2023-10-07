@@ -21,9 +21,7 @@ extern "C" {
 }
 impl Modal {
 	pub fn from(value: &yew::NodeRef) -> Option<Self> {
-		value
-			.get()
-			.map(|node| Self::new(node.into(), JsValue::UNDEFINED))
+		value.get().map(|node| Self::new(node.into(), JsValue::UNDEFINED))
 	}
 }
 

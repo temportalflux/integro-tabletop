@@ -11,9 +11,7 @@ use crate::{
 		core::System,
 		dnd5e::{
 			components::GeneralProp,
-			data::{
-				bundle::BundleRequirement, character::Persistent, description, Bundle, Feature,
-			},
+			data::{bundle::BundleRequirement, character::Persistent, description, Bundle, Feature},
 			DnD5e,
 		},
 	},
@@ -110,10 +108,7 @@ fn CategoryBrowser(CategoryBrowserProps { use_lineages: _ }: &CategoryBrowserPro
 					let criteria = {
 						let category = selected.as_ref().map(AttrValue::as_str).unwrap().to_owned();
 						let matches_category = Criteria::Exact(category.into());
-						Some(
-							Criteria::ContainsProperty("category".into(), matches_category.into())
-								.into(),
-						)
+						Some(Criteria::ContainsProperty("category".into(), matches_category.into()).into())
 					};
 					let query_args = QueryAllArgs::<Bundle> {
 						system: DnD5e::id().into(),
@@ -130,14 +125,7 @@ fn CategoryBrowser(CategoryBrowserProps { use_lineages: _ }: &CategoryBrowserPro
 		},
 	);
 
-	let options = vec![
-		"Race",
-		"Race Variant",
-		"Lineage",
-		"Upbringing",
-		"Background",
-		"Feat",
-	];
+	let options = vec!["Race", "Race Variant", "Lineage", "Upbringing", "Background", "Feat"];
 	html! {<>
 		<CategoryPicker
 			value={(*selected_category).clone()}
@@ -245,11 +233,7 @@ fn selected_bundle(
 	let title = reqs_desc
 		.map(|desc| format!("{}{desc}", bundle.name))
 		.unwrap_or_else(|| bundle.name.clone());
-	let bundle_id = bundle
-		.name
-		.to_case(Case::Kebab)
-		.replace("(", "")
-		.replace(")", "");
+	let bundle_id = bundle.name.to_case(Case::Kebab).replace("(", "").replace(")", "");
 	html! {
 		<ContentItem
 			id={format!("{}-{idx}-{bundle_id}", bundle.category)}
@@ -323,11 +307,7 @@ fn AvailableBundle(GeneralProp { value: bundle }: &GeneralProp<Bundle>) -> Html 
 			}
 		}
 	}
-	let bundle_id = bundle
-		.name
-		.to_case(Case::Kebab)
-		.replace("(", "")
-		.replace(")", "");
+	let bundle_id = bundle.name.to_case(Case::Kebab).replace("(", "").replace(")", "");
 	html! {
 		<ContentItem
 			parent_collapse={"#all-entries"}
@@ -488,10 +468,7 @@ pub fn description(info: &description::Info, prefer_short: bool, show_selectors:
 	}
 }
 
-pub fn mutator_list<T: 'static>(
-	list: &Vec<GenericMutator<T>>,
-	state: Option<&impl AsRef<T>>,
-) -> Html {
+pub fn mutator_list<T: 'static>(list: &Vec<GenericMutator<T>>, state: Option<&impl AsRef<T>>) -> Html {
 	let mutators = list
 		.iter()
 		.filter_map(|value| mutator(value, state))
@@ -605,11 +582,7 @@ struct SelectorFieldProps {
 #[function_component]
 fn SelectorField(
 	SelectorFieldProps {
-		data: selector::DataOption {
-			name,
-			data_path,
-			kind,
-		},
+		data: selector::DataOption { name, data_path, kind },
 	}: &SelectorFieldProps,
 ) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
@@ -637,10 +610,7 @@ fn SelectorField(
 	});
 
 	let classes = classes!("my-2", "selector");
-	let missing_value = value
-		.is_none()
-		.then(|| classes!("missing-value"))
-		.unwrap_or_default();
+	let missing_value = value.is_none().then(|| classes!("missing-value")).unwrap_or_default();
 	let inner = match kind {
 		// TODO: Display a different UI if amount > 1
 		selector::Kind::StringEntry {
@@ -718,10 +688,7 @@ fn SelectorField(
 				let title = format!("Browse {object_category}");
 				move |_| {
 					let props = props.clone();
-					let item = context_menu::Item::new(
-						title.clone(),
-						html!(<object_browser::Modal ..props />),
-					);
+					let item = context_menu::Item::new(title.clone(), html!(<object_browser::Modal ..props />));
 					context_menu.dispatch(match active_details {
 						None => context_menu::Action::OpenRoot(item),
 						Some(_) => context_menu::Action::OpenSubpage(item),

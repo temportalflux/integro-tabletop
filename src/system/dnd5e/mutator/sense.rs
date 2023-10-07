@@ -1,8 +1,9 @@
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::dnd5e::data::{bounded::BoundValue, character::Character, description},
 	utility::Mutator,
 };
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Sense {
@@ -11,7 +12,7 @@ pub struct Sense {
 }
 
 crate::impl_trait_eq!(Sense);
-crate::impl_kdl_node!(Sense, "sense");
+kdlize::impl_kdl_node!(Sense, "sense");
 
 impl Mutator for Sense {
 	type Target = Character;
@@ -22,9 +23,9 @@ impl Mutator for Sense {
 			content: match &self.argument {
 				BoundValue::Minimum(value) => format!("You have {name} for at least {value} feet."),
 				BoundValue::Base(value) => format!("You have {name} for at least {value} feet."),
-				BoundValue::Additive(value) => format!(
-					"If you have {name} from another source, your {name} increases by {value} feet."
-				),
+				BoundValue::Additive(value) => {
+					format!("If you have {name} from another source, your {name} increases by {value} feet.")
+				}
 				BoundValue::Subtract(value) => {
 					format!("If you have {name}, it decreases by {value} feet.")
 				}
@@ -41,7 +42,8 @@ impl Mutator for Sense {
 	}
 }
 
-impl FromKDL for Sense {
+impl FromKdl<NodeContext> for Sense {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let name = node.next_str_req()?.to_owned();
 		let argument = BoundValue::from_kdl(node)?;
@@ -232,10 +234,7 @@ mod test {
 			let sense = character.senses().get("Darkvision").unwrap();
 			let expected = [
 				(BoundKind::Minimum, [("A".into(), 60)].into()),
-				(
-					BoundKind::Additive,
-					[("B".into(), 40), ("C".into(), 30)].into(),
-				),
+				(BoundKind::Additive, [("B".into(), 40), ("C".into(), 30)].into()),
 			]
 			.into();
 			assert_eq!(sense, &expected);

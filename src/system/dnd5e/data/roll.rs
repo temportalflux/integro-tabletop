@@ -1,7 +1,6 @@
-use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
-	GeneralError,
-};
+use crate::kdl_ext::NodeContext;
+use crate::GeneralError;
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::str::FromStr;
 
 mod die;
@@ -27,10 +26,7 @@ impl From<u32> for Roll {
 
 impl From<(u32, Die)> for Roll {
 	fn from((amount, die): (u32, Die)) -> Self {
-		Self {
-			amount,
-			die: Some(die),
-		}
+		Self { amount, die: Some(die) }
 	}
 }
 
@@ -81,17 +77,11 @@ impl FromStr for Roll {
 			"Roll string {s:?} missing die type, expected format {EXPECTED:?}."
 		)))?;
 		if parts.next().is_some() {
-			return Err(GeneralError(format!(
-				"Too many parts in {s:?} for Roll, expected {EXPECTED:?}"
-			))
-			.into());
+			return Err(GeneralError(format!("Too many parts in {s:?} for Roll, expected {EXPECTED:?}")).into());
 		}
 		let amount = amount_str.parse::<u32>()?;
 		let die = Die::try_from(die_str.parse::<u32>()?)?;
-		Ok(Self {
-			amount,
-			die: Some(die),
-		})
+		Ok(Self { amount, die: Some(die) })
 	}
 }
 
@@ -103,7 +93,8 @@ pub enum ParseRollError {
 	Format(#[from] GeneralError),
 }
 
-impl FromKDL for Roll {
+impl FromKdl<NodeContext> for Roll {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		Ok(node.next_str_req_t::<Self>()?)
 	}

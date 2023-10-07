@@ -3,7 +3,10 @@ use yew::prelude::*;
 use yewdux::prelude::*;
 
 #[hook]
-pub fn use_on_auth_success<F>(callback: F) where F: Fn(&std::rc::Rc<auth::Status>) + 'static {
+pub fn use_on_auth_success<F>(callback: F)
+where
+	F: Fn(&std::rc::Rc<auth::Status>) + 'static,
+{
 	let callback = yew_hooks::use_latest(callback);
 	let auth_status = use_store_value::<auth::Status>();
 	let was_success = use_state_eq({

@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
+	kdl_ext::NodeContext,
 	system::dnd5e::{
 		data::{character::Character, Rest},
 		Value,
@@ -7,6 +7,7 @@ use crate::{
 	utility::selector,
 	GeneralError,
 };
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::{
 	path::{Path, PathBuf},
 	str::FromStr,
@@ -96,9 +97,7 @@ impl UseCounterData {
 	}
 
 	fn get_uses_consumed(&self, character: &Character) -> u32 {
-		character
-			.get_selector_value(&self.uses_count)
-			.unwrap_or_default()
+		character.get_selector_value(&self.uses_count).unwrap_or_default()
 	}
 
 	fn get_max_uses(&self, character: &Character) -> i32 {
@@ -112,7 +111,8 @@ impl UseCounterData {
 	}
 }
 
-impl FromKDL for LimitedUses {
+impl FromKdl<NodeContext> for LimitedUses {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		if let Some(max_uses) = node.query_opt_t::<Value<i32>>("scope() > max_uses")? {
 			let reset_on = node.query_opt_t::<Value<String>>("scope() > reset_on")?;
@@ -135,10 +135,7 @@ impl FromKDL for LimitedUses {
 			return Ok(Self::Consumer { resource, cost });
 		}
 
-		return Err(GeneralError(
-			"Invalid limited uses, expected a max_uses or resource property.".into(),
-		)
-		.into());
+		return Err(GeneralError("Invalid limited uses, expected a max_uses or resource property.".into()).into());
 	}
 }
 
@@ -252,8 +249,7 @@ mod test {
 				reset_on: Some(Value::Evaluated(
 					GetLevelStr {
 						class_name: None,
-						order_map: [(1, Rest::Long.to_string()), (5, Rest::Short.to_string())]
-							.into(),
+						order_map: [(1, Rest::Long.to_string()), (5, Rest::Short.to_string())].into(),
 					}
 					.into(),
 				)),

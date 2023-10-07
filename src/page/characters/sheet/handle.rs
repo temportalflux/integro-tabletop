@@ -77,13 +77,11 @@ impl AsRef<Character> for CharacterHandle {
 }
 impl CharacterHandle {
 	fn set_recompiling(&self, value: bool) {
-		self.is_recompiling
-			.store(value, std::sync::atomic::Ordering::Relaxed);
+		self.is_recompiling.store(value, std::sync::atomic::Ordering::Relaxed);
 	}
 
 	fn is_recompiling(&self) -> bool {
-		self.is_recompiling
-			.load(std::sync::atomic::Ordering::Relaxed)
+		self.is_recompiling.load(std::sync::atomic::Ordering::Relaxed)
 	}
 
 	pub fn is_loaded(&self) -> bool {
@@ -125,9 +123,8 @@ impl CharacterHandle {
 					None,
 				);
 				let query_result = query_defaults.await;
-				let defaults_stream = query_result.map_err(|err| {
-					CharacterInitializationError::DefaultsError(format!("{err:?}"))
-				})?;
+				let defaults_stream =
+					query_result.map_err(|err| CharacterInitializationError::DefaultsError(format!("{err:?}")))?;
 				let default_blocks = defaults_stream.all().await;
 
 				let mut character = Character::new(persistent, default_blocks);
@@ -209,19 +206,17 @@ impl CharacterHandle {
 		let handle = self.clone();
 		self.set_recompiling(true);
 		character.clear_derived();
-		let signal = self
-			.task_dispatch
-			.spawn("Recompile Character", None, async move {
-				let provider = ObjectCacheProvider {
-					database: handle.database.clone(),
-					system_depot: handle.system_depot.clone(),
-				};
-				if let Err(err) = character.recompile(provider).await {
-					log::warn!("Encountered error updating cached character objects: {err:?}");
-				}
-				handle.state.set(CharacterState::Loaded(character));
-				Ok(()) as anyhow::Result<()>
-			});
+		let signal = self.task_dispatch.spawn("Recompile Character", None, async move {
+			let provider = ObjectCacheProvider {
+				database: handle.database.clone(),
+				system_depot: handle.system_depot.clone(),
+			};
+			if let Err(err) = character.recompile(provider).await {
+				log::warn!("Encountered error updating cached character objects: {err:?}");
+			}
+			handle.state.set(CharacterState::Loaded(character));
+			Ok(()) as anyhow::Result<()>
+		});
 
 		let handle = self.clone();
 		wasm_bindgen_futures::spawn_local(async move {

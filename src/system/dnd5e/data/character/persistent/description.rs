@@ -1,11 +1,9 @@
-use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
-	system::dnd5e::data::Size,
-	utility::NotInList,
-};
+use crate::kdl_ext::NodeContext;
+use crate::{system::dnd5e::data::Size, utility::NotInList};
 use enum_map::{Enum, EnumMap};
 use enumset::EnumSetType;
 use itertools::Itertools;
+use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
 use std::{collections::HashSet, str::FromStr};
 
 #[derive(Clone, PartialEq, Default, Debug)]
@@ -39,7 +37,8 @@ impl Description {
 	}
 }
 
-impl FromKDL for Description {
+impl FromKdl<NodeContext> for Description {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let name = node.query_str_opt("scope() > name", 0)?;
 		let name = name.map(str::to_owned).unwrap_or_default();

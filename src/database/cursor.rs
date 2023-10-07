@@ -79,10 +79,7 @@ where
 {
 	type Item = V;
 
-	fn poll_next(
-		mut self: Pin<&mut Self>,
-		cx: &mut std::task::Context<'_>,
-	) -> Poll<Option<Self::Item>> {
+	fn poll_next(mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Option<Self::Item>> {
 		loop {
 			// Process any pending advancement future first.
 			// If there is a future here, it means we are waiting for the underlying cursor

@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{DocumentExt, NodeBuilder, ValueExt},
+	kdl_ext::NodeContext,
 	system::dnd5e::data::{
 		action::{Attack, AttackCheckKind, AttackKind},
 		item::weapon,
@@ -8,6 +8,10 @@ use crate::{
 };
 use enumset::EnumSet;
 use itertools::Itertools;
+use kdlize::{
+	ext::{DocumentExt, ValueExt},
+	AsKdl, FromKdl, NodeBuilder,
+};
 use std::{collections::HashSet, str::FromStr};
 
 #[derive(Clone, PartialEq, Default, Debug)]
@@ -71,10 +75,7 @@ impl std::fmt::Display for AttackQuery {
 			if *required_or_barred {
 				entries.push(format!("has the {} property", property.display_name()));
 			} else {
-				entries.push(format!(
-					"does not have the {} property",
-					property.display_name()
-				));
+				entries.push(format!("does not have the {} property", property.display_name()));
 			}
 		}
 
@@ -124,7 +125,8 @@ impl AttackQuery {
 	}
 }
 
-impl crate::kdl_ext::FromKDL for AttackQuery {
+impl kdlize::FromKdl<NodeContext> for AttackQuery {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let weapon_kind = match node.query_opt("scope() > weapon")? {
 			None => EnumSet::empty(),

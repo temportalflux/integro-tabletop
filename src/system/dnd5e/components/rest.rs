@@ -102,9 +102,7 @@ fn Modal(GeneralProp { value }: &GeneralProp<Rest>) -> Html {
 				let path_str = path_str.replace("\\", "/");
 				match &uses_to_remove {
 					None => changes.push(format!("Restored all uses to {path_str}.")),
-					Some(gained_uses) => {
-						changes.push(format!("Restored {gained_uses} uses to {path_str}."))
-					}
+					Some(gained_uses) => changes.push(format!("Restored {gained_uses} uses to {path_str}.")),
 				}
 				for data_path in &entry.data_paths {
 					let new_value = match &uses_to_remove {
@@ -307,14 +305,8 @@ fn HitDiceUsageInput(
 ) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let uses_to_consume = use_state_eq(|| 0u32);
-	let consumed_uses = data_path
-		.as_ref()
-		.map(|path| state.get_first_selection_at::<u32>(path));
-	let consumed_uses = consumed_uses
-		.flatten()
-		.map(Result::ok)
-		.flatten()
-		.unwrap_or(0);
+	let consumed_uses = data_path.as_ref().map(|path| state.get_first_selection_at::<u32>(path));
+	let consumed_uses = consumed_uses.flatten().map(Result::ok).flatten().unwrap_or(0);
 	let set_consumed_uses_delta = Callback::from({
 		let uses_to_consume = uses_to_consume.clone();
 		let on_change = on_change.clone();
@@ -382,7 +374,9 @@ fn ProjectedRestorations(GeneralProp { value }: &GeneralProp<Rest>) -> Html {
 	let mut sections = Vec::new();
 	match *value {
 		Rest::Long => {
-			sections.push(html!(<li style="color: var(--bs-warning);">{"WARNING: Your death saving throws will be reset."}</li>));
+			sections.push(
+				html!(<li style="color: var(--bs-warning);">{"WARNING: Your death saving throws will be reset."}</li>),
+			);
 			sections.push(html!(<li>{"Regain all lost hit points."}</li>));
 			sections.push(html!(<li>{"Temporary Hit Points will reset to 0."}</li>));
 
@@ -410,7 +404,9 @@ fn ProjectedRestorations(GeneralProp { value }: &GeneralProp<Rest>) -> Html {
 				}
 			}
 			if let Some(hit_dice) = crate::utility::list_as_english(hit_die_halves, "and") {
-				sections.push(html!(<li>{format!("Regain up to {hit_dice} hit dice (half your total hit dice, minimuim of 1).")}</li>));
+				sections.push(
+					html!(<li>{format!("Regain up to {hit_dice} hit dice (half your total hit dice, minimuim of 1).")}</li>),
+				);
 			}
 		}
 		Rest::Short => {}

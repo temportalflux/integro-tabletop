@@ -1,5 +1,6 @@
 use super::IndirectCondition;
-use crate::kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeReader};
+use crate::kdl_ext::{NodeContext, NodeReader};
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::str::FromStr;
 
 mod activation;
@@ -19,12 +20,10 @@ pub struct Action {
 	pub conditions_to_apply: Vec<IndirectCondition>,
 }
 
-impl FromKDL for Action {
+impl FromKdl<NodeContext> for Action {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut NodeReader<'doc>) -> anyhow::Result<Self> {
-		let activation_kind = match (
-			node.next_str_opt()?,
-			node.query_opt("scope() > activation")?,
-		) {
+		let activation_kind = match (node.next_str_opt()?, node.query_opt("scope() > activation")?) {
 			(Some(str), None) => ActivationKind::from_str(str)?,
 			(None, Some(mut node)) => ActivationKind::from_kdl(&mut node)?,
 			_ => return Err(MissingActivation(node.to_string()).into()),

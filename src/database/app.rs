@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use crate::kdl_ext::NodeContext;
+
 use super::Record;
 
 pub mod entry;
@@ -60,10 +62,7 @@ impl Database {
 		entries_store.index_of::<I>()
 	}
 
-	pub async fn get<T>(
-		&self,
-		key: impl Into<wasm_bindgen::JsValue>,
-	) -> Result<Option<T>, super::Error>
+	pub async fn get<T>(&self, key: impl Into<wasm_bindgen::JsValue>) -> Result<Option<T>, super::Error>
 	where
 		T: Record + serde::de::DeserializeOwned,
 	{
@@ -80,8 +79,8 @@ impl Database {
 		criteria: Option<Criteria>,
 	) -> Result<Option<T>, FetchError>
 	where
-		T: crate::kdl_ext::KDLNode
-			+ crate::kdl_ext::FromKDL
+		T: kdlize::NodeId
+			+ kdlize::FromKdl<crate::kdl_ext::NodeContext>
 			+ crate::system::dnd5e::SystemComponent
 			+ Unpin,
 	{
@@ -139,16 +138,11 @@ impl Database {
 		criteria: Option<Box<Criteria>>,
 	) -> Result<QueryDeserialize<Output>, idb::Error>
 	where
-		Output: crate::kdl_ext::KDLNode
-			+ crate::kdl_ext::FromKDL
-			+ crate::system::dnd5e::SystemComponent
-			+ Unpin,
+		Output: kdlize::NodeId + kdlize::FromKdl<NodeContext> + crate::system::dnd5e::SystemComponent + Unpin,
 	{
 		let system = system.into();
 		let node_reg = {
-			let system_reg = system_depot
-				.get(&system)
-				.expect("Missing system {system:?} in depot");
+			let system_reg = system_depot.get(&system).expect("Missing system {system:?} in depot");
 			system_reg.node()
 		};
 		let idx_by_sys_cate = self.read_index::<entry::SystemCategory>();

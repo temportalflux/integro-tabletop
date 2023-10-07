@@ -1,11 +1,10 @@
 use super::{AsTraitEq, Dependencies, TraitEq};
-use crate::kdl_ext::{AsKdl, KDLNode};
+use crate::kdl_ext::NodeContext;
 use downcast_rs::{impl_downcast, DowncastSync};
+use kdlize::{AsKdl, NodeId};
 use std::{fmt::Debug, sync::Arc};
 
-pub trait Evaluator:
-	DowncastSync + Debug + TraitEq + AsTraitEq<dyn TraitEq> + KDLNode + AsKdl
-{
+pub trait Evaluator: DowncastSync + Debug + TraitEq + AsTraitEq<dyn TraitEq> + NodeId + AsKdl {
 	type Context;
 	type Item;
 
@@ -67,14 +66,15 @@ impl<C, V> std::fmt::Debug for GenericEvaluator<C, V> {
 	}
 }
 
-impl<C, V> crate::kdl_ext::FromKDL for GenericEvaluator<C, V>
+impl<C, V> kdlize::FromKdl<NodeContext> for GenericEvaluator<C, V>
 where
 	C: 'static,
 	V: 'static,
 {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let id = node.next_str_req()?;
-		let node_reg = node.node_reg().clone();
+		let node_reg = node.context().node_reg().clone();
 		let factory = node_reg.get_evaluator_factory(id)?;
 		factory.from_kdl::<C, V>(node)
 	}

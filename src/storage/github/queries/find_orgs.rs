@@ -13,10 +13,7 @@ pub use find_orgs::Variables;
 impl StreamableQuery<FindOrgs> for FindOrgs {
 	type Item = Vec<String>;
 
-	fn update_variables(
-		vars: &find_orgs::Variables,
-		cursor: Option<String>,
-	) -> find_orgs::Variables {
+	fn update_variables(vars: &find_orgs::Variables, cursor: Option<String>) -> find_orgs::Variables {
 		find_orgs::Variables {
 			cursor,
 			amount: vars.amount,

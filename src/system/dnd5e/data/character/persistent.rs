@@ -1,13 +1,10 @@
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
 	path_map::PathMap,
 	system::{
 		core::SourceId,
 		dnd5e::{
-			data::{
-				character::Character, item::container::Inventory, Ability, Bundle, Class,
-				Condition, Rest, Spell,
-			},
+			data::{character::Character, item::container::Inventory, Ability, Bundle, Class, Condition, Rest, Spell},
 			SystemComponent,
 		},
 	},
@@ -15,6 +12,7 @@ use crate::{
 };
 use enum_map::EnumMap;
 use itertools::Itertools;
+use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
 use multimap::MultiMap;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -120,15 +118,10 @@ impl Persistent {
 	}
 
 	pub fn get_first_selection(&self, path: impl AsRef<Path>) -> Option<&String> {
-		self.get_selections_at(path)
-			.map(|all| all.first())
-			.flatten()
+		self.get_selections_at(path).map(|all| all.first()).flatten()
 	}
 
-	pub fn get_first_selection_at<T>(
-		&self,
-		data_path: impl AsRef<Path>,
-	) -> Option<Result<T, <T as FromStr>::Err>>
+	pub fn get_first_selection_at<T>(&self, data_path: impl AsRef<Path>) -> Option<Result<T, <T as FromStr>::Err>>
 	where
 		T: Clone + 'static + FromStr,
 	{
@@ -180,7 +173,7 @@ impl Persistent {
 	}
 }
 
-crate::impl_kdl_node!(Persistent, "character");
+kdlize::impl_kdl_node!(Persistent, "character");
 #[derive(PartialEq, Serialize, Deserialize)]
 pub struct PersistentMetadata {
 	pub name: String,
@@ -211,9 +204,10 @@ impl SystemComponent for Persistent {
 		serde_json::json!(metadata)
 	}
 }
-impl FromKDL for Persistent {
+impl FromKdl<NodeContext> for Persistent {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
-		let id = node.id().clone();
+		let id = node.context().id().clone();
 
 		let description = node.query_req_t::<Description>("scope() > description")?;
 
@@ -231,9 +225,7 @@ impl FromKDL for Persistent {
 
 		let hit_points = node.query_req_t::<HitPoints>("scope() > hit_points")?;
 
-		let inspiration = node
-			.query_bool_opt("scope() > inspiration", 0)?
-			.unwrap_or_default();
+		let inspiration = node.query_bool_opt("scope() > inspiration", 0)?.unwrap_or_default();
 
 		let mut conditions = Conditions::default();
 		for condition in node.query_all_t::<Condition>("scope() > condition")? {
@@ -332,7 +324,8 @@ pub struct HitPoints {
 	pub failure_saves: u8,
 	pub success_saves: u8,
 }
-impl FromKDL for HitPoints {
+impl FromKdl<NodeContext> for HitPoints {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let current = node.query_i64_req("scope() > current", 0)? as u32;
 		let temp = node.query_i64_req("scope() > temp", 0)? as u32;
@@ -410,10 +403,7 @@ pub struct Conditions {
 	custom: Vec<Condition>,
 }
 impl Conditions {
-	pub async fn resolve_indirection(
-		&mut self,
-		provider: &ObjectCacheProvider,
-	) -> anyhow::Result<()> {
+	pub async fn resolve_indirection(&mut self, provider: &ObjectCacheProvider) -> anyhow::Result<()> {
 		for condition in self.iter_mut() {
 			condition.resolve_indirection(provider).await?;
 		}
@@ -490,10 +480,7 @@ pub struct Settings {
 }
 
 impl Settings {
-	fn insert_from_kdl<'doc>(
-		&mut self,
-		node: &mut crate::kdl_ext::NodeReader<'doc>,
-	) -> anyhow::Result<()> {
+	fn insert_from_kdl<'doc>(&mut self, node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<()> {
 		match node.next_str_req()? {
 			"currency_auto_exchange" => {
 				self.currency_auto_exchange = node.next_bool_req()?;
@@ -527,7 +514,8 @@ pub struct SelectedSpellsData {
 	pub num_spells: usize,
 	selections: HashMap<SourceId, Spell>,
 }
-impl FromKDL for SelectedSpells {
+impl FromKdl<NodeContext> for SelectedSpells {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let mut cache_by_caster = HashMap::new();
 		for node in &mut node.query_all("scope() > caster")? {
@@ -558,8 +546,7 @@ impl AsKdl for SelectedSpells {
 			node_caster.push_entry(caster_name.clone());
 
 			let iter_spells = selected_spells.selections.values();
-			let iter_spells =
-				iter_spells.sorted_by(|a, b| a.rank.cmp(&b.rank).then(a.name.cmp(&b.name)));
+			let iter_spells = iter_spells.sorted_by(|a, b| a.rank.cmp(&b.rank).then(a.name.cmp(&b.name)));
 			for spell in iter_spells {
 				node_caster.push_child_t("spell", spell);
 			}

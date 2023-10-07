@@ -1,11 +1,12 @@
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::dnd5e::{
 		data::{character::Character, description},
 		BoxedCriteria, BoxedMutator,
 	},
 	utility::{Mutator, NotInList},
 };
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::str::FromStr;
 
 #[derive(Clone, PartialEq, Debug, Default)]
@@ -43,7 +44,7 @@ impl FromStr for LogicOp {
 }
 
 crate::impl_trait_eq!(ApplyIf);
-crate::impl_kdl_node!(ApplyIf, "apply_if");
+kdlize::impl_kdl_node!(ApplyIf, "apply_if");
 
 impl Mutator for ApplyIf {
 	type Target = Character;
@@ -118,16 +119,13 @@ impl ApplyIf {
 	}
 }
 
-impl FromKDL for ApplyIf {
+impl FromKdl<NodeContext> for ApplyIf {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let op = node.next_str_opt_t::<LogicOp>()?.unwrap_or_default();
 		let criteria = node.query_all_t("scope() > criteria")?;
 		let mutators = node.query_all_t("scope() > mutator")?;
-		Ok(Self {
-			op,
-			criteria,
-			mutators,
-		})
+		Ok(Self { op, criteria, mutators })
 	}
 }
 

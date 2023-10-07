@@ -100,10 +100,7 @@ fn PageSelect(props: &GeneralProp<UseStateHandle<Page>>) -> Html {
 	let onchange = Callback::from({
 		let handle = props.value.clone();
 		move |evt: web_sys::Event| {
-			let value = evt
-				.select_value()
-				.map(|s| Page::from_str(&s).ok())
-				.flatten();
+			let value = evt.select_value().map(|s| Page::from_str(&s).ok()).flatten();
 			handle.set(value.unwrap_or_default());
 		}
 	});

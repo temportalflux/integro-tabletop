@@ -1,8 +1,6 @@
-use crate::{
-	kdl_ext::{AsKdl, NodeBuilder},
-	system::dnd5e::{data::character::Character, FromKDL},
-	utility::NotInList,
-};
+use crate::kdl_ext::NodeContext;
+use crate::{system::dnd5e::data::character::Character, utility::NotInList};
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::collections::BTreeMap;
 
 mod level;
@@ -22,10 +20,7 @@ where
 {
 	pub fn evaluate(&self, character: &Character) -> Option<T> {
 		match self {
-			Self::Level {
-				class_name,
-				level_map,
-			} => {
+			Self::Level { class_name, level_map } => {
 				let level = character.level(class_name.as_ref().map(String::as_str));
 				if level_map.is_empty() {
 					return T::default_for_level(level);
@@ -41,10 +36,12 @@ where
 	}
 }
 
-impl<T> FromKDL for Basis<T>
+impl<T> FromKdl<NodeContext> for Basis<T>
 where
-	T: Clone + DefaultLevelMap + FromKDL,
+	T: Clone + DefaultLevelMap + FromKdl<NodeContext>,
+	anyhow::Error: From<T::Error>,
 {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		match node.next_str_req()? {
 			"Level" => {
@@ -58,10 +55,7 @@ where
 					};
 					level_map.insert(threshold, value);
 				}
-				Ok(Self::Level {
-					class_name,
-					level_map,
-				})
+				Ok(Self::Level { class_name, level_map })
 			}
 			name => Err(NotInList(name.into(), vec!["Level"]).into()),
 		}
@@ -73,10 +67,7 @@ where
 {
 	fn as_kdl(&self) -> NodeBuilder {
 		match self {
-			Self::Level {
-				class_name,
-				level_map,
-			} => {
+			Self::Level { class_name, level_map } => {
 				let mut node = NodeBuilder::default();
 				node.push_entry("Level");
 				if let Some(class_name) = class_name {

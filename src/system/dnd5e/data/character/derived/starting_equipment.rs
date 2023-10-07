@@ -1,5 +1,5 @@
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::{
 		core::SourceId,
 		dnd5e::data::{
@@ -9,6 +9,7 @@ use crate::{
 	},
 	utility::NotInList,
 };
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum StartingEquipment {
@@ -30,9 +31,7 @@ impl StartingEquipment {
 		}
 	}
 
-	pub fn from_kdl_vec<'doc>(
-		node: &mut crate::kdl_ext::NodeReader<'doc>,
-	) -> anyhow::Result<Vec<Self>> {
+	pub fn from_kdl_vec<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Vec<Self>> {
 		let mut entries = Vec::new();
 		if let Some(children) = node.children() {
 			for mut node in children {
@@ -51,7 +50,8 @@ impl StartingEquipment {
 	}
 }
 
-impl FromKDL for StartingEquipment {
+impl FromKdl<NodeContext> for StartingEquipment {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		match node.name().value() {
 			"currency" => Ok(Self::Currency(Wallet::from_kdl(node)?)),
@@ -96,12 +96,13 @@ pub enum IndirectItem {
 	Specific(SourceId, usize),
 	Custom(Item),
 }
-impl FromKDL for IndirectItem {
+impl FromKdl<NodeContext> for IndirectItem {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		match node.next_str_req()? {
 			"Specific" => {
 				let id = node.next_str_req_t::<SourceId>()?;
-				let id = id.with_relative_basis(node.id(), false);
+				let id = id.with_relative_basis(node.context().id(), false);
 				let count = node.next_i64_opt()?.unwrap_or(1) as usize;
 				Ok(Self::Specific(id, count))
 			}

@@ -1,6 +1,6 @@
 use super::Feature;
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
+	kdl_ext::NodeContext,
 	system::{
 		core::SourceId,
 		dnd5e::{
@@ -10,6 +10,7 @@ use crate::{
 	},
 	utility::{MutatorGroup, NotInList},
 };
+use kdlize::{AsKdl, FromKdl, NodeBuilder, NodeId};
 use std::{
 	collections::HashMap,
 	path::{Path, PathBuf},
@@ -74,7 +75,7 @@ impl MutatorGroup for Bundle {
 	}
 }
 
-crate::impl_kdl_node!(Bundle, "bundle");
+kdlize::impl_kdl_node!(Bundle, "bundle");
 
 impl SystemComponent for Bundle {
 	fn to_metadata(self) -> serde_json::Value {
@@ -109,14 +110,15 @@ impl SystemComponent for Bundle {
 	}
 }
 
-impl FromKDL for Bundle {
+impl FromKdl<NodeContext> for Bundle {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let name = node.get_str_req("name")?.to_owned();
 		let category = node.get_str_req("category")?.to_owned();
 
 		let id = match category.as_str() {
-			"Feat" => node.query_source_opt()?.unwrap_or_default(),
-			_ => node.query_source_req()?,
+			"Feat" => crate::kdl_ext::query_source_opt(node)?.unwrap_or_default(),
+			_ => crate::kdl_ext::query_source_req(node)?,
 		};
 
 		let feature_config = match node.get_bool_opt("display_as_feature")? {

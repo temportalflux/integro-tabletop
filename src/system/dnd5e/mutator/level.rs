@@ -1,8 +1,9 @@
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::dnd5e::data::{character::Character, description},
 	utility::{GenericMutator, Mutator},
 };
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::collections::BTreeMap;
 
 // Grants child mutators based on the character's level.
@@ -13,7 +14,7 @@ pub struct GrantByLevel {
 }
 
 crate::impl_trait_eq!(GrantByLevel);
-crate::impl_kdl_node!(GrantByLevel, "by_level");
+kdlize::impl_kdl_node!(GrantByLevel, "by_level");
 
 impl Mutator for GrantByLevel {
 	type Target = Character;
@@ -33,10 +34,7 @@ impl Mutator for GrantByLevel {
 			if batch.is_empty() {
 				continue;
 			}
-			let children: Vec<_> = batch
-				.iter()
-				.map(|mutator| mutator.description(state))
-				.collect();
+			let children: Vec<_> = batch.iter().map(|mutator| mutator.description(state)).collect();
 			if children.is_empty() {
 				continue;
 			}
@@ -51,10 +49,7 @@ impl Mutator for GrantByLevel {
 			title: Some("Grant by Level".into()),
 			content: format!(
 				"You are granted benefits based on your {} level:",
-				self.class_name
-					.as_ref()
-					.map(String::as_str)
-					.unwrap_or("Character")
+				self.class_name.as_ref().map(String::as_str).unwrap_or("Character")
 			)
 			.into(),
 			children: sections,
@@ -77,7 +72,8 @@ impl Mutator for GrantByLevel {
 	}
 }
 
-impl FromKDL for GrantByLevel {
+impl FromKdl<NodeContext> for GrantByLevel {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let class_name = node.get_str_opt("class")?.map(str::to_owned);
 

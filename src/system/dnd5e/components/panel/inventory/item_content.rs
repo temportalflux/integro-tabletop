@@ -14,9 +14,7 @@ use crate::{
 		core::SourceId,
 		dnd5e::{
 			components::{
-				panel::{
-					spell_name_and_icons, spell_overview_info, AvailableSpellList, HeaderAddon,
-				},
+				panel::{spell_name_and_icons, spell_overview_info, AvailableSpellList, HeaderAddon},
 				validate_uint_only, FormulaInline, GeneralProp, WalletInline,
 			},
 			data::{
@@ -34,10 +32,7 @@ use any_range::AnyRange;
 use std::collections::HashSet;
 use yew::prelude::*;
 
-pub fn get_inventory_item<'c>(
-	state: &'c CharacterHandle,
-	id_path: &Vec<uuid::Uuid>,
-) -> Option<&'c Item> {
+pub fn get_inventory_item<'c>(state: &'c CharacterHandle, id_path: &Vec<uuid::Uuid>) -> Option<&'c Item> {
 	let mut iter = id_path.iter();
 	let mut item = None;
 	while let Some(id) = iter.next() {
@@ -53,10 +48,7 @@ pub fn get_inventory_item<'c>(
 	}
 	item
 }
-pub fn get_inventory_item_mut<'c>(
-	persistent: &'c mut Persistent,
-	id_path: &Vec<uuid::Uuid>,
-) -> Option<&'c mut Item> {
+pub fn get_inventory_item_mut<'c>(persistent: &'c mut Persistent, id_path: &Vec<uuid::Uuid>) -> Option<&'c mut Item> {
 	let mut iter = id_path.iter();
 	let Some(id) = iter.next() else { return None; };
 	let mut item = persistent.inventory.get_mut(id);
@@ -309,9 +301,7 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 				});
 				let is_proficient = vec![
 					IsProficientWith::Weapon(WeaponProficiency::Kind(weapon.kind)),
-					IsProficientWith::Weapon(WeaponProficiency::Classification(
-						weapon.classification.clone(),
-					)),
+					IsProficientWith::Weapon(WeaponProficiency::Classification(weapon.classification.clone())),
 				];
 				let is_proficient = is_proficient.into_iter().any(|eval| eval.evaluate(&state));
 				weapon_sections.push(html! {
@@ -847,18 +837,17 @@ fn ContainedSpellsSection(props: &ContainedSpellsSectionProps) -> Html {
 								let select_rank = select_rank.clone();
 								move |evt: web_sys::Event| {
 									let Some(selected_rank) = evt.select_value_t::<u8>() else { return; };
-									select_rank.emit((
-										contained_idx,
-										(selected_rank != min_rank).then_some(selected_rank),
-									));
+									select_rank
+										.emit((contained_idx, (selected_rank != min_rank).then_some(selected_rank)));
 								}
 							});
 							let selected_rank = rank.unwrap_or(spell.rank);
 							let rank_min = spell.rank.max(rank_min);
 							let rank_max = spell.rank.max(match remaining_total_rank {
 								None => rank_max,
-								Some(remaining_total_rank) => rank_max
-									.min(selected_rank.saturating_add(*remaining_total_rank as u8)),
+								Some(remaining_total_rank) => {
+									rank_max.min(selected_rank.saturating_add(*remaining_total_rank as u8))
+								}
 							});
 							html! {
 								<select class="form-select px-2 py-1" onchange={select_rank}>
@@ -1010,11 +999,7 @@ fn ModalSpellContainerAvailableList(props: &ModalSpellContainerAvailableListProp
 	let rank_max = spell_container.capacity.rank_max.unwrap_or(MAX_SPELL_RANK);
 	let container_capacity_criteria = Criteria::contains_prop(
 		"rank",
-		Criteria::any(
-			(rank_min..=rank_max)
-				.into_iter()
-				.map(|rank| Criteria::exact(rank)),
-		),
+		Criteria::any((rank_min..=rank_max).into_iter().map(|rank| Criteria::exact(rank))),
 	);
 	let criteria = use_state({
 		let criteria = container_capacity_criteria.clone();

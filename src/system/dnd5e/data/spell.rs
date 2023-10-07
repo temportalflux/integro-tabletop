@@ -1,8 +1,7 @@
 use super::{description, AreaOfEffect};
-use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
-	system::{core::SourceId, dnd5e::SystemComponent},
-};
+use crate::kdl_ext::NodeContext;
+use crate::system::{core::SourceId, dnd5e::SystemComponent};
+use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
 
 mod casting_time;
 pub use casting_time::*;
@@ -34,7 +33,7 @@ pub struct Spell {
 	pub tags: Vec<String>,
 }
 
-crate::impl_kdl_node!(Spell, "spell");
+kdlize::impl_kdl_node!(Spell, "spell");
 
 impl SystemComponent for Spell {
 	fn to_metadata(self) -> serde_json::Value {
@@ -59,19 +58,18 @@ impl SystemComponent for Spell {
 	}
 }
 
-impl FromKDL for Spell {
+impl FromKdl<NodeContext> for Spell {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		// TODO: all system components need to check if the node has a source field
-		let id = node.query_source_req()?;
+		let id = crate::kdl_ext::query_source_req(node)?;
 
 		let name = node.get_str_req("name")?.to_owned();
 		let description = node
 			.query_opt_t::<description::Info>("scope() > description")?
 			.unwrap_or_default();
 		let rank = node.query_i64_req("scope() > rank", 0)? as u8;
-		let school_tag = node
-			.query_str_opt("scope() > school", 0)?
-			.map(str::to_owned);
+		let school_tag = node.query_str_opt("scope() > school", 0)?.map(str::to_owned);
 
 		let components = Components::from_kdl(node)?;
 		let casting_time = node.query_req_t::<CastingTime>("scope() > casting-time")?;

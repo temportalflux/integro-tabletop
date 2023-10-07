@@ -3,12 +3,10 @@ use super::{
 	character::Character,
 	description,
 };
-use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
-	system::dnd5e::BoxedMutator,
-	utility::MutatorGroup,
-};
+use crate::kdl_ext::NodeContext;
+use crate::{system::dnd5e::BoxedMutator, utility::MutatorGroup};
 use derivative::Derivative;
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::{
 	collections::HashMap,
 	path::{Path, PathBuf},
@@ -96,7 +94,8 @@ impl MutatorGroup for Feature {
 	}
 }
 
-impl FromKDL for Feature {
+impl FromKdl<NodeContext> for Feature {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let name = node.get_str_req("name")?.to_owned();
 		let description = node

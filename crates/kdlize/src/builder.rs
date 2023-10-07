@@ -1,6 +1,4 @@
-pub trait AsKdl {
-	fn as_kdl(&self) -> NodeBuilder;
-}
+use crate::AsKdl;
 
 #[derive(Default)]
 pub struct NodeBuilder {
@@ -152,39 +150,5 @@ impl std::ops::AddAssign for NodeBuilder {
 	fn add_assign(&mut self, mut rhs: Self) {
 		self.entries.append(&mut rhs.entries);
 		self.children.append(&mut rhs.children);
-	}
-}
-
-macro_rules! impl_askdl_entry {
-	($target:ty, $map:expr) => {
-		impl AsKdl for $target {
-			fn as_kdl(&self) -> NodeBuilder {
-				NodeBuilder::default().with_entry(($map)(*self))
-			}
-		}
-	};
-}
-impl_askdl_entry!(bool, |v| v);
-impl_askdl_entry!(u8, |v| v as i64);
-impl_askdl_entry!(i8, |v| v as i64);
-impl_askdl_entry!(u16, |v| v as i64);
-impl_askdl_entry!(i16, |v| v as i64);
-impl_askdl_entry!(u32, |v| v as i64);
-impl_askdl_entry!(i32, |v| v as i64);
-impl_askdl_entry!(u64, |v| v as i64);
-impl_askdl_entry!(i64, |v| v);
-impl_askdl_entry!(u128, |v| v as i64);
-impl_askdl_entry!(i128, |v| v as i64);
-impl_askdl_entry!(usize, |v| v as i64);
-impl_askdl_entry!(isize, |v| v as i64);
-impl_askdl_entry!(f32, |v| v as f64);
-impl_askdl_entry!(f64, |v| v);
-impl AsKdl for String {
-	fn as_kdl(&self) -> NodeBuilder {
-		let mut node = NodeBuilder::default();
-		if !self.is_empty() {
-			node.push_entry(self.clone());
-		}
-		node
 	}
 }

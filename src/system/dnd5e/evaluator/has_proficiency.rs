@@ -1,10 +1,13 @@
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{AsKdl, EntryExt, FromKDL, NodeBuilder, ValueExt},
 	system::dnd5e::data::{
-		character::Character, item::weapon, proficiency, Ability, ArmorExtended, Skill,
-		WeaponProficiency,
+		character::Character, item::weapon, proficiency, Ability, ArmorExtended, Skill, WeaponProficiency,
 	},
 	utility::{Evaluator, NotInList},
+};
+use kdlize::{
+	ext::{EntryExt, ValueExt},
+	AsKdl, FromKdl, NodeBuilder,
 };
 use std::str::FromStr;
 
@@ -29,15 +32,9 @@ impl Evaluator for IsProficientWith {
 
 	fn evaluate(&self, state: &Self::Context) -> Self::Item {
 		match self {
-			Self::SavingThrow(ability) => {
-				*state.saving_throws().get_prof(*ability).value() != proficiency::Level::None
-			}
-			Self::Skill(skill) => {
-				*state.skills().proficiency(*skill).value() != proficiency::Level::None
-			}
-			Self::Language(language) => {
-				state.other_proficiencies().languages.contains_key(language)
-			}
+			Self::SavingThrow(ability) => *state.saving_throws().get_prof(*ability).value() != proficiency::Level::None,
+			Self::Skill(skill) => *state.skills().proficiency(*skill).value() != proficiency::Level::None,
+			Self::Language(language) => state.other_proficiencies().languages.contains_key(language),
 			Self::Armor(kind) => {
 				state
 					.other_proficiencies()
@@ -46,18 +43,16 @@ impl Evaluator for IsProficientWith {
 					.filter(|((armor, _), _)| armor == kind)
 					.count() > 0
 			}
-			Self::Weapon(proficiency) => state
-				.other_proficiencies()
-				.weapons
-				.contains_key(proficiency),
+			Self::Weapon(proficiency) => state.other_proficiencies().weapons.contains_key(proficiency),
 			Self::Tool(tool) => state.other_proficiencies().tools.contains_key(tool),
 		}
 	}
 }
 
-crate::impl_kdl_node!(IsProficientWith, "is_proficient_with");
+kdlize::impl_kdl_node!(IsProficientWith, "is_proficient_with");
 
-impl FromKDL for IsProficientWith {
+impl FromKdl<NodeContext> for IsProficientWith {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let entry = node.next_req()?;
 		match entry.type_req()? {
@@ -66,22 +61,13 @@ impl FromKDL for IsProficientWith {
 			"Language" => Ok(Self::Language(entry.as_str_req()?.to_owned())),
 			"Armor" => Ok(Self::Armor(ArmorExtended::from_str(entry.as_str_req()?)?)),
 			"Weapon" => Ok(Self::Weapon(match entry.as_str_req()? {
-				kind if kind == "Simple" || kind == "Martial" => {
-					WeaponProficiency::Kind(weapon::Kind::from_str(kind)?)
-				}
+				kind if kind == "Simple" || kind == "Martial" => WeaponProficiency::Kind(weapon::Kind::from_str(kind)?),
 				classification => WeaponProficiency::Classification(classification.to_owned()),
 			})),
 			"Tool" => Ok(Self::Tool(entry.as_str_req()?.to_owned())),
 			name => Err(NotInList(
 				name.into(),
-				vec![
-					"SavingThrow",
-					"Skill",
-					"Language",
-					"Armor",
-					"Weapon",
-					"Tool",
-				],
+				vec!["SavingThrow", "Skill", "Language", "Armor", "Weapon", "Tool"],
 			)
 			.into()),
 		}
@@ -224,8 +210,7 @@ mod test {
 		#[test]
 		fn saving_throw() {
 			let empty = Character::from(Persistent::default());
-			let with_prof =
-				character_with_profs(vec![AddProficiency::SavingThrow(Ability::Strength)]);
+			let with_prof = character_with_profs(vec![AddProficiency::SavingThrow(Ability::Strength)]);
 			let eval = IsProficientWith::SavingThrow(Ability::Strength);
 			assert_eq!(eval.evaluate(&empty), false);
 			assert_eq!(eval.evaluate(&with_prof), true);
@@ -247,9 +232,9 @@ mod test {
 		#[test]
 		fn language() {
 			let empty = Character::from(Persistent::default());
-			let with_prof = character_with_profs(vec![AddProficiency::Language(
-				selector::Value::Specific("Gibberish".into()),
-			)]);
+			let with_prof = character_with_profs(vec![AddProficiency::Language(selector::Value::Specific(
+				"Gibberish".into(),
+			))]);
 			let eval = IsProficientWith::Language("Gibberish".into());
 			assert_eq!(eval.evaluate(&empty), false);
 			assert_eq!(eval.evaluate(&with_prof), true);
@@ -275,8 +260,7 @@ mod test {
 		#[test]
 		fn armor_shield() {
 			let empty = Character::from(Persistent::default());
-			let with_prof =
-				character_with_profs(vec![AddProficiency::Armor(ArmorExtended::Shield, None)]);
+			let with_prof = character_with_profs(vec![AddProficiency::Armor(ArmorExtended::Shield, None)]);
 			let eval = IsProficientWith::Armor(ArmorExtended::Shield);
 			assert_eq!(eval.evaluate(&empty), false);
 			assert_eq!(eval.evaluate(&with_prof), true);
@@ -285,9 +269,9 @@ mod test {
 		#[test]
 		fn weapon_kind() {
 			let empty = Character::from(Persistent::default());
-			let with_prof = character_with_profs(vec![AddProficiency::Weapon(
-				WeaponProficiency::Kind(weapon::Kind::Simple),
-			)]);
+			let with_prof = character_with_profs(vec![AddProficiency::Weapon(WeaponProficiency::Kind(
+				weapon::Kind::Simple,
+			))]);
 			let eval = IsProficientWith::Weapon(WeaponProficiency::Kind(weapon::Kind::Simple));
 			assert_eq!(eval.evaluate(&empty), false);
 			assert_eq!(eval.evaluate(&with_prof), true);
@@ -296,11 +280,10 @@ mod test {
 		#[test]
 		fn weapon_class() {
 			let empty = Character::from(Persistent::default());
-			let with_prof = character_with_profs(vec![AddProficiency::Weapon(
-				WeaponProficiency::Classification("CrossbowHand".into()),
-			)]);
-			let eval =
-				IsProficientWith::Weapon(WeaponProficiency::Classification("CrossbowHand".into()));
+			let with_prof = character_with_profs(vec![AddProficiency::Weapon(WeaponProficiency::Classification(
+				"CrossbowHand".into(),
+			))]);
+			let eval = IsProficientWith::Weapon(WeaponProficiency::Classification("CrossbowHand".into()));
 			assert_eq!(eval.evaluate(&empty), false);
 			assert_eq!(eval.evaluate(&with_prof), true);
 		}

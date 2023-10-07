@@ -6,13 +6,8 @@ use std::str::FromStr;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum ModuleId {
-	Local {
-		name: String,
-	},
-	Github {
-		user_org: String,
-		repository: String,
-	},
+	Local { name: String },
+	Github { user_org: String, repository: String },
 }
 impl Default for ModuleId {
 	fn default() -> Self {
@@ -25,10 +20,7 @@ impl ToString for ModuleId {
 	fn to_string(&self) -> String {
 		match &self {
 			ModuleId::Local { name } => name.clone(),
-			ModuleId::Github {
-				user_org,
-				repository,
-			} => format!("{user_org}/{repository}"),
+			ModuleId::Github { user_org, repository } => format!("{user_org}/{repository}"),
 		}
 	}
 }
@@ -91,10 +83,7 @@ impl SourceId {
 		let prefix = match &self.module {
 			None => String::default(),
 			Some(ModuleId::Local { name }) => format!("{name}_"),
-			Some(ModuleId::Github {
-				user_org,
-				repository,
-			}) => format!("{user_org}_{repository}_"),
+			Some(ModuleId::Github { user_org, repository }) => format!("{user_org}_{repository}_"),
 		};
 		let name = self.path.with_extension("").display().to_string();
 		let name = name.replace("\\", "/").replace("/", "_");
@@ -110,10 +99,7 @@ impl ToString for SourceId {
 				ModuleId::Local { name } => {
 					format!("local://{name}")
 				}
-				ModuleId::Github {
-					user_org,
-					repository,
-				} => {
+				ModuleId::Github { user_org, repository } => {
 					format!("github://{user_org}:{repository}")
 				}
 			});
@@ -152,24 +138,16 @@ impl FromStr for SourceId {
 		};
 
 		let module_name = url.username().to_owned();
-		let system = url
-			.host_str()
-			.ok_or(SourceIdParseError::MissingSystemId)?
-			.to_owned();
+		let system = url.host_str().ok_or(SourceIdParseError::MissingSystemId)?.to_owned();
 
 		let module = match url.scheme() {
 			"local" => ModuleId::Local { name: module_name },
 			"github" => ModuleId::Github {
 				user_org: module_name,
-				repository: url
-					.password()
-					.ok_or(SourceIdParseError::MissingRepository)?
-					.to_string(),
+				repository: url.password().ok_or(SourceIdParseError::MissingRepository)?.to_string(),
 			},
 			scheme => {
-				return Err(
-					SourceIdParseError::UnrecognizedModuleService(scheme.to_owned()).into(),
-				);
+				return Err(SourceIdParseError::UnrecognizedModuleService(scheme.to_owned()).into());
 			}
 		};
 		let mut path = PathBuf::from_str(url.path())?;
@@ -277,10 +255,7 @@ mod test {
 			version: None,
 			node_idx: 0,
 		};
-		assert_eq!(
-			source.to_string(),
-			"local://homebrew@dnd5e/items/trinket.kdl"
-		);
+		assert_eq!(source.to_string(), "local://homebrew@dnd5e/items/trinket.kdl");
 	}
 
 	#[test]
@@ -335,12 +310,10 @@ mod test {
 
 	#[test]
 	fn rebased() -> anyhow::Result<()> {
-		let basis =
-			SourceId::from_str("local://module-name@mysystem/item/gear.kdl?version=e812da2c")?;
+		let basis = SourceId::from_str("local://module-name@mysystem/item/gear.kdl?version=e812da2c")?;
 		let mut relative = SourceId::from_str("feat/initiate.kdl")?;
 		relative.set_relative_basis(&basis, true);
-		let expected =
-			SourceId::from_str("local://module-name@mysystem/feat/initiate.kdl?version=e812da2c")?;
+		let expected = SourceId::from_str("local://module-name@mysystem/feat/initiate.kdl?version=e812da2c")?;
 		assert_eq!(relative, expected);
 		Ok(())
 	}

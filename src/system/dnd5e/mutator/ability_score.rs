@@ -1,11 +1,12 @@
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::dnd5e::data::{
 		character::{AbilityScoreBonus, Character},
 		description, Ability,
 	},
 	utility::{selector, Mutator},
 };
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AbilityScoreChange {
@@ -14,17 +15,12 @@ pub struct AbilityScoreChange {
 }
 #[derive(Clone, Debug, PartialEq)]
 pub enum AbilityScoreOp {
-	Bonus {
-		value: u32,
-		max_total_score: Option<u32>,
-	},
-	IncreaseMax {
-		value: u32,
-	},
+	Bonus { value: u32, max_total_score: Option<u32> },
+	IncreaseMax { value: u32 },
 }
 
 crate::impl_trait_eq!(AbilityScoreChange);
-crate::impl_kdl_node!(AbilityScoreChange, "ability_score");
+kdlize::impl_kdl_node!(AbilityScoreChange, "ability_score");
 
 impl Mutator for AbilityScoreChange {
 	type Target = Character;
@@ -38,11 +34,7 @@ impl Mutator for AbilityScoreChange {
 				} else {
 					format!(
 						"One ability score of {}",
-						options
-							.iter()
-							.map(Ability::long_name)
-							.collect::<Vec<_>>()
-							.join(", ")
+						options.iter().map(Ability::long_name).collect::<Vec<_>>().join(", ")
 					)
 				}
 			}
@@ -51,10 +43,7 @@ impl Mutator for AbilityScoreChange {
 			.operations
 			.iter()
 			.map(|op| match op {
-				AbilityScoreOp::Bonus {
-					value,
-					max_total_score,
-				} => {
+				AbilityScoreOp::Bonus { value, max_total_score } => {
 					let bonus_txt = format!("increases by {value}");
 					let max_txt = max_total_score
 						.as_ref()
@@ -85,10 +74,7 @@ impl Mutator for AbilityScoreChange {
 		if let Some(ability) = stats.resolve_selector(&self.ability) {
 			for operation in &self.operations {
 				match operation {
-					AbilityScoreOp::Bonus {
-						value,
-						max_total_score,
-					} => {
+					AbilityScoreOp::Bonus { value, max_total_score } => {
 						stats.ability_scores_mut().push_bonus(
 							ability,
 							AbilityScoreBonus {
@@ -99,11 +85,9 @@ impl Mutator for AbilityScoreChange {
 						);
 					}
 					AbilityScoreOp::IncreaseMax { value } => {
-						stats.ability_scores_mut().increase_maximum(
-							ability,
-							*value,
-							parent.to_owned(),
-						);
+						stats
+							.ability_scores_mut()
+							.increase_maximum(ability, *value, parent.to_owned());
 					}
 				}
 			}
@@ -111,26 +95,21 @@ impl Mutator for AbilityScoreChange {
 	}
 }
 
-impl FromKDL for AbilityScoreChange {
+impl FromKdl<NodeContext> for AbilityScoreChange {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let ability = node.query_req_t("scope() > ability")?;
 		let mut operations = Vec::new();
 		for node in &mut node.query_all("scope() > bonus")? {
 			let value = node.next_i64_req()? as u32;
 			let max_total_score = node.get_i64_opt("max-total")?.map(|v| v as u32);
-			operations.push(AbilityScoreOp::Bonus {
-				value,
-				max_total_score,
-			});
+			operations.push(AbilityScoreOp::Bonus { value, max_total_score });
 		}
 		for node in &mut node.query_all("scope() > increase-max")? {
 			let value = node.next_i64_req()? as u32;
 			operations.push(AbilityScoreOp::IncreaseMax { value });
 		}
-		Ok(Self {
-			ability,
-			operations,
-		})
+		Ok(Self { ability, operations })
 	}
 }
 
@@ -140,10 +119,7 @@ impl AsKdl for AbilityScoreChange {
 		node.push_child_t("ability", &self.ability);
 		for operation in &self.operations {
 			match operation {
-				AbilityScoreOp::Bonus {
-					value,
-					max_total_score,
-				} => {
+				AbilityScoreOp::Bonus { value, max_total_score } => {
 					node.push_child({
 						let mut node = NodeBuilder::default();
 						node.push_entry(*value as i64);
@@ -154,11 +130,7 @@ impl AsKdl for AbilityScoreChange {
 					});
 				}
 				AbilityScoreOp::IncreaseMax { value } => {
-					node.push_child(
-						NodeBuilder::default()
-							.with_entry(*value as i64)
-							.build("increase-max"),
-					);
+					node.push_child(NodeBuilder::default().with_entry(*value as i64).build("increase-max"));
 				}
 			}
 		}
@@ -385,30 +357,21 @@ mod test {
 			});
 			assert_eq!(
 				*character.ability_scores().get(Ability::Strength),
-				AbilityScore::default().with_total(10).with_bonus((
-					10,
-					None,
-					"Base Score".into(),
-					true
-				))
+				AbilityScore::default()
+					.with_total(10)
+					.with_bonus((10, None, "Base Score".into(), true))
 			);
 			assert_eq!(
 				*character.ability_scores().get(Ability::Dexterity),
-				AbilityScore::default().with_total(15).with_bonus((
-					15,
-					None,
-					"Base Score".into(),
-					true
-				))
+				AbilityScore::default()
+					.with_total(15)
+					.with_bonus((15, None, "Base Score".into(), true))
 			);
 			assert_eq!(
 				*character.ability_scores().get(Ability::Constitution),
-				AbilityScore::default().with_total(7).with_bonus((
-					7,
-					None,
-					"Base Score".into(),
-					true
-				))
+				AbilityScore::default()
+					.with_total(7)
+					.with_bonus((7, None, "Base Score".into(), true))
 			);
 			assert_eq!(
 				*character.ability_scores().get(Ability::Intelligence),
@@ -419,21 +382,15 @@ mod test {
 			);
 			assert_eq!(
 				*character.ability_scores().get(Ability::Wisdom),
-				AbilityScore::default().with_total(12).with_bonus((
-					12,
-					None,
-					"Base Score".into(),
-					true
-				))
+				AbilityScore::default()
+					.with_total(12)
+					.with_bonus((12, None, "Base Score".into(), true))
 			);
 			assert_eq!(
 				*character.ability_scores().get(Ability::Charisma),
-				AbilityScore::default().with_total(18).with_bonus((
-					18,
-					None,
-					"Base Score".into(),
-					true
-				))
+				AbilityScore::default()
+					.with_total(18)
+					.with_bonus((18, None, "Base Score".into(), true))
 			);
 		}
 

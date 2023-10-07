@@ -5,8 +5,8 @@ use crate::{
 	page::characters::sheet::MutatorImpact,
 	system::dnd5e::{
 		components::panel::{
-			get_inventory_item, inventory::equip_toggle::ItemRowEquipBox, AddItemButton,
-			AddItemOperation, ItemBodyProps, ItemInfo, ItemLocation,
+			get_inventory_item, inventory::equip_toggle::ItemRowEquipBox, AddItemButton, AddItemOperation,
+			ItemBodyProps, ItemInfo, ItemLocation,
 		},
 		data::item::{self, Item},
 	},
@@ -34,12 +34,7 @@ pub fn ItemRow(
 	let open_modal = context_menu::use_control_action({
 		let id_path = id_path.clone();
 		let name = AttrValue::from(item.name.clone());
-		move |_, _context| {
-			context_menu::Action::open_root(
-				name.clone(),
-				html!(<ItemModal id_path={id_path.clone()} />),
-			)
-		}
+		move |_, _context| context_menu::Action::open_root(name.clone(), html!(<ItemModal id_path={id_path.clone()} />))
 	});
 
 	html! {

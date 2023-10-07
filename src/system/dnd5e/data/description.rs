@@ -1,8 +1,12 @@
 use super::character::Character;
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, EntryExt, FromKDL, NodeBuilder, ValueExt},
 	system::dnd5e::BoxedEvaluator,
 	utility::{selector, NotInList},
+};
+use kdlize::{
+	ext::{DocumentExt, EntryExt, ValueExt},
+	AsKdl, FromKdl, NodeBuilder,
 };
 use std::{
 	collections::{BTreeMap, HashMap},
@@ -49,11 +53,7 @@ impl Info {
 		self.evaluate_with(state, None)
 	}
 
-	pub fn evaluate_with(
-		mut self,
-		state: &Character,
-		args: Option<HashMap<String, String>>,
-	) -> Self {
+	pub fn evaluate_with(mut self, state: &Character, args: Option<HashMap<String, String>>) -> Self {
 		if !self.contains_format_syntax() {
 			return self;
 		}
@@ -87,7 +87,8 @@ impl Info {
 	}
 }
 
-impl FromKDL for Info {
+impl FromKdl<NodeContext> for Info {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		// If there are no children, this can be treated as a single-section block,
 		// where the section is the long description.
@@ -198,7 +199,8 @@ impl From<selector::DataList> for Section {
 	}
 }
 
-impl FromKDL for Section {
+impl FromKdl<NodeContext> for Section {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		// Check if the first entry is a title.
 		// There may not be a first entry (e.g. table) or the first entry might not be a title (title-less body),
@@ -279,7 +281,8 @@ impl From<String> for SectionContent {
 	}
 }
 
-impl FromKDL for SectionContent {
+impl FromKdl<NodeContext> for SectionContent {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let is_table = node.get_bool_opt("table")?.unwrap_or_default();
 		match is_table {
@@ -311,11 +314,7 @@ impl FromKDL for SectionContent {
 					}
 					rows.push(columns);
 				}
-				let column_count = headers
-					.as_ref()
-					.map(|v| v.len())
-					.unwrap_or(0)
-					.max(max_columns_in_rows);
+				let column_count = headers.as_ref().map(|v| v.len()).unwrap_or(0).max(max_columns_in_rows);
 				Ok(Self::Table {
 					column_count,
 					headers,
@@ -513,9 +512,7 @@ mod test {
 					short: None,
 					sections: vec![Section {
 						title: None,
-						content: SectionContent::Body(
-							"This is some long description w/o a title".into(),
-						),
+						content: SectionContent::Body("This is some long description w/o a title".into()),
 						format_args: FormatArgs::default(),
 						children: vec![],
 					}],
@@ -538,9 +535,7 @@ mod test {
 					short: None,
 					sections: vec![Section {
 						title: None,
-						content: SectionContent::Body(
-							"This is some long description w/o a title".into(),
-						),
+						content: SectionContent::Body("This is some long description w/o a title".into()),
 						format_args: FormatArgs::default(),
 						children: vec![],
 					}],
@@ -579,11 +574,7 @@ mod test {
 				let data = Info {
 					short: Some("Success against a DC {DC} Wisdom saving throw".into()),
 					sections: vec![],
-					format_args: FormatArgs::from(vec![(
-						"DC",
-						GetAbilityModifier(Ability::Intelligence),
-						false,
-					)]),
+					format_args: FormatArgs::from(vec![("DC", GetAbilityModifier(Ability::Intelligence), false)]),
 				};
 				assert_eq_fromkdl!(Info, doc, data);
 				assert_eq_askdl!(&data, doc);
@@ -661,11 +652,7 @@ mod test {
 				let data = Section {
 					title: None,
 					content: SectionContent::Body("Body with {num} format-args".into()),
-					format_args: FormatArgs::from(vec![(
-						"num",
-						GetAbilityModifier(Ability::Intelligence),
-						false,
-					)]),
+					format_args: FormatArgs::from(vec![("num", GetAbilityModifier(Ability::Intelligence), false)]),
 					children: vec![],
 				};
 				assert_eq_fromkdl!(Section, doc, data);
@@ -711,9 +698,7 @@ mod test {
 
 			static NODE_NAME: &str = "args";
 
-			fn from_kdl<'doc>(
-				node: crate::kdl_ext::NodeReader<'doc>,
-			) -> anyhow::Result<FormatArgs> {
+			fn from_kdl<'doc>(node: crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<FormatArgs> {
 				FormatArgs::from_kdl_all(&node)
 			}
 
@@ -724,11 +709,7 @@ mod test {
 					|    format-arg \"DC\" \"int\" (Evaluator)\"get_ability_modifier\" (Ability)\"Intelligence\"
 					|}
 				";
-				let data = FormatArgs::from(vec![(
-					"DC",
-					GetAbilityModifier(Ability::Intelligence),
-					false,
-				)]);
+				let data = FormatArgs::from(vec![("DC", GetAbilityModifier(Ability::Intelligence), false)]);
 				assert_eq_fromkdl!(FormatArgs, doc, data);
 				assert_eq_askdl!(&data, doc);
 				Ok(())
@@ -741,11 +722,7 @@ mod test {
 					|    format-arg \"DC\" (Signed)\"int\" (Evaluator)\"get_ability_modifier\" (Ability)\"Intelligence\"
 					|}
 				";
-				let data = FormatArgs::from(vec![(
-					"DC",
-					GetAbilityModifier(Ability::Intelligence),
-					true,
-				)]);
+				let data = FormatArgs::from(vec![("DC", GetAbilityModifier(Ability::Intelligence), true)]);
 				assert_eq_fromkdl!(FormatArgs, doc, data);
 				assert_eq_askdl!(&data, doc);
 				Ok(())
@@ -780,15 +757,10 @@ mod test {
 				sections: vec![Section {
 					title: None,
 					content: SectionContent::Body(
-						"In addition to {num} dmg on failed {DC} save, take {fire} fire damage."
-							.into(),
+						"In addition to {num} dmg on failed {DC} save, take {fire} fire damage.".into(),
 					),
 					children: vec![],
-					format_args: FormatArgs::from(vec![(
-						"fire",
-						GetAbilityModifier(Ability::Strength),
-						true,
-					)]),
+					format_args: FormatArgs::from(vec![("fire", GetAbilityModifier(Ability::Strength), true)]),
 				}],
 				format_args: FormatArgs::from(vec![
 					("DC", GetAbilityModifier(Ability::Intelligence), false),
@@ -803,11 +775,7 @@ mod test {
 						"In addition to +2 dmg on failed 5 save, take +1 fire damage.".into(),
 					),
 					children: vec![],
-					format_args: FormatArgs::from(vec![(
-						"fire",
-						GetAbilityModifier(Ability::Strength),
-						true,
-					)]),
+					format_args: FormatArgs::from(vec![("fire", GetAbilityModifier(Ability::Strength), true)]),
 				}],
 				format_args: FormatArgs::from(vec![
 					("DC", GetAbilityModifier(Ability::Intelligence), false),

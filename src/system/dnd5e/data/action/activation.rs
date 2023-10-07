@@ -1,7 +1,8 @@
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
+	kdl_ext::{NodeContext, NodeReader},
 	utility::NotInList,
 };
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::str::FromStr;
 
 #[derive(Clone, Copy, PartialEq, PartialOrd, Default, Debug)]
@@ -37,16 +38,14 @@ impl FromStr for ActivationKind {
 			"Bonus" => Ok(Self::Bonus),
 			"Reaction" => Ok(Self::Reaction),
 			"Special" => Ok(Self::Special),
-			name => Err(NotInList(
-				name.into(),
-				vec!["Action", "Bonus", "Reaction", "Special"],
-			)),
+			name => Err(NotInList(name.into(), vec!["Action", "Bonus", "Reaction", "Special"])),
 		}
 	}
 }
 
-impl FromKDL for ActivationKind {
-	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+impl FromKdl<NodeContext> for ActivationKind {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut NodeReader<'doc>) -> anyhow::Result<Self> {
 		match node.next_str_req()? {
 			"Action" => Ok(Self::Action),
 			"Bonus" => Ok(Self::Bonus),

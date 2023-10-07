@@ -1,8 +1,7 @@
 use super::equipment::Equipment;
-use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
-	utility::NotInList,
-};
+use crate::kdl_ext::NodeContext;
+use crate::utility::NotInList;
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum Kind {
@@ -16,7 +15,8 @@ impl Default for Kind {
 	}
 }
 
-impl FromKDL for Kind {
+impl FromKdl<NodeContext> for Kind {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		match node.next_str_req()? {
 			"Simple" => {

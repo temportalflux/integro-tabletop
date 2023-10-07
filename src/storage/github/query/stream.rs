@@ -45,10 +45,7 @@ where
 {
 	type Item = Query::Item;
 
-	fn poll_next(
-		mut self: Pin<&mut Self>,
-		cx: &mut std::task::Context<'_>,
-	) -> Poll<Option<Self::Item>> {
+	fn poll_next(mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Option<Self::Item>> {
 		if let Some(mut query) = self.active_query.take() {
 			let Poll::Ready(result) = query.poll_unpin(cx) else {
 				self.active_query = Some(query);

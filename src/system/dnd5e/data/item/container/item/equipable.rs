@@ -1,11 +1,12 @@
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::dnd5e::data::{
 		character::Character,
 		item::{container::item::AsItem, Item, Kind},
 	},
 	utility::MutatorGroup,
 };
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::path::Path;
 
 #[derive(Clone, PartialEq, Debug)]
@@ -73,7 +74,8 @@ impl MutatorGroup for EquipableEntry {
 	}
 }
 
-impl FromKDL for EquipableEntry {
+impl FromKdl<NodeContext> for EquipableEntry {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let item = Item::from_kdl(node)?;
 		let is_equipped = node.get_bool_opt("equipped")?.unwrap_or_default();

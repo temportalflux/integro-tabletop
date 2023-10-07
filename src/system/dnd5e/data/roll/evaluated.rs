@@ -1,5 +1,5 @@
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::dnd5e::{
 		data::character::Character,
 		data::roll::{Die, Roll},
@@ -7,6 +7,7 @@ use crate::{
 	},
 	utility::Dependencies,
 };
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct EvaluatedRoll {
@@ -49,7 +50,8 @@ impl EvaluatedRoll {
 	}
 }
 
-impl FromKDL for EvaluatedRoll {
+impl FromKdl<NodeContext> for EvaluatedRoll {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		if let Some(entry) = node.next_opt() {
 			return Ok(Self::from(Roll::from_kdl_value(entry.value())?));

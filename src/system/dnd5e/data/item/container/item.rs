@@ -1,5 +1,5 @@
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
+	kdl_ext::NodeContext,
 	system::{
 		core::SourceId,
 		dnd5e::data::{
@@ -12,6 +12,7 @@ use crate::{
 	utility::MutatorGroup,
 };
 use async_recursion::async_recursion;
+use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
 use std::{collections::HashMap, path::Path};
 use uuid::Uuid;
 
@@ -87,9 +88,7 @@ impl<T: AsItem> ItemContainer<T> {
 	}
 
 	pub fn get_mut(&mut self, id: &Uuid) -> Option<&mut Item> {
-		self.items_by_id
-			.get_mut(id)
-			.map(|entry| entry.as_item_mut())
+		self.items_by_id.get_mut(id).map(|entry| entry.as_item_mut())
 	}
 
 	pub fn get_mut_at_path<'c>(&'c mut self, id_path: &Vec<Uuid>) -> Option<&'c mut Item> {
@@ -170,10 +169,7 @@ impl<T: AsItem> ItemContainer<T> {
 
 	pub fn remove_at_path(&mut self, id_path: &Vec<Uuid>) -> Option<Item> {
 		let count = id_path.len();
-		let mut iter = id_path
-			.iter()
-			.enumerate()
-			.map(|(idx, id)| (id, idx == count - 1));
+		let mut iter = id_path.iter().enumerate().map(|(idx, id)| (id, idx == count - 1));
 		let Some((first_id, single_entry)) = iter.next() else { return None; };
 		if single_entry {
 			return self.remove(first_id);
@@ -193,10 +189,7 @@ impl<T: AsItem> ItemContainer<T> {
 	// Expands all Indirect items and spells contained within the container,
 	// recursively visiting all items which contain other items or spells.
 	#[async_recursion(?Send)]
-	pub async fn resolve_indirection(
-		&mut self,
-		provider: &ObjectCacheProvider,
-	) -> anyhow::Result<()> {
+	pub async fn resolve_indirection(&mut self, provider: &ObjectCacheProvider) -> anyhow::Result<()> {
 		// Any item templates need to be resolved to their full items
 		for (item_id, count) in self.item_templates.drain().collect::<Vec<_>>() {
 			let Some(item) = provider.database.get_typed_entry::<Item>(
@@ -235,22 +228,21 @@ impl<T: AsItem> ItemContainer<T> {
 	}
 }
 
-impl<T: AsItem + FromKDL> FromKDL for ItemContainer<T> {
+impl<T> FromKdl<NodeContext> for ItemContainer<T>
+where
+	T: AsItem + FromKdl<NodeContext>,
+	anyhow::Error: From<T::Error>,
+{
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
-		let wallet = node
-			.query_opt_t::<Wallet>("scope() > wallet")?
-			.unwrap_or_default();
+		let wallet = node.query_opt_t::<Wallet>("scope() > wallet")?.unwrap_or_default();
 
 		let capacity = match node.query_opt("scope() > capacity")? {
 			Some(node) => {
 				let count = node.get_i64_opt("count")?.map(|v| v as usize);
 				let weight = node.get_f64_opt("weight")?;
 				let volume = node.get_f64_opt("volume")?;
-				Capacity {
-					count,
-					weight,
-					volume,
-				}
+				Capacity { count, weight, volume }
 			}
 			None => Default::default(),
 		};
@@ -276,7 +268,7 @@ impl<T: AsItem + FromKDL> FromKDL for ItemContainer<T> {
 
 		for node in &mut node.query_all("scope() > item_id")? {
 			let id = node.next_str_req_t::<SourceId>()?;
-			let id = id.with_relative_basis(node.id(), false);
+			let id = id.with_relative_basis(node.context().id(), false);
 			let count = node.get_i64_opt("count")?.unwrap_or(1) as usize;
 			match inventory.item_templates.get_mut(&id) {
 				None => {
@@ -343,10 +335,7 @@ impl<T: AsKdl> AsKdl for ItemContainer<T> {
 
 impl Inventory {
 	pub fn is_equipped(&self, id: &Uuid) -> bool {
-		self.items_by_id
-			.get(id)
-			.map(|entry| entry.is_equipped)
-			.unwrap_or(false)
+		self.items_by_id.get(id).map(|entry| entry.is_equipped).unwrap_or(false)
 	}
 
 	pub fn entries(&self) -> impl Iterator<Item = &EquipableEntry> {

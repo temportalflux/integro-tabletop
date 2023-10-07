@@ -202,10 +202,8 @@ pub fn GeneralPurpose() -> Html {
 			move |node: &NodeRef| {
 				bootstrap.set(bootstrap::Modal::from(node));
 				if let Some(node) = node.get() {
-					let _ = node.add_event_listener_with_callback(
-						"hidden.bs.modal",
-						(*on_hidden).as_ref().unchecked_ref(),
-					);
+					let _ =
+						node.add_event_listener_with_callback("hidden.bs.modal", (*on_hidden).as_ref().unchecked_ref());
 				}
 			}
 		},

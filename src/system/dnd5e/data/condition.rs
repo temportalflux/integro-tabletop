@@ -1,6 +1,6 @@
 use super::character::{Character, ObjectCacheProvider};
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
 	system::{
 		core::SourceId,
 		dnd5e::{BoxedMutator, SystemComponent},
@@ -8,6 +8,7 @@ use crate::{
 	utility::MutatorGroup,
 };
 use async_recursion::async_recursion;
+use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
 use std::path::Path;
 
 mod indirect;
@@ -25,14 +26,11 @@ pub struct Condition {
 	pub implied: Vec<Indirect<Self>>,
 }
 
-crate::impl_kdl_node!(Condition, "condition");
+kdlize::impl_kdl_node!(Condition, "condition");
 
 impl Condition {
 	#[async_recursion(?Send)]
-	pub async fn resolve_indirection(
-		&mut self,
-		provider: &ObjectCacheProvider,
-	) -> anyhow::Result<()> {
+	pub async fn resolve_indirection(&mut self, provider: &ObjectCacheProvider) -> anyhow::Result<()> {
 		let pending = self.implied.drain(..).collect::<Vec<_>>();
 		let mut resolved = Vec::with_capacity(pending.len());
 		for indirect in pending {
@@ -40,11 +38,7 @@ impl Condition {
 				Indirect::Id(condition_id) => {
 					let condition = provider
 						.database
-						.get_typed_entry::<Condition>(
-							condition_id.unversioned(),
-							provider.system_depot.clone(),
-							None,
-						)
+						.get_typed_entry::<Condition>(condition_id.unversioned(), provider.system_depot.clone(), None)
 						.await?;
 					match condition {
 						None => self.implied.push(Indirect::Id(condition_id)),
@@ -100,9 +94,10 @@ impl SystemComponent for Condition {
 	}
 }
 
-impl FromKDL for Condition {
+impl FromKdl<NodeContext> for Condition {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
-		let id = node.query_source_opt()?;
+		let id = crate::kdl_ext::query_source_opt(node)?;
 
 		let name = node.get_str_req("name")?.to_owned();
 		let description = node

@@ -1,12 +1,13 @@
 use super::{character::Character, roll::Die};
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
 	system::{
 		core::SourceId,
 		dnd5e::{mutator::AddMaxHitPoints, BoxedMutator, SystemComponent, Value},
 	},
 	utility::{selector, MutatorGroup},
 };
+use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
 use std::{path::Path, str::FromStr};
 
 #[derive(Clone, PartialEq, Debug)]
@@ -84,11 +85,12 @@ impl SystemComponent for Class {
 	}
 }
 
-crate::impl_kdl_node!(Class, "class");
+kdlize::impl_kdl_node!(Class, "class");
 
-impl FromKDL for Class {
+impl FromKdl<NodeContext> for Class {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
-		let id = node.query_source_req()?;
+		let id = crate::kdl_ext::query_source_req(node)?;
 
 		let name = node.get_str_req("name")?.to_owned();
 		let description = node
@@ -179,7 +181,8 @@ impl Level {
 	}
 }
 
-impl FromKDL for Level {
+impl FromKdl<NodeContext> for Level {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let hit_points = selector::Value::Options(selector::ValueOptions {
 			id: "hit_points".into(),
@@ -188,10 +191,7 @@ impl FromKDL for Level {
 
 		let mutators = node.query_all_t("scope() > mutator")?;
 
-		Ok(Self {
-			hit_points,
-			mutators,
-		})
+		Ok(Self { hit_points, mutators })
 	}
 }
 impl AsKdl for Level {
@@ -263,7 +263,7 @@ impl SystemComponent for Subclass {
 	}
 }
 
-crate::impl_kdl_node!(Subclass, "subclass");
+kdlize::impl_kdl_node!(Subclass, "subclass");
 
 impl Subclass {
 	fn iter_levels<'a>(&'a self) -> impl Iterator<Item = LevelWithIndex<'a>> + 'a {
@@ -298,9 +298,10 @@ impl MutatorGroup for Subclass {
 	}
 }
 
-impl FromKDL for Subclass {
+impl FromKdl<NodeContext> for Subclass {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
-		let id = node.query_source_req()?;
+		let id = crate::kdl_ext::query_source_req(node)?;
 
 		let name = node.get_str_req("name")?.to_owned();
 		let class_name = node.get_str_req("class")?.to_owned();

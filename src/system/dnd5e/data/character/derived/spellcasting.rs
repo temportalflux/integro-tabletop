@@ -70,12 +70,7 @@ impl Spellcasting {
 		self.casters.insert(caster.name().clone(), caster);
 	}
 
-	pub fn add_spell_access(
-		&mut self,
-		caster_name: &String,
-		spell_ids: &Vec<SourceId>,
-		source: &std::path::Path,
-	) {
+	pub fn add_spell_access(&mut self, caster_name: &String, spell_ids: &Vec<SourceId>, source: &std::path::Path) {
 		for spell_id in spell_ids {
 			self.additional_caster_spells
 				.by_caster
@@ -115,10 +110,7 @@ impl Spellcasting {
 		Ok(())
 	}
 
-	async fn fetch_always_prepared(
-		&mut self,
-		provider: &ObjectCacheProvider,
-	) -> anyhow::Result<()> {
+	async fn fetch_always_prepared(&mut self, provider: &ObjectCacheProvider) -> anyhow::Result<()> {
 		for (id, spell_entry) in &mut self.always_prepared {
 			spell_entry.spell = provider
 				.database
@@ -134,9 +126,9 @@ impl Spellcasting {
 		persistent: &Persistent,
 	) -> anyhow::Result<RitualSpellCache> {
 		use crate::database::app::Criteria;
-		use crate::kdl_ext::KDLNode;
 		use crate::system::{core::System, dnd5e::DnD5e};
 		use futures_util::StreamExt;
+		use kdlize::NodeId;
 
 		let mut caster_query_criteria = Vec::new();
 		let mut caster_filters = HashMap::new();
@@ -147,9 +139,7 @@ impl Spellcasting {
 				continue;
 			}
 
-			let mut filter = self
-				.get_filter(caster.name(), persistent)
-				.unwrap_or_default();
+			let mut filter = self.get_filter(caster.name(), persistent).unwrap_or_default();
 			// each spell the filter matches must be a ritual
 			filter.ritual = Some(true);
 
@@ -199,11 +189,7 @@ impl Spellcasting {
 	pub fn iter_ritual_spells(&self) -> impl Iterator<Item = (&String, &Spell, &SpellEntry)> + '_ {
 		let iter = self.casters.iter();
 		let iter = iter.filter_map(|(caster_id, caster)| {
-			if self
-				.ritual_spells
-				.casters_which_prepare_from_item
-				.contains(caster_id)
-			{
+			if self.ritual_spells.casters_which_prepare_from_item.contains(caster_id) {
 				return None;
 			}
 			match self.ritual_spells.caster_lists.get_vec(caster_id) {
@@ -293,10 +279,7 @@ impl Spellcasting {
 					_ => 0,
 				};
 			}
-			let mut slots = MULTICLASS_SLOTS
-				.get(&total_level)
-				.cloned()
-				.unwrap_or_default();
+			let mut slots = MULTICLASS_SLOTS.get(&total_level).cloned().unwrap_or_default();
 			for (_id, caster) in &self.casters {
 				let current_level = character.level(Some(&caster.class_name));
 				for bonus_slots in &caster.bonus_slots {
