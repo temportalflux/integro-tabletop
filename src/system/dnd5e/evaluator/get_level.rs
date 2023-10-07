@@ -1,8 +1,5 @@
-use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, ValueExt},
-	system::dnd5e::data::character::Character,
-	utility::Evaluator,
-};
+use crate::{kdl_ext::NodeContext, system::dnd5e::data::character::Character, utility::Evaluator};
+use kdlize::{ext::ValueExt, AsKdl, FromKdl, NodeBuilder};
 use std::{collections::BTreeMap, fmt::Debug};
 
 pub type GetLevelInt = GetLevel<i32>;
@@ -29,8 +26,8 @@ where
 
 crate::impl_trait_eq!(GetLevelInt);
 crate::impl_trait_eq!(GetLevelStr);
-crate::impl_kdl_node!(GetLevelInt, "get_level");
-crate::impl_kdl_node!(GetLevelStr, "get_level_str");
+kdlize::impl_kdl_node!(GetLevelInt, "get_level");
+kdlize::impl_kdl_node!(GetLevelStr, "get_level_str");
 
 trait GetLevelTy {
 	fn from_level(level: usize) -> Self;
@@ -68,7 +65,7 @@ impl GetLevelTy for String {
 
 impl<T> Evaluator for GetLevel<T>
 where
-	Self: crate::utility::TraitEq + crate::kdl_ext::KDLNode,
+	Self: crate::utility::TraitEq + kdlize::NodeId,
 	T: Debug + Send + Sync + Default + GetLevelTy + Clone,
 {
 	type Context = Character;
@@ -99,7 +96,8 @@ where
 	}
 }
 
-impl<T: GetLevelTy> FromKDL for GetLevel<T> {
+impl<T: GetLevelTy> FromKdl<NodeContext> for GetLevel<T> {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let class_name = node.get_str_opt("class")?.map(ToString::to_string);
 		let mut order_map = BTreeMap::new();
@@ -108,10 +106,7 @@ impl<T: GetLevelTy> FromKDL for GetLevel<T> {
 			let value = T::from_kdl(node.next_req()?)?;
 			order_map.insert(level, value);
 		}
-		Ok(Self {
-			class_name,
-			order_map,
-		})
+		Ok(Self { class_name, order_map })
 	}
 }
 

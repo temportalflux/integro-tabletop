@@ -1,7 +1,6 @@
-use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
-	system::dnd5e::data::{roll::Roll, DamageType},
-};
+use crate::kdl_ext::NodeContext;
+use crate::system::dnd5e::data::{roll::Roll, DamageType};
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::str::FromStr;
 
 #[derive(Clone, PartialEq, Default, Debug)]
@@ -11,7 +10,8 @@ pub struct WeaponDamage {
 	pub damage_type: DamageType,
 }
 
-impl FromKDL for WeaponDamage {
+impl FromKdl<NodeContext> for WeaponDamage {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let roll = match node.get_str_opt("roll")? {
 			Some(roll_str) => Some(Roll::from_str(roll_str)?),

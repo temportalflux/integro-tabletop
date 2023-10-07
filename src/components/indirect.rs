@@ -1,8 +1,9 @@
 use crate::{
 	components::{database::use_typed_fetch_callback, Spinner},
-	kdl_ext::{FromKDL, KDLNode},
+	kdl_ext::NodeContext,
 	system::dnd5e::{data::Indirect, SystemComponent},
 };
+use kdlize::{FromKdl, NodeId};
 use std::rc::Rc;
 use yew::prelude::*;
 use yew_hooks::*;
@@ -16,7 +17,7 @@ pub struct IndirectFetchProps<T: PartialEq> {
 #[function_component]
 pub fn IndirectFetch<T>(props: &IndirectFetchProps<T>) -> Html
 where
-	T: 'static + Clone + PartialEq + FromKDL + KDLNode + SystemComponent + Unpin,
+	T: 'static + Clone + PartialEq + FromKdl<NodeContext> + NodeId + SystemComponent + Unpin,
 {
 	let IndirectFetchProps { indirect, to_inner } = props;
 

@@ -1,7 +1,6 @@
-use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, ValueExt},
-	utility::NotInList,
-};
+use crate::kdl_ext::NodeContext;
+use crate::utility::NotInList;
+use kdlize::{ext::ValueExt, AsKdl, FromKdl, NodeBuilder};
 
 #[derive(Default, Clone, PartialEq, Debug)]
 pub enum Range {
@@ -16,7 +15,8 @@ pub enum Range {
 	Unlimited,
 }
 
-impl FromKDL for Range {
+impl FromKdl<NodeContext> for Range {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let entry = node.next_req()?;
 		match entry.value().as_string() {
@@ -29,11 +29,7 @@ impl FromKDL for Range {
 			Some("Touch") => Ok(Self::Touch),
 			Some("Sight") => Ok(Self::Sight),
 			Some("Unlimited") => Ok(Self::Unlimited),
-			Some(type_name) => Err(NotInList(
-				type_name.into(),
-				vec!["Self", "Touch", "Sight", "Unlimited"],
-			)
-			.into()),
+			Some(type_name) => Err(NotInList(type_name.into(), vec!["Self", "Touch", "Sight", "Unlimited"]).into()),
 		}
 	}
 }

@@ -93,10 +93,7 @@ pub fn Actions() -> Html {
 	};
 	let mut tag_htmls = vec![make_tag_html(html! {{"All"}}, EnumSet::all())];
 	for tag in EnumSet::<ActionTag>::all() {
-		tag_htmls.push(make_tag_html(
-			html! {{tag.display_name()}},
-			EnumSet::from(tag),
-		));
+		tag_htmls.push(make_tag_html(html! {{tag.display_name()}}, EnumSet::from(tag)));
 	}
 
 	let budget = {
@@ -115,10 +112,7 @@ pub fn Actions() -> Html {
 			budget_items.push((ActionBudgetKind::Bonus, amount));
 		}
 		{
-			let (amount, _) = state
-				.features()
-				.action_budget
-				.get(ActionBudgetKind::Reaction);
+			let (amount, _) = state.features().action_budget.get(ActionBudgetKind::Reaction);
 			budget_items.push((ActionBudgetKind::Reaction, amount));
 		}
 		html! {
@@ -400,9 +394,7 @@ impl FeatureDisplayGroup {
 	}
 
 	fn iter(&self) -> impl Iterator<Item = &FeatureEntry> {
-		self.order
-			.iter()
-			.filter_map(move |path| self.by_path.get(path))
+		self.order.iter().filter_map(move |path| self.by_path.get(path))
 	}
 
 	fn into_iter(mut self) -> impl Iterator<Item = FeatureEntry> {
@@ -423,10 +415,7 @@ fn CollapsedFeature(ActionProps { entry }: &ActionProps) -> Html {
 		let feature_path: PathBuf = entry.feature_path.clone();
 		let feature_name = AttrValue::from(entry.feature.name.clone());
 		move |_, _context| {
-			context_menu::Action::open_root(
-				feature_name.clone(),
-				html!(<Modal path={feature_path.clone()} />),
-			)
+			context_menu::Action::open_root(feature_name.clone(), html!(<Modal path={feature_path.clone()} />))
 		}
 	});
 	html! {
@@ -442,10 +431,7 @@ fn ActionOverview(ActionProps { entry }: &ActionProps) -> Html {
 		let feature_path: PathBuf = entry.feature_path.clone();
 		let feature_name = AttrValue::from(entry.feature.name.clone());
 		move |_, _context| {
-			context_menu::Action::open_root(
-				feature_name.clone(),
-				html!(<Modal path={feature_path.clone()} />),
-			)
+			context_menu::Action::open_root(feature_name.clone(), html!(<Modal path={feature_path.clone()} />))
 		}
 	});
 
@@ -483,10 +469,7 @@ fn ActionOverview(ActionProps { entry }: &ActionProps) -> Html {
 					let iter = action.conditions_to_apply.iter();
 					let iter = iter.filter_map(|indirect| match indirect {
 						IndirectCondition::Custom(condition) => Some(condition.clone()),
-						IndirectCondition::Id(id) => fetched_conditions
-							.map(|list| list.get(id))
-							.flatten()
-							.cloned(),
+						IndirectCondition::Id(id) => fetched_conditions.map(|list| list.get(id)).flatten().cloned(),
 					});
 					let conditions = iter.collect::<Vec<_>>();
 
@@ -661,10 +644,7 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 				// - normal if the target is at or closer than `short`
 				// - made a disadvantage when the target is father than `short`, but closer than `long`
 				// - impossible beyond the `long` range
-				Some(AttackKindValue::Ranged {
-					short_dist,
-					long_dist,
-				}) => {
+				Some(AttackKindValue::Ranged { short_dist, long_dist }) => {
 					attack_sections.push(html! {
 						<div class="property">
 							<strong>{"Kind:"}</strong>
@@ -687,10 +667,7 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 				.map(|ability| format!("{} modifier", ability.long_name()))
 				.unwrap_or_default();
 			match &attack.check {
-				AttackCheckKind::AttackRoll {
-					ability: _,
-					proficient,
-				} => {
+				AttackCheckKind::AttackRoll { ability: _, proficient } => {
 					let use_prof = proficient.evaluate(&*state);
 					attack_sections.push(html! {
 						<div class="property">
@@ -765,13 +742,12 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 					None => None,
 					Some(roll_value) => Some(roll_value.evaluate(&state).to_string()),
 				};
-				let concat_roll_bonus =
-					|roll_str: &Option<String>, bonus: i32| match (&roll_str, bonus) {
-						(None, bonus) => html! {{bonus.max(0)}},
-						(Some(roll), 0) => html! {{roll}},
-						(Some(roll), 1..=i32::MAX) => html! {<>{roll}{" + "}{bonus}</>},
-						(Some(roll), i32::MIN..=-1) => html! {<>{roll}{" - "}{bonus.abs()}</>},
-					};
+				let concat_roll_bonus = |roll_str: &Option<String>, bonus: i32| match (&roll_str, bonus) {
+					(None, bonus) => html! {{bonus.max(0)}},
+					(Some(roll), 0) => html! {{roll}},
+					(Some(roll), 1..=i32::MAX) => html! {<>{roll}{" + "}{bonus}</>},
+					(Some(roll), i32::MIN..=-1) => html! {<>{roll}{" - "}{bonus.abs()}</>},
+				};
 				let additional_damage_html = html!() /*additional_damage.iter().map(|(value, _damage_type, source)| html! {
 					<span>
 						{match *value >= 0 { true => "+", false => "-" }}
@@ -852,9 +828,7 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 					let iter = action.conditions_to_apply.iter();
 					let iter = iter.filter_map(|indirect| match indirect {
 						IndirectCondition::Custom(custom) => Some(custom),
-						IndirectCondition::Id(id) => fetched_conditions
-							.map(|listings| listings.get(id))
-							.flatten(),
+						IndirectCondition::Id(id) => fetched_conditions.map(|listings| listings.get(id)).flatten(),
 					});
 					let condition_nodes = iter.map(|condition| {
 						html! {

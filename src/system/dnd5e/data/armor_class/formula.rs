@@ -1,8 +1,7 @@
 use super::BoundedAbility;
-use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
-	system::dnd5e::data::{character::Character, Ability},
-};
+use crate::kdl_ext::NodeContext;
+use crate::system::dnd5e::data::{character::Character, Ability};
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct ArmorClassFormula {
@@ -34,16 +33,13 @@ impl From<u32> for ArmorClassFormula {
 
 impl ArmorClassFormula {
 	pub fn evaluate(&self, state: &Character) -> i32 {
-		let bonus: i32 = self
-			.bonuses
-			.iter()
-			.map(|bounded| bounded.evaluate(state))
-			.sum();
+		let bonus: i32 = self.bonuses.iter().map(|bounded| bounded.evaluate(state)).sum();
 		(self.base as i32) + bonus
 	}
 }
 
-impl FromKDL for ArmorClassFormula {
+impl FromKdl<NodeContext> for ArmorClassFormula {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let base = node.get_i64_req("base")? as u32;
 		let mut bonuses = Vec::new();
@@ -63,8 +59,7 @@ impl AsKdl for ArmorClassFormula {
 		node.push_entry(("base", self.base as i64));
 		for bonus in &self.bonuses {
 			node.push_child({
-				let mut node =
-					NodeBuilder::default().with_entry_typed(bonus.ability.long_name(), "Ability");
+				let mut node = NodeBuilder::default().with_entry_typed(bonus.ability.long_name(), "Ability");
 				if let Some(min) = &bonus.min {
 					node.push_entry(("min", *min as i64));
 				}

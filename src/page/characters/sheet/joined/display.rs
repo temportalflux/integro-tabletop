@@ -2,7 +2,6 @@ use crate::{
 	auth,
 	components::{use_media_query, Nav, NavDisplay, TabContent},
 	database::app::{Database, Entry},
-	kdl_ext::KDLNode,
 	page::characters::sheet::{CharacterHandle, ViewProps},
 	storage::github::FileContentArgs,
 	system::{
@@ -10,8 +9,8 @@ use crate::{
 		core::{ModuleId, SourceId},
 		dnd5e::{
 			components::{
-				ability, panel, rest, ArmorClass, ConditionsCard, DefensesCard, HitPointMgmtCard,
-				InitiativeBonus, Inspiration, ProfBonus, Proficiencies, SpeedAndSenses,
+				ability, panel, rest, ArmorClass, ConditionsCard, DefensesCard, HitPointMgmtCard, InitiativeBonus,
+				Inspiration, ProfBonus, Proficiencies, SpeedAndSenses,
 			},
 			data::{character::Persistent, Ability},
 			SystemComponent,
@@ -19,6 +18,7 @@ use crate::{
 	},
 };
 use anyhow::Context;
+use kdlize::NodeId;
 use yew::prelude::*;
 use yew_router::prelude::use_navigator;
 use yewdux::prelude::use_store;
@@ -80,13 +80,18 @@ pub fn Display(ViewProps { swap_view }: &ViewProps) -> Html {
 					path: path_in_repo.as_path(),
 					version: version.as_str(),
 				};
-				let content = client.get_file_content(args).await.with_context(|| format!("Failed to fetch content from storage"))?;
+				let content = client
+					.get_file_content(args)
+					.await
+					.with_context(|| format!("Failed to fetch content from storage"))?;
 
 				let Some(system_reg) = system_depot.get(&system) else {
 					log::error!("Mission system registration for {system:?}");
 					return Ok(());
 				};
-				let document = content.parse::<kdl::KdlDocument>().with_context(|| format!("Failed to parse fetched content"))?;
+				let document = content
+					.parse::<kdl::KdlDocument>()
+					.with_context(|| format!("Failed to parse fetched content"))?;
 				let Some(node) = document.nodes().get(0) else {
 					log::error!("Character data is empty, no first node in {content:?}");
 					return Ok(());
@@ -225,8 +230,7 @@ pub fn Display(ViewProps { swap_view }: &ViewProps) -> Html {
 							let module_store = transaction.object_store_of::<Module>()?;
 							let entry_store = transaction.object_store_of::<Entry>()?;
 
-							let module_req =
-								module_store.get_record::<Module>(entry.module.clone());
+							let module_req = module_store.get_record::<Module>(entry.module.clone());
 							let mut module = module_req.await?.unwrap();
 							module.version = module_version;
 							module_store.put_record(&module).await?;

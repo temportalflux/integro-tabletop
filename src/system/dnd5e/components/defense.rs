@@ -27,42 +27,37 @@ half against the creature, not reduced by three-quarters.";
 pub fn DefensesCard() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let onclick = context_menu::use_control_action({
-		|_: web_sys::MouseEvent, _context| {
-			context_menu::Action::open_root(format!("Defenses"), html!(<Modal />))
-		}
+		|_: web_sys::MouseEvent, _context| context_menu::Action::open_root(format!("Defenses"), html!(<Modal />))
 	});
-	let defenses = state
-		.defenses()
-		.iter()
-		.fold(Vec::new(), |all, (kind, targets)| {
-			targets.iter().fold(all, |mut all, entry| {
-				let tooltip = crate::data::as_feature_path_text(&entry.source);
-				let damage_type = match &entry.damage_type {
-					Some(damage_type) => {
-						html! {
-							<span style="margin-left: 5px;">{damage_type.display_name()}</span>
-						}
+	let defenses = state.defenses().iter().fold(Vec::new(), |all, (kind, targets)| {
+		targets.iter().fold(all, |mut all, entry| {
+			let tooltip = crate::data::as_feature_path_text(&entry.source);
+			let damage_type = match &entry.damage_type {
+				Some(damage_type) => {
+					html! {
+						<span style="margin-left: 5px;">{damage_type.display_name()}</span>
 					}
-					None => html! {},
-				};
-				let context = match &entry.context {
-					Some(context) => html! {
-						<span style="margin-left: 5px;">{context.clone()}</span>
-					},
-					None => html! {},
-				};
-				all.push(html! {
-					<Tooltip tag={"span"} style={"margin: 2px;"} content={tooltip} use_html={true}>
-						<Tag classes={"defense"}>
-							<glyph::Defense value={kind} />
-							{damage_type}
-							{context}
-						</Tag>
-					</Tooltip>
-				});
-				all
-			})
-		});
+				}
+				None => html! {},
+			};
+			let context = match &entry.context {
+				Some(context) => html! {
+					<span style="margin-left: 5px;">{context.clone()}</span>
+				},
+				None => html! {},
+			};
+			all.push(html! {
+				<Tooltip tag={"span"} style={"margin: 2px;"} content={tooltip} use_html={true}>
+					<Tag classes={"defense"}>
+						<glyph::Defense value={kind} />
+						{damage_type}
+						{context}
+					</Tag>
+				</Tooltip>
+			});
+			all
+		})
+	});
 	html! {
 		<div class="card m-1" style="height: 80px;" {onclick}>
 			<div class="card-body text-center" style="padding: 5px 5px;">

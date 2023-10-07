@@ -28,7 +28,7 @@ impl AbilityScores {
 #[derive(Clone, PartialEq, Debug)]
 pub struct FinalizeAbilityScores;
 crate::impl_trait_eq!(FinalizeAbilityScores);
-crate::impl_kdl_node!(FinalizeAbilityScores, "ability_score_finalize");
+kdlize::impl_kdl_node!(FinalizeAbilityScores, "ability_score_finalize");
 impl crate::utility::Mutator for FinalizeAbilityScores {
 	type Target = Character;
 
@@ -88,25 +88,20 @@ impl AbilityScore {
 	}
 
 	fn eval_max_score(&self) -> u32 {
-		self.max_score_incs
-			.iter()
-			.map(|(v, _)| *v)
-			.max()
-			.unwrap_or(0)
+		self.max_score_incs.iter().map(|(v, _)| *v).max().unwrap_or(0)
 	}
 
 	/// Returns the evaluated total scoree, and the list of paths that were used from the list of bonuses.
 	fn evaluate(&self) -> (u32, HashSet<usize>) {
-		let (no_constraints, constrained): (Vec<_>, Vec<_>) = self
-			.bonuses
-			.iter()
-			.enumerate()
-			.partition_map(|(idx, (bonus, _, _))| match bonus.max_total {
-				None => Either::Left((idx, bonus.value)),
-				Some(max_total) => Either::Right((idx, (bonus.value, max_total))),
-			});
-		let (mut used_indices, unconstrained): (HashSet<_>, Vec<_>) =
-			no_constraints.into_iter().unzip();
+		let (no_constraints, constrained): (Vec<_>, Vec<_>) =
+			self.bonuses
+				.iter()
+				.enumerate()
+				.partition_map(|(idx, (bonus, _, _))| match bonus.max_total {
+					None => Either::Left((idx, bonus.value)),
+					Some(max_total) => Either::Right((idx, (bonus.value, max_total))),
+				});
+		let (mut used_indices, unconstrained): (HashSet<_>, Vec<_>) = no_constraints.into_iter().unzip();
 		let total = unconstrained.into_iter().sum::<u32>();
 		let (total, additional_indices) = optimize_max_sums(total, constrained);
 		if let Some(indices) = additional_indices {
@@ -253,13 +248,7 @@ mod test {
 	fn oms_same_max() {
 		let value = optimize_max_sums(
 			8,
-			vec![
-				(0, (1, 17)),
-				(1, (2, 17)),
-				(2, (3, 17)),
-				(3, (4, 17)),
-				(4, (5, 17)),
-			],
+			vec![(0, (1, 17)), (1, (2, 17)), (2, (3, 17)), (3, (4, 17)), (4, (5, 17))],
 		);
 		assert_eq!(value, (17, Some(vec![3, 4])));
 	}

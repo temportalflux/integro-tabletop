@@ -1,8 +1,9 @@
 use super::super::{AreaOfEffect, DamageRoll};
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
+	kdl_ext::NodeContext,
 	system::dnd5e::data::{character::Character, item::weapon, Ability},
 };
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::collections::HashSet;
 
 mod check;
@@ -25,7 +26,8 @@ pub struct Attack {
 	pub properties: Vec<weapon::Property>,
 }
 
-impl FromKDL for Attack {
+impl FromKdl<NodeContext> for Attack {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let kind = node.query_opt_t::<AttackKindValue>("scope() > kind")?;
 		let check = node.query_req_t::<AttackCheckKind>("scope() > check")?;
@@ -86,10 +88,7 @@ impl Attack {
 
 	pub fn evaluate_bonuses(&self, state: &Character) -> (Option<Ability>, i32, i32) {
 		match &self.check {
-			AttackCheckKind::AttackRoll {
-				ability,
-				proficient,
-			} => {
+			AttackCheckKind::AttackRoll { ability, proficient } => {
 				let (ability, modifier) = self.best_ability_modifier(*ability, state);
 				let prof_bonus = proficient
 					.evaluate(state)
@@ -109,9 +108,7 @@ impl Attack {
 					.as_ref()
 					.map(|ability| state.ability_scores().get(*ability).score().modifier())
 					.unwrap_or_default();
-				let prof_bonus = proficient
-					.then(|| state.proficiency_bonus())
-					.unwrap_or_default();
+				let prof_bonus = proficient.then(|| state.proficiency_bonus()).unwrap_or_default();
 				let atk_bonus = *base + ability_bonus + prof_bonus;
 				(None, atk_bonus, 0)
 			}

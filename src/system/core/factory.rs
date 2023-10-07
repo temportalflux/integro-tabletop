@@ -1,7 +1,8 @@
 use crate::{
-	kdl_ext::{FromKDL, KDLNode},
+	kdl_ext::NodeContext,
 	utility::{ArcEvaluator, ArcMutator, Evaluator, GenericEvaluator, GenericMutator, Mutator},
 };
+use kdlize::{FromKdl, NodeId};
 use std::{
 	any::{Any, TypeId},
 	collections::HashMap,
@@ -50,7 +51,8 @@ impl Default for NodeRegistry {
 impl NodeRegistry {
 	pub fn register_mutator<T>(&mut self)
 	where
-		T: Mutator + KDLNode + FromKDL + 'static + Send + Sync,
+		T: Mutator + NodeId + FromKdl<NodeContext> + 'static + Send + Sync,
+		anyhow::Error: From<T::Error>,
 	{
 		assert!(!self.mutators.contains_key(T::id()));
 		self.mutators.insert(T::id(), MutatorFactory::new::<T>());
@@ -58,11 +60,11 @@ impl NodeRegistry {
 
 	pub fn register_evaluator<E>(&mut self)
 	where
-		E: Evaluator + KDLNode + FromKDL + 'static + Send + Sync,
+		E: Evaluator + NodeId + FromKdl<NodeContext> + 'static + Send + Sync,
+		anyhow::Error: From<E::Error>,
 	{
 		assert!(!self.mutators.contains_key(E::id()));
-		self.evaluators
-			.insert(E::id(), EvaluatorFactory::new::<E>());
+		self.evaluators.insert(E::id(), EvaluatorFactory::new::<E>());
 	}
 
 	pub fn get_mutator_factory(&self, id: &str) -> anyhow::Result<&MutatorFactory> {
@@ -87,25 +89,18 @@ type BoxAny = Box<dyn Any + 'static + Send + Sync>;
 pub struct MutatorFactory {
 	type_name: &'static str,
 	target_type_info: (TypeId, &'static str),
-	fn_from_kdl: Box<
-		dyn Fn(&mut crate::kdl_ext::NodeReader<'_>) -> anyhow::Result<BoxAny>
-			+ 'static
-			+ Send
-			+ Sync,
-	>,
+	fn_from_kdl: Box<dyn Fn(&mut crate::kdl_ext::NodeReader<'_>) -> anyhow::Result<BoxAny> + 'static + Send + Sync>,
 }
 
 impl MutatorFactory {
 	pub fn new<M>() -> Self
 	where
-		M: Mutator + FromKDL + 'static + Send + Sync,
+		M: Mutator + FromKdl<NodeContext> + 'static + Send + Sync,
+		anyhow::Error: From<M::Error>,
 	{
 		Self {
 			type_name: std::any::type_name::<M>(),
-			target_type_info: (
-				TypeId::of::<M::Target>(),
-				std::any::type_name::<M::Target>(),
-			),
+			target_type_info: (TypeId::of::<M::Target>(), std::any::type_name::<M::Target>()),
 			fn_from_kdl: Box::new(|node| {
 				let arc_eval: ArcMutator<M::Target> = Arc::new(M::from_kdl(node)?);
 				Ok(Box::new(arc_eval))
@@ -113,10 +108,7 @@ impl MutatorFactory {
 		}
 	}
 
-	pub fn from_kdl<'doc, T>(
-		&self,
-		node: &mut crate::kdl_ext::NodeReader<'doc>,
-	) -> anyhow::Result<GenericMutator<T>>
+	pub fn from_kdl<'doc, T>(&self, node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<GenericMutator<T>>
 	where
 		T: 'static,
 	{
@@ -144,25 +136,18 @@ pub struct EvaluatorFactory {
 	/// that of the registered evaluator, otherwise Any downcast will implode.
 	item_type_info: (TypeId, &'static str),
 	ctx_type_info: (TypeId, &'static str),
-	fn_from_kdl: Box<
-		dyn Fn(&mut crate::kdl_ext::NodeReader<'_>) -> anyhow::Result<BoxAny>
-			+ 'static
-			+ Send
-			+ Sync,
-	>,
+	fn_from_kdl: Box<dyn Fn(&mut crate::kdl_ext::NodeReader<'_>) -> anyhow::Result<BoxAny> + 'static + Send + Sync>,
 }
 
 impl EvaluatorFactory {
 	pub fn new<E>() -> Self
 	where
-		E: Evaluator + FromKDL + 'static + Send + Sync,
+		E: Evaluator + FromKdl<NodeContext> + 'static + Send + Sync,
+		anyhow::Error: From<E::Error>,
 	{
 		Self {
 			type_name: std::any::type_name::<E>(),
-			ctx_type_info: (
-				TypeId::of::<E::Context>(),
-				std::any::type_name::<E::Context>(),
-			),
+			ctx_type_info: (TypeId::of::<E::Context>(), std::any::type_name::<E::Context>()),
 			item_type_info: (TypeId::of::<E::Item>(), std::any::type_name::<E::Item>()),
 			fn_from_kdl: Box::new(|node| {
 				let arc_eval: ArcEvaluator<E::Context, E::Item> = Arc::new(E::from_kdl(node)?);
@@ -219,7 +204,8 @@ struct IncompatibleTypes(&'static str, &'static str, &'static str, &'static str)
 impl NodeRegistry {
 	pub fn default_with_eval<E>() -> Self
 	where
-		E: Evaluator + KDLNode + FromKDL + 'static + Send + Sync,
+		E: Evaluator + NodeId + FromKdl<NodeContext> + 'static + Send + Sync,
+		anyhow::Error: From<E::Error>,
 	{
 		let mut node_reg = Self::default();
 		node_reg.register_evaluator::<E>();
@@ -228,7 +214,8 @@ impl NodeRegistry {
 
 	pub fn default_with_mut<M>() -> Self
 	where
-		M: Mutator + KDLNode + FromKDL + 'static + Send + Sync,
+		M: Mutator + NodeId + FromKdl<NodeContext> + 'static + Send + Sync,
+		anyhow::Error: From<M::Error>,
 	{
 		let mut node_reg = Self::default();
 		node_reg.register_mutator::<M>();
@@ -241,9 +228,7 @@ impl NodeRegistry {
 		T: 'static,
 	{
 		let document = doc.parse::<kdl::KdlDocument>()?;
-		let node = document
-			.query("scope() > evaluator")?
-			.expect("missing evaluator node");
+		let node = document.query("scope() > evaluator")?.expect("missing evaluator node");
 		let ctx = crate::kdl_ext::NodeContext::registry(self);
 		let mut node = crate::kdl_ext::NodeReader::new_child(node, ctx);
 		GenericEvaluator::<C, T>::from_kdl(&mut node)
@@ -254,19 +239,16 @@ impl NodeRegistry {
 		T: 'static,
 	{
 		let document = doc.parse::<kdl::KdlDocument>()?;
-		let node = document
-			.query("scope() > mutator")?
-			.expect("missing mutator node");
+		let node = document.query("scope() > mutator")?.expect("missing mutator node");
 		let ctx = crate::kdl_ext::NodeContext::registry(self);
 		let mut node = crate::kdl_ext::NodeReader::new_child(node, ctx);
 		GenericMutator::<T>::from_kdl(&mut node)
 	}
 
-	pub fn defaulteval_parse_kdl<E>(
-		doc: &str,
-	) -> anyhow::Result<GenericEvaluator<E::Context, E::Item>>
+	pub fn defaulteval_parse_kdl<E>(doc: &str) -> anyhow::Result<GenericEvaluator<E::Context, E::Item>>
 	where
-		E: Evaluator + KDLNode + FromKDL + 'static + Send + Sync,
+		E: Evaluator + NodeId + FromKdl<NodeContext> + 'static + Send + Sync,
+		E::Error: std::error::Error + Send + Sync,
 		E::Item: 'static,
 	{
 		Self::default_with_eval::<E>().parse_kdl_evaluator::<E::Context, E::Item>(doc)
@@ -274,7 +256,8 @@ impl NodeRegistry {
 
 	pub fn defaultmut_parse_kdl<M>(doc: &str) -> anyhow::Result<GenericMutator<M::Target>>
 	where
-		M: Mutator + KDLNode + FromKDL + 'static + Send + Sync,
+		M: Mutator + NodeId + FromKdl<NodeContext> + 'static + Send + Sync,
+		M::Error: std::error::Error + Send + Sync,
 		M::Target: 'static,
 	{
 		Self::default_with_mut::<M>().parse_kdl_mutator(doc)

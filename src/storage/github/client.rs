@@ -26,15 +26,11 @@ impl GithubClient {
 			);
 			[agent, auth].into_iter().collect()
 		});
-		let client = client
-			.build()
-			.map_err(|err| QueryError::ReqwestError(err))?;
+		let client = client.build().map_err(|err| QueryError::ReqwestError(err))?;
 		Ok(Self(client, auth_header))
 	}
 
-	pub fn viewer(
-		&self,
-	) -> LocalBoxFuture<'static, anyhow::Result<(String, Option<RepositoryMetadata>)>> {
+	pub fn viewer(&self) -> LocalBoxFuture<'static, anyhow::Result<(String, Option<RepositoryMetadata>)>> {
 		use crate::storage::USER_HOMEBREW_REPO_NAME;
 		let client = self.0.clone();
 		Box::pin(async move {
@@ -95,10 +91,7 @@ pub struct CreateRepoArgs<'a> {
 	pub private: bool,
 }
 impl GithubClient {
-	pub fn create_repo(
-		&self,
-		request: CreateRepoArgs<'_>,
-	) -> LocalBoxFuture<'static, anyhow::Result<String>> {
+	pub fn create_repo(&self, request: CreateRepoArgs<'_>) -> LocalBoxFuture<'static, anyhow::Result<String>> {
 		use serde_json::{Map, Value};
 		let builder = self.0.post(match request.org {
 			// create on the authenticated user
@@ -144,16 +137,12 @@ pub struct SetRepoTopicsArgs<'a> {
 	pub topics: Vec<String>,
 }
 impl GithubClient {
-	pub fn set_repo_topics(
-		&self,
-		request: SetRepoTopicsArgs<'_>,
-	) -> LocalBoxFuture<'static, anyhow::Result<()>> {
+	pub fn set_repo_topics(&self, request: SetRepoTopicsArgs<'_>) -> LocalBoxFuture<'static, anyhow::Result<()>> {
 		use serde_json::{Map, Value};
 		// https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#replace-all-repository-topics
-		let builder = self.0.put(format!(
-			"{GITHUB_API}/repos/{}/{}/topics",
-			request.owner, request.repo
-		));
+		let builder = self
+			.0
+			.put(format!("{GITHUB_API}/repos/{}/{}/topics", request.owner, request.repo));
 		let builder = self.insert_rest_headers(builder, None);
 		let builder = builder.body(
 			serde_json::to_string(&Value::Object(
@@ -275,10 +264,7 @@ pub struct TreeEntry {
 	pub is_tree: bool,
 }
 impl GithubClient {
-	pub fn get_tree(
-		&self,
-		request: GetTreeArgs<'_>,
-	) -> LocalBoxFuture<'static, reqwest::Result<Vec<TreeEntry>>> {
+	pub fn get_tree(&self, request: GetTreeArgs<'_>) -> LocalBoxFuture<'static, reqwest::Result<Vec<TreeEntry>>> {
 		// https://docs.github.com/en/rest/git/trees?apiVersion=2022-11-28#get-a-tree
 		let builder = self.0.get(format!(
 			"{GITHUB_API}/repos/{}/{}/git/trees/{}",
@@ -321,18 +307,10 @@ pub struct FileContentArgs<'a> {
 }
 impl GithubClient {
 	/// Fetches the raw content of a file in a repository.
-	pub fn get_file_content(
-		&self,
-		request: FileContentArgs<'_>,
-	) -> LocalBoxFuture<'static, reqwest::Result<String>> {
+	pub fn get_file_content(&self, request: FileContentArgs<'_>) -> LocalBoxFuture<'static, reqwest::Result<String>> {
 		// https://docs.github.com/en/rest/repos/contents?apiVersion=2022-11-28#get-repository-content
 		// https://docs.github.com/en/rest/overview/media-types?apiVersion=2022-11-28
-		let path_str = request
-			.path
-			.as_os_str()
-			.to_str()
-			.unwrap()
-			.replace("\\", "/");
+		let path_str = request.path.as_os_str().to_str().unwrap().replace("\\", "/");
 		let builder = self.0.get(format!(
 			"{GITHUB_API}/repos/{}/{}/contents/{}?ref={}",
 			request.owner, request.repo, path_str, request.version,
@@ -394,11 +372,7 @@ impl GithubClient {
 			branch,
 		} = args;
 
-		let path_str = path_in_repo
-			.as_os_str()
-			.to_str()
-			.unwrap()
-			.replace("\\", "/");
+		let path_str = path_in_repo.as_os_str().to_str().unwrap().replace("\\", "/");
 		let url = format!("{GITHUB_API}/repos/{repo_org}/{repo_name}/contents/{path_str}");
 
 		// encode using Base64 url-safe compliant with RFC 4648
@@ -495,10 +469,7 @@ pub enum DeleteFileError {
 	Unknown(u16),
 }
 impl GithubClient {
-	pub fn delete_file(
-		&self,
-		args: DeleteFileArgs<'_>,
-	) -> LocalBoxFuture<'static, anyhow::Result<String>> {
+	pub fn delete_file(&self, args: DeleteFileArgs<'_>) -> LocalBoxFuture<'static, anyhow::Result<String>> {
 		use serde_json::{Map, Value};
 
 		// https://docs.github.com/en/rest/repos/contents?apiVersion=2022-11-28#delete-a-file
@@ -511,11 +482,7 @@ impl GithubClient {
 			branch,
 		} = args;
 
-		let path_str = path_in_repo
-			.as_os_str()
-			.to_str()
-			.unwrap()
-			.replace("\\", "/");
+		let path_str = path_in_repo.as_os_str().to_str().unwrap().replace("\\", "/");
 		let url = format!("{GITHUB_API}/repos/{repo_org}/{repo_name}/contents/{path_str}");
 
 		let builder = self.0.delete(url);

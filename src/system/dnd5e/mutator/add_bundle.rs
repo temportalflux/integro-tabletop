@@ -1,6 +1,6 @@
+use crate::kdl_ext::NodeContext;
 use crate::{
 	database::app::Criteria,
-	kdl_ext::{AsKdl, FromKDL, KDLNode, NodeBuilder, ValueExt},
 	system::{
 		core::SourceId,
 		dnd5e::{
@@ -14,6 +14,8 @@ use crate::{
 	utility::{selector, Mutator},
 	GeneralError,
 };
+use kdlize::NodeId;
+use kdlize::{ext::ValueExt, AsKdl, FromKdl, NodeBuilder};
 use std::{collections::BTreeMap, str::FromStr};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -32,7 +34,7 @@ enum MetadataEntry {
 }
 
 crate::impl_trait_eq!(AddBundle);
-crate::impl_kdl_node!(AddBundle, "add_bundle");
+kdlize::impl_kdl_node!(AddBundle, "add_bundle");
 
 impl Mutator for AddBundle {
 	type Target = Character;
@@ -54,9 +56,7 @@ impl Mutator for AddBundle {
 	fn on_insert(&self, stats: &mut Character, parent: &std::path::Path) {
 		let Some(data_path) = self.selector.get_data_path() else { return; };
 		let Some(selections) = stats.get_selections_at(&data_path) else { return; };
-		let ids = selections
-			.iter()
-			.filter_map(|str| SourceId::from_str(str).ok());
+		let ids = selections.iter().filter_map(|str| SourceId::from_str(str).ok());
 		stats.add_bundles(AdditionalObjectData {
 			ids: ids.collect(),
 			object_type_id: self.selector.object_category.clone(),
@@ -66,7 +66,8 @@ impl Mutator for AddBundle {
 	}
 }
 
-impl FromKDL for AddBundle {
+impl FromKdl<NodeContext> for AddBundle {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let object_kind = match node.get_str_opt("object")? {
 			None => Bundle::id().into(),
@@ -91,7 +92,8 @@ impl FromKDL for AddBundle {
 		})
 	}
 }
-impl FromKDL for MetadataObject {
+impl FromKdl<NodeContext> for MetadataObject {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let mut object = Self(BTreeMap::new());
 		for node_entry in node.entries() {
@@ -119,7 +121,8 @@ impl MetadataObject {
 		Ok(())
 	}
 }
-impl FromKDL for MetadataEntry {
+impl FromKdl<NodeContext> for MetadataEntry {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		if node.children().is_some() {
 			Ok(Self::Object(MetadataObject::from_kdl(node)?))
@@ -237,13 +240,7 @@ mod test {
 			";
 			let data = AddBundle {
 				propogate_parent: false,
-				filter: MetadataObject(
-					[(
-						"category".into(),
-						MetadataEntry::Filter(["Feat".into()].into()),
-					)]
-					.into(),
-				),
+				filter: MetadataObject([("category".into(), MetadataEntry::Filter(["Feat".into()].into()))].into()),
 				selector: selector::Object {
 					id: Default::default(),
 					object_category: Bundle::id().into(),
@@ -268,13 +265,7 @@ mod test {
 			";
 			let data = AddBundle {
 				propogate_parent: false,
-				filter: MetadataObject(
-					[(
-						"category".into(),
-						MetadataEntry::Filter(["Cleric".into()].into()),
-					)]
-					.into(),
-				),
+				filter: MetadataObject([("category".into(), MetadataEntry::Filter(["Cleric".into()].into()))].into()),
 				selector: selector::Object {
 					id: Default::default(),
 					object_category: Subclass::id().into(),

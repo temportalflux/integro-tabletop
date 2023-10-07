@@ -1,11 +1,10 @@
-use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
-	system::dnd5e::data::{
-		character::Character,
-		roll::{Roll, RollSet},
-		scaling, DamageType,
-	},
+use crate::kdl_ext::NodeContext;
+use crate::system::dnd5e::data::{
+	character::Character,
+	roll::{Roll, RollSet},
+	scaling, DamageType,
 };
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::str::FromStr;
 
 #[derive(Clone, PartialEq, Debug)]
@@ -20,12 +19,7 @@ pub struct Damage {
 }
 
 impl Damage {
-	pub fn evaluate(
-		&self,
-		character: &Character,
-		modifier: i32,
-		upcast_amount: u32,
-	) -> (RollSet, i32) {
+	pub fn evaluate(&self, character: &Character, modifier: i32, upcast_amount: u32) -> (RollSet, i32) {
 		let mut rolls = RollSet::default();
 		if let Some(roll) = self.amount.evaluate(character) {
 			rolls.push(roll);
@@ -43,7 +37,8 @@ impl Damage {
 	}
 }
 
-impl FromKDL for Damage {
+impl FromKdl<NodeContext> for Damage {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let amount = scaling::Value::from_kdl(node)?;
 		let damage_type = node.next_str_req_t::<DamageType>()?;

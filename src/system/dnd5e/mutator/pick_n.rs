@@ -1,5 +1,5 @@
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
 	system::dnd5e::{
 		data::{character::Character, description},
 		BoxedMutator,
@@ -7,6 +7,7 @@ use crate::{
 	utility::{selector, Mutator},
 };
 use itertools::Itertools;
+use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
 use std::collections::{BTreeSet, HashMap, HashSet};
 
 /// Allows the user to select some number of options where each option can apply a different group of mutators.
@@ -25,7 +26,7 @@ struct PickOption {
 }
 
 crate::impl_trait_eq!(PickN);
-crate::impl_kdl_node!(PickN, "pick");
+kdlize::impl_kdl_node!(PickN, "pick");
 
 impl PickN {
 	fn id(&self) -> Option<std::borrow::Cow<'_, String>> {
@@ -44,10 +45,7 @@ impl PickN {
 		Some(options)
 	}
 
-	fn get_selections_in<'this, 'c>(
-		&'this self,
-		state: Option<&'c Character>,
-	) -> HashSet<&'c String> {
+	fn get_selections_in<'this, 'c>(&'this self, state: Option<&'c Character>) -> HashSet<&'c String> {
 		let Some((state, data_path)) = state.zip(self.selector.get_data_path()) else { return HashSet::default(); };
 		let Some(data) = state.get_selections_at(&data_path) else { return HashSet::default(); };
 		data.iter().collect::<HashSet<_>>()
@@ -96,8 +94,7 @@ impl Mutator for PickN {
 			});
 		}
 
-		let selectors =
-			selector::DataList::default().with_value("Selected Option", &self.selector, state);
+		let selectors = selector::DataList::default().with_value("Selected Option", &self.selector, state);
 		children.insert(0, selectors.into());
 
 		description::Section {
@@ -140,7 +137,8 @@ impl Mutator for PickN {
 	}
 }
 
-impl FromKDL for PickN {
+impl FromKdl<NodeContext> for PickN {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let max_selections = node.next_i64_req()? as usize;
 		let name = node.get_str_req("name")?.to_owned();
@@ -160,13 +158,7 @@ impl FromKDL for PickN {
 			let name = node.next_str_req()?.to_owned();
 			let description = node.query_opt_t::<description::Section>("scope() > description")?;
 			let mutators = node.query_all_t("scope() > mutator")?;
-			options.insert(
-				name,
-				PickOption {
-					description,
-					mutators,
-				},
-			);
+			options.insert(name, PickOption { description, mutators });
 		}
 
 		let selector = selector::Value::Options(selector::ValueOptions {
@@ -199,9 +191,7 @@ impl AsKdl for PickN {
 			}
 		}
 
-		if let selector::Value::Options(selector::ValueOptions { cannot_match, .. }) =
-			&self.selector
-		{
+		if let selector::Value::Options(selector::ValueOptions { cannot_match, .. }) = &self.selector {
 			for id_path in cannot_match {
 				let Some(id_str) = id_path.get_id() else { continue; };
 				node.push_child_entry("cannot_match", id_str.into_owned());
@@ -268,9 +258,7 @@ mod test {
 					"Swimming".into(),
 					PickOption {
 						description: Some(description::Section {
-							content: description::SectionContent::Body(
-								"You have a swimming speed of 15".into(),
-							),
+							content: description::SectionContent::Body("You have a swimming speed of 15".into()),
 							..Default::default()
 						}),
 						mutators: vec![Speed {

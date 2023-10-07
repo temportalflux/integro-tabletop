@@ -1,8 +1,9 @@
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
+	kdl_ext::{NodeContext, NodeReader},
 	system::dnd5e::{data::Ability, Value},
 	utility::NotInList,
 };
+use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum AttackCheckKind {
@@ -20,8 +21,9 @@ pub enum AttackCheckKind {
 
 crate::impl_trait_eq!(AttackCheckKind);
 
-impl FromKDL for AttackCheckKind {
-	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+impl FromKdl<NodeContext> for AttackCheckKind {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut NodeReader<'doc>) -> anyhow::Result<Self> {
 		match node.next_str_req()? {
 			"AttackRoll" => {
 				let ability = node.next_str_req_t::<Ability>()?;
@@ -33,10 +35,7 @@ impl FromKDL for AttackCheckKind {
 					(Some(prof), None) => Value::Fixed(prof),
 					(_, Some(value)) => value,
 				};
-				Ok(Self::AttackRoll {
-					ability,
-					proficient,
-				})
+				Ok(Self::AttackRoll { ability, proficient })
 			}
 			"SavingThrow" => {
 				// TODO: The difficulty class should be its own struct (which impls evaluator)
@@ -44,9 +43,7 @@ impl FromKDL for AttackCheckKind {
 					let mut node = node.query_req("scope() > difficulty_class")?;
 					let base = node.next_i64_req()? as i32;
 					let ability = node.query_str_opt_t::<Ability>("scope() > ability_bonus", 0)?;
-					let proficient = node
-						.query_bool_opt("scope() > proficiency_bonus", 0)?
-						.unwrap_or(false);
+					let proficient = node.query_bool_opt("scope() > proficiency_bonus", 0)?.unwrap_or(false);
 					(base, ability, proficient)
 				};
 				let save_ability = node.query_str_req_t::<Ability>("scope() > save_ability", 0)?;
@@ -66,10 +63,7 @@ impl AsKdl for AttackCheckKind {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 		match self {
-			Self::AttackRoll {
-				ability,
-				proficient,
-			} => {
+			Self::AttackRoll { ability, proficient } => {
 				node.push_entry("AttackRoll");
 				node.push_entry_typed(ability.long_name(), "Ability");
 				match proficient {

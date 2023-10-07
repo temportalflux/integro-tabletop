@@ -49,9 +49,7 @@ struct ClassBrowerToggleProps {
 }
 
 #[function_component]
-fn ClassBrowerToggle(
-	ClassBrowerToggleProps { is_open, on_click }: &ClassBrowerToggleProps,
-) -> Html {
+fn ClassBrowerToggle(ClassBrowerToggleProps { is_open, on_click }: &ClassBrowerToggleProps) -> Html {
 	let mut classes = classes!("btn");
 	classes.push(match *is_open {
 		false => "btn-outline-success",
@@ -315,12 +313,7 @@ pub fn CollapsableCard(props: &CollapsableCardProps) -> Html {
 	} = props;
 	static START_SHOWN: bool = false;
 	let card_classes = classes!("card", "collapsable", root_classes.clone());
-	let header_classes = classes!(
-		"card-header",
-		"d-flex",
-		"align-items-center",
-		header_classes.clone()
-	);
+	let header_classes = classes!("card-header", "d-flex", "align-items-center", header_classes.clone());
 	let body_classes = classes!("card-body", body_classes.clone());
 	let mut collapse_btn_classes = classes!("arrow", "me-2", collapse_btn_classes.clone());
 	let mut collapse_div_classes = classes!("collapse");

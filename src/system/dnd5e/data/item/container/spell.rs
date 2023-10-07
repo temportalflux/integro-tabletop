@@ -1,19 +1,17 @@
-use std::path::{Path, PathBuf};
-
-use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
-	system::{
-		core::SourceId,
-		dnd5e::data::{
-			character::{
-				spellcasting::{AbilityOrStat, CastingMethod, SpellEntry},
-				Character,
-			},
-			spell::CastingDuration,
-			Indirect, Spell,
+use crate::kdl_ext::NodeContext;
+use crate::system::{
+	core::SourceId,
+	dnd5e::data::{
+		character::{
+			spellcasting::{AbilityOrStat, CastingMethod, SpellEntry},
+			Character,
 		},
+		spell::CastingDuration,
+		Indirect, Spell,
 	},
 };
+use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
+use std::path::{Path, PathBuf};
 
 #[derive(Clone, PartialEq, Debug, Default)]
 pub struct SpellContainer {
@@ -83,11 +81,7 @@ impl SpellContainer {
 		});
 	}
 
-	pub fn get_spell_entry(
-		&self,
-		contained: &ContainerSpell,
-		default_values: Option<(i32, u8)>,
-	) -> Option<SpellEntry> {
+	pub fn get_spell_entry(&self, contained: &ContainerSpell, default_values: Option<(i32, u8)>) -> Option<SpellEntry> {
 		let Some(casting) = &self.casting else { return None; };
 		let Some(atk_bonus) = casting.attack_bonus.or(contained.attack_bonus).or(default_values.map(|(bonus, _)| bonus)) else { return None; };
 		let Some(save_dc) = casting.save_dc.or(contained.save_dc).or(default_values.map(|(_, dc)| dc)) else { return None; };
@@ -109,19 +103,11 @@ impl SpellContainer {
 		})
 	}
 
-	pub fn add_spellcasting(
-		&self,
-		stats: &mut Character,
-		item_id: &Vec<uuid::Uuid>,
-		parent: &Path,
-	) {
+	pub fn add_spellcasting(&self, stats: &mut Character, item_id: &Vec<uuid::Uuid>, parent: &Path) {
 		for contained in &self.spells {
 			let Some(mut entry) = self.get_spell_entry(contained, None) else { continue; };
 			entry.source = parent.to_owned();
-			if let CastingMethod::FromContainer {
-				item_id: id_path, ..
-			} = &mut entry.method
-			{
+			if let CastingMethod::FromContainer { item_id: id_path, .. } = &mut entry.method {
 				*id_path = item_id.clone();
 			}
 			match &contained.spell {
@@ -136,13 +122,12 @@ impl SpellContainer {
 	}
 }
 
-impl FromKDL for SpellContainer {
+impl FromKdl<NodeContext> for SpellContainer {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let can_transcribe_from = node.get_bool_opt("transcribe")?.unwrap_or_default();
 		let can_prepare_from = node.get_bool_opt("prepare_from")?.unwrap_or_default();
-		let capacity = node
-			.query_opt_t::<Capacity>("scope() > capacity")?
-			.unwrap_or_default();
+		let capacity = node.query_opt_t::<Capacity>("scope() > capacity")?.unwrap_or_default();
 		let casting = node.query_opt_t::<Casting>("scope() > casting")?;
 		let spells = node.query_all_t::<ContainerSpell>("scope() > spell")?;
 		Ok(Self {
@@ -178,18 +163,13 @@ impl AsKdl for SpellContainer {
 	}
 }
 
-impl FromKDL for Capacity {
+impl FromKdl<NodeContext> for Capacity {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let max_count = node.next_i64_opt()?.map(|v| v as usize);
-		let rank_min = node
-			.query_i64_opt("scope() > rank", "min")?
-			.map(|v| v as u8);
-		let rank_max = node
-			.query_i64_opt("scope() > rank", "max")?
-			.map(|v| v as u8);
-		let rank_total = node
-			.query_i64_opt("scope() > rank", "total")?
-			.map(|v| v as usize);
+		let rank_min = node.query_i64_opt("scope() > rank", "min")?.map(|v| v as u8);
+		let rank_max = node.query_i64_opt("scope() > rank", "max")?.map(|v| v as u8);
+		let rank_total = node.query_i64_opt("scope() > rank", "total")?.map(|v| v as usize);
 		Ok(Self {
 			max_count,
 			rank_min,
@@ -224,22 +204,17 @@ impl AsKdl for Capacity {
 	}
 }
 
-impl FromKDL for Casting {
+impl FromKdl<NodeContext> for Casting {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let duration = match node.peak_opt().is_some() {
 			true => Some(CastingDuration::from_kdl(node)?),
 			false => None,
 		};
-		let consume_item = node
-			.query_bool_opt("scope() > consume_item", 0)?
-			.unwrap_or_default();
-		let consume_spell = node
-			.query_bool_opt("scope() > consume_spell", 0)?
-			.unwrap_or_default();
+		let consume_item = node.query_bool_opt("scope() > consume_item", 0)?.unwrap_or_default();
+		let consume_spell = node.query_bool_opt("scope() > consume_spell", 0)?.unwrap_or_default();
 		let save_dc = node.query_i64_opt("scope() > save_dc", 0)?.map(|v| v as u8);
-		let attack_bonus = node
-			.query_i64_opt("scope() > atk_bonus", 0)?
-			.map(|v| v as i32);
+		let attack_bonus = node.query_i64_opt("scope() > atk_bonus", 0)?.map(|v| v as i32);
 		Ok(Self {
 			duration,
 			consume_item,
@@ -286,7 +261,8 @@ impl From<SourceId> for ContainerSpell {
 	}
 }
 
-impl FromKDL for ContainerSpell {
+impl FromKdl<NodeContext> for ContainerSpell {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let spell = Indirect::from_kdl(node)?;
 		let rank = node.get_i64_opt("rank")?.map(|v| v as u8);
@@ -356,21 +332,13 @@ mod test {
 		let data = SpellContainer {
 			can_transcribe_from: true,
 			spells: vec![
-				ContainerSpell::from(SourceId::from_str(
-					"local://basic-rules@dnd5e/spells/arcaneLock.kdl",
-				)?),
+				ContainerSpell::from(SourceId::from_str("local://basic-rules@dnd5e/spells/arcaneLock.kdl")?),
 				ContainerSpell::from(SourceId::from_str(
 					"local://basic-rules@dnd5e/spells/glyphOfWarding.kdl",
 				)?),
-				ContainerSpell::from(SourceId::from_str(
-					"local://basic-rules@dnd5e/spells/identify.kdl",
-				)?),
-				ContainerSpell::from(SourceId::from_str(
-					"local://basic-rules@dnd5e/spells/falseLife.kdl",
-				)?),
-				ContainerSpell::from(SourceId::from_str(
-					"local://basic-rules@dnd5e/spells/teleport.kdl",
-				)?),
+				ContainerSpell::from(SourceId::from_str("local://basic-rules@dnd5e/spells/identify.kdl")?),
+				ContainerSpell::from(SourceId::from_str("local://basic-rules@dnd5e/spells/falseLife.kdl")?),
+				ContainerSpell::from(SourceId::from_str("local://basic-rules@dnd5e/spells/teleport.kdl")?),
 			],
 			..Default::default()
 		};
@@ -397,9 +365,7 @@ mod test {
 				rank_total: Some(5),
 			},
 			spells: vec![ContainerSpell {
-				spell: Indirect::Id(SourceId::from_str(
-					"local://basic-rules@dnd5e/spells/identify.kdl",
-				)?),
+				spell: Indirect::Id(SourceId::from_str("local://basic-rules@dnd5e/spells/identify.kdl")?),
 				rank: Some(2),
 				save_dc: Some(15),
 				attack_bonus: Some(2),
@@ -441,9 +407,7 @@ mod test {
 				attack_bonus: Some(5),
 			}),
 			spells: vec![ContainerSpell {
-				spell: Indirect::Id(SourceId::from_str(
-					"local://basic-rules@dnd5e/spells/fireball.kdl",
-				)?),
+				spell: Indirect::Id(SourceId::from_str("local://basic-rules@dnd5e/spells/fireball.kdl")?),
 				rank: None,
 				save_dc: None,
 				attack_bonus: None,

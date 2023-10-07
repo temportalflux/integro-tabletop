@@ -21,12 +21,7 @@ impl Dispatch {
 		}
 	}
 
-	pub fn spawn<F, E>(
-		&self,
-		name: impl Into<String>,
-		progress: Option<ProgressHandle>,
-		pending: F,
-	) -> Signal
+	pub fn spawn<F, E>(&self, name: impl Into<String>, progress: Option<ProgressHandle>, pending: F) -> Signal
 	where
 		F: Future<Output = Result<(), E>> + 'static,
 		E: 'static,

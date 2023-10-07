@@ -1,9 +1,8 @@
 use super::roll::EvaluatedRoll;
-use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
-	utility::InvalidEnumStr,
-};
+use crate::kdl_ext::NodeContext;
+use crate::utility::InvalidEnumStr;
 use enumset::EnumSetType;
+use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
 use std::str::FromStr;
 
 #[derive(Clone, PartialEq, Default, Debug)]
@@ -13,7 +12,8 @@ pub struct DamageRoll {
 	pub damage_type: DamageType,
 }
 
-impl FromKDL for DamageRoll {
+impl FromKdl<NodeContext> for DamageRoll {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let roll = node.query_opt_t::<EvaluatedRoll>("scope() > roll")?;
 		let base_bonus = node.get_i64_opt("base")?.unwrap_or(0) as i32;
@@ -112,26 +112,42 @@ impl DamageType {
 
 	pub fn description(&self) -> &'static str {
 		match self {
-			Self::Acid => "The corrosive spray of an adult black dragon's breath and the dissolving \
-			enzymes secreted by a black pudding deal acid damage.",
-			Self::Bludgeoning => "Blunt force attacks--hammers, falling, constriction, \
-			and the like--deal bludgeoning damage.",
-			Self::Cold => "The infernal chill radiating from an ice devil's spear and the frigid blast \
-			of a young white dragon's breath deal cold damage.",
+			Self::Acid => {
+				"The corrosive spray of an adult black dragon's breath and the dissolving \
+			enzymes secreted by a black pudding deal acid damage."
+			}
+			Self::Bludgeoning => {
+				"Blunt force attacks--hammers, falling, constriction, \
+			and the like--deal bludgeoning damage."
+			}
+			Self::Cold => {
+				"The infernal chill radiating from an ice devil's spear and the frigid blast \
+			of a young white dragon's breath deal cold damage."
+			}
 			Self::Fire => "Ancient red dragons breathe fire, and many spells conjure flames to deal fire damage.",
-			Self::Force => "Force is pure magical energy focused into a damaging form. \
-			Most effects that deal force damage are spells, including magic missile and spiritual weapon.",
+			Self::Force => {
+				"Force is pure magical energy focused into a damaging form. \
+			Most effects that deal force damage are spells, including magic missile and spiritual weapon."
+			}
 			Self::Lightning => "A lightning bolt spell and a blue dragon wyrmling's breath deal lightning damage.",
-			Self::Necrotic => "Necrotic damage, dealt by certain undead and a spell such \
-			as chill touch, withers matter and even the soul.",
-			Self::Piercing => "Puncturing and impaling attacks, including spears and \
-			monsters' bites, deal piercing damage.",
+			Self::Necrotic => {
+				"Necrotic damage, dealt by certain undead and a spell such \
+			as chill touch, withers matter and even the soul."
+			}
+			Self::Piercing => {
+				"Puncturing and impaling attacks, including spears and \
+			monsters' bites, deal piercing damage."
+			}
 			Self::Poison => "Venomous stings and the toxic gas of an adult green dragon's breath deal poison damage.",
 			Self::Psychic => "Mental abilities such as a psionic blast deal psychic damage.",
-			Self::Radiant => "Radiant damage, dealt by a cleric's flame strike spell or an angel's \
-			smiting weapon, sears the flesh like fire and overloads the spirit with power.",
+			Self::Radiant => {
+				"Radiant damage, dealt by a cleric's flame strike spell or an angel's \
+			smiting weapon, sears the flesh like fire and overloads the spirit with power."
+			}
 			Self::Slashing => "Swords, axes, and monsters' claws deal slashing damage.",
-			Self::Thunder => "A concussive burst of sound, such as the effect of the thunderwave spell, deals thunder damage.",
+			Self::Thunder => {
+				"A concussive burst of sound, such as the effect of the thunderwave spell, deals thunder damage."
+			}
 		}
 	}
 }

@@ -1,7 +1,8 @@
 use super::Kind;
-use crate::kdl_ext::{AsKdl, FromKDL, NodeBuilder};
+use crate::kdl_ext::NodeContext;
 use enum_map::EnumMap;
 use itertools::Itertools;
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 
 #[derive(Clone, Copy, Default, PartialEq, Debug)]
 pub struct Wallet(EnumMap<Kind, u64>);
@@ -79,10 +80,7 @@ impl std::ops::Mul<u64> for Wallet {
 
 impl Wallet {
 	pub fn total_value(&self) -> u64 {
-		self.0
-			.iter()
-			.map(|(kind, amt)| amt * kind.multiplier())
-			.sum::<u64>()
+		self.0.iter().map(|(kind, amt)| amt * kind.multiplier()).sum::<u64>()
 	}
 
 	pub fn is_empty(&self) -> bool {
@@ -182,7 +180,8 @@ impl Wallet {
 	}
 }
 
-impl FromKDL for Wallet {
+impl FromKdl<NodeContext> for Wallet {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let mut wallet = Self::default();
 		if !node.entries().is_empty() {

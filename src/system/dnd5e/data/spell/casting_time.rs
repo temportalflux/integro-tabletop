@@ -1,4 +1,5 @@
-use crate::kdl_ext::{AsKdl, FromKDL, NodeBuilder};
+use crate::kdl_ext::NodeContext;
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 
 #[derive(Default, Clone, PartialEq, Debug)]
 pub struct CastingTime {
@@ -15,7 +16,8 @@ pub enum CastingDuration {
 	Unit(u64, String),
 }
 
-impl FromKDL for CastingTime {
+impl FromKdl<NodeContext> for CastingTime {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let duration = CastingDuration::from_kdl(node)?;
 		let ritual = node.get_bool_opt("ritual")?.unwrap_or_default();
@@ -33,7 +35,8 @@ impl AsKdl for CastingTime {
 	}
 }
 
-impl FromKDL for CastingDuration {
+impl FromKdl<NodeContext> for CastingDuration {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		match node.next_str_req()? {
 			"Action" => Ok(Self::Action),

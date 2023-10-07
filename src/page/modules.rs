@@ -110,11 +110,7 @@ pub fn TaskListView() -> Html {
 }
 
 #[function_component]
-fn ModuleList(
-	GeneralProp {
-		value: modules_query,
-	}: &GeneralProp<UseQueryModulesHandle>,
-) -> Html {
+fn ModuleList(GeneralProp { value: modules_query }: &GeneralProp<UseQueryModulesHandle>) -> Html {
 	let on_delete_module = Callback::from({
 		let modules_query = modules_query.clone();
 		move |_| {
@@ -189,48 +185,44 @@ fn ModuleCard(ModuleCardProps { module, on_delete }: &ModuleCardProps) -> Html {
 			let module_id = module_id.clone();
 			let database = database.clone();
 			let on_delete = on_delete.clone();
-			task_dispatch.spawn(
-				format!("Delete {}", module_id.to_string()),
-				None,
-				async move {
-					use crate::database::{
-						app::{entry::ModuleSystem, Entry, Module},
-						Error, ObjectStoreExt, TransactionExt,
+			task_dispatch.spawn(format!("Delete {}", module_id.to_string()), None, async move {
+				use crate::database::{
+					app::{entry::ModuleSystem, Entry, Module},
+					Error, ObjectStoreExt, TransactionExt,
+				};
+				use futures_util::StreamExt;
+				let transaction = database.write()?;
+				let module_store = transaction.object_store_of::<Module>()?;
+				let entry_store = transaction.object_store_of::<Entry>()?;
+
+				let module_systems = {
+					let req = module_store.get_record::<Module>(module_id.to_string());
+					let module = req.await?.unwrap();
+					module.systems
+				};
+
+				let mut entry_ids = Vec::new();
+				let idx_module_system = entry_store.index_of::<ModuleSystem>()?;
+				for system in module_systems {
+					let query = ModuleSystem {
+						module: module_id.to_string(),
+						system,
 					};
-					use futures_util::StreamExt;
-					let transaction = database.write()?;
-					let module_store = transaction.object_store_of::<Module>()?;
-					let entry_store = transaction.object_store_of::<Entry>()?;
-
-					let module_systems = {
-						let req = module_store.get_record::<Module>(module_id.to_string());
-						let module = req.await?.unwrap();
-						module.systems
-					};
-
-					let mut entry_ids = Vec::new();
-					let idx_module_system = entry_store.index_of::<ModuleSystem>()?;
-					for system in module_systems {
-						let query = ModuleSystem {
-							module: module_id.to_string(),
-							system,
-						};
-						let mut cursor = idx_module_system.open_cursor(Some(&query)).await?;
-						while let Some(entry) = cursor.next().await {
-							entry_ids.push(entry.id);
-						}
+					let mut cursor = idx_module_system.open_cursor(Some(&query)).await?;
+					while let Some(entry) = cursor.next().await {
+						entry_ids.push(entry.id);
 					}
+				}
 
-					for entry_id in entry_ids {
-						entry_store.delete_record(entry_id).await?;
-					}
-					module_store.delete_record(module_id.to_string()).await?;
+				for entry_id in entry_ids {
+					entry_store.delete_record(entry_id).await?;
+				}
+				module_store.delete_record(module_id.to_string()).await?;
 
-					transaction.commit().await?;
-					on_delete.emit(());
-					Ok(()) as Result<(), Error>
-				},
-			);
+				transaction.commit().await?;
+				on_delete.emit(());
+				Ok(()) as Result<(), Error>
+			});
 		}
 	});
 	html! {

@@ -1,18 +1,15 @@
-use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
-	system::dnd5e::{
-		data::{
-			action::{
-				Action, ActivationKind, Attack, AttackCheckKind, AttackKind, AttackKindValue,
-			},
-			item::container::item::EquipableEntry,
-			roll::EvaluatedRoll,
-			Ability, DamageRoll, Feature, WeaponProficiency,
-		},
-		evaluator::{self, IsProficientWith},
-		Value,
+use crate::kdl_ext::NodeContext;
+use crate::system::dnd5e::{
+	data::{
+		action::{Action, ActivationKind, Attack, AttackCheckKind, AttackKind, AttackKindValue},
+		item::container::item::EquipableEntry,
+		roll::EvaluatedRoll,
+		Ability, DamageRoll, Feature, WeaponProficiency,
 	},
+	evaluator::{self, IsProficientWith},
+	Value,
 };
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::collections::HashMap;
 
 mod damage;
@@ -35,8 +32,7 @@ pub struct Weapon {
 
 impl Weapon {
 	pub fn to_metadata(self) -> serde_json::Value {
-		let mut contents: HashMap<&'static str, serde_json::Value> =
-			[("kind", self.kind.to_string().into())].into();
+		let mut contents: HashMap<&'static str, serde_json::Value> = [("kind", self.kind.to_string().into())].into();
 		if !self.classification.is_empty() {
 			contents.insert("classification", self.classification.into());
 		}
@@ -142,7 +138,8 @@ impl Weapon {
 	}
 }
 
-impl FromKDL for Weapon {
+impl FromKdl<NodeContext> for Weapon {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let kind = node.next_str_req_t::<Kind>()?;
 		let classification = node.get_str_req("class")?.to_owned();

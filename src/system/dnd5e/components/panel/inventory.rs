@@ -1,8 +1,8 @@
 use crate::{
 	components::{
 		context_menu,
-		database::{use_query_all_typed, use_typed_fetch_callback, QueryAllArgs, QueryStatus},
-		stop_propagation, IndirectFetch, ObjectLink, Spinner,
+		database::{use_query_all_typed, QueryAllArgs, QueryStatus},
+		stop_propagation, IndirectFetch, ObjectLink,
 	},
 	database::app::Database,
 	page::characters::sheet::{CharacterHandle, MutatorImpact},
@@ -40,7 +40,6 @@ mod item_content;
 pub use item_content::*;
 mod row;
 pub use row::*;
-use yew_hooks::use_is_first_mount;
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct SystemItemProps {
@@ -59,12 +58,7 @@ pub fn Inventory() -> Html {
 		|_, _context| context_menu::Action::open_root("Item Browser", html!(<BrowseModal />))
 	});
 	let open_starting_equipment = context_menu::use_control_action({
-		|_, _context| {
-			context_menu::Action::open_root(
-				"Starting Equipment",
-				html!(<BrowseStartingEquipment />),
-			)
-		}
+		|_, _context| context_menu::Action::open_root("Starting Equipment", html!(<BrowseStartingEquipment />))
 	});
 
 	let search_header = html! {
@@ -143,8 +137,8 @@ fn ContainerSection(ContainerSectionProps { container_id }: &ContainerSectionPro
 			let Some(item) = state.inventory().get_item(container_id) else { return Html::default(); };
 			let Some(container) = &item.items else { return Html::default(); };
 			title = item.name.clone().into();
-			wallet = (!container.wallet().is_empty())
-				.then(|| html! { <WalletInlineButton id={container_id.clone()} /> });
+			wallet =
+				(!container.wallet().is_empty()).then(|| html! { <WalletInlineButton id={container_id.clone()} /> });
 			rows = container
 				.iter_by_name()
 				.map(|(item_id, item)| {
@@ -627,11 +621,7 @@ fn SpecificItem(
 	let onclick = context_menu::use_control_action({
 		let item = item.clone();
 		move |_, context| {
-			context_menu::Action::open(
-				&context,
-				item.name.clone(),
-				html!(<ItemInfo item={item.clone()} />),
-			)
+			context_menu::Action::open(&context, item.name.clone(), html!(<ItemInfo item={item.clone()} />))
 		}
 	});
 	html! {<>
@@ -708,8 +698,7 @@ fn SelectItem(
 		_ => {}
 	};
 
-	let empty_option =
-		|text: &'static str| html!(<option selected={selected.is_none()}>{text}</option>);
+	let empty_option = |text: &'static str| html!(<option selected={selected.is_none()}>{text}</option>);
 	let options = match query_handle.status() {
 		QueryStatus::Pending => empty_option("Pending..."),
 		QueryStatus::Empty => empty_option("No Options"),

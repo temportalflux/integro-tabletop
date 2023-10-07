@@ -1,9 +1,8 @@
 use super::Condition;
-use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
-	system::core::SourceId,
-};
+use crate::kdl_ext::NodeContext;
+use crate::system::core::SourceId;
 use anyhow::Context;
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::str::FromStr;
 
 pub type IndirectCondition = Indirect<Condition>;
@@ -14,7 +13,12 @@ pub enum Indirect<V> {
 	Custom(V),
 }
 
-impl<V: FromKDL> FromKDL for Indirect<V> {
+impl<V> FromKdl<NodeContext> for Indirect<V>
+where
+	V: FromKdl<NodeContext>,
+	anyhow::Error: From<V::Error>,
+{
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		match node.next_str_req()? {
 			"Custom" | "Specific" => {
@@ -26,7 +30,7 @@ impl<V: FromKDL> FromKDL for Indirect<V> {
 				let mut source_id = SourceId::from_str(source_id_str).with_context(|| {
 					format!("Expected {source_id_str:?} to either be the value \"Custom\"/\"Specific\" or a valid SourceId.")
 				})?;
-				source_id.set_relative_basis(node.id(), false);
+				source_id.set_relative_basis(node.context().id(), false);
 				Ok(Self::Id(source_id))
 			}
 		}

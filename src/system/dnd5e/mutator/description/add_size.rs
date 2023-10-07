@@ -1,8 +1,9 @@
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::dnd5e::data::{character::Character, description, roll::Roll},
 	utility::Mutator,
 };
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct AddSize {
@@ -26,7 +27,7 @@ impl ToString for FormulaComponent {
 }
 
 crate::impl_trait_eq!(AddSize);
-crate::impl_kdl_node!(AddSize, "add_size");
+kdlize::impl_kdl_node!(AddSize, "add_size");
 
 impl Mutator for AddSize {
 	type Target = Character;
@@ -34,20 +35,12 @@ impl Mutator for AddSize {
 	fn description(&self, _state: Option<&Character>) -> description::Section {
 		let mut content = Vec::new();
 		if !self.height.is_empty() {
-			let comps = self
-				.height
-				.iter()
-				.map(ToString::to_string)
-				.collect::<Vec<_>>();
+			let comps = self.height.iter().map(ToString::to_string).collect::<Vec<_>>();
 			let desc = comps.join(" + ");
 			content.push(format!("Your height increases by {desc} inches."));
 		}
 		if !self.weight.is_empty() {
-			let comps = self
-				.weight
-				.iter()
-				.map(ToString::to_string)
-				.collect::<Vec<_>>();
+			let comps = self.weight.iter().map(ToString::to_string).collect::<Vec<_>>();
 			let desc = comps.join(" + ");
 			content.push(format!("Your weight increases by {desc} lbs."));
 		}
@@ -70,15 +63,14 @@ impl Mutator for AddSize {
 			match comp {
 				FormulaComponent::Base(value) => size_formula.weight.base += *value,
 				FormulaComponent::Bonus(roll) => size_formula.weight.bonus.push(*roll),
-				FormulaComponent::WeightMultiplier(roll) => {
-					size_formula.weight.multiplier.push(*roll)
-				}
+				FormulaComponent::WeightMultiplier(roll) => size_formula.weight.multiplier.push(*roll),
 			}
 		}
 	}
 }
 
-impl FromKDL for AddSize {
+impl FromKdl<NodeContext> for AddSize {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let height = match node.query_opt("scope() > height")? {
 			None => Vec::new(),
@@ -88,9 +80,7 @@ impl FromKDL for AddSize {
 					comps.push(FormulaComponent::Base(base as u32));
 				}
 				if let Some(entry) = node.get_opt("bonus") {
-					comps.push(FormulaComponent::Bonus(Roll::from_kdl_value(
-						entry.value(),
-					)?));
+					comps.push(FormulaComponent::Bonus(Roll::from_kdl_value(entry.value())?));
 				}
 				comps
 			}
@@ -103,14 +93,10 @@ impl FromKDL for AddSize {
 					comps.push(FormulaComponent::Base(base as u32));
 				}
 				if let Some(entry) = node.get_opt("bonus") {
-					comps.push(FormulaComponent::Bonus(Roll::from_kdl_value(
-						entry.value(),
-					)?));
+					comps.push(FormulaComponent::Bonus(Roll::from_kdl_value(entry.value())?));
 				}
 				if let Some(entry) = node.get_opt("multiplier") {
-					comps.push(FormulaComponent::WeightMultiplier(Roll::from_kdl_value(
-						entry.value(),
-					)?));
+					comps.push(FormulaComponent::WeightMultiplier(Roll::from_kdl_value(entry.value())?));
 				}
 				comps
 			}

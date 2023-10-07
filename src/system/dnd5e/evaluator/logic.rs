@@ -8,7 +8,7 @@ use crate::{
 pub struct Any(pub Vec<BoxedEvaluator<bool>>);
 
 crate::impl_trait_eq!(Any);
-crate::impl_kdl_node!(Any, "any");
+kdlize::impl_kdl_node!(Any, "any");
 impl Evaluator for Any {
 	type Context = Character;
 	type Item = bool;
@@ -18,9 +18,9 @@ impl Evaluator for Any {
 	}
 
 	fn dependencies(&self) -> Dependencies {
-		self.0.iter().fold(Dependencies::default(), |deps, eval| {
-			deps.join(eval.dependencies())
-		})
+		self.0
+			.iter()
+			.fold(Dependencies::default(), |deps, eval| deps.join(eval.dependencies()))
 	}
 
 	fn evaluate(&self, state: &Self::Context) -> Self::Item {

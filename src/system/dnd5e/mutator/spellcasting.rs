@@ -1,13 +1,12 @@
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, KDLNode, NodeBuilder},
 	system::{
 		core::SourceId,
 		dnd5e::data::{
 			action::LimitedUses,
 			character::{
 				spellcasting::{
-					self, AbilityOrStat, Caster, CastingMethod, Restriction, RitualCapability,
-					Slots, SpellEntry,
+					self, AbilityOrStat, Caster, CastingMethod, Restriction, RitualCapability, Slots, SpellEntry,
 				},
 				Character,
 			},
@@ -20,16 +19,15 @@ use crate::{
 	utility::{selector, Mutator, NotInList, Value},
 };
 use itertools::Itertools;
-use std::{
-	collections::{BTreeMap, HashSet},
-	str::FromStr,
-};
+use kdlize::NodeId;
+use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
+use std::{collections::BTreeMap, str::FromStr};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Spellcasting(Operation);
 
 crate::impl_trait_eq!(Spellcasting);
-crate::impl_kdl_node!(Spellcasting, "spellcasting");
+kdlize::impl_kdl_node!(Spellcasting, "spellcasting");
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Operation {
@@ -99,24 +97,16 @@ impl Mutator for Spellcasting {
 			} => {
 				let mut selectors = selector::DataList::default();
 				if let Some(selectable) = selectable_spells {
-					selectors =
-						selectors.with_object("Selected Spells", &selectable.selector, state);
+					selectors = selectors.with_object("Selected Spells", &selectable.selector, state);
 				}
 				description::Section {
 					title: Some("Spellcasting: Always Preppared Spells".into()),
-					content: format!(
-						"Add spells which are always prepared, using {}.",
-						ability.long_name()
-					)
-					.into(),
+					content: format!("Add spells which are always prepared, using {}.", ability.long_name()).into(),
 					children: vec![selectors.into()],
 					..Default::default()
 				}
 			}
-			Operation::AddSource {
-				class_name,
-				spell_ids,
-			} => description::Section {
+			Operation::AddSource { class_name, spell_ids } => description::Section {
 				title: Some("Spellcasting: Expanded Spell List".into()),
 				content: format!(
 					"Adds {} spells you can select from for the {class_name} class.",
@@ -164,18 +154,11 @@ impl Mutator for Spellcasting {
 							// Each rank has its own data path and amount of slots granted by this slot-group,
 							// so we need to submit a separate reset for it
 							// (because restore amount is applied to all data paths in an entry).
-							let rank_data_path = stats
-								.persistent()
-								.selected_spells
-								.consumed_slots_path(*rank);
+							let rank_data_path = stats.persistent().selected_spells.consumed_slots_path(*rank);
 							let entry = crate::system::dnd5e::data::character::RestEntry {
 								restore_amount: Some(Roll::from(*amount as u32)),
 								data_paths: vec![rank_data_path],
-								source: parent.join(format!(
-									"{} Spellcasting Slots (Rank {})",
-									caster.name(),
-									*rank
-								)),
+								source: parent.join(format!("{} Spellcasting Slots (Rank {})", caster.name(), *rank)),
 							};
 							stats.rest_resets_mut().add(*reset_on, entry);
 						}
@@ -183,13 +166,8 @@ impl Mutator for Spellcasting {
 				}
 				stats.spellcasting_mut().add_caster(caster.clone());
 			}
-			Operation::AddSource {
-				class_name,
-				spell_ids,
-			} => {
-				stats
-					.spellcasting_mut()
-					.add_spell_access(class_name, spell_ids, parent);
+			Operation::AddSource { class_name, spell_ids } => {
+				stats.spellcasting_mut().add_spell_access(class_name, spell_ids, parent);
 			}
 			Operation::AddPrepared {
 				ability,
@@ -220,9 +198,7 @@ impl Mutator for Spellcasting {
 				if let Some(selectable) = &selectable_spells {
 					if let Some(data_path) = selectable.selector.get_data_path() {
 						if let Some(selections) = stats.get_selections_at(&data_path) {
-							let ids = selections
-								.iter()
-								.filter_map(|str| SourceId::from_str(str).ok());
+							let ids = selections.iter().filter_map(|str| SourceId::from_str(str).ok());
 							let ids_info = ids.map(|id| (id, &selectable.prepared));
 							all_spells.extend(ids_info);
 						}
@@ -259,7 +235,8 @@ impl Mutator for Spellcasting {
 	}
 }
 
-impl FromKDL for Spellcasting {
+impl FromKdl<NodeContext> for Spellcasting {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let operation = match node.next_str_opt()? {
 			None => {
@@ -350,10 +327,8 @@ impl FromKDL for Spellcasting {
 				let ritual_capability = match node.query_opt("scope() > ritual")? {
 					None => None,
 					Some(node) => {
-						let available_spells =
-							node.query_opt("scope() > available-spells")?.is_some();
-						let selected_spells =
-							node.query_opt("scope() > selected-spells")?.is_some();
+						let available_spells = node.query_opt("scope() > available-spells")?.is_some();
+						let selected_spells = node.query_opt("scope() > selected-spells")?.is_some();
 						Some(RitualCapability {
 							available_spells,
 							selected_spells,
@@ -378,12 +353,9 @@ impl FromKDL for Spellcasting {
 				let class_name = node.get_str_req("class")?.to_owned();
 				let mut spell_ids = Vec::new();
 				for s in node.query_str_all("scope() > spell", 0)? {
-					spell_ids.push(SourceId::from_str(s)?.with_relative_basis(node.id(), false));
+					spell_ids.push(SourceId::from_str(s)?.with_relative_basis(node.context().id(), false));
 				}
-				Operation::AddSource {
-					class_name,
-					spell_ids,
-				}
+				Operation::AddSource { class_name, spell_ids }
 			}
 			Some("add_prepared") => {
 				let ability = node.get_str_req_t::<Ability>("ability")?;
@@ -392,7 +364,7 @@ impl FromKDL for Spellcasting {
 				let mut specific_spells = Vec::new();
 				for mut node in &mut node.query_all("scope() > spell")? {
 					let id = node.next_str_req()?;
-					let id = SourceId::from_str(id)?.with_relative_basis(node.id(), false);
+					let id = SourceId::from_str(id)?.with_relative_basis(node.context().id(), false);
 					let info = PreparedInfo::from_kdl(&mut node)?;
 					specific_spells.push((id, info));
 				}
@@ -402,9 +374,7 @@ impl FromKDL for Spellcasting {
 					Some(mut node) => {
 						let info = PreparedInfo::from_kdl(&mut node)?;
 						let mut filter = None;
-						let amount = node
-							.query_opt_t("scope() > amount")?
-							.unwrap_or(Value::Fixed(1));
+						let amount = node.query_opt_t("scope() > amount")?.unwrap_or(Value::Fixed(1));
 						let mut selector = selector::Object {
 							id: Default::default(),
 							object_category: Spell::id().into(),
@@ -432,9 +402,7 @@ impl FromKDL for Spellcasting {
 					limited_uses,
 				}
 			}
-			Some(name) => {
-				return Err(NotInList(name.into(), vec!["add_source", "add_prepared"]).into())
-			}
+			Some(name) => return Err(NotInList(name.into(), vec!["add_source", "add_prepared"]).into()),
 		};
 		Ok(Self(operation))
 	}
@@ -524,10 +492,7 @@ impl AsKdl for Spellcasting {
 				}
 				node
 			}
-			Operation::AddSource {
-				class_name,
-				spell_ids,
-			} => {
+			Operation::AddSource { class_name, spell_ids } => {
 				node.push_entry("add_source");
 				node.push_entry(("class", class_name.clone()));
 				for spell_id in spell_ids {
@@ -582,7 +547,8 @@ impl AsKdl for Spellcasting {
 	}
 }
 
-impl FromKDL for PreparedInfo {
+impl FromKdl<NodeContext> for PreparedInfo {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let can_cast_through_slot = node.get_bool_opt("use_slot")?.unwrap_or_default();
 		let can_ritual_cast = node.get_bool_opt("use_ritual")?.unwrap_or_default();

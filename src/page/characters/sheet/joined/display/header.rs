@@ -55,10 +55,8 @@ pub fn Header() -> Html {
 		}
 	});
 
-	let lineage =
-		group_names(html!(" / "), lineages).map(|items| html!(<span class="mx-1">{items}</span>));
-	let upbringing = group_names(html!(" / "), upbringings)
-		.map(|items| html!(<span class="mx-1">{items}</span>));
+	let lineage = group_names(html!(" / "), lineages).map(|items| html!(<span class="mx-1">{items}</span>));
+	let upbringing = group_names(html!(" / "), upbringings).map(|items| html!(<span class="mx-1">{items}</span>));
 	let joiner = (lineage.is_some() && upbringing.is_some()).then_some(html!("&"));
 	let lineage_upbringing = (lineage.is_some() || upbringing.is_some()).then(|| {
 		html! {
@@ -96,16 +94,11 @@ pub fn Header() -> Html {
 	}
 }
 
-pub fn pronouns(
-	description: &crate::system::dnd5e::data::character::Description,
-) -> Option<Vec<Html>> {
+pub fn pronouns(description: &crate::system::dnd5e::data::character::Description) -> Option<Vec<Html>> {
 	group_names(html!(", "), description.iter_pronouns())
 }
 
-fn group_names<T: AsRef<str>>(
-	separator: Html,
-	iter: impl IntoIterator<Item = T>,
-) -> Option<Vec<Html>> {
+fn group_names<T: AsRef<str>>(separator: Html, iter: impl IntoIterator<Item = T>) -> Option<Vec<Html>> {
 	let iter = iter.into_iter().map(|name| html!(name.as_ref()));
 	let items = Itertools::intersperse(iter, separator).collect::<Vec<_>>();
 	(!items.is_empty()).then(|| items)

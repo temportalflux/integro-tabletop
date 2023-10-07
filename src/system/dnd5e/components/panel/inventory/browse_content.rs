@@ -1,8 +1,6 @@
 use crate::{
 	components::{
-		database::{
-			use_query_all_typed, use_typed_fetch_callback_tuple, QueryAllArgs, QueryStatus,
-		},
+		database::{use_query_all_typed, use_typed_fetch_callback_tuple, QueryAllArgs, QueryStatus},
 		Spinner,
 	},
 	database::app::Criteria,
@@ -43,10 +41,7 @@ pub fn BrowseModal() -> Html {
 	use_effect_with_deps(
 		{
 			let query_handle = query_handle.clone();
-			move |(params, limit): &(
-				UseStateHandle<SearchParams>,
-				UseStateHandle<Option<usize>>,
-			)| {
+			move |(params, limit): &(UseStateHandle<SearchParams>, UseStateHandle<Option<usize>>)| {
 				if params.is_empty() {
 					return;
 				}
@@ -197,10 +192,7 @@ fn BrowsedItemCard(props: &GeneralProp<ItemLocation>) -> Html {
 		match &item.id.module {
 			None => String::new(),
 			Some(ModuleId::Local { name }) => format!("{name}_"),
-			Some(ModuleId::Github {
-				user_org,
-				repository,
-			}) => format!("{user_org}_{repository}_"),
+			Some(ModuleId::Github { user_org, repository }) => format!("{user_org}_{repository}_"),
 		},
 		{
 			let path = item.id.path.with_extension("");
@@ -247,13 +239,7 @@ struct AddItemActionsProps {
 }
 type AddItemArgs = (u32, Wallet, Option<Vec<Uuid>>);
 #[function_component]
-fn AddItemActions(
-	AddItemActionsProps {
-		id,
-		batch_size,
-		worth,
-	}: &AddItemActionsProps,
-) -> Html {
+fn AddItemActions(AddItemActionsProps { id, batch_size, worth }: &AddItemActionsProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let auto_exchange = state.persistent().settings.currency_auto_exchange;
 	let amt_to_add = use_state_eq(|| 1u32);
@@ -273,10 +259,7 @@ fn AddItemActions(
 					items
 				};
 				if !cost.is_empty() {
-					persistent
-						.inventory
-						.wallet_mut()
-						.remove(cost, auto_exchange);
+					persistent.inventory.wallet_mut().remove(cost, auto_exchange);
 				}
 				for item in items {
 					persistent.inventory.insert_to(item, &container_id);
@@ -404,10 +387,7 @@ fn AddItemActions(
 					amt_state.set(1);
 				}
 			});
-			let not_enough_in_wallet = !state
-				.inventory()
-				.wallet()
-				.contains(&purchase_cost, auto_exchange);
+			let not_enough_in_wallet = !state.inventory().wallet().contains(&purchase_cost, auto_exchange);
 			html! {<>
 				<div class="input-group item-add-amount mt-3">
 					<span class="input-group-text title">{"Purchase"}</span>

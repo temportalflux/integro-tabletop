@@ -11,9 +11,7 @@ use crate::{
 			components::{glyph::Glyph, panel::get_inventory_item_mut},
 			data::{
 				character::{
-					spellcasting::{
-						AbilityOrStat, CasterKind, CastingMethod, RitualCapability, SpellEntry,
-					},
+					spellcasting::{AbilityOrStat, CasterKind, CastingMethod, RitualCapability, SpellEntry},
 					MAX_SPELL_RANK,
 				},
 				proficiency,
@@ -54,8 +52,7 @@ pub fn Spells() -> Html {
 	let sections = {
 		let mut html = Vec::new();
 		for (rank, section_props) in sections.sections {
-			if section_props.spells.is_empty() && (section_props.slot_count.is_none() || rank == 0)
-			{
+			if section_props.spells.is_empty() && (section_props.slot_count.is_none() || rank == 0) {
 				continue;
 			}
 			html.push(spell_section(&state, rank, section_props));
@@ -72,8 +69,7 @@ pub fn Spells() -> Html {
 			.map(|caster| {
 				let name = caster.name().clone();
 				let modifier = state.ability_modifier(caster.ability, None);
-				let atk_bonus =
-					state.ability_modifier(caster.ability, Some(proficiency::Level::Full));
+				let atk_bonus = state.ability_modifier(caster.ability, Some(proficiency::Level::Full));
 				let save_dc = 8 + atk_bonus;
 				(name, modifier, atk_bonus, save_dc)
 			})
@@ -83,8 +79,7 @@ pub fn Spells() -> Html {
 				<ManageCasterButton {caster_id} />
 			}
 		});
-		let names = Itertools::intersperse(names, html! { <span class="mx-1">{"|"}</span> })
-			.collect::<Vec<_>>();
+		let names = Itertools::intersperse(names, html! { <span class="mx-1">{"|"}</span> }).collect::<Vec<_>>();
 		let modifier = modifier.into_iter().map(|v| format!("{v:+}")).join(" | ");
 		let atk_bonus = atk_bonus.into_iter().map(|v| format!("{v:+}")).join(" | ");
 		let save_dc = save_dc.into_iter().map(|v| format!("{v}")).join(" | ");
@@ -171,9 +166,9 @@ impl<'c> SpellSections<'c> {
 	fn insert_slots(&mut self, state: &'c CharacterHandle) {
 		if let Some(slots) = state.spellcasting().spell_slots(&*state) {
 			for (rank, slot_count) in slots {
-				let section =
-					self.sections.get_mut(&rank).expect(&format!(
-					"Spell rank {rank} is not supported by UI, must be in the range of [0, {}].", MAX_SPELL_RANK
+				let section = self.sections.get_mut(&rank).expect(&format!(
+					"Spell rank {rank} is not supported by UI, must be in the range of [0, {}].",
+					MAX_SPELL_RANK
 				));
 				let data_path = state.persistent().selected_spells.consumed_slots_path(rank);
 				let consumed_slots = state.get_first_selection_at::<usize>(&data_path);
@@ -188,8 +183,7 @@ impl<'c> SpellSections<'c> {
 			(
 				None,
 				CastingMethod::Cast {
-					can_use_slots: true,
-					..
+					can_use_slots: true, ..
 				},
 			) => {
 				let max_rank = match spell.rank {
@@ -243,22 +237,14 @@ impl<'c> SpellSections<'c> {
 						source: source.clone(),
 					},
 				);
-				self.insert_as_ritual(
-					spell,
-					entry,
-					RitualSpellSource::AlwaysPrepared(source.clone()),
-				);
+				self.insert_as_ritual(spell, entry, RitualSpellSource::AlwaysPrepared(source.clone()));
 			}
 		}
 	}
 
 	fn insert_available_ritual_spells(&mut self, state: &'c CharacterHandle) {
 		for (caster_id, spell, spell_entry) in state.spellcasting().iter_ritual_spells() {
-			self.insert_as_ritual(
-				spell,
-				spell_entry,
-				RitualSpellSource::Caster(caster_id.clone()),
-			);
+			self.insert_as_ritual(spell, spell_entry, RitualSpellSource::Caster(caster_id.clone()));
 		}
 
 		// for casters which prepare from items, rituals are based on those in the items
@@ -287,32 +273,19 @@ impl<'c> SpellSections<'c> {
 			for contained_spell in &spell_container.spells {
 				for (caster_id, spell_entry) in &prepare_from_item_casters {
 					let spell_id = contained_spell.spell_id().unversioned();
-					if let Some(spell) = state
-						.spellcasting()
-						.get_ritual_spell_for(caster_id, &spell_id)
-					{
-						self.insert_as_ritual(
-							spell,
-							spell_entry,
-							RitualSpellSource::Caster((*caster_id).clone()),
-						);
+					if let Some(spell) = state.spellcasting().get_ritual_spell_for(caster_id, &spell_id) {
+						self.insert_as_ritual(spell, spell_entry, RitualSpellSource::Caster((*caster_id).clone()));
 					}
 				}
 			}
 		}
 	}
 
-	fn insert_as_ritual(
-		&mut self,
-		spell: &'c Spell,
-		spell_entry: &'c SpellEntry,
-		source: RitualSpellSource,
-	) {
+	fn insert_as_ritual(&mut self, spell: &'c Spell, spell_entry: &'c SpellEntry, source: RitualSpellSource) {
 		match &spell_entry.method {
 			// ritual casting is allowed
 			CastingMethod::Cast {
-				can_use_ritual: true,
-				..
+				can_use_ritual: true, ..
 			} => {}
 			// other casting, or any other method is not considered a ritual
 			_ => return,
@@ -361,15 +334,9 @@ enum RitualSpellSource {
 	AlwaysPrepared(std::path::PathBuf),
 }
 impl SpellLocation {
-	fn get<'this, 'c>(
-		&'this self,
-		state: &'c CharacterHandle,
-	) -> Option<(&'c Spell, &'c SpellEntry)> {
+	fn get<'this, 'c>(&'this self, state: &'c CharacterHandle) -> Option<(&'c Spell, &'c SpellEntry)> {
 		match self {
-			SpellLocation::Selected {
-				caster_id,
-				spell_id,
-			} => {
+			SpellLocation::Selected { caster_id, spell_id } => {
 				let Some(caster) = state.spellcasting().get_caster(caster_id) else { return None; };
 				let Some(spell) = state.persistent().selected_spells.get_spell(caster_id, spell_id) else { return None; };
 				Some((spell, &caster.spell_entry))
@@ -401,34 +368,18 @@ impl SpellLocation {
 	}
 }
 impl<'c> SectionProps<'c> {
-	pub fn insert_spell(
-		&mut self,
-		spell: &'c Spell,
-		entry: &'c SpellEntry,
-		location: SpellLocation,
-	) {
+	pub fn insert_spell(&mut self, spell: &'c Spell, entry: &'c SpellEntry, location: SpellLocation) {
 		let idx = self.spells.binary_search_by(|row| {
 			let spell_name = row.spell.name.cmp(&spell.name);
 			let source = row.entry.source.cmp(&entry.source);
 			spell_name.then(source)
 		});
 		let idx = idx.unwrap_or_else(|e| e);
-		self.spells.insert(
-			idx,
-			SectionSpell {
-				spell,
-				entry,
-				location,
-			},
-		);
+		self.spells.insert(idx, SectionSpell { spell, entry, location });
 	}
 }
 
-fn spell_section<'c>(
-	state: &'c CharacterHandle,
-	rank: u8,
-	section_props: SectionProps<'c>,
-) -> Html {
+fn spell_section<'c>(state: &'c CharacterHandle, rank: u8, section_props: SectionProps<'c>) -> Html {
 	let suffix = rank_suffix(rank);
 	let rank_text = match rank {
 		0 => "cantrip",
@@ -436,10 +387,7 @@ fn spell_section<'c>(
 	};
 	let title = match rank {
 		0 => rank_text.to_case(Case::Upper),
-		rank => format!(
-			"{rank}{}",
-			format!("{suffix} {rank_text}").to_case(Case::Upper)
-		),
+		rank => format!("{rank}{}", format!("{suffix} {rank_text}").to_case(Case::Upper)),
 	};
 	let inline_rank_text = format!("{rank}{suffix}-{rank_text}");
 	let empty_note = format!(
@@ -514,11 +462,7 @@ fn spell_row<'c>(props: SpellRowProps<'c>) -> Html {
 		state,
 		section_rank,
 		slots,
-		section_spell: SectionSpell {
-			spell,
-			entry,
-			location,
-		},
+		section_spell: SectionSpell { spell, entry, location },
 	} = props;
 
 	let (use_kind, src_text_suffix) = match &location {
@@ -526,12 +470,10 @@ fn spell_row<'c>(props: SpellRowProps<'c>) -> Html {
 		_ => match &entry.method {
 			CastingMethod::AtWill => (UseSpell::AtWill, None),
 			CastingMethod::Cast {
-				can_use_slots: true,
-				..
+				can_use_slots: true, ..
 			} if spell.rank == 0 => (UseSpell::AtWill, None),
 			CastingMethod::Cast {
-				can_use_slots: true,
-				..
+				can_use_slots: true, ..
 			} => {
 				let slot = UseSpell::Slot {
 					spell_rank: spell.rank,
@@ -623,8 +565,7 @@ fn spell_row<'c>(props: SpellRowProps<'c>) -> Html {
 				(use_spell, None)
 			}
 			CastingMethod::Cast {
-				can_use_slots: false,
-				..
+				can_use_slots: false, ..
 			} => return Html::default(),
 		},
 	};
@@ -656,19 +597,10 @@ pub fn spell_name_and_icons(
 ) -> Html {
 	let can_ritual_cast = spell.casting_time.ritual && {
 		ritual_only || {
-			let classified = entry
-				.as_ref()
-				.map(|entry| entry.classified_as.as_ref())
-				.flatten();
-			let caster = classified
-				.map(|id| state.spellcasting().get_caster(id))
-				.flatten();
-			let ritual_casting = caster
-				.map(|caster| caster.ritual_capability.as_ref())
-				.flatten();
-			let ritual_cast_selected = ritual_casting
-				.map(|ritual| ritual.selected_spells)
-				.unwrap_or_default();
+			let classified = entry.as_ref().map(|entry| entry.classified_as.as_ref()).flatten();
+			let caster = classified.map(|id| state.spellcasting().get_caster(id)).flatten();
+			let ritual_casting = caster.map(|caster| caster.ritual_capability.as_ref()).flatten();
+			let ritual_cast_selected = ritual_casting.map(|ritual| ritual.selected_spells).unwrap_or_default();
 			ritual_cast_selected
 		}
 	};
@@ -708,12 +640,8 @@ pub fn spell_overview_info(
 		.map(|entry| entry.range.as_ref())
 		.flatten()
 		.unwrap_or(&spell.range);
-	let attack_bonus = entry
-		.map(|entry| entry.attack_bonus)
-		.unwrap_or(AbilityOrStat::Stat(0));
-	let save_dc = entry
-		.map(|entry| entry.save_dc)
-		.unwrap_or(AbilityOrStat::Stat(0));
+	let attack_bonus = entry.map(|entry| entry.attack_bonus).unwrap_or(AbilityOrStat::Stat(0));
+	let save_dc = entry.map(|entry| entry.save_dc).unwrap_or(AbilityOrStat::Stat(0));
 	let cast_at_rank = override_rank.or(entry.map(|entry| entry.rank).flatten());
 	let damage_modifier = entry
 		.map(|entry| entry.damage_ability)
@@ -869,12 +797,7 @@ struct SpellModalProps {
 	children: Children,
 }
 #[function_component]
-fn SpellModal(
-	SpellModalProps {
-		location,
-		children: _,
-	}: &SpellModalProps,
-) -> Html {
+fn SpellModal(SpellModalProps { location, children: _ }: &SpellModalProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let Some((spell, entry)) = location.get(&state) else {
 		log::warn!("Invalid spell at location {location:?}");
@@ -923,11 +846,7 @@ fn ManageCasterModal(CasterNameProps { caster_id }: &CasterNameProps) -> Html {
 		num_all_selections = selections.len();
 	}
 	let mut selected_spells = Vec::with_capacity(num_all_selections);
-	if let Some(iter_selected) = state
-		.persistent()
-		.selected_spells
-		.iter_caster(caster.name())
-	{
+	if let Some(iter_selected) = state.persistent().selected_spells.iter_caster(caster.name()) {
 		for spell in iter_selected {
 			// Insertion sort by rank & name
 			let order_idx = selected_spells
@@ -1061,10 +980,7 @@ fn SpellListAction(
 		};
 	}
 
-	let is_selected = state
-		.persistent()
-		.selected_spells
-		.has_selected(&info.id, &spell_id);
+	let is_selected = state.persistent().selected_spells.has_selected(&info.id, &spell_id);
 
 	let mut classes = classes!("btn", "btn-xs", "select");
 	let mut disabled = false;
@@ -1145,12 +1061,8 @@ fn spell_list_item(
 	let collapse_id = format!("{section_id}-{}", spell.id.ref_id());
 	let can_ritual_cast = spell.casting_time.ritual && {
 		let classified = entry.map(|entry| entry.classified_as.as_ref()).flatten();
-		let caster = classified
-			.map(|id| state.spellcasting().get_caster(id))
-			.flatten();
-		let ritual_casting = caster
-			.map(|caster| caster.ritual_capability.as_ref())
-			.flatten();
+		let caster = classified.map(|id| state.spellcasting().get_caster(id)).flatten();
+		let ritual_casting = caster.map(|caster| caster.ritual_capability.as_ref()).flatten();
 		match ritual_casting {
 			None => false,
 			Some(RitualCapability {
@@ -1331,9 +1243,7 @@ fn spell_content(spell: &Spell, entry: Option<&SpellEntry>, state: &CharacterHan
 			.map(|entry| {
 				let atk_bonus = match entry.attack_bonus {
 					AbilityOrStat::Stat(stat) => stat,
-					AbilityOrStat::Ability(ability) => {
-						state.ability_modifier(ability, Some(proficiency::Level::Full))
-					}
+					AbilityOrStat::Ability(ability) => state.ability_modifier(ability, Some(proficiency::Level::Full)),
 				};
 				let save_dc = match entry.save_dc {
 					AbilityOrStat::Stat(stat) => stat as i32,
@@ -1348,10 +1258,7 @@ fn spell_content(spell: &Spell, entry: Option<&SpellEntry>, state: &CharacterHan
 			("{CasterAtk}".into(), format!("{atk_bonus:+}")),
 			("{CasterDC}".into(), format!("{save_dc}")),
 		]);
-		let desc = spell
-			.description
-			.clone()
-			.evaluate_with(state, Some(caster_args));
+		let desc = spell.description.clone().evaluate_with(state, Some(caster_args));
 		desc.sections
 			.into_iter()
 			.map(|section| {
@@ -1457,9 +1364,7 @@ pub fn AvailableSpellList(props: &AvailableSpellListProps) -> Html {
 				let mut insert_spell = |spell: Spell| {
 					// Insertion sort by rank & name
 					let idx = sorted_info
-						.binary_search_by(|(name, rank)| {
-							rank.cmp(&spell.rank).then(name.cmp(&spell.name))
-						})
+						.binary_search_by(|(name, rank)| rank.cmp(&spell.rank).then(name.cmp(&spell.name)))
 						.unwrap_or_else(|err_idx| err_idx);
 					let info = (spell.name.clone(), spell.rank);
 					sorted_info.insert(idx, info);
@@ -1578,15 +1483,9 @@ fn UseSpellButton(UseSpellButtonProps { kind }: &UseSpellButtonProps) -> Html {
 			slot_rank,
 			slots,
 		} => {
-			let can_cast = slots
-				.as_ref()
-				.map(|(consumed, max)| consumed < max)
-				.unwrap_or(false);
+			let can_cast = slots.as_ref().map(|(consumed, max)| consumed < max).unwrap_or(false);
 			let onclick = state.new_dispatch({
-				let consumed_slots = slots
-					.as_ref()
-					.map(|(consumed, _max)| *consumed)
-					.unwrap_or(0);
+				let consumed_slots = slots.as_ref().map(|(consumed, _max)| *consumed).unwrap_or(0);
 				let slot_rank = *slot_rank;
 				move |evt: MouseEvent, persistent| {
 					evt.stop_propagation();

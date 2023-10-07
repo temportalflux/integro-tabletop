@@ -1,8 +1,9 @@
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::dnd5e::data::{character::Character, description, roll, Ability, Skill},
 	utility::{selector, Mutator, NotInList},
 };
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::path::Path;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -21,80 +22,57 @@ pub enum ModifierKind {
 }
 
 crate::impl_trait_eq!(AddModifier);
-crate::impl_kdl_node!(AddModifier, "add_modifier");
+kdlize::impl_kdl_node!(AddModifier, "add_modifier");
 
 impl Mutator for AddModifier {
 	type Target = Character;
 
 	fn description(&self, state: Option<&Character>) -> description::Section {
 		let mut desc = format!("You have {} on ", self.modifier.display_name());
-		let kind_desc =
-			match &self.kind {
-				ModifierKind::Ability(selector::Value::Specific(ability)) => {
-					format!("{} checks", ability.long_name())
-				}
-				ModifierKind::Ability(selector::Value::Options(selector::ValueOptions {
-					options,
-					..
-				})) if options.is_empty() => {
-					format!("any single ability check")
-				}
-				ModifierKind::Ability(selector::Value::Options(selector::ValueOptions {
-					options,
-					..
-				})) => format!(
-					"any single ability check (of: {})",
-					options
-						.iter()
-						.map(Ability::long_name)
-						.collect::<Vec<_>>()
-						.join(", ")
-				),
-				ModifierKind::SavingThrow(None) => format!("saving throws"),
-				ModifierKind::SavingThrow(Some(selector::Value::Specific(ability))) => {
-					format!("{} saving throws", ability.long_name(),)
-				}
-				ModifierKind::SavingThrow(Some(selector::Value::Options(
-					selector::ValueOptions { options, .. },
-				))) if options.is_empty() => {
-					format!("any single ability saving throw")
-				}
-				ModifierKind::SavingThrow(Some(selector::Value::Options(
-					selector::ValueOptions { options, .. },
-				))) => format!(
+		let kind_desc = match &self.kind {
+			ModifierKind::Ability(selector::Value::Specific(ability)) => {
+				format!("{} checks", ability.long_name())
+			}
+			ModifierKind::Ability(selector::Value::Options(selector::ValueOptions { options, .. }))
+				if options.is_empty() =>
+			{
+				format!("any single ability check")
+			}
+			ModifierKind::Ability(selector::Value::Options(selector::ValueOptions { options, .. })) => format!(
+				"any single ability check (of: {})",
+				options.iter().map(Ability::long_name).collect::<Vec<_>>().join(", ")
+			),
+			ModifierKind::SavingThrow(None) => format!("saving throws"),
+			ModifierKind::SavingThrow(Some(selector::Value::Specific(ability))) => {
+				format!("{} saving throws", ability.long_name(),)
+			}
+			ModifierKind::SavingThrow(Some(selector::Value::Options(selector::ValueOptions { options, .. })))
+				if options.is_empty() =>
+			{
+				format!("any single ability saving throw")
+			}
+			ModifierKind::SavingThrow(Some(selector::Value::Options(selector::ValueOptions { options, .. }))) => {
+				format!(
 					"any single ability saving throw (of: {})",
-					options
-						.iter()
-						.map(Ability::long_name)
-						.collect::<Vec<_>>()
-						.join(", ")
-				),
-				ModifierKind::Skill(selector::Value::Specific(skill)) => format!(
-					"{} ({}) checks",
-					skill.ability().long_name(),
-					skill.display_name()
-				),
-				ModifierKind::Skill(selector::Value::Options(selector::ValueOptions {
-					options,
-					..
-				})) if options.is_empty() => {
-					format!("any single ability skill check")
-				}
-				ModifierKind::Skill(selector::Value::Options(selector::ValueOptions {
-					options,
-					..
-				})) => format!(
-					"any single ability skill check (of: {})",
-					options
-						.iter()
-						.map(Skill::display_name)
-						.collect::<Vec<_>>()
-						.join(", ")
-				),
-				ModifierKind::Initiative => {
-					format!("initiative checks")
-				}
-			};
+					options.iter().map(Ability::long_name).collect::<Vec<_>>().join(", ")
+				)
+			}
+			ModifierKind::Skill(selector::Value::Specific(skill)) => {
+				format!("{} ({}) checks", skill.ability().long_name(), skill.display_name())
+			}
+			ModifierKind::Skill(selector::Value::Options(selector::ValueOptions { options, .. }))
+				if options.is_empty() =>
+			{
+				format!("any single ability skill check")
+			}
+			ModifierKind::Skill(selector::Value::Options(selector::ValueOptions { options, .. })) => format!(
+				"any single ability skill check (of: {})",
+				options.iter().map(Skill::display_name).collect::<Vec<_>>().join(", ")
+			),
+			ModifierKind::Initiative => {
+				format!("initiative checks")
+			}
+		};
 		desc.push_str(&kind_desc);
 		if let Some(ctx) = &self.context {
 			desc.push_str(match &self.kind {
@@ -108,16 +86,12 @@ impl Mutator for AddModifier {
 		}
 		desc.push('.');
 		let selectors = match &self.kind {
-			ModifierKind::Ability(selector) => {
-				selector::DataList::default().with_enum("Ability", selector, state)
-			}
+			ModifierKind::Ability(selector) => selector::DataList::default().with_enum("Ability", selector, state),
 			ModifierKind::SavingThrow(Some(selector)) => {
 				selector::DataList::default().with_enum("Ability", selector, state)
 			}
 			ModifierKind::SavingThrow(None) => Default::default(),
-			ModifierKind::Skill(selector) => {
-				selector::DataList::default().with_enum("Skill", selector, state)
-			}
+			ModifierKind::Skill(selector) => selector::DataList::default().with_enum("Skill", selector, state),
 			ModifierKind::Initiative => Default::default(),
 		};
 		description::Section {
@@ -153,21 +127,15 @@ impl Mutator for AddModifier {
 					None => None,
 					Some(ability) => stats.resolve_selector(ability),
 				};
-				stats.saving_throws_mut().add_modifier(
-					ability,
-					self.modifier,
-					self.context.clone(),
-					parent.to_owned(),
-				);
+				stats
+					.saving_throws_mut()
+					.add_modifier(ability, self.modifier, self.context.clone(), parent.to_owned());
 			}
 			ModifierKind::Skill(skill) => {
 				let Some(skill) = stats.resolve_selector(skill) else { return; };
-				stats.skills_mut().add_skill_modifier(
-					skill,
-					self.modifier,
-					self.context.clone(),
-					parent.to_owned(),
-				);
+				stats
+					.skills_mut()
+					.add_skill_modifier(skill, self.modifier, self.context.clone(), parent.to_owned());
 			}
 			ModifierKind::Initiative => {
 				// TODO: apply advantage or disadvantage to initiative
@@ -176,7 +144,8 @@ impl Mutator for AddModifier {
 	}
 }
 
-impl FromKDL for AddModifier {
+impl FromKdl<NodeContext> for AddModifier {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let modifier = node.next_str_req_t::<roll::Modifier>()?;
 		let context = node.get_str_opt("context")?.map(str::to_owned);
@@ -302,9 +271,7 @@ mod test {
 			let data = AddModifier {
 				modifier: roll::Modifier::Advantage,
 				context: None,
-				kind: ModifierKind::SavingThrow(Some(selector::Value::Options(
-					selector::ValueOptions::default(),
-				))),
+				kind: ModifierKind::SavingThrow(Some(selector::Value::Options(selector::ValueOptions::default()))),
 			};
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
@@ -354,10 +321,7 @@ mod test {
 				.skills()
 				.ability_modifiers(Ability::Dexterity)
 				.get(roll::Modifier::Advantage);
-			assert_eq!(
-				*modifiers,
-				vec![(None, PathBuf::from("TestMutator")).into()]
-			);
+			assert_eq!(*modifiers, vec![(None, PathBuf::from("TestMutator")).into()]);
 		}
 
 		#[test]
@@ -371,10 +335,7 @@ mod test {
 				.skills()
 				.skill_modifiers(Skill::Deception)
 				.get(roll::Modifier::Disadvantage);
-			assert_eq!(
-				*modifiers,
-				vec![(None, PathBuf::from("TestMutator")).into()]
-			);
+			assert_eq!(*modifiers, vec![(None, PathBuf::from("TestMutator")).into()]);
 		}
 
 		#[test]
@@ -399,9 +360,7 @@ mod test {
 			let character = character(AddModifier {
 				modifier: roll::Modifier::Advantage,
 				context: Some("Poison".into()),
-				kind: ModifierKind::SavingThrow(Some(selector::Value::Specific(
-					Ability::Constitution,
-				))),
+				kind: ModifierKind::SavingThrow(Some(selector::Value::Specific(Ability::Constitution))),
 			});
 			let modifiers = character
 				.saving_throws()

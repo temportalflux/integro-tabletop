@@ -22,11 +22,7 @@ impl Schema for SchemaVersion {
 		Self::Version1 as u32
 	}
 
-	fn apply(
-		&self,
-		database: &idb::Database,
-		_transaction: Option<&idb::Transaction>,
-	) -> Result<(), idb::Error> {
+	fn apply(&self, database: &idb::Database, _transaction: Option<&idb::Transaction>) -> Result<(), idb::Error> {
 		match self {
 			Self::Version1 => {
 				// Create modules table

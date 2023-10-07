@@ -1,12 +1,12 @@
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, ValueExt},
 	system::dnd5e::data::{
-		character::Character, description, item::weapon, proficiency, Ability, ArmorExtended,
-		Skill, WeaponProficiency,
+		character::Character, description, item::weapon, proficiency, Ability, ArmorExtended, Skill, WeaponProficiency,
 	},
 	utility::{selector, Mutator, NotInList},
 };
 use enumset::EnumSet;
+use kdlize::{ext::ValueExt, AsKdl, FromKdl, NodeBuilder};
 use std::str::FromStr;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -31,7 +31,7 @@ pub enum AddProficiency {
 }
 
 crate::impl_trait_eq!(AddProficiency);
-crate::impl_kdl_node!(AddProficiency, "add_proficiency");
+kdlize::impl_kdl_node!(AddProficiency, "add_proficiency");
 
 impl Mutator for AddProficiency {
 	type Target = Character;
@@ -43,31 +43,20 @@ impl Mutator for AddProficiency {
 				level.as_display_name().to_lowercase(),
 				ability.long_name()
 			),
-			Self::Ability(
-				selector::Value::Options(selector::ValueOptions { options, .. }),
-				level,
-			) if options.is_empty() => {
+			Self::Ability(selector::Value::Options(selector::ValueOptions { options, .. }), level)
+				if options.is_empty() =>
+			{
 				format!(
 					"You are {} with all skill checks which use one ability of your choice.",
 					level.as_display_name().to_lowercase()
 				)
 			}
-			Self::Ability(
-				selector::Value::Options(selector::ValueOptions { options, .. }),
-				level,
-			) => format!(
+			Self::Ability(selector::Value::Options(selector::ValueOptions { options, .. }), level) => format!(
 				"You are {} with all skill checks which use one ability of: {}.",
 				level.as_display_name().to_lowercase(),
-				options
-					.iter()
-					.map(Ability::long_name)
-					.collect::<Vec<_>>()
-					.join(", ")
+				options.iter().map(Ability::long_name).collect::<Vec<_>>().join(", ")
 			),
-			Self::SavingThrow(ability) => format!(
-				"You are proficient with {} saving throws.",
-				ability.long_name()
-			),
+			Self::SavingThrow(ability) => format!("You are proficient with {} saving throws.", ability.long_name()),
 			Self::Skill {
 				skill: selector::Value::Specific(skill),
 				level,
@@ -94,31 +83,20 @@ impl Mutator for AddProficiency {
 			} => format!(
 				"You are {} with one skill of: {}.",
 				level.as_display_name().to_lowercase(),
-				options
-					.iter()
-					.map(Skill::display_name)
-					.collect::<Vec<_>>()
-					.join(", ")
+				options.iter().map(Skill::display_name).collect::<Vec<_>>().join(", ")
 			),
 			Self::Language(selector::Value::Specific(lang)) => {
 				format!("You can speak, read, and write {lang}.")
 			}
-			Self::Language(selector::Value::Options(selector::ValueOptions {
-				options, ..
-			})) if options.is_empty() => {
+			Self::Language(selector::Value::Options(selector::ValueOptions { options, .. })) if options.is_empty() => {
 				format!("You can speak, read, and write one language of your choice.")
 			}
-			Self::Language(selector::Value::Options(selector::ValueOptions {
-				options, ..
-			})) => format!(
+			Self::Language(selector::Value::Options(selector::ValueOptions { options, .. })) => format!(
 				"You can speak, read, and write one language of: {}.",
 				options.iter().cloned().collect::<Vec<_>>().join(", ")
 			),
 			Self::Armor(kind, context) => {
-				let ctx = context
-					.as_ref()
-					.map(|s| format!(" ({s})"))
-					.unwrap_or_default();
+				let ctx = context.as_ref().map(|s| format!(" ({s})")).unwrap_or_default();
 				match kind {
 					ArmorExtended::Kind(kind) => format!(
 						"You are proficient with {} armor{ctx}.",
@@ -127,10 +105,9 @@ impl Mutator for AddProficiency {
 					ArmorExtended::Shield => format!("You are proficient with shields{ctx}."),
 				}
 			}
-			Self::Weapon(WeaponProficiency::Kind(kind)) => format!(
-				"You are proficient with {} weapons.",
-				kind.to_string().to_lowercase()
-			),
+			Self::Weapon(WeaponProficiency::Kind(kind)) => {
+				format!("You are proficient with {} weapons.", kind.to_string().to_lowercase())
+			}
 			Self::Weapon(WeaponProficiency::Classification(kind)) => {
 				format!("You are proficient with {kind} weapon-types.")
 			}
@@ -138,10 +115,7 @@ impl Mutator for AddProficiency {
 				tool: selector::Value::Specific(tool),
 				level,
 			} => {
-				format!(
-					"You are {} with {tool}.",
-					level.as_display_name().to_lowercase()
-				)
+				format!("You are {} with {tool}.", level.as_display_name().to_lowercase())
 			}
 			Self::Tool {
 				tool: selector::Value::Options(selector::ValueOptions { options, .. }),
@@ -162,15 +136,9 @@ impl Mutator for AddProficiency {
 			),
 		};
 		let selectors = match self {
-			Self::Skill { skill, .. } => {
-				selector::DataList::default().with_enum("Skill", skill, state)
-			}
-			Self::Language(selector) => {
-				selector::DataList::default().with_value("Language", selector, state)
-			}
-			Self::Tool { tool, .. } => {
-				selector::DataList::default().with_value("Tool", tool, state)
-			}
+			Self::Skill { skill, .. } => selector::DataList::default().with_enum("Skill", skill, state),
+			Self::Language(selector) => selector::DataList::default().with_value("Language", selector, state),
+			Self::Tool { tool, .. } => selector::DataList::default().with_value("Tool", tool, state),
 			_ => Default::default(),
 		};
 		description::Section {
@@ -204,9 +172,7 @@ impl Mutator for AddProficiency {
 				}
 			}
 			Self::SavingThrow(ability) => {
-				stats
-					.saving_throws_mut()
-					.add_proficiency(*ability, parent.to_owned());
+				stats.saving_throws_mut().add_proficiency(*ability, parent.to_owned());
 			}
 			Self::Skill {
 				skill,
@@ -216,9 +182,7 @@ impl Mutator for AddProficiency {
 				let Some(skill) = stats.resolve_selector(skill) else {
 					return;
 				};
-				stats
-					.skills_mut()
-					.add_proficiency(skill, *level, parent.to_owned());
+				stats.skills_mut().add_proficiency(skill, *level, parent.to_owned());
 			}
 			Self::Language(value) => {
 				if let Some(value) = stats.resolve_selector(value) {
@@ -240,20 +204,18 @@ impl Mutator for AddProficiency {
 					.weapons
 					.insert(value.clone(), parent.to_owned());
 			}
-			Self::Tool { tool, level } => {
+			Self::Tool { tool, level: _ } => {
 				// TODO: Actually grant the tool's proficiency level (there is no place to put that data yet)
 				if let Some(value) = stats.resolve_selector(tool) {
-					stats
-						.other_proficiencies_mut()
-						.tools
-						.insert(value, parent.to_owned());
+					stats.other_proficiencies_mut().tools.insert(value, parent.to_owned());
 				}
 			}
 		}
 	}
 }
 
-impl FromKDL for AddProficiency {
+impl FromKdl<NodeContext> for AddProficiency {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		match node.peak_type_req()? {
 			"Ability" => {
@@ -315,14 +277,7 @@ impl FromKDL for AddProficiency {
 			}
 			name => Err(NotInList(
 				name.into(),
-				vec![
-					"SavingThrow",
-					"Skill",
-					"Language",
-					"Armor",
-					"Weapon",
-					"Tool",
-				],
+				vec!["SavingThrow", "Skill", "Language", "Armor", "Weapon", "Tool"],
 			)
 			.into()),
 		}
@@ -406,10 +361,7 @@ mod test {
 		fn ability_specific_withlevel() -> anyhow::Result<()> {
 			let doc = "mutator \"add_proficiency\" \
 				(Ability)\"Specific\" \"Wisdom\" level=\"Double\"";
-			let data = AddProficiency::Ability(
-				selector::Value::Specific(Ability::Wisdom),
-				proficiency::Level::Double,
-			);
+			let data = AddProficiency::Ability(selector::Value::Specific(Ability::Wisdom), proficiency::Level::Double);
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -568,9 +520,7 @@ mod test {
 		#[test]
 		fn language_any() -> anyhow::Result<()> {
 			let doc = "mutator \"add_proficiency\" (Language)\"Any\"";
-			let data = AddProficiency::Language(selector::Value::Options(
-				selector::ValueOptions::default(),
-			));
+			let data = AddProficiency::Language(selector::Value::Options(selector::ValueOptions::default()));
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -605,10 +555,7 @@ mod test {
 		#[test]
 		fn armor_kind_ctx() -> anyhow::Result<()> {
 			let doc = "mutator \"add_proficiency\" (Armor)\"Medium\" \"nonmetal\"";
-			let data = AddProficiency::Armor(
-				ArmorExtended::Kind(armor::Kind::Medium),
-				Some("nonmetal".into()),
-			);
+			let data = AddProficiency::Armor(ArmorExtended::Kind(armor::Kind::Medium), Some("nonmetal".into()));
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -747,10 +694,7 @@ mod test {
 		fn saving_throw() {
 			let character = character(AddProficiency::SavingThrow(Ability::Dexterity), None);
 			assert_eq!(
-				*character
-					.saving_throws()
-					.get_prof(Ability::Dexterity)
-					.value(),
+				*character.saving_throws().get_prof(Ability::Dexterity).value(),
 				proficiency::Level::Full,
 			);
 		}
@@ -825,19 +769,13 @@ mod test {
 		#[test]
 		fn armor_kind_ctx() {
 			let character = character(
-				AddProficiency::Armor(
-					ArmorExtended::Kind(armor::Kind::Heavy),
-					Some("nonmetal".into()),
-				),
+				AddProficiency::Armor(ArmorExtended::Kind(armor::Kind::Heavy), Some("nonmetal".into())),
 				None,
 			);
 			assert_eq!(
 				*character.other_proficiencies().armor,
 				[(
-					(
-						ArmorExtended::Kind(armor::Kind::Heavy),
-						Some("nonmetal".into())
-					),
+					(ArmorExtended::Kind(armor::Kind::Heavy), Some("nonmetal".into())),
 					["AddProficiency".into()].into()
 				)]
 				.into()
@@ -849,11 +787,7 @@ mod test {
 			let character = character(AddProficiency::Armor(ArmorExtended::Shield, None), None);
 			assert_eq!(
 				*character.other_proficiencies().armor,
-				[(
-					(ArmorExtended::Shield, None),
-					["AddProficiency".into()].into()
-				)]
-				.into()
+				[((ArmorExtended::Shield, None), ["AddProficiency".into()].into())].into()
 			);
 		}
 

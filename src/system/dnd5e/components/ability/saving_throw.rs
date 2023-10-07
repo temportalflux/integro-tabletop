@@ -41,12 +41,7 @@ pub struct SavingThrowProps {
 }
 
 #[function_component]
-pub fn SavingThrow(
-	SavingThrowProps {
-		ability,
-		abbreviated,
-	}: &SavingThrowProps,
-) -> Html {
+pub fn SavingThrow(SavingThrowProps { ability, abbreviated }: &SavingThrowProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let proficiency = state.saving_throws().get_prof(*ability);
 	let modifier = state.ability_modifier(*ability, Some(*proficiency.value()));
@@ -157,13 +152,8 @@ pub fn SavingThrowModifiers(
 	}
 }
 
-pub fn saving_throw_modifier(
-	ability: Option<Ability>,
-	modifier: Modifier,
-	item: &ModifierMapItem,
-) -> Html {
-	let style =
-		"height: 14px; margin-right: 2px; margin-top: -2px; width: 14px; vertical-align: middle;";
+pub fn saving_throw_modifier(ability: Option<Ability>, modifier: Modifier, item: &ModifierMapItem) -> Html {
+	let style = "height: 14px; margin-right: 2px; margin-top: -2px; width: 14px; vertical-align: middle;";
 	html! {<>
 		<span class="d-inline-flex" aria-label="Advantage" {style}>
 			<glyph::RollModifier value={modifier} />
@@ -190,7 +180,7 @@ fn Modal() -> Html {
 			.saving_throws()
 			.iter_modifiers()
 			.map(|(ability, modifier, item)| {
-				let style="height: 14px; margin-right: 2px; margin-top: -2px; width: 14px; vertical-align: middle;";
+				let style = "height: 14px; margin-right: 2px; margin-top: -2px; width: 14px; vertical-align: middle;";
 				html! {
 					<tr>
 						<td class="text-center">

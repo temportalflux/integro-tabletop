@@ -1,5 +1,5 @@
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{DocumentExt, EntryExt, FromKDL, NodeBuilder, ValueExt},
 	system::dnd5e::data::{
 		action::AttackQuery,
 		character::{spellcasting, Character},
@@ -8,6 +8,10 @@ use crate::{
 		Ability, DamageType,
 	},
 	utility::{Dependencies, Mutator, NotInList},
+};
+use kdlize::{
+	ext::{DocumentExt, EntryExt, ValueExt},
+	FromKdl, NodeBuilder,
 };
 
 #[derive(Clone, PartialEq, Debug)]
@@ -36,7 +40,7 @@ pub enum Bonus {
 }
 
 crate::impl_trait_eq!(Bonus);
-crate::impl_kdl_node!(Bonus, "bonus");
+kdlize::impl_kdl_node!(Bonus, "bonus");
 
 impl Mutator for Bonus {
 	type Target = Character;
@@ -51,7 +55,7 @@ impl Mutator for Bonus {
 	}
 
 	fn dependencies(&self) -> Dependencies {
-		use crate::kdl_ext::KDLNode;
+		use kdlize::NodeId;
 		let mut deps = Dependencies::from([super::AddFeature::id()]);
 		match self {
 			Self::AttackRoll { .. } => {}
@@ -70,11 +74,9 @@ impl Mutator for Bonus {
 	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
 		match self {
 			Self::AttackRoll { bonus, query } => {
-				stats.attack_bonuses_mut().add_to_weapon_attacks(
-					*bonus,
-					query.clone(),
-					parent.to_owned(),
-				);
+				stats
+					.attack_bonuses_mut()
+					.add_to_weapon_attacks(*bonus, query.clone(), parent.to_owned());
 			}
 			Self::AttackDamage {
 				damage,
@@ -90,19 +92,15 @@ impl Mutator for Bonus {
 				);
 			}
 			Self::AttackAbilityModifier { ability, query } => {
-				stats.attack_bonuses_mut().add_ability_modifier(
-					*ability,
-					query.clone(),
-					parent.to_owned(),
-				);
+				stats
+					.attack_bonuses_mut()
+					.add_ability_modifier(*ability, query.clone(), parent.to_owned());
 			}
 			Self::SpellDamage { damage, query } => {
 				let bonus = damage.evaluate(stats);
-				stats.attack_bonuses_mut().add_to_spell_damage(
-					bonus,
-					query.clone(),
-					parent.to_owned(),
-				);
+				stats
+					.attack_bonuses_mut()
+					.add_to_spell_damage(bonus, query.clone(), parent.to_owned());
 			}
 			Self::ArmorClass { bonus, context } => {
 				stats
@@ -113,7 +111,8 @@ impl Mutator for Bonus {
 	}
 }
 
-impl FromKDL for Bonus {
+impl FromKdl<NodeContext> for Bonus {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let entry = node.next_req()?;
 		match (entry.type_opt(), entry.as_str_req()?) {
@@ -148,10 +147,7 @@ impl FromKDL for Bonus {
 				Ok(Self::ArmorClass { bonus, context })
 			}
 			(type_id, name) => Err(NotInList(
-				format!(
-					"{}{name}",
-					type_id.map(|id| format!("({id})")).unwrap_or_default()
-				),
+				format!("{}{name}", type_id.map(|id| format!("({id})")).unwrap_or_default()),
 				vec![
 					"(Attack)Damage",
 					"(Attack)Roll",

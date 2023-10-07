@@ -1,8 +1,7 @@
 use self::data::character::Character;
-use crate::{
-	kdl_ext::{AsKdl, FromKDL, KDLNode},
-	system::core::NodeRegistry,
-};
+use crate::kdl_ext::NodeContext;
+use crate::system::core::NodeRegistry;
+use kdlize::{AsKdl, FromKdl, NodeId};
 use std::{collections::HashMap, sync::Arc};
 
 pub mod components;
@@ -15,15 +14,10 @@ pub type BoxedEvaluator<V> = crate::utility::GenericEvaluator<Character, V>;
 pub type BoxedMutator = crate::utility::GenericMutator<Character>;
 pub type Value<T> = crate::utility::Value<Character, T>;
 
-type FnMetadataFromKdl = Box<
-	dyn Fn(crate::kdl_ext::NodeReader<'_>) -> anyhow::Result<serde_json::Value>
-		+ 'static
-		+ Send
-		+ Sync,
->;
-type FnReserializeKdl = Box<
-	dyn Fn(crate::kdl_ext::NodeReader<'_>) -> anyhow::Result<kdl::KdlNode> + 'static + Send + Sync,
->;
+type FnMetadataFromKdl =
+	Box<dyn Fn(crate::kdl_ext::NodeReader<'_>) -> anyhow::Result<serde_json::Value> + 'static + Send + Sync>;
+type FnReserializeKdl =
+	Box<dyn Fn(crate::kdl_ext::NodeReader<'_>) -> anyhow::Result<kdl::KdlNode> + 'static + Send + Sync>;
 pub struct ComponentFactory {
 	metadata_from_kdl: FnMetadataFromKdl,
 	reserialize_kdl: FnReserializeKdl,
@@ -31,7 +25,8 @@ pub struct ComponentFactory {
 impl ComponentFactory {
 	fn new<T>() -> Self
 	where
-		T: FromKDL + AsKdl + SystemComponent + 'static + Send + Sync,
+		T: FromKdl<NodeContext> + AsKdl + SystemComponent + 'static + Send + Sync,
+		anyhow::Error: From<T::Error>,
 	{
 		Self {
 			metadata_from_kdl: Box::new(|mut node| {
@@ -45,17 +40,11 @@ impl ComponentFactory {
 		}
 	}
 
-	pub fn metadata_from_kdl<'doc>(
-		&self,
-		node: crate::kdl_ext::NodeReader<'doc>,
-	) -> anyhow::Result<serde_json::Value> {
+	pub fn metadata_from_kdl<'doc>(&self, node: crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<serde_json::Value> {
 		(*self.metadata_from_kdl)(node)
 	}
 
-	pub fn reserialize_kdl<'doc>(
-		&self,
-		node: crate::kdl_ext::NodeReader<'doc>,
-	) -> anyhow::Result<kdl::KdlNode> {
+	pub fn reserialize_kdl<'doc>(&self, node: crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<kdl::KdlNode> {
 		(*self.reserialize_kdl)(node)
 	}
 }
@@ -64,7 +53,8 @@ pub struct ComponentRegistry(HashMap<&'static str, Arc<ComponentFactory>>);
 impl ComponentRegistry {
 	pub fn register<T>(&mut self)
 	where
-		T: FromKDL + KDLNode + AsKdl + SystemComponent + 'static + Send + Sync,
+		T: FromKdl<NodeContext> + NodeId + AsKdl + SystemComponent + 'static + Send + Sync,
+		anyhow::Error: From<T::Error>,
 	{
 		assert!(!self.0.contains_key(T::id()));
 		self.0.insert(T::id(), ComponentFactory::new::<T>().into());

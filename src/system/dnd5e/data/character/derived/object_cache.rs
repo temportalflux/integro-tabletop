@@ -1,5 +1,4 @@
 use crate::{
-	kdl_ext::KDLNode,
 	system::{
 		core::SourceId,
 		dnd5e::data::{
@@ -9,6 +8,7 @@ use crate::{
 	},
 	utility::MutatorGroup,
 };
+use kdlize::NodeId;
 use std::{collections::HashMap, path::PathBuf};
 
 /// Holds the list of all objects (mainly bundles) added via mutators, and fetched from the object provider.
@@ -54,9 +54,7 @@ impl AdditionalObjectCache {
 		// and then store the generic data which is a MutatorGroup instead of the hard types.
 		// We can re-serialize them in the same manner perhaps.
 		for AdditionalObjectData {
-			ids,
-			object_type_id,
-			..
+			ids, object_type_id, ..
 		} in &self.pending
 		{
 			for object_id in ids {
@@ -66,11 +64,7 @@ impl AdditionalObjectCache {
 				if object_type_id == Bundle::id() {
 					let bundle = provider
 						.database
-						.get_typed_entry::<Bundle>(
-							object_id.clone(),
-							provider.system_depot.clone(),
-							None,
-						)
+						.get_typed_entry::<Bundle>(object_id.clone(), provider.system_depot.clone(), None)
 						.await?;
 					let Some(bundle) = bundle else {
 						log::error!(target: "object_cache", "Failed to find bundle {:?}, no such entry in database.", object_id.to_string());
@@ -81,11 +75,7 @@ impl AdditionalObjectCache {
 				} else if object_type_id == Subclass::id() {
 					let subclass = provider
 						.database
-						.get_typed_entry::<Subclass>(
-							object_id.clone(),
-							provider.system_depot.clone(),
-							None,
-						)
+						.get_typed_entry::<Subclass>(object_id.clone(), provider.system_depot.clone(), None)
 						.await?;
 					let Some(subclass) = subclass else {
 						log::error!(target: "object_cache", "Failed to find subclass {:?}, no such entry in database.", object_id.to_string());

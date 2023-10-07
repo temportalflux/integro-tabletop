@@ -1,12 +1,13 @@
 use super::Character;
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::{
 		core::SourceId,
 		dnd5e::{BoxedMutator, SystemComponent},
 	},
 	utility::MutatorGroup,
 };
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::path::Path;
 
 /// Contains mutators and features which are applied to every character using the module it is present in.
@@ -16,7 +17,7 @@ pub struct DefaultsBlock {
 	pub mutators: Vec<BoxedMutator>,
 }
 
-crate::impl_kdl_node!(DefaultsBlock, "defaults");
+kdlize::impl_kdl_node!(DefaultsBlock, "defaults");
 
 impl SystemComponent for DefaultsBlock {
 	fn to_metadata(self) -> serde_json::Value {
@@ -40,7 +41,8 @@ impl MutatorGroup for DefaultsBlock {
 	}
 }
 
-impl FromKDL for DefaultsBlock {
+impl FromKdl<NodeContext> for DefaultsBlock {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let mutators = node.query_all_t("scope() > mutator")?;
 		Ok(Self {

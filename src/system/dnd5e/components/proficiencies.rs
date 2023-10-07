@@ -42,11 +42,7 @@ pub fn Proficiencies() -> Html {
 	}
 }
 
-fn make_proficiencies_section<T, F>(
-	title: &str,
-	values: &AttributedValueMap<T>,
-	to_string: F,
-) -> Html
+fn make_proficiencies_section<T, F>(title: &str, values: &AttributedValueMap<T>, to_string: F) -> Html
 where
 	F: Fn(&T) -> String,
 {
@@ -78,11 +74,7 @@ where
 	}
 }
 
-fn make_proficiencies_section_long<T, F>(
-	title: &str,
-	values: &AttributedValueMap<T>,
-	to_string: F,
-) -> Html
+fn make_proficiencies_section_long<T, F>(title: &str, values: &AttributedValueMap<T>, to_string: F) -> Html
 where
 	F: Fn(&T) -> String,
 {

@@ -1,9 +1,10 @@
 use super::{armor::Armor, weapon::Weapon};
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::dnd5e::{data::character::Character, BoxedCriteria, BoxedMutator},
 	utility::MutatorGroup,
 };
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::{collections::HashMap, path::Path};
 
 #[derive(Clone, PartialEq, Default, Debug)]
@@ -67,7 +68,8 @@ impl Equipment {
 	}
 }
 
-impl FromKDL for Equipment {
+impl FromKdl<NodeContext> for Equipment {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let criteria = node.query_opt_t("scope() > criteria")?;
 		let mutators = node.query_all_t("scope() > mutator")?;

@@ -174,8 +174,7 @@ async fn main() -> anyhow::Result<()> {
 		if !reserialized_nodes.is_empty() {
 			let Some(ModuleId::Local { name: module_name }) = &source_id.module else { continue; };
 			let Some(system) = &source_id.system else { continue; };
-			let dest_path = std::path::PathBuf::from(format!("./modules/{module_name}/{system}"))
-				.join(&source_id.path);
+			let dest_path = std::path::PathBuf::from(format!("./modules/{module_name}/{system}")).join(&source_id.path);
 			let mut doc = kdl::KdlDocument::new();
 			doc.nodes_mut().append(&mut reserialized_nodes);
 			let out_str = doc.to_string();

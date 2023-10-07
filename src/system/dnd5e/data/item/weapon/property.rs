@@ -1,8 +1,6 @@
-use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
-	system::dnd5e::data::roll::Roll,
-	GeneralError,
-};
+use crate::kdl_ext::NodeContext;
+use crate::{system::dnd5e::data::roll::Roll, GeneralError};
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum Property {
@@ -30,18 +28,14 @@ impl Property {
 
 	pub fn description(&self) -> String {
 		match self {
-			Self::Light => {
-				"When you use the Attack action to make a melee attack with this weapon, \
+			Self::Light => "When you use the Attack action to make a melee attack with this weapon, \
 				you can use a bonus action to attack with a different light melee weapon \
 				that you're holding in the other hand."
-					.into()
-			}
+				.into(),
 			Self::Finesse => "You can use either your Strength or Dexterity modifier \
 				for both the attack and damage rolls."
 				.into(),
-			Self::Heavy => {
-				"Small or Tiny creatures have disadvantage on attack rolls with this weapon.".into()
-			}
+			Self::Heavy => "Small or Tiny creatures have disadvantage on attack rolls with this weapon.".into(),
 			Self::Reach => "This weapon extends an additional 5 feet of melee range when \
 				making the attack action or opportunity attacks."
 				.into(),
@@ -59,7 +53,8 @@ impl Property {
 	}
 }
 
-impl FromKDL for Property {
+impl FromKdl<NodeContext> for Property {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		match node.next_str_req()? {
 			"Light" => Ok(Self::Light),
@@ -94,9 +89,7 @@ impl AsKdl for Property {
 				.with_entry("Thrown")
 				.with_entry(*short as i64)
 				.with_entry(*long as i64),
-			Self::Versatile(roll) => node
-				.with_entry("Versatile")
-				.with_entry_typed(roll.to_string(), "Roll"),
+			Self::Versatile(roll) => node.with_entry("Versatile").with_entry_typed(roll.to_string(), "Roll"),
 		}
 	}
 }

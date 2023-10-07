@@ -51,11 +51,7 @@ pub enum Action {
 }
 
 impl Action {
-	pub fn open(
-		context: &Option<ActiveContext>,
-		display_name: impl Into<AttrValue>,
-		html: impl Into<Html>,
-	) -> Self {
+	pub fn open(context: &Option<ActiveContext>, display_name: impl Into<AttrValue>, html: impl Into<Html>) -> Self {
 		match context {
 			None => Self::open_root(display_name, html),
 			Some(_) => Self::open_child(display_name, html),
@@ -91,10 +87,7 @@ impl Reducible for State {
 			Action::OpenSubpage(item) => {
 				let mut stack = self.stack.clone();
 				stack.push(item);
-				Rc::new(Self {
-					is_shown: true,
-					stack,
-				})
+				Rc::new(Self { is_shown: true, stack })
 			}
 			Action::CloseCurrent => {
 				let mut stack = self.stack.clone();
@@ -234,11 +227,9 @@ fn TabButton() -> Html {
 #[function_component]
 fn BackButton() -> Html {
 	let control = use_context::<Control>().unwrap();
-	let onclick = control
-		.close_current_fn()
-		.reform(|evt: web_sys::MouseEvent| {
-			evt.stop_propagation();
-		});
+	let onclick = control.close_current_fn().reform(|evt: web_sys::MouseEvent| {
+		evt.stop_propagation();
+	});
 	html! {
 		<button type="button" class="btn close ms-auto" {onclick}>
 			{match control.stack.len() {

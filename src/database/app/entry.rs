@@ -47,7 +47,7 @@ impl Entry {
 		self.get_meta_str("name")
 	}
 
-	pub fn parse_kdl<T: crate::kdl_ext::FromKDL>(
+	pub fn parse_kdl<T: kdlize::FromKdl<crate::kdl_ext::NodeContext>>(
 		&self,
 		node_reg: Arc<crate::system::core::NodeRegistry>,
 	) -> Option<T> {

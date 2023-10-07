@@ -29,7 +29,10 @@ where
 }
 
 #[hook]
-pub fn use_document_visibility<F>(callback: F) where F: Fn(web_sys::VisibilityState) + 'static {
+pub fn use_document_visibility<F>(callback: F)
+where
+	F: Fn(web_sys::VisibilityState) + 'static,
+{
 	let callback = use_latest(callback);
 	use_document_event("visibilitychange", move |_: wasm_bindgen::JsValue| {
 		let document = gloo_utils::document();

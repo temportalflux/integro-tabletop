@@ -20,11 +20,7 @@ impl<T: IndexType> Index<T> {
 		}
 	}
 
-	pub async fn get_all<'index>(
-		&'index self,
-		params: &'index T,
-		limit: Option<u32>,
-	) -> Result<Vec<T::Record>, Error>
+	pub async fn get_all<'index>(&'index self, params: &'index T, limit: Option<u32>) -> Result<Vec<T::Record>, Error>
 	where
 		T::Record: for<'de> Deserialize<'de>,
 	{

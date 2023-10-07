@@ -1,8 +1,6 @@
-use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
-	system::dnd5e::data::Rest,
-	utility::NotInList,
-};
+use crate::kdl_ext::NodeContext;
+use crate::{system::dnd5e::data::Rest, utility::NotInList};
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::{collections::BTreeMap, str::FromStr};
 
 #[derive(Clone, PartialEq, Debug)]
@@ -18,9 +16,7 @@ pub enum Slots {
 }
 
 impl Slots {
-	fn transpose_reduce_capacity(
-		capacity: &BTreeMap<usize, BTreeMap<u8, usize>>,
-	) -> BTreeMap<u8, Vec<(usize, usize)>> {
+	fn transpose_reduce_capacity(capacity: &BTreeMap<usize, BTreeMap<u8, usize>>) -> BTreeMap<u8, Vec<(usize, usize)>> {
 		let mut max_amt_by_rank = [0usize; 10];
 		let mut level_capacity_by_rank = BTreeMap::new();
 		for (level, max_rank_slots) in capacity {
@@ -30,10 +26,7 @@ impl Slots {
 					if !level_capacity_by_rank.contains_key(rank) {
 						level_capacity_by_rank.insert(*rank, Vec::new());
 					}
-					level_capacity_by_rank
-						.get_mut(rank)
-						.unwrap()
-						.push((*level, *amt));
+					level_capacity_by_rank.get_mut(rank).unwrap().push((*level, *amt));
 				}
 			}
 		}
@@ -60,7 +53,8 @@ impl Slots {
 	}
 }
 
-impl FromKDL for Slots {
+impl FromKdl<NodeContext> for Slots {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		match node.next_str_req()? {
 			"Standard" => {
@@ -107,10 +101,7 @@ impl FromKDL for Slots {
 					// Fill in unspecified levels using the last specified level data
 					if prev_found_level > 0 {
 						for level in (prev_found_level + 1)..level {
-							let ranks = slots_capacity
-								.get(&prev_found_level)
-								.cloned()
-								.unwrap_or_default();
+							let ranks = slots_capacity.get(&prev_found_level).cloned().unwrap_or_default();
 							slots_capacity.insert(level, ranks);
 						}
 					}
@@ -127,10 +118,7 @@ impl FromKDL for Slots {
 					slots_capacity.insert(level, ranks);
 				}
 				for level in (prev_found_level + 1)..=20 {
-					let ranks = slots_capacity
-						.get(&prev_found_level)
-						.cloned()
-						.unwrap_or_default();
+					let ranks = slots_capacity.get(&prev_found_level).cloned().unwrap_or_default();
 					slots_capacity.insert(level, ranks);
 				}
 				Ok(Self::Bonus {

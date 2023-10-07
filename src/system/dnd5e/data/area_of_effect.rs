@@ -1,7 +1,6 @@
-use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
-	utility::NotInList,
-};
+use crate::kdl_ext::NodeContext;
+use crate::utility::NotInList;
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum AreaOfEffect {
@@ -12,7 +11,8 @@ pub enum AreaOfEffect {
 	Sphere { radius: u32 },
 }
 
-impl FromKDL for AreaOfEffect {
+impl FromKdl<NodeContext> for AreaOfEffect {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		match node.next_str_req()? {
 			"Cone" => Ok(Self::Cone {
@@ -32,11 +32,7 @@ impl FromKDL for AreaOfEffect {
 			"Sphere" => Ok(Self::Sphere {
 				radius: node.get_i64_req("radius")? as u32,
 			}),
-			name => Err(NotInList(
-				name.into(),
-				vec!["Cone", "Cube", "Cylinder", "Line", "Sphere"],
-			)
-			.into()),
+			name => Err(NotInList(name.into(), vec!["Cone", "Cube", "Cylinder", "Line", "Sphere"]).into()),
 		}
 	}
 }
@@ -44,9 +40,7 @@ impl AsKdl for AreaOfEffect {
 	fn as_kdl(&self) -> NodeBuilder {
 		let node = NodeBuilder::default();
 		match self {
-			Self::Cone { length } => node
-				.with_entry("Cone")
-				.with_entry(("length", *length as i64)),
+			Self::Cone { length } => node.with_entry("Cone").with_entry(("length", *length as i64)),
 			Self::Cube { size } => node.with_entry("Cube").with_entry(("size", *size as i64)),
 			Self::Cylinder { radius, height } => node
 				.with_entry("Cylinder")
@@ -56,9 +50,7 @@ impl AsKdl for AreaOfEffect {
 				.with_entry("Line")
 				.with_entry(("width", *width as i64))
 				.with_entry(("length", *length as i64)),
-			Self::Sphere { radius } => node
-				.with_entry("Sphere")
-				.with_entry(("radius", *radius as i64)),
+			Self::Sphere { radius } => node.with_entry("Sphere").with_entry(("radius", *radius as i64)),
 		}
 	}
 }
@@ -94,10 +86,7 @@ mod test {
 		#[test]
 		fn cylinder() -> anyhow::Result<()> {
 			let doc = "area_of_effect \"Cylinder\" radius=10 height=40";
-			let data = AreaOfEffect::Cylinder {
-				radius: 10,
-				height: 40,
-			};
+			let data = AreaOfEffect::Cylinder { radius: 10, height: 40 };
 			assert_eq_fromkdl!(AreaOfEffect, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())
@@ -106,10 +95,7 @@ mod test {
 		#[test]
 		fn line() -> anyhow::Result<()> {
 			let doc = "area_of_effect \"Line\" width=5 length=60";
-			let data = AreaOfEffect::Line {
-				width: 5,
-				length: 60,
-			};
+			let data = AreaOfEffect::Line { width: 5, length: 60 };
 			assert_eq_fromkdl!(AreaOfEffect, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())

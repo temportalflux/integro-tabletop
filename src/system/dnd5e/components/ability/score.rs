@@ -27,26 +27,21 @@ pub fn Score(ScoreProps { ability }: &ScoreProps) -> Html {
 
 	let onclick = context_menu::use_control_action({
 		let ability = *ability;
-		move |_, _context| {
-			context_menu::Action::open_root(ability.long_name(), html!(<Modal {ability} />))
-		}
+		move |_, _context| context_menu::Action::open_root(ability.long_name(), html!(<Modal {ability} />))
 	});
 
 	let tooltip = (ability_score.iter_bonuses().count() > 0).then(|| {
 		format!(
 			"<div class=\"attributed-tooltip\">{}</div>",
-			ability_score.iter_bonuses().fold(
-				String::new(),
-				|mut content, (bonus, path, included_in_total)| {
+			ability_score
+				.iter_bonuses()
+				.fold(String::new(), |mut content, (bonus, path, included_in_total)| {
 					if *included_in_total {
-						let source_text =
-							crate::data::as_feature_path_text(&path).unwrap_or_default();
-						content +=
-							format!("<span>+{} ({source_text})</span>", bonus.value).as_str();
+						let source_text = crate::data::as_feature_path_text(&path).unwrap_or_default();
+						content += format!("<span>+{} ({source_text})</span>", bonus.value).as_str();
 					}
 					content
-				}
-			)
+				})
 		)
 	});
 	let score_modifier = html! {
@@ -71,8 +66,7 @@ pub fn Score(ScoreProps { ability }: &ScoreProps) -> Html {
 		},
 		mobile::Kind::Mobile => {
 			let saving_throw_prof = state.saving_throws().get_prof(*ability);
-			let saving_throw_modifier =
-				state.ability_modifier(*ability, Some(*saving_throw_prof.value()));
+			let saving_throw_modifier = state.ability_modifier(*ability, Some(*saving_throw_prof.value()));
 
 			html! {
 				<div class="p-1 text-center" {onclick}>
@@ -126,8 +120,7 @@ pub struct AbilityProps {
 
 #[function_component]
 pub fn AbilityModifiers() -> Html {
-	let style =
-		"height: 14px; margin-right: 2px; margin-top: -2px; width: 14px; vertical-align: middle;";
+	let style = "height: 14px; margin-right: 2px; margin-top: -2px; width: 14px; vertical-align: middle;";
 	let state = use_context::<CharacterHandle>().unwrap();
 	let mut modifiers = Vec::new();
 	for ability in EnumSet::<Ability>::all() {

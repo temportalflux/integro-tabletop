@@ -56,10 +56,7 @@ pub fn Component(
 	use_effect_with_deps(
 		move |(node, _)| {
 			if let Some(node) = node.get() {
-				crate::bootstrap::Tooltip::new(
-					node.into(),
-					wasm_bindgen::JsValue::from("{}".to_owned()),
-				);
+				crate::bootstrap::Tooltip::new(node.into(), wasm_bindgen::JsValue::from("{}".to_owned()));
 			}
 		},
 		(node.clone(), content.clone()),

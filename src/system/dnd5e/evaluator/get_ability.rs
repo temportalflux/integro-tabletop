@@ -1,14 +1,15 @@
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::dnd5e::data::{character::Character, Ability},
 	utility::{Dependencies, Evaluator},
 };
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct GetAbilityModifier(pub Ability);
 
 crate::impl_trait_eq!(GetAbilityModifier);
-crate::impl_kdl_node!(GetAbilityModifier, "get_ability_modifier");
+kdlize::impl_kdl_node!(GetAbilityModifier, "get_ability_modifier");
 
 impl Evaluator for GetAbilityModifier {
 	type Context = Character;
@@ -28,7 +29,8 @@ impl Evaluator for GetAbilityModifier {
 	}
 }
 
-impl FromKDL for GetAbilityModifier {
+impl FromKdl<NodeContext> for GetAbilityModifier {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		Ok(Self(node.next_str_req_t::<Ability>()?))
 	}

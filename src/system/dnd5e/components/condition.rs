@@ -76,12 +76,10 @@ fn Modal() -> Html {
 		);
 		let add_condition_by_id = use_typed_fetch_callback(
 			"Add Condition".into(),
-			state.new_dispatch(Box::new(
-				move |condition: Condition, persistent: &mut Persistent| {
-					persistent.conditions.insert(condition);
-					MutatorImpact::Recompile
-				},
-			)),
+			state.new_dispatch(Box::new(move |condition: Condition, persistent: &mut Persistent| {
+				persistent.conditions.insert(condition);
+				MutatorImpact::Recompile
+			})),
 		);
 		let on_add_condition = Callback::from(move |evt: web_sys::Event| {
 			let Some(value) = evt.select_value() else { return; };

@@ -122,7 +122,7 @@ impl Ability {
 					- Push through a tunnel that is too small
 					- Hang on to a wagon while being dragged behind it
 					- Tip over a statue
-					- Keep a boulder from rolling"
+					- Keep a boulder from rolling",
 				),
 				(
 					"Attack Rolls and Damage",
@@ -130,7 +130,7 @@ impl Ability {
 					your damage roll when attacking with a melee weapon such \
 					as a mace, a battleaxe, or a javelin. You use melee weapons \
 					to make melee attacks in hand-to-hand combat, and some of them \
-					can be thrown to make a ranged attack."
+					can be thrown to make a ranged attack.",
 				),
 				(
 					"Lifting and Carrying",
@@ -159,7 +159,7 @@ impl Ability {
 					
 					If you carry weight in excess of 10 times your Strength score, up to your maximum carrying capacity, \
 					you are instead heavily encumbered, which means your speed drops by 20 feet and you have disadvantage \
-					on ability checks, attack rolls, and saving throws that use Strength, Dexterity, or Constitution."
+					on ability checks, attack rolls, and saving throws that use Strength, Dexterity, or Constitution.",
 				),
 			],
 			Self::Dexterity => vec![
@@ -173,30 +173,29 @@ impl Ability {
 					- Securely tie up a prisoner
 					- Wriggle free of bonds
 					- Play a stringed instrument
-					- Craft a small or detailed object"
+					- Craft a small or detailed object",
 				),
 				(
 					"Attack Rolls and Damage",
 					"You add your Dexterity modifier to your attack roll and your damage roll when attacking with \
 					a ranged weapon, such as a sling or a longbow. You can also add your Dexterity modifier to your \
 					attack roll and your damage roll when attacking with a melee weapon that has the finesse \
-					property, such as a dagger or a rapier."
+					property, such as a dagger or a rapier.",
 				),
 				(
 					"Armor Class",
 					"Depending on the armor you wear, you might add some or all \
-					of your Dexterity modifier to your Armor Class."
+					of your Dexterity modifier to your Armor Class.",
 				),
 				(
 					"Initiative",
 					"At the beginning of every combat, you roll initiative by making a Dexterity check. \
-					Initiative determines the order of creatures' turns in combat."
+					Initiative determines the order of creatures' turns in combat.",
 				),
 			],
-			Self::Constitution => vec![
-				(
-					"Hit Points",
-					"Your Constitution modifier contributes to your hit points. \
+			Self::Constitution => vec![(
+				"Hit Points",
+				"Your Constitution modifier contributes to your hit points. \
 					Typically, you add your Constitution modifier to each Hit Die you roll for your hit points.
 					
 					If your Constitution modifier changes, your hit point maximum changes as well, as though \
@@ -205,9 +204,8 @@ impl Ability {
 					your hit point maximum as though the modifier had always been +2. So you add 3 hit points \
 					for your first three levels, and then roll your hit points for 4th level using your new \
 					modifier. Or if you're 7th level and some effect lowers your Constitution score so as to \
-					reduce your Constitution modifier by 1, your hit point maximum is reduced by 7."
-				),
-			],
+					reduce your Constitution modifier by 1, your hit point maximum is reduced by 7.",
+			)],
 			Self::Intelligence => vec![
 				(
 					"Other Intelligence Checks",
@@ -217,12 +215,12 @@ impl Ability {
 					- Pull together a disguise to pass as a city guard
 					- Forge a document
 					- Recall lore about a craft or trade
-					- Win a game of skill"
+					- Win a game of skill",
 				),
 				(
 					"Spellcasting Ability",
 					"Wizards use Intelligence as their spellcasting ability, \
-					which helps determine the saving throw DCs of spells they cast."
+					which helps determine the saving throw DCs of spells they cast.",
 				),
 			],
 			Self::Wisdom => vec![
@@ -230,12 +228,12 @@ impl Ability {
 					"Other Wisdom Checks",
 					"The DM might call for a Wisdom check when you try to accomplish tasks like the following:
 					- Get a gut feeling about what course of action to follow
-					- Discern whether a seemingly dead or living creature is undead"
+					- Discern whether a seemingly dead or living creature is undead",
 				),
 				(
 					"Spellcasting Ability",
 					"Clerics, druids, and rangers use Wisdom as their spellcasting ability, \
-					which helps determine the saving throw DCs of spells they cast."
+					which helps determine the saving throw DCs of spells they cast.",
 				),
 			],
 			Self::Charisma => vec![
@@ -243,12 +241,12 @@ impl Ability {
 					"Other Charisma Checks",
 					"The DM might call for a Charisma check when you try to accomplish tasks like the following:
 					- Find the best person to talk to for news, rumors, and gossip
-					- Blend into a crowd to get the sense of key topics of conversation"
+					- Blend into a crowd to get the sense of key topics of conversation",
 				),
 				(
 					"Spellcasting Ability",
 					"Bards, paladins, sorcerers, and warlocks use Charisma as their spellcasting ability, \
-					which helps determine the saving throw DCs of spells they cast."
+					which helps determine the saving throw DCs of spells they cast.",
 				),
 			],
 		}

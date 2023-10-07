@@ -12,12 +12,7 @@ where
 	V: ToString,
 {
 	fn from(value: I) -> Self {
-		Self(
-			value
-				.into_iter()
-				.map(|(k, v)| (k.to_string(), v.to_string()))
-				.collect(),
-		)
+		Self(value.into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect())
 	}
 }
 

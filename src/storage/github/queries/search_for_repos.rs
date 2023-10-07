@@ -15,10 +15,7 @@ pub use search_for_repos::Variables;
 impl StreamableQuery<SearchForRepos> for SearchForRepos {
 	type Item = Vec<RepositoryMetadata>;
 
-	fn update_variables(
-		vars: &search_for_repos::Variables,
-		cursor: Option<String>,
-	) -> search_for_repos::Variables {
+	fn update_variables(vars: &search_for_repos::Variables, cursor: Option<String>) -> search_for_repos::Variables {
 		search_for_repos::Variables {
 			cursor,
 			amount: vars.amount,
@@ -28,8 +25,7 @@ impl StreamableQuery<SearchForRepos> for SearchForRepos {
 
 	fn next(data: search_for_repos::ResponseData) -> (Cursor, Self::Item) {
 		use search_for_repos::{
-			SearchForReposSearchNodes as RepoEnum,
-			SearchForReposSearchNodesOnRepositoryObject as Object,
+			SearchForReposSearchNodes as RepoEnum, SearchForReposSearchNodesOnRepositoryObject as Object,
 		};
 		let cursor = Cursor {
 			has_next_page: data.search.page_info.has_next_page,

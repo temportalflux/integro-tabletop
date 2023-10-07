@@ -20,9 +20,7 @@ pub fn init(name: &str, ignore: &[&'static str]) -> Result<()> {
 		let mut builder = ConfigBuilder::new();
 		builder
 			.set_max_level(log::LevelFilter::Error)
-			.set_time_format_custom(format_description!(
-				"[year].[month].[day]-[hour].[minute].[second]"
-			))
+			.set_time_format_custom(format_description!("[year].[month].[day]-[hour].[minute].[second]"))
 			// Pads the names of levels so that they line up in the log.
 			// [ERROR]
 			// [ WARN]
@@ -43,12 +41,7 @@ pub fn init(name: &str, ignore: &[&'static str]) -> Result<()> {
 		builder.build()
 	};
 	CombinedLogger::init(vec![
-		TermLogger::new(
-			LevelFilter::Trace,
-			cfg.clone(),
-			TerminalMode::Mixed,
-			ColorChoice::Auto,
-		),
+		TermLogger::new(LevelFilter::Trace, cfg.clone(), TerminalMode::Mixed, ColorChoice::Auto),
 		WriteLogger::new(LevelFilter::Trace, cfg.clone(), file),
 	])
 	.unwrap();

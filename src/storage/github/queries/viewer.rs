@@ -12,9 +12,7 @@ pub struct ViewerInfo;
 pub use viewer_info::Variables;
 
 impl ViewerInfo {
-	pub fn unpack_repository(
-		repo: Option<viewer_info::ViewerInfoViewerRepository>,
-	) -> Option<RepositoryMetadata> {
+	pub fn unpack_repository(repo: Option<viewer_info::ViewerInfoViewerRepository>) -> Option<RepositoryMetadata> {
 		use viewer_info::ViewerInfoViewerRepositoryDefaultBranchRefTargetRepositoryObject as Object;
 		let Some(repo) = repo else { return None; };
 		let name = repo.name;

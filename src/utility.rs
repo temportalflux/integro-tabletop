@@ -16,10 +16,8 @@ pub mod web_ext;
 pub use web_ext::*;
 
 pub type PinFuture<T> = PinFutureLifetime<'static, T>;
-pub type PinFutureLifetime<'l, T> =
-	std::pin::Pin<Box<dyn std::future::Future<Output = T> + 'l + Send>>;
-pub type PinFutureLifetimeNoSend<'l, T> =
-	std::pin::Pin<Box<dyn std::future::Future<Output = T> + 'l>>;
+pub type PinFutureLifetime<'l, T> = std::pin::Pin<Box<dyn std::future::Future<Output = T> + 'l + Send>>;
+pub type PinFutureLifetimeNoSend<'l, T> = std::pin::Pin<Box<dyn std::future::Future<Output = T> + 'l>>;
 
 pub fn list_as_english(mut items: Vec<String>, joiner: &str) -> Option<String> {
 	match items.len() {

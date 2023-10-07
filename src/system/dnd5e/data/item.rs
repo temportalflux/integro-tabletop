@@ -1,14 +1,13 @@
 use super::character::IndirectItem;
-use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder},
-	system::{
-		core::SourceId,
-		dnd5e::{
-			data::{character::Character, currency::Wallet, description, Rarity},
-			SystemComponent,
-		},
+use crate::kdl_ext::NodeContext;
+use crate::system::{
+	core::SourceId,
+	dnd5e::{
+		data::{character::Character, currency::Wallet, description, Rarity},
+		SystemComponent,
 	},
 };
+use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
 use std::{collections::HashMap, str::FromStr};
 
 mod kind;
@@ -42,7 +41,7 @@ pub struct Item {
 	pub spells: Option<container::SpellContainer>,
 }
 
-crate::impl_kdl_node!(Item, "item");
+kdlize::impl_kdl_node!(Item, "item");
 
 impl Item {
 	/// Returns true if the item has the capability to be equipped (i.e. it is a piece of equipment).
@@ -137,10 +136,11 @@ impl SystemComponent for Item {
 	}
 }
 
-impl FromKDL for Item {
+impl FromKdl<NodeContext> for Item {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		// TODO: Items can have empty ids if they are completely custom in the sheet
-		let id = node.query_source_opt()?.unwrap_or_default();
+		let id = crate::kdl_ext::query_source_opt(node)?.unwrap_or_default();
 
 		let name = node.get_str_req("name")?.to_owned();
 		let rarity = match node.query_str_opt("scope() > rarity", 0)? {
@@ -153,9 +153,7 @@ impl FromKDL for Item {
 			Some(mut node) => description::Info::from_kdl(&mut node)?,
 		};
 
-		let worth = node
-			.query_opt_t::<Wallet>("scope() > worth")?
-			.unwrap_or_default();
+		let worth = node.query_opt_t::<Wallet>("scope() > worth")?.unwrap_or_default();
 
 		let notes = node.query_str_opt("scope() > notes", 0)?.map(str::to_owned);
 		let tags = {
@@ -165,9 +163,7 @@ impl FromKDL for Item {
 			}
 			tags
 		};
-		let kind = node
-			.query_opt_t::<Kind>("scope() > kind")?
-			.unwrap_or_default();
+		let kind = node.query_opt_t::<Kind>("scope() > kind")?.unwrap_or_default();
 		let items = node.query_opt_t::<container::ItemContainer<Item>>("scope() > items")?;
 		let item_refs = match node.query_opt("scope() > items > templates")? {
 			None => Vec::new(),

@@ -1,10 +1,11 @@
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::dnd5e::data::{character::Character, description, DamageType},
 	utility::{list_as_english, selector, InvalidEnumStr, Mutator},
 };
 use enum_map::Enum;
 use enumset::EnumSetType;
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::str::FromStr;
 
 #[derive(EnumSetType, Enum, Debug)]
@@ -52,7 +53,7 @@ impl Default for AddDefense {
 	}
 }
 crate::impl_trait_eq!(AddDefense);
-crate::impl_kdl_node!(AddDefense, "add_defense");
+kdlize::impl_kdl_node!(AddDefense, "add_defense");
 impl Mutator for AddDefense {
 	type Target = Character;
 
@@ -72,10 +73,8 @@ impl Mutator for AddDefense {
 			},
 			match &self.damage_type {
 				None => "all".to_owned(),
-				Some(selector::Value::Specific(damage_type)) =>
-					damage_type.display_name().to_owned(),
-				Some(selector::Value::Options(selector::ValueOptions { options, .. }))
-					if options.is_empty() =>
+				Some(selector::Value::Specific(damage_type)) => damage_type.display_name().to_owned(),
+				Some(selector::Value::Options(selector::ValueOptions { options, .. })) if options.is_empty() =>
 					"any single type of".to_owned(),
 				Some(selector::Value::Options(selector::ValueOptions { options, .. })) => {
 					let options = options.iter().map(DamageType::to_string).collect();
@@ -103,16 +102,14 @@ impl Mutator for AddDefense {
 			None => None,
 			Some(selector) => stats.resolve_selector(selector),
 		};
-		stats.defenses_mut().push(
-			self.defense,
-			damage_type,
-			self.context.clone(),
-			parent.to_owned(),
-		);
+		stats
+			.defenses_mut()
+			.push(self.defense, damage_type, self.context.clone(), parent.to_owned());
 	}
 }
 
-impl FromKDL for AddDefense {
+impl FromKdl<NodeContext> for AddDefense {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let defense = node.next_str_req_t::<Defense>()?;
 		let damage_type = match node.peak_opt().is_some() {

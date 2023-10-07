@@ -1,8 +1,9 @@
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::dnd5e::data::{action::AttackQuery, character::Character},
 	utility::Evaluator,
 };
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 
 /// Checks if the character has an action with an attack that matches a restriction.
 #[derive(Clone, PartialEq, Default, Debug)]
@@ -13,7 +14,7 @@ pub struct HasAttack {
 }
 
 crate::impl_trait_eq!(HasAttack);
-crate::impl_kdl_node!(HasAttack, "has_attack");
+kdlize::impl_kdl_node!(HasAttack, "has_attack");
 
 impl Evaluator for HasAttack {
 	type Context = Character;
@@ -26,10 +27,7 @@ impl Evaluator for HasAttack {
 				"you have no more than {max} weapons equipped which: {}",
 				self.restriction
 			),
-			(min, None) => format!(
-				"you have at least {min} weapons equipped which: {}",
-				self.restriction
-			),
+			(min, None) => format!("you have at least {min} weapons equipped which: {}", self.restriction),
 			(min, Some(max)) => format!(
 				"you have at least {min}, and no more than {max}, weapons equipped which: {}",
 				self.restriction
@@ -62,16 +60,13 @@ impl Evaluator for HasAttack {
 	}
 }
 
-impl FromKDL for HasAttack {
+impl FromKdl<NodeContext> for HasAttack {
+	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let min = node.get_i64_opt("min")?.unwrap_or(1) as usize;
 		let max = node.get_i64_opt("max")?.map(|v| v as usize);
 		let restriction = AttackQuery::from_kdl(node)?;
-		Ok(Self {
-			min,
-			max,
-			restriction,
-		})
+		Ok(Self { min, max, restriction })
 	}
 }
 
