@@ -40,13 +40,15 @@ fn ProviderChain(props: &html::ChildrenProps) -> Html {
 				<task::Provider>
 					<system::Provider>
 						<DatabaseProvider>
-							<object_browser::Provider>
-								<crate::components::modal::Provider>
-									<crate::components::context_menu::Provider>
-										{props.children.clone()}
-									</crate::components::context_menu::Provider>
-								</crate::components::modal::Provider>
-							</object_browser::Provider>
+							<storage::autosync::Provider>
+								<object_browser::Provider>
+									<crate::components::modal::Provider>
+										<crate::components::context_menu::Provider>
+											{props.children.clone()}
+										</crate::components::context_menu::Provider>
+									</crate::components::modal::Provider>
+								</object_browser::Provider>
+							</storage::autosync::Provider>
 						</DatabaseProvider>
 					</system::Provider>
 				</task::Provider>

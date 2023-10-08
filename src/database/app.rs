@@ -160,6 +160,23 @@ impl Database {
 		Ok(query_typed)
 	}
 
+	pub async fn query_modules(self, system: Option<std::borrow::Cow<'_, str>>) -> Result<Vec<Module>, super::Error> {
+		use crate::database::{ObjectStoreExt, TransactionExt};
+		use futures_util::StreamExt;
+		let transaction = self.read_modules()?;
+		let entries_store = transaction.object_store_of::<Module>()?;
+		let idx_system = entries_store.index_of::<module::System>()?;
+		let index = system.map(|system_id| module::System {
+			system: system_id.into_owned(),
+		});
+		let mut cursor = idx_system.open_cursor(index.as_ref()).await?;
+		let mut items = Vec::new();
+		while let Some(item) = cursor.next().await {
+			items.push(item);
+		}
+		Ok(items)
+	}
+
 	pub async fn mutate<F>(&self, fn_transaction: F) -> Result<(), super::Error>
 	where
 		F: FnOnce(&idb::Transaction) -> LocalBoxFuture<'_, Result<(), super::Error>>,

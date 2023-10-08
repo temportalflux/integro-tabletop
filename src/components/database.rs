@@ -211,27 +211,12 @@ where
 
 #[hook]
 pub fn use_query_modules(system: Option<&'static str>) -> UseQueryModulesHandle {
-	use crate::database::app::module;
-	use futures_util::StreamExt;
 	let database = use_context::<Database>().unwrap();
 	let options = UseAsyncOptions { auto: true };
+	let system = system.map(|s| std::borrow::Cow::Borrowed(s));
 	let async_handle = use_async_with_options(
 		async move {
-			use crate::database::{ObjectStoreExt, TransactionExt};
-			let transaction = database.read_modules()?;
-			let entries_store = transaction.object_store_of::<Module>()?;
-			let idx_system = entries_store.index_of::<module::System>()?;
-			let index = match system {
-				None => None,
-				Some(system_id) => Some(module::System {
-					system: system_id.into(),
-				}),
-			};
-			let mut cursor = idx_system.open_cursor(index.as_ref()).await?;
-			let mut items = Vec::new();
-			while let Some(item) = cursor.next().await {
-				items.push(item);
-			}
+			let items = database.query_modules(system).await?;
 			Ok(items)
 		},
 		options,

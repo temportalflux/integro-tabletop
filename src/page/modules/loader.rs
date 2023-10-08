@@ -593,10 +593,12 @@ impl Loader {
 
 		if generate_new_system_modules {
 			let record = crate::database::app::Module {
-				module_id: module_id.clone(),
+				id: module_id.clone(),
 				name: module_id.to_string(),
 				systems: repository.systems.iter().cloned().collect(),
 				version: repository.version.clone(),
+				remote_version: repository.version.clone(),
+				installed: true,
 			};
 			module_store.put_record(&record).await?;
 		} else {

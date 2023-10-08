@@ -18,7 +18,6 @@ use crate::{
 	},
 	utility::{selector, Mutator, NotInList, Value},
 };
-use itertools::Itertools;
 use kdlize::NodeId;
 use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
 use std::{collections::BTreeMap, str::FromStr};

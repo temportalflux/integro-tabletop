@@ -4,7 +4,7 @@ use crate::system::dnd5e::data::character::Character;
 use anyhow::Context;
 use kdlize::{
 	ext::{EntryExt, ValueExt},
-	AsKdl, FromKdl, NodeBuilder,
+	AsKdl, NodeBuilder,
 };
 use std::{collections::HashSet, fmt::Debug, ops::Deref};
 

@@ -7,10 +7,12 @@ pub use system::*;
 
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
 pub struct Module {
-	pub module_id: ModuleId,
+	pub id: ModuleId,
 	pub name: String,
 	pub systems: BTreeSet<String>,
 	pub version: String,
+	pub remote_version: String,
+	pub installed: bool,
 }
 
 impl Record for Module {
