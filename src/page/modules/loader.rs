@@ -129,34 +129,29 @@ struct TaskSearchForRelevantRepos {
 }
 impl TaskSearchForRelevantRepos {
 	async fn spawn(self, task_dispatch: &task::Dispatch) -> Option<Vec<RepositoryMetadata>> {
-		let progress = task_dispatch.new_progress(self.owners.len() as u32);
 		let signal = task_with_output(
 			task_dispatch,
 			"Scan for Modules",
-			Some(progress.clone()),
-			self.run(progress),
+			None,
+			self.run(),
 		);
 		signal.output().await
 	}
 
-	async fn run(self, mut progress: task::ProgressHandle) -> anyhow::Result<Vec<RepositoryMetadata>> {
+	async fn run(self) -> anyhow::Result<Vec<RepositoryMetadata>> {
 		use futures_util::stream::StreamExt;
 		// Regardless of if the homebrew already existed, lets gather ALL of the relevant
 		// repositories which are content modules. This will always include the homebrew repo,
 		// since it is garunteed to exist due to the above code.
 		let mut relevant_list = BTreeMap::new();
 		let mut metadata = Vec::new();
-		for owner in self.owners {
-			let mut stream = self.client.search_for_repos(&owner);
-			while let Some(repos) = stream.next().await {
-				metadata.extend(repos.clone());
-				for repo in repos {
-					relevant_list.insert((repo.owner, repo.name), (repo.is_private, repo.version));
-				}
+		let mut stream = self.client.search_for_repos(self.owners.iter());
+		while let Some(repos) = stream.next().await {
+			metadata.extend(repos.clone());
+			for repo in repos {
+				relevant_list.insert((repo.owner, repo.name), (repo.is_private, repo.version));
 			}
-			progress.inc(1);
 		}
-
 		Ok(metadata)
 	}
 }
