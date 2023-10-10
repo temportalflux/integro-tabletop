@@ -68,7 +68,7 @@ pub fn AnnotatedNumberCard(
 			<div class="card-body text-center" style="padding: 5px 5px;">
 				<h6 class="card-title" style="font-size: 0.8rem;">{header.clone()}</h6>
 				<div style="font-size: 26px; font-weight: 500; margin: -8px 0;">
-					{children.clone()}
+					{children.iter().collect::<Vec<_>>()}
 				</div>
 				<h6 class="card-title" style="font-size: 0.8rem; margin-bottom: 0;">{footer.clone()}</h6>
 			</div>

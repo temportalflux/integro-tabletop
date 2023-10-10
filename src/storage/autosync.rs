@@ -53,13 +53,10 @@ enum StorageSyncError {
 #[function_component]
 pub fn Provider(props: &ChildrenProps) -> Html {
 	let database = use_context::<crate::database::app::Database>().unwrap();
-	let channel = Channel(use_memo(
-		|_| {
-			let (send_req, recv_req) = async_channel::unbounded();
-			RequestChannel { send_req, recv_req }
-		},
-		(),
-	));
+	let channel = Channel(use_memo((), |_| {
+		let (send_req, recv_req) = async_channel::unbounded();
+		RequestChannel { send_req, recv_req }
+	}));
 	use_async_with_options(
 		{
 			let database = database.clone();

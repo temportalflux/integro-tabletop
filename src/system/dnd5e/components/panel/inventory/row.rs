@@ -18,6 +18,7 @@ use yew::prelude::*;
 pub struct ItemRowProps {
 	pub id_path: Vec<Uuid>,
 	pub item: Item,
+	#[prop_or_default]
 	pub is_equipped: Option<bool>,
 }
 
