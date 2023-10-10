@@ -10,7 +10,7 @@ use enumset::EnumSet;
 use itertools::Itertools;
 use kdlize::{
 	ext::{DocumentExt, ValueExt},
-	AsKdl, FromKdl, NodeBuilder,
+	NodeBuilder,
 };
 use std::{collections::HashSet, str::FromStr};
 

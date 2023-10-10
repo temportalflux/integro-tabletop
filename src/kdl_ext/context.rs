@@ -1,5 +1,5 @@
 use crate::system::core::{NodeRegistry, SourceId};
-use kdlize::{ext::DocumentExt, NodeId, NodeReader};
+use kdlize::{ext::DocumentExt, NodeReader};
 use std::{str::FromStr, sync::Arc};
 
 #[derive(thiserror::Error, Debug)]

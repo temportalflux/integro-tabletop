@@ -1,12 +1,15 @@
-use crate::{components::auth, page, theme};
+use crate::{components::auth, page, storage::autosync, theme};
 use yew::prelude::*;
 use yew_router::prelude::*;
 
 #[function_component]
 pub fn App() -> Html {
-	auth::use_on_auth_success(|auth_status| {
+	let autosync_channel = use_context::<autosync::Channel>().unwrap();
+	auth::use_on_auth_success(move |_auth_status| {
 		log::debug!(target: "autosync", "Successful auth, poke storage for latest versions of all installed modules");
+		autosync_channel.try_send_req(autosync::Request::FetchLatestVersionAllModules);
 	});
+
 	html! {
 		<BrowserRouter>
 			<Header />

@@ -173,7 +173,7 @@ fn ModuleCard(ModuleCardProps { module, on_delete }: &ModuleCardProps) -> Html {
 	let database = use_context::<Database>().unwrap();
 	let task_dispatch = use_context::<task::Dispatch>().unwrap();
 	let on_delete = Callback::from({
-		let module_id = module.module_id.clone();
+		let module_id = module.id.clone();
 		let task_dispatch = task_dispatch.clone();
 		let database = database.clone();
 		let on_delete = on_delete.clone();

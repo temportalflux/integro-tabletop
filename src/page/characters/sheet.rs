@@ -1,5 +1,6 @@
 use crate::{
-	components::{mobile, Spinner, ViewScaler},
+	components::{database, mobile, Spinner, ViewScaler},
+	storage::autosync,
 	system::{core::SourceId, dnd5e::components::GeneralProp},
 };
 use yew::prelude::*;
@@ -20,13 +21,39 @@ pub struct ViewProps {
 	pub swap_view: Callback<()>,
 }
 
+#[hook]
+fn use_update_character_modules(character: &CharacterHandle) {
+	let is_first_mount_after_load = use_mut_ref(|| true);
+	let autosync_channel = use_context::<autosync::Channel>().unwrap();
+	let modules_query = database::use_query_modules(None);
+	let modules_query_complete = matches!(modules_query.status(), database::QueryStatus::Success(_));
+	if character.is_loaded() && modules_query_complete && *is_first_mount_after_load.borrow_mut() {
+		*is_first_mount_after_load.borrow_mut() = false;
+
+		// TODO: fetch modules that the character depends on
+		let module_ids = match modules_query.status() {
+			database::QueryStatus::Success(data) => data.iter().map(|module| module.id.clone()).collect::<Vec<_>>(),
+			_ => Vec::new(),
+		};
+
+		autosync_channel.try_send_req(autosync::Request::FetchAndUpdateModules(module_ids));
+	}
+}
+
 #[function_component]
 pub fn Sheet(props: &GeneralProp<SourceId>) -> Html {
 	let character = use_character(props.value.clone());
+	use_update_character_modules(&character);
 
-	crate::components::hook::use_document_visibility(|vis| {
-		if vis == web_sys::VisibilityState::Visible {
-			log::debug!(target: "autosync", "Tab resumed, time to poke storage for latest version.");
+	let autosync_channel = use_context::<autosync::Channel>().unwrap();
+	crate::components::hook::use_document_visibility({
+		let character = character.clone();
+		let autosync_channel = autosync_channel.clone();
+		move |vis| {
+			if vis == web_sys::VisibilityState::Visible && character.is_loaded() {
+				log::debug!(target: "autosync", "Tab resumed, poke for update to {:?}", character.id().to_string());
+				autosync_channel.try_send_req(autosync::Request::UpdateFile(character.id().clone()));
+			}
 		}
 	});
 
