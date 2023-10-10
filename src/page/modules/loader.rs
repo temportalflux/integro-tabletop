@@ -129,12 +129,7 @@ struct TaskSearchForRelevantRepos {
 }
 impl TaskSearchForRelevantRepos {
 	async fn spawn(self, task_dispatch: &task::Dispatch) -> Option<Vec<RepositoryMetadata>> {
-		let signal = task_with_output(
-			task_dispatch,
-			"Scan for Modules",
-			None,
-			self.run(),
-		);
+		let signal = task_with_output(task_dispatch, "Scan for Modules", None, self.run());
 		signal.output().await
 	}
 

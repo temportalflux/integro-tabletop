@@ -5,10 +5,23 @@ use yew_router::prelude::*;
 #[function_component]
 pub fn App() -> Html {
 	let autosync_channel = use_context::<autosync::Channel>().unwrap();
+	let autosync_status = use_context::<autosync::Status>().unwrap();
 	auth::use_on_auth_success(move |_auth_status| {
 		log::debug!(target: "autosync", "Successful auth, poke storage for latest versions of all installed modules");
 		autosync_channel.try_send_req(autosync::Request::FetchLatestVersionAllModules);
 	});
+
+	if autosync_status.is_active() {
+		return html! {
+			<div class="d-flex justify-content-center align-items-center">
+				{autosync_status.title()}
+				{autosync_status.progress().map(|(progress, max)| {
+					html!(<div>{progress} {"/"} {max}</div>)
+				})}
+				{autosync_status.progress_description()}
+			</div>
+		};
+	}
 
 	html! {
 		<BrowserRouter>

@@ -304,16 +304,20 @@ input.slot[type="checkbox"] {
 	width: 20px;
 	height: 20px;
 	margin: 2px;
+	--slot-color: var(--theme-frame-color);
+}
+input.slot[type="checkbox"].success {
+	--slot-color: #198754;
 }
 input.slot[type="checkbox"]:checked {
 	background-color: transparent;
-	border-color: var(--theme-frame-color);
+	border-color: var(--slot-color);
 	--bs-form-check-bg-image: "";
 }
 input.slot[type="checkbox"]:checked:before {
 	display: block;
 	content: "";
-	background-color: var(--theme-frame-color);
+	background-color: var(--slot-color);
 	
 	width: 10px;
 	height: 10px;

@@ -1,5 +1,5 @@
-use std::collections::BTreeMap;
 use crate::storage::github::{GithubClient, RepositoryMetadata};
+use std::collections::BTreeMap;
 
 pub struct ScanForModules {
 	pub status: super::Status,
@@ -24,6 +24,7 @@ impl ScanForModules {
 			}
 		}
 
+		self.status.deactivate();
 		Ok(metadata)
 	}
 }

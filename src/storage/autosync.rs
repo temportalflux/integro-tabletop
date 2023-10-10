@@ -1,8 +1,9 @@
 use crate::{
-	database::app::Module,
+	database::app::{Database, Module},
+	storage::github::RepositoryMetadata,
 	system::core::{ModuleId, SourceId},
 };
-use std::{collections::BTreeMap, rc::Rc};
+use std::{collections::{BTreeMap, HashMap}, rc::Rc};
 use yew::{html::ChildrenProps, prelude::*};
 use yew_hooks::*;
 
@@ -48,6 +49,7 @@ pub enum Request {
 	// Polls what the latest version is for each provided module,
 	// queuing downloads for each module which is not the latest version.
 	FetchAndUpdateModules(Vec<ModuleId>),
+	UpdateModules(HashMap<ModuleId, /*install vs uninstall*/ bool>),
 	// Poll what the latest version is for this specific source file.
 	// If there is an update, download the updates.
 	UpdateFile(SourceId),
@@ -91,13 +93,29 @@ impl Status {
 			state.progress_description = Some(description.into());
 		});
 	}
-	
+
 	pub fn increment_progress(&self) {
 		self.mutate(move |state| {
 			if let Some((progress, max)) = &mut state.progress {
 				*progress = (*max).min(*progress + 1);
 			}
 		});
+	}
+
+	pub fn is_active(&self) -> bool {
+		self.0.is_active
+	}
+
+	pub fn title(&self) -> Option<&AttrValue> {
+		self.0.title.as_ref()
+	}
+
+	pub fn progress(&self) -> Option<(usize, usize)> {
+		self.0.progress
+	}
+
+	pub fn progress_description(&self) -> Option<&AttrValue> {
+		self.0.progress_description.as_ref()
 	}
 }
 
@@ -111,14 +129,13 @@ enum StorageSyncError {
 
 #[function_component]
 pub fn Provider(props: &ChildrenProps) -> Html {
-	let database = use_context::<crate::database::app::Database>().unwrap();
+	let database = use_context::<Database>().unwrap();
 	let system_depot = use_context::<crate::system::Depot>().unwrap();
 	let channel = Channel(use_memo((), |_| {
 		let (send_req, recv_req) = async_channel::unbounded();
 		RequestChannel { send_req, recv_req }
 	}));
 	let status = Status(use_state_eq(|| StatusState::default()));
-	let storage = crate::storage::use_storage();
 	use_async_with_options(
 		{
 			let database = database.clone();
@@ -127,15 +144,36 @@ pub fn Provider(props: &ChildrenProps) -> Html {
 			let status = status.clone();
 			async move {
 				while let Ok(req) = recv_req.recv().await {
-					let Some(storage) = storage.clone() else { continue; };
-					let mut modules = BTreeMap::new();
+
+					let auth_status = yewdux::dispatch::get::<crate::auth::Status>();
+					let Some(storage) = auth_status.storage() else {
+						log::error!(target: "autosync", "No storage available, cannot progess request {req:?}");
+						continue;
+					};
+
+					let mut modules_to_update_or_fetch = BTreeMap::new();
+					let mut modules_to_uninstall = BTreeMap::new();
 					let mut scan_for_new_modules = false;
 					let mut update_modules_out_of_date = false;
 					match req {
 						Request::FetchLatestVersionAllModules => {
 							scan_for_new_modules = true;
 							for module in database.clone().query_modules(None).await? {
-								modules.insert(module.id.clone(), module);
+								modules_to_update_or_fetch.insert(module.id.clone(), module);
+							}
+						}
+						Request::UpdateModules(new_installation_status) => {
+							update_modules_out_of_date = true;
+							for (id, should_be_installed) in new_installation_status {
+								let module = database.get::<Module>(id.to_string()).await?;
+								if let Some(module) = module {
+									if should_be_installed {
+										modules_to_update_or_fetch.insert(module.id.clone(), module);
+									}
+									else {
+										modules_to_uninstall.insert(module.id.clone(), module);
+									}
+								}
 							}
 						}
 						Request::FetchAndUpdateModules(module_ids) => {
@@ -143,7 +181,7 @@ pub fn Provider(props: &ChildrenProps) -> Html {
 							for id in module_ids {
 								let module = database.get::<Module>(id.to_string()).await?;
 								if let Some(module) = module {
-									modules.insert(module.id.clone(), module);
+									modules_to_update_or_fetch.insert(module.id.clone(), module);
 								}
 							}
 						}
@@ -152,13 +190,15 @@ pub fn Provider(props: &ChildrenProps) -> Html {
 							if let Some(id) = source_id.module {
 								let module = database.get::<Module>(id.to_string()).await?;
 								if let Some(module) = module {
-									modules.insert(module.id.clone(), module);
+									modules_to_update_or_fetch.insert(module.id.clone(), module);
 								}
 							}
 						}
 					}
 
 					let repositories = if scan_for_new_modules {
+						log::debug!(target: "autosync", "scanning storage for modules");
+
 						let mut query_module_owners = QueryModuleOwners {
 							status: status.clone(),
 							client: storage.clone(),
@@ -170,23 +210,22 @@ pub fn Provider(props: &ChildrenProps) -> Html {
 						// then we need to generate one, since this is where their user data is stored
 						// and is the default location for any creations.
 						if !query_module_owners.found_homebrew {
+							log::debug!(target: "autosync", "generating homebrew");
 							let generate_homebrew = GenerateHomebrew {
 								status: status.clone(),
 								client: storage.clone(),
 							};
 							generate_homebrew.run().await?;
 						}
-						
+
 						let scan_for_modules = ScanForModules {
 							status: status.clone(),
 							client: storage.clone(),
 							owners,
 						};
 						scan_for_modules.run().await?
-					}
-					else
-					{
-						let module_names = modules.keys().map(ModuleId::to_string).collect();
+					} else {
+						let module_names = modules_to_update_or_fetch.keys().map(ModuleId::to_string).collect();
 						let find_modules = FindModules {
 							status: status.clone(),
 							client: storage.clone(),
@@ -195,10 +234,15 @@ pub fn Provider(props: &ChildrenProps) -> Html {
 						find_modules.run().await?
 					};
 
-					// TODO: Ensure all repositories have an equivalent module in the database,
-					// if not, add an uninstalled module entry.
-					// If it is present, update only the remote version field.
-					log::debug!(target: "autosync", "Found repositories: {repositories:?}");
+					status.activate_with_title("Updating database", None);
+					commit_module_versions(&database, &repositories, &mut modules_to_update_or_fetch).await?;
+					status.deactivate();
+
+					// TODO: uninstall desired modules (mark as uninstalled, and delete all content entries for that module)
+					if !modules_to_uninstall.is_empty() {
+						let module_names = modules_to_uninstall.keys().map(ModuleId::to_string).collect::<Vec<_>>();
+						log::debug!(target: "autosync", "uninstall modules {module_names:?}");
+					}
 
 					if update_modules_out_of_date {
 						// scan modules for new content and download
@@ -218,4 +262,53 @@ pub fn Provider(props: &ChildrenProps) -> Html {
 			</ContextProvider<Status>>
 		</ContextProvider<Channel>>
 	}
+}
+
+// Commits a transaction to the database containing updates to local module versions and adding new uninstalled modules.
+async fn commit_module_versions(
+	database: &Database,
+	remote_modules: &Vec<RepositoryMetadata>,
+	local_modules: &mut BTreeMap<ModuleId, Module>,
+) -> Result<(), StorageSyncError> {
+	use crate::database::{self, ObjectStoreExt, TransactionExt};
+
+	let transaction = database.write()?;
+	let module_store = transaction.object_store_of::<Module>()?;
+	
+	for remote_repo in remote_modules {
+		let remote_module_id = remote_repo.module_id();
+		let module = match local_modules.remove(&remote_module_id) {
+			Some(mut module) => {
+				module.remote_version = remote_repo.version.clone();
+				log::debug!(
+					target: "autosync",
+					"Updating remote version of {:?} to {:?}",
+					remote_module_id.to_string(), remote_repo.version
+				);
+				module
+			}
+			None => {
+				let module = Module {
+					id: remote_module_id.clone(),
+					name: remote_module_id.to_string(),
+					systems: remote_repo.systems.iter().cloned().collect(),
+					version: remote_repo.version.clone(),
+					remote_version: remote_repo.version.clone(),
+					installed: false,
+				};
+				log::debug!(
+					target: "autosync",
+					"Inserting new uninstalled module {:?} @ {:?}",
+					remote_module_id.to_string(), remote_repo.version
+				);
+				module
+			}
+		};
+		module_store.put_record(&module).await?;
+		local_modules.insert(remote_module_id, module);
+	}
+
+	transaction.commit().await.map_err(database::Error::from)?;
+
+	Ok(())
 }

@@ -20,14 +20,14 @@ pub enum Error {
 	InvalidResponse(std::sync::Arc<String>),
 }
 impl From<reqwest::Error> for Error {
-    fn from(value: reqwest::Error) -> Self {
-      Self::Request(std::sync::Arc::new(value))
-    }
+	fn from(value: reqwest::Error) -> Self {
+		Self::Request(std::sync::Arc::new(value))
+	}
 }
 impl From<serde_json::Error> for Error {
-    fn from(value: serde_json::Error) -> Self {
-      Self::Deserialization(std::sync::Arc::new(value))
-    }
+	fn from(value: serde_json::Error) -> Self {
+		Self::Deserialization(std::sync::Arc::new(value))
+	}
 }
 
 #[derive(Clone)]
@@ -77,7 +77,7 @@ impl GithubClient {
 		)
 	}
 
-	pub fn search_for_repos<'a>(&self, owners: impl Iterator<Item=&'a String>) -> QueryStream<SearchForRepos> {
+	pub fn search_for_repos<'a>(&self, owners: impl Iterator<Item = &'a String>) -> QueryStream<SearchForRepos> {
 		use super::MODULE_TOPIC;
 		let owners = owners.map(|owner| format!("user:{owner}")).join(" ");
 		QueryStream::new(
@@ -90,7 +90,10 @@ impl GithubClient {
 		)
 	}
 
-	pub fn search_specific_repos<'a>(&self, repo_names: impl Iterator<Item=&'a String>) -> QueryStream<SearchForRepos> {
+	pub fn search_specific_repos<'a>(
+		&self,
+		repo_names: impl Iterator<Item = &'a String>,
+	) -> QueryStream<SearchForRepos> {
 		use super::MODULE_TOPIC;
 		let repos = repo_names.map(|repo| format!("repo:{repo}")).join(" ");
 		QueryStream::new(

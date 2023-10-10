@@ -2,14 +2,14 @@ use crate::{
 	auth::{self, OAuthProvider},
 	components::{
 		database::{use_query_modules, QueryStatus, UseQueryModulesHandle},
-		Spinner,
+		Spinner, stop_propagation,
 	},
 	database::app::{Database, Module},
-	storage::github::GithubClient,
-	system::{self, dnd5e::components::GeneralProp},
-	task,
+	storage::{github::GithubClient, autosync},
+	system::{self, dnd5e::components::GeneralProp, core::ModuleId},
+	task, utility::InputExt,
 };
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet, HashMap};
 use yew::prelude::*;
 use yewdux::prelude::*;
 
@@ -22,7 +22,10 @@ pub fn ModulesLanding() -> Html {
 	let task_dispatch = use_context::<task::Dispatch>().unwrap();
 	let system_depot = use_context::<system::Depot>().unwrap();
 	let (auth_status, _) = use_store::<auth::Status>();
+	let autosync_channel = use_context::<autosync::Channel>().unwrap();
 	let modules_query = use_query_modules(None);
+
+	let pending_module_installations = use_state_eq(|| HashMap::<ModuleId, bool>::new());
 
 	let initiate_loader = Callback::from({
 		let database = database.clone();
@@ -69,13 +72,35 @@ pub fn ModulesLanding() -> Html {
 		<crate::components::modal::GeneralPurpose />
 		<div class="m-2">
 			<div class="d-flex justify-content-center">
-				<button class="btn btn-outline-success me-2" onclick={initiate_loader}>{"Scan Github"}</button>
+				<button
+					class="btn btn-outline-success me-2"
+					onclick={Callback::from({
+						let channel = autosync_channel.clone();
+						move |_| {
+							channel.try_send_req(autosync::Request::FetchLatestVersionAllModules);
+						}
+					})}
+				>{"Scan Storage"}</button>
+				<button
+					class="btn btn-outline-success me-2"
+					disabled={pending_module_installations.is_empty()}
+					onclick={Callback::from({
+						let channel = autosync_channel.clone();
+						let pending_changes = pending_module_installations.clone();
+						move |_| {
+							let changes = (*pending_changes).clone();
+							pending_changes.set(HashMap::new());
+							channel.try_send_req(autosync::Request::UpdateModules(changes));
+						}
+					})}
+				>{"Installed Selected"}</button>
+				<button class="btn btn-outline-success me-2" onclick={initiate_loader}>{"Initiate Old Loader"}</button>
 				<button class="btn btn-outline-danger me-2" onclick={clear_database}>{"Clear Downloaded Data"}</button>
 			</div>
 
 			<TaskListView />
 
-			<ModuleList value={modules_query.clone()} />
+			<ModuleList modules_query={modules_query.clone()} {pending_module_installations} />
 		</div>
 	</>}
 }
@@ -109,8 +134,14 @@ pub fn TaskListView() -> Html {
 	}
 }
 
+#[derive(Clone, PartialEq, Properties)]
+struct ModuleListProps {
+	modules_query: UseQueryModulesHandle,
+	pending_module_installations: UseStateHandle<HashMap<ModuleId, bool>>,
+}
+
 #[function_component]
-fn ModuleList(GeneralProp { value: modules_query }: &GeneralProp<UseQueryModulesHandle>) -> Html {
+fn ModuleList(ModuleListProps { modules_query, pending_module_installations }: &ModuleListProps) -> Html {
 	let on_delete_module = Callback::from({
 		let modules_query = modules_query.clone();
 		move |_| {
@@ -147,7 +178,10 @@ fn ModuleList(GeneralProp { value: modules_query }: &GeneralProp<UseQueryModules
 						<h4>{system_id}</h4>
 						<div class="d-flex flex-wrap">
 							{modules.into_iter().map(|module| html! {
-								<ModuleCard {module} on_delete={on_delete_module.clone()} />
+								<ModuleCard
+									{module} on_delete={on_delete_module.clone()}
+									pending_module_installations={pending_module_installations.clone()}
+								/>
 							}).collect::<Vec<_>>()}
 						</div>
 					</div>
@@ -167,9 +201,11 @@ fn ModuleList(GeneralProp { value: modules_query }: &GeneralProp<UseQueryModules
 struct ModuleCardProps {
 	module: Module,
 	on_delete: Callback<()>,
+	pending_module_installations: UseStateHandle<HashMap<ModuleId, bool>>,
 }
 #[function_component]
-fn ModuleCard(ModuleCardProps { module, on_delete }: &ModuleCardProps) -> Html {
+fn ModuleCard(props: &ModuleCardProps) -> Html {
+	let ModuleCardProps { module, on_delete, pending_module_installations } = props;
 	let database = use_context::<Database>().unwrap();
 	let task_dispatch = use_context::<task::Dispatch>().unwrap();
 	let on_delete = Callback::from({
@@ -225,6 +261,7 @@ fn ModuleCard(ModuleCardProps { module, on_delete }: &ModuleCardProps) -> Html {
 			});
 		}
 	});
+	let show_as_installed = pending_module_installations.get(&module.id).copied().unwrap_or(module.installed);
 	html! {
 		<div class="card m-1" style="min-width: 300px;">
 			<div class="card-header d-flex align-items-center">
@@ -246,6 +283,35 @@ fn ModuleCard(ModuleCardProps { module, on_delete }: &ModuleCardProps) -> Html {
 				<div>
 					{"Systems: "}
 					{module.systems.iter().cloned().collect::<Vec<_>>().join(", ")}
+				</div>
+				<div>
+					<input
+						type="checkbox"
+						class={classes!("form-check-input", "slot", "success")}
+						checked={show_as_installed}
+						onclick={stop_propagation()}
+						onchange={Callback::from({
+							let module_id = module.id.clone();
+							let is_installed = module.installed;
+							let pending_module_installations = pending_module_installations.clone();
+							move |evt: web_sys::Event| {
+								let Some(should_be_installed) = evt.input_checked() else { return; };
+								let should_be_pending = should_be_installed != is_installed;
+								let has_pending_entry = pending_module_installations.contains_key(&module_id);
+								if should_be_pending != has_pending_entry {
+									let mut pending_entries = (*pending_module_installations).clone();
+									if has_pending_entry {
+										pending_entries.remove(&module_id);
+									}
+									else {
+										pending_entries.insert(module_id.clone(), should_be_installed);
+									}
+									pending_module_installations.set(pending_entries);
+								}
+							}
+						})}
+					/>
+					{"Installed"}
 				</div>
 			</div>
 		</div>

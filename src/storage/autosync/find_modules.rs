@@ -1,5 +1,5 @@
-use std::collections::BTreeMap;
 use crate::storage::github::{GithubClient, RepositoryMetadata};
+use std::collections::BTreeMap;
 
 pub struct FindModules {
 	pub status: super::Status,
@@ -9,7 +9,8 @@ pub struct FindModules {
 impl FindModules {
 	pub async fn run(self) -> Result<Vec<RepositoryMetadata>, crate::storage::github::Error> {
 		use futures_util::stream::StreamExt;
-		self.status.activate_with_title("Fetching info on specific modules", None);
+		self.status
+			.activate_with_title("Fetching info on specific modules", None);
 
 		// Regardless of if the homebrew already existed, lets gather ALL of the relevant
 		// repositories which are content modules. This will always include the homebrew repo,
@@ -24,6 +25,7 @@ impl FindModules {
 			}
 		}
 
+		self.status.deactivate();
 		Ok(metadata)
 	}
 }

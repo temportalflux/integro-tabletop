@@ -9,7 +9,8 @@ pub struct QueryModuleOwners {
 impl QueryModuleOwners {
 	pub async fn run(&mut self) -> Result<Vec<String>, crate::storage::github::Error> {
 		use futures_util::stream::StreamExt;
-		self.status.activate_with_title("Searching storage for module owners", None);
+		self.status
+			.activate_with_title("Searching storage for module owners", None);
 		let (user, homebrew_repo) = self.client.viewer().await?;
 
 		let mut owners = vec![user.clone()];
@@ -20,6 +21,7 @@ impl QueryModuleOwners {
 
 		self.found_homebrew = homebrew_repo.is_some();
 
+		self.status.deactivate();
 		Ok(owners)
 	}
 }

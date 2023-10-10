@@ -1,4 +1,7 @@
-use crate::storage::{github::{GithubClient, CreateRepoArgs, SetRepoTopicsArgs}, USER_HOMEBREW_REPO_NAME};
+use crate::storage::{
+	github::{CreateRepoArgs, GithubClient, SetRepoTopicsArgs},
+	USER_HOMEBREW_REPO_NAME,
+};
 
 // Create the homebrew repo on the github client viewer (the user that is logged in).
 // https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#create-a-repository-for-the-authenticated-user
@@ -26,6 +29,7 @@ impl GenerateHomebrew {
 		};
 		self.client.set_repo_topics(set_topics).await?;
 
+		self.status.deactivate();
 		Ok(())
 	}
 }
