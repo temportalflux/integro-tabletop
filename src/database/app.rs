@@ -1,7 +1,7 @@
-use std::sync::Arc;
-use crate::kdl_ext::NodeContext;
 use super::Record;
+use crate::{kdl_ext::NodeContext, system::core::ModuleId};
 use futures_util::future::LocalBoxFuture;
+use std::sync::Arc;
 
 pub mod entry;
 pub use entry::Entry;
@@ -173,6 +173,19 @@ impl Database {
 			items.push(item);
 		}
 		Ok(items)
+	}
+
+	pub async fn query_entries_in(
+		entry_store: &idb::ObjectStore,
+		module_id: &ModuleId,
+	) -> Result<super::Cursor<Entry>, super::Error> {
+		use crate::database::ObjectStoreExt;
+		let idx_module = entry_store.index_of::<entry::Module>()?;
+		Ok(idx_module
+			.open_cursor(Some(&entry::Module {
+				module: module_id.to_string(),
+			}))
+			.await?)
 	}
 
 	pub async fn mutate<F>(&self, fn_transaction: F) -> Result<(), super::Error>

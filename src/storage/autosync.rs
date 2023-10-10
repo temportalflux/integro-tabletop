@@ -1,20 +1,32 @@
 use crate::{
-	database::app::{Database, Module},
-	storage::github::RepositoryMetadata,
+	database::{
+		self,
+		app::{Database, Module},
+	},
+	storage::github::{ChangedFileStatus, RepositoryMetadata},
 	system::core::{ModuleId, SourceId},
 };
-use std::{collections::{BTreeMap, HashMap}, rc::Rc};
+use std::{
+	collections::{BTreeMap, HashMap},
+	rc::Rc,
+};
 use yew::{html::ChildrenProps, prelude::*};
 use yew_hooks::*;
 
-mod query_module_owners;
-use query_module_owners::*;
-mod generate_homebrew;
-use generate_homebrew::*;
-mod scan_for_modules;
-use scan_for_modules::*;
+mod download_file_updates;
+use download_file_updates::*;
+mod find_file_updates;
+use find_file_updates::*;
 mod find_modules;
 use find_modules::*;
+mod generate_homebrew;
+use generate_homebrew::*;
+mod query_module_owners;
+use query_module_owners::*;
+mod scan_for_modules;
+use scan_for_modules::*;
+mod scan_repository;
+use scan_repository::*;
 
 #[derive(Clone)]
 pub struct Channel(Rc<RequestChannel>);
@@ -60,10 +72,19 @@ pub struct Status(UseStateHandle<StatusState>);
 
 #[derive(Clone, PartialEq, Default)]
 struct StatusState {
-	is_active: bool,
-	title: Option<AttrValue>,
-	progress: Option<(usize, usize)>,
-	progress_description: Option<AttrValue>,
+	stages: Vec<Stage>,
+}
+
+#[derive(Clone, PartialEq, Default)]
+pub struct Stage {
+	pub title: AttrValue,
+	pub progress: Option<Progress>,
+}
+
+#[derive(Clone, PartialEq, Default)]
+pub struct Progress {
+	pub max: usize,
+	pub progress: usize,
 }
 
 impl Status {
@@ -73,49 +94,43 @@ impl Status {
 		self.0.set(update);
 	}
 
-	pub fn deactivate(&self) {
+	pub fn push_stage(&self, title: impl Into<AttrValue>, max_progress: Option<usize>) {
 		self.mutate(move |state| {
-			state.is_active = false;
-			state.title = None;
+			state.stages.push(Stage {
+				title: title.into(),
+				progress: max_progress.map(|max| Progress { max, progress: 0 }),
+			});
 		});
 	}
 
-	pub fn activate_with_title(&self, title: impl Into<AttrValue>, progress_max: Option<usize>) {
+	pub fn pop_stage(&self) {
 		self.mutate(move |state| {
-			state.title = Some(title.into());
-			state.is_active = true;
-			state.progress = progress_max.map(|max| (0, max));
+			state.stages.pop();
 		});
 	}
 
-	pub fn set_progress_description(&self, description: impl Into<AttrValue>) {
+	pub fn set_progress_max(&self, max: usize) {
 		self.mutate(move |state| {
-			state.progress_description = Some(description.into());
+			let Some(stage) = state.stages.last_mut() else { return; };
+			let Some(progress) = &mut stage.progress else { return; };
+			progress.max = max;
 		});
 	}
 
 	pub fn increment_progress(&self) {
 		self.mutate(move |state| {
-			if let Some((progress, max)) = &mut state.progress {
-				*progress = (*max).min(*progress + 1);
-			}
+			let Some(stage) = state.stages.last_mut() else { return; };
+			let Some(progress) = &mut stage.progress else { return; };
+			progress.progress = progress.max.min(progress.progress + 1);
 		});
 	}
 
 	pub fn is_active(&self) -> bool {
-		self.0.is_active
+		!self.0.stages.is_empty()
 	}
 
-	pub fn title(&self) -> Option<&AttrValue> {
-		self.0.title.as_ref()
-	}
-
-	pub fn progress(&self) -> Option<(usize, usize)> {
-		self.0.progress
-	}
-
-	pub fn progress_description(&self) -> Option<&AttrValue> {
-		self.0.progress_description.as_ref()
+	pub fn stages(&self) -> &Vec<Stage> {
+		&self.0.stages
 	}
 }
 
@@ -144,7 +159,6 @@ pub fn Provider(props: &ChildrenProps) -> Html {
 			let status = status.clone();
 			async move {
 				while let Ok(req) = recv_req.recv().await {
-
 					let auth_status = yewdux::dispatch::get::<crate::auth::Status>();
 					let Some(storage) = auth_status.storage() else {
 						log::error!(target: "autosync", "No storage available, cannot progess request {req:?}");
@@ -169,8 +183,7 @@ pub fn Provider(props: &ChildrenProps) -> Html {
 								if let Some(module) = module {
 									if should_be_installed {
 										modules_to_update_or_fetch.insert(module.id.clone(), module);
-									}
-									else {
+									} else {
 										modules_to_uninstall.insert(module.id.clone(), module);
 									}
 								}
@@ -234,19 +247,135 @@ pub fn Provider(props: &ChildrenProps) -> Html {
 						find_modules.run().await?
 					};
 
-					status.activate_with_title("Updating database", None);
+					status.push_stage("Updating database", None);
 					commit_module_versions(&database, &repositories, &mut modules_to_update_or_fetch).await?;
-					status.deactivate();
+					status.pop_stage();
 
-					// TODO: uninstall desired modules (mark as uninstalled, and delete all content entries for that module)
 					if !modules_to_uninstall.is_empty() {
-						let module_names = modules_to_uninstall.keys().map(ModuleId::to_string).collect::<Vec<_>>();
-						log::debug!(target: "autosync", "uninstall modules {module_names:?}");
+						let transaction = database.write()?;
+						for (id, mut module) in modules_to_uninstall {
+							log::debug!(target: "autosync", "uninstalling module {:?}", id.to_string());
+							uninstall_module(&transaction, &mut module).await?;
+						}
+						transaction.commit().await.map_err(database::Error::from)?;
 					}
 
 					if update_modules_out_of_date {
 						// scan modules for new content and download
 						log::debug!(target: "autosync", "update out of date modules");
+
+						struct ModuleUpdate {
+							module: Module,
+							files: Vec<ModuleFileUpdate>,
+						}
+
+						status.push_stage("Installing modules", None);
+
+						let mut modules = Vec::with_capacity(modules_to_update_or_fetch.len());
+						status.push_stage("Gathering updates", Some(modules_to_update_or_fetch.len()));
+						for (_id, mut module) in modules_to_update_or_fetch {
+							let ModuleId::Github { user_org, repository } = &module.id else {
+								// ERROR: Invalid module id to scan
+								continue;
+							};
+
+							// For prev uninstalled modules, scan the remote for all files at the latest state.
+							if !module.installed {
+								module.installed = true;
+
+								let scan = ScanRepository {
+									status: status.clone(),
+									client: storage.clone(),
+									owner: user_org.clone(),
+									name: repository.clone(),
+									tree_id: None,
+								};
+								let files = scan.run().await?;
+								let files = files
+									.into_iter()
+									.map(|file| ModuleFileUpdate {
+										file,
+										status: ChangedFileStatus::Added,
+									})
+									.collect();
+
+								modules.push(ModuleUpdate { module, files });
+							}
+							// For module updates, ask repo for changed files since current version.
+							else if module.version != module.remote_version {
+								let scan = FindFileUpdates {
+									status: status.clone(),
+									client: storage.clone(),
+									owner: user_org.clone(),
+									name: repository.clone(),
+									old_version: module.version.clone(),
+									new_version: module.remote_version.clone(),
+								};
+								module.version = module.remote_version.clone();
+
+								let files = scan.run().await?;
+								modules.push(ModuleUpdate { module, files });
+							}
+							status.increment_progress();
+						}
+						status.pop_stage(); // Gathering Updates
+
+						// For all files to fetch, across all modules, fetch each file and update progress.
+						// Iterate per module so updates can be committed to database as each is fetched.
+						status.push_stage("Downloading files", Some(modules.len()));
+						for ModuleUpdate { module, files } in modules {
+							use crate::database::{
+								app::{Entry, Module},
+								ObjectStoreExt, TransactionExt,
+							};
+
+							let download = DownloadFileUpdates {
+								status: status.clone(),
+								client: storage.clone(),
+								system_depot: system_depot.clone(),
+								module_id: module.id.clone(),
+								version: module.remote_version.clone(),
+								files,
+							};
+							let (entries, removed_file_ids) = download.run().await?;
+
+							status.push_stage(format!("Installing {}", module.id.to_string()), None);
+
+							let transaction = database.write()?;
+
+							let module_store = transaction.object_store_of::<Module>()?;
+							module_store.put_record(&module).await?;
+
+							let entry_store = transaction.object_store_of::<Entry>()?;
+							for record in entries {
+								entry_store.put_record(&record).await?;
+							}
+							// Delete entries by module and file-id
+							let entry_ids_to_remove = {
+								use futures_util::StreamExt;
+								let mut cursor = Database::query_entries_in(&entry_store, &module.id).await?;
+								let mut entry_ids_to_remove = Vec::with_capacity(removed_file_ids.len());
+								while let Some(entry) = cursor.next().await {
+									let Some(file_id) = &entry.file_id else { continue; };
+									if removed_file_ids.contains(file_id) {
+										entry_ids_to_remove.push(entry.id.clone());
+									}
+								}
+								entry_ids_to_remove
+							};
+							for entry_id in entry_ids_to_remove {
+								entry_store.delete_record(entry_id).await?;
+							}
+
+							transaction
+								.commit()
+								.await
+								.map_err(|err| StorageSyncError::Database(err.into()))?;
+
+							status.pop_stage(); // Installing owner/repo
+						}
+						status.pop_stage(); // Downloading Files
+						status.pop_stage(); // Installing Modules
 					}
 				}
 				Ok(()) as Result<(), StorageSyncError>
@@ -264,17 +393,38 @@ pub fn Provider(props: &ChildrenProps) -> Html {
 	}
 }
 
+pub struct ModuleFile {
+	// The game system the file is in.
+	pub system: String,
+	// The path within the module of the file (including game system root).
+	pub path_in_repo: String,
+	// The file-id sha in the github repo.
+	pub file_id: String,
+}
+pub struct ModuleFileUpdate {
+	pub file: ModuleFile,
+	pub status: super::github::ChangedFileStatus,
+}
+
+impl ModuleFile {
+	pub fn get_system_in_file_path(path: &std::path::Path) -> Option<String> {
+		let Some(system_path) = path.components().next() else { return None; };
+		let system = system_path.as_os_str().to_str().unwrap().to_owned();
+		Some(system)
+	}
+}
+
 // Commits a transaction to the database containing updates to local module versions and adding new uninstalled modules.
 async fn commit_module_versions(
 	database: &Database,
 	remote_modules: &Vec<RepositoryMetadata>,
 	local_modules: &mut BTreeMap<ModuleId, Module>,
 ) -> Result<(), StorageSyncError> {
-	use crate::database::{self, ObjectStoreExt, TransactionExt};
+	use crate::database::{ObjectStoreExt, TransactionExt};
 
 	let transaction = database.write()?;
 	let module_store = transaction.object_store_of::<Module>()?;
-	
+
 	for remote_repo in remote_modules {
 		let remote_module_id = remote_repo.module_id();
 		let module = match local_modules.remove(&remote_module_id) {
@@ -309,6 +459,33 @@ async fn commit_module_versions(
 	}
 
 	transaction.commit().await.map_err(database::Error::from)?;
+
+	Ok(())
+}
+
+async fn uninstall_module(transaction: &idb::Transaction, module: &mut Module) -> Result<(), database::Error> {
+	use crate::database::{
+		app::{entry::ModuleSystem, Entry},
+		ObjectStoreExt, TransactionExt,
+	};
+	use futures_util::StreamExt;
+
+	let module_store = transaction.object_store_of::<Module>()?;
+	module.installed = false;
+	module_store.put_record(module).await?;
+
+	let entry_store = transaction.object_store_of::<Entry>()?;
+	let idx_module_system = entry_store.index_of::<ModuleSystem>()?;
+	for system in &module.systems {
+		let query = ModuleSystem {
+			module: module.id.to_string(),
+			system: system.clone(),
+		};
+		let mut cursor = idx_module_system.open_cursor(Some(&query)).await?;
+		while let Some(entry) = cursor.next().await {
+			entry_store.delete_record(entry.id).await?;
+		}
+	}
 
 	Ok(())
 }

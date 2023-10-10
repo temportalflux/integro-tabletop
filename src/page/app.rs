@@ -14,11 +14,16 @@ pub fn App() -> Html {
 	if autosync_status.is_active() {
 		return html! {
 			<div class="d-flex justify-content-center align-items-center">
-				{autosync_status.title()}
-				{autosync_status.progress().map(|(progress, max)| {
-					html!(<div>{progress} {"/"} {max}</div>)
-				})}
-				{autosync_status.progress_description()}
+				{autosync_status.stages().iter().map(|stage| {
+					html! {
+						<div>
+							{&stage.title}
+							{stage.progress.as_ref().map(|status| {
+								html!(<div>{status.progress} {"/"} {status.max}</div>)
+							})}
+						</div>
+					}
+				}).collect::<Vec<_>>()}
 			</div>
 		};
 	}

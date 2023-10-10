@@ -2,14 +2,15 @@ use crate::{
 	auth::{self, OAuthProvider},
 	components::{
 		database::{use_query_modules, QueryStatus, UseQueryModulesHandle},
-		Spinner, stop_propagation,
+		stop_propagation, Spinner,
 	},
 	database::app::{Database, Module},
-	storage::{github::GithubClient, autosync},
-	system::{self, dnd5e::components::GeneralProp, core::ModuleId},
-	task, utility::InputExt,
+	storage::{autosync, github::GithubClient},
+	system::{self, core::ModuleId},
+	task,
+	utility::InputExt,
 };
-use std::collections::{BTreeMap, HashSet, HashMap};
+use std::collections::{BTreeMap, HashMap};
 use yew::prelude::*;
 use yewdux::prelude::*;
 
@@ -141,7 +142,12 @@ struct ModuleListProps {
 }
 
 #[function_component]
-fn ModuleList(ModuleListProps { modules_query, pending_module_installations }: &ModuleListProps) -> Html {
+fn ModuleList(
+	ModuleListProps {
+		modules_query,
+		pending_module_installations,
+	}: &ModuleListProps,
+) -> Html {
 	let on_delete_module = Callback::from({
 		let modules_query = modules_query.clone();
 		move |_| {
@@ -205,7 +211,11 @@ struct ModuleCardProps {
 }
 #[function_component]
 fn ModuleCard(props: &ModuleCardProps) -> Html {
-	let ModuleCardProps { module, on_delete, pending_module_installations } = props;
+	let ModuleCardProps {
+		module,
+		on_delete,
+		pending_module_installations,
+	} = props;
 	let database = use_context::<Database>().unwrap();
 	let task_dispatch = use_context::<task::Dispatch>().unwrap();
 	let on_delete = Callback::from({
@@ -213,7 +223,7 @@ fn ModuleCard(props: &ModuleCardProps) -> Html {
 		let task_dispatch = task_dispatch.clone();
 		let database = database.clone();
 		let on_delete = on_delete.clone();
-		move |_| {
+		move |_: ()| {
 			// TODO: Modal which checks if any characters depend on the module,
 			// and only allows deletion if there are no dependees.
 
@@ -261,16 +271,14 @@ fn ModuleCard(props: &ModuleCardProps) -> Html {
 			});
 		}
 	});
-	let show_as_installed = pending_module_installations.get(&module.id).copied().unwrap_or(module.installed);
+	let show_as_installed = pending_module_installations
+		.get(&module.id)
+		.copied()
+		.unwrap_or(module.installed);
 	html! {
 		<div class="card m-1" style="min-width: 300px;">
 			<div class="card-header d-flex align-items-center">
 				<span>{&module.name}</span>
-				<i
-					class="bi bi-trash ms-auto"
-					style="color: var(--bs-danger);"
-					onclick={on_delete}
-				/>
 			</div>
 			<div class="card-body">
 				<div>

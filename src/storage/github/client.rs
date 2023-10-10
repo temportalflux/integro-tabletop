@@ -255,7 +255,7 @@ impl GithubClient {
 	pub fn get_files_changed(
 		&self,
 		request: FilesChangedArgs<'_>,
-	) -> LocalBoxFuture<'static, Result<Vec<ChangedFile>, ChangedFilesError>> {
+	) -> LocalBoxFuture<'static, Result<Vec<ChangedFile>, Error>> {
 		use serde_json::Value;
 		use std::str::FromStr;
 		// https://docs.github.com/en/rest/commits/commits?apiVersion=2022-11-28#compare-two-commits
@@ -275,7 +275,9 @@ impl GithubClient {
 				let Some(Value::String(file_id)) = map.get("sha") else { continue; };
 				let Some(Value::String(path)) = map.get("filename") else { continue; };
 				let Some(Value::String(status)) = map.get("status") else { continue; };
-				let status = ChangedFileStatus::from_str(status.as_str())?;
+				let status = ChangedFileStatus::from_str(status.as_str());
+				let status =
+					status.map_err(|delta_status| Error::InvalidResponse(format!("{delta_status:?}").into()))?;
 				paths_changed.push(ChangedFile {
 					path: path.clone(),
 					file_id: file_id.clone(),

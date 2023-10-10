@@ -12,7 +12,7 @@ pub struct GenerateHomebrew {
 }
 impl GenerateHomebrew {
 	pub async fn run(self) -> Result<(), crate::storage::github::Error> {
-		self.status.activate_with_title("Initializing homebrew module", None);
+		self.status.push_stage("Initializing homebrew module", None);
 
 		use crate::storage::github::MODULE_TOPIC;
 		let create_repo = CreateRepoArgs {
@@ -29,7 +29,7 @@ impl GenerateHomebrew {
 		};
 		self.client.set_repo_topics(set_topics).await?;
 
-		self.status.deactivate();
+		self.status.pop_stage();
 		Ok(())
 	}
 }
