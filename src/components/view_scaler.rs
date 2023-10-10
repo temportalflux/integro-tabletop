@@ -36,17 +36,14 @@ where
 	F: Fn() + 'static,
 {
 	let callback = std::rc::Rc::new(callback);
-	let js_on_resize = use_memo(
-		{
-			move |_| {
-				let callback = callback.clone();
-				Closure::<dyn Fn(web_sys::UiEvent)>::new(move |_event: web_sys::UiEvent| {
-					(*callback)();
-				})
-			}
-		},
-		(),
-	);
+	let js_on_resize = use_memo((), {
+		move |_| {
+			let callback = callback.clone();
+			Closure::<dyn Fn(web_sys::UiEvent)>::new(move |_event: web_sys::UiEvent| {
+				(*callback)();
+			})
+		}
+	});
 	let window = web_sys::window().unwrap();
 	window.set_onresize(Some((*js_on_resize).as_ref().unchecked_ref()));
 }

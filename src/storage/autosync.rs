@@ -113,13 +113,10 @@ enum StorageSyncError {
 pub fn Provider(props: &ChildrenProps) -> Html {
 	let database = use_context::<crate::database::app::Database>().unwrap();
 	let system_depot = use_context::<crate::system::Depot>().unwrap();
-	let channel = Channel(use_memo(
-		|_| {
-			let (send_req, recv_req) = async_channel::unbounded();
-			RequestChannel { send_req, recv_req }
-		},
-		(),
-	));
+	let channel = Channel(use_memo((), |_| {
+		let (send_req, recv_req) = async_channel::unbounded();
+		RequestChannel { send_req, recv_req }
+	}));
 	let status = Status(use_state_eq(|| StatusState::default()));
 	let storage = crate::storage::use_storage();
 	use_async_with_options(

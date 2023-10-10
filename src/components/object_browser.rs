@@ -312,25 +312,22 @@ pub fn ObjectSelectorList(props: &GeneralProp<std::path::PathBuf>) -> Html {
 
 	let state = use_context::<CharacterHandle>().unwrap();
 	let fetched_entries = use_query_entries();
-	use_effect_with_deps(
-		{
-			let data_path = props.value.clone();
-			let fetched_entries = fetched_entries.clone();
-			move |state: &CharacterHandle| {
-				let Some(values) = state.get_selections_at(&data_path) else {
+	use_effect_with(state.clone(), {
+		let data_path = props.value.clone();
+		let fetched_entries = fetched_entries.clone();
+		move |state: &CharacterHandle| {
+			let Some(values) = state.get_selections_at(&data_path) else {
 					fetched_entries.clear();
 					return;
 				};
-				let mut ids = Vec::with_capacity(values.len());
-				for value in values {
-					let Ok(id) = SourceId::from_str(value.as_str()) else { continue; };
-					ids.push(id.into_unversioned());
-				}
-				fetched_entries.run(ids);
+			let mut ids = Vec::with_capacity(values.len());
+			for value in values {
+				let Ok(id) = SourceId::from_str(value.as_str()) else { continue; };
+				ids.push(id.into_unversioned());
 			}
-		},
-		state.clone(),
-	);
+			fetched_entries.run(ids);
+		}
+	});
 
 	match fetched_entries.status() {
 		QueryStatus::Pending => html!(<crate::components::Spinner />),

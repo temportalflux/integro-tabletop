@@ -142,46 +142,43 @@ fn GenerationSection() -> Html {
 			}));
 		}
 	});
-	use_effect_with_deps(
-		{
-			let scores = scores.clone();
-			let state = state.clone();
-			move |method: &Option<GeneratorMethod>| match method {
-				None => {}
-				Some(GeneratorMethod::PointBuy) => {
-					scores.set({
-						let mut scores = state.persistent().ability_scores.clone();
-						let mut budget_left = PT_BUY_BUDGET;
-						for score in scores.values_mut() {
-							let cost = get_pt_buy_cost(*score);
-							if !PT_BUY_RANGE.contains(score) || budget_left < cost {
-								*score = 8;
-							} else {
-								budget_left = budget_left.saturating_sub(cost);
-							}
-						}
-						scores
-					});
-				}
-				Some(GeneratorMethod::StandardArray) => scores.set({
+	use_effect_with((*method).clone(), {
+		let scores = scores.clone();
+		let state = state.clone();
+		move |method: &Option<GeneratorMethod>| match method {
+			None => {}
+			Some(GeneratorMethod::PointBuy) => {
+				scores.set({
 					let mut scores = state.persistent().ability_scores.clone();
-					let mut unused_options = HashSet::from(STD_ARRAY_OPTIONS);
+					let mut budget_left = PT_BUY_BUDGET;
 					for score in scores.values_mut() {
-						match unused_options.contains(score) {
-							true => {
-								unused_options.remove(score);
-							}
-							false => {
-								*score = 0;
-							}
+						let cost = get_pt_buy_cost(*score);
+						if !PT_BUY_RANGE.contains(score) || budget_left < cost {
+							*score = 8;
+						} else {
+							budget_left = budget_left.saturating_sub(cost);
 						}
 					}
 					scores
-				}),
+				});
 			}
-		},
-		(*method).clone(),
-	);
+			Some(GeneratorMethod::StandardArray) => scores.set({
+				let mut scores = state.persistent().ability_scores.clone();
+				let mut unused_options = HashSet::from(STD_ARRAY_OPTIONS);
+				for score in scores.values_mut() {
+					match unused_options.contains(score) {
+						true => {
+							unused_options.remove(score);
+						}
+						false => {
+							*score = 0;
+						}
+					}
+				}
+				scores
+			}),
+		}
+	});
 	let has_changes = method.is_some() && *scores != state.persistent().ability_scores;
 	html! {
 		<div>

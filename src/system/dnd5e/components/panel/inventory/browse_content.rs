@@ -38,24 +38,21 @@ pub fn BrowseModal() -> Html {
 	let result_limit = use_state_eq(|| Some(DEFAULT_RESULT_LIMIT));
 	let query_handle = use_query_all_typed::<Item>(false, None);
 
-	use_effect_with_deps(
-		{
-			let query_handle = query_handle.clone();
-			move |(params, limit): &(UseStateHandle<SearchParams>, UseStateHandle<Option<usize>>)| {
-				if params.is_empty() {
-					return;
-				}
-				let args = QueryAllArgs::<Item> {
-					system: DnD5e::id().into(),
-					criteria: Some(params.as_criteria()),
-					max_limit: **limit,
-					..Default::default()
-				};
-				query_handle.run(Some(args));
+	use_effect_with((search_params.clone(), result_limit.clone()), {
+		let query_handle = query_handle.clone();
+		move |(params, limit): &(UseStateHandle<SearchParams>, UseStateHandle<Option<usize>>)| {
+			if params.is_empty() {
+				return;
 			}
-		},
-		(search_params.clone(), result_limit.clone()),
-	);
+			let args = QueryAllArgs::<Item> {
+				system: DnD5e::id().into(),
+				criteria: Some(params.as_criteria()),
+				max_limit: **limit,
+				..Default::default()
+			};
+			query_handle.run(Some(args));
+		}
+	});
 
 	let on_search_changed = Callback::from({
 		let result_limit = result_limit.clone();

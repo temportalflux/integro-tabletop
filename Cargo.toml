@@ -12,13 +12,13 @@ kdlize = { path = "crates/kdlize" }
 any-range = "0.1"
 wasm-bindgen = "0.2"
 log = { version = "0.4", features = ["std"] }
-yew = { version = "0.20", features = ["csr"] }
-yew-router = { version = "0.17" }
+yew = { version = "0.21", features = ["csr"] }
+yew-router = { version = "0.18" }
 yewdux = "0.9"
 gloo-events = "0.2"
-gloo-storage = "0.2"
-gloo-utils = "0.1"
-gloo-timers = { version = "0.2", features = ["futures"] }
+gloo-storage = "0.3"
+gloo-utils = "0.2"
+gloo-timers = { version = "0.3", features = ["futures"] }
 web-sys = { version = "0.3", features = [
 	"DataTransfer", "Document", "DomTokenList", "VisibilityState",
 	"HtmlCollection", "HtmlSelectElement", "HtmlInputElement", "HtmlTextAreaElement",
@@ -38,12 +38,12 @@ anyhow = "1.0"
 thiserror = "1.0"
 urlencoding = "2.1"
 kdl = { version = "5.0.0-alpha.0", git = "https://github.com/kdl-org/kdl-rs" }
-yew-hooks = "0.2"
+yew-hooks = "0.3"
 url = "2.3"
 fluvio-wasm-timer = "0.2"
 enumset = "1.0"
 multimap = "0.9"
-enum-map = "2.4"
+enum-map = "2.6"
 convert_case = "0.6"
 dyn-clone = "1.0"
 uuid = { version = "1.3", features = ["v4", "js"] }
@@ -53,10 +53,10 @@ time = "0.3"
 downcast-rs = "1.2"
 async-channel = "1.8"
 derivative = "2.2"
-itertools = "0.10"
+itertools = "0.11"
 phf = { version = "0.11", features = ["macros"] }
 idb = "0.4"
-serde-wasm-bindgen = "0.5"
+serde-wasm-bindgen = "0.6"
 js-sys = "0.3"
 futures-util = "0.3"
 lazy_static = "1.4"
@@ -64,7 +64,7 @@ unzip-n = "0.1"
 rand = "0.8"
 wasm-timer = "0.2"
 regex = "1.8"
-graphql_client = { version = "0.12", features = ["reqwest"] }
+graphql_client = { version = "0.13", features = ["reqwest"] }
 tokio = { version="1.26", features=["sync"] }
 base64ct = { version="1.6", features=["alloc"] }
 async-recursion = "1"

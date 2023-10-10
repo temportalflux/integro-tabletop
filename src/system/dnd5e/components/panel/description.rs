@@ -83,7 +83,7 @@ pub fn SizeHeightWeight() -> Html {
 		<div class="row text-center">
 			<div class="col">
 				<label style="font-weight: 700;">{"Size"}</label>
-				<span style="display: block;">{state.persistent().description.size()}</span>
+				<span style="display: block;">{state.persistent().description.size().to_string()}</span>
 			</div>
 			<div class="col" onclick={onclick_height}>
 				<label style="font-weight: 700;">{"Height"}</label>
@@ -134,7 +134,7 @@ pub fn Personality() -> Html {
 			{state.persistent().description.personality.iter().map(|(kind, traits)| {
 				html! {
 					<div>
-						<label style="font-weight: 700;">{kind}</label>
+						<label style="font-weight: 700;">{kind.to_string()}</label>
 						<ul style="margin-bottom: 0;">
 							{traits.iter().map(move |trait_str| {
 								html!(<li>{trait_str}</li>)

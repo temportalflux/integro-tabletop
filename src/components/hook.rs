@@ -11,21 +11,18 @@ where
 	E: From<wasm_bindgen::JsValue>,
 {
 	let callback = use_latest(callback);
-	use_effect_with_deps(
-		move |event_type: &Cow<'static, str>| {
-			let document = gloo_utils::document();
-			let listener = EventListener::new_with_options(
-				&document,
-				event_type.clone(),
-				EventListenerOptions::default(),
-				move |event| {
-					(*callback.current())(wasm_bindgen::JsValue::from(event).into());
-				},
-			);
-			move || drop(listener)
-		},
-		event_type.into(),
-	);
+	use_effect_with(event_type.into(), move |event_type: &Cow<'static, str>| {
+		let document = gloo_utils::document();
+		let listener = EventListener::new_with_options(
+			&document,
+			event_type.clone(),
+			EventListenerOptions::default(),
+			move |event| {
+				(*callback.current())(wasm_bindgen::JsValue::from(event).into());
+			},
+		);
+		move || drop(listener)
+	});
 }
 
 #[hook]

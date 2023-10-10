@@ -75,18 +75,15 @@ pub fn Sheet(props: &GeneralProp<SourceId>) -> Html {
 		}
 	});
 
-	use_effect_with_deps(
-		{
-			let character = character.clone();
-			move |id: &SourceId| {
-				if character.is_loaded() {
-					log::info!("Reloading character with updated id {id:?}");
-					character.unload();
-				}
+	use_effect_with(props.value.clone(), {
+		let character = character.clone();
+		move |id: &SourceId| {
+			if character.is_loaded() {
+				log::info!("Reloading character with updated id {id:?}");
+				character.unload();
 			}
-		},
-		props.value.clone(),
-	);
+		}
+	});
 	if !character.is_loaded() {
 		return html!(<Spinner />);
 	}
