@@ -1317,15 +1317,12 @@ pub fn AvailableSpellList(props: &AvailableSpellListProps) -> Html {
 		let criteria = props.criteria.clone();
 		move || criteria
 	});
-	use_effect_with(
-		props.criteria.clone(),
-		{
-			let criteria_handle = criteria_handle.clone();
-			move |criteria: &Option<Criteria>| {
-				criteria_handle.set(criteria.clone());
-			}
-		},
-	);
+	use_effect_with(props.criteria.clone(), {
+		let criteria_handle = criteria_handle.clone();
+		move |criteria: &Option<Criteria>| {
+			criteria_handle.set(criteria.clone());
+		}
+	});
 
 	let source_kind = props.source;
 	let mut contained_spells = Vec::new();
@@ -1423,15 +1420,12 @@ pub fn AvailableSpellList(props: &AvailableSpellListProps) -> Html {
 	if yew_hooks::use_is_first_mount() {
 		load_data.run();
 	}
-	use_effect_with(
-		(criteria_handle.clone(), props.source),
-		{
-			let load_data = load_data.clone();
-			move |_: &(UseStateHandle<Option<Criteria>>, SpellSource)| {
-				load_data.run();
-			}
-		},
-	);
+	use_effect_with((criteria_handle.clone(), props.source), {
+		let load_data = load_data.clone();
+		move |_: &(UseStateHandle<Option<Criteria>>, SpellSource)| {
+			load_data.run();
+		}
+	});
 
 	// TODO: Search bar for available spells section
 	html! {<>

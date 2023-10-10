@@ -53,14 +53,11 @@ pub fn Component(
 	}: &Props,
 ) -> Html {
 	let node = use_node_ref();
-	use_effect_with(
-		(node.clone(), content.clone()),
-		move |(node, _)| {
-			if let Some(node) = node.get() {
-				crate::bootstrap::Tooltip::new(node.into(), wasm_bindgen::JsValue::from("{}".to_owned()));
-			}
-		},
-	);
+	use_effect_with((node.clone(), content.clone()), move |(node, _)| {
+		if let Some(node) = node.get() {
+			crate::bootstrap::Tooltip::new(node.into(), wasm_bindgen::JsValue::from("{}".to_owned()));
+		}
+	});
 
 	html! {<@{tag.as_str().to_owned()} ref={node}
 		class={classes.clone()}

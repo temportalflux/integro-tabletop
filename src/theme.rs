@@ -79,36 +79,33 @@ pub fn Dropdown() -> Html {
 	let theme = use_state(|| gloo_storage::LocalStorage::get::<Theme>("theme").unwrap_or_default());
 
 	// Update the theme in storage and html when the theme value has changed
-	use_effect_with(
-		(*theme).clone(),
-		move |theme| {
-			log::debug!("Setting theme to {:?}", theme);
-			// Write the theme to local-storage, deleting if the desired value is automatic.
-			match theme {
-				Theme::Auto => {
-					gloo_storage::LocalStorage::delete("theme");
-				}
-				theme => {
-					let _ = gloo_storage::LocalStorage::set("theme", theme);
-				}
+	use_effect_with((*theme).clone(), move |theme| {
+		log::debug!("Setting theme to {:?}", theme);
+		// Write the theme to local-storage, deleting if the desired value is automatic.
+		match theme {
+			Theme::Auto => {
+				gloo_storage::LocalStorage::delete("theme");
 			}
-			// Apply the theme to the document
-			match theme.as_attribute_value() {
-				None => {
-					let _ = gloo_utils::document()
-						.document_element()
-						.unwrap()
-						.remove_attribute("data-bs-theme");
-				}
-				Some(theme) => {
-					let _ = gloo_utils::document()
-						.document_element()
-						.unwrap()
-						.set_attribute("data-bs-theme", theme);
-				}
+			theme => {
+				let _ = gloo_storage::LocalStorage::set("theme", theme);
 			}
-		},
-	);
+		}
+		// Apply the theme to the document
+		match theme.as_attribute_value() {
+			None => {
+				let _ = gloo_utils::document()
+					.document_element()
+					.unwrap()
+					.remove_attribute("data-bs-theme");
+			}
+			Some(theme) => {
+				let _ = gloo_utils::document()
+					.document_element()
+					.unwrap()
+					.set_attribute("data-bs-theme", theme);
+			}
+		}
+	});
 
 	let onclick = {
 		let theme = theme.clone();

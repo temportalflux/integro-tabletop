@@ -437,15 +437,12 @@ fn ActionOverview(ActionProps { entry }: &ActionProps) -> Html {
 
 	let fetch_indirect_conditions = use_query_typed::<Condition>();
 	let indirect_condition_ids = use_state_eq(|| Vec::new());
-	use_effect_with(
-		indirect_condition_ids.clone(),
-		{
-			let fetch_indirect_conditions = fetch_indirect_conditions.clone();
-			move |ids: &UseStateHandle<Vec<SourceId>>| {
-				fetch_indirect_conditions.run((**ids).clone());
-			}
-		},
-	);
+	use_effect_with(indirect_condition_ids.clone(), {
+		let fetch_indirect_conditions = fetch_indirect_conditions.clone();
+		move |ids: &UseStateHandle<Vec<SourceId>>| {
+			fetch_indirect_conditions.run((**ids).clone());
+		}
+	});
 
 	let mut conditions_content = html!();
 	if let Some(action) = &entry.feature.action {
@@ -581,15 +578,12 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let fetch_indirect_conditions = use_query_typed::<Condition>();
 	let indirect_condition_ids = use_state_eq(|| Vec::new());
-	use_effect_with(
-		indirect_condition_ids.clone(),
-		{
-			let fetch_indirect_conditions = fetch_indirect_conditions.clone();
-			move |ids: &UseStateHandle<Vec<SourceId>>| {
-				fetch_indirect_conditions.run((**ids).clone());
-			}
-		},
-	);
+	use_effect_with(indirect_condition_ids.clone(), {
+		let fetch_indirect_conditions = fetch_indirect_conditions.clone();
+		move |ids: &UseStateHandle<Vec<SourceId>>| {
+			fetch_indirect_conditions.run((**ids).clone());
+		}
+	});
 
 	let Some(feature) = state.features().path_map.get_first(&path) else {
 		return html! {<>

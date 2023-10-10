@@ -96,15 +96,12 @@ pub fn ActionProvider(ChildrenProps { children }: &ChildrenProps) -> Html {
 		},
 		yew_hooks::UseAsyncOptions::enable_auto(),
 	);
-	let on_window_message = use_memo(
-		(),
-		|_| {
-			let send_msg = message_channel.0.clone();
-			Closure::<dyn Fn(_)>::new(move |evt: MessageEvent| {
-				let _ = send_msg.try_send(AuthMessage::Event(evt));
-			})
-		},
-	);
+	let on_window_message = use_memo((), |_| {
+		let send_msg = message_channel.0.clone();
+		Closure::<dyn Fn(_)>::new(move |evt: MessageEvent| {
+			let _ = send_msg.try_send(AuthMessage::Event(evt));
+		})
+	});
 	let logout = Callback::from({
 		let dispatch = dispatch.clone();
 		let send_msg = message_channel.0.clone();
@@ -113,19 +110,16 @@ pub fn ActionProvider(ChildrenProps { children }: &ChildrenProps) -> Html {
 			let _ = send_msg.try_send(AuthMessage::ClearPending);
 		}
 	});
-	let reset_auth_state = use_memo(
-		(),
-		|_| {
-			let auth_status = auth_status.clone();
-			let logout = logout.clone();
-			Closure::<dyn Fn()>::new(move || {
-				if *auth_status == Status::Authorizing {
-					log::debug!("Authorizing took too long, resetting auth status.");
-					logout.emit(());
-				}
-			})
-		},
-	);
+	let reset_auth_state = use_memo((), |_| {
+		let auth_status = auth_status.clone();
+		let logout = logout.clone();
+		Closure::<dyn Fn()>::new(move || {
+			if *auth_status == Status::Authorizing {
+				log::debug!("Authorizing took too long, resetting auth status.");
+				logout.emit(());
+			}
+		})
+	});
 	let login = Callback::from({
 		let send_msg = message_channel.0.clone();
 		move |provider| match &*auth_status {

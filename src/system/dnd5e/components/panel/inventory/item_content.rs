@@ -621,15 +621,12 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 
 	let fetch_indirect_spells = use_query_typed::<Spell>();
 	let indirect_spell_ids = use_state_eq(|| Vec::new());
-	use_effect_with(
-		indirect_spell_ids.clone(),
-		{
-			let fetch_indirect_spells = fetch_indirect_spells.clone();
-			move |ids: &UseStateHandle<Vec<SourceId>>| {
-				fetch_indirect_spells.run((**ids).clone());
-			}
-		},
-	);
+	use_effect_with(indirect_spell_ids.clone(), {
+		let fetch_indirect_spells = fetch_indirect_spells.clone();
+		move |ids: &UseStateHandle<Vec<SourceId>>| {
+			fetch_indirect_spells.run((**ids).clone());
+		}
+	});
 
 	let Some(item) = get_inventory_item(&state, value) else { return Html::default(); };
 	let Some(spell_container) = &item.spells else { return Html::default(); };
