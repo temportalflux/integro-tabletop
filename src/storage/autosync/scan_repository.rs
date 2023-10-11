@@ -41,6 +41,7 @@ impl ScanRepository {
 				repo: self.name.as_str(),
 				tree_id: tree_id.as_str(),
 			};
+			self.status.increment_progress();
 			for entry in self.client.get_tree(args).await? {
 				let full_path = tree_path.join(&entry.path);
 				// if the entry is a directory, put it in the queue to be scanned
@@ -69,7 +70,6 @@ impl ScanRepository {
 					});
 				}
 			}
-			self.status.increment_progress();
 		}
 
 		self.status.pop_stage();

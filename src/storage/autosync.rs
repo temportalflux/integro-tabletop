@@ -8,8 +8,9 @@ use crate::{
 };
 use std::{
 	collections::{BTreeMap, HashMap},
-	rc::Rc,
+	rc::Rc, cell::RefCell,
 };
+use derivative::Derivative;
 use yew::{html::ChildrenProps, prelude::*};
 use yew_hooks::*;
 
@@ -67,21 +68,34 @@ pub enum Request {
 	UpdateFile(SourceId),
 }
 
-#[derive(Clone, PartialEq)]
-pub struct Status(UseStateHandle<StatusState>);
+#[derive(Clone, Derivative)]
+#[derivative(PartialEq)]
+pub struct Status {
+	#[derivative(PartialEq="ignore")]
+	rw_internal: Rc<RefCell<StatusState>>,
+	r_external: UseStateHandle<StatusState>,
+}
+impl std::fmt::Debug for Status {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+      f.debug_struct("Status")
+				.field("State", &self.rw_internal)
+				.field("Display", &self.r_external)
+				.finish()
+    }
+}
 
-#[derive(Clone, PartialEq, Default)]
+#[derive(Clone, PartialEq, Default, Debug)]
 struct StatusState {
 	stages: Vec<Stage>,
 }
 
-#[derive(Clone, PartialEq, Default)]
+#[derive(Clone, PartialEq, Default, Debug)]
 pub struct Stage {
 	pub title: AttrValue,
 	pub progress: Option<Progress>,
 }
 
-#[derive(Clone, PartialEq, Default)]
+#[derive(Clone, PartialEq, Default, Debug)]
 pub struct Progress {
 	pub max: usize,
 	pub progress: usize,
@@ -89,9 +103,9 @@ pub struct Progress {
 
 impl Status {
 	fn mutate(&self, perform: impl FnOnce(&mut StatusState)) {
-		let mut update = (*self.0).clone();
-		perform(&mut update);
-		self.0.set(update);
+		let mut state = self.rw_internal.borrow_mut();
+		perform(&mut *state);
+		self.r_external.set(state.clone());
 	}
 
 	pub fn push_stage(&self, title: impl Into<AttrValue>, max_progress: Option<usize>) {
@@ -111,26 +125,38 @@ impl Status {
 
 	pub fn set_progress_max(&self, max: usize) {
 		self.mutate(move |state| {
-			let Some(stage) = state.stages.last_mut() else { return; };
-			let Some(progress) = &mut stage.progress else { return; };
+			let Some(stage) = state.stages.last_mut() else {
+				log::error!(target: "autosync", "status has no stages");
+				return;
+			};
+			let Some(progress) = &mut stage.progress else {
+				log::error!(target: "autosync", "{stage:?} has no progress");
+				return;
+			};
 			progress.max = max;
 		});
 	}
 
 	pub fn increment_progress(&self) {
 		self.mutate(move |state| {
-			let Some(stage) = state.stages.last_mut() else { return; };
-			let Some(progress) = &mut stage.progress else { return; };
+			let Some(stage) = state.stages.last_mut() else {
+				log::error!(target: "autosync", "status has no stages");
+				return;
+			};
+			let Some(progress) = &mut stage.progress else {
+				log::error!(target: "autosync", "{stage:?} has no progress");
+				return;
+			};
 			progress.progress = progress.max.min(progress.progress + 1);
 		});
 	}
 
 	pub fn is_active(&self) -> bool {
-		!self.0.stages.is_empty()
+		!self.r_external.stages.is_empty()
 	}
 
 	pub fn stages(&self) -> &Vec<Stage> {
-		&self.0.stages
+		&self.r_external.stages
 	}
 }
 
@@ -150,7 +176,34 @@ pub fn Provider(props: &ChildrenProps) -> Html {
 		let (send_req, recv_req) = async_channel::unbounded();
 		RequestChannel { send_req, recv_req }
 	}));
-	let status = Status(use_state_eq(|| StatusState::default()));
+	let status = Status {
+		rw_internal: Rc::new(RefCell::new(StatusState::default())),
+		r_external: use_state_eq(|| StatusState {
+			/*
+			stages: vec![
+				Stage {
+					title: "Layer 1: Installing".into(),
+					..Default::default()
+				},
+				Stage {
+					title: "Layer 2: Modules".into(),
+					progress: Some(Progress {
+						progress: 2,
+						max: 5,
+					}),
+				},
+				Stage {
+					title: "Layer 3: Files".into(),
+					progress: Some(Progress {
+						progress: 419,
+						max: 650,
+					}),
+				}
+			],
+			// */
+			..Default::default()
+		}),
+	};
 	use_async_with_options(
 		{
 			let database = database.clone();
@@ -209,9 +262,9 @@ pub fn Provider(props: &ChildrenProps) -> Html {
 						}
 					}
 
-					let repositories = if scan_for_new_modules {
-						log::debug!(target: "autosync", "scanning storage for modules");
+					// TODO: Ensure that homebrew is always installed
 
+					let repositories = if scan_for_new_modules {
 						let mut query_module_owners = QueryModuleOwners {
 							status: status.clone(),
 							client: storage.clone(),
@@ -223,7 +276,6 @@ pub fn Provider(props: &ChildrenProps) -> Html {
 						// then we need to generate one, since this is where their user data is stored
 						// and is the default location for any creations.
 						if !query_module_owners.found_homebrew {
-							log::debug!(target: "autosync", "generating homebrew");
 							let generate_homebrew = GenerateHomebrew {
 								status: status.clone(),
 								client: storage.clone(),
@@ -254,7 +306,6 @@ pub fn Provider(props: &ChildrenProps) -> Html {
 					if !modules_to_uninstall.is_empty() {
 						let transaction = database.write()?;
 						for (id, mut module) in modules_to_uninstall {
-							log::debug!(target: "autosync", "uninstalling module {:?}", id.to_string());
 							uninstall_module(&transaction, &mut module).await?;
 						}
 						transaction.commit().await.map_err(database::Error::from)?;
@@ -262,7 +313,7 @@ pub fn Provider(props: &ChildrenProps) -> Html {
 
 					if update_modules_out_of_date {
 						// scan modules for new content and download
-						log::debug!(target: "autosync", "update out of date modules");
+						let module_names = modules_to_update_or_fetch.keys().map(ModuleId::to_string).collect::<Vec<_>>();
 
 						struct ModuleUpdate {
 							module: Module,
@@ -274,11 +325,13 @@ pub fn Provider(props: &ChildrenProps) -> Html {
 						let mut modules = Vec::with_capacity(modules_to_update_or_fetch.len());
 						status.push_stage("Gathering updates", Some(modules_to_update_or_fetch.len()));
 						for (_id, mut module) in modules_to_update_or_fetch {
+							status.increment_progress();
+
 							let ModuleId::Github { user_org, repository } = &module.id else {
 								// ERROR: Invalid module id to scan
 								continue;
 							};
-
+							
 							// For prev uninstalled modules, scan the remote for all files at the latest state.
 							if !module.installed {
 								module.installed = true;
@@ -316,18 +369,19 @@ pub fn Provider(props: &ChildrenProps) -> Html {
 								let files = scan.run().await?;
 								modules.push(ModuleUpdate { module, files });
 							}
-							status.increment_progress();
 						}
 						status.pop_stage(); // Gathering Updates
 
 						// For all files to fetch, across all modules, fetch each file and update progress.
 						// Iterate per module so updates can be committed to database as each is fetched.
-						status.push_stage("Downloading files", Some(modules.len()));
+						status.push_stage("Downloading Modules", Some(modules.len()));
 						for ModuleUpdate { module, files } in modules {
 							use crate::database::{
 								app::{Entry, Module},
 								ObjectStoreExt, TransactionExt,
 							};
+							
+							status.increment_progress();
 
 							let download = DownloadFileUpdates {
 								status: status.clone(),
@@ -430,11 +484,6 @@ async fn commit_module_versions(
 		let module = match local_modules.remove(&remote_module_id) {
 			Some(mut module) => {
 				module.remote_version = remote_repo.version.clone();
-				log::debug!(
-					target: "autosync",
-					"Updating remote version of {:?} to {:?}",
-					remote_module_id.to_string(), remote_repo.version
-				);
 				module
 			}
 			None => {
@@ -446,11 +495,6 @@ async fn commit_module_versions(
 					remote_version: remote_repo.version.clone(),
 					installed: false,
 				};
-				log::debug!(
-					target: "autosync",
-					"Inserting new uninstalled module {:?} @ {:?}",
-					remote_module_id.to_string(), remote_repo.version
-				);
 				module
 			}
 		};

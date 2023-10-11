@@ -1,4 +1,4 @@
-use crate::auth;
+use crate::{auth, storage::autosync};
 use yew::prelude::*;
 use yewdux::prelude::*;
 
@@ -24,13 +24,16 @@ where
 
 #[function_component]
 pub fn LoginButton() -> Html {
-	let (auth_status, _) = use_store::<auth::Status>();
 	let auth = use_context::<auth::Auth>().unwrap();
+	let auth_status = use_store_value::<auth::Status>();
+	let autosync_status = use_context::<autosync::Status>().unwrap();
+	let disabled = autosync_status.is_active();
 	if matches!(*auth_status, auth::Status::Successful { .. }) {
 		let onclick = auth.logout_callback().reform(|_: MouseEvent| ());
 		html! {
 			<button
 				class="btn btn-outline-danger"
+				{disabled}
 				{onclick}
 			>
 				{"Sign Out"}
@@ -43,6 +46,7 @@ pub fn LoginButton() -> Html {
 		html! {
 			<button
 				class="btn btn-success"
+				{disabled}
 				{onclick}
 			>
 				{"Sign In"}

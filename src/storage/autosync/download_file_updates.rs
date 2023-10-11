@@ -29,7 +29,7 @@ impl DownloadFileUpdates {
 			return Ok((Vec::new(), HashSet::new()));
 		};
 		self.status
-			.push_stage(format!("{user_org}/{repository}"), Some(self.files.len()));
+			.push_stage(format!("Downloading {user_org}/{repository}"), Some(self.files.len()));
 		let mut entries = Vec::with_capacity(self.files.len());
 		let mut removed_file_ids = HashSet::new();
 		let files = self.files.drain(..).collect::<Vec<_>>();
@@ -42,6 +42,8 @@ impl DownloadFileUpdates {
 				},
 				status,
 			} = file_update;
+			
+			self.status.increment_progress();
 
 			let args = FileContentArgs {
 				owner: user_org.as_str(),
@@ -66,7 +68,6 @@ impl DownloadFileUpdates {
 				}
 				ChangedFileStatus::Unchanged => {}
 			}
-			self.status.increment_progress();
 		}
 		self.status.pop_stage();
 		Ok((entries, removed_file_ids))

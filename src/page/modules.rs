@@ -148,12 +148,6 @@ fn ModuleList(
 		pending_module_installations,
 	}: &ModuleListProps,
 ) -> Html {
-	let on_delete_module = Callback::from({
-		let modules_query = modules_query.clone();
-		move |_| {
-			modules_query.run();
-		}
-	});
 	match modules_query.status() {
 		QueryStatus::Pending => html!(<Spinner />),
 		QueryStatus::Empty | QueryStatus::Failed(_) => html! {
@@ -185,7 +179,7 @@ fn ModuleList(
 						<div class="d-flex flex-wrap">
 							{modules.into_iter().map(|module| html! {
 								<ModuleCard
-									{module} on_delete={on_delete_module.clone()}
+									{module}
 									pending_module_installations={pending_module_installations.clone()}
 								/>
 							}).collect::<Vec<_>>()}
@@ -206,69 +200,23 @@ fn ModuleList(
 #[derive(Clone, PartialEq, Properties)]
 struct ModuleCardProps {
 	module: Module,
-	on_delete: Callback<()>,
 	pending_module_installations: UseStateHandle<HashMap<ModuleId, bool>>,
 }
 #[function_component]
 fn ModuleCard(props: &ModuleCardProps) -> Html {
 	let ModuleCardProps {
 		module,
-		on_delete,
 		pending_module_installations,
 	} = props;
-	let database = use_context::<Database>().unwrap();
-	let task_dispatch = use_context::<task::Dispatch>().unwrap();
-	let on_delete = Callback::from({
+	let autosync_channel = use_context::<autosync::Channel>().unwrap();
+	let on_toggle_install = Callback::from({
+		let channel = autosync_channel.clone();
 		let module_id = module.id.clone();
-		let task_dispatch = task_dispatch.clone();
-		let database = database.clone();
-		let on_delete = on_delete.clone();
-		move |_: ()| {
-			// TODO: Modal which checks if any characters depend on the module,
-			// and only allows deletion if there are no dependees.
-
-			// TODO: Next - delete the module at the provided id & delete all records which are associated with that module in any system. Can use a database index for this, similar to modules_system.
-			let module_id = module_id.clone();
-			let database = database.clone();
-			let on_delete = on_delete.clone();
-			task_dispatch.spawn(format!("Delete {}", module_id.to_string()), None, async move {
-				use crate::database::{
-					app::{entry::ModuleSystem, Entry, Module},
-					Error, ObjectStoreExt, TransactionExt,
-				};
-				use futures_util::StreamExt;
-				let transaction = database.write()?;
-				let module_store = transaction.object_store_of::<Module>()?;
-				let entry_store = transaction.object_store_of::<Entry>()?;
-
-				let module_systems = {
-					let req = module_store.get_record::<Module>(module_id.to_string());
-					let module = req.await?.unwrap();
-					module.systems
-				};
-
-				let mut entry_ids = Vec::new();
-				let idx_module_system = entry_store.index_of::<ModuleSystem>()?;
-				for system in module_systems {
-					let query = ModuleSystem {
-						module: module_id.to_string(),
-						system,
-					};
-					let mut cursor = idx_module_system.open_cursor(Some(&query)).await?;
-					while let Some(entry) = cursor.next().await {
-						entry_ids.push(entry.id);
-					}
-				}
-
-				for entry_id in entry_ids {
-					entry_store.delete_record(entry_id).await?;
-				}
-				module_store.delete_record(module_id.to_string()).await?;
-
-				transaction.commit().await?;
-				on_delete.emit(());
-				Ok(()) as Result<(), Error>
-			});
+		let installed = module.installed;
+		move |_| {
+			channel.try_send_req(autosync::Request::UpdateModules([
+				(module_id.clone(), !installed)
+			].into()));
 		}
 	});
 	let show_as_installed = pending_module_installations
@@ -276,9 +224,13 @@ fn ModuleCard(props: &ModuleCardProps) -> Html {
 		.copied()
 		.unwrap_or(module.installed);
 	html! {
-		<div class="card m-1" style="min-width: 300px;">
+		<div class="card m-1 module" style="min-width: 300px;">
 			<div class="card-header d-flex align-items-center">
 				<span>{&module.name}</span>
+				<i
+					class={classes!("bi", "ms-auto", module.installed.then_some("bi-trash").unwrap_or("bi-cloud-download"))}
+					onclick={on_toggle_install}
+				/>
 			</div>
 			<div class="card-body">
 				<div>
@@ -295,7 +247,7 @@ fn ModuleCard(props: &ModuleCardProps) -> Html {
 				<div>
 					<input
 						type="checkbox"
-						class={classes!("form-check-input", "slot", "success")}
+						class={classes!("form-check-input", "slot", "success", "me-2")}
 						checked={show_as_installed}
 						onclick={stop_propagation()}
 						onchange={Callback::from({

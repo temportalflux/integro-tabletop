@@ -14,10 +14,13 @@ impl FindModules {
 		// repositories which are content modules. This will always include the homebrew repo,
 		// since it is garunteed to exist due to the above code.
 		let mut metadata = Vec::new();
-		let mut stream = self.client.search_specific_repos(self.names.iter());
-		while let Some(repos) = stream.next().await {
-			metadata.extend(repos.clone());
+		if !self.names.is_empty() {
+			let mut stream = self.client.search_specific_repos(self.names.iter());
+			while let Some(repos) = stream.next().await {
+				metadata.extend(repos.clone());
+			}
 		}
+
 
 		self.status.pop_stage();
 		Ok(metadata)
