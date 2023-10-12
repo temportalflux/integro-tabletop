@@ -60,10 +60,10 @@ pub enum Request {
 	// Only poll for what the latest version is of all installed modules.
 	// This should not actually download any updates.
 	FetchLatestVersionAllModules,
-	// Polls what the latest version is for each provided module,
-	// queuing downloads for each module which is not the latest version.
-	FetchAndUpdateModules(Vec<ModuleId>),
-	UpdateModules(HashMap<ModuleId, /*install vs uninstall*/ bool>),
+	// Download and install modules (or uninstall from database).
+	InstallModules(HashMap<ModuleId, /*install vs uninstall*/ bool>),
+	// Download updates to modules that are out of date (does not query for versions in storage).
+	UpdateModules(Vec<ModuleId>),
 	// Poll what the latest version is for this specific source file.
 	// If there is an update, download the updates.
 	UpdateFile(SourceId),
@@ -230,35 +230,32 @@ pub fn Provider(props: &ChildrenProps) -> Html {
 								modules_to_update_or_fetch.insert(module.id.clone(), module);
 							}
 						}
-						Request::UpdateModules(new_installation_status) => {
+						Request::InstallModules(new_installation_status) => {
 							update_modules_out_of_date = true;
 							for (id, should_be_installed) in new_installation_status {
 								let module = database.get::<Module>(id.to_string()).await?;
-								if let Some(module) = module {
-									if should_be_installed {
-										modules_to_update_or_fetch.insert(module.id.clone(), module);
-									} else {
-										modules_to_uninstall.insert(module.id.clone(), module);
-									}
+								let Some(module) = module else { continue; };
+								if should_be_installed {
+									modules_to_update_or_fetch.insert(module.id.clone(), module);
+								} else {
+									modules_to_uninstall.insert(module.id.clone(), module);
 								}
 							}
 						}
-						Request::FetchAndUpdateModules(module_ids) => {
+						Request::UpdateModules(module_ids) => {
 							update_modules_out_of_date = true;
 							for id in module_ids {
 								let module = database.get::<Module>(id.to_string()).await?;
-								if let Some(module) = module {
-									modules_to_update_or_fetch.insert(module.id.clone(), module);
-								}
+								let Some(module) = module else { continue; };
+								modules_to_update_or_fetch.insert(module.id.clone(), module);
 							}
 						}
 						Request::UpdateFile(source_id) => {
 							update_modules_out_of_date = true;
 							if let Some(id) = source_id.module {
 								let module = database.get::<Module>(id.to_string()).await?;
-								if let Some(module) = module {
-									modules_to_update_or_fetch.insert(module.id.clone(), module);
-								}
+								let Some(module) = module else { continue; };
+								modules_to_update_or_fetch.insert(module.id.clone(), module);
 							}
 						}
 					}
@@ -300,9 +297,11 @@ pub fn Provider(props: &ChildrenProps) -> Html {
 						find_modules.run().await?
 					};
 
-					status.push_stage("Updating database", None);
-					commit_module_versions(&database, &repositories, &mut modules_to_update_or_fetch).await?;
-					status.pop_stage();
+					if !repositories.is_empty() {
+						status.push_stage("Updating database", None);
+						commit_module_versions(&database, &repositories, &mut modules_to_update_or_fetch).await?;
+						status.pop_stage();
+					}
 
 					if !modules_to_uninstall.is_empty() {
 						let transaction = database.write()?;

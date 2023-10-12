@@ -10,43 +10,48 @@ pub fn App() -> Html {
 		autosync_channel.try_send_req(autosync::Request::FetchLatestVersionAllModules);
 	});
 
+	let autosync_takeover = autosync_status.is_active().then(|| {
+		html! {
+			<div class="sync-status d-flex justify-content-center align-items-center">
+				<div class="d-flex flex-column align-items-center" style="width: 1000px;">
+					{autosync_status.stages().iter().enumerate().map(|(idx, stage)| {
+						html! {
+							<div class="w-100 my-2">
+								<div class="d-flex align-items-center">
+									{stage.progress.is_none().then(|| {
+										html!(<div class="spinner-border me-2" role="status" />)
+									})}
+									<div class={format!("h{}", idx+1)}>{&stage.title}</div>
+								</div>
+								{stage.progress.as_ref().map(|status| {
+									let progress = (status.progress as f64 / status.max as f64) * 100f64;
+									html! {
+										<div>
+											<div class="progress" role="progressbar">
+												<div class="progress-bar bg-success" style={format!("width: {progress}%")} />
+											</div>
+											<div class="progress-label-float">
+												{status.progress} {"/"} {status.max}
+											</div>
+										</div>
+									}
+								})}
+							</div>
+						}
+					}).collect::<Vec<_>>()}
+				</div>
+			</div>
+		}
+	});
+	let display_route = autosync_status.is_active().then_some("d-none");
+
 	html! {
 		<BrowserRouter>
 			<Header />
-			{match autosync_status.is_active() {
-				true => {
-					html! {
-						<div class="sync-status d-flex justify-content-center align-items-center">
-							<div class="d-flex flex-column align-items-center" style="width: 1000px;">
-								{autosync_status.stages().iter().enumerate().map(|(idx, stage)| {
-									html! {
-										<div class="w-100 my-2">
-											<div class="d-flex align-items-center">
-												{stage.progress.is_none().then(|| {
-													html!(<div class="spinner-border me-2" role="status" />)
-												})}
-												<div class={format!("h{}", idx+1)}>{&stage.title}</div>
-											</div>
-											{stage.progress.as_ref().map(|status| {
-												let progress = (status.progress as f64 / status.max as f64) * 100f64;
-												html! {
-													<div class="progress" role="progressbar">
-														<div class="progress-bar bg-success" style={format!("width: {progress}%")}>
-															{status.progress} {"/"} {status.max}
-														</div>
-													</div>
-												}
-											})}
-										</div>
-									}
-								}).collect::<Vec<_>>()}
-							</div>
-						</div>
-					}
-				}
-				false => html!(<Switch<Route> render={Route::switch} />),
-			}}
-
+			{autosync_takeover}
+			<div class={classes!(display_route)}>
+				<Switch<Route> render={Route::switch} />
+			</div>
 		</BrowserRouter>
 	}
 }

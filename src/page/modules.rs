@@ -61,7 +61,7 @@ pub fn ModulesLanding() -> Html {
 						move |_| {
 							let changes = (*pending_changes).clone();
 							pending_changes.set(HashMap::new());
-							channel.try_send_req(autosync::Request::UpdateModules(changes));
+							channel.try_send_req(autosync::Request::InstallModules(changes));
 						}
 					})}
 				>{"Installed Selected"}</button>
@@ -184,7 +184,7 @@ fn ModuleCard(props: &ModuleCardProps) -> Html {
 		let module_id = module.id.clone();
 		let installed = module.installed;
 		move |_| {
-			channel.try_send_req(autosync::Request::UpdateModules(
+			channel.try_send_req(autosync::Request::InstallModules(
 				[(module_id.clone(), !installed)].into(),
 			));
 		}

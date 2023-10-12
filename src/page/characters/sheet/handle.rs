@@ -100,7 +100,7 @@ impl CharacterHandle {
 					return Err(CharacterInitializationError::NoSystem);
 				};
 				let id_str = id.to_string();
-				log::debug!("Initializing character from {:?}", id_str);
+				log::info!(target: "character", "Initializing from {:?}", id_str);
 
 				let entry = handle
 					.database
@@ -133,8 +133,9 @@ impl CharacterHandle {
 					system_depot: handle.system_depot.clone(),
 				};
 				if let Err(err) = character.recompile(provider).await {
-					log::warn!("Encountered error updating cached character objects: {err:?}");
+					log::warn!(target: "character", "Encountered error updating cached character objects: {err:?}");
 				}
+				log::info!(target: "character", "Finished loading {:?}", id_str);
 				handle.state.set(CharacterState::Loaded(character));
 				handle.set_recompiling(false);
 				handle.process_pending_mutations();
@@ -143,7 +144,7 @@ impl CharacterHandle {
 			};
 			async move {
 				if let Err(err) = initialize_character.await {
-					log::error!("Failed to initialize character: {err:?}");
+					log::error!(target: "character", "Failed to initialize character: {err:?}");
 				}
 			}
 		});

@@ -967,8 +967,17 @@ $Pages: Abilities, Attributes, Features, Spells, Inventory, Description;
     --bs-spinner-animation-speed: 1.75s;
 	}
 	.progress {
-		font-size: 20px;
 		height: 25px;
+	}
+	.progress-label-float {
+		display: flex;
+		justify-content: center;
+		margin-top: -28px;
+		font-size: 20px;
+		color: #fff;
+    text-align: center;
+    white-space: nowrap;
+    text-shadow: 0px 0px 3px black;
 	}
 }
 
