@@ -6,11 +6,12 @@ use crate::{
 	storage::github::{ChangedFileStatus, RepositoryMetadata},
 	system::core::{ModuleId, SourceId},
 };
-use std::{
-	collections::{BTreeMap, HashMap},
-	rc::Rc, cell::RefCell,
-};
 use derivative::Derivative;
+use std::{
+	cell::RefCell,
+	collections::{BTreeMap, HashMap},
+	rc::Rc,
+};
 use yew::{html::ChildrenProps, prelude::*};
 use yew_hooks::*;
 
@@ -71,17 +72,17 @@ pub enum Request {
 #[derive(Clone, Derivative)]
 #[derivative(PartialEq)]
 pub struct Status {
-	#[derivative(PartialEq="ignore")]
+	#[derivative(PartialEq = "ignore")]
 	rw_internal: Rc<RefCell<StatusState>>,
 	r_external: UseStateHandle<StatusState>,
 }
 impl std::fmt::Debug for Status {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-      f.debug_struct("Status")
-				.field("State", &self.rw_internal)
-				.field("Display", &self.r_external)
-				.finish()
-    }
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		f.debug_struct("Status")
+			.field("State", &self.rw_internal)
+			.field("Display", &self.r_external)
+			.finish()
+	}
 }
 
 #[derive(Clone, PartialEq, Default, Debug)]
@@ -305,16 +306,13 @@ pub fn Provider(props: &ChildrenProps) -> Html {
 
 					if !modules_to_uninstall.is_empty() {
 						let transaction = database.write()?;
-						for (id, mut module) in modules_to_uninstall {
+						for (_id, mut module) in modules_to_uninstall {
 							uninstall_module(&transaction, &mut module).await?;
 						}
 						transaction.commit().await.map_err(database::Error::from)?;
 					}
 
 					if update_modules_out_of_date {
-						// scan modules for new content and download
-						let module_names = modules_to_update_or_fetch.keys().map(ModuleId::to_string).collect::<Vec<_>>();
-
 						struct ModuleUpdate {
 							module: Module,
 							files: Vec<ModuleFileUpdate>,
@@ -331,7 +329,7 @@ pub fn Provider(props: &ChildrenProps) -> Html {
 								// ERROR: Invalid module id to scan
 								continue;
 							};
-							
+
 							// For prev uninstalled modules, scan the remote for all files at the latest state.
 							if !module.installed {
 								module.installed = true;
@@ -380,7 +378,7 @@ pub fn Provider(props: &ChildrenProps) -> Html {
 								app::{Entry, Module},
 								ObjectStoreExt, TransactionExt,
 							};
-							
+
 							status.increment_progress();
 
 							let download = DownloadFileUpdates {

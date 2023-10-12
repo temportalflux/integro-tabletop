@@ -73,6 +73,7 @@ fn DatabaseProvider(props: &html::ChildrenProps) -> Html {
 	// Could probably check `use_is_first_mount()`, but checking if there database
 	// doesn't exist yet and isn't loading is more clear.
 	if database.data.is_none() && !database.loading {
+		log::info!(target: "database", "Initializing database");
 		database.run();
 	}
 	// If the database has not yet loaded (or encountered an error),

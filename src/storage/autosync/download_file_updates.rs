@@ -42,7 +42,7 @@ impl DownloadFileUpdates {
 				},
 				status,
 			} = file_update;
-			
+
 			self.status.increment_progress();
 
 			let args = FileContentArgs {

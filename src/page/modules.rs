@@ -1,62 +1,27 @@
 use crate::{
-	auth::{self, OAuthProvider},
 	components::{
 		database::{use_query_modules, QueryStatus, UseQueryModulesHandle},
 		stop_propagation, Spinner,
 	},
 	database::app::{Database, Module},
-	storage::{autosync, github::GithubClient},
-	system::{self, core::ModuleId},
+	storage::autosync,
+	system::core::ModuleId,
 	task,
 	utility::InputExt,
 };
 use std::collections::{BTreeMap, HashMap};
 use yew::prelude::*;
-use yewdux::prelude::*;
-
-mod loader;
 
 /// Page which displays the modules the user currently logged in has contributor access to.
 #[function_component]
 pub fn ModulesLanding() -> Html {
 	let database = use_context::<Database>().unwrap();
 	let task_dispatch = use_context::<task::Dispatch>().unwrap();
-	let system_depot = use_context::<system::Depot>().unwrap();
-	let (auth_status, _) = use_store::<auth::Status>();
 	let autosync_channel = use_context::<autosync::Channel>().unwrap();
 	let modules_query = use_query_modules(None);
 
 	let pending_module_installations = use_state_eq(|| HashMap::<ModuleId, bool>::new());
 
-	let initiate_loader = Callback::from({
-		let database = database.clone();
-		let task_dispatch = task_dispatch.clone();
-		let modules_query = modules_query.clone();
-		move |_| {
-			let auth::Status::Successful { provider, token } = &*auth_status else { return; };
-			if *provider != OAuthProvider::Github {
-				log::error!("Currently authenticated with {provider:?}, but no storage system is hooked up for anything but github.");
-				return;
-			}
-			let Ok(client) = GithubClient::new(token) else {
-				return;
-			};
-			let on_finished = Box::new({
-				let modules_query = modules_query.clone();
-				move || {
-					modules_query.run();
-				}
-			});
-			let loader = loader::Loader {
-				client,
-				task_dispatch: task_dispatch.clone(),
-				system_depot: system_depot.clone(),
-				database: database.clone(),
-				on_finished,
-			};
-			loader.find_and_download_modules();
-		}
-	});
 	let clear_database = Callback::from({
 		let database = database.clone();
 		let task_dispatch = task_dispatch.clone();
@@ -67,6 +32,11 @@ pub fn ModulesLanding() -> Html {
 				Ok(()) as Result<(), crate::database::Error>
 			});
 		}
+	});
+	let delete_database = Callback::from(move |_| {
+		let Some(window) = web_sys::window() else { return; };
+		let Ok(Some(idb_factory)) = window.indexed_db() else { return; };
+		let _ = idb_factory.delete_database("tabletop-tools");
 	});
 
 	html! {<>
@@ -95,8 +65,8 @@ pub fn ModulesLanding() -> Html {
 						}
 					})}
 				>{"Installed Selected"}</button>
-				<button class="btn btn-outline-success me-2" onclick={initiate_loader}>{"Initiate Old Loader"}</button>
 				<button class="btn btn-outline-danger me-2" onclick={clear_database}>{"Clear Downloaded Data"}</button>
+				<button class="btn btn-danger me-2" onclick={delete_database}>{"Delete Database"}</button>
 			</div>
 
 			<TaskListView />
@@ -214,9 +184,9 @@ fn ModuleCard(props: &ModuleCardProps) -> Html {
 		let module_id = module.id.clone();
 		let installed = module.installed;
 		move |_| {
-			channel.try_send_req(autosync::Request::UpdateModules([
-				(module_id.clone(), !installed)
-			].into()));
+			channel.try_send_req(autosync::Request::UpdateModules(
+				[(module_id.clone(), !installed)].into(),
+			));
 		}
 	});
 	let show_as_installed = pending_module_installations

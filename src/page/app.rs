@@ -46,7 +46,7 @@ pub fn App() -> Html {
 				}
 				false => html!(<Switch<Route> render={Route::switch} />),
 			}}
-			
+
 		</BrowserRouter>
 	}
 }

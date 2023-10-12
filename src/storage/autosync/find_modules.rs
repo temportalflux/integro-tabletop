@@ -21,7 +21,6 @@ impl FindModules {
 			}
 		}
 
-
 		self.status.pop_stage();
 		Ok(metadata)
 	}
