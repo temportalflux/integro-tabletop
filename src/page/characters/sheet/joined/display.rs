@@ -58,7 +58,14 @@ pub fn Display(ViewProps { swap_view }: &ViewProps) -> Html {
 					return Ok(());
 				};
 
-				let SourceId { module: Some(ModuleId::Github { user_org, repository }), system, path, version, ..} = &id else {
+				let SourceId {
+					module: Some(ModuleId::Github { user_org, repository }),
+					system,
+					path,
+					version,
+					..
+				} = &id
+				else {
 					log::error!("non-github source id");
 					return Ok(());
 				};
@@ -149,7 +156,11 @@ pub fn Display(ViewProps { swap_view }: &ViewProps) -> Html {
 				}
 			};
 
-			let SourceId { module: Some(ModuleId::Github { user_org, repository }), ..} = &id else {
+			let SourceId {
+				module: Some(ModuleId::Github { user_org, repository }),
+				..
+			} = &id
+			else {
 				log::debug!("non-github source id");
 				return;
 			};

@@ -34,8 +34,12 @@ pub fn ModulesLanding() -> Html {
 		}
 	});
 	let delete_database = Callback::from(move |_| {
-		let Some(window) = web_sys::window() else { return; };
-		let Ok(Some(idb_factory)) = window.indexed_db() else { return; };
+		let Some(window) = web_sys::window() else {
+			return;
+		};
+		let Ok(Some(idb_factory)) = window.indexed_db() else {
+			return;
+		};
 		let _ = idb_factory.delete_database("tabletop-tools");
 	});
 

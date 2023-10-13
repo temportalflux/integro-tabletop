@@ -6,7 +6,7 @@ pub struct FindModules {
 	pub names: Vec<String>,
 }
 impl FindModules {
-	pub async fn run(self) -> Result<Vec<RepositoryMetadata>, crate::storage::github::Error> {
+	pub async fn run(&mut self) -> Result<Vec<RepositoryMetadata>, crate::storage::github::Error> {
 		use futures_util::stream::StreamExt;
 		self.status.push_stage("Fetching info on specific modules", None);
 

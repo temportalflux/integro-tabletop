@@ -62,12 +62,16 @@ fn SizeForm() -> Html {
 	let weight_label = format!("{}kg", ((weight as f32) * 0.45359237).round() as u32);
 
 	let set_height = state.new_dispatch(|evt: web_sys::Event, persistent| {
-		let Some(value) = evt.input_value_t::<u32>() else { return MutatorImpact::None; };
+		let Some(value) = evt.input_value_t::<u32>() else {
+			return MutatorImpact::None;
+		};
 		persistent.description.height = value;
 		MutatorImpact::None
 	});
 	let set_weight = state.new_dispatch(|evt: web_sys::Event, persistent| {
-		let Some(value) = evt.input_value_t::<u32>() else { return MutatorImpact::None; };
+		let Some(value) = evt.input_value_t::<u32>() else {
+			return MutatorImpact::None;
+		};
 		persistent.description.weight = value;
 		MutatorImpact::None
 	});
@@ -184,8 +188,12 @@ fn PersonalityCard(GeneralProp { value }: &GeneralProp<PersonalityKind>) -> Html
 			MutatorImpact::None
 		});
 		let update_item = state.new_dispatch(move |(idx, evt): (usize, web_sys::Event), persistent| {
-			let Some(value) = evt.input_value() else { return MutatorImpact::None; };
-			let Some(target) = persistent.description.personality[personality_kind].get_mut(idx) else { return MutatorImpact::None; };
+			let Some(value) = evt.input_value() else {
+				return MutatorImpact::None;
+			};
+			let Some(target) = persistent.description.personality[personality_kind].get_mut(idx) else {
+				return MutatorImpact::None;
+			};
 			*target = value.trim().to_owned();
 			MutatorImpact::None
 		});
@@ -271,7 +279,9 @@ pub fn AppearanceSection() -> Html {
 	let onchange = Callback::from({
 		let state = state.clone();
 		move |evt: web_sys::Event| {
-			let Some(value) = evt.input_value() else { return; };
+			let Some(value) = evt.input_value() else {
+				return;
+			};
 			state.dispatch(Box::new(move |persistent: &mut Persistent| {
 				persistent.description.appearance = value;
 				MutatorImpact::None

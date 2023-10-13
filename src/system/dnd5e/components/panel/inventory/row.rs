@@ -62,7 +62,9 @@ pub fn ItemModal(InventoryItemProps { id_path }: &InventoryItemProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let close_modal = context_menu::use_close_fn();
 	let item = get_inventory_item(&state, id_path);
-	let Some(item) = item else { return Html::default(); };
+	let Some(item) = item else {
+		return Html::default();
+	};
 	// TODO: edit capability for properties:
 	// name, notes, quantity(✔)
 	// dndbeyond also supports worth and weight overrides, idk if I want that or not

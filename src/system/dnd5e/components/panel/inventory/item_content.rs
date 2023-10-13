@@ -50,11 +50,17 @@ pub fn get_inventory_item<'c>(state: &'c CharacterHandle, id_path: &Vec<uuid::Uu
 }
 pub fn get_inventory_item_mut<'c>(persistent: &'c mut Persistent, id_path: &Vec<uuid::Uuid>) -> Option<&'c mut Item> {
 	let mut iter = id_path.iter();
-	let Some(id) = iter.next() else { return None; };
+	let Some(id) = iter.next() else {
+		return None;
+	};
 	let mut item = persistent.inventory.get_mut(id);
 	while let Some(id) = iter.next() {
-		let Some(prev_item) = item.take() else { return None; };
-		let Some(container) = &mut prev_item.items else { return None; };
+		let Some(prev_item) = item.take() else {
+			return None;
+		};
+		let Some(container) = &mut prev_item.items else {
+			return None;
+		};
 		item = container.get_mut(id);
 	}
 	item
@@ -160,7 +166,9 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 					let onchange = Callback::from({
 						let on_changed = on_changed.clone();
 						move |evt: web_sys::Event| {
-							let Some(value) = evt.input_value_t::<u32>() else { return; };
+							let Some(value) = evt.input_value_t::<u32>() else {
+								return;
+							};
 							on_changed.emit(value);
 						}
 					});
@@ -191,7 +199,9 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 			if let Some(on_equipped) = props.set_equipped.clone() {
 				let onchange = Callback::from({
 					move |evt: web_sys::Event| {
-						let Some(checked) = evt.input_checked() else { return; };
+						let Some(checked) = evt.input_checked() else {
+							return;
+						};
 						on_equipped.emit(checked);
 					}
 				});
@@ -628,8 +638,12 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 		}
 	});
 
-	let Some(item) = get_inventory_item(&state, value) else { return Html::default(); };
-	let Some(spell_container) = &item.spells else { return Html::default(); };
+	let Some(item) = get_inventory_item(&state, value) else {
+		return Html::default();
+	};
+	let Some(spell_container) = &item.spells else {
+		return Html::default();
+	};
 
 	indirect_spell_ids.set(
 		spell_container
@@ -713,8 +727,12 @@ fn ContainedSpellsSection(props: &ContainedSpellsSectionProps) -> Html {
 	} = props;
 	let state = use_context::<CharacterHandle>().unwrap();
 
-	let Some(item) = get_inventory_item(&state, id_path) else { return Html::default(); };
-	let Some(spell_container) = &item.spells else { return Html::default(); };
+	let Some(item) = get_inventory_item(&state, id_path) else {
+		return Html::default();
+	};
+	let Some(spell_container) = &item.spells else {
+		return Html::default();
+	};
 
 	let has_casting = spell_container.casting.is_some();
 	let (casting_atk_bonus, casting_dc) = match &spell_container.casting {
@@ -810,7 +828,9 @@ fn ContainedSpellsSection(props: &ContainedSpellsSectionProps) -> Html {
 			}
 			let mut contained_spells = Vec::with_capacity(ordered_indices.len());
 			for (contained_idx, _, _) in ordered_indices {
-				let Some(contained) = spell_container.spells.get(contained_idx) else { continue; };
+				let Some(contained) = spell_container.spells.get(contained_idx) else {
+					continue;
+				};
 				let ContainerSpell {
 					spell,
 					rank,
@@ -833,7 +853,9 @@ fn ContainedSpellsSection(props: &ContainedSpellsSectionProps) -> Html {
 								let min_rank = spell.rank;
 								let select_rank = select_rank.clone();
 								move |evt: web_sys::Event| {
-									let Some(selected_rank) = evt.select_value_t::<u8>() else { return; };
+									let Some(selected_rank) = evt.select_value_t::<u8>() else {
+										return;
+									};
 									select_rank
 										.emit((contained_idx, (selected_rank != min_rank).then_some(selected_rank)));
 								}
@@ -862,11 +884,15 @@ fn ContainedSpellsSection(props: &ContainedSpellsSectionProps) -> Html {
 							let select_atk_bonus = Callback::from({
 								let select_atk_bonus = select_atk_bonus.clone();
 								move |evt: web_sys::Event| {
-									let Some(value) = evt.select_value() else { return; };
+									let Some(value) = evt.select_value() else {
+										return;
+									};
 									if value.is_empty() {
 										return;
 									}
-									let Ok(value) = value.parse::<i32>() else { return; };
+									let Ok(value) = value.parse::<i32>() else {
+										return;
+									};
 									select_atk_bonus.emit((contained_idx, Some(value)));
 								}
 							});
@@ -899,11 +925,15 @@ fn ContainedSpellsSection(props: &ContainedSpellsSectionProps) -> Html {
 							let select_save_dc = Callback::from({
 								let select_save_dc = select_save_dc.clone();
 								move |evt: web_sys::Event| {
-									let Some(value) = evt.select_value() else { return; };
+									let Some(value) = evt.select_value() else {
+										return;
+									};
 									if value.is_empty() {
 										return;
 									}
-									let Ok(value) = value.parse::<u8>() else { return; };
+									let Ok(value) = value.parse::<u8>() else {
+										return;
+									};
 									select_save_dc.emit((contained_idx, Some(value)));
 								}
 							});
@@ -989,8 +1019,12 @@ struct ModalSpellContainerAvailableListProps {
 #[function_component]
 fn ModalSpellContainerAvailableList(props: &ModalSpellContainerAvailableListProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let Some(item) = get_inventory_item(&state, &props.id_path) else { return Html::default(); };
-	let Some(spell_container) = &item.spells else { return Html::default(); };
+	let Some(item) = get_inventory_item(&state, &props.id_path) else {
+		return Html::default();
+	};
+	let Some(spell_container) = &item.spells else {
+		return Html::default();
+	};
 
 	let rank_min = spell_container.capacity.rank_min.unwrap_or(0);
 	let rank_max = spell_container.capacity.rank_max.unwrap_or(MAX_SPELL_RANK);
@@ -1120,8 +1154,12 @@ fn SpellListContainerAction(
 ) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 
-	let Some(item) = get_inventory_item(&state, container_id) else { return Html::default(); };
-	let Some(spell_container) = &item.spells else { return Html::default(); };
+	let Some(item) = get_inventory_item(&state, container_id) else {
+		return Html::default();
+	};
+	let Some(spell_container) = &item.spells else {
+		return Html::default();
+	};
 	let contained_ids = spell_container
 		.spells
 		.iter()

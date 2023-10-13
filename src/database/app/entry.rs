@@ -39,7 +39,9 @@ impl Entry {
 	}
 
 	pub fn get_meta_str(&self, key: impl AsRef<str>) -> Option<&str> {
-		let Some(value) = self.metadata.get(key.as_ref()) else { return None; };
+		let Some(value) = self.metadata.get(key.as_ref()) else {
+			return None;
+		};
 		value.as_str()
 	}
 
@@ -53,11 +55,17 @@ impl Entry {
 	) -> Option<T> {
 		// Parse the entry's kdl string:
 		// kdl string to document
-		let Ok(document) = self.kdl.parse::<kdl::KdlDocument>() else { return None; };
+		let Ok(document) = self.kdl.parse::<kdl::KdlDocument>() else {
+			return None;
+		};
 		// document to first (and hopefully only) node
-		let Some(node) = document.nodes().get(0) else { return None; };
+		let Some(node) = document.nodes().get(0) else {
+			return None;
+		};
 		let ctx = crate::kdl_ext::NodeContext::new(Arc::new(self.source_id(true)), node_reg);
-		let Ok(value) = T::from_kdl(&mut crate::kdl_ext::NodeReader::new_root(node, ctx)) else { return None; };
+		let Ok(value) = T::from_kdl(&mut crate::kdl_ext::NodeReader::new_root(node, ctx)) else {
+			return None;
+		};
 		Some(value)
 	}
 }

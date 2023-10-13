@@ -64,22 +64,30 @@ impl LimitedUses {
 	}
 
 	pub fn get_uses_path(&self, character: &Character) -> Option<PathBuf> {
-		let Some(data) = self.get_use_data(character) else { return None; };
+		let Some(data) = self.get_use_data(character) else {
+			return None;
+		};
 		data.get_data_path()
 	}
 
 	pub fn get_uses_consumed(&self, character: &Character) -> u32 {
-		let Some(data) = self.get_use_data(character) else { return 0; };
+		let Some(data) = self.get_use_data(character) else {
+			return 0;
+		};
 		data.get_uses_consumed(character)
 	}
 
 	pub fn get_max_uses(&self, character: &Character) -> i32 {
-		let Some(data) = self.get_use_data(character) else { return 0; };
+		let Some(data) = self.get_use_data(character) else {
+			return 0;
+		};
 		data.get_max_uses(character)
 	}
 
 	pub fn get_reset_rest(&self, character: &Character) -> Option<Rest> {
-		let Some(data) = self.get_use_data(character) else { return None; };
+		let Some(data) = self.get_use_data(character) else {
+			return None;
+		};
 		data.get_reset_rest(character)
 	}
 
@@ -105,7 +113,9 @@ impl UseCounterData {
 	}
 
 	pub fn get_reset_rest(&self, character: &Character) -> Option<Rest> {
-		let Some(reset_eval) = &self.reset_on else { return None; };
+		let Some(reset_eval) = &self.reset_on else {
+			return None;
+		};
 		let rest_str = reset_eval.evaluate(character);
 		Rest::from_str(&rest_str).ok()
 	}

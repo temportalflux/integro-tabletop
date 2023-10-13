@@ -73,7 +73,9 @@ impl Caster {
 	}
 
 	pub fn cantrip_capacity(&self, persistent: &Persistent) -> usize {
-		let Some(capacity) = &self.cantrip_capacity else { return 0; };
+		let Some(capacity) = &self.cantrip_capacity else {
+			return 0;
+		};
 		let current_level = persistent.level(Some(&self.class_name));
 		for (level, count) in capacity.iter().rev() {
 			if *level <= current_level {

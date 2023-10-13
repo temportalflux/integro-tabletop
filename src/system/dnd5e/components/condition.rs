@@ -82,8 +82,12 @@ fn Modal() -> Html {
 			})),
 		);
 		let on_add_condition = Callback::from(move |evt: web_sys::Event| {
-			let Some(value) = evt.select_value() else { return; };
-			let Ok(source_id) = SourceId::from_str(&value) else { return; };
+			let Some(value) = evt.select_value() else {
+				return;
+			};
+			let Ok(source_id) = SourceId::from_str(&value) else {
+				return;
+			};
 			add_condition_by_id.emit(source_id);
 		});
 
@@ -100,7 +104,9 @@ fn Modal() -> Html {
 				let options = conditions
 					.iter()
 					.map(|condition| {
-						let Some(id) = &condition.id else { return html!(); };
+						let Some(id) = &condition.id else {
+							return html!();
+						};
 						let id = id.unversioned();
 						html! {
 							<option

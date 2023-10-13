@@ -143,7 +143,11 @@ impl Mutator for Spellcasting {
 				// We need to add reset entries for all bonus spell slots at the character's current level.
 				let current_level = stats.level(Some(&caster.class_name));
 				for slots in &caster.bonus_slots {
-					let Slots::Bonus { reset_on, slots_capacity } = slots else {
+					let Slots::Bonus {
+						reset_on,
+						slots_capacity,
+					} = slots
+					else {
 						continue;
 					};
 					// Since we are compiling the character at a specific level, we only need to

@@ -69,7 +69,9 @@ impl<T> UseQueryAllHandle<T> {
 	}
 
 	pub fn get(&self, idx: usize) -> Option<&T> {
-		let Some(data) = &self.async_handle.data else { return None; };
+		let Some(data) = &self.async_handle.data else {
+			return None;
+		};
 		data.get(idx)
 	}
 
@@ -130,7 +132,9 @@ pub fn use_query_all(
 				max_limit,
 			} = {
 				let guard = async_args.lock().unwrap();
-				let Some(args) = &*guard else { return Ok(Vec::new()); };
+				let Some(args) = &*guard else {
+					return Ok(Vec::new());
+				};
 				args.clone()
 			};
 			if system_id.is_empty() {
@@ -182,7 +186,9 @@ where
 				max_limit,
 			} = {
 				let guard = async_args.lock().unwrap();
-				let Some(args) = &*guard else { return Ok(Vec::new()); };
+				let Some(args) = &*guard else {
+					return Ok(Vec::new());
+				};
 				args.clone()
 			};
 			if system_id.is_empty() {
@@ -346,7 +352,10 @@ where
 				async move {
 					let mut items = BTreeMap::new();
 					for id in &new_ids {
-						let Some(item) = database.get_typed_entry::<T>(id.clone(), system_depot.clone(), None).await? else {
+						let Some(item) = database
+							.get_typed_entry::<T>(id.clone(), system_depot.clone(), None)
+							.await?
+						else {
 							continue;
 						};
 						items.insert(id.clone(), item);
@@ -387,7 +396,10 @@ where
 		let system_depot = system_depot.clone();
 		let fn_item = fn_item.clone();
 		task_dispatch.spawn(task_name.clone(), None, async move {
-			let Some(item) = database.get_typed_entry::<EntryContent>(source_id.clone(), system_depot, None).await? else {
+			let Some(item) = database
+				.get_typed_entry::<EntryContent>(source_id.clone(), system_depot, None)
+				.await?
+			else {
 				log::error!(target: "database", "Failed to find entry for {:?}", source_id.to_string());
 				return Ok(());
 			};
@@ -415,7 +427,10 @@ where
 		let system_depot = system_depot.clone();
 		let fn_item = fn_item.clone();
 		task_dispatch.spawn(task_name.clone(), None, async move {
-			let Some(item) = database.get_typed_entry::<Item>(source_id.clone(), system_depot, None).await? else {
+			let Some(item) = database
+				.get_typed_entry::<Item>(source_id.clone(), system_depot, None)
+				.await?
+			else {
 				log::error!("No such database entry {:?}", source_id.to_string());
 				return Ok(());
 			};

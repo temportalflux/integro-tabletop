@@ -80,7 +80,9 @@ impl List {
 	fn get_insertion_idx(&self, a_name: &String) -> usize {
 		use std::cmp::Ordering;
 		let idx = self.display_order.binary_search_by(|b_id| {
-			let Some(b_task) = self.tasks.get(b_id) else { return Ordering::Less; };
+			let Some(b_task) = self.tasks.get(b_id) else {
+				return Ordering::Less;
+			};
 			a_name.as_str().cmp(b_task.name.as_str())
 		});
 		idx.unwrap_or_else(|err_idx| err_idx)

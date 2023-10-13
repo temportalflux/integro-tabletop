@@ -94,7 +94,9 @@ where
 	where
 		T: EnumSetType + Ord,
 	{
-		let Self::Options(ValueOptions { options, .. }) = self else { return; };
+		let Self::Options(ValueOptions { options, .. }) = self else {
+			return;
+		};
 		if options.is_empty() {
 			*options = EnumSet::all().into_iter().collect();
 		}
@@ -114,7 +116,9 @@ where
 	where
 		F: Fn(&T, &Context) -> bool + 'static + Send + Sync,
 	{
-		let Self::Options(ValueOptions { is_applicable, .. }) = self else { return; };
+		let Self::Options(ValueOptions { is_applicable, .. }) = self else {
+			return;
+		};
 		*is_applicable = Some(Arc::new(callback));
 	}
 }
@@ -192,7 +196,9 @@ where
 					node.push_child_t("amount", amount);
 				}
 				for id_path in cannot_match {
-					let Some(id_str) = id_path.get_id() else { continue; };
+					let Some(id_str) = id_path.get_id() else {
+						continue;
+					};
 					node.push_child_entry("cannot_match", id_str.into_owned());
 				}
 				for option in options {
@@ -214,8 +220,19 @@ where
 		name: impl Into<String>,
 		context: &Context,
 	) -> Result<Option<super::DataOption>, super::InvalidDataPath> {
-		let Self::Options(ValueOptions { id, amount, options, cannot_match, is_applicable }) = self else { return Ok(None); };
-		let Some(data_path) = id.as_path() else { return Err(super::InvalidDataPath); };
+		let Self::Options(ValueOptions {
+			id,
+			amount,
+			options,
+			cannot_match,
+			is_applicable,
+		}) = self
+		else {
+			return Ok(None);
+		};
+		let Some(data_path) = id.as_path() else {
+			return Err(super::InvalidDataPath);
+		};
 		let mut blocked_options = BTreeSet::new();
 		for option in options {
 			if let Some(is_applicable) = is_applicable.as_ref() {

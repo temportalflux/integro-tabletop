@@ -110,7 +110,9 @@ pub fn Dropdown() -> Html {
 	let onclick = {
 		let theme = theme.clone();
 		Callback::from(move |e: MouseEvent| {
-			let Some(element) = e.target_dyn_into::<web_sys::HtmlElement>() else { return; };
+			let Some(element) = e.target_dyn_into::<web_sys::HtmlElement>() else {
+				return;
+			};
 			let value = element
 				.get_attribute("value")
 				.map(|s| Theme::from_str(&s).ok())

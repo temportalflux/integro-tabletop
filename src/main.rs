@@ -79,7 +79,9 @@ fn DatabaseProvider(props: &html::ChildrenProps) -> Html {
 	// If the database has not yet loaded (or encountered an error),
 	// we wont even show the children - mostly to avoid the numerous errors that would occur
 	// since children strongly rely on the database existing.
-	let Some(ddb) = &database.data else { return html!(); };
+	let Some(ddb) = &database.data else {
+		return html!();
+	};
 	html! {
 		<ContextProvider<Database> context={ddb.clone()}>
 			{props.children.clone()}
@@ -129,11 +131,15 @@ async fn main() -> anyhow::Result<()> {
 			let system_path = module_path.join(&system_id);
 			let mut item_paths = Vec::new();
 			for item in WalkDir::new(&system_path) {
-				let Some(ext) = item.extension() else { continue; };
+				let Some(ext) = item.extension() else {
+					continue;
+				};
 				if ext.to_str() != Some("kdl") {
 					continue;
 				}
-				let Ok(content) = std::fs::read_to_string(&item) else { continue; };
+				let Ok(content) = std::fs::read_to_string(&item) else {
+					continue;
+				};
 				let item_relative_path = item.strip_prefix(&system_path)?;
 				item_paths.push(item_relative_path.to_owned());
 				let source_id = SourceId {
@@ -175,8 +181,12 @@ async fn main() -> anyhow::Result<()> {
 			//reserialized_nodes.push(comp_factory.reserialize_kdl(kdl_ext::NodeReader::new_root(node, ctx))?);
 		}
 		if !reserialized_nodes.is_empty() {
-			let Some(ModuleId::Local { name: module_name }) = &source_id.module else { continue; };
-			let Some(system) = &source_id.system else { continue; };
+			let Some(ModuleId::Local { name: module_name }) = &source_id.module else {
+				continue;
+			};
+			let Some(system) = &source_id.system else {
+				continue;
+			};
 			let dest_path = std::path::PathBuf::from(format!("./modules/{module_name}/{system}")).join(&source_id.path);
 			let mut doc = kdl::KdlDocument::new();
 			doc.nodes_mut().append(&mut reserialized_nodes);
@@ -217,7 +227,9 @@ impl Iterator for WalkDir {
 
 	fn next(&mut self) -> Option<Self::Item> {
 		loop {
-			let Some(mut iter) = self.iter.take() else { return None; };
+			let Some(mut iter) = self.iter.take() else {
+				return None;
+			};
 			let Some(item) = iter.next() else {
 				// current entry has finished
 				self.iter = self.stack.pop();

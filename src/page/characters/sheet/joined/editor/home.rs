@@ -48,7 +48,9 @@ fn NameEditor() -> Html {
 	let onchange = Callback::from({
 		let state = state.clone();
 		move |evt: web_sys::Event| {
-			let Some(value) = evt.input_value() else { return; };
+			let Some(value) = evt.input_value() else {
+				return;
+			};
 			state.dispatch(Box::new(move |persistent: &mut Persistent| {
 				persistent.description.name = value;
 				MutatorImpact::None
@@ -75,7 +77,9 @@ fn PronounEditor() -> Html {
 	let onchange = Callback::from({
 		let state = state.clone();
 		move |evt: web_sys::Event| {
-			let Some(input) = evt.target_input() else { return; };
+			let Some(input) = evt.target_input() else {
+				return;
+			};
 			let is_checkbox = input.type_() == "checkbox";
 			let is_checked = input.checked();
 			let value = input.value();
@@ -135,7 +139,9 @@ pub fn AutoExchangeSwitch() -> Html {
 	let onchange = Callback::from({
 		let state = state.clone();
 		move |evt: web_sys::Event| {
-			let Some(value) = evt.input_checked() else { return; };
+			let Some(value) = evt.input_checked() else {
+				return;
+			};
 			state.dispatch(Box::new(move |persistent: &mut Persistent| {
 				persistent.settings.currency_auto_exchange = value;
 				MutatorImpact::None

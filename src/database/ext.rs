@@ -46,7 +46,9 @@ impl ObjectStoreExt for idb::ObjectStore {
 		V: Record + serde::de::DeserializeOwned,
 	{
 		Box::pin(async move {
-			let Some(record_js) = self.get(idb::Query::Key(key.into())).await? else { return Ok(None); };
+			let Some(record_js) = self.get(idb::Query::Key(key.into())).await? else {
+				return Ok(None);
+			};
 			Ok(Some(serde_wasm_bindgen::from_value::<V>(record_js)?))
 		})
 	}

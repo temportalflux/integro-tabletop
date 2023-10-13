@@ -38,7 +38,9 @@ impl<V> Cursor<V> {
 	where
 		V: for<'de> Deserialize<'de>,
 	{
-		let Some(cursor) = &self.cursor else { return Ok(None); };
+		let Some(cursor) = &self.cursor else {
+			return Ok(None);
+		};
 		let value = cursor.value()?;
 		if value.is_null() {
 			return Ok(None);
@@ -105,7 +107,9 @@ where
 
 			// There should ALWAYS be a cursor if we are not advancing and this stream was provided a cursor.
 			// If there is no cursor, then one was not provided by one of the `open_cursor` functions, so the stream is empty.
-			let Some(cursor) = self.cursor.take() else { return Poll::Ready(None); };
+			let Some(cursor) = self.cursor.take() else {
+				return Poll::Ready(None);
+			};
 
 			// Cursor exists and there is probably a next value, lets find out.
 			let value = match cursor.value() {

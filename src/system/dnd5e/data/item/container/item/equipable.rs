@@ -58,7 +58,9 @@ impl MutatorGroup for EquipableEntry {
 	}
 
 	fn apply_mutators(&self, stats: &mut Character, parent: &Path) {
-		let Kind::Equipment(equipment) = &self.item.kind else { return; };
+		let Kind::Equipment(equipment) = &self.item.kind else {
+			return;
+		};
 		if !self.is_equipped {
 			return;
 		}

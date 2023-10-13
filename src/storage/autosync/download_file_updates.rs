@@ -80,7 +80,9 @@ impl DownloadFileUpdates {
 		file_id: String,
 		content: String,
 	) -> anyhow::Result<Vec<crate::database::app::Entry>> {
-		let Some(system_reg) = self.system_depot.get(&system) else { return Ok(Vec::new()); };
+		let Some(system_reg) = self.system_depot.get(&system) else {
+			return Ok(Vec::new());
+		};
 
 		let document = content.parse::<kdl::KdlDocument>()?;
 		let path_in_system = match file_path.strip_prefix(&format!("{system}/")) {

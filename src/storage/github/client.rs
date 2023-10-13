@@ -268,13 +268,23 @@ impl GithubClient {
 		Box::pin(async move {
 			let response = builder.send().await?;
 			let data = response.json::<serde_json::Value>().await?;
-			let Some(Value::Array(entries)) = data.get("files") else { return Ok(Vec::new()); };
+			let Some(Value::Array(entries)) = data.get("files") else {
+				return Ok(Vec::new());
+			};
 			let mut paths_changed = Vec::with_capacity(entries.len());
 			for entry in entries {
-				let Value::Object(map) = entry else { continue; };
-				let Some(Value::String(file_id)) = map.get("sha") else { continue; };
-				let Some(Value::String(path)) = map.get("filename") else { continue; };
-				let Some(Value::String(status)) = map.get("status") else { continue; };
+				let Value::Object(map) = entry else {
+					continue;
+				};
+				let Some(Value::String(file_id)) = map.get("sha") else {
+					continue;
+				};
+				let Some(Value::String(path)) = map.get("filename") else {
+					continue;
+				};
+				let Some(Value::String(status)) = map.get("status") else {
+					continue;
+				};
 				let status = ChangedFileStatus::from_str(status.as_str());
 				let status =
 					status.map_err(|delta_status| Error::InvalidResponse(format!("{delta_status:?}").into()))?;

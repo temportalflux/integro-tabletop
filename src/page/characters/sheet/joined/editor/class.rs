@@ -163,7 +163,9 @@ fn ActiveClassList() -> Html {
 		let state = state.clone();
 		move |idx: usize| {
 			state.dispatch(Box::new(move |persistent: &mut Persistent| {
-				let Some(class) = persistent.classes.get_mut(idx) else { return MutatorImpact::None; };
+				let Some(class) = persistent.classes.get_mut(idx) else {
+					return MutatorImpact::None;
+				};
 				class.current_level += 1;
 				// TODO: Only recompile on exit
 				MutatorImpact::Recompile
@@ -186,7 +188,9 @@ fn ActiveClassList() -> Html {
 		move |idx: usize| {
 			state.dispatch(Box::new(move |persistent: &mut Persistent| {
 				let remove_class = {
-					let Some(class) = persistent.classes.get_mut(idx) else { return MutatorImpact::None; };
+					let Some(class) = persistent.classes.get_mut(idx) else {
+						return MutatorImpact::None;
+					};
 					class.current_level = class.current_level.saturating_sub(1);
 					class.current_level == 0
 				};
@@ -359,7 +363,9 @@ struct LevelHitPointsProps {
 #[function_component]
 fn LevelHitPoints(LevelHitPointsProps { data_path, die }: &LevelHitPointsProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let Some(hp_path) = data_path else { return Html::default(); };
+	let Some(hp_path) = data_path else {
+		return Html::default();
+	};
 	let hp_value = state
 		.get_first_selection_at::<u32>(hp_path)
 		.map(|res| res.ok())

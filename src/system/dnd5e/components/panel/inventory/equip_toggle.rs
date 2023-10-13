@@ -31,7 +31,9 @@ pub fn ItemRowEquipBox(
 		let id = id.clone();
 		let state = state.clone();
 		move |evt: web_sys::Event| {
-			let Some(should_be_equipped) = evt.input_checked() else { return; };
+			let Some(should_be_equipped) = evt.input_checked() else {
+				return;
+			};
 			state.dispatch(Box::new(move |persistent: &mut Persistent| {
 				persistent.inventory.set_equipped(&id, should_be_equipped);
 				MutatorImpact::Recompile

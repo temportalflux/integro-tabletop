@@ -134,7 +134,9 @@ impl Spellcasting {
 		let mut caster_filters = HashMap::new();
 		let mut casters_which_prepare_from_item = HashSet::new();
 		for caster in self.iter_casters() {
-			let Some(ritual_capability) = &caster.ritual_capability else { continue; };
+			let Some(ritual_capability) = &caster.ritual_capability else {
+				continue;
+			};
 			if !ritual_capability.available_spells {
 				continue;
 			}
@@ -170,7 +172,9 @@ impl Spellcasting {
 		let mut ritual_spell_cache = HashMap::new();
 		let mut caster_ritual_list_cache = MultiMap::new();
 		while let Some(entry) = query_stream.next().await {
-			let Some(spell) = entry.parse_kdl::<Spell>(node_reg.clone()) else { continue; };
+			let Some(spell) = entry.parse_kdl::<Spell>(node_reg.clone()) else {
+				continue;
+			};
 			for (caster_id, criteria) in &caster_filters {
 				if criteria.is_relevant(&entry.metadata) {
 					caster_ritual_list_cache.insert((*caster_id).clone(), spell.id.unversioned());
@@ -313,7 +317,9 @@ impl Spellcasting {
 	}
 
 	pub fn get_filter(&self, id: &str, persistent: &Persistent) -> Option<Filter> {
-		let Some(caster) = self.get_caster(id) else { return None; };
+		let Some(caster) = self.get_caster(id) else {
+			return None;
+		};
 		let additional_ids = match self.additional_caster_spells.by_caster.get_vec(id) {
 			None => HashSet::new(),
 			Some(entries) => entries.iter().cloned().collect::<HashSet<_>>(),

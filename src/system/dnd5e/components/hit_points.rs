@@ -139,11 +139,15 @@ fn HitPointsBody(BodyProps { on_open_modal }: &BodyProps) -> Html {
 	let take_hp_input = Callback::from({
 		let node = hp_input_node.clone();
 		move |_: ()| {
-			let Some(value) = node.input_value() else { return None; };
+			let Some(value) = node.input_value() else {
+				return None;
+			};
 			if value.is_empty() {
 				return Some(1);
 			}
-			let Ok(value) = value.parse::<u32>() else { return None; };
+			let Ok(value) = value.parse::<u32>() else {
+				return None;
+			};
 			if let Some(input) = node.target_input() {
 				input.set_value("");
 			}
@@ -155,7 +159,9 @@ fn HitPointsBody(BodyProps { on_open_modal }: &BodyProps) -> Html {
 		let take_hp_input = take_hp_input.clone();
 		move |evt: MouseEvent, character| {
 			evt.stop_propagation();
-			let Some(amt) = take_hp_input.emit(()) else { return MutatorImpact::None; };
+			let Some(amt) = take_hp_input.emit(()) else {
+				return MutatorImpact::None;
+			};
 			*character.hit_points_mut() += (amt as i32, max_hp);
 			MutatorImpact::None
 		}
@@ -164,7 +170,9 @@ fn HitPointsBody(BodyProps { on_open_modal }: &BodyProps) -> Html {
 		let take_hp_input = take_hp_input.clone();
 		move |evt: MouseEvent, character| {
 			evt.stop_propagation();
-			let Some(amt) = take_hp_input.emit(()) else { return MutatorImpact::None; };
+			let Some(amt) = take_hp_input.emit(()) else {
+				return MutatorImpact::None;
+			};
 			*character.hit_points_mut() += (-1 * (amt as i32), max_hp);
 			MutatorImpact::None
 		}
@@ -295,7 +303,9 @@ fn ModalSectionCurrentStats() -> Html {
 	let apply_temp_hp = Callback::from({
 		let state = state.clone();
 		move |evt: web_sys::Event| {
-			let Some(value) = evt.input_value_t::<u32>() else { return; };
+			let Some(value) = evt.input_value_t::<u32>() else {
+				return;
+			};
 			state.dispatch(Box::new(move |persistent: &mut Persistent| {
 				persistent.hit_points_mut().temp = value;
 				MutatorImpact::None
@@ -354,14 +364,18 @@ fn ModalSectionApplyChangeForm() -> Html {
 	let onchange_healing = Callback::from({
 		let delta = delta.clone();
 		move |evt: web_sys::Event| {
-			let Some(value) = evt.input_value_t::<u32>() else { return; };
+			let Some(value) = evt.input_value_t::<u32>() else {
+				return;
+			};
 			delta.set(value as i32);
 		}
 	});
 	let onchange_damage = Callback::from({
 		let delta = delta.clone();
 		move |evt: web_sys::Event| {
-			let Some(value) = evt.input_value_t::<u32>() else { return; };
+			let Some(value) = evt.input_value_t::<u32>() else {
+				return;
+			};
 			delta.set(value as i32 * -1);
 		}
 	});
@@ -503,7 +517,9 @@ fn ModalSectionHitDice() -> Html {
 
 	let mut class_sections = Vec::new();
 	for class in &state.persistent().classes {
-		let Some(data_path) = class.hit_die_selector.get_data_path() else { continue; };
+		let Some(data_path) = class.hit_die_selector.get_data_path() else {
+			continue;
+		};
 		let consumed_uses = state.get_first_selection_at::<u32>(&data_path);
 		let consumed_uses = consumed_uses.map(Result::ok).flatten().unwrap_or_default();
 		class_sections.push(html! {
@@ -711,7 +727,9 @@ fn DeathSaveBoxes(DeathSaveBoxesProps { class_name }: &DeathSaveBoxesProps) -> H
 	let onchange = state.new_dispatch({
 		let class_name = class_name.clone();
 		move |evt: web_sys::Event, persistent| {
-			let Some(checked) = evt.input_checked() else { return MutatorImpact::None; };
+			let Some(checked) = evt.input_checked() else {
+				return MutatorImpact::None;
+			};
 			let save_count = match class_name.as_str() {
 				"failure" => &mut persistent.hit_points_mut().failure_saves,
 				"success" => &mut persistent.hit_points_mut().success_saves,

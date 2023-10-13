@@ -93,11 +93,19 @@ impl<T: AsItem> ItemContainer<T> {
 
 	pub fn get_mut_at_path<'c>(&'c mut self, id_path: &Vec<Uuid>) -> Option<&'c mut Item> {
 		let mut iter = id_path.iter();
-		let Some(first_id) = iter.next() else { return None; };
-		let Some(mut item) = self.get_mut(first_id) else { return None };
+		let Some(first_id) = iter.next() else {
+			return None;
+		};
+		let Some(mut item) = self.get_mut(first_id) else {
+			return None;
+		};
 		for id in iter {
-			let Some(container) = &mut item.items else { return None; };
-			let Some(next_item) = container.get_mut(id) else { return None; };
+			let Some(container) = &mut item.items else {
+				return None;
+			};
+			let Some(next_item) = container.get_mut(id) else {
+				return None;
+			};
 			item = next_item;
 		}
 		Some(item)
@@ -170,17 +178,25 @@ impl<T: AsItem> ItemContainer<T> {
 	pub fn remove_at_path(&mut self, id_path: &Vec<Uuid>) -> Option<Item> {
 		let count = id_path.len();
 		let mut iter = id_path.iter().enumerate().map(|(idx, id)| (id, idx == count - 1));
-		let Some((first_id, single_entry)) = iter.next() else { return None; };
+		let Some((first_id, single_entry)) = iter.next() else {
+			return None;
+		};
 		if single_entry {
 			return self.remove(first_id);
 		}
-		let Some(mut item) = self.get_mut(first_id) else { return None; };
+		let Some(mut item) = self.get_mut(first_id) else {
+			return None;
+		};
 		for (id, is_last) in iter {
-			let Some(container) = &mut item.items else { return None; };
+			let Some(container) = &mut item.items else {
+				return None;
+			};
 			if is_last {
 				return container.remove(id);
 			}
-			let Some(next_item) = container.get_mut(id) else { return None; };
+			let Some(next_item) = container.get_mut(id) else {
+				return None;
+			};
 			item = next_item;
 		}
 		None
@@ -192,9 +208,11 @@ impl<T: AsItem> ItemContainer<T> {
 	pub async fn resolve_indirection(&mut self, provider: &ObjectCacheProvider) -> anyhow::Result<()> {
 		// Any item templates need to be resolved to their full items
 		for (item_id, count) in self.item_templates.drain().collect::<Vec<_>>() {
-			let Some(item) = provider.database.get_typed_entry::<Item>(
-				item_id.unversioned(), provider.system_depot.clone(), None
-			).await? else {
+			let Some(item) = provider
+				.database
+				.get_typed_entry::<Item>(item_id.unversioned(), provider.system_depot.clone(), None)
+				.await?
+			else {
 				log::error!(target: "inventory", "failed to find item {:?}", item_id.to_string());
 				continue;
 			};
@@ -212,9 +230,11 @@ impl<T: AsItem> ItemContainer<T> {
 			if let Some(container) = &mut entry.as_item_mut().spells {
 				for entry in &mut container.spells {
 					if let Indirect::Id(spell_id) = &entry.spell {
-						let Some(spell) = provider.database.get_typed_entry::<Spell>(
-							spell_id.unversioned(), provider.system_depot.clone(), None
-						).await? else {
+						let Some(spell) = provider
+							.database
+							.get_typed_entry::<Spell>(spell_id.unversioned(), provider.system_depot.clone(), None)
+							.await?
+						else {
 							log::error!(target: "inventory", "failed to find spell {:?}", spell_id.to_string());
 							continue;
 						};
@@ -325,7 +345,9 @@ impl<T: AsKdl> AsKdl for ItemContainer<T> {
 			node.push_child(item_node.build("item_id"));
 		}
 		for id in &self.itemids_by_name {
-			let Some(entry) = self.items_by_id.get(id) else { continue; };
+			let Some(entry) = self.items_by_id.get(id) else {
+				continue;
+			};
 			node.push_child(entry.as_kdl().build("item"));
 		}
 
@@ -343,7 +365,9 @@ impl Inventory {
 	}
 
 	pub fn set_equipped(&mut self, id: &Uuid, equipped: bool) {
-		let Some(entry) = self.items_by_id.get_mut(&id) else { return; };
+		let Some(entry) = self.items_by_id.get_mut(&id) else {
+			return;
+		};
 		entry.is_equipped = equipped;
 	}
 }

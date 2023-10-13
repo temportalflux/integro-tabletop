@@ -30,24 +30,36 @@ kdlize::impl_kdl_node!(PickN, "pick");
 
 impl PickN {
 	fn id(&self) -> Option<std::borrow::Cow<'_, String>> {
-		let selector::Value::Options(selector::ValueOptions { id, .. }) = &self.selector else { return None; };
+		let selector::Value::Options(selector::ValueOptions { id, .. }) = &self.selector else {
+			return None;
+		};
 		id.get_id()
 	}
 
 	fn max_selections(&self) -> usize {
-		let selector::Value::Options(selector::ValueOptions { amount, .. }) = &self.selector else { return 0; };
-		let crate::utility::Value::Fixed(amt) = amount else { return 0; };
+		let selector::Value::Options(selector::ValueOptions { amount, .. }) = &self.selector else {
+			return 0;
+		};
+		let crate::utility::Value::Fixed(amt) = amount else {
+			return 0;
+		};
 		*amt as usize
 	}
 
 	fn option_order(&self) -> Option<&BTreeSet<String>> {
-		let selector::Value::Options(selector::ValueOptions { options, .. }) = &self.selector else { return None; };
+		let selector::Value::Options(selector::ValueOptions { options, .. }) = &self.selector else {
+			return None;
+		};
 		Some(options)
 	}
 
 	fn get_selections_in<'this, 'c>(&'this self, state: Option<&'c Character>) -> HashSet<&'c String> {
-		let Some((state, data_path)) = state.zip(self.selector.get_data_path()) else { return HashSet::default(); };
-		let Some(data) = state.get_selections_at(&data_path) else { return HashSet::default(); };
+		let Some((state, data_path)) = state.zip(self.selector.get_data_path()) else {
+			return HashSet::default();
+		};
+		let Some(data) = state.get_selections_at(&data_path) else {
+			return HashSet::default();
+		};
 		data.iter().collect::<HashSet<_>>()
 	}
 }
@@ -65,7 +77,9 @@ impl Mutator for PickN {
 				continue;
 			};
 
-			let Some(option) = self.options.get(key) else { continue; };
+			let Some(option) = self.options.get(key) else {
+				continue;
+			};
 			let mut content = String::new().into();
 			let mut option_children = Vec::new();
 			if let Some(description::Section {
@@ -121,9 +135,13 @@ impl Mutator for PickN {
 	}
 
 	fn on_insert(&self, stats: &mut Self::Target, parent: &std::path::Path) {
-		let Some(data_path) = self.selector.get_data_path() else { return; };
+		let Some(data_path) = self.selector.get_data_path() else {
+			return;
+		};
 		let selected_options = {
-			let Some(selections) = stats.get_selections_at(&data_path) else { return; };
+			let Some(selections) = stats.get_selections_at(&data_path) else {
+				return;
+			};
 			selections
 				.iter()
 				.filter_map(|key| self.options.get(key))
@@ -193,13 +211,17 @@ impl AsKdl for PickN {
 
 		if let selector::Value::Options(selector::ValueOptions { cannot_match, .. }) = &self.selector {
 			for id_path in cannot_match {
-				let Some(id_str) = id_path.get_id() else { continue; };
+				let Some(id_str) = id_path.get_id() else {
+					continue;
+				};
 				node.push_child_entry("cannot_match", id_str.into_owned());
 			}
 		}
 
 		for name in self.option_order().unwrap() {
-			let Some(option) = self.options.get(name) else { continue; };
+			let Some(option) = self.options.get(name) else {
+				continue;
+			};
 			let mut node_option = NodeBuilder::default();
 			node_option.push_entry(name.clone());
 			if let Some(desc) = &option.description {

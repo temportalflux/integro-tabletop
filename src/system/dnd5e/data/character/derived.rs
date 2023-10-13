@@ -362,7 +362,9 @@ impl AttackBonuses {
 
 	pub fn get_weapon_attack(&self, action: &crate::system::dnd5e::data::action::Action) -> Vec<(i32, &Path)> {
 		let mut bonuses = Vec::new();
-		let Some(attack) = &action.attack else { return bonuses; };
+		let Some(attack) = &action.attack else {
+			return bonuses;
+		};
 		for bonus in &self.attack_roll {
 			// Filter out any bonuses which do not meet the restriction
 			'iter_query: for query in &bonus.queries {
@@ -380,7 +382,9 @@ impl AttackBonuses {
 		action: &crate::system::dnd5e::data::action::Action,
 	) -> Vec<(&Roll, &Option<DamageType>, &Path)> {
 		let mut bonuses = Vec::new();
-		let Some(attack) = &action.attack else { return bonuses; };
+		let Some(attack) = &action.attack else {
+			return bonuses;
+		};
 		for bonus in &self.attack_damage {
 			// Filter out any bonuses which do not meet the restriction
 			'iter_query: for query in &bonus.queries {

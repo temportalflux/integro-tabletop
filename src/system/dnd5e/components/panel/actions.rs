@@ -72,7 +72,9 @@ pub fn Actions() -> Html {
 		let context_menu = context_menu.clone();
 		let state = state.clone();
 		move |feature_path: PathBuf| {
-			let Some(feature) = state.features().path_map.get_first(&feature_path) else { return; };
+			let Some(feature) = state.features().path_map.get_first(&feature_path) else {
+				return;
+			};
 			context_menu.dispatch(context_menu::Action::open_root(
 				feature.name.clone(),
 				html!(<Modal path={feature_path} />),
@@ -281,7 +283,10 @@ pub fn Actions() -> Html {
 				root_features.insert(prev_collapsed);
 			}
 			let Some(parent_group) = root_features.by_path.get_mut(&parent_path) else {
-				log::warn!("Found features with the parent path \"{}\", but no such feature exists", parent_path.display());
+				log::warn!(
+					"Found features with the parent path \"{}\", but no such feature exists",
+					parent_path.display()
+				);
 				continue;
 			};
 			for entry in child_features {
