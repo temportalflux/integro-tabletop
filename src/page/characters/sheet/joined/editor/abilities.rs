@@ -46,7 +46,9 @@ fn AbilityScoreInput(AbilityScoreInputProps { ability }: &AbilityScoreInputProps
 		let state = state.clone();
 		let ability = *ability;
 		move |evt: web_sys::Event| {
-			let Some(value) = evt.input_value_t::<u32>() else { return; };
+			let Some(value) = evt.input_value_t::<u32>() else {
+				return;
+			};
 			state.dispatch(Box::new(move |persistent: &mut Persistent| {
 				persistent.ability_scores[ability] = value;
 				// only actually need ability_score_finalize to execute
@@ -126,7 +128,9 @@ fn GenerationSection() -> Html {
 	let onchange = Callback::from({
 		let method = method.clone();
 		move |evt: web_sys::Event| {
-			let Some(value) = evt.select_value() else { return; };
+			let Some(value) = evt.select_value() else {
+				return;
+			};
 			method.set(GeneratorMethod::from_str(&value).ok());
 		}
 	});
@@ -237,7 +241,9 @@ fn PointBuy(GeneratorMethodProps { ability_scores }: &GeneratorMethodProps) -> H
 		}
 	});
 	let parse_u32 = Callback::from(|evt: web_sys::Event| {
-		let Some(value) = evt.select_value_t::<u32>() else { return None; };
+		let Some(value) = evt.select_value_t::<u32>() else {
+			return None;
+		};
 		Some(value)
 	});
 	let onchange = Callback::from({

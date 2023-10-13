@@ -38,7 +38,9 @@ impl DataList {
 		Context: 'static + Send + Sync,
 		T: 'static + Clone + Send + Sync + std::fmt::Debug + PartialEq + ToString,
 	{
-		let Some(context) = context else { return self; };
+		let Some(context) = context else {
+			return self;
+		};
 		match selector.as_data(name, context) {
 			Ok(None) => {}
 			Ok(Some(data)) => self.0.push(data),
@@ -66,7 +68,9 @@ impl DataList {
 			+ EnumSetType
 			+ Ord,
 	{
-		let Some(context) = context else { return self; };
+		let Some(context) = context else {
+			return self;
+		};
 		match selector.with_default_options().as_data(name, context) {
 			Ok(None) => {}
 			Ok(Some(data)) => self.0.push(data),
@@ -84,7 +88,9 @@ impl DataList {
 	where
 		Context: 'static + Send + Sync,
 	{
-		let Some(context) = context else { return self; };
+		let Some(context) = context else {
+			return self;
+		};
 		match selector.as_data(name, context) {
 			Ok(data) => self.0.push(data),
 			Err(err) => self.1.push(err),

@@ -30,7 +30,9 @@ impl StreamableQuery<FindOrgs> for FindOrgs {
 		if let Some(org_nodes) = data.viewer.organizations.nodes {
 			output.reserve(org_nodes.len());
 			for org_node in org_nodes {
-				let Some(org) = org_node else { continue; };
+				let Some(org) = org_node else {
+					continue;
+				};
 				output.push(org.login);
 			}
 		}

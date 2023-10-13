@@ -100,14 +100,22 @@ impl AttackQuery {
 		}
 		// the attack must have one of the provided attack kinds
 		if !self.attack_kind.is_empty() {
-			let Some(atk_kind) = &attack.kind else { return false; };
+			let Some(atk_kind) = &attack.kind else {
+				return false;
+			};
 			if !self.attack_kind.contains(atk_kind.kind()) {
 				return false;
 			}
 		}
 		// the attack must use one of the provided abilities
 		if !self.ability.is_empty() {
-			let AttackCheckKind::AttackRoll { ability: atk_roll_ability, .. } = &attack.check else { return false; };
+			let AttackCheckKind::AttackRoll {
+				ability: atk_roll_ability,
+				..
+			} = &attack.check
+			else {
+				return false;
+			};
 			if !self.ability.contains(atk_roll_ability) {
 				return false;
 			}

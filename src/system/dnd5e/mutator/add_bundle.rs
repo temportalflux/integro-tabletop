@@ -54,8 +54,12 @@ impl Mutator for AddBundle {
 	}
 
 	fn on_insert(&self, stats: &mut Character, parent: &std::path::Path) {
-		let Some(data_path) = self.selector.get_data_path() else { return; };
-		let Some(selections) = stats.get_selections_at(&data_path) else { return; };
+		let Some(data_path) = self.selector.get_data_path() else {
+			return;
+		};
+		let Some(selections) = stats.get_selections_at(&data_path) else {
+			return;
+		};
 		let ids = selections.iter().filter_map(|str| SourceId::from_str(str).ok());
 		stats.add_bundles(AdditionalObjectData {
 			ids: ids.collect(),

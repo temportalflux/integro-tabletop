@@ -70,16 +70,24 @@ impl Criteria {
 			Self::Exact(expected) => value == expected,
 			Self::Not(criteria) => !criteria.is_relevant(value),
 			Self::ContainsSubstring(substring) => {
-				let serde_json::Value::String(value) = value else { return false; };
+				let serde_json::Value::String(value) = value else {
+					return false;
+				};
 				value.to_lowercase().contains(&substring.to_lowercase())
 			}
 			Self::ContainsProperty(key, criteria) => {
-				let serde_json::Value::Object(map) = value else { return false; };
-				let Some(value) = map.get(key) else { return false; };
+				let serde_json::Value::Object(map) = value else {
+					return false;
+				};
+				let Some(value) = map.get(key) else {
+					return false;
+				};
 				criteria.is_relevant(value)
 			}
 			Self::ContainsElement(criteria) => {
-				let serde_json::Value::Array(value_list) = value else { return false; };
+				let serde_json::Value::Array(value_list) = value else {
+					return false;
+				};
 				for value in value_list {
 					if criteria.is_relevant(value) {
 						return true;
@@ -119,8 +127,12 @@ impl futures_util::stream::Stream for Query {
 
 	fn poll_next(mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Option<Self::Item>> {
 		loop {
-			let Poll::Ready(entry) = self.cursor.poll_next_unpin(cx) else { return Poll::Pending };
-			let Some(entry) = entry else { return Poll::Ready(None); };
+			let Poll::Ready(entry) = self.cursor.poll_next_unpin(cx) else {
+				return Poll::Pending;
+			};
+			let Some(entry) = entry else {
+				return Poll::Ready(None);
+			};
 			if let Some(criteria) = &self.criteria {
 				if !criteria.is_relevant(&entry.metadata) {
 					continue;
@@ -147,9 +159,15 @@ where
 	fn poll_next(mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Option<Self::Item>> {
 		loop {
 			// Get the next database entry based on the query and underlying cursor
-			let Poll::Ready(entry) = self.query.poll_next_unpin(cx) else { return Poll::Pending };
-			let Some(entry) = entry else { return Poll::Ready(None); };
-			let Some(value) = entry.parse_kdl::<Output>(self.node_reg.clone()) else { continue; };
+			let Poll::Ready(entry) = self.query.poll_next_unpin(cx) else {
+				return Poll::Pending;
+			};
+			let Some(entry) = entry else {
+				return Poll::Ready(None);
+			};
+			let Some(value) = entry.parse_kdl::<Output>(self.node_reg.clone()) else {
+				continue;
+			};
 			// we found a sucessful value! we can return it
 			return Poll::Ready(Some(value));
 		}

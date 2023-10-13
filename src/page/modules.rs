@@ -1,58 +1,27 @@
 use crate::{
-	auth::{self, OAuthProvider},
 	components::{
 		database::{use_query_modules, QueryStatus, UseQueryModulesHandle},
-		Spinner,
+		stop_propagation, Spinner,
 	},
 	database::app::{Database, Module},
-	storage::github::GithubClient,
-	system::{self, dnd5e::components::GeneralProp},
+	storage::autosync,
+	system::core::ModuleId,
 	task,
+	utility::InputExt,
 };
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use yew::prelude::*;
-use yewdux::prelude::*;
-
-mod loader;
 
 /// Page which displays the modules the user currently logged in has contributor access to.
 #[function_component]
 pub fn ModulesLanding() -> Html {
 	let database = use_context::<Database>().unwrap();
 	let task_dispatch = use_context::<task::Dispatch>().unwrap();
-	let system_depot = use_context::<system::Depot>().unwrap();
-	let (auth_status, _) = use_store::<auth::Status>();
+	let autosync_channel = use_context::<autosync::Channel>().unwrap();
 	let modules_query = use_query_modules(None);
 
-	let initiate_loader = Callback::from({
-		let database = database.clone();
-		let task_dispatch = task_dispatch.clone();
-		let modules_query = modules_query.clone();
-		move |_| {
-			let auth::Status::Successful { provider, token } = &*auth_status else { return; };
-			if *provider != OAuthProvider::Github {
-				log::error!("Currently authenticated with {provider:?}, but no storage system is hooked up for anything but github.");
-				return;
-			}
-			let Ok(client) = GithubClient::new(token) else {
-				return;
-			};
-			let on_finished = Box::new({
-				let modules_query = modules_query.clone();
-				move || {
-					modules_query.run();
-				}
-			});
-			let loader = loader::Loader {
-				client,
-				task_dispatch: task_dispatch.clone(),
-				system_depot: system_depot.clone(),
-				database: database.clone(),
-				on_finished,
-			};
-			loader.find_and_download_modules();
-		}
-	});
+	let pending_module_installations = use_state_eq(|| HashMap::<ModuleId, bool>::new());
+
 	let clear_database = Callback::from({
 		let database = database.clone();
 		let task_dispatch = task_dispatch.clone();
@@ -64,18 +33,49 @@ pub fn ModulesLanding() -> Html {
 			});
 		}
 	});
+	let delete_database = Callback::from(move |_| {
+		let Some(window) = web_sys::window() else {
+			return;
+		};
+		let Ok(Some(idb_factory)) = window.indexed_db() else {
+			return;
+		};
+		let _ = idb_factory.delete_database("tabletop-tools");
+	});
 
 	html! {<>
 		<crate::components::modal::GeneralPurpose />
 		<div class="m-2">
 			<div class="d-flex justify-content-center">
-				<button class="btn btn-outline-success me-2" onclick={initiate_loader}>{"Scan Github"}</button>
+				<button
+					class="btn btn-outline-success me-2"
+					onclick={Callback::from({
+						let channel = autosync_channel.clone();
+						move |_| {
+							channel.try_send_req(autosync::Request::FetchLatestVersionAllModules);
+						}
+					})}
+				>{"Scan Storage"}</button>
+				<button
+					class="btn btn-outline-success me-2"
+					disabled={pending_module_installations.is_empty()}
+					onclick={Callback::from({
+						let channel = autosync_channel.clone();
+						let pending_changes = pending_module_installations.clone();
+						move |_| {
+							let changes = (*pending_changes).clone();
+							pending_changes.set(HashMap::new());
+							channel.try_send_req(autosync::Request::InstallModules(changes));
+						}
+					})}
+				>{"Installed Selected"}</button>
 				<button class="btn btn-outline-danger me-2" onclick={clear_database}>{"Clear Downloaded Data"}</button>
+				<button class="btn btn-danger me-2" onclick={delete_database}>{"Delete Database"}</button>
 			</div>
 
 			<TaskListView />
 
-			<ModuleList value={modules_query.clone()} />
+			<ModuleList modules_query={modules_query.clone()} {pending_module_installations} />
 		</div>
 	</>}
 }
@@ -109,14 +109,19 @@ pub fn TaskListView() -> Html {
 	}
 }
 
+#[derive(Clone, PartialEq, Properties)]
+struct ModuleListProps {
+	modules_query: UseQueryModulesHandle,
+	pending_module_installations: UseStateHandle<HashMap<ModuleId, bool>>,
+}
+
 #[function_component]
-fn ModuleList(GeneralProp { value: modules_query }: &GeneralProp<UseQueryModulesHandle>) -> Html {
-	let on_delete_module = Callback::from({
-		let modules_query = modules_query.clone();
-		move |_| {
-			modules_query.run();
-		}
-	});
+fn ModuleList(
+	ModuleListProps {
+		modules_query,
+		pending_module_installations,
+	}: &ModuleListProps,
+) -> Html {
 	match modules_query.status() {
 		QueryStatus::Pending => html!(<Spinner />),
 		QueryStatus::Empty | QueryStatus::Failed(_) => html! {
@@ -147,7 +152,10 @@ fn ModuleList(GeneralProp { value: modules_query }: &GeneralProp<UseQueryModules
 						<h4>{system_id}</h4>
 						<div class="d-flex flex-wrap">
 							{modules.into_iter().map(|module| html! {
-								<ModuleCard {module} on_delete={on_delete_module.clone()} />
+								<ModuleCard
+									{module}
+									pending_module_installations={pending_module_installations.clone()}
+								/>
 							}).collect::<Vec<_>>()}
 						</div>
 					</div>
@@ -166,73 +174,36 @@ fn ModuleList(GeneralProp { value: modules_query }: &GeneralProp<UseQueryModules
 #[derive(Clone, PartialEq, Properties)]
 struct ModuleCardProps {
 	module: Module,
-	on_delete: Callback<()>,
+	pending_module_installations: UseStateHandle<HashMap<ModuleId, bool>>,
 }
 #[function_component]
-fn ModuleCard(ModuleCardProps { module, on_delete }: &ModuleCardProps) -> Html {
-	let database = use_context::<Database>().unwrap();
-	let task_dispatch = use_context::<task::Dispatch>().unwrap();
-	let on_delete = Callback::from({
+fn ModuleCard(props: &ModuleCardProps) -> Html {
+	let ModuleCardProps {
+		module,
+		pending_module_installations,
+	} = props;
+	let autosync_channel = use_context::<autosync::Channel>().unwrap();
+	let on_toggle_install = Callback::from({
+		let channel = autosync_channel.clone();
 		let module_id = module.id.clone();
-		let task_dispatch = task_dispatch.clone();
-		let database = database.clone();
-		let on_delete = on_delete.clone();
+		let installed = module.installed;
 		move |_| {
-			// TODO: Modal which checks if any characters depend on the module,
-			// and only allows deletion if there are no dependees.
-
-			// TODO: Next - delete the module at the provided id & delete all records which are associated with that module in any system. Can use a database index for this, similar to modules_system.
-			let module_id = module_id.clone();
-			let database = database.clone();
-			let on_delete = on_delete.clone();
-			task_dispatch.spawn(format!("Delete {}", module_id.to_string()), None, async move {
-				use crate::database::{
-					app::{entry::ModuleSystem, Entry, Module},
-					Error, ObjectStoreExt, TransactionExt,
-				};
-				use futures_util::StreamExt;
-				let transaction = database.write()?;
-				let module_store = transaction.object_store_of::<Module>()?;
-				let entry_store = transaction.object_store_of::<Entry>()?;
-
-				let module_systems = {
-					let req = module_store.get_record::<Module>(module_id.to_string());
-					let module = req.await?.unwrap();
-					module.systems
-				};
-
-				let mut entry_ids = Vec::new();
-				let idx_module_system = entry_store.index_of::<ModuleSystem>()?;
-				for system in module_systems {
-					let query = ModuleSystem {
-						module: module_id.to_string(),
-						system,
-					};
-					let mut cursor = idx_module_system.open_cursor(Some(&query)).await?;
-					while let Some(entry) = cursor.next().await {
-						entry_ids.push(entry.id);
-					}
-				}
-
-				for entry_id in entry_ids {
-					entry_store.delete_record(entry_id).await?;
-				}
-				module_store.delete_record(module_id.to_string()).await?;
-
-				transaction.commit().await?;
-				on_delete.emit(());
-				Ok(()) as Result<(), Error>
-			});
+			channel.try_send_req(autosync::Request::InstallModules(
+				[(module_id.clone(), !installed)].into(),
+			));
 		}
 	});
+	let show_as_installed = pending_module_installations
+		.get(&module.id)
+		.copied()
+		.unwrap_or(module.installed);
 	html! {
-		<div class="card m-1" style="min-width: 300px;">
+		<div class="card m-1 module" style="min-width: 300px;">
 			<div class="card-header d-flex align-items-center">
 				<span>{&module.name}</span>
 				<i
-					class="bi bi-trash ms-auto"
-					style="color: var(--bs-danger);"
-					onclick={on_delete}
+					class={classes!("bi", "ms-auto", module.installed.then_some("bi-trash").unwrap_or("bi-cloud-download"))}
+					onclick={on_toggle_install}
 				/>
 			</div>
 			<div class="card-body">
@@ -246,6 +217,35 @@ fn ModuleCard(ModuleCardProps { module, on_delete }: &ModuleCardProps) -> Html {
 				<div>
 					{"Systems: "}
 					{module.systems.iter().cloned().collect::<Vec<_>>().join(", ")}
+				</div>
+				<div>
+					<input
+						type="checkbox"
+						class={classes!("form-check-input", "slot", "success", "me-2")}
+						checked={show_as_installed}
+						onclick={stop_propagation()}
+						onchange={Callback::from({
+							let module_id = module.id.clone();
+							let is_installed = module.installed;
+							let pending_module_installations = pending_module_installations.clone();
+							move |evt: web_sys::Event| {
+								let Some(should_be_installed) = evt.input_checked() else { return; };
+								let should_be_pending = should_be_installed != is_installed;
+								let has_pending_entry = pending_module_installations.contains_key(&module_id);
+								if should_be_pending != has_pending_entry {
+									let mut pending_entries = (*pending_module_installations).clone();
+									if has_pending_entry {
+										pending_entries.remove(&module_id);
+									}
+									else {
+										pending_entries.insert(module_id.clone(), should_be_installed);
+									}
+									pending_module_installations.set(pending_entries);
+								}
+							}
+						})}
+					/>
+					{"Installed"}
 				</div>
 			</div>
 		</div>

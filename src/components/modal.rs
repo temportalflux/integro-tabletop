@@ -210,11 +210,15 @@ pub fn GeneralPurpose() -> Html {
 			// Since the node is populated when the component first renders,
 			// we can safely assume that it will exist for all future calls,
 			// as long as context defaults to no-modal-exists.
-			let Some(modal) = &*bootstrap else { return; };
+			let Some(modal) = &*bootstrap else {
+				return;
+			};
 			// Show or hide the modal if the flag has been set. If the flag isn't set (i.e. None),
 			// then this is likely a data reset/update that shouldn't re-animate anything.
 			// i.e. `js_on_hidden` was triggered by bootstrap-js to indicate the modal has closed.
-			let Some(should_show) = &context.should_show else { return; };
+			let Some(should_show) = &context.should_show else {
+				return;
+			};
 			match should_show {
 				true => {
 					modal.show(JsValue::UNDEFINED);

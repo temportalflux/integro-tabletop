@@ -37,7 +37,9 @@ where
 		name: impl Into<String>,
 		context: &Context,
 	) -> Result<super::DataOption, super::InvalidDataPath> {
-		let Some(data_path) = self.id.as_path() else { return Err(super::InvalidDataPath); };
+		let Some(data_path) = self.id.as_path() else {
+			return Err(super::InvalidDataPath);
+		};
 		Ok(super::DataOption {
 			data_path,
 			name: name.into(),

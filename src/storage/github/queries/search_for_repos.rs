@@ -39,12 +39,20 @@ impl StreamableQuery<SearchForRepos> for SearchForRepos {
 		if let Some(repo_nodes) = data.search.nodes {
 			output.reserve(repo_nodes.len());
 			for repo_node in repo_nodes {
-				let Some(repo) = repo_node else { continue; };
-				let RepoEnum::Repository(repo) = repo else { continue; };
+				let Some(repo) = repo_node else {
+					continue;
+				};
+				let RepoEnum::Repository(repo) = repo else {
+					continue;
+				};
 				// All repositories must be initialized (default branch has contents), otherwise they are ignored
-				let Some(Object::Tree(default_branch_tree)) = repo.object else { continue; };
+				let Some(Object::Tree(default_branch_tree)) = repo.object else {
+					continue;
+				};
 				let tree_id = default_branch_tree.oid;
-				let Some(root_tree_entries) = default_branch_tree.entries else { continue; };
+				let Some(root_tree_entries) = default_branch_tree.entries else {
+					continue;
+				};
 				let mut systems = Vec::new();
 				for entry in root_tree_entries {
 					// if this entry is a directory, then it is likely the root for a system in the module.

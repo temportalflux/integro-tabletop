@@ -46,7 +46,9 @@ impl ObjectStoreExt for idb::ObjectStore {
 		V: Record + serde::de::DeserializeOwned,
 	{
 		Box::pin(async move {
-			let Some(record_js) = self.get(idb::Query::Key(key.into())).await? else { return Ok(None); };
+			let Some(record_js) = self.get(idb::Query::Key(key.into())).await? else {
+				return Ok(None);
+			};
 			Ok(Some(serde_wasm_bindgen::from_value::<V>(record_js)?))
 		})
 	}
@@ -130,10 +132,10 @@ impl QueryExt for idb::Query {
 }
 
 pub trait TransactionExt {
-	fn object_store_of<T: Record>(&self) -> Result<idb::ObjectStore, idb::Error>;
+	fn object_store_of<T: Record>(&self) -> Result<idb::ObjectStore, super::Error>;
 }
 impl TransactionExt for idb::Transaction {
-	fn object_store_of<T: Record>(&self) -> Result<idb::ObjectStore, idb::Error> {
+	fn object_store_of<T: Record>(&self) -> Result<idb::ObjectStore, super::Error> {
 		Ok(self.object_store(T::store_id())?)
 	}
 }

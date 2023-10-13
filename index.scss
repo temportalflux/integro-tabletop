@@ -304,16 +304,20 @@ input.slot[type="checkbox"] {
 	width: 20px;
 	height: 20px;
 	margin: 2px;
+	--slot-color: var(--theme-frame-color);
+}
+input.slot[type="checkbox"].success {
+	--slot-color: #198754;
 }
 input.slot[type="checkbox"]:checked {
 	background-color: transparent;
-	border-color: var(--theme-frame-color);
+	border-color: var(--slot-color);
 	--bs-form-check-bg-image: "";
 }
 input.slot[type="checkbox"]:checked:before {
 	display: block;
 	content: "";
-	background-color: var(--theme-frame-color);
+	background-color: var(--slot-color);
 	
 	width: 10px;
 	height: 10px;
@@ -948,5 +952,40 @@ $Pages: Abilities, Attributes, Features, Spells, Inventory, Description;
 		color: var(--bs-btn-active-color);
 		background-color: var(--bs-btn-active-bg);
 		border-color: var(--bs-btn-active-border-color);
+	}
+}
+
+.navbar-brand.disabled {
+	pointer-events: none;
+}
+
+.sync-status {
+	.spinner-border {
+		--bs-spinner-width: 40px;
+    --bs-spinner-height: 40px;
+    --bs-spinner-border-width: 0.3em;
+    --bs-spinner-animation-speed: 1.75s;
+	}
+	.progress {
+		height: 25px;
+	}
+	.progress-label-float {
+		display: flex;
+		justify-content: center;
+		margin-top: -28px;
+		font-size: 20px;
+		color: #fff;
+    text-align: center;
+    white-space: nowrap;
+    text-shadow: 0px 0px 3px black;
+	}
+}
+
+.card.module {
+	.bi.bi-trash {
+		color: var(--bs-danger);
+	}
+	.bi.bi-cloud-download {
+		color: var(--bs-success);
 	}
 }

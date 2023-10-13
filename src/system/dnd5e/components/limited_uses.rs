@@ -76,7 +76,9 @@ impl<'parent> UsesCounter<'parent> {
 					let toggle_use = Callback::from({
 						let consume_delta = consume_delta.clone();
 						move |evt: web_sys::Event| {
-							let Some(consume_use) = evt.input_checked() else { return; };
+							let Some(consume_use) = evt.input_checked() else {
+								return;
+							};
 							consume_delta.emit(consume_use.then_some(1).unwrap_or(-1));
 						}
 					});

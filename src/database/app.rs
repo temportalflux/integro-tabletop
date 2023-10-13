@@ -1,13 +1,11 @@
-use std::sync::Arc;
-
-use crate::kdl_ext::NodeContext;
-
 use super::Record;
+use crate::{kdl_ext::NodeContext, system::core::ModuleId};
+use futures_util::future::LocalBoxFuture;
+use std::sync::Arc;
 
 pub mod entry;
 pub use entry::Entry;
 pub mod module;
-use futures_util::future::LocalBoxFuture;
 pub use module::Module;
 mod query;
 pub use query::*;
@@ -23,7 +21,7 @@ impl Database {
 		Ok(Self(client))
 	}
 
-	pub fn write(&self) -> Result<idb::Transaction, idb::Error> {
+	pub fn write(&self) -> Result<idb::Transaction, super::Error> {
 		Ok(self.0.transaction(
 			&[Entry::store_id(), Module::store_id()],
 			idb::TransactionMode::ReadWrite,
@@ -46,7 +44,7 @@ impl Database {
 		Ok(self.0.read_write::<Module>()?)
 	}
 
-	pub async fn clear(&self) -> Result<(), idb::Error> {
+	pub async fn clear(&self) -> Result<(), super::Error> {
 		use crate::database::TransactionExt;
 		let transaction = self.write()?;
 		transaction.object_store_of::<Module>()?.clear().await?;
@@ -55,11 +53,11 @@ impl Database {
 		Ok(())
 	}
 
-	fn read_index<I: super::IndexType>(&self) -> Result<super::Index<I>, idb::Error> {
+	fn read_index<I: super::IndexType>(&self) -> Result<super::Index<I>, super::Error> {
 		use super::{ObjectStoreExt, TransactionExt};
 		let transaction = self.read_entries()?;
 		let entries_store = transaction.object_store_of::<I::Record>()?;
-		entries_store.index_of::<I>()
+		Ok(entries_store.index_of::<I>()?)
 	}
 
 	pub async fn get<T>(&self, key: impl Into<wasm_bindgen::JsValue>) -> Result<Option<T>, super::Error>
@@ -136,7 +134,7 @@ impl Database {
 		system: impl Into<String>,
 		system_depot: crate::system::Depot,
 		criteria: Option<Box<Criteria>>,
-	) -> Result<QueryDeserialize<Output>, idb::Error>
+	) -> Result<QueryDeserialize<Output>, super::Error>
 	where
 		Output: kdlize::NodeId + kdlize::FromKdl<NodeContext> + crate::system::dnd5e::SystemComponent + Unpin,
 	{
@@ -175,6 +173,19 @@ impl Database {
 			items.push(item);
 		}
 		Ok(items)
+	}
+
+	pub async fn query_entries_in(
+		entry_store: &idb::ObjectStore,
+		module_id: &ModuleId,
+	) -> Result<super::Cursor<Entry>, super::Error> {
+		use crate::database::ObjectStoreExt;
+		let idx_module = entry_store.index_of::<entry::Module>()?;
+		Ok(idx_module
+			.open_cursor(Some(&entry::Module {
+				module: module_id.to_string(),
+			}))
+			.await?)
 	}
 
 	pub async fn mutate<F>(&self, fn_transaction: F) -> Result<(), super::Error>

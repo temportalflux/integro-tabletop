@@ -163,7 +163,9 @@ fn CategoryPicker(
 	let on_selection_changed = Callback::from({
 		let on_change = on_change.clone();
 		move |evt: web_sys::Event| {
-			let Some(value) = evt.select_value() else { return; };
+			let Some(value) = evt.select_value() else {
+				return;
+			};
 			on_change.emit((!value.is_empty()).then_some(value.into()));
 		}
 	});
@@ -629,7 +631,9 @@ fn SelectorField(
 				let onchange = Callback::from({
 					let save_value = save_value.clone();
 					move |evt: web_sys::Event| {
-						let Some(value) = evt.input_value() else { return; };
+						let Some(value) = evt.input_value() else {
+							return;
+						};
 						save_value.emit((!value.is_empty()).then_some(value.into()));
 					}
 				});
@@ -644,7 +648,9 @@ fn SelectorField(
 				let onchange = Callback::from({
 					let save_value = save_value.clone();
 					move |evt: web_sys::Event| {
-						let Some(value) = evt.select_value() else { return; };
+						let Some(value) = evt.select_value() else {
+							return;
+						};
 						save_value.emit((!value.is_empty()).then_some(value.into()));
 					}
 				});

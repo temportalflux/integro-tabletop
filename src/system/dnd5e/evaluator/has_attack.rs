@@ -38,8 +38,12 @@ impl Evaluator for HasAttack {
 	fn evaluate(&self, character: &Self::Context) -> Result<(), String> {
 		let mut count = 0usize;
 		for (_source, feature) in character.features().iter_all() {
-			let Some(action) = &feature.action else { continue; };
-			let Some(attack) = &action.attack else { continue; };
+			let Some(action) = &feature.action else {
+				continue;
+			};
+			let Some(attack) = &action.attack else {
+				continue;
+			};
 			if !self.restriction.is_attack_valid(attack) {
 				continue;
 			}

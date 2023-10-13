@@ -148,7 +148,9 @@ pub fn SearchInput(SearchInputProps { on_change }: &SearchInputProps) -> Html {
 	let oninput = Callback::from({
 		let set_params_text = set_params_text.clone();
 		move |evt: InputEvent| {
-			let Some(value) = evt.input_value() else { return; };
+			let Some(value) = evt.input_value() else {
+				return;
+			};
 			set_params_text.emit(value);
 		}
 	});
@@ -168,7 +170,9 @@ pub fn SearchInput(SearchInputProps { on_change }: &SearchInputProps) -> Html {
 #[function_component]
 fn BrowsedItemCard(props: &GeneralProp<ItemLocation>) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let Some(item) = props.value.resolve(&state) else { return Html::default(); };
+	let Some(item) = props.value.resolve(&state) else {
+		return Html::default();
+	};
 
 	let add_item = use_typed_fetch_callback_tuple::<Item, Option<Vec<Uuid>>>(
 		"Add Item".into(),
@@ -282,7 +286,9 @@ fn AddItemActions(AddItemActionsProps { id, batch_size, worth }: &AddItemActions
 			let onchange = Callback::from({
 				let set_amt = set_amt.clone();
 				move |evt: web_sys::Event| {
-					let Some(value) = evt.input_value_t::<u32>() else { return; };
+					let Some(value) = evt.input_value_t::<u32>() else {
+						return;
+					};
 					set_amt.emit(value);
 				}
 			});
@@ -351,7 +357,9 @@ fn AddItemActions(AddItemActionsProps { id, batch_size, worth }: &AddItemActions
 			let onchange = Callback::from({
 				let set_amt = set_amt.clone();
 				move |evt: web_sys::Event| {
-					let Some(value) = evt.input_value_t::<u32>() else { return; };
+					let Some(value) = evt.input_value_t::<u32>() else {
+						return;
+					};
 					set_amt.emit(value);
 				}
 			});

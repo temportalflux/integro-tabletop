@@ -30,13 +30,12 @@ fn use_update_character_modules(character: &CharacterHandle) {
 	if character.is_loaded() && modules_query_complete && *is_first_mount_after_load.borrow_mut() {
 		*is_first_mount_after_load.borrow_mut() = false;
 
-		// TODO: fetch modules that the character depends on
 		let module_ids = match modules_query.status() {
 			database::QueryStatus::Success(data) => data.iter().map(|module| module.id.clone()).collect::<Vec<_>>(),
 			_ => Vec::new(),
 		};
 
-		autosync_channel.try_send_req(autosync::Request::FetchAndUpdateModules(module_ids));
+		autosync_channel.try_send_req(autosync::Request::UpdateModules(module_ids));
 	}
 }
 
@@ -51,7 +50,6 @@ pub fn Sheet(props: &GeneralProp<SourceId>) -> Html {
 		let autosync_channel = autosync_channel.clone();
 		move |vis| {
 			if vis == web_sys::VisibilityState::Visible && character.is_loaded() {
-				log::debug!(target: "autosync", "Tab resumed, poke for update to {:?}", character.id().to_string());
 				autosync_channel.try_send_req(autosync::Request::UpdateFile(character.id().clone()));
 			}
 		}

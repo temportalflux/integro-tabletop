@@ -3,14 +3,7 @@ use graphql_client::GraphQLQuery;
 mod stream;
 pub use stream::*;
 
-#[derive(thiserror::Error, Debug)]
-pub enum QueryError {
-	#[error("request error")]
-	ReqwestError(#[from] reqwest::Error),
-	#[error("No data in response")]
-	NoData,
-}
-pub type QueryResult<Query> = Result<<Query as GraphQLQuery>::ResponseData, QueryError>;
+pub type QueryResult<Query> = Result<<Query as GraphQLQuery>::ResponseData, super::Error>;
 pub type QueryFuture<Query> = futures_util::future::LocalBoxFuture<'static, QueryResult<Query>>;
 
 static GITHUB_API_GRAPHQL: &'static str = "https://api.github.com/graphql";
@@ -28,13 +21,10 @@ where
 		Box::pin(async move {
 			let client = client;
 			let inner = post_graphql::<T, _>(&client, GITHUB_API_GRAPHQL, vars);
-			let response = match inner.await {
-				Ok(response) => response,
-				Err(err) => return Err(QueryError::ReqwestError(err)),
-			};
+			let response = inner.await?;
 			let data = match response.data {
 				Some(data) => data,
-				None => return Err(QueryError::NoData),
+				None => return Err(super::Error::InvalidResponse("No data in response".to_owned().into())),
 			};
 			Ok(data)
 		})

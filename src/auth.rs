@@ -185,8 +185,12 @@ impl PendingAuthState {
 		let scope = "repo,read:org,read:user";
 		let base_url = "https://api.netlify.com";
 		let auth_url = format!("{base_url}/auth?provider={provider_id}&site_id={SITE_ID}&scope={scope}");
-		let Some(window) = web_sys::window() else { return None; };
-		let Ok(screen) = window.screen() else { return None; };
+		let Some(window) = web_sys::window() else {
+			return None;
+		};
+		let Ok(screen) = window.screen() else {
+			return None;
+		};
 		let width = 960;
 		let height = 960;
 		let top = screen.width().unwrap_or(0) / 2 - width / 2;
@@ -210,7 +214,11 @@ impl PendingAuthState {
 		.join(", ");
 		let features = format!("{const_features}, {dyn_features}");
 		log::debug!(target: "auth", "Initializing login");
-		let Ok(Some(auth_window)) = window.open_with_url_and_target_and_features(&auth_url, "Integro Authorization", &features) else { return None; };
+		let Ok(Some(auth_window)) =
+			window.open_with_url_and_target_and_features(&auth_url, "Integro Authorization", &features)
+		else {
+			return None;
+		};
 
 		let timeout_ms = 1000 * 60;
 		let _ = window.remove_event_listener_with_callback("message", (**on_window_message).as_ref().unchecked_ref());

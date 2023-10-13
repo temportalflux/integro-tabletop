@@ -205,7 +205,9 @@ fn HitDiceSection(props: &GeneralProp<UseStateHandle<HitDiceToConsume>>) -> Html
 	let set_rolled_hp = Callback::from({
 		let hit_dice_to_consume = hit_dice_to_consume.clone();
 		move |evt: web_sys::Event| {
-			let Some(rolled_hp) = evt.input_value_t::<u32>() else { return; };
+			let Some(rolled_hp) = evt.input_value_t::<u32>() else {
+				return;
+			};
 			let mut value = (*hit_dice_to_consume).clone();
 			value.rolled_hp = rolled_hp;
 			hit_dice_to_consume.set(value);

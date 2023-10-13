@@ -43,7 +43,9 @@ impl Feature {
 	}
 
 	pub fn get_missing_selection_text_for(&self, key: &str) -> Option<&String> {
-		let Some((default_text, specialized)) = &self.missing_selection_text else { return None; };
+		let Some((default_text, specialized)) = &self.missing_selection_text else {
+			return None;
+		};
 		if let Some(key_specific) = specialized.get(key) {
 			return Some(key_specific);
 		}

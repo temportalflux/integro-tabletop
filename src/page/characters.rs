@@ -58,8 +58,12 @@ impl Route {
 	/// Returns the character sheet route for a character identified by the source id.
 	/// If the id doesn't have a module & system, or otherwise could not be parsed, the NotFound route is returned.
 	pub fn sheet(id: &SourceId) -> Self {
-		let Some(module_id) = &id.module else { return Self::NotFound; };
-		let Some(system) = &id.system else { return Self::NotFound; };
+		let Some(module_id) = &id.module else {
+			return Self::NotFound;
+		};
+		let Some(system) = &id.system else {
+			return Self::NotFound;
+		};
 		let (storage, module) = match module_id {
 			ModuleId::Local { name } => ("local", name.clone()),
 			ModuleId::Github { user_org, repository } => ("github", format!("{user_org}:{repository}")),
@@ -146,7 +150,9 @@ pub fn CharacterLanding() -> Html {
 			let navigator = navigator.clone();
 			task_dispatch.spawn("Prepare Character", None, async move {
 				let (_, homebrew_repo) = client.viewer().await?;
-				let Some(homebrew_repo) = homebrew_repo else { return Ok(()); };
+				let Some(homebrew_repo) = homebrew_repo else {
+					return Ok(());
+				};
 				let module_id = homebrew_repo.module_id();
 
 				let system = DnD5e::id();
@@ -218,7 +224,9 @@ fn CharacterList(GeneralProp { value: on_delete }: &GeneralProp<Callback<ModalDe
 		QueryStatus::Success(entries) => {
 			let mut cards = Vec::with_capacity(entries.len());
 			for entry in entries {
-				let Ok(metadata) = serde_json::from_value::<PersistentMetadata>(entry.metadata.clone()) else { continue; };
+				let Ok(metadata) = serde_json::from_value::<PersistentMetadata>(entry.metadata.clone()) else {
+					continue;
+				};
 				let id = entry.source_id(false);
 				let route = Route::sheet(&id);
 				let on_delete = match &entry.file_id {
@@ -327,7 +335,9 @@ fn ModalCreate() -> Html {
 	let on_change_filename = Callback::from({
 		let filename = filename.clone();
 		move |evt: web_sys::Event| {
-			let Some(value) = evt.input_value() else { return; };
+			let Some(value) = evt.input_value() else {
+				return;
+			};
 			filename.set(value);
 		}
 	});
@@ -353,7 +363,9 @@ fn ModalCreate() -> Html {
 			let close_modal = close_modal.clone();
 			let signal = task_dispatch.spawn("Create Character File", None, async move {
 				let (_, homebrew_repo) = client.viewer().await?;
-				let Some(homebrew_repo) = homebrew_repo else { return Ok(()); };
+				let Some(homebrew_repo) = homebrew_repo else {
+					return Ok(());
+				};
 				let module_id = homebrew_repo.module_id();
 
 				// NOTE: Cannot continue if our local version is not the latest version in storage (github).
@@ -512,10 +524,16 @@ fn ModalDelete(ModalDeleteProps { id, file_id, on_click }: &ModalDeleteProps) ->
 				return;
 			}
 
-			let Some(ModuleId::Github { user_org: repo_org, repository: repo_name }) = id.module.clone() else {
+			let Some(ModuleId::Github {
+				user_org: repo_org,
+				repository: repo_name,
+			}) = id.module.clone()
+			else {
 				return;
 			};
-			let Some(system) = &id.system else { return; };
+			let Some(system) = &id.system else {
+				return;
+			};
 			let path_in_repo = Path::new(system.as_str()).join(&id.path);
 			let module_id_str = id.module.as_ref().unwrap().to_string();
 

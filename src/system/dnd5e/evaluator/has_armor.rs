@@ -48,7 +48,9 @@ impl crate::utility::Evaluator for HasArmorEquipped {
 			if !item.is_equipable() || !is_equipped {
 				continue;
 			}
-			let item::Kind::Equipment(equipment) = &item.kind else { continue; };
+			let item::Kind::Equipment(equipment) = &item.kind else {
+				continue;
+			};
 			if equipment.armor.is_none() && equipment.shield.is_none() {
 				continue;
 			}

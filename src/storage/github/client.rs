@@ -1,18 +1,39 @@
 use super::{
 	queries::{FindOrgs, SearchForRepos, ViewerInfo},
-	GraphQLQueryExt, QueryError, QueryStream, RepositoryMetadata,
+	GraphQLQueryExt, QueryStream, RepositoryMetadata,
 };
 use futures_util::future::LocalBoxFuture;
+use itertools::Itertools;
 use serde::Deserialize;
 use std::path::Path;
 
 static GITHUB_API: &'static str = "https://api.github.com";
 static APP_USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
 
+#[derive(thiserror::Error, Debug, Clone)]
+pub enum Error {
+	#[error(transparent)]
+	Request(std::sync::Arc<reqwest::Error>),
+	#[error(transparent)]
+	Deserialization(std::sync::Arc<serde_json::Error>),
+	#[error("{0:?}")]
+	InvalidResponse(std::sync::Arc<String>),
+}
+impl From<reqwest::Error> for Error {
+	fn from(value: reqwest::Error) -> Self {
+		Self::Request(std::sync::Arc::new(value))
+	}
+}
+impl From<serde_json::Error> for Error {
+	fn from(value: serde_json::Error) -> Self {
+		Self::Deserialization(std::sync::Arc::new(value))
+	}
+}
+
 #[derive(Clone)]
 pub struct GithubClient(reqwest::Client, String);
 impl GithubClient {
-	pub fn new(token: &String) -> Result<Self, QueryError> {
+	pub fn new(token: &String) -> Result<Self, Error> {
 		let mut client = reqwest::Client::builder();
 		let auth_header = format!("Bearer {token}");
 		client = client.default_headers({
@@ -26,11 +47,11 @@ impl GithubClient {
 			);
 			[agent, auth].into_iter().collect()
 		});
-		let client = client.build().map_err(|err| QueryError::ReqwestError(err))?;
+		let client = client.build()?;
 		Ok(Self(client, auth_header))
 	}
 
-	pub fn viewer(&self) -> LocalBoxFuture<'static, anyhow::Result<(String, Option<RepositoryMetadata>)>> {
+	pub fn viewer(&self) -> LocalBoxFuture<'static, Result<(String, Option<RepositoryMetadata>), Error>> {
 		use crate::storage::USER_HOMEBREW_REPO_NAME;
 		let client = self.0.clone();
 		Box::pin(async move {
@@ -56,14 +77,31 @@ impl GithubClient {
 		)
 	}
 
-	pub fn search_for_repos(&self, owner: &String) -> QueryStream<SearchForRepos> {
+	pub fn search_for_repos<'a>(&self, owners: impl Iterator<Item = &'a String>) -> QueryStream<SearchForRepos> {
 		use super::MODULE_TOPIC;
+		let owners = owners.map(|owner| format!("user:{owner}")).join(" ");
 		QueryStream::new(
 			self.0.clone(),
 			super::queries::search_for_repos::Variables {
 				cursor: None,
 				amount: 25,
-				query: format!("user:{owner} topic:{MODULE_TOPIC}"),
+				query: format!("{owners} topic:{MODULE_TOPIC}"),
+			},
+		)
+	}
+
+	pub fn search_specific_repos<'a>(
+		&self,
+		repo_names: impl Iterator<Item = &'a String>,
+	) -> QueryStream<SearchForRepos> {
+		use super::MODULE_TOPIC;
+		let repos = repo_names.map(|repo| format!("repo:{repo}")).join(" ");
+		QueryStream::new(
+			self.0.clone(),
+			super::queries::search_for_repos::Variables {
+				cursor: None,
+				amount: 25,
+				query: format!("{repos} topic:{MODULE_TOPIC}"),
 			},
 		)
 	}
@@ -91,7 +129,7 @@ pub struct CreateRepoArgs<'a> {
 	pub private: bool,
 }
 impl GithubClient {
-	pub fn create_repo(&self, request: CreateRepoArgs<'_>) -> LocalBoxFuture<'static, anyhow::Result<String>> {
+	pub fn create_repo(&self, request: CreateRepoArgs<'_>) -> LocalBoxFuture<'static, Result<String, Error>> {
 		use serde_json::{Map, Value};
 		let builder = self.0.post(match request.org {
 			// create on the authenticated user
@@ -137,7 +175,7 @@ pub struct SetRepoTopicsArgs<'a> {
 	pub topics: Vec<String>,
 }
 impl GithubClient {
-	pub fn set_repo_topics(&self, request: SetRepoTopicsArgs<'_>) -> LocalBoxFuture<'static, anyhow::Result<()>> {
+	pub fn set_repo_topics(&self, request: SetRepoTopicsArgs<'_>) -> LocalBoxFuture<'static, Result<(), Error>> {
 		use serde_json::{Map, Value};
 		// https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#replace-all-repository-topics
 		let builder = self
@@ -217,7 +255,7 @@ impl GithubClient {
 	pub fn get_files_changed(
 		&self,
 		request: FilesChangedArgs<'_>,
-	) -> LocalBoxFuture<'static, Result<Vec<ChangedFile>, ChangedFilesError>> {
+	) -> LocalBoxFuture<'static, Result<Vec<ChangedFile>, Error>> {
 		use serde_json::Value;
 		use std::str::FromStr;
 		// https://docs.github.com/en/rest/commits/commits?apiVersion=2022-11-28#compare-two-commits
@@ -230,14 +268,26 @@ impl GithubClient {
 		Box::pin(async move {
 			let response = builder.send().await?;
 			let data = response.json::<serde_json::Value>().await?;
-			let Some(Value::Array(entries)) = data.get("files") else { return Ok(Vec::new()); };
+			let Some(Value::Array(entries)) = data.get("files") else {
+				return Ok(Vec::new());
+			};
 			let mut paths_changed = Vec::with_capacity(entries.len());
 			for entry in entries {
-				let Value::Object(map) = entry else { continue; };
-				let Some(Value::String(file_id)) = map.get("sha") else { continue; };
-				let Some(Value::String(path)) = map.get("filename") else { continue; };
-				let Some(Value::String(status)) = map.get("status") else { continue; };
-				let status = ChangedFileStatus::from_str(status.as_str())?;
+				let Value::Object(map) = entry else {
+					continue;
+				};
+				let Some(Value::String(file_id)) = map.get("sha") else {
+					continue;
+				};
+				let Some(Value::String(path)) = map.get("filename") else {
+					continue;
+				};
+				let Some(Value::String(status)) = map.get("status") else {
+					continue;
+				};
+				let status = ChangedFileStatus::from_str(status.as_str());
+				let status =
+					status.map_err(|delta_status| Error::InvalidResponse(format!("{delta_status:?}").into()))?;
 				paths_changed.push(ChangedFile {
 					path: path.clone(),
 					file_id: file_id.clone(),

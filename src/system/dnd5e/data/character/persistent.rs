@@ -152,7 +152,9 @@ impl Persistent {
 	}
 
 	pub fn remove_selection(&mut self, key: impl AsRef<Path>, index: usize) -> Option<String> {
-		let Some(values) = self.selected_values.get_mut(key) else { return None; };
+		let Some(values) = self.selected_values.get_mut(key) else {
+			return None;
+		};
 		if index < values.len() {
 			Some(values.remove(index))
 		} else {
@@ -161,7 +163,9 @@ impl Persistent {
 	}
 
 	pub fn remove_selected_value(&mut self, key: impl AsRef<Path>, value: impl Into<String>) {
-		let Some(values) = self.selected_values.get_mut(key) else { return; };
+		let Some(values) = self.selected_values.get_mut(key) else {
+			return;
+		};
 		let target: String = value.into();
 		values.retain(|value| *value != target);
 	}
@@ -570,7 +574,9 @@ impl SelectedSpells {
 	}
 
 	pub fn remove(&mut self, caster_id: &impl AsRef<str>, spell_id: &SourceId) {
-		let Some(caster_list) = self.cache_by_caster.get_mut(caster_id.as_ref()) else { return; };
+		let Some(caster_list) = self.cache_by_caster.get_mut(caster_id.as_ref()) else {
+			return;
+		};
 		caster_list.remove(spell_id);
 	}
 
@@ -579,8 +585,12 @@ impl SelectedSpells {
 	}
 
 	pub fn get_spell(&self, caster_id: &impl AsRef<str>, spell_id: &SourceId) -> Option<&Spell> {
-		let Some(data) = self.cache_by_caster.get(caster_id.as_ref()) else { return None; };
-		let Some(spell) = data.selections.get(spell_id) else { return None; };
+		let Some(data) = self.cache_by_caster.get(caster_id.as_ref()) else {
+			return None;
+		};
+		let Some(spell) = data.selections.get(spell_id) else {
+			return None;
+		};
 		Some(spell)
 	}
 
@@ -589,12 +599,16 @@ impl SelectedSpells {
 	}
 
 	pub fn iter_caster(&self, caster_id: &impl AsRef<str>) -> Option<impl Iterator<Item = &Spell>> {
-		let Some(caster) = self.cache_by_caster.get(caster_id.as_ref()) else { return None; };
+		let Some(caster) = self.cache_by_caster.get(caster_id.as_ref()) else {
+			return None;
+		};
 		Some(caster.selections.values())
 	}
 
 	pub fn has_selected(&self, caster_id: &impl AsRef<str>, spell_id: &SourceId) -> bool {
-		let Some(data) = self.cache_by_caster.get(caster_id.as_ref()) else { return false; };
+		let Some(data) = self.cache_by_caster.get(caster_id.as_ref()) else {
+			return false;
+		};
 		data.selections.contains_key(spell_id)
 	}
 

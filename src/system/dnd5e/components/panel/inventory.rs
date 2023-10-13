@@ -134,8 +134,12 @@ fn ContainerSection(ContainerSectionProps { container_id }: &ContainerSectionPro
 			open_modal = None;
 		}
 		Some(container_id) => {
-			let Some(item) = state.inventory().get_item(container_id) else { return Html::default(); };
-			let Some(container) = &item.items else { return Html::default(); };
+			let Some(item) = state.inventory().get_item(container_id) else {
+				return Html::default();
+			};
+			let Some(container) = &item.items else {
+				return Html::default();
+			};
 			title = item.name.clone().into();
 			wallet =
 				(!container.wallet().is_empty()).then(|| html! { <WalletInlineButton id={container_id.clone()} /> });
@@ -211,9 +215,14 @@ impl SelectedEquipment {
 			},
 			StartingEquipment::SelectItem(_filter) => {
 				let Some(id_str) = persistent.get_first_selection(&path) else {
-					return Self { missing_selections: vec![path.to_owned()], ..Default::default() };
+					return Self {
+						missing_selections: vec![path.to_owned()],
+						..Default::default()
+					};
 				};
-				let Ok(id) = SourceId::from_str(id_str) else { return Self::default(); };
+				let Ok(id) = SourceId::from_str(id_str) else {
+					return Self::default();
+				};
 				Self {
 					item_ids: vec![id],
 					..Default::default()
@@ -231,8 +240,12 @@ impl SelectedEquipment {
 				};
 				let mut selected = Self::default();
 				for idx_str in idx_strs {
-					let Ok(idx) = idx_str.parse::<usize>() else { continue; };
-					let Some(entry) = entries.get(idx) else { continue; };
+					let Ok(idx) = idx_str.parse::<usize>() else {
+						continue;
+					};
+					let Some(entry) = entries.get(idx) else {
+						continue;
+					};
 					let selection_path = path.join(idx.to_string());
 					selected.extend(Self::find_selections(entry, &selection_path, persistent));
 				}
@@ -325,7 +338,10 @@ fn BrowseStartingEquipment() -> Html {
 						}
 						// fetch yet-unfetched items from database
 						None => {
-							let Some(item) = database.get_typed_entry::<Item>(item_id.clone(), system_depot.clone(), None).await? else {
+							let Some(item) = database
+								.get_typed_entry::<Item>(item_id.clone(), system_depot.clone(), None)
+								.await?
+							else {
 								return Ok(());
 							};
 							fetched_items.insert(item_id, (item, 1));
@@ -546,7 +562,9 @@ fn GroupOption(props: &GroupOptionProps) -> Html {
 	let onchange = Callback::from({
 		let set_option_selected = set_option_selected.clone();
 		move |evt: web_sys::Event| {
-			let Some(should_be_picked) = evt.input_checked() else { return; };
+			let Some(should_be_picked) = evt.input_checked() else {
+				return;
+			};
 			set_option_selected.emit(should_be_picked);
 		}
 	});
@@ -675,7 +693,9 @@ fn SelectItem(
 		let state = state.clone();
 		let key = selection_path.clone();
 		move |evt: web_sys::Event| {
-			let Some(value) = evt.select_value() else { return; };
+			let Some(value) = evt.select_value() else {
+				return;
+			};
 			let next_value = (!value.is_empty()).then(move || value);
 			let key = key.clone();
 			state.dispatch(move |persistent| {

@@ -136,7 +136,9 @@ fn ManageCasterButton(CasterNameProps { caster_id }: &CasterNameProps) -> Html {
 		let context_menu = context_menu.clone();
 		let caster_id = caster_id.clone();
 		move |_| {
-			let Some(caster) = state.spellcasting().get_caster(caster_id.as_str()) else { return; };
+			let Some(caster) = state.spellcasting().get_caster(caster_id.as_str()) else {
+				return;
+			};
 			context_menu.dispatch(context_menu::Action::open_root(
 				format!("{} Spellcasting", caster.name()),
 				html!(<ManageCasterModal caster_id={caster_id.clone()} />),
@@ -199,7 +201,9 @@ impl<'c> SpellSections<'c> {
 			(None, _) => vec![(spell.rank, location)],
 		};
 		for (section_rank, location) in ranks {
-			let Some(section) = self.sections.get_mut(&section_rank) else { continue; };
+			let Some(section) = self.sections.get_mut(&section_rank) else {
+				continue;
+			};
 			let can_cast_from_section = section_rank == 0 || section.slot_count.is_some();
 			let uses_cast_method = matches!(&entry.method, CastingMethod::Cast { .. });
 			if can_cast_from_section || !uses_cast_method {
@@ -210,8 +214,12 @@ impl<'c> SpellSections<'c> {
 
 	fn insert_selected_spells(&mut self, state: &'c CharacterHandle) {
 		for caster_id in state.persistent().selected_spells.iter_caster_ids() {
-			let Some(caster) = state.spellcasting().get_caster(caster_id) else { continue; };
-			let Some(iter_spells) = state.persistent().selected_spells.iter_caster(caster_id) else { continue; };
+			let Some(caster) = state.spellcasting().get_caster(caster_id) else {
+				continue;
+			};
+			let Some(iter_spells) = state.persistent().selected_spells.iter_caster(caster_id) else {
+				continue;
+			};
 			for spell in iter_spells {
 				self.insert_spell(
 					spell,
@@ -227,7 +235,9 @@ impl<'c> SpellSections<'c> {
 
 	fn insert_permaprepared_spells(&mut self, state: &'c CharacterHandle) {
 		for (_id, spell_entry) in state.spellcasting().prepared_spells() {
-			let Some(spell) = &spell_entry.spell else { continue; };
+			let Some(spell) = &spell_entry.spell else {
+				continue;
+			};
 			for (source, entry) in &spell_entry.entries {
 				self.insert_spell(
 					spell,
@@ -250,7 +260,9 @@ impl<'c> SpellSections<'c> {
 		// for casters which prepare from items, rituals are based on those in the items
 		let mut prepare_from_item_casters = Vec::new();
 		for caster in state.spellcasting().iter_casters() {
-			let Some(ritual_capability) = &caster.ritual_capability else { continue; };
+			let Some(ritual_capability) = &caster.ritual_capability else {
+				continue;
+			};
 			if !ritual_capability.available_spells {
 				continue;
 			}
@@ -291,7 +303,9 @@ impl<'c> SpellSections<'c> {
 			_ => return,
 		}
 		// ritual-only spells can only be cast at their specified rank
-		let Some(section) = self.sections.get_mut(&spell.rank) else { return; };
+		let Some(section) = self.sections.get_mut(&spell.rank) else {
+			return;
+		};
 		section.insert_spell(
 			spell,
 			spell_entry,
@@ -337,31 +351,51 @@ impl SpellLocation {
 	fn get<'this, 'c>(&'this self, state: &'c CharacterHandle) -> Option<(&'c Spell, &'c SpellEntry)> {
 		match self {
 			SpellLocation::Selected { caster_id, spell_id } => {
-				let Some(caster) = state.spellcasting().get_caster(caster_id) else { return None; };
-				let Some(spell) = state.persistent().selected_spells.get_spell(caster_id, spell_id) else { return None; };
+				let Some(caster) = state.spellcasting().get_caster(caster_id) else {
+					return None;
+				};
+				let Some(spell) = state.persistent().selected_spells.get_spell(caster_id, spell_id) else {
+					return None;
+				};
 				Some((spell, &caster.spell_entry))
 			}
 			SpellLocation::AlwaysPrepared { spell_id, source } => {
-				let Some(spell_entry) = state.spellcasting().prepared_spells().get(spell_id) else { return None; };
-				let Some(spell) = &spell_entry.spell else { return None; };
-				let Some(entry) = spell_entry.entries.get(source) else { return None; };
+				let Some(spell_entry) = state.spellcasting().prepared_spells().get(spell_id) else {
+					return None;
+				};
+				let Some(spell) = &spell_entry.spell else {
+					return None;
+				};
+				let Some(entry) = spell_entry.entries.get(source) else {
+					return None;
+				};
 				Some((spell, entry))
 			}
 			SpellLocation::AvailableAsRitual {
 				spell_id,
 				source: RitualSpellSource::Caster(caster_id),
 			} => {
-				let Some(caster) = state.spellcasting().get_caster(caster_id) else { return None; };
-				let Some(spell) = state.spellcasting().get_ritual(spell_id) else { return None; };
+				let Some(caster) = state.spellcasting().get_caster(caster_id) else {
+					return None;
+				};
+				let Some(spell) = state.spellcasting().get_ritual(spell_id) else {
+					return None;
+				};
 				Some((spell, &caster.spell_entry))
 			}
 			SpellLocation::AvailableAsRitual {
 				spell_id,
 				source: RitualSpellSource::AlwaysPrepared(source),
 			} => {
-				let Some(spell_entry) = state.spellcasting().prepared_spells().get(spell_id) else { return None; };
-				let Some(spell) = &spell_entry.spell else { return None; };
-				let Some(entry) = spell_entry.entries.get(source) else { return None; };
+				let Some(spell_entry) = state.spellcasting().prepared_spells().get(spell_id) else {
+					return None;
+				};
+				let Some(spell) = &spell_entry.spell else {
+					return None;
+				};
+				let Some(entry) = spell_entry.entries.get(source) else {
+					return None;
+				};
 				Some((spell, entry))
 			}
 		}
@@ -400,7 +434,9 @@ fn spell_section<'c>(state: &'c CharacterHandle, rank: u8, section_props: Sectio
 		let toggle_slot = state.new_dispatch({
 			let consumed_slots = *consumed;
 			move |evt: web_sys::Event, persistent| {
-				let Some(consume_slot) = evt.input_checked() else { return MutatorImpact::None; };
+				let Some(consume_slot) = evt.input_checked() else {
+					return MutatorImpact::None;
+				};
 				let new_consumed_slots = match consume_slot {
 					true => consumed_slots.saturating_add(1),
 					false => consumed_slots.saturating_sub(1),
@@ -775,7 +811,9 @@ fn SpellModalRowRoot(SpellModalProps { location, children }: &SpellModalProps) -
 		let context_menu = context_menu.clone();
 		let location = location.clone();
 		move |_| {
-			let Some((spell, _entry)) = location.get(&state) else { return; };
+			let Some((spell, _entry)) = location.get(&state) else {
+				return;
+			};
 			let location = location.clone();
 			context_menu.dispatch(context_menu::Action::open_root(
 				spell.name.clone(),
@@ -970,7 +1008,9 @@ fn SpellListAction(
 	}: &SpellListActionProps,
 ) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let Some(caster) = state.spellcasting().get_caster(info.id.as_str()) else { return Html::default(); };
+	let Some(caster) = state.spellcasting().get_caster(info.id.as_str()) else {
+		return Html::default();
+	};
 
 	let mut can_select_more = true;
 	if let Some(selections) = state.persistent().selected_spells.get(&info.id) {
@@ -1391,7 +1431,9 @@ pub fn AvailableSpellList(props: &AvailableSpellListProps) -> Html {
 					}
 					SpellSource::Items => {
 						for contained_spell in &contained_spells {
-							let Indirect::Custom(spell) = &contained_spell.spell else { continue; };
+							let Indirect::Custom(spell) = &contained_spell.spell else {
+								continue;
+							};
 							insert_spell(spell.clone());
 						}
 

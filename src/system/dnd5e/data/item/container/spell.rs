@@ -82,9 +82,23 @@ impl SpellContainer {
 	}
 
 	pub fn get_spell_entry(&self, contained: &ContainerSpell, default_values: Option<(i32, u8)>) -> Option<SpellEntry> {
-		let Some(casting) = &self.casting else { return None; };
-		let Some(atk_bonus) = casting.attack_bonus.or(contained.attack_bonus).or(default_values.map(|(bonus, _)| bonus)) else { return None; };
-		let Some(save_dc) = casting.save_dc.or(contained.save_dc).or(default_values.map(|(_, dc)| dc)) else { return None; };
+		let Some(casting) = &self.casting else {
+			return None;
+		};
+		let Some(atk_bonus) = casting
+			.attack_bonus
+			.or(contained.attack_bonus)
+			.or(default_values.map(|(bonus, _)| bonus))
+		else {
+			return None;
+		};
+		let Some(save_dc) = casting
+			.save_dc
+			.or(contained.save_dc)
+			.or(default_values.map(|(_, dc)| dc))
+		else {
+			return None;
+		};
 		Some(SpellEntry {
 			source: PathBuf::new(),
 			classified_as: None,
@@ -105,7 +119,9 @@ impl SpellContainer {
 
 	pub fn add_spellcasting(&self, stats: &mut Character, item_id: &Vec<uuid::Uuid>, parent: &Path) {
 		for contained in &self.spells {
-			let Some(mut entry) = self.get_spell_entry(contained, None) else { continue; };
+			let Some(mut entry) = self.get_spell_entry(contained, None) else {
+				continue;
+			};
 			entry.source = parent.to_owned();
 			if let CastingMethod::FromContainer { item_id: id_path, .. } = &mut entry.method {
 				*id_path = item_id.clone();

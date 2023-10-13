@@ -112,7 +112,9 @@ pub fn SkillTable() -> Html {
 		let state = presentation.clone();
 		Callback::from(move |e: MouseEvent| {
 			use std::str::FromStr;
-			let Some(element) = e.target_dyn_into::<web_sys::HtmlElement>() else { return; };
+			let Some(element) = e.target_dyn_into::<web_sys::HtmlElement>() else {
+				return;
+			};
 			let value = element
 				.get_attribute("value")
 				.map(|s| Presentation::from_str(&s).ok())

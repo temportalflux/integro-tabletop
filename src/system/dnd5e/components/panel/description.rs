@@ -156,7 +156,9 @@ pub fn AppearanceEditor() -> Html {
 	let onchange_appearance = Callback::from({
 		let state = state.clone();
 		move |evt: web_sys::Event| {
-			let Some(value) = evt.input_value() else { return; };
+			let Some(value) = evt.input_value() else {
+				return;
+			};
 			state.dispatch(Box::new(move |persistent: &mut Persistent| {
 				persistent.description.appearance = value;
 				MutatorImpact::None
