@@ -57,10 +57,9 @@ columnSorting:
 
 ## In Progress
 
-- [auto-sync](tasks/auto-sync.md)
-
 ## Done
 
+- [auto-sync](tasks/auto-sync.md)
 - [conditions-imply-other-conditions](tasks/conditions-imply-other-conditions.md)
 - [bonus-damage-for-spells](tasks/bonus-damage-for-spells.md)
 - [item-bundles-packs-do-not-have-contents](tasks/item-bundles-packs-do-not-have-contents.md)
