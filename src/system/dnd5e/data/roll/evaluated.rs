@@ -1,17 +1,18 @@
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt, ValueExt},
 	system::dnd5e::{
 		data::character::Character,
 		data::roll::{Die, Roll},
 		Value,
 	},
+	utility::Dependencies,
 };
-use std::str::FromStr;
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct EvaluatedRoll {
-	amount: Value<i32>,
-	die: Option<Value<i32>>,
+	pub amount: Value<i32>,
+	pub die: Option<Value<i32>>,
 }
 
 impl<T> From<T> for EvaluatedRoll
@@ -28,6 +29,14 @@ where
 }
 
 impl EvaluatedRoll {
+	pub fn dependencies(&self) -> Dependencies {
+		let mut deps = self.amount.dependencies();
+		if let Some(die_value) = &self.die {
+			deps = deps.join(die_value.dependencies());
+		}
+		deps
+	}
+
 	pub fn evaluate(&self, character: &Character) -> Roll {
 		let amount = self.amount.evaluate(character) as u32;
 		let die = match &self.die {
@@ -41,36 +50,14 @@ impl EvaluatedRoll {
 	}
 }
 
-impl FromKDL for EvaluatedRoll {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		if let Some(roll_str) = node.get_str_opt(ctx.consume_idx())? {
-			return Ok(Self::from(Roll::from_str(roll_str)?));
+impl FromKdl<NodeContext> for EvaluatedRoll {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		if let Some(entry) = node.next_opt() {
+			return Ok(Self::from(Roll::from_kdl_value(entry.value())?));
 		}
-		let amount = {
-			let node = node.query_req("scope() > amount")?;
-			let mut ctx = ctx.next_node();
-			Value::from_kdl(
-				node,
-				node.entry_req(ctx.consume_idx())?,
-				&mut ctx,
-				|value| Ok(value.as_i64_req()? as i32),
-			)?
-		};
-		let die = match node.query_opt("scope() > die")? {
-			None => None,
-			Some(node) => {
-				let mut ctx = ctx.next_node();
-				Some(Value::from_kdl(
-					node,
-					node.entry_req(ctx.consume_idx())?,
-					&mut ctx,
-					|value| Ok(value.as_i64_req()? as i32),
-				)?)
-			}
-		};
+		let amount = node.query_req_t::<Value<i32>>("scope() > amount")?;
+		let die = node.query_opt_t::<Value<i32>>("scope() > die")?;
 		Ok(Self { amount, die })
 	}
 }
@@ -83,7 +70,7 @@ impl AsKdl for EvaluatedRoll {
 			Self {
 				amount: Value::Fixed(amt),
 				die: None,
-			} => node.with_entry(format!("{amt}")),
+			} => node.with_entry(*amt as i64),
 			Self {
 				amount: Value::Fixed(amt),
 				die: Some(Value::Fixed(die)),
@@ -119,7 +106,7 @@ mod test {
 
 		#[test]
 		fn basic_fixed() -> anyhow::Result<()> {
-			let doc = "roll \"1\"";
+			let doc = "roll 1";
 			let data = EvaluatedRoll {
 				amount: Value::Fixed(1),
 				die: None,

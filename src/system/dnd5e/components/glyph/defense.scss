@@ -1,0 +1,24 @@
+@use "../../../../components/glyph.scss" as glyph;
+
+.glyph.defense {
+	@include glyph.mask;
+	
+	display: inline-block;
+	margin-top: auto!important;
+	margin-bottom: auto!important;
+}
+
+.glyph.defense.resistance {
+	--glyph-image: url(assets/defense/resistance.svg);
+	--glyph-color: #00c680;
+}
+
+.glyph.defense.immunity {
+	--glyph-image: url(assets/defense/immunity.svg);
+	--glyph-color: #00c680;
+}
+
+.glyph.defense.vulnerability {
+	--glyph-image: url(assets/defense/vulnerability.svg);
+	--glyph-color: #e40712;
+}

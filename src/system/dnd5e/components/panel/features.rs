@@ -1,10 +1,9 @@
 use crate::{
 	components::{Tag, Tags},
+	page::characters::sheet::joined::editor::description,
+	page::characters::sheet::CharacterHandle,
 	path_map::PathMap,
-	system::dnd5e::{
-		components::{editor::description, CharacterHandle},
-		data::Feature,
-	},
+	system::dnd5e::data::Feature,
 };
 use std::path::{Path, PathBuf};
 use yew::prelude::*;
@@ -114,11 +113,7 @@ fn FeatureBlock(
 	let name = feature.name.to_case(Case::Title);
 	let mut selected_values = Vec::new();
 	if let Some(value_map) = selected_value_map {
-		selected_values = value_map
-			.as_vec()
-			.iter()
-			.map(|(_, value)| (*value).clone())
-			.collect();
+		selected_values = value_map.as_vec().iter().map(|(_, value)| (*value).clone()).collect();
 	}
 
 	html! {
@@ -134,7 +129,7 @@ fn FeatureBlock(
 					_ => html! {},
 				}}
 			</span>
-			{description(&feature.description, true)}
+			{description(&feature.description, true, false)}
 			{match selected_values.len() {
 				0 => html! {},
 				_ => {

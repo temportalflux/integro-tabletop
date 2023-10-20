@@ -1,8 +1,10 @@
 use crate::{
-	components::modal,
+	components::context_menu,
+	page::characters::sheet::joined::editor::AutoExchangeSwitch,
+	page::characters::sheet::CharacterHandle,
 	page::characters::sheet::MutatorImpact,
 	system::dnd5e::{
-		components::{editor::AutoExchangeSwitch, validate_uint_only, CharacterHandle},
+		components::{glyph, validate_uint_only},
 		data::{
 			character::Persistent,
 			currency::{self, Wallet},
@@ -13,40 +15,6 @@ use crate::{
 use itertools::Itertools;
 use uuid::Uuid;
 use yew::prelude::*;
-
-#[derive(Clone, PartialEq, Properties)]
-pub struct CoinIconProps {
-	pub kind: currency::Kind,
-	#[prop_or_else(|| "span".into())]
-	pub tag: AttrValue,
-	#[prop_or_default]
-	pub classes: Classes,
-	#[prop_or_default]
-	pub large: bool,
-}
-
-#[function_component]
-pub fn CoinIcon(
-	CoinIconProps {
-		kind,
-		tag,
-		classes,
-		large,
-	}: &CoinIconProps,
-) -> Html {
-	let mut classes = classes!("icon", "currency", classes.clone());
-	if *large {
-		classes.push("lg");
-	}
-	classes.push(match kind {
-		currency::Kind::Copper => "copper",
-		currency::Kind::Silver => "silver",
-		currency::Kind::Electrum => "electrum",
-		currency::Kind::Gold => "gold",
-		currency::Kind::Platinum => "platinum",
-	});
-	html! { <@{tag.as_str().to_owned()} class={classes} /> }
-}
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct WalletInlineProps {
@@ -60,7 +28,7 @@ pub fn WalletInline(WalletInlineProps { wallet }: &WalletInlineProps) -> Html {
 			match wallet[coin] {
 				0 => None,
 				amt => Some(html! {
-					<span>{amt} <CoinIcon kind={coin} /></span>
+					<span>{amt} <glyph::Coin kind={coin} /></span>
 				}),
 			}
 		}).collect::<Vec<_>>()}
@@ -76,8 +44,12 @@ fn get_wallet<'c>(state: &'c CharacterHandle, id: &Option<Uuid>) -> Option<&'c W
 	match id {
 		None => Some(state.inventory().wallet()),
 		Some(id) => {
-			let Some(item) = state.inventory().get_item(id) else { return None; };
-			let Some(container) = &item.items else { return None; };
+			let Some(item) = state.inventory().get_item(id) else {
+				return None;
+			};
+			let Some(container) = &item.items else {
+				return None;
+			};
 			Some(container.wallet())
 		}
 	}
@@ -87,8 +59,12 @@ fn get_wallet_mut<'c>(persistent: &'c mut Persistent, id: &Option<Uuid>) -> Opti
 	match id {
 		None => Some(persistent.inventory.wallet_mut()),
 		Some(id) => {
-			let Some(item) = persistent.inventory.get_mut(id) else { return None; };
-			let Some(container) = &mut item.items else { return None; };
+			let Some(item) = persistent.inventory.get_mut(id) else {
+				return None;
+			};
+			let Some(container) = &mut item.items else {
+				return None;
+			};
 			Some(container.wallet_mut())
 		}
 	}
@@ -97,23 +73,17 @@ fn get_wallet_mut<'c>(persistent: &'c mut Persistent, id: &Option<Uuid>) -> Opti
 #[function_component]
 pub fn WalletInlineButton(WalletContainerProps { id }: &WalletContainerProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let modal_dispatcher = use_context::<modal::Context>().unwrap();
-
-	let onclick = modal_dispatcher.callback({
+	let onclick = context_menu::use_control_action({
 		let id = id.clone();
-		move |evt: MouseEvent| {
+		move |evt: MouseEvent, _context| {
 			evt.stop_propagation();
-			modal::Action::Open(modal::Props {
-				centered: true,
-				scrollable: true,
-				root_classes: classes!("wallet"),
-				content: html! {<Modal {id} />},
-				..Default::default()
-			})
+			context_menu::Action::open_root("Coin Pouch", html!(<Modal {id} />))
 		}
 	});
 
-	let Some(wallet) = get_wallet(&state, id).cloned() else { return Html::default(); };
+	let Some(wallet) = get_wallet(&state, id).cloned() else {
+		return Html::default();
+	};
 	html! {
 		<span class="wallet-inline ms-auto py-2" {onclick}>
 			{match wallet.is_empty() {
@@ -127,7 +97,9 @@ pub fn WalletInlineButton(WalletContainerProps { id }: &WalletContainerProps) ->
 #[function_component]
 fn Modal(WalletContainerProps { id }: &WalletContainerProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let Some(wallet) = get_wallet(&state, id) else { return Html::default(); };
+	let Some(wallet) = get_wallet(&state, id) else {
+		return Html::default();
+	};
 	let adjustment_wallet = use_state(|| Wallet::default());
 	let balance_display = {
 		let total_value_gold = wallet.total_value() / currency::Kind::Gold.multiplier();
@@ -139,7 +111,7 @@ fn Modal(WalletContainerProps { id }: &WalletContainerProps) -> Html {
 						{"(est. "}
 						{total_value_gold}
 						{" GP"}
-						<CoinIcon classes="ms-1" kind={currency::Kind::Gold}/>
+						<glyph::Coin classes="ms-1" kind={currency::Kind::Gold}/>
 						{")"}
 					</span>
 				</div>
@@ -147,7 +119,7 @@ fn Modal(WalletContainerProps { id }: &WalletContainerProps) -> Html {
 					let amount = wallet[coin];
 					html! {<>
 						<div class="d-flex py-1" style="font-size: 1.25rem;">
-							<CoinIcon kind={coin} classes="my-auto me-2" large={true} />
+							<glyph::Coin kind={coin} classes="my-auto me-2" large={true} />
 							<div class="my-auto">{coin.to_string()}{" ("}{coin.abbreviation()}{")"}</div>
 							<div class="my-auto ms-auto me-3">{amount}</div>
 						</div>
@@ -164,7 +136,9 @@ fn Modal(WalletContainerProps { id }: &WalletContainerProps) -> Html {
 		let on_change_adj_coin = Callback::from({
 			let wallet = adjustment_wallet.clone();
 			move |(evt, coin): (web_sys::Event, currency::Kind)| {
-				let Some(value) = evt.input_value_t::<u64>() else { return; };
+				let Some(value) = evt.input_value_t::<u64>() else {
+					return;
+				};
 				wallet.set({
 					let mut wallet = (*wallet).clone();
 					wallet[coin] = value;
@@ -204,7 +178,9 @@ fn Modal(WalletContainerProps { id }: &WalletContainerProps) -> Html {
 					wallet
 				};
 				state.dispatch(Box::new(move |persistent: &mut Persistent| {
-					let Some(target) = get_wallet_mut(persistent, &id) else { return MutatorImpact::None; };
+					let Some(target) = get_wallet_mut(persistent, &id) else {
+						return MutatorImpact::None;
+					};
 					assert!(target.contains(&adjustments, auto_exchange));
 					target.remove(adjustments, auto_exchange);
 					MutatorImpact::None
@@ -229,7 +205,9 @@ fn Modal(WalletContainerProps { id }: &WalletContainerProps) -> Html {
 					return;
 				}
 				state.dispatch(Box::new(move |persistent: &mut Persistent| {
-					let Some(target) = get_wallet_mut(persistent, &id) else { return MutatorImpact::None; };
+					let Some(target) = get_wallet_mut(persistent, &id) else {
+						return MutatorImpact::None;
+					};
 					target.normalize();
 					MutatorImpact::None
 				}));
@@ -252,7 +230,7 @@ fn Modal(WalletContainerProps { id }: &WalletContainerProps) -> Html {
 						html! {<>
 							<div class="col">
 								<div class="d-flex justify-content-center">
-									<CoinIcon kind={coin} classes="my-auto me-1" />
+									<glyph::Coin kind={coin} classes="my-auto me-1" />
 									{coin.abbreviation().to_uppercase()}
 								</div>
 								<input
@@ -311,21 +289,15 @@ fn Modal(WalletContainerProps { id }: &WalletContainerProps) -> Html {
 		}
 	};
 	html! {<>
-		<div class="modal-header">
-			<h1 class="modal-title fs-4">{"Coin Pouch"}</h1>
-			<button
-				type="button" class="btn btn-secondary btn-sm px-1 py-0 ms-2"
-				data-bs-toggle="collapse" data-bs-target="#settingsCollapse"
-			>
-				<i class="bi bi-gear-fill me-2" />
-				{"Settings"}
-			</button>
-			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
-		</div>
-		<div class="modal-body">
-			{settings}
-			{balance_display}
-			{adjustment_form}
-		</div>
+		<button
+			type="button" class="btn btn-secondary btn-sm px-1 py-0 ms-2"
+			data-bs-toggle="collapse" data-bs-target="#settingsCollapse"
+		>
+			<i class="bi bi-gear-fill me-2" />
+			{"Settings"}
+		</button>
+		{settings}
+		{balance_display}
+		{adjustment_form}
 	</>}
 }

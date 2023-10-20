@@ -1,7 +1,6 @@
-use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt},
-	system::dnd5e::data::{character::Character, item, ArmorExtended},
-};
+use crate::kdl_ext::NodeContext;
+use crate::system::dnd5e::data::{character::Character, item, ArmorExtended};
+use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
 use std::{collections::HashSet, str::FromStr};
 
 /// Checks if the character has armor equipped.
@@ -45,12 +44,16 @@ impl crate::utility::Evaluator for HasArmorEquipped {
 	}
 
 	fn evaluate(&self, character: &Self::Context) -> Result<(), String> {
-		for item::container::EquipableEntry { item, is_equipped } in character.inventory().entries()
-		{
+		for item::container::item::EquipableEntry { item, is_equipped, .. } in character.inventory().entries() {
 			if !item.is_equipable() || !is_equipped {
 				continue;
 			}
-			let item::Kind::Equipment(equipment) = &item.kind else { continue; };
+			let item::Kind::Equipment(equipment) = &item.kind else {
+				continue;
+			};
+			if equipment.armor.is_none() && equipment.shield.is_none() {
+				continue;
+			}
 
 			let mut in_filter = false;
 			if let Some(armor) = &equipment.armor {
@@ -80,13 +83,11 @@ impl crate::utility::Evaluator for HasArmorEquipped {
 	}
 }
 
-crate::impl_kdl_node!(HasArmorEquipped, "has_armor_equipped");
+kdlize::impl_kdl_node!(HasArmorEquipped, "has_armor_equipped");
 
-impl FromKDL for HasArmorEquipped {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		_ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
+impl FromKdl<NodeContext> for HasArmorEquipped {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let inverted = node.get_bool_opt("inverted")?.unwrap_or_default();
 		let mut kinds = HashSet::new();
 		for kind_str in node.query_str_all("scope() > kind", 0)? {
@@ -301,20 +302,14 @@ mod test {
 			fn no_equipment() {
 				let evaluator = HasArmorEquipped::default();
 				let character = character_with_armor(&[]);
-				assert_eq!(
-					evaluator.evaluate(&character),
-					Err("No armor equipped".into())
-				);
+				assert_eq!(evaluator.evaluate(&character), Err("No armor equipped".into()));
 			}
 
 			#[test]
 			fn unequipped() {
 				let evaluator = HasArmorEquipped::default();
 				let with_medium = character_with_armor(&[(armor::Kind::Medium, false)]);
-				assert_eq!(
-					evaluator.evaluate(&with_medium),
-					Err("No armor equipped".into())
-				);
+				assert_eq!(evaluator.evaluate(&with_medium), Err("No armor equipped".into()));
 			}
 
 			#[test]
@@ -339,10 +334,7 @@ mod test {
 					..Default::default()
 				};
 				let with_light = character_with_armor(&[]);
-				assert_eq!(
-					evaluator.evaluate(&with_light),
-					Err("No light armor equipped".into())
-				);
+				assert_eq!(evaluator.evaluate(&with_light), Err("No light armor equipped".into()));
 			}
 
 			#[test]
@@ -352,10 +344,7 @@ mod test {
 					..Default::default()
 				};
 				let with_light = character_with_armor(&[(armor::Kind::Light, false)]);
-				assert_eq!(
-					evaluator.evaluate(&with_light),
-					Err("No light armor equipped".into())
-				);
+				assert_eq!(evaluator.evaluate(&with_light), Err("No light armor equipped".into()));
 			}
 
 			#[test]
@@ -365,10 +354,7 @@ mod test {
 					..Default::default()
 				};
 				let with_light = character_with_armor(&[(armor::Kind::Heavy, true)]);
-				assert_eq!(
-					evaluator.evaluate(&with_light),
-					Err("No light armor equipped".into())
-				);
+				assert_eq!(evaluator.evaluate(&with_light), Err("No light armor equipped".into()));
 			}
 
 			#[test]
@@ -494,10 +480,32 @@ mod test {
 					..Default::default()
 				};
 				let character = character(&[], Some(true));
-				assert_eq!(
-					evaluator.evaluate(&character),
-					Err("\"Shield\" is equipped.".into())
-				);
+				assert_eq!(evaluator.evaluate(&character), Err("\"Shield\" is equipped.".into()));
+			}
+
+			#[test]
+			fn weapon_equipped() {
+				let evaluator = HasArmorEquipped {
+					inverted: true,
+					..Default::default()
+				};
+				let mut character = character(&[], None);
+				let id = character.persistent_mut().inventory.insert(Item {
+					name: format!("Staff"),
+					kind: item::Kind::Equipment(Equipment {
+						weapon: Some(item::weapon::Weapon {
+							kind: item::weapon::Kind::Simple,
+							classification: "Quarterstaff".into(),
+							damage: None,
+							properties: vec![],
+							range: None,
+						}),
+						..Default::default()
+					}),
+					..Default::default()
+				});
+				character.persistent_mut().inventory.set_equipped(&id, true);
+				assert_eq!(evaluator.evaluate(&character), Ok(()));
 			}
 		}
 
@@ -581,10 +589,7 @@ mod test {
 					.into(),
 					..Default::default()
 				};
-				let character = character_with_armor(&[
-					(armor::Kind::Heavy, false),
-					(armor::Kind::Medium, false),
-				]);
+				let character = character_with_armor(&[(armor::Kind::Heavy, false), (armor::Kind::Medium, false)]);
 				assert_eq!(evaluator.evaluate(&character), Ok(()));
 			}
 

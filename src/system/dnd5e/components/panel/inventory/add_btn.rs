@@ -1,4 +1,4 @@
-use crate::system::dnd5e::{components::CharacterHandle, data::item::container::AsItem};
+use crate::{page::characters::sheet::CharacterHandle, system::dnd5e::data::item::container::item::AsItem};
 use uuid::Uuid;
 use yew::prelude::*;
 

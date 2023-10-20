@@ -1,11 +1,9 @@
 use crate::{
-	database::{
-		app::{Criteria, Database, Entry, FetchError},
-		Error as DatabaseError,
-	},
-	kdl_ext::{FromKDL, KDLNode},
+	database::{Criteria, Database, Entry, FetchError, Module},
+	kdl_ext::NodeContext,
 	system::{self, core::SourceId, dnd5e::SystemComponent},
 };
+use kdlize::{FromKdl, NodeId};
 use std::{
 	collections::BTreeMap,
 	rc::Rc,
@@ -35,8 +33,14 @@ impl<T> Default for QueryAllArgs<T> {
 
 #[derive(Clone)]
 pub struct UseQueryAllHandle<T> {
-	async_handle: UseAsyncHandle<Vec<T>, DatabaseError>,
+	async_handle: UseAsyncHandle<Vec<T>, database::Error>,
 	run: Rc<dyn Fn(Option<QueryAllArgs<T>>)>,
+}
+
+impl<T: PartialEq> PartialEq for UseQueryAllHandle<T> {
+	fn eq(&self, other: &Self) -> bool {
+		self.async_handle == other.async_handle
+	}
 }
 
 #[derive(Debug, PartialEq)]
@@ -48,7 +52,7 @@ pub enum QueryStatus<T, E> {
 }
 
 impl<T> UseQueryAllHandle<T> {
-	pub fn status(&self) -> QueryStatus<&Vec<T>, DatabaseError> {
+	pub fn status(&self) -> QueryStatus<&Vec<T>, database::Error> {
 		if self.async_handle.loading {
 			return QueryStatus::Pending;
 		}
@@ -61,8 +65,46 @@ impl<T> UseQueryAllHandle<T> {
 		QueryStatus::Empty
 	}
 
+	pub fn get(&self, idx: usize) -> Option<&T> {
+		let Some(data) = &self.async_handle.data else {
+			return None;
+		};
+		data.get(idx)
+	}
+
 	pub fn run(&self, args: Option<QueryAllArgs<T>>) {
 		(self.run)(args);
+	}
+}
+
+#[derive(Clone)]
+pub struct UseQueryModulesHandle {
+	async_handle: UseAsyncHandle<Vec<Module>, database::Error>,
+	run: Rc<dyn Fn()>,
+}
+
+impl PartialEq for UseQueryModulesHandle {
+	fn eq(&self, other: &Self) -> bool {
+		self.async_handle == other.async_handle
+	}
+}
+
+impl UseQueryModulesHandle {
+	pub fn status(&self) -> QueryStatus<&Vec<Module>, database::Error> {
+		if self.async_handle.loading {
+			return QueryStatus::Pending;
+		}
+		if let Some(error) = &self.async_handle.error {
+			return QueryStatus::Failed(error.clone());
+		}
+		if let Some(data) = &self.async_handle.data {
+			return QueryStatus::Success(data);
+		}
+		QueryStatus::Empty
+	}
+
+	pub fn run(&self) {
+		(self.run)();
 	}
 }
 
@@ -87,15 +129,15 @@ pub fn use_query_all(
 				max_limit,
 			} = {
 				let guard = async_args.lock().unwrap();
-				let Some(args) = &*guard else { return Ok(Vec::new()); };
+				let Some(args) = &*guard else {
+					return Ok(Vec::new());
+				};
 				args.clone()
 			};
 			if system_id.is_empty() {
 				return Ok(Vec::new());
 			}
-			let mut query = database
-				.query_entries(system_id, category, criteria)
-				.await?;
+			let mut query = database.query_entries(system_id, category, criteria).await?;
 			let mut items = Vec::new();
 			while let Some(item) = query.next().await {
 				items.push(item);
@@ -123,12 +165,9 @@ pub fn use_query_all(
 }
 
 #[hook]
-pub fn use_query_all_typed<T>(
-	auto_fetch: bool,
-	initial_args: Option<QueryAllArgs<T>>,
-) -> UseQueryAllHandle<T>
+pub fn use_query_all_typed<T>(auto_fetch: bool, initial_args: Option<QueryAllArgs<T>>) -> UseQueryAllHandle<T>
 where
-	T: KDLNode + FromKDL + SystemComponent + Unpin + Clone + 'static,
+	T: NodeId + FromKdl<NodeContext> + SystemComponent + Unpin + Clone + 'static,
 {
 	let database = use_context::<Database>().unwrap();
 	let system_depot = use_context::<system::Depot>().unwrap();
@@ -144,7 +183,9 @@ where
 				max_limit,
 			} = {
 				let guard = async_args.lock().unwrap();
-				let Some(args) = &*guard else { return Ok(Vec::new()); };
+				let Some(args) = &*guard else {
+					return Ok(Vec::new());
+				};
 				args.clone()
 			};
 			if system_id.is_empty() {
@@ -169,6 +210,27 @@ where
 		}
 	});
 	UseQueryAllHandle { async_handle, run }
+}
+
+#[hook]
+pub fn use_query_modules(system: Option<&'static str>) -> UseQueryModulesHandle {
+	let database = use_context::<Database>().unwrap();
+	let options = UseAsyncOptions { auto: true };
+	let system = system.map(|s| std::borrow::Cow::Borrowed(s));
+	let async_handle = use_async_with_options(
+		async move {
+			let items = database.query_modules(system).await?;
+			Ok(items)
+		},
+		options,
+	);
+	let run = Rc::new({
+		let handle = async_handle.clone();
+		move || {
+			handle.run();
+		}
+	});
+	UseQueryModulesHandle { async_handle, run }
 }
 
 #[derive(Clone)]
@@ -200,9 +262,9 @@ impl<T, E> UseQueryDiscreteHandle<T, E> {
 	}
 }
 
-type QueryEntriesStatus = QueryStatus<(Vec<SourceId>, BTreeMap<SourceId, Entry>), DatabaseError>;
+type QueryEntriesStatus = QueryStatus<(Vec<SourceId>, BTreeMap<SourceId, Entry>), database::Error>;
 #[hook]
-pub fn use_query_entries() -> UseQueryDiscreteHandle<Entry, DatabaseError> {
+pub fn use_query_entries() -> UseQueryDiscreteHandle<Entry, database::Error> {
 	let database = use_context::<Database>().unwrap();
 	let status = use_state(|| QueryEntriesStatus::Empty);
 	let run = Rc::new({
@@ -249,7 +311,7 @@ type QueryTypedStatus<T> = QueryStatus<(Vec<SourceId>, BTreeMap<SourceId, T>), F
 #[hook]
 pub fn use_query_typed<T>() -> UseQueryDiscreteHandle<T, FetchError>
 where
-	T: KDLNode + FromKDL + SystemComponent + Unpin + Clone + 'static,
+	T: NodeId + FromKdl<NodeContext> + SystemComponent + Unpin + Clone + 'static,
 {
 	let database = use_context::<Database>().unwrap();
 	let system_depot = use_context::<system::Depot>().unwrap();
@@ -287,7 +349,10 @@ where
 				async move {
 					let mut items = BTreeMap::new();
 					for id in &new_ids {
-						let Some(item) = database.get_typed_entry::<T>(id.clone(), system_depot.clone()).await? else {
+						let Some(item) = database
+							.get_typed_entry::<T>(id.clone(), system_depot.clone(), None)
+							.await?
+						else {
 							continue;
 						};
 						items.insert(id.clone(), item);
@@ -315,12 +380,9 @@ where
 }
 
 #[hook]
-pub fn use_typed_fetch_callback<Item>(
-	task_name: String,
-	fn_item: Callback<Item>,
-) -> Callback<SourceId>
+pub fn use_typed_fetch_callback<EntryContent>(task_name: String, fn_item: Callback<EntryContent>) -> Callback<SourceId>
 where
-	Item: 'static + KDLNode + FromKDL + SystemComponent + Unpin,
+	EntryContent: 'static + NodeId + FromKdl<NodeContext> + SystemComponent + Unpin,
 	Event: 'static,
 {
 	let database = use_context::<Database>().unwrap();
@@ -331,7 +393,11 @@ where
 		let system_depot = system_depot.clone();
 		let fn_item = fn_item.clone();
 		task_dispatch.spawn(task_name.clone(), None, async move {
-			let Some(item) = database.get_typed_entry::<Item>(source_id, system_depot).await? else {
+			let Some(item) = database
+				.get_typed_entry::<EntryContent>(source_id.clone(), system_depot, None)
+				.await?
+			else {
+				log::error!(target: "database", "Failed to find entry for {:?}", source_id.to_string());
 				return Ok(());
 			};
 			fn_item.emit(item);
@@ -346,7 +412,7 @@ pub fn use_typed_fetch_callback_tuple<Item, Arg>(
 	fn_item: Callback<(Item, Arg)>,
 ) -> Callback<(SourceId, Arg)>
 where
-	Item: 'static + KDLNode + FromKDL + SystemComponent + Unpin,
+	Item: 'static + NodeId + FromKdl<NodeContext> + SystemComponent + Unpin,
 	Event: 'static,
 	Arg: 'static,
 {
@@ -358,7 +424,10 @@ where
 		let system_depot = system_depot.clone();
 		let fn_item = fn_item.clone();
 		task_dispatch.spawn(task_name.clone(), None, async move {
-			let Some(item) = database.get_typed_entry::<Item>(source_id.clone(), system_depot).await? else {
+			let Some(item) = database
+				.get_typed_entry::<Item>(source_id.clone(), system_depot, None)
+				.await?
+			else {
 				log::error!("No such database entry {:?}", source_id.to_string());
 				return Ok(());
 			};

@@ -1,12 +1,10 @@
-use std::str::FromStr;
-
-use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt},
-	system::{
-		core::SourceId,
-		dnd5e::data::{character::Character, Condition},
-	},
+use crate::kdl_ext::NodeContext;
+use crate::system::{
+	core::SourceId,
+	dnd5e::data::{character::Character, Condition},
 };
+use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
+use std::str::FromStr;
 
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct HasCondition {
@@ -15,18 +13,14 @@ pub struct HasCondition {
 }
 
 crate::impl_trait_eq!(HasCondition);
-crate::impl_kdl_node!(HasCondition, "has_condition");
+kdlize::impl_kdl_node!(HasCondition, "has_condition");
 
 impl crate::utility::Evaluator for HasCondition {
 	type Context = Character;
 	type Item = Result<(), String>;
 
 	fn description(&self) -> Option<String> {
-		let filters_named = self
-			.filters
-			.iter()
-			.map(|filter| filter.name.clone())
-			.collect();
+		let filters_named = self.filters.iter().map(|filter| filter.name.clone()).collect();
 		let filter_list_english = crate::utility::list_as_english(filters_named, "or");
 		Some(match (self.inverted, filter_list_english) {
 			(true, None) => format!("you don't have any conditions"),
@@ -68,15 +62,13 @@ impl crate::utility::Evaluator for HasCondition {
 	}
 }
 
-impl FromKDL for HasCondition {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
+impl FromKdl<NodeContext> for HasCondition {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let inverted = node.get_bool_opt("inverted")?.unwrap_or_default();
 		let mut filters = Vec::new();
-		for node in node.query_all("scope() > filter")? {
-			filters.push(ConditionFilter::from_kdl(node, &mut ctx.next_node())?);
+		for mut node in &mut node.query_all("scope() > filter")? {
+			filters.push(ConditionFilter::from_kdl(&mut node)?);
 		}
 		Ok(Self { inverted, filters })
 	}
@@ -106,11 +98,9 @@ pub enum ConditionProperty {
 	Name(String),
 }
 
-impl FromKDL for ConditionFilter {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		_ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
+impl FromKdl<NodeContext> for ConditionFilter {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let name = node.get_str_req("name")?.to_owned();
 		let mut properties = Vec::new();
 		if let Some(value) = node.query_str_opt("scope() > id", 0)? {

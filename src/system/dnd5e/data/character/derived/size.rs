@@ -39,14 +39,10 @@ impl SizeFormula {
 	}
 
 	pub fn min_weight(&self) -> u32 {
-		self.weight.base
-			+ self.weight.bonus.min()
-			+ (self.height.bonus.min() * self.weight.multiplier.min())
+		self.weight.base + self.weight.bonus.min() + (self.height.bonus.min() * self.weight.multiplier.min())
 	}
 
 	pub fn max_weight(&self) -> u32 {
-		self.weight.base
-			+ self.weight.bonus.max()
-			+ (self.height.bonus.max() * self.weight.multiplier.max())
+		self.weight.base + self.weight.bonus.max() + (self.height.bonus.max() * self.weight.multiplier.max())
 	}
 }

@@ -1,8 +1,7 @@
 use self::data::character::Character;
-use crate::{
-	kdl_ext::{AsKdl, FromKDL, KDLNode, NodeContext},
-	system::core::NodeRegistry,
-};
+use crate::kdl_ext::NodeContext;
+use crate::system::core::NodeRegistry;
+use kdlize::{AsKdl, FromKdl, NodeId};
 use std::{collections::HashMap, sync::Arc};
 
 pub mod components;
@@ -15,15 +14,10 @@ pub type BoxedEvaluator<V> = crate::utility::GenericEvaluator<Character, V>;
 pub type BoxedMutator = crate::utility::GenericMutator<Character>;
 pub type Value<T> = crate::utility::Value<Character, T>;
 
-type FnMetadataFromKdl = Box<
-	dyn Fn(&kdl::KdlNode, &NodeContext) -> anyhow::Result<serde_json::Value>
-		+ 'static
-		+ Send
-		+ Sync,
->;
-type FnReserializeKdl = Box<
-	dyn Fn(&kdl::KdlNode, &NodeContext) -> anyhow::Result<kdl::KdlNode> + 'static + Send + Sync,
->;
+type FnMetadataFromKdl =
+	Box<dyn Fn(crate::kdl_ext::NodeReader<'_>) -> anyhow::Result<serde_json::Value> + 'static + Send + Sync>;
+type FnReserializeKdl =
+	Box<dyn Fn(crate::kdl_ext::NodeReader<'_>) -> anyhow::Result<kdl::KdlNode> + 'static + Send + Sync>;
 pub struct ComponentFactory {
 	metadata_from_kdl: FnMetadataFromKdl,
 	reserialize_kdl: FnReserializeKdl,
@@ -31,34 +25,27 @@ pub struct ComponentFactory {
 impl ComponentFactory {
 	fn new<T>() -> Self
 	where
-		T: FromKDL + AsKdl + SystemComponent + 'static + Send + Sync,
+		T: FromKdl<NodeContext> + AsKdl + SystemComponent + 'static + Send + Sync,
+		anyhow::Error: From<T::Error>,
 	{
 		Self {
-			metadata_from_kdl: Box::new(|node, context| {
-				let value = T::from_kdl(node, &mut context.next_node())?;
+			metadata_from_kdl: Box::new(|mut node| {
+				let value = T::from_kdl(&mut node)?;
 				Ok(T::to_metadata(value))
 			}),
-			reserialize_kdl: Box::new(|node, context| {
-				let value = T::from_kdl(node, &mut context.next_node())?;
+			reserialize_kdl: Box::new(|mut node| {
+				let value = T::from_kdl(&mut node)?;
 				Ok(value.as_kdl().build(node.name().value()))
 			}),
 		}
 	}
 
-	pub fn metadata_from_kdl(
-		&self,
-		node: &kdl::KdlNode,
-		ctx: &NodeContext,
-	) -> anyhow::Result<serde_json::Value> {
-		(*self.metadata_from_kdl)(node, ctx)
+	pub fn metadata_from_kdl<'doc>(&self, node: crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<serde_json::Value> {
+		(*self.metadata_from_kdl)(node)
 	}
 
-	pub fn reserialize_kdl(
-		&self,
-		node: &kdl::KdlNode,
-		ctx: &NodeContext,
-	) -> anyhow::Result<kdl::KdlNode> {
-		(*self.reserialize_kdl)(node, ctx)
+	pub fn reserialize_kdl<'doc>(&self, node: crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<kdl::KdlNode> {
+		(*self.reserialize_kdl)(node)
 	}
 }
 #[derive(Default)]
@@ -66,7 +53,8 @@ pub struct ComponentRegistry(HashMap<&'static str, Arc<ComponentFactory>>);
 impl ComponentRegistry {
 	pub fn register<T>(&mut self)
 	where
-		T: FromKDL + KDLNode + AsKdl + SystemComponent + 'static + Send + Sync,
+		T: FromKdl<NodeContext> + NodeId + AsKdl + SystemComponent + 'static + Send + Sync,
+		anyhow::Error: From<T::Error>,
 	{
 		assert!(!self.0.contains_key(T::id()));
 		self.0.insert(T::id(), ComponentFactory::new::<T>().into());
@@ -119,12 +107,17 @@ pub fn node_registry() -> NodeRegistry {
 	registry.register_mutator::<PickN>();
 	registry.register_mutator::<AddFeature>();
 	registry.register_mutator::<AddStartingEquipment>();
+	registry.register_mutator::<AddBundle>();
+	registry.register_mutator::<Bonus>();
+	registry.register_mutator::<ApplyIf>();
 
 	registry.register_evaluator::<GetAbilityModifier>();
 	registry.register_evaluator::<GetProficiencyBonus>();
 	registry.register_evaluator::<GetHitPoints>();
-	registry.register_evaluator::<GetLevel>();
+	registry.register_evaluator::<GetLevelInt>();
+	registry.register_evaluator::<GetLevelStr>();
 	registry.register_evaluator::<HasArmorEquipped>();
+	registry.register_evaluator::<HasAttack>();
 	registry.register_evaluator::<HasCondition>();
 	registry.register_evaluator::<IsProficientWith>();
 	registry.register_evaluator::<Math>();

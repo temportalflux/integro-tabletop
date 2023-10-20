@@ -1,17 +1,16 @@
-use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
-	system::dnd5e::{
-		data::{
-			action::{Action, ActivationKind, Attack, AttackCheckKind, AttackKindValue},
-			item::container::EquipableEntry,
-			roll::EvaluatedRoll,
-			Ability, DamageRoll, Feature, WeaponProficiency,
-		},
-		evaluator::{self, IsProficientWith},
-		Value,
+use crate::kdl_ext::NodeContext;
+use crate::system::dnd5e::{
+	data::{
+		action::{Action, ActivationKind, Attack, AttackCheckKind, AttackKind, AttackKindValue},
+		item::container::item::EquipableEntry,
+		roll::EvaluatedRoll,
+		Ability, DamageRoll, Feature, WeaponProficiency,
 	},
+	evaluator::{self, IsProficientWith},
+	Value,
 };
-use std::str::FromStr;
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
+use std::collections::HashMap;
 
 mod damage;
 pub use damage::*;
@@ -21,8 +20,6 @@ mod property;
 pub use property::*;
 mod range;
 pub use range::*;
-mod restriction;
-pub use restriction::*;
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Weapon {
@@ -34,6 +31,18 @@ pub struct Weapon {
 }
 
 impl Weapon {
+	pub fn to_metadata(self) -> serde_json::Value {
+		let mut contents: HashMap<&'static str, serde_json::Value> = [("kind", self.kind.to_string().into())].into();
+		if !self.classification.is_empty() {
+			contents.insert("classification", self.classification.into());
+		}
+		if let Some(damage) = self.damage {
+			contents.insert("damage_type", damage.damage_type.to_string().into());
+		}
+		contents.insert("has_range", self.range.is_some().into());
+		serde_json::json!(contents)
+	}
+
 	pub fn melee_reach(&self) -> Option<u32> {
 		match &self.range {
 			None => {
@@ -64,8 +73,21 @@ impl Weapon {
 		}
 	}
 
+	pub fn attack_kind(&self) -> AttackKind {
+		match &self.range {
+			None => AttackKind::Melee,
+			Some(_) => AttackKind::Ranged,
+		}
+	}
+
+	pub fn attack_ability(&self) -> Ability {
+		match self.attack_kind() {
+			AttackKind::Melee => Ability::Strength,
+			AttackKind::Ranged => Ability::Dexterity,
+		}
+	}
+
 	pub fn attack_action(&self, entry: &EquipableEntry) -> Feature {
-		// TODO: Attack should have properties for both melee and range to support the thrown property
 		let attack_kind = match self.range {
 			None => AttackKindValue::Melee {
 				reach: self.melee_reach().unwrap(),
@@ -79,14 +101,6 @@ impl Weapon {
 				long_dist: long_range,
 			},
 		};
-		// TODO: The ability modifier used for a melee weapon attack is Strength,
-		// and the ability modifier used for a ranged weapon attack is Dexterity.
-		// Weapons that have the finesse or thrown property break this rule.
-		let attack_ability = match attack_kind {
-			AttackKindValue::Melee { .. } => Ability::Strength,
-			AttackKindValue::Ranged { .. } => Ability::Dexterity,
-		};
-		// TODO: Handle weapon properties
 		Feature {
 			name: entry.item.name.clone(),
 			action: Some(Action {
@@ -94,7 +108,7 @@ impl Weapon {
 				attack: Some(Attack {
 					kind: Some(attack_kind),
 					check: AttackCheckKind::AttackRoll {
-						ability: attack_ability,
+						ability: self.attack_ability(),
 						proficient: Value::Evaluated(
 							evaluator::Any(vec![
 								IsProficientWith::Weapon(WeaponProficiency::Kind(self.kind)).into(),
@@ -114,6 +128,8 @@ impl Weapon {
 						..Default::default()
 					}),
 					weapon_kind: Some(self.kind),
+					classification: Some(self.classification.clone()),
+					properties: self.properties.clone(),
 				}),
 				..Default::default()
 			}),
@@ -122,28 +138,20 @@ impl Weapon {
 	}
 }
 
-impl FromKDL for Weapon {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		let kind = Kind::from_str(node.get_str_req(ctx.consume_idx())?)?;
+impl FromKdl<NodeContext> for Weapon {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let kind = node.next_str_req_t::<Kind>()?;
 		let classification = node.get_str_req("class")?.to_owned();
-		let damage = match node.query("scope() > damage")? {
-			None => None,
-			Some(node) => Some(WeaponDamage::from_kdl(node, &mut ctx.next_node())?),
-		};
+		let damage = node.query_opt_t::<WeaponDamage>("scope() > damage")?;
 		let properties = {
 			let mut props = Vec::new();
-			for node in node.query_all("scope() > property")? {
-				props.push(Property::from_kdl(node, &mut ctx.next_node())?);
+			for mut node in &mut node.query_all("scope() > property")? {
+				props.push(Property::from_kdl(&mut node)?);
 			}
 			props
 		};
-		let range = match node.query("scope() > range")? {
-			None => None,
-			Some(node) => Some(Range::from_kdl(node, &mut ctx.next_node())?),
-		};
+		let range = node.query_opt_t::<Range>("scope() > range")?;
 		Ok(Self {
 			kind,
 			classification,

@@ -1,8 +1,9 @@
 use crate::{
 	bootstrap::components::Tooltip,
-	components::modal,
+	components::context_menu,
+	page::characters::sheet::CharacterHandle,
 	system::dnd5e::{
-		components::{roll::ModifierIcon, CharacterHandle},
+		components::glyph,
 		data::{Ability, Skill},
 	},
 };
@@ -111,7 +112,9 @@ pub fn SkillTable() -> Html {
 		let state = presentation.clone();
 		Callback::from(move |e: MouseEvent| {
 			use std::str::FromStr;
-			let Some(element) = e.target_dyn_into::<web_sys::HtmlElement>() else { return; };
+			let Some(element) = e.target_dyn_into::<web_sys::HtmlElement>() else {
+				return;
+			};
 			let value = element
 				.get_attribute("value")
 				.map(|s| Presentation::from_str(&s).ok())
@@ -152,7 +155,6 @@ fn Row(
 	}: &RowProps,
 ) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 
 	let proficiency = state.skills().proficiency(*skill);
 
@@ -191,7 +193,7 @@ fn Row(
 		html! {
 			<Tooltip tag={"span"} content={tooltip} use_html={true}>
 				<span aria-label={format!("{modifier:?}")} style="margin-left: 2px; display: block; height: 16px; width: 16px; vertical-align: middle; margin-top: -2px;">
-					<ModifierIcon value={modifier} />
+					<glyph::RollModifier value={modifier} />
 				</span>
 			</Tooltip>
 		}
@@ -200,7 +202,7 @@ fn Row(
 	let mut table_data = vec![
 		html! {
 			<Tooltip tag={"td"} classes={"text-center"} content={prof_tooltip} use_html={true}>
-				{*proficiency.value()}
+				<glyph::ProficiencyLevel value={*proficiency.value()} />
 			</Tooltip>
 		},
 		html! { <td>
@@ -223,15 +225,13 @@ fn Row(
 		);
 	}
 
-	let onclick = modal_dispatcher.callback({
+	let onclick = context_menu::use_control_action({
 		let skill = *skill;
-		move |_| {
-			modal::Action::Open(modal::Props {
-				centered: true,
-				scrollable: true,
-				content: html! {<SkillModal {skill} />},
-				..Default::default()
-			})
+		move |_, _context| {
+			context_menu::Action::open_root(
+				format!("{} ({})", skill.display_name(), skill.ability().long_name()),
+				html!(<SkillModal {skill} />),
+			)
 		}
 	});
 
@@ -266,7 +266,7 @@ fn SkillModal(SkillModalProps { skill }: &SkillModalProps) -> Html {
 					html! {
 						<tr>
 							<td class="d-flex align-items-center">
-								{*value}
+								<glyph::ProficiencyLevel value={*value} />
 								<span class="flex-grow-1 text-center" style="margin-left: 5px;">{value.as_display_name()}</span>
 							</td>
 							<td>{source_text}</td>
@@ -305,7 +305,7 @@ fn SkillModal(SkillModalProps { skill }: &SkillModalProps) -> Html {
 						<tr>
 							<td class="d-flex">
 								<span aria-label={format!("{modifier:?}")} style="margin-left: 2px; display: block; height: 16px; width: 16px; vertical-align: middle; margin-top: -2px;">
-									<ModifierIcon value={modifier} />
+									<glyph::RollModifier value={modifier} />
 								</span>
 								<span class="flex-grow-1 text-center" style="margin-left: 5px;">{modifier.display_name()}</span>
 							</td>
@@ -319,21 +319,12 @@ fn SkillModal(SkillModalProps { skill }: &SkillModalProps) -> Html {
 	};
 
 	html! {<>
-		<div class="modal-header">
-			<h1 class="modal-title fs-4">
-				{skill.display_name()}
-				<span style="margin-left: 10px;">{format!("({})", skill.ability().long_name())}</span>
-			</h1>
-			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
+		<div class="text-center fs-5" style="width: 100%; margin-bottom: 10px;">
+			<span>{"Bonus:"}</span>
+			<span style="margin-left: 5px;">{match bonus >= 0 { true => "+", false => "-", }}{bonus.abs()}</span>
 		</div>
-		<div class="modal-body">
-			<div class="text-center fs-5" style="width: 100%; margin-bottom: 10px;">
-				<span>{"Bonus:"}</span>
-				<span style="margin-left: 5px;">{match bonus >= 0 { true => "+", false => "-", }}{bonus.abs()}</span>
-			</div>
-			{prof_table}
-			{roll_modifiers_table}
-			<div class="text-block">{skill.description()}</div>
-		</div>
+		{prof_table}
+		{roll_modifiers_table}
+		<div class="text-block">{skill.description()}</div>
 	</>}
 }

@@ -1,10 +1,13 @@
 use super::{armor::Armor, weapon::Weapon};
+use crate::kdl_ext::NodeContext;
+use crate::system::dnd5e::data::roll::Roll;
+use crate::system::dnd5e::data::Rest;
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
 	system::dnd5e::{data::character::Character, BoxedCriteria, BoxedMutator},
 	utility::MutatorGroup,
 };
-use std::path::Path;
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
+use std::{collections::HashMap, path::Path};
 
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct Equipment {
@@ -20,6 +23,19 @@ pub struct Equipment {
 	pub weapon: Option<Weapon>,
 	/// If this weapon can be attuned, this is the attunement data.
 	pub attunement: Option<Attunement>,
+	pub charges: Option<Charges>,
+}
+
+#[derive(Clone, PartialEq, Debug)]
+pub struct Charges {
+	pub capacity: usize,
+	pub reset: Option<ChargesReset>,
+}
+#[derive(Clone, PartialEq, Debug)]
+pub struct ChargesReset {
+	pub roll: Roll,
+	pub base: usize,
+	pub rest: Rest,
 }
 
 impl MutatorGroup for Equipment {
@@ -44,12 +60,20 @@ impl MutatorGroup for Equipment {
 		if let Some(shield) = &self.shield {
 			stats
 				.armor_class_mut()
-				.push_bonus(*shield, path_to_item.to_owned());
+				.push_bonus(*shield, None, path_to_item.to_owned());
 		}
 	}
 }
 
 impl Equipment {
+	pub fn to_metadata(self) -> serde_json::Value {
+		let mut contents: HashMap<&'static str, serde_json::Value> = [].into();
+		if let Some(weapon) = self.weapon {
+			contents.insert("weapon", weapon.to_metadata());
+		}
+		serde_json::json!(contents)
+	}
+
 	/// Returs Ok if the item can currently be equipped, otherwise returns a user-displayable reason why it cannot be equipped.
 	pub fn can_be_equipped(&self, state: &Character) -> Result<(), String> {
 		match &self.criteria {
@@ -59,38 +83,21 @@ impl Equipment {
 	}
 }
 
-impl FromKDL for Equipment {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		let criteria = match node.query("scope() > criteria")? {
-			None => None,
-			Some(entry_node) => {
-				Some(ctx.parse_evaluator::<Character, Result<(), String>>(entry_node)?)
-			}
-		};
+impl FromKdl<NodeContext> for Equipment {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let criteria = node.query_opt_t("scope() > criteria")?;
+		let mutators = node.query_all_t("scope() > mutator")?;
 
-		let mut mutators = Vec::new();
-		for entry_node in node.query_all("scope() > mutator")? {
-			mutators.push(ctx.parse_mutator(entry_node)?);
-		}
-
-		let armor = match node.query("scope() > armor")? {
-			None => None,
-			Some(node) => Some(Armor::from_kdl(node, &mut ctx.next_node())?),
-		};
-		let shield = match node.query("scope() > shield")? {
+		let armor = node.query_opt_t::<Armor>("scope() > armor")?;
+		let shield = match node.query_opt("scope() > shield")? {
 			None => None,
 			Some(node) => Some(node.get_i64_req("bonus")? as i32),
 		};
-		let weapon = match node.query("scope() > weapon")? {
+		let weapon = node.query_opt_t::<Weapon>("scope() > weapon")?;
+		let attunement = match node.query_opt("scope() > attunement")? {
 			None => None,
-			Some(node) => Some(Weapon::from_kdl(node, &mut ctx.next_node())?),
-		};
-		let attunement = match node.query("scope() > attunement")? {
-			None => None,
-			Some(_node) => {
+			Some(mut _node) => {
 				None // TODO: Some(Attunement::from_kdl(node, &mut ctx.next_node())?)
 			}
 		};
@@ -102,6 +109,7 @@ impl FromKDL for Equipment {
 			shield,
 			weapon,
 			attunement,
+			charges: None,
 		})
 	}
 }
@@ -162,7 +170,7 @@ mod test {
 					mutator::{AddModifier, ModifierKind},
 				},
 			},
-			utility::Selector,
+			utility::selector,
 		};
 
 		static NODE_NAME: &str = "equipment";
@@ -187,7 +195,7 @@ mod test {
 				mutators: vec![AddModifier {
 					modifier: Modifier::Disadvantage,
 					context: None,
-					kind: ModifierKind::Skill(Selector::Specific(Skill::Stealth)),
+					kind: ModifierKind::Skill(selector::Value::Specific(Skill::Stealth)),
 				}
 				.into()],
 				armor: Some(Armor {
@@ -198,9 +206,7 @@ mod test {
 					},
 					min_strength_score: Some(15),
 				}),
-				shield: None,
-				weapon: None,
-				attunement: None,
+				..Default::default()
 			};
 			assert_eq_fromkdl!(Equipment, doc, data);
 			assert_eq_askdl!(&data, doc);
@@ -219,10 +225,6 @@ mod test {
 				|}
 			";
 			let data = Equipment {
-				criteria: None,
-				mutators: vec![],
-				armor: None,
-				shield: None,
 				weapon: Some(Weapon {
 					kind: weapon::Kind::Martial,
 					classification: "Maul".into(),
@@ -234,7 +236,7 @@ mod test {
 					properties: vec![weapon::Property::Heavy, weapon::Property::TwoHanded],
 					range: None,
 				}),
-				attunement: None,
+				..Default::default()
 			};
 			assert_eq_fromkdl!(Equipment, doc, data);
 			assert_eq_askdl!(&data, doc);
@@ -249,12 +251,8 @@ mod test {
 				|}
 			";
 			let data = Equipment {
-				criteria: None,
-				mutators: vec![],
-				armor: None,
 				shield: Some(2),
-				weapon: None,
-				attunement: None,
+				..Default::default()
 			};
 			assert_eq_fromkdl!(Equipment, doc, data);
 			assert_eq_askdl!(&data, doc);

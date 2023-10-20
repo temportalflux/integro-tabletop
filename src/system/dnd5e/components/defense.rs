@@ -1,7 +1,8 @@
 use crate::{
 	bootstrap::components::Tooltip,
-	components::{modal, Tag, Tags},
-	system::dnd5e::{components::CharacterHandle, mutator::Defense},
+	components::{context_menu, Tag, Tags},
+	page::characters::sheet::CharacterHandle,
+	system::dnd5e::components::glyph,
 };
 use yew::prelude::*;
 
@@ -25,56 +26,46 @@ half against the creature, not reduced by three-quarters.";
 #[function_component]
 pub fn DefensesCard() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let modal_dispatcher = use_context::<modal::Context>().unwrap();
-	let onclick = modal_dispatcher.callback(|_| {
-		modal::Action::Open(modal::Props {
-			centered: true,
-			scrollable: true,
-			root_classes: classes!("defense"),
-			content: html! {<Modal />},
-			..Default::default()
+	let onclick = context_menu::use_control_action({
+		|_: web_sys::MouseEvent, _context| context_menu::Action::open_root(format!("Defenses"), html!(<Modal />))
+	});
+	let defenses = state.defenses().iter().fold(Vec::new(), |all, (kind, targets)| {
+		targets.iter().fold(all, |mut all, entry| {
+			let tooltip = crate::data::as_feature_path_text(&entry.source);
+			let damage_type = match &entry.damage_type {
+				Some(damage_type) => {
+					html! {
+						<span style="margin-left: 5px;">{damage_type.display_name()}</span>
+					}
+				}
+				None => html! {},
+			};
+			let context = match &entry.context {
+				Some(context) => html! {
+					<span style="margin-left: 5px;">{context.clone()}</span>
+				},
+				None => html! {},
+			};
+			all.push(html! {
+				<Tooltip tag={"span"} style={"margin: 2px;"} content={tooltip} use_html={true}>
+					<Tag classes={"defense"}>
+						<glyph::Defense value={kind} />
+						{damage_type}
+						{context}
+					</Tag>
+				</Tooltip>
+			});
+			all
 		})
 	});
-	let defenses = state
-		.defenses()
-		.iter()
-		.fold(Vec::new(), |all, (kind, targets)| {
-			targets.iter().fold(all, |mut all, entry| {
-				let tooltip = crate::data::as_feature_path_text(&entry.source);
-				let damage_type = match &entry.damage_type {
-					Some(damage_type) => {
-						html! {
-							<span style="margin-left: 5px;">{damage_type.display_name()}</span>
-						}
-					}
-					None => html! {},
-				};
-				let context = match &entry.context {
-					Some(context) => html! {
-						<span style="margin-left: 5px;">{context.clone()}</span>
-					},
-					None => html! {},
-				};
-				all.push(html! {
-					<Tooltip tag={"span"} style={"margin: 2px;"} content={tooltip} use_html={true}>
-						<Tag classes={"defense"}>
-							<DefenseIcon value={kind} />
-							{damage_type}
-							{context}
-						</Tag>
-					</Tooltip>
-				});
-				all
-			})
-		});
 	html! {
-		<div class="card m-1" style="height: 85px;" {onclick}>
+		<div class="card m-1" style="height: 80px;" {onclick}>
 			<div class="card-body text-center" style="padding: 5px 5px;">
 				<h6 class="card-title mb-1" style="font-size: 0.8rem;">{"Defenses"}</h6>
-				<div class="d-flex justify-content-center pe-1" style="overflow: scroll; height: 53px;">
+				<div class="d-flex justify-content-center pe-1" style="overflow: auto; height: 53px;">
 					{match defenses.is_empty() {
 						true => html! { "None" },
-						false => html! {<Tags> {defenses} </Tags>},
+						false => html! {<Tags classes={"scroll-content"}> {defenses} </Tags>},
 					}}
 				</div>
 			</div>
@@ -85,18 +76,6 @@ pub fn DefensesCard() -> Html {
 #[derive(Clone, PartialEq, Properties)]
 pub struct GeneralProp<T: Clone + PartialEq> {
 	pub value: T,
-}
-#[function_component]
-fn DefenseIcon(props: &GeneralProp<Defense>) -> Html {
-	let mut classes = classes!("icon", "defense");
-	classes.push(match props.value {
-		Defense::Resistance => "resistance",
-		Defense::Immunity => "immunity",
-		Defense::Vulnerability => "vulnerability",
-	});
-	html! {
-		<span class={classes} />
-	}
 }
 
 #[function_component]
@@ -109,7 +88,10 @@ fn Modal() -> Html {
 		}
 		sections.push(html! {
 			<div class="defense-section">
-				<h4><DefenseIcon value={defense} />{defense.to_string()}</h4>
+				<h4>
+					<glyph::Defense value={defense} />
+					{defense.to_string()}
+				</h4>
 				<table class="table table-compact table-striped mx-auto">
 					<thead>
 						<tr class="text-center" style="color: var(--bs-heading-color);">
@@ -137,14 +119,10 @@ fn Modal() -> Html {
 			</div>
 		});
 	}
-	html! {<>
-		<div class="modal-header">
-			<h1 class="modal-title fs-4">{"Defenses"}</h1>
-			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
-		</div>
-		<div class="modal-body">
+	html! {
+		<div class="details defense">
 			{sections}
 			<div class="text-block">{RULES_DESC}</div>
 		</div>
-	</>}
+	}
 }

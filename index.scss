@@ -1,12 +1,49 @@
 @charset "utf-8";
 
-@import "src/components/annotated_number.scss";
-@import "src/components/nav_onesheet_tabs.scss";
-@import "src/components/tag.scss";
-@import "src/system/dnd5e/components/ability/score.scss";
+@use "src/bootstrap/scss/bootstrap.scss";
+
+@use "src/components/annotated_number.scss";
+@use "src/components/context_menu.scss";
+@use "src/components/nav_onesheet_tabs.scss";
+@use "src/components/tag.scss";
+@use "src/components/progress_bar/ticked.scss";
+@use "src/system/dnd5e/components/ability/score.scss";
+@use "src/system/dnd5e/components/glyph.scss";
+
+html {
+	//height: 100%;
+}
+body {
+	//display: flex;
+	//flex-direction: column;
+}
+.page-root {
+	flex-grow: 1;
+	> .view-scaler {
+		//height: 100%;
+		display: flex;
+		flex-direction: column;
+	}
+}
 
 .dropdown-item.disabled, .dropdown-item:disabled {
 	color: #adb5bd75;
+}
+option:disabled {
+	color: var(--bs-gray-600);
+}
+
+// Scroll Bar
+::-webkit-scrollbar {
+	height: 5px;
+	width: 5px;
+}
+::-webkit-scrollbar-track, ::-webkit-scrollbar-corner {
+	background-color: rgba(0, 0, 0, 0.15);
+}
+::-webkit-scrollbar-thumb {
+	background-color: rgba(20, 20, 20, 1);
+	border-radius: 10px;
 }
 
 .text-block {
@@ -42,6 +79,7 @@
 		}
 		> .pronouns {
 			font-size: 14px;
+			font-weight: var(--bs-body-font-weight);
 		}
 	}
 	> .group {
@@ -155,119 +193,17 @@
 	border-color: var(--theme-frame-color-muted);
 }
 
-.icon {
-	--icon-image: "";
-	--icon-color: var(--theme-frame-color);
+.tags.scroll-content:last-child {
+	margin-bottom: 0;
 }
-.icon-solid {
-	background-image: var(--icon-image);
-	background-repeat: no-repeat;
-	background-color: transparent;
-}
-.icon-mask {
-	-webkit-mask: var(--icon-image) no-repeat 50% 50%;
-	mask: var(--icon-image) no-repeat 50% 50%;
-	background-color: var(--icon-color);
-}
-.icon.sheet {
-	@extend .icon-solid;
-	display: block;
-	height: 30px;
-	width: 30px;
-	--icon-image: url(assets/sheet.svg);
-	background-size: 28px;
-}
-.icon.forge {
-	@extend .icon-mask;
-	display: block;
-	height: 40px;
-	width: 40px;
-	--icon-image: url(assets/forge.svg);
-	--icon-color: #fff;
-}
-.icon.inspiration {
-	@extend .icon-mask;
-	width: 50px;
-	height: 30px;
-	--icon-image: url(assets/inspiration.svg);
-}
-.icon.currency {
-	@extend .icon-solid;
-	display: inline-block;
-	width: 16px;
-	height: 16px;
-	margin-bottom: -3px;
-}
-.icon.currency.lg {
-	width: 24px;
-	height: 24px;
-}
-.icon.currency.copper {
-	--icon-image: url(assets/currency/copper.svg);
-}
-.icon.currency.silver {
-	--icon-image: url(assets/currency/silver.svg);
-}
-.icon.currency.electrum {
-	--icon-image: url(assets/currency/electrum.svg);
-}
-.icon.currency.gold {
-	--icon-image: url(assets/currency/gold.svg);
-}
-.icon.currency.platinum {
-	--icon-image: url(assets/currency/platinum.svg);
-}
-.icon.advantage {
-	@extend .icon-mask;
-	--icon-image: url(assets/modifier/advantage.svg);
-	--icon-color: #00c680;
-	width: 24px;
-}
-.icon.disadvantage {
-	@extend .icon-mask;
-	--icon-image: url(assets/modifier/disadvantage.svg);
-	--icon-color: #e40712;
-	width: 24px;
-}
-.icon.concentration {
-	@extend .icon-solid;
-	display: inline-block;
-	width: 14px;
-	height: 14px;
-	--icon-image: url(assets/spells/concentration.svg);
-}
-.icon.ritual {
-	@extend .icon-solid;
-	display: inline-block;
-	width: 14px;
-	height: 14px;
-	--icon-image: url(assets/spells/ritual.svg);
-}
-.icon.defense {
-	display: inline-block;
-	margin-top: auto!important;
-	margin-bottom: auto!important;
-}
-.icon.defense.resistance {
-	@extend .icon-mask;
-	--icon-image: url(assets/defense/resistance.svg);
-	--icon-color: #00c680;
-}
-.icon.defense.immunity {
-	@extend .icon-mask;
-	--icon-image: url(assets/defense/immunity.svg);
-	--icon-color: #00c680;
-}
-.icon.defense.vulnerability {
-	@extend .icon-mask;
-	--icon-image: url(assets/defense/vulnerability.svg);
-	--icon-color: #e40712;
+.tags.scroll-content .tag {
+	margin-bottom: 0;
 }
 .tag.defense .icon {
 	width: 12px;
 	height: 12px;
 }
-.modal.defense .defense-section .icon {
+.details.defense .defense-section .icon {
 	width: 20px;
 	height: 20px;
 	margin-right: 10px;
@@ -289,26 +225,26 @@ button.sub:before {
 	background-position: -17px 0;
 }
 
-.modal.hit-points button.hp-action {
+.details.hit-points button.hp-action {
 	margin-left: 0.8rem!important;
 	margin-right: 0.8rem!important;
 	padding-top: 0.7rem!important;
 	padding-bottom: 0.7rem!important;
 }
-.modal.hit-points button.hp-action:before {
+.details.hit-points button.hp-action:before {
 	height: 16px;
 	width: 16px;
 }
-.modal.hit-points .heal {
+.details.hit-points .heal {
 	color: var(--theme-healing);
 }
-.modal.hit-points .damage {
+.details.hit-points .damage {
 	color: var(--theme-damage);
 }
-.modal.hit-points .heal .new-hp-header {
+.details.hit-points .heal .new-hp-header {
 	color: var(--theme-healing);
 }
-.modal.hit-points .damage .new-hp-header {
+.details.hit-points .damage .new-hp-header {
 	color: var(--theme-damage);
 }
 
@@ -331,19 +267,26 @@ button.sub:before {
 	color: var(--bs-heading-color);
 	font-weight: 500;
 }
+.card.hit-points {
+	height: 80px;
+	
+	> .card-body {
+		padding: 5px 5px;
+	}
+}
 .card.hit-points .death-saves input[type="checkbox"] {
 	width: 20px;
 	height: 20px;
 	margin: 1px 2px 1px 2px;
 	background-size: 16px;
 }
-.modal.hit-points .death-saves input[type="checkbox"] {
+.details.hit-points .death-saves input[type="checkbox"] {
 	width: 40px;
 	height: 40px;
 	margin: 1px 0px 1px 0px;
 	background-size: 30px;
 }
-.modal.hit-points .death-saves input[type="checkbox"]:not(:last-child) {
+.details.hit-points .death-saves input[type="checkbox"]:not(:last-child) {
 	margin-right: 10px;
 }
 input[type="checkbox"].failure:checked {
@@ -361,16 +304,20 @@ input.slot[type="checkbox"] {
 	width: 20px;
 	height: 20px;
 	margin: 2px;
+	--slot-color: var(--theme-frame-color);
+}
+input.slot[type="checkbox"].success {
+	--slot-color: #198754;
 }
 input.slot[type="checkbox"]:checked {
 	background-color: transparent;
-	border-color: var(--theme-frame-color);
+	border-color: var(--slot-color);
 	--bs-form-check-bg-image: "";
 }
 input.slot[type="checkbox"]:checked:before {
 	display: block;
 	content: "";
-	background-color: var(--theme-frame-color);
+	background-color: var(--slot-color);
 	
 	width: 10px;
 	height: 10px;
@@ -465,25 +412,10 @@ input.slot[type="checkbox"]:checked:before {
 	--bs-collapse-btn-active-icon: url(assets/arrow/active_dark.svg);
 }
 
-.icon.heart::before {
-	@extend .icon-mask;
-	content: "";
-	display: block;
-	height: 20px;
-	width: 20px;
-	--icon-image: url(assets/heart-plus.svg);
-	--icon-color: var(--theme-healing);
-}
-:has(> select.missing-value) > .icon.heart::before {
-	--icon-color: var(--bs-warning);
-}
-
-.modal.spells.browse {
-	.modal-body {
-		height: 600px;
-	}
-	.modal-footer {
-		--bs-modal-padding: 0.5rem;
+.details.spells.browse {
+	height: 600px;
+	.footer {
+		padding: 0.5rem;
 		> .alert {
 			flex-grow: 1;
 			text-align: center;
@@ -511,6 +443,19 @@ input.slot[type="checkbox"]:checked:before {
 
 	> button.collapse_trigger::before {
 		margin-top: 3px;
+	}
+}
+.modal.browse.objects .list > .section > .header {
+	display: inline-flex;
+	width: 100%;
+
+	> button.collapse_trigger::before {
+		margin-top: 3px;
+	}
+
+	> button.select {
+		margin-left: auto;
+		width: 85px;
 	}
 }
 button.collapse_trigger {
@@ -598,7 +543,7 @@ button.collapse_trigger.arrow_right.collapsed::after {
 .feature.short .conditions > button {
 	min-width: 60px;
 }
-.feature.modal .modal-body {
+.details.feature {
 	font-size: 12px;
 	> .description {
 		margin-top: 0.5rem;
@@ -686,6 +631,76 @@ button.collapse_trigger.arrow_right.collapsed::after {
 	> .empty-note {
 		font-size: 14px;
 	}
+	.spell-row {
+		display: flex;
+		flex-wrap: wrap;
+
+		width: 100%;
+		padding-top: 0.25rem;
+		padding-bottom: 0.25rem;
+		
+		border: 0;
+		border-bottom-width: var(--bs-border-width);
+		border-style: solid;
+		border-color: var(--bs-border-color);
+
+		> .cast-button {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			min-width: 40px;
+		}
+		.name-and-source {
+			display: flex;
+			flex-direction: column;
+			margin-left: 0.25rem;
+			flex-grow: 1;
+
+			> .source-row {
+				max-width: 250px;
+				font-size: 10px;
+				color: var(--bs-gray-600);
+			}
+		}
+		@media screen and (max-width: 1200px) {
+			.name-and-source {
+				// in order to have name+src & attributes be inline with each other for large view,
+				// but stacked vertically via flex-wrap in small/mobile view,
+				// we ensure that the name+src grow to fill the container (pushing attributes to the far right on large view),
+				// and have a min-width so that attributes get pushed below on all mobile devices.
+				min-width: 70%;
+			}
+		}
+		> .attributes {
+			display: flex;
+			flex-direction: column;
+			flex-wrap: wrap;
+
+			--attribute-col-minwidth: 120px;
+			--attribute-col-ms: 0.5rem;
+			--attribute-col-totalwidth: calc(var(--attribute-col-minwidth) + var(--attribute-col-ms));
+			--attribute-per-row: 3;
+			max-width: calc(var(--attribute-per-row) * var(--attribute-col-totalwidth));
+			
+			> .attribute-row {
+				display: flex;
+				flex-direction: row;
+			}
+
+			.attribute {
+				margin-left: var(--attribute-col-ms);
+				display: flex;
+    		align-items: baseline;
+				min-width: var(--attribute-col-minwidth);
+				font-size: 12px;
+				> .label {
+					margin-right: 0.25rem;
+					font-size: 10px;
+					color: var(--bs-gray-600);
+				}
+			}
+		}
+	}
 	table > thead > tr {
 		// Use button
 		> th:nth-child(1) {
@@ -715,8 +730,6 @@ button.collapse_trigger.arrow_right.collapsed::after {
 }
 
 .panel.spells > .caster-stats {
-	margin: 0 8rem;
-	height: 55px;
 	> .names {
 		text-align: center!important;
 	}
@@ -735,11 +748,244 @@ button.collapse_trigger.arrow_right.collapsed::after {
 		}
 	}
 }
-.panel.spells > .sections {
-	padding-right: 1rem!important;
-	overflow-y: scroll;
-	height: 460px;
+
+.panel.actions > .pane {
+	overflow-y: auto;
+	border-top: var(--bs-border-width) var(--bs-border-style) var(--theme-frame-color)!important;
 }
-.panel.spells:has(> .caster-stats) > .sections {
-	height: 400px;
+
+@media screen and (min-width: 1200px)
+{
+	.panel.actions > .pane {
+		padding-right: 1rem!important;
+		height: 455px;
+	}
+
+	.panel.spells {
+		> .caster-stats {
+			margin: 0 8rem;
+			height: 55px;
+		}
+		> .sections {
+			padding-right: 1rem!important;
+			overflow-y: auto;
+			height: 460px;
+		}
+	}
+	.panel.spells:has(> .caster-stats) > .sections {
+		height: 400px;
+	}
+
+	.panel.inventory {
+		display: flex;
+		flex-direction: column;
+
+		> .empty-prompt {
+			flex-grow: 1;
+
+			display: flex;
+			flex-direction: column;
+			
+			justify-content: center;
+			align-items: center;
+			
+			text-align: center;
+		}
+
+		> .sections {
+			overflow-y: auto;
+			height: 470px;
+		}
+	}
+
+	.panel.description {
+		overflow-y: auto;
+		height: 510px;
+		padding: 0 12px 5px 5px;
+	}
+}
+@media screen and (max-width: 1200px)
+{
+	.panel.actions {
+		margin-top: 0.5rem;
+		display: flex;
+		flex-direction: column;
+		flex-grow: 1;
+		> .pane {
+			display: flex;
+			flex-direction: column;
+			flex-grow: 1;
+
+			height: 0;
+			padding-right: 0.25rem;
+			overflow-y: auto;
+		}
+	}
+
+	.panel.description {
+		margin: 0.5rem!important;
+	}
+}
+
+.paged-display {
+	display: flex;
+	flex-direction: column;
+	flex-grow: 1;
+}
+// All pages are always hidden
+.paged-display > .page {
+	display: none;
+}
+// unless the page is selected in the dropdown
+$Pages: Abilities, Attributes, Features, Spells, Inventory, Description;
+@each $Page in $Pages {
+	.paged-display:has(> select > option[value="#{$Page}"][selected="selected"]) > .page##{$Page} {
+		display: flex;
+		flex-direction: column;
+		flex-grow: 1;
+	}
+}
+
+.spell-container .capacity .progress-ticked {
+	--bar-height: 0.5rem;
+	--tick-scale-x: 0.75;
+	--tick-scale-y: 2.5;
+	--bar-color: var(--theme-frame-color);
+}
+
+.context-menu .starting-equipment {
+	display: flex;
+	flex-direction: column;
+
+	> .actions {
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+	}
+	> .body {
+		flex-grow: 1;
+
+		display: flex;
+		flex-direction: row;
+		flex-wrap: wrap;
+		> .section-group {
+			margin-right: 1.0rem;
+			margin-bottom: 1.0rem;
+		}
+	}
+	.section {
+		display: flex;
+		flex-direction: column;
+		margin: 0.5rem 0 0.5rem 0.75rem;
+
+		> .label {
+			display: flex;
+			flex-direction: row;
+			margin-bottom: 0.25rem;
+			> input[type="checkbox"] {
+				margin-right: 0.5rem;
+			}
+		}
+		
+		.group {
+			display: flex;
+			flex-direction: row;
+			flex-wrap: wrap;
+			margin: 0 0 0 0.75rem;
+
+			> .section {
+				margin: 0 0.25rem 0.25rem 0.25rem;
+			}
+		}
+		.select-item {
+			display: flex;
+			flex-direction: row;
+			> .content {
+				display: flex;
+				flex-direction: column;
+				> select {
+					width: auto;
+				}
+			}
+		}
+
+		.wallet > span {
+			font-size: 1.25rem;
+			> .glyph.currency {
+				width: 25px;
+				height: 25px;
+				margin-bottom: -6px;
+			}
+		}
+		.specific-item {
+			display: flex;
+		}
+	}
+}
+
+.card.object-link.disabled {
+	background-color: var(--bs-secondary-bg);
+}
+.card.object-link > .card-body {
+	display: flex;
+	padding: 0.5rem;
+	align-items: center;
+	
+	.title, .subtitle {
+		margin: 0;
+	}
+
+	> .btn:has(> .bi-chevron-right) {
+		margin-left: 0.5rem;
+		min-height: 25px;
+	}
+}
+.card.object-link:hover > .card-body {
+	> .btn:has(> .bi-chevron-right) {
+		color: var(--bs-btn-hover-color);
+		background-color: var(--bs-btn-hover-bg);
+		border-color: var(--bs-btn-hover-border-color);
+	}
+}
+.card.object-link:active > .card-body {
+	> .btn:has(> .bi-chevron-right) {
+		color: var(--bs-btn-active-color);
+		background-color: var(--bs-btn-active-bg);
+		border-color: var(--bs-btn-active-border-color);
+	}
+}
+
+.navbar-brand.disabled {
+	pointer-events: none;
+}
+
+.sync-status {
+	.spinner-border {
+		--bs-spinner-width: 40px;
+    --bs-spinner-height: 40px;
+    --bs-spinner-border-width: 0.3em;
+    --bs-spinner-animation-speed: 1.75s;
+	}
+	.progress {
+		height: 25px;
+	}
+	.progress-label-float {
+		display: flex;
+		justify-content: center;
+		margin-top: -28px;
+		font-size: 20px;
+		color: #fff;
+    text-align: center;
+    white-space: nowrap;
+    text-shadow: 0px 0px 3px black;
+	}
+}
+
+.card.module {
+	.bi.bi-trash {
+		color: var(--bs-danger);
+	}
+	.bi.bi-cloud-download {
+		color: var(--bs-success);
+	}
 }

@@ -1,21 +1,22 @@
-use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt},
-	system::{
-		core::SourceId,
-		dnd5e::{
-			data::{character::Character, currency::Wallet, description, Rarity},
-			SystemComponent,
-		},
+use super::character::IndirectItem;
+use crate::kdl_ext::NodeContext;
+use crate::system::{
+	core::SourceId,
+	dnd5e::{
+		data::{character::Character, currency::Wallet, description, Rarity},
+		SystemComponent,
 	},
 };
-use std::str::FromStr;
+use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
+use std::{collections::HashMap, str::FromStr};
 
 mod kind;
 pub use kind::*;
-
 pub mod armor;
 pub mod container;
 pub mod equipment;
+pub mod restriction;
+pub use restriction::Restriction;
 pub mod weapon;
 
 #[derive(Clone, PartialEq, Default, Debug)]
@@ -32,10 +33,15 @@ pub struct Item {
 	pub kind: Kind,
 	pub tags: Vec<String>,
 	// TODO: Tests for item containers
-	pub items: Option<container::Container<Item>>,
+	// Items which are contained within this item instance.
+	pub items: Option<container::ItemContainer<Item>>,
+	// Items (specific by SourceId or custom defn) which should be converted into the item container when added to a character sheet.
+	// The owning item must have a container (typically empty) if using this property.
+	pub item_refs: Vec<IndirectItem>,
+	pub spells: Option<container::SpellContainer>,
 }
 
-crate::impl_kdl_node!(Item, "item");
+kdlize::impl_kdl_node!(Item, "item");
 
 impl Item {
 	/// Returns true if the item has the capability to be equipped (i.e. it is a piece of equipment).
@@ -97,23 +103,44 @@ impl Item {
 			}
 		}
 	}
+
+	pub fn create_stack(mut self, quantity: usize) -> Vec<Self> {
+		let mut stack = Vec::with_capacity(1);
+		let single = match (quantity, &mut self.kind) {
+			(1, _) => Some(self),
+			(n, Kind::Simple { count }) => {
+				*count = n as u32;
+				Some(self)
+			}
+			(n, _) => {
+				stack.reserve(n - 1);
+				stack.fill(self);
+				None
+			}
+		};
+		if let Some(single) = single {
+			stack.push(single);
+		}
+		stack
+	}
 }
 
 impl SystemComponent for Item {
 	fn to_metadata(self) -> serde_json::Value {
-		serde_json::json!({
-			"name": self.name.clone(),
-		})
+		let mut contents: HashMap<&'static str, serde_json::Value> =
+			[("name", self.name.into()), ("tags", self.tags.into())].into();
+		if let Kind::Equipment(equipment) = self.kind {
+			contents.insert("equipment", equipment.to_metadata());
+		}
+		serde_json::json!(contents)
 	}
 }
 
-impl FromKDL for Item {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
+impl FromKdl<NodeContext> for Item {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		// TODO: Items can have empty ids if they are completely custom in the sheet
-		let id = ctx.parse_source_opt(node)?.unwrap_or_default();
+		let id = crate::kdl_ext::query_source_opt(node)?.unwrap_or_default();
 
 		let name = node.get_str_req("name")?.to_owned();
 		let rarity = match node.query_str_opt("scope() > rarity", 0)? {
@@ -123,13 +150,10 @@ impl FromKDL for Item {
 		let mut weight = node.get_f64_opt("weight")?.unwrap_or(0.0) as f32;
 		let description = match node.query_opt("scope() > description")? {
 			None => description::Info::default(),
-			Some(node) => description::Info::from_kdl(node, &mut ctx.next_node())?,
+			Some(mut node) => description::Info::from_kdl(&mut node)?,
 		};
 
-		let worth = match node.query("scope() > worth")? {
-			Some(node) => Wallet::from_kdl(node, &mut ctx.next_node())?,
-			None => Wallet::default(),
-		};
+		let worth = node.query_opt_t::<Wallet>("scope() > worth")?.unwrap_or_default();
 
 		let notes = node.query_str_opt("scope() > notes", 0)?.map(str::to_owned);
 		let tags = {
@@ -139,18 +163,13 @@ impl FromKDL for Item {
 			}
 			tags
 		};
-		let kind = match node.query("scope() > kind")? {
-			Some(node) => Kind::from_kdl(node, &mut ctx.next_node())?,
-			None => Kind::default(),
+		let kind = node.query_opt_t::<Kind>("scope() > kind")?.unwrap_or_default();
+		let items = node.query_opt_t::<container::ItemContainer<Item>>("scope() > items")?;
+		let item_refs = match node.query_opt("scope() > items > templates")? {
+			None => Vec::new(),
+			Some(node) => node.query_all_t::<IndirectItem>("scope() > item")?,
 		};
-
-		let items = match node.query_opt("scope() > items")? {
-			None => None,
-			Some(node) => Some(container::Container::<Item>::from_kdl(
-				node,
-				&mut ctx.next_node(),
-			)?),
-		};
+		let spells = node.query_opt_t("scope() > spells")?;
 
 		// Items are defined with the weight being representative of the stack,
 		// but are used as the weight being representative of a single item
@@ -174,6 +193,8 @@ impl FromKDL for Item {
 			kind,
 			tags,
 			items,
+			item_refs,
+			spells,
 		})
 	}
 }
@@ -193,6 +214,7 @@ impl AsKdl for Item {
 			if let Kind::Simple { count } = &self.kind {
 				stack_weight *= *count as f64;
 			}
+			let stack_weight = (stack_weight * 1000.0).round() / 1000.0;
 			node.push_entry(("weight", stack_weight));
 		}
 
@@ -212,16 +234,25 @@ impl AsKdl for Item {
 		}
 
 		if let Some(items) = &self.items {
-			node.push_child_t("items", items);
+			let templates = {
+				let mut node = NodeBuilder::default();
+				for item_ref in &self.item_refs {
+					node.push_child_t("item", item_ref);
+				}
+				node.build("templates")
+			};
+			node.push_child({
+				let mut node = items.as_kdl();
+				node.push_child_opt(templates);
+				node.build("items")
+			});
+		}
+		if let Some(spells) = &self.spells {
+			node.push_child_t("spells", spells);
 		}
 
 		node
 	}
-}
-
-#[derive(Clone, Default, PartialEq, Debug)]
-pub struct Restriction {
-	pub tags: Vec<String>,
 }
 
 #[cfg(test)]
@@ -231,7 +262,7 @@ mod test {
 	mod item {
 		use super::*;
 		use crate::{
-			kdl_ext::NodeContext,
+			kdl_ext::{test_utils::*, NodeContext},
 			system::{
 				core::NodeRegistry,
 				dnd5e::{
@@ -244,57 +275,58 @@ mod test {
 					mutator::{AddModifier, ModifierKind},
 				},
 			},
-			utility::Selector,
+			utility::selector,
 		};
 
-		fn from_doc(doc: &str) -> anyhow::Result<Item> {
-			let mut ctx = NodeContext::registry(NodeRegistry::default_with_mut::<AddModifier>());
-			let document = doc.parse::<kdl::KdlDocument>()?;
-			let node = document
-				.query("scope() > item")?
-				.expect("missing item node");
-			Item::from_kdl(node, &mut ctx)
+		static NODE_NAME: &str = "item";
+
+		fn node_ctx() -> NodeContext {
+			NodeContext::registry(NodeRegistry::default_with_mut::<AddModifier>())
 		}
 
 		#[test]
 		fn simple() -> anyhow::Result<()> {
-			let doc = "item name=\"Torch\" weight=1.0 {
-				worth 1 (Currency)\"Copper\"
-				kind \"Simple\" count=5
-			}";
-			let expected = Item {
+			let doc = "
+				|item name=\"Torch\" weight=1.0 {
+				|    worth 1 (Currency)\"Copper\"
+				|    kind \"Simple\" count=5
+				|}
+			";
+			let data = Item {
 				name: "Torch".into(),
 				weight: 0.2,
 				worth: Wallet::from([(1, currency::Kind::Copper)]),
 				kind: Kind::Simple { count: 5 },
 				..Default::default()
 			};
-			assert_eq!(from_doc(doc)?, expected);
+			assert_eq_fromkdl!(Item, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 
 		#[test]
 		fn equipment() -> anyhow::Result<()> {
-			let doc = "item name=\"Plate Armor\" weight=65.0 {
-				worth 1500 (Currency)\"Gold\"
-				kind \"Equipment\" {
-					armor \"Heavy\" {
-						formula base=18
-						min-strength 15
-					}
-					mutator \"add_modifier\" \"Disadvantage\" (Skill)\"Specific\" \"Stealth\"
-				}
-			}";
-			let expected = Item {
+			let doc = "
+				|item name=\"Plate Armor\" weight=65.0 {
+				|    worth 1500 (Currency)\"Gold\"
+				|    kind \"Equipment\" {
+				|        armor \"Heavy\" {
+				|            formula base=18
+				|            min-strength 15
+				|        }
+				|        mutator \"add_modifier\" \"Disadvantage\" (Skill)\"Specific\" \"Stealth\"
+				|    }
+				|}
+			";
+			let data = Item {
 				name: "Plate Armor".into(),
 				weight: 65.0,
 				worth: Wallet::from([(1500, currency::Kind::Gold)]),
 				kind: Kind::Equipment(Equipment {
-					criteria: None,
 					mutators: vec![AddModifier {
 						modifier: Modifier::Disadvantage,
 						context: None,
-						kind: ModifierKind::Skill(Selector::Specific(Skill::Stealth)),
+						kind: ModifierKind::Skill(selector::Value::Specific(Skill::Stealth)),
 					}
 					.into()],
 					armor: Some(Armor {
@@ -305,13 +337,12 @@ mod test {
 						},
 						min_strength_score: Some(15),
 					}),
-					shield: None,
-					weapon: None,
-					attunement: None,
+					..Default::default()
 				}),
 				..Default::default()
 			};
-			assert_eq!(from_doc(doc)?, expected);
+			assert_eq_fromkdl!(Item, doc, data);
+			assert_eq_askdl!(&data, doc);
 			Ok(())
 		}
 	}

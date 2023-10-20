@@ -1,14 +1,15 @@
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
 	system::dnd5e::data::{character::Character, description},
 	utility::Mutator,
 };
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AddLifeExpectancy(pub i32);
 
 crate::impl_trait_eq!(AddLifeExpectancy);
-crate::impl_kdl_node!(AddLifeExpectancy, "extend_life_expectancy");
+kdlize::impl_kdl_node!(AddLifeExpectancy, "extend_life_expectancy");
 
 impl Mutator for AddLifeExpectancy {
 	type Target = Character;
@@ -25,12 +26,10 @@ impl Mutator for AddLifeExpectancy {
 	}
 }
 
-impl FromKDL for AddLifeExpectancy {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		Ok(Self(node.get_i64_req(ctx.consume_idx())? as i32))
+impl FromKdl<NodeContext> for AddLifeExpectancy {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		Ok(Self(node.next_i64_req()? as i32))
 	}
 }
 

@@ -1,27 +1,45 @@
-use super::{character::Character, roll::Die, Feature};
+use super::{character::Character, roll::Die};
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeContext, NodeExt},
 	system::{
 		core::SourceId,
 		dnd5e::{mutator::AddMaxHitPoints, BoxedMutator, SystemComponent, Value},
 	},
-	utility::{MutatorGroup, Selector},
+	utility::{selector, MutatorGroup},
 };
+use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
 use std::{path::Path, str::FromStr};
 
-#[derive(Clone, PartialEq, Default, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Class {
 	pub id: SourceId,
 	pub name: String,
 	pub description: String,
 	pub hit_die: Die,
+	pub hit_die_selector: selector::Value<Character, u32>,
 	pub current_level: usize,
 	/// Mutators that are applied only when this class is the primary class (not multiclassing).
 	pub mutators: Vec<BoxedMutator>,
 	pub levels: Vec<Level>,
-	pub subclass_selection_level: Option<usize>,
-	pub subclass: Option<Subclass>,
 	// TODO: `multiclass-req` data node (already in data, just not in structures yet)
+}
+
+impl Default for Class {
+	fn default() -> Self {
+		Self {
+			id: Default::default(),
+			name: Default::default(),
+			description: Default::default(),
+			hit_die: Default::default(),
+			hit_die_selector: selector::Value::Options(selector::ValueOptions {
+				id: "hit_die".into(),
+				..Default::default()
+			}),
+			current_level: Default::default(),
+			mutators: Default::default(),
+			levels: Default::default(),
+		}
+	}
 }
 
 impl Class {
@@ -39,14 +57,12 @@ impl MutatorGroup for Class {
 
 	fn set_data_path(&self, parent: &std::path::Path) {
 		let path_to_self = parent.join(&self.name);
+		self.hit_die_selector.set_data_path(&path_to_self);
 		for mutator in &self.mutators {
 			mutator.set_data_path(&path_to_self);
 		}
 		for level in self.iter_levels(true) {
 			level.set_data_path(&path_to_self);
-		}
-		if let Some(subclass) = &self.subclass {
-			subclass.set_data_path(&path_to_self);
 		}
 	}
 
@@ -57,9 +73,6 @@ impl MutatorGroup for Class {
 		}
 		for level in self.iter_levels(false) {
 			stats.apply_from(&level, &path_to_self);
-		}
-		if let Some(subclass) = &self.subclass {
-			stats.apply_from(subclass, &path_to_self);
 		}
 	}
 }
@@ -72,11 +85,12 @@ impl SystemComponent for Class {
 	}
 }
 
-crate::impl_kdl_node!(Class, "class");
+kdlize::impl_kdl_node!(Class, "class");
 
-impl FromKDL for Class {
-	fn from_kdl(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
-		let id = ctx.parse_source_req(node)?;
+impl FromKdl<NodeContext> for Class {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let id = crate::kdl_ext::query_source_req(node)?;
 
 		let name = node.get_str_req("name")?.to_owned();
 		let description = node
@@ -86,26 +100,14 @@ impl FromKDL for Class {
 		let hit_die = Die::from_str(node.query_str_req("scope() > hit-die", 0)?)?;
 		let current_level = node.get_i64_opt("level")?.unwrap_or_default() as usize;
 
-		let mut mutators = Vec::new();
-		for entry_node in node.query_all("scope() > mutator")? {
-			mutators.push(ctx.parse_mutator(entry_node)?);
-		}
-
-		let subclass_selection_level = node
-			.query_i64_opt("scope() > subclass-level", 0)?
-			.map(|v| v as usize);
-		let subclass = match node.query_opt("scope() > subclass")? {
-			None => None,
-			Some(node) => Some(Subclass::from_kdl(node, &mut ctx.next_node())?),
-		};
+		let mutators = node.query_all_t("scope() > mutator")?;
 
 		let mut levels = Vec::with_capacity(20);
 		levels.resize_with(20, Default::default);
-		for node in node.query_all("scope() > level")? {
-			let mut ctx = ctx.next_node();
-			let order = node.get_i64_req(ctx.consume_idx())? as usize;
+		for mut node in &mut node.query_all("scope() > level")? {
+			let order = node.next_i64_req()? as usize;
 			let idx = order - 1;
-			levels[idx] = Level::from_kdl(node, &mut ctx)?;
+			levels[idx] = Level::from_kdl(&mut node)?;
 		}
 
 		Ok(Self {
@@ -116,8 +118,7 @@ impl FromKDL for Class {
 			current_level,
 			mutators,
 			levels,
-			subclass_selection_level,
-			subclass,
+			..Default::default()
 		})
 	}
 }
@@ -134,9 +135,6 @@ impl AsKdl for Class {
 		node.push_child_opt_t("source", &self.id);
 		node.push_child_opt_t("description", &self.description);
 		node.push_child_entry("hit-die", self.hit_die.to_string());
-		if let Some(level) = &self.subclass_selection_level {
-			node.push_child_t("subclass-level", level);
-		}
 
 		for mutator in &self.mutators {
 			node.push_child_t("mutator", mutator);
@@ -155,78 +153,53 @@ impl AsKdl for Class {
 			);
 		}
 
-		if let Some(subclass) = &self.subclass {
-			node.push_child_t("subclass", subclass);
-		}
-
 		node
 	}
 }
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Level {
-	pub hit_points: Selector<u32>,
+	pub hit_points: selector::Value<Character, u32>,
 	pub mutators: Vec<BoxedMutator>,
-	pub features: Vec<Feature>,
 }
 
 impl Default for Level {
 	fn default() -> Self {
 		Self {
-			hit_points: Selector::Any {
-				id: Some("hit_points").into(),
-				cannot_match: Default::default(),
-			},
+			hit_points: selector::Value::Options(selector::ValueOptions {
+				id: "hit_points".into(),
+				..Default::default()
+			}),
 			mutators: Default::default(),
-			features: Default::default(),
 		}
 	}
 }
 
 impl Level {
 	pub fn is_empty(&self) -> bool {
-		self.mutators.is_empty() && self.features.is_empty()
+		self.mutators.is_empty()
 	}
 }
 
-impl FromKDL for Level {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		let hit_points = Selector::Any {
-			id: Some("hit_points").into(),
-			cannot_match: Default::default(),
-		};
+impl FromKdl<NodeContext> for Level {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let hit_points = selector::Value::Options(selector::ValueOptions {
+			id: "hit_points".into(),
+			..Default::default()
+		});
 
-		let mut mutators = Vec::new();
-		for entry_node in node.query_all("scope() > mutator")? {
-			mutators.push(ctx.parse_mutator(entry_node)?);
-		}
+		let mutators = node.query_all_t("scope() > mutator")?;
 
-		let mut features = Vec::new();
-		for entry_node in node.query_all("scope() > feature")? {
-			features.push(Feature::from_kdl(entry_node, &mut ctx.next_node())?.into());
-		}
-
-		Ok(Self {
-			hit_points,
-			mutators,
-			features,
-		})
+		Ok(Self { hit_points, mutators })
 	}
 }
 impl AsKdl for Level {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
-
 		for mutator in &self.mutators {
 			node.push_child_t("mutator", mutator);
 		}
-		for feature in &self.features {
-			node.push_child_t("feature", feature);
-		}
-
 		node
 	}
 }
@@ -248,16 +221,11 @@ impl<'a> LevelWithIndex<'a> {
 impl<'a> MutatorGroup for LevelWithIndex<'a> {
 	type Target = Character;
 
-	// TODO: SelectorMeta for `Level::hit_points` integer field
-
 	fn set_data_path(&self, parent: &Path) {
 		let path_to_self = parent.join(self.level_name());
 		self.1.hit_points.set_data_path(&path_to_self);
 		for mutator in &self.1.mutators {
 			mutator.set_data_path(&path_to_self);
-		}
-		for feature in &self.1.features {
-			feature.set_data_path(&path_to_self);
 		}
 	}
 
@@ -273,30 +241,29 @@ impl<'a> MutatorGroup for LevelWithIndex<'a> {
 		for mutator in &self.1.mutators {
 			stats.apply(mutator, &path_to_self);
 		}
-		for feature in &self.1.features {
-			stats.add_feature(feature, &path_to_self);
-		}
 	}
 }
 
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct Subclass {
-	pub source_id: SourceId,
+	pub id: SourceId,
 	pub class_name: String,
 	pub name: String,
 	pub description: String,
+	pub mutators: Vec<BoxedMutator>,
 	pub levels: Vec<Level>,
 }
 
 impl SystemComponent for Subclass {
 	fn to_metadata(self) -> serde_json::Value {
 		serde_json::json!({
-			"name": self.name.clone(),
+			"name": &self.name,
+			"class": &self.class_name,
 		})
 	}
 }
 
-crate::impl_kdl_node!(Subclass, "subclass");
+kdlize::impl_kdl_node!(Subclass, "subclass");
 
 impl Subclass {
 	fn iter_levels<'a>(&'a self) -> impl Iterator<Item = LevelWithIndex<'a>> + 'a {
@@ -312,6 +279,9 @@ impl MutatorGroup for Subclass {
 
 	fn set_data_path(&self, parent: &Path) {
 		let path_to_self = parent.join(&self.name);
+		for mutator in &self.mutators {
+			mutator.set_data_path(&path_to_self);
+		}
 		for level in self.iter_levels() {
 			level.set_data_path(&path_to_self);
 		}
@@ -319,38 +289,41 @@ impl MutatorGroup for Subclass {
 
 	fn apply_mutators(&self, stats: &mut Character, parent: &Path) {
 		let path_to_self = parent.join(&self.name);
+		for mutator in &self.mutators {
+			stats.apply(mutator, &path_to_self);
+		}
 		for level in self.iter_levels() {
 			stats.apply_from(&level, &path_to_self);
 		}
 	}
 }
 
-impl FromKDL for Subclass {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
+impl FromKdl<NodeContext> for Subclass {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let id = crate::kdl_ext::query_source_req(node)?;
+
 		let name = node.get_str_req("name")?.to_owned();
 		let class_name = node.get_str_req("class")?.to_owned();
 		let description = node
 			.query_str_opt("scope() > description", 0)?
 			.unwrap_or_default()
 			.to_owned();
-
+		let mutators = node.query_all_t("scope() > mutator")?;
 		let mut levels = Vec::with_capacity(20);
 		levels.resize_with(20, Default::default);
-		for node in node.query_all("scope() > level")? {
-			let mut ctx = ctx.next_node();
-			let order = node.get_i64_req(ctx.consume_idx())? as usize;
+		for mut node in &mut node.query_all("scope() > level")? {
+			let order = node.next_i64_req()? as usize;
 			let idx = order - 1;
-			levels[idx] = Level::from_kdl(node, &mut ctx)?;
+			levels[idx] = Level::from_kdl(&mut node)?;
 		}
 
 		Ok(Self {
-			source_id: Default::default(),
+			id,
 			name,
 			description,
 			class_name,
+			mutators,
 			levels,
 		})
 	}
@@ -361,8 +334,12 @@ impl AsKdl for Subclass {
 
 		node.push_entry(("class", self.class_name.clone()));
 		node.push_entry(("name", self.name.clone()));
-		node.push_child_opt_t("source", &self.source_id);
+		node.push_child_opt_t("source", &self.id);
 		node.push_child_opt_t("description", &self.description);
+
+		for mutator in &self.mutators {
+			node.push_child_t("mutator", mutator);
+		}
 
 		for (idx, level) in self.levels.iter().enumerate() {
 			let level_node = level.as_kdl();

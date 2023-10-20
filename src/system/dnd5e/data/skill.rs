@@ -8,7 +8,7 @@ use enumset::EnumSetType;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
-#[derive(EnumSetType, PartialOrd, Enum, Serialize, Deserialize, Debug)]
+#[derive(EnumSetType, PartialOrd, Enum, Serialize, Deserialize, Debug, Ord)]
 pub enum Skill {
 	Acrobatics,
 	AnimalHandling,

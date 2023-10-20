@@ -1,10 +1,11 @@
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
 	system::dnd5e::data::{bounded::BoundValue, character::Character, description, Ability},
 	utility::{InvalidEnumStr, Mutator},
 };
 use enum_map::Enum;
 use enumset::EnumSetType;
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::str::FromStr;
 
 #[derive(Debug, EnumSetType, Enum)]
@@ -41,7 +42,7 @@ pub struct SetFlag {
 }
 
 crate::impl_trait_eq!(SetFlag);
-crate::impl_kdl_node!(SetFlag, "flag");
+kdlize::impl_kdl_node!(SetFlag, "flag");
 
 impl Mutator for SetFlag {
 	type Target = Character;
@@ -56,13 +57,11 @@ impl Mutator for SetFlag {
 	}
 }
 
-impl FromKDL for SetFlag {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		let flag = Flag::from_str(node.get_str_req(ctx.consume_idx())?)?;
-		let value = node.get_bool_req(ctx.consume_idx())?;
+impl FromKdl<NodeContext> for SetFlag {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let flag = node.next_str_req_t::<Flag>()?;
+		let value = node.next_bool_req()?;
 		Ok(Self { flag, value })
 	}
 }
@@ -81,7 +80,7 @@ pub struct ArmorStrengthRequirement {
 }
 
 crate::impl_trait_eq!(ArmorStrengthRequirement);
-crate::impl_kdl_node!(ArmorStrengthRequirement, "armor_strength_requirement");
+kdlize::impl_kdl_node!(ArmorStrengthRequirement, "armor_strength_requirement");
 
 impl Mutator for ArmorStrengthRequirement {
 	type Target = Character;
@@ -104,12 +103,7 @@ impl Mutator for ArmorStrengthRequirement {
 		}
 		// If the rule is on and the ability score is not met,
 		// then ensure that all movement speeds are decreased by 10.
-		let speed_names = stats
-			.speeds()
-			.iter()
-			.map(|(name, _)| name)
-			.cloned()
-			.collect::<Vec<_>>();
+		let speed_names = stats.speeds().iter().map(|(name, _)| name).cloned().collect::<Vec<_>>();
 		for speed in speed_names {
 			stats
 				.speeds_mut()

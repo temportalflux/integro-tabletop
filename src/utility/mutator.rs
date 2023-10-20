@@ -1,11 +1,10 @@
 use super::{AsTraitEq, Dependencies, TraitEq};
-use crate::{
-	kdl_ext::{AsKdl, KDLNode},
-	system::dnd5e::data::description,
-};
+use crate::kdl_ext::NodeContext;
+use crate::system::dnd5e::data::description;
+use kdlize::{AsKdl, NodeId};
 use std::{fmt::Debug, path::Path, sync::Arc};
 
-pub trait Mutator: Debug + TraitEq + AsTraitEq<dyn TraitEq> + KDLNode + AsKdl {
+pub trait Mutator: Debug + TraitEq + AsTraitEq<dyn TraitEq> + NodeId + AsKdl {
 	type Target;
 
 	fn dependencies(&self) -> Dependencies {
@@ -62,6 +61,11 @@ impl<T> std::ops::Deref for GenericMutator<T> {
 		&self.0
 	}
 }
+impl<T> std::ops::DerefMut for GenericMutator<T> {
+	fn deref_mut(&mut self) -> &mut Self::Target {
+		&mut self.0
+	}
+}
 
 impl<T> std::fmt::Debug for GenericMutator<T> {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -83,4 +87,17 @@ pub trait MutatorGroup {
 	fn set_data_path(&self, parent: &Path);
 
 	fn apply_mutators(&self, target: &mut Self::Target, parent: &Path);
+}
+
+impl<T> kdlize::FromKdl<NodeContext> for GenericMutator<T>
+where
+	T: 'static,
+{
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let id = node.next_str_req()?;
+		let node_reg = node.context().node_reg().clone();
+		let factory = node_reg.get_mutator_factory(id)?;
+		factory.from_kdl::<T>(node)
+	}
 }

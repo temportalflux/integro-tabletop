@@ -1,18 +1,18 @@
-use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
-	system::dnd5e::data::character::Character,
-	utility::Evaluator,
-};
+use crate::{kdl_ext::NodeContext, system::dnd5e::data::character::Character, utility::Evaluator};
+use kdlize::{ext::ValueExt, AsKdl, FromKdl, NodeBuilder};
 use std::{collections::BTreeMap, fmt::Debug};
+
+pub type GetLevelInt = GetLevel<i32>;
+pub type GetLevelStr = GetLevel<String>;
 
 /// Returns the numerical value of the level for a character.
 /// Optionally can return the level for a specific class, if `class_name` is specified.
 #[derive(Clone, PartialEq, Default, Debug)]
-pub struct GetLevel {
+pub struct GetLevel<T> {
 	pub class_name: Option<String>,
-	pub order_map: BTreeMap<usize, i32>,
+	pub order_map: BTreeMap<usize, T>,
 }
-impl<S> From<Option<S>> for GetLevel
+impl<T, S> From<Option<S>> for GetLevel<T>
 where
 	S: ToString,
 {
@@ -24,10 +24,52 @@ where
 	}
 }
 
-crate::impl_trait_eq!(GetLevel);
-impl Evaluator for GetLevel {
+crate::impl_trait_eq!(GetLevelInt);
+crate::impl_trait_eq!(GetLevelStr);
+kdlize::impl_kdl_node!(GetLevelInt, "get_level");
+kdlize::impl_kdl_node!(GetLevelStr, "get_level_str");
+
+trait GetLevelTy {
+	fn from_level(level: usize) -> Self;
+	fn from_kdl(entry: &kdl::KdlEntry) -> anyhow::Result<Self>
+	where
+		Self: Sized;
+	fn to_kdl(&self) -> kdl::KdlEntry;
+}
+impl GetLevelTy for i32 {
+	fn from_level(level: usize) -> Self {
+		level as i32
+	}
+
+	fn from_kdl(entry: &kdl::KdlEntry) -> anyhow::Result<Self> {
+		Ok(entry.value().as_i64_req()? as i32)
+	}
+
+	fn to_kdl(&self) -> kdl::KdlEntry {
+		kdl::KdlEntry::new(*self as i64)
+	}
+}
+impl GetLevelTy for String {
+	fn from_level(level: usize) -> Self {
+		level.to_string()
+	}
+
+	fn from_kdl(entry: &kdl::KdlEntry) -> anyhow::Result<Self> {
+		Ok(entry.value().as_str_req()?.to_owned())
+	}
+
+	fn to_kdl(&self) -> kdl::KdlEntry {
+		kdl::KdlEntry::new(self.clone())
+	}
+}
+
+impl<T> Evaluator for GetLevel<T>
+where
+	Self: crate::utility::TraitEq + kdlize::NodeId,
+	T: Debug + Send + Sync + Default + GetLevelTy + Clone,
+{
 	type Context = Character;
-	type Item = i32;
+	type Item = T;
 
 	fn description(&self) -> Option<String> {
 		Some(format!(
@@ -43,40 +85,32 @@ impl Evaluator for GetLevel {
 		let class_name = self.class_name.as_ref().map(String::as_str);
 		let level = state.level(class_name);
 		if self.order_map.is_empty() {
-			return level as i32;
+			return T::from_level(level);
 		}
 		for (key, value) in self.order_map.iter().rev() {
 			if level >= *key {
-				return *value;
+				return value.clone();
 			}
 		}
-		return 0;
+		return T::default();
 	}
 }
 
-crate::impl_kdl_node!(GetLevel, "get_level");
-
-impl FromKDL for GetLevel {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
+impl<T: GetLevelTy> FromKdl<NodeContext> for GetLevel<T> {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let class_name = node.get_str_opt("class")?.map(ToString::to_string);
 		let mut order_map = BTreeMap::new();
-		for node in node.query_all("scope() > level")? {
-			let mut ctx = ctx.next_node();
-			let level = node.get_i64_req(ctx.consume_idx())? as usize;
-			let value = node.get_i64_req(ctx.consume_idx())? as i32;
+		for node in &mut node.query_all("scope() > level")? {
+			let level = node.next_i64_req()? as usize;
+			let value = T::from_kdl(node.next_req()?)?;
 			order_map.insert(level, value);
 		}
-		Ok(Self {
-			class_name,
-			order_map,
-		})
+		Ok(Self { class_name, order_map })
 	}
 }
 
-impl AsKdl for GetLevel {
+impl<T: GetLevelTy> AsKdl for GetLevel<T> {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 		if let Some(class_name) = &self.class_name {
@@ -86,7 +120,7 @@ impl AsKdl for GetLevel {
 			node.push_child(
 				NodeBuilder::default()
 					.with_entry(*level as i64)
-					.with_entry(*value as i64)
+					.with_entry(value.to_kdl())
 					.build("level"),
 			);
 		}
@@ -103,12 +137,12 @@ mod test {
 		use super::*;
 		use crate::{kdl_ext::test_utils::*, system::dnd5e::evaluator::test::test_utils};
 
-		test_utils!(GetLevel);
+		test_utils!(GetLevelInt);
 
 		#[test]
 		fn character_level() -> anyhow::Result<()> {
 			let doc = "evaluator \"get_level\"";
-			let data = GetLevel::default();
+			let data = GetLevelInt::default();
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -117,7 +151,7 @@ mod test {
 		#[test]
 		fn class_level() -> anyhow::Result<()> {
 			let doc = "evaluator \"get_level\" class=\"Wizard\"";
-			let data = GetLevel::from(Some("Wizard"));
+			let data = GetLevelInt::from(Some("Wizard"));
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -143,28 +177,28 @@ mod test {
 
 		#[test]
 		fn character_level_none() {
-			let eval = GetLevel::default();
+			let eval = GetLevelInt::default();
 			let character = character(&[]);
 			assert_eq!(eval.evaluate(&character), 0);
 		}
 
 		#[test]
 		fn character_level_some() {
-			let eval = GetLevel::default();
+			let eval = GetLevelInt::default();
 			let character = character(&[("SomeClass".into(), 7)]);
 			assert_eq!(eval.evaluate(&character), 7);
 		}
 
 		#[test]
 		fn class_missing() {
-			let eval = GetLevel::from(Some("MissingClass"));
+			let eval = GetLevelInt::from(Some("MissingClass"));
 			let character = character(&[]);
 			assert_eq!(eval.evaluate(&character), 0);
 		}
 
 		#[test]
 		fn class_level_some() {
-			let eval = GetLevel::from(Some("Wizard"));
+			let eval = GetLevelInt::from(Some("Wizard"));
 			let character = character(&[("Wizard".into(), 4), ("Sorcerer".into(), 2)]);
 			assert_eq!(eval.evaluate(&character), 4);
 		}

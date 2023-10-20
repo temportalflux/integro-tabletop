@@ -1,5 +1,6 @@
 use super::{
-	spellcasting, DefaultsBlock, Features, HitPoint, HitPoints, Spellcasting, StartingEquipment,
+	spellcasting, AttackBonuses, DefaultsBlock, Features, HitPoint, HitPoints, RestResets, Spellcasting,
+	StartingEquipment,
 };
 use crate::{
 	path_map::PathMap,
@@ -7,19 +8,18 @@ use crate::{
 		core::SourceId,
 		dnd5e::{
 			data::{
-				action::{Action, AttackCheckKind},
 				character::{
-					AbilityScores, Defenses, Derived, DerivedDescription, MaxHitPoints, Persistent,
-					SavingThrows, Senses, Skills, Speeds,
+					AbilityScores, Defenses, Derived, DerivedDescription, MaxHitPoints, Persistent, SavingThrows,
+					Senses, Skills, Speeds,
 				},
-				item::{container::Inventory, weapon},
+				item::container::Inventory,
 				proficiency, Ability, ArmorClass, Feature, OtherProficiencies,
 			},
 			mutator::Flag,
 			BoxedCriteria, BoxedMutator,
 		},
 	},
-	utility::{Dependencies, MutatorGroup, Selector},
+	utility::{selector, Dependencies, MutatorGroup},
 };
 use enum_map::EnumMap;
 use std::{
@@ -58,7 +58,7 @@ impl From<Persistent> for Character {
 			derived: Derived::default(),
 			mutators: Vec::new(),
 		};
-		character.recompile();
+		character.recompile_minimal();
 		character
 	}
 }
@@ -77,27 +77,58 @@ impl Character {
 		self.mutators.clear();
 	}
 
-	pub fn recompile(&mut self) {
+	#[cfg(test)]
+	fn recompile_minimal(&mut self) {
+		self.initiaize_recompile();
+		self.insert_mutators();
+		self.apply_cached_mutators();
+	}
+
+	fn initiaize_recompile(&mut self) {
 		self.character.set_data_path(&PathBuf::new());
-		self.derived = Derived::default();
-		self.mutators.clear();
+		self.clear_derived();
+	}
+
+	fn insert_mutators(&mut self) {
 		for defaults in self.default_blocks.clone() {
 			self.apply_from(&defaults, &PathBuf::new());
 		}
 		self.apply_from(&self.character.clone(), &PathBuf::new());
-		self.apply_cached_mutators();
 	}
 
 	// TODO: Decouple database+system_depot from dnd data - there can be an abstraction/trait
 	// which specifies the minimal API for getting a cached object from a database of content
-	pub async fn update_cached_objects(
-		&mut self,
-		provider: ObjectCacheProvider,
-	) -> anyhow::Result<()> {
+	pub async fn recompile(&mut self, provider: ObjectCacheProvider) -> anyhow::Result<()> {
+		self.initiaize_recompile();
+		self.insert_mutators();
+
+		let mut cache_loops = 0usize;
+		let mut cache = super::AdditionalObjectCache::default();
+		while self.derived.additional_objects.has_pending_objects() {
+			if cache_loops > 3 {
+				log::error!(target: "derived",
+					"Hit max number of recursive bundle processing loops. \
+					There is likely a recursive loop of bundles and mutators adding each \
+					other causing excessive adding of additional bundles."
+				);
+				break;
+			}
+			cache += std::mem::take(&mut self.derived.additional_objects);
+			cache.update_objects(&provider).await?;
+			cache.apply_mutators(self);
+			cache_loops += 1;
+		}
+		self.derived.additional_objects = cache;
+
+		self.apply_cached_mutators();
+
+		self.inventory_mut().resolve_indirection(&provider).await?;
+		self.persistent_mut().conditions.resolve_indirection(&provider).await?;
 		self.derived
 			.spellcasting
-			.fetch_spell_objects(provider, &self.character)
+			.fetch_spell_objects(&provider, &self.character)
 			.await?;
+
 		Ok(())
 	}
 
@@ -163,37 +194,36 @@ impl Character {
 			*/
 			entry.mutator.apply(self, &entry.parent_path);
 		}
+		if !self.mutators.is_empty() {
+			log::warn!(target: "character",
+				"Additional mutators were added during the application phase. \
+				In order to preserve mutator dependency chain integrity, \
+				all mutators should be added during the insertion phase (on_insert).\n\n{:?}",
+				self.mutators
+			);
+		}
 	}
 
 	pub fn get_selections_at(&self, path: impl AsRef<Path>) -> Option<&Vec<String>> {
-		self.character.selected_values.get(path.as_ref())
+		self.character.get_selections_at(path)
 	}
 
 	pub fn get_first_selection(&self, path: impl AsRef<Path>) -> Option<&String> {
-		self.get_selections_at(path)
-			.map(|all| all.first())
-			.flatten()
+		self.character.get_first_selection(path)
 	}
 
-	pub fn get_first_selection_at<T>(
-		&self,
-		data_path: impl AsRef<Path>,
-	) -> Option<Result<T, <T as FromStr>::Err>>
+	pub fn get_first_selection_at<T>(&self, data_path: impl AsRef<Path>) -> Option<Result<T, <T as FromStr>::Err>>
 	where
 		T: Clone + 'static + FromStr,
 	{
-		let selections = self.get_selections_at(data_path);
-		selections
-			.map(|all| all.first())
-			.flatten()
-			.map(|selected| T::from_str(&selected))
+		self.character.get_first_selection_at(data_path)
 	}
 
-	pub fn get_selector_value<T>(&self, selector: &Selector<T>) -> Option<T>
+	pub fn get_selector_value<T>(&self, selector: &selector::Value<Self, T>) -> Option<T>
 	where
 		T: Clone + 'static + ToString + FromStr,
 	{
-		if let Selector::Specific(value) = selector {
+		if let selector::Value::Specific(value) = selector {
 			return Some(value.clone());
 		}
 		let path_to_data = selector
@@ -204,11 +234,11 @@ impl Character {
 			.flatten()
 	}
 
-	pub fn resolve_selector<T>(&mut self, selector: &Selector<T>) -> Option<T>
+	pub fn resolve_selector<T>(&mut self, selector: &selector::Value<Self, T>) -> Option<T>
 	where
 		T: Clone + 'static + ToString + FromStr,
 	{
-		if let Selector::Specific(value) = selector {
+		if let selector::Value::Specific(value) = selector {
 			return Some(value.clone());
 		}
 		let path_to_data = selector
@@ -226,11 +256,7 @@ impl Character {
 	}
 
 	pub fn export_as_kdl(&self) -> kdl::KdlDocument {
-		use crate::kdl_ext::AsKdl;
-		let mut doc = kdl::KdlDocument::new();
-		doc.nodes_mut()
-			.push(self.persistent().as_kdl().build("character"));
-		doc
+		self.persistent().export_as_kdl()
 	}
 }
 
@@ -283,11 +309,7 @@ impl Character {
 		&mut self.derived.ability_scores
 	}
 
-	pub fn ability_modifier(
-		&self,
-		ability: Ability,
-		proficiency: Option<proficiency::Level>,
-	) -> i32 {
+	pub fn ability_modifier(&self, ability: Ability, proficiency: Option<proficiency::Level>) -> i32 {
 		let modifier = self.ability_scores().get(ability).score().modifier();
 		let bonus = match proficiency {
 			Some(proficiency) => proficiency * self.proficiency_bonus(),
@@ -376,6 +398,14 @@ impl Character {
 		self.character.hit_points_mut()
 	}
 
+	pub fn attack_bonuses(&self) -> &AttackBonuses {
+		&self.derived.attack_bonuses
+	}
+
+	pub fn attack_bonuses_mut(&mut self) -> &mut AttackBonuses {
+		&mut self.derived.attack_bonuses
+	}
+
 	pub fn defenses(&self) -> &Defenses {
 		&self.derived.defenses
 	}
@@ -392,8 +422,11 @@ impl Character {
 		&mut self.derived.other_proficiencies
 	}
 
-	pub fn add_feature(&mut self, feature: &Feature, parent_path: &Path) {
-		let feature = feature.clone();
+	pub fn add_bundles(&mut self, object_data: super::AdditionalObjectData) {
+		self.derived.additional_objects.insert(object_data);
+	}
+
+	pub fn add_feature(&mut self, feature: Feature, parent_path: &Path) {
 		self.apply_from(&feature, parent_path);
 		self.features_mut()
 			.path_map
@@ -414,60 +447,6 @@ impl Character {
 
 	pub fn inventory_mut(&mut self) -> &mut Inventory {
 		&mut self.character.inventory
-	}
-
-	pub fn iter_actions_mut_for(
-		&mut self,
-		restriction: &Option<weapon::Restriction>,
-	) -> Vec<&mut Action> {
-		let mut actions = self
-			.derived
-			.features
-			.path_map
-			.iter_values_mut()
-			.filter_map(|feature| feature.action.as_mut())
-			.collect::<Vec<_>>();
-		if let Some(weapon::Restriction {
-			weapon_kind,
-			attack_kind,
-			ability,
-		}) = restriction
-		{
-			if !weapon_kind.is_empty() {
-				actions = actions
-					.into_iter()
-					.filter_map(|action| {
-						let Some(attack) = &action.attack else {
-							return None;
-						};
-						let Some(kind) = &attack.weapon_kind else {
-							return None;
-						};
-						weapon_kind.contains(kind).then_some(action)
-					})
-					.collect();
-			}
-
-			if !attack_kind.is_empty() {
-				actions = actions
-					.into_iter()
-					.filter_map(|action| {
-						let Some(attack) = &action.attack else { return None; };
-						let Some(atk_kind) = &attack.kind else { return None; };
-						attack_kind.contains(&atk_kind.kind()).then_some(action)
-					})
-					.collect();
-			}
-
-			if !ability.is_empty() {
-				actions = actions.into_iter().filter_map(|action| {
-					let Some(attack) = &action.attack else { return None; };
-					let AttackCheckKind::AttackRoll { ability: atk_roll_ability, .. } = &attack.check else { return None; };
-					ability.contains(atk_roll_ability).then_some(action)
-				}).collect();
-			}
-		}
-		actions
 	}
 
 	pub fn derived_description(&self) -> &DerivedDescription {
@@ -495,13 +474,23 @@ impl Character {
 	}
 
 	pub fn add_starting_equipment(&mut self, entries: &Vec<StartingEquipment>, source: &Path) {
-		self.derived.starting_equipment.push((entries.clone(), source.to_owned()));
+		self.derived
+			.starting_equipment
+			.push((entries.clone(), source.to_owned()));
+	}
+
+	pub fn rest_resets_mut(&mut self) -> &mut RestResets {
+		&mut self.derived.rest_resets
+	}
+
+	pub fn rest_resets(&self) -> &RestResets {
+		&self.derived.rest_resets
 	}
 }
 
 pub struct ObjectCacheProvider {
 	// TODO: Decouple database+system_depot from dnd data - there can be an abstraction/trait
 	// which specifies the minimal API for getting a cached object from a database of content
-	pub database: crate::database::app::Database,
+	pub database: crate::database::Database,
 	pub system_depot: crate::system::Depot,
 }

@@ -1,5 +1,6 @@
 use super::IndirectCondition;
-use crate::kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt};
+use crate::kdl_ext::{NodeContext, NodeReader};
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::str::FromStr;
 
 mod activation;
@@ -19,33 +20,19 @@ pub struct Action {
 	pub conditions_to_apply: Vec<IndirectCondition>,
 }
 
-impl FromKDL for Action {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		let activation_kind = match (
-			node.get_str_opt(ctx.consume_idx())?,
-			node.query_opt("scope() > activation")?,
-		) {
+impl FromKdl<NodeContext> for Action {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut NodeReader<'doc>) -> anyhow::Result<Self> {
+		let activation_kind = match (node.next_str_opt()?, node.query_opt("scope() > activation")?) {
 			(Some(str), None) => ActivationKind::from_str(str)?,
-			(None, Some(node)) => ActivationKind::from_kdl(node, &mut ctx.next_node())?,
+			(None, Some(mut node)) => ActivationKind::from_kdl(&mut node)?,
 			_ => return Err(MissingActivation(node.to_string()).into()),
 		};
 
-		let attack = match node.query("scope() > attack")? {
-			None => None,
-			Some(node) => Some(Attack::from_kdl(node, &mut ctx.next_node())?),
-		};
-		let limited_uses = match node.query("scope() > limited_uses")? {
-			None => None,
-			Some(node) => Some(LimitedUses::from_kdl(node, &mut ctx.next_node())?),
-		};
+		let attack = node.query_opt_t::<Attack>("scope() > attack")?;
+		let limited_uses = node.query_opt_t::<LimitedUses>("scope() > limited_uses")?;
 
-		let mut conditions_to_apply = Vec::new();
-		for node in node.query_all("scope() > condition")? {
-			conditions_to_apply.push(IndirectCondition::from_kdl(node, &mut ctx.next_node())?);
-		}
+		let conditions_to_apply = node.query_all_t::<IndirectCondition>("scope() > condition")?;
 
 		Ok(Self {
 			activation_kind,
@@ -94,7 +81,7 @@ mod test {
 						roll::{Die, EvaluatedRoll},
 						Ability, Condition, DamageRoll, DamageType, Rest,
 					},
-					evaluator::GetLevel,
+					evaluator::GetLevelInt,
 					Value,
 				},
 			},
@@ -104,7 +91,7 @@ mod test {
 		static NODE_NAME: &str = "action";
 
 		fn node_ctx() -> NodeContext {
-			NodeContext::registry(NodeRegistry::default_with_eval::<GetLevel>())
+			NodeContext::registry(NodeRegistry::default_with_eval::<GetLevelInt>())
 		}
 
 		#[test]
@@ -148,9 +135,10 @@ mod test {
 						roll: Some(EvaluatedRoll::from((2, Die::D6))),
 						base_bonus: 1,
 						damage_type: DamageType::Fire,
-						additional_bonuses: Vec::new(),
 					}),
 					weapon_kind: None,
+					classification: None,
+					properties: Vec::new(),
 				}),
 				limited_uses: None,
 				conditions_to_apply: Vec::new(),
@@ -175,7 +163,7 @@ mod test {
 				attack: None,
 				limited_uses: Some(LimitedUses::Usage(UseCounterData {
 					max_uses: Value::Fixed(1),
-					reset_on: Some(Rest::Long),
+					reset_on: Some(Value::Fixed(Rest::Long.to_string())),
 					..Default::default()
 				})),
 				conditions_to_apply: Vec::new(),
@@ -206,13 +194,13 @@ mod test {
 				attack: None,
 				limited_uses: Some(LimitedUses::Usage(UseCounterData {
 					max_uses: Value::Evaluated(
-						GetLevel {
+						GetLevelInt {
 							class_name: None,
 							order_map: [(2, 1), (5, 2), (10, 4), (14, 5), (20, -1)].into(),
 						}
 						.into(),
 					),
-					reset_on: Some(Rest::Long),
+					reset_on: Some(Value::Fixed(Rest::Long.to_string())),
 					..Default::default()
 				})),
 				conditions_to_apply: Vec::new(),
@@ -254,7 +242,7 @@ mod test {
 		fn condition_custom() -> anyhow::Result<()> {
 			let doc = "
 				|action \"Action\" {
-				|    condition \"Custom\" name=\"Slippery\"
+				|    condition \"Specific\" name=\"Slippery\"
 				|}
 			";
 			let data = Action {

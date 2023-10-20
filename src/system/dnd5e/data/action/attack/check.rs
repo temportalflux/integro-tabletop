@@ -1,12 +1,9 @@
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt, ValueExt},
-	system::dnd5e::{
-		data::{character::Character, Ability},
-		Value,
-	},
+	kdl_ext::{NodeContext, NodeReader},
+	system::dnd5e::{data::Ability, Value},
 	utility::NotInList,
 };
-use std::str::FromStr;
+use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum AttackCheckKind {
@@ -23,81 +20,33 @@ pub enum AttackCheckKind {
 }
 
 crate::impl_trait_eq!(AttackCheckKind);
-impl AttackCheckKind {
-	pub fn evaluate(&self, state: &Character) -> i32 {
-		match self {
-			Self::AttackRoll {
-				ability,
-				proficient,
-			} => {
-				let proficient = proficient.evaluate(state);
-				state.ability_modifier(*ability, Some(proficient.into()))
-			}
-			Self::SavingThrow {
-				base,
-				dc_ability,
-				proficient,
-				save_ability: _,
-			} => {
-				let ability_bonus = dc_ability
-					.as_ref()
-					.map(|ability| state.ability_scores().get(*ability).score().modifier())
-					.unwrap_or_default();
-				let prof_bonus = proficient
-					.then(|| state.proficiency_bonus())
-					.unwrap_or_default();
-				*base + ability_bonus + prof_bonus
-			}
-		}
-	}
-}
 
-impl FromKDL for AttackCheckKind {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		match node.get_str_req(ctx.consume_idx())? {
+impl FromKdl<NodeContext> for AttackCheckKind {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut NodeReader<'doc>) -> anyhow::Result<Self> {
+		match node.next_str_req()? {
 			"AttackRoll" => {
-				let ability = Ability::from_str(node.get_str_req(ctx.consume_idx())?)?;
+				let ability = node.next_str_req_t::<Ability>()?;
 				let proficient = match (
 					node.get_bool_opt("proficient")?,
-					node.query("scope() > proficient")?,
+					node.query_opt_t::<Value<bool>>("scope() > proficient")?,
 				) {
 					(None, None) => Value::Fixed(false),
 					(Some(prof), None) => Value::Fixed(prof),
-					(_, Some(node)) => {
-						let mut ctx = ctx.next_node();
-						Value::from_kdl(
-							node,
-							node.entry_req(ctx.consume_idx())?,
-							&mut ctx,
-							|value| Ok(value.as_bool_req()?),
-						)?
-					}
+					(_, Some(value)) => value,
 				};
-				Ok(Self::AttackRoll {
-					ability,
-					proficient,
-				})
+				Ok(Self::AttackRoll { ability, proficient })
 			}
 			"SavingThrow" => {
 				// TODO: The difficulty class should be its own struct (which impls evaluator)
 				let (base, dc_ability, proficient) = {
-					let node = node.query_req("scope() > difficulty_class")?;
-					let mut ctx = ctx.next_node();
-					let base = node.get_i64_req(ctx.consume_idx())? as i32;
-					let ability = match node.query_str_opt("scope() > ability_bonus", 0)? {
-						None => None,
-						Some(str) => Some(Ability::from_str(str)?),
-					};
-					let proficient = node
-						.query_bool_opt("scope() > proficiency_bonus", 0)?
-						.unwrap_or(false);
+					let mut node = node.query_req("scope() > difficulty_class")?;
+					let base = node.next_i64_req()? as i32;
+					let ability = node.query_str_opt_t::<Ability>("scope() > ability_bonus", 0)?;
+					let proficient = node.query_bool_opt("scope() > proficiency_bonus", 0)?.unwrap_or(false);
 					(base, ability, proficient)
 				};
-				let save_ability =
-					Ability::from_str(node.query_str_req("scope() > save_ability", 0)?)?;
+				let save_ability = node.query_str_req_t::<Ability>("scope() > save_ability", 0)?;
 				Ok(Self::SavingThrow {
 					base,
 					dc_ability,
@@ -114,10 +63,7 @@ impl AsKdl for AttackCheckKind {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 		match self {
-			Self::AttackRoll {
-				ability,
-				proficient,
-			} => {
+			Self::AttackRoll { ability, proficient } => {
 				node.push_entry("AttackRoll");
 				node.push_entry_typed(ability.long_name(), "Ability");
 				match proficient {

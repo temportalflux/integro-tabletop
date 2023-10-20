@@ -109,7 +109,9 @@ impl<T> PathMap<T> {
 		let mut map = self;
 		for component in path.as_ref().components() {
 			let key = component.as_os_str().to_str().unwrap();
-			let Some(next_map) = map.children.get_mut(key) else { return None; };
+			let Some(next_map) = map.children.get_mut(key) else {
+				return None;
+			};
 			map = next_map;
 		}
 		Some(map)

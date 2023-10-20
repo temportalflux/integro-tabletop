@@ -1,18 +1,13 @@
+use crate::kdl_ext::{AsKdl, NodeBuilder};
+use derivative::Derivative;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use crate::kdl_ext::{AsKdl, NodeBuilder};
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum ModuleId {
-	Local {
-		name: String,
-	},
-	Github {
-		user_org: String,
-		repository: String,
-	},
+	Local { name: String },
+	Github { user_org: String, repository: String },
 }
 impl Default for ModuleId {
 	fn default() -> Self {
@@ -21,19 +16,33 @@ impl Default for ModuleId {
 		}
 	}
 }
+impl std::fmt::Debug for ModuleId {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Local { name } => write!(f, "Local({name})"),
+			Self::Github { user_org, repository } => write!(f, "Github({user_org}/{repository})"),
+		}
+	}
+}
 impl ToString for ModuleId {
 	fn to_string(&self) -> String {
 		match &self {
 			ModuleId::Local { name } => name.clone(),
-			ModuleId::Github {
-				user_org,
-				repository,
-			} => format!("{user_org}/{repository}"),
+			ModuleId::Github { user_org, repository } => format!("{user_org}/{repository}"),
+		}
+	}
+}
+impl From<&github::RepositoryMetadata> for ModuleId {
+	fn from(value: &github::RepositoryMetadata) -> Self {
+		Self::Github {
+			user_org: value.owner.clone(),
+			repository: value.name.clone(),
 		}
 	}
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Default, Hash, PartialOrd, Ord, Derivative)]
+#[derivative(Debug, PartialEq, Eq)]
 pub struct SourceId {
 	pub module: Option<ModuleId>,
 	pub system: Option<String>,
@@ -43,7 +52,12 @@ pub struct SourceId {
 }
 
 impl SourceId {
-	pub fn set_basis(&mut self, other: &Self, include_version: bool) {
+	pub fn set_relative_basis(&mut self, other: &Self, include_version: bool) {
+		// Ignore any basis which is empty or is exactly equal to the current id.
+		// The latter can happen when parsing bundles from their source file for instance.
+		if other == &Self::default() || other == self {
+			return;
+		}
 		if self.module.is_none() {
 			self.module = other.module.clone();
 		}
@@ -55,22 +69,9 @@ impl SourceId {
 		}
 	}
 
-	pub fn with_basis(mut self, other: &Self, include_version: bool) -> Self {
-		self.set_basis(other, include_version);
+	pub fn with_relative_basis(mut self, other: &Self, include_version: bool) -> Self {
+		self.set_relative_basis(other, include_version);
 		self
-	}
-
-	pub fn ref_id(&self) -> String {
-		let prefix = match &self.module {
-			None => String::default(),
-			Some(ModuleId::Local { name }) => format!("{name}-"),
-			Some(ModuleId::Github {
-				user_org,
-				repository,
-			}) => format!("{user_org}_{repository}-"),
-		};
-		let name = self.path.file_stem().unwrap().to_str().unwrap();
-		format!("{prefix}{name}")
 	}
 
 	pub fn unversioned(&self) -> Self {
@@ -80,6 +81,29 @@ impl SourceId {
 	pub fn into_unversioned(mut self) -> Self {
 		self.version = None;
 		self
+	}
+
+	pub fn minimal(&self) -> std::borrow::Cow<Self> {
+		if self.version.is_some() {
+			std::borrow::Cow::Owned(self.unversioned())
+		} else {
+			std::borrow::Cow::Borrowed(self)
+		}
+	}
+
+	pub fn has_path(&self) -> bool {
+		!self.path.as_os_str().is_empty()
+	}
+
+	pub fn ref_id(&self) -> String {
+		let prefix = match &self.module {
+			None => String::default(),
+			Some(ModuleId::Local { name }) => format!("{name}_"),
+			Some(ModuleId::Github { user_org, repository }) => format!("{user_org}_{repository}_"),
+		};
+		let name = self.path.with_extension("").display().to_string();
+		let name = name.replace("\\", "/").replace("/", "_");
+		format!("{prefix}{name}")
 	}
 }
 
@@ -91,10 +115,7 @@ impl ToString for SourceId {
 				ModuleId::Local { name } => {
 					format!("local://{name}")
 				}
-				ModuleId::Github {
-					user_org,
-					repository,
-				} => {
+				ModuleId::Github { user_org, repository } => {
 					format!("github://{user_org}:{repository}")
 				}
 			});
@@ -117,7 +138,7 @@ impl ToString for SourceId {
 }
 
 impl FromStr for SourceId {
-	type Err = anyhow::Error;
+	type Err = SourceIdParseError;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		let url = match url::Url::from_str(s) {
@@ -133,24 +154,16 @@ impl FromStr for SourceId {
 		};
 
 		let module_name = url.username().to_owned();
-		let system = url
-			.host_str()
-			.ok_or(SourceIdParseError::MissingSystemId)?
-			.to_owned();
+		let system = url.host_str().ok_or(SourceIdParseError::MissingSystemId)?.to_owned();
 
 		let module = match url.scheme() {
 			"local" => ModuleId::Local { name: module_name },
 			"github" => ModuleId::Github {
 				user_org: module_name,
-				repository: url
-					.password()
-					.ok_or(SourceIdParseError::MissingRepository)?
-					.to_string(),
+				repository: url.password().ok_or(SourceIdParseError::MissingRepository)?.to_string(),
 			},
 			scheme => {
-				return Err(
-					SourceIdParseError::UnrecognizedModuleService(scheme.to_owned()).into(),
-				);
+				return Err(SourceIdParseError::UnrecognizedModuleService(scheme.to_owned()).into());
 			}
 		};
 		let mut path = PathBuf::from_str(url.path())?;
@@ -180,14 +193,25 @@ impl AsKdl for SourceId {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 		if *self != Self::default() {
-			node.push_entry(self.to_string());
+			let as_str = self.to_string();
+			if !as_str.is_empty() {
+				node.push_entry(as_str);
+			}
 		}
 		node
 	}
 }
 
 #[derive(thiserror::Error, Debug)]
-enum SourceIdParseError {
+pub enum SourceIdParseError {
+	#[error(transparent)]
+	PathParse(#[from] std::convert::Infallible),
+	#[error(transparent)]
+	UrlParse(#[from] url::ParseError),
+	#[error(transparent)]
+	PrefixError(#[from] std::path::StripPrefixError),
+	#[error(transparent)]
+	FragmentError(#[from] std::num::ParseIntError),
 	#[error("Missing system id in host field of url")]
 	MissingSystemId,
 	#[error("Missing repository name in password field of url")]
@@ -247,10 +271,7 @@ mod test {
 			version: None,
 			node_idx: 0,
 		};
-		assert_eq!(
-			source.to_string(),
-			"local://homebrew@dnd5e/items/trinket.kdl"
-		);
+		assert_eq!(source.to_string(), "local://homebrew@dnd5e/items/trinket.kdl");
 	}
 
 	#[test]
@@ -305,12 +326,10 @@ mod test {
 
 	#[test]
 	fn rebased() -> anyhow::Result<()> {
-		let basis =
-			SourceId::from_str("local://module-name@mysystem/item/gear.kdl?version=e812da2c")?;
+		let basis = SourceId::from_str("local://module-name@mysystem/item/gear.kdl?version=e812da2c")?;
 		let mut relative = SourceId::from_str("feat/initiate.kdl")?;
-		relative.set_basis(&basis, true);
-		let expected =
-			SourceId::from_str("local://module-name@mysystem/feat/initiate.kdl?version=e812da2c")?;
+		relative.set_relative_basis(&basis, true);
+		let expected = SourceId::from_str("local://module-name@mysystem/feat/initiate.kdl?version=e812da2c")?;
 		assert_eq!(relative, expected);
 		Ok(())
 	}

@@ -1,9 +1,6 @@
-use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeContext, NodeExt},
-	system::dnd5e::data::roll::Roll,
-	GeneralError,
-};
-use std::str::FromStr;
+use crate::kdl_ext::NodeContext;
+use crate::{system::dnd5e::data::roll::Roll, GeneralError};
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum Property {
@@ -31,18 +28,14 @@ impl Property {
 
 	pub fn description(&self) -> String {
 		match self {
-			Self::Light => {
-				"When you use the Attack action to make a melee attack with this weapon, \
+			Self::Light => "When you use the Attack action to make a melee attack with this weapon, \
 				you can use a bonus action to attack with a different light melee weapon \
 				that you're holding in the other hand."
-					.into()
-			}
+				.into(),
 			Self::Finesse => "You can use either your Strength or Dexterity modifier \
 				for both the attack and damage rolls."
 				.into(),
-			Self::Heavy => {
-				"Small or Tiny creatures have disadvantage on attack rolls with this weapon.".into()
-			}
+			Self::Heavy => "Small or Tiny creatures have disadvantage on attack rolls with this weapon.".into(),
 			Self::Reach => "This weapon extends an additional 5 feet of melee range when \
 				making the attack action or opportunity attacks."
 				.into(),
@@ -60,21 +53,22 @@ impl Property {
 	}
 }
 
-impl FromKDL for Property {
-	fn from_kdl(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
-		match node.get_str_req(ctx.consume_idx())? {
+impl FromKdl<NodeContext> for Property {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		match node.next_str_req()? {
 			"Light" => Ok(Self::Light),
 			"Finesse" => Ok(Self::Finesse),
 			"Heavy" => Ok(Self::Heavy),
 			"Reach" => Ok(Self::Reach),
 			"TwoHanded" => Ok(Self::TwoHanded),
 			"Thrown" => {
-				let short = node.get_i64_req(ctx.consume_idx())? as u32;
-				let long = node.get_i64_req(ctx.consume_idx())? as u32;
+				let short = node.next_i64_req()? as u32;
+				let long = node.next_i64_req()? as u32;
 				Ok(Self::Thrown(short, long))
 			}
 			"Versatile" => {
-				let roll = Roll::from_str(node.get_str_req(ctx.consume_idx())?)?;
+				let roll = node.next_str_req_t::<Roll>()?;
 				Ok(Self::Versatile(roll))
 			}
 			name => Err(GeneralError(format!("Unrecognized weapon property {name:?}")).into()),
@@ -95,9 +89,7 @@ impl AsKdl for Property {
 				.with_entry("Thrown")
 				.with_entry(*short as i64)
 				.with_entry(*long as i64),
-			Self::Versatile(roll) => node
-				.with_entry("Versatile")
-				.with_entry_typed(roll.to_string(), "Roll"),
+			Self::Versatile(roll) => node.with_entry("Versatile").with_entry_typed(roll.to_string(), "Roll"),
 		}
 	}
 }

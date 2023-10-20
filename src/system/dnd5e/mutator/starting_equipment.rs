@@ -1,25 +1,24 @@
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::dnd5e::data::{
 		character::{Character, StartingEquipment},
 		description,
 	},
 	utility::Mutator,
 };
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AddStartingEquipment(Vec<StartingEquipment>);
 
 crate::impl_trait_eq!(AddStartingEquipment);
-crate::impl_kdl_node!(AddStartingEquipment, "add_starting_equipment");
+kdlize::impl_kdl_node!(AddStartingEquipment, "add_starting_equipment");
 
 impl Mutator for AddStartingEquipment {
 	type Target = Character;
 
 	fn description(&self, _state: Option<&Character>) -> description::Section {
-		description::Section {
-			..Default::default()
-		}
+		description::Section { ..Default::default() }
 	}
 
 	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
@@ -27,12 +26,10 @@ impl Mutator for AddStartingEquipment {
 	}
 }
 
-impl FromKDL for AddStartingEquipment {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		Ok(Self(StartingEquipment::from_kdl_vec(node, ctx)?))
+impl FromKdl<NodeContext> for AddStartingEquipment {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		Ok(Self(StartingEquipment::from_kdl_vec(node)?))
 	}
 }
 impl AsKdl for AddStartingEquipment {
@@ -53,9 +50,9 @@ mod test {
 				core::SourceId,
 				dnd5e::{
 					data::{
-						character::{ItemFilter, WeaponFilter},
+						character::IndirectItem,
 						currency::{self, Wallet},
-						item::{weapon, Item},
+						item::{restriction, weapon, Item, Restriction},
 					},
 					mutator::test::test_utils,
 				},
@@ -68,13 +65,16 @@ mod test {
 		fn item_specific() -> anyhow::Result<()> {
 			let doc = "
 				|mutator \"add_starting_equipment\" {
-				|    item \"Specific\" \"items/weapon/rapier.kdl\"
+				|    item \"Specific\" \"items/weapons/rapier.kdl\"
 				|}
 			";
-			let data = AddStartingEquipment(vec![StartingEquipment::SpecificItem(SourceId {
-				path: "items/weapon/rapier.kdl".into(),
-				..Default::default()
-			})]);
+			let data = AddStartingEquipment(vec![StartingEquipment::IndirectItem(IndirectItem::Specific(
+				SourceId {
+					path: "items/weapons/rapier.kdl".into(),
+					..Default::default()
+				},
+				1,
+			))]);
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -89,19 +89,17 @@ mod test {
 				|    }
 				|}
 			";
-			let data = AddStartingEquipment(vec![StartingEquipment::CustomItem(Item {
+			let data = AddStartingEquipment(vec![StartingEquipment::IndirectItem(IndirectItem::Custom(Item {
 				name: "Trophy".into(),
 				description: description::Info {
 					sections: vec![description::Section {
-						content: description::SectionContent::Body(
-							"trophy taken from a fallen enemy".into(),
-						),
+						content: description::SectionContent::Body("trophy taken from a fallen enemy".into()),
 						..Default::default()
 					}],
 					..Default::default()
 				},
 				..Default::default()
-			})]);
+			}))]);
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -116,7 +114,7 @@ mod test {
 				|    }
 				|}
 			";
-			let data = AddStartingEquipment(vec![StartingEquipment::SelectItem(ItemFilter {
+			let data = AddStartingEquipment(vec![StartingEquipment::SelectItem(Restriction {
 				tags: vec!["Arcane Focus".into()],
 				..Default::default()
 			})]);
@@ -134,8 +132,8 @@ mod test {
 				|    }
 				|}
 			";
-			let data = AddStartingEquipment(vec![StartingEquipment::SelectItem(ItemFilter {
-				weapon: Some(WeaponFilter {
+			let data = AddStartingEquipment(vec![StartingEquipment::SelectItem(Restriction {
+				weapon: Some(restriction::Weapon {
 					kind: Some(weapon::Kind::Simple),
 					..Default::default()
 				}),
@@ -155,8 +153,8 @@ mod test {
 				|    }
 				|}
 			";
-			let data = AddStartingEquipment(vec![StartingEquipment::SelectItem(ItemFilter {
-				weapon: Some(WeaponFilter {
+			let data = AddStartingEquipment(vec![StartingEquipment::SelectItem(Restriction {
+				weapon: Some(restriction::Weapon {
 					kind: Some(weapon::Kind::Martial),
 					has_melee: Some(true),
 					..Default::default()
@@ -189,21 +187,27 @@ mod test {
 			let doc = "
 				|mutator \"add_starting_equipment\" {
 				|    group pick=1 {
-				|        item \"Specific\" \"items/weapon/rapier.kdl\"
-				|        item \"Specific\" \"items/weapon/longsword.kdl\"
+				|        item \"Specific\" \"items/weapons/rapier.kdl\"
+				|        item \"Specific\" \"items/weapons/longsword.kdl\"
 				|    }
 				|}
 			";
 			let data = AddStartingEquipment(vec![StartingEquipment::Group {
 				entries: vec![
-					StartingEquipment::SpecificItem(SourceId {
-						path: "items/weapon/rapier.kdl".into(),
-						..Default::default()
-					}),
-					StartingEquipment::SpecificItem(SourceId {
-						path: "items/weapon/longsword.kdl".into(),
-						..Default::default()
-					}),
+					StartingEquipment::IndirectItem(IndirectItem::Specific(
+						SourceId {
+							path: "items/weapons/rapier.kdl".into(),
+							..Default::default()
+						},
+						1,
+					)),
+					StartingEquipment::IndirectItem(IndirectItem::Specific(
+						SourceId {
+							path: "items/weapons/longsword.kdl".into(),
+							..Default::default()
+						},
+						1,
+					)),
 				],
 				pick: Some(1),
 			}]);
@@ -225,18 +229,27 @@ mod test {
 			";
 			let data = AddStartingEquipment(vec![StartingEquipment::Group {
 				entries: vec![
-					StartingEquipment::SpecificItem(SourceId {
-						path: "items/weapons/shortsword.kdl".into(),
-						..Default::default()
-					}),
-					StartingEquipment::SpecificItem(SourceId {
-						path: "items/weapons/shortsword.kdl".into(),
-						..Default::default()
-					}),
-					StartingEquipment::SpecificItem(SourceId {
-						path: "items/weapons/longbow.kdl".into(),
-						..Default::default()
-					}),
+					StartingEquipment::IndirectItem(IndirectItem::Specific(
+						SourceId {
+							path: "items/weapons/shortsword.kdl".into(),
+							..Default::default()
+						},
+						1,
+					)),
+					StartingEquipment::IndirectItem(IndirectItem::Specific(
+						SourceId {
+							path: "items/weapons/shortsword.kdl".into(),
+							..Default::default()
+						},
+						1,
+					)),
+					StartingEquipment::IndirectItem(IndirectItem::Specific(
+						SourceId {
+							path: "items/weapons/longbow.kdl".into(),
+							..Default::default()
+						},
+						1,
+					)),
 				],
 				pick: None,
 			}]);

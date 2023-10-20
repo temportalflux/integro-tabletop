@@ -1,0 +1,43 @@
+/* Columns */
+
+.kanbn-column-backlog .kanbn-column-task-list {
+	border-color: var(--vscode-activityBar-inactiveForeground);
+}
+
+.kanbn-column-blocked .kanbn-column-task-list {
+	border-color: #843bb5;
+}
+
+.kanbn-column-pending .kanbn-column-task-list {
+	border-color: #ffc400;
+}
+
+.kanbn-column-done .kanbn-column-task-list {
+	border-color: #0067cf;
+}
+
+/* Tags */
+
+.kanbn-task-tag-mvp {
+	background-color: rgb(144, 92, 255)
+}
+
+.kanbn-task-tag-app {
+	background-color: rgb(233, 136, 0)
+}
+
+.kanbn-task-tag-storage {
+	background-color: rgb(61, 165, 255)
+}
+
+.kanbn-task-tag-offline {
+	background-color: rgb(21, 184, 0)
+}
+
+.kanbn-task-tag-perf {
+	background-color: rgb(231, 59, 21)
+}
+
+.kanbn-task-tag-capability {
+	background-color: rgb(192, 68, 114)
+}

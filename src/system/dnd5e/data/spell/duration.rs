@@ -1,4 +1,5 @@
-use crate::kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeContext, NodeExt};
+use crate::kdl_ext::NodeContext;
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 
 #[derive(Default, Clone, PartialEq, Debug)]
 pub struct Duration {
@@ -14,14 +15,12 @@ pub enum DurationKind {
 	Special,
 }
 
-impl FromKDL for Duration {
-	fn from_kdl(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
-		let kind = DurationKind::from_kdl(node, ctx)?;
+impl FromKdl<NodeContext> for Duration {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let kind = DurationKind::from_kdl(node)?;
 		let concentration = node.get_bool_opt("concentration")?.unwrap_or_default();
-		Ok(Self {
-			concentration,
-			kind,
-		})
+		Ok(Self { concentration, kind })
 	}
 }
 
@@ -35,13 +34,14 @@ impl AsKdl for Duration {
 	}
 }
 
-impl FromKDL for DurationKind {
-	fn from_kdl(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
-		match node.get_str_req(ctx.consume_idx())? {
+impl FromKdl<NodeContext> for DurationKind {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		match node.next_str_req()? {
 			"Instantaneous" => Ok(Self::Instantaneous),
 			"Special" => Ok(Self::Special),
 			unit => {
-				let distance = node.get_i64_req(ctx.consume_idx())? as u64;
+				let distance = node.next_i64_req()? as u64;
 				Ok(Self::Unit(distance, unit.to_owned()))
 			}
 		}
@@ -54,9 +54,7 @@ impl AsKdl for DurationKind {
 		match self {
 			Self::Instantaneous => node.with_entry("Instantaneous"),
 			Self::Special => node.with_entry("Special"),
-			Self::Unit(distance, unit) => {
-				node.with_entry(unit.clone()).with_entry(*distance as i64)
-			}
+			Self::Unit(distance, unit) => node.with_entry(unit.clone()).with_entry(*distance as i64),
 		}
 	}
 }

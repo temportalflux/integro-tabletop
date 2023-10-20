@@ -3,14 +3,14 @@ use crate::{
 		database::{use_query_typed, QueryStatus},
 		*,
 	},
-	page::characters::sheet::MutatorImpact,
+	page::characters::sheet::{
+		joined::editor::{description, mutator_list},
+		CharacterHandle, MutatorImpact,
+	},
 	system::{
 		core::SourceId,
 		dnd5e::{
-			components::{
-				editor::{description, mutator_list},
-				CharacterHandle, UsesCounter,
-			},
+			components::UsesCounter,
 			data::{
 				action::{ActivationKind, AttackCheckKind, AttackKindValue},
 				character::{ActionBudgetKind, Persistent},
@@ -65,8 +65,22 @@ impl ActionTag {
 #[function_component]
 pub fn Actions() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let modal_dispatcher = use_context::<modal::Context>().unwrap();
 	let selected_tags = use_state(|| EnumSet::<ActionTag>::all());
+
+	let context_menu = use_context::<context_menu::Control>().unwrap();
+	let open_feature_details = Callback::from({
+		let context_menu = context_menu.clone();
+		let state = state.clone();
+		move |feature_path: PathBuf| {
+			let Some(feature) = state.features().path_map.get_first(&feature_path) else {
+				return;
+			};
+			context_menu.dispatch(context_menu::Action::open_root(
+				feature.name.clone(),
+				html!(<Modal path={feature_path} />),
+			));
+		}
+	});
 
 	let make_tag_html = {
 		let selected_tags = selected_tags.clone();
@@ -81,10 +95,7 @@ pub fn Actions() -> Html {
 	};
 	let mut tag_htmls = vec![make_tag_html(html! {{"All"}}, EnumSet::all())];
 	for tag in EnumSet::<ActionTag>::all() {
-		tag_htmls.push(make_tag_html(
-			html! {{tag.display_name()}},
-			EnumSet::from(tag),
-		));
+		tag_htmls.push(make_tag_html(html! {{tag.display_name()}}, EnumSet::from(tag)));
 	}
 
 	let budget = {
@@ -103,10 +114,7 @@ pub fn Actions() -> Html {
 			budget_items.push((ActionBudgetKind::Bonus, amount));
 		}
 		{
-			let (amount, _) = state
-				.features()
-				.action_budget
-				.get(ActionBudgetKind::Reaction);
+			let (amount, _) = state.features().action_budget.get(ActionBudgetKind::Reaction);
 			budget_items.push((ActionBudgetKind::Reaction, amount));
 		}
 		html! {
@@ -137,18 +145,6 @@ pub fn Actions() -> Html {
 			features
 		};
 
-		let open_attack_modal = modal_dispatcher.callback({
-			move |feature_path| {
-				modal::Action::Open(modal::Props {
-					centered: true,
-					scrollable: true,
-					root_classes: classes!("feature"),
-					content: html! {<Modal path={feature_path} />},
-					..Default::default()
-				})
-			}
-		});
-
 		panes.push(html! {
 			<table class="table table-compact m-0 mb-3">
 				<thead>
@@ -168,7 +164,9 @@ pub fn Actions() -> Html {
 						let Some(attack) = &action.attack else {
 							return None;
 						};
-						let onclick = open_attack_modal.reform(move |_| feature_path.clone());
+						let onclick = open_feature_details.reform(move |_| feature_path.clone());
+
+						let (_check_ability, atk_bonus, dmg_bonus) = attack.evaluate_bonuses(&*state);
 						Some(html! {
 							<tr class="align-middle" {onclick}>
 								<td>{feature.name.clone()}</td>
@@ -178,29 +176,25 @@ pub fn Actions() -> Html {
 									Some(AttackKindValue::Ranged { short_dist, long_dist, .. }) => html! {<>{short_dist}{" / "}{long_dist}</>},
 								}}</td>
 								<td class="text-center">{{
-									let value = attack.check.evaluate(&*state);
 									match attack.check {
 										AttackCheckKind::AttackRoll {..} => html!{<>
-											{match value >= 0 { true => "+", false => "-" }}
-											{value.abs()}
+											{match atk_bonus >= 0 { true => "+", false => "-" }}
+											{atk_bonus.abs()}
 										</>},
 										AttackCheckKind::SavingThrow { save_ability, ..} => html!{<>
 											{save_ability.abbreviated_name()}
 											<br />
-											{value}
+											{atk_bonus}
 										</>},
 									}
 								}}</td>
 								<td class="text-center">{{
-									let ability_bonus = match &attack.check {
-										AttackCheckKind::AttackRoll { ability, .. } => state.ability_modifier(*ability, None),
-										_ => 0,
-									};
+									//let additional_damage = state.attack_bonuses().get_weapon_damage(action);
 									match &attack.damage {
-										// TODO: tooltip for where bonus come from
-										Some(DamageRoll { roll, base_bonus, damage_type: _, additional_bonuses }) => {
-											let additional_bonus: i32 = additional_bonuses.iter().map(|(v, _)| *v).sum();
-											let bonus = base_bonus + ability_bonus + additional_bonus;
+										Some(DamageRoll { roll, base_bonus, damage_type: _ }) => {
+											// TODO: Showing bonuses when a bonus is a roll with an optional damage type
+											//let additional_bonus: i32 = additional_damage.iter().map(|(v, _)| *v).sum();
+											let bonus = base_bonus + dmg_bonus;// + additional_bonus;
 											let roll_str = match &roll {
 												None => None,
 												Some(roll_value) => Some(roll_value.evaluate(&state).to_string()),
@@ -289,7 +283,10 @@ pub fn Actions() -> Html {
 				root_features.insert(prev_collapsed);
 			}
 			let Some(parent_group) = root_features.by_path.get_mut(&parent_path) else {
-				log::warn!("Found features with the parent path \"{}\", but no such feature exists", parent_path.display());
+				log::warn!(
+					"Found features with the parent path \"{}\", but no such feature exists",
+					parent_path.display()
+				);
 				continue;
 			};
 			for entry in child_features {
@@ -320,10 +317,10 @@ pub fn Actions() -> Html {
 								<div>
 									<strong>{tag.display_name()}{": "}</strong>
 									<span>
-										{nodes.into_iter().with_position().map(|position| {
+										{nodes.into_iter().with_position().map(|(position, node)| {
 											{match position {
-												Position::Only(node) | Position::Last(node) => node,
-												Position::First(node) | Position::Middle(node) => html! {
+												Position::Only | Position::Last => node,
+												Position::First | Position::Middle => html! {
 													<span>{node}{", "}</span>
 												},
 											}}
@@ -346,13 +343,15 @@ pub fn Actions() -> Html {
 		}).collect::<Vec<_>>()}
 	</div>});
 
-	html! {<>
-		<Tags>{tag_htmls}</Tags>
-		{budget}
-		<div class="pe-3" style="overflow-y: scroll; height: 455px;">
-			{panes}
+	html! {
+		<div class="panel actions">
+			<Tags>{tag_htmls}</Tags>
+			{budget}
+			<div class="pane">
+				{panes}
+			</div>
 		</div>
-	</>}
+	}
 }
 
 #[derive(Clone, PartialEq, Default)]
@@ -400,9 +399,7 @@ impl FeatureDisplayGroup {
 	}
 
 	fn iter(&self) -> impl Iterator<Item = &FeatureEntry> {
-		self.order
-			.iter()
-			.filter_map(move |path| self.by_path.get(path))
+		self.order.iter().filter_map(move |path| self.by_path.get(path))
 	}
 
 	fn into_iter(mut self) -> impl Iterator<Item = FeatureEntry> {
@@ -419,17 +416,11 @@ struct ActionProps {
 
 #[function_component]
 fn CollapsedFeature(ActionProps { entry }: &ActionProps) -> Html {
-	let modal_dispatcher = use_context::<modal::Context>().unwrap();
-	let onclick = modal_dispatcher.callback({
+	let onclick = context_menu::use_control_action({
 		let feature_path: PathBuf = entry.feature_path.clone();
-		move |_| {
-			modal::Action::Open(modal::Props {
-				centered: true,
-				scrollable: true,
-				root_classes: classes!("feature"),
-				content: html! {<Modal path={feature_path.clone()} />},
-				..Default::default()
-			})
+		let feature_name = AttrValue::from(entry.feature.name.clone());
+		move |_, _context| {
+			context_menu::Action::open_root(feature_name.clone(), html!(<Modal path={feature_path.clone()} />))
 		}
 	});
 	html! {
@@ -441,31 +432,22 @@ fn CollapsedFeature(ActionProps { entry }: &ActionProps) -> Html {
 fn ActionOverview(ActionProps { entry }: &ActionProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 
-	let modal_dispatcher = use_context::<modal::Context>().unwrap();
-	let onclick = modal_dispatcher.callback({
-		let feature_path = entry.feature_path.clone();
-		move |_| {
-			modal::Action::Open(modal::Props {
-				centered: true,
-				scrollable: true,
-				root_classes: classes!("feature"),
-				content: html! {<Modal path={feature_path.clone()} />},
-				..Default::default()
-			})
+	let onclick = context_menu::use_control_action({
+		let feature_path: PathBuf = entry.feature_path.clone();
+		let feature_name = AttrValue::from(entry.feature.name.clone());
+		move |_, _context| {
+			context_menu::Action::open_root(feature_name.clone(), html!(<Modal path={feature_path.clone()} />))
 		}
 	});
 
 	let fetch_indirect_conditions = use_query_typed::<Condition>();
 	let indirect_condition_ids = use_state_eq(|| Vec::new());
-	use_effect_with_deps(
-		{
-			let fetch_indirect_conditions = fetch_indirect_conditions.clone();
-			move |ids: &UseStateHandle<Vec<SourceId>>| {
-				fetch_indirect_conditions.run((**ids).clone());
-			}
-		},
-		indirect_condition_ids.clone(),
-	);
+	use_effect_with(indirect_condition_ids.clone(), {
+		let fetch_indirect_conditions = fetch_indirect_conditions.clone();
+		move |ids: &UseStateHandle<Vec<SourceId>>| {
+			fetch_indirect_conditions.run((**ids).clone());
+		}
+	});
 
 	let mut conditions_content = html!();
 	if let Some(action) = &entry.feature.action {
@@ -489,10 +471,7 @@ fn ActionOverview(ActionProps { entry }: &ActionProps) -> Html {
 					let iter = action.conditions_to_apply.iter();
 					let iter = iter.filter_map(|indirect| match indirect {
 						IndirectCondition::Custom(condition) => Some(condition.clone()),
-						IndirectCondition::Id(id) => fetched_conditions
-							.map(|list| list.get(id))
-							.flatten()
-							.cloned(),
+						IndirectCondition::Id(id) => fetched_conditions.map(|list| list.get(id)).flatten().cloned(),
 					});
 					let conditions = iter.collect::<Vec<_>>();
 
@@ -578,7 +557,7 @@ fn ActionOverview(ActionProps { entry }: &ActionProps) -> Html {
 					_ => html! {},
 				}}
 			</span>
-			{description(&desc, true)}
+			{description(&desc, true, false)}
 			{action_block}
 			{match entry.children.is_empty() {
 				true => html! {},
@@ -604,25 +583,17 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let fetch_indirect_conditions = use_query_typed::<Condition>();
 	let indirect_condition_ids = use_state_eq(|| Vec::new());
-	use_effect_with_deps(
-		{
-			let fetch_indirect_conditions = fetch_indirect_conditions.clone();
-			move |ids: &UseStateHandle<Vec<SourceId>>| {
-				fetch_indirect_conditions.run((**ids).clone());
-			}
-		},
-		indirect_condition_ids.clone(),
-	);
+	use_effect_with(indirect_condition_ids.clone(), {
+		let fetch_indirect_conditions = fetch_indirect_conditions.clone();
+		move |ids: &UseStateHandle<Vec<SourceId>>| {
+			fetch_indirect_conditions.run((**ids).clone());
+		}
+	});
 
 	let Some(feature) = state.features().path_map.get_first(&path) else {
 		return html! {<>
-			<div class="modal-header">
-			<h1 class="modal-title fs-4">{"Missing Feature"}</h1>
-				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
-			</div>
-			<div class="modal-body">
-				{crate::data::as_feature_path_text(&path)}
-			</div>
+			{"Missing Feature: "}
+			{crate::data::as_feature_path_text(&path)}
 		</>};
 	};
 
@@ -645,7 +616,7 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 		action_sections.push(html! {
 			<div class="property">
 				<strong>{"Action Type:"}</strong>
-				<span>{action.activation_kind}</span>
+				<span>{action.activation_kind.to_string()}</span>
 			</div>
 		});
 
@@ -672,10 +643,7 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 				// - normal if the target is at or closer than `short`
 				// - made a disadvantage when the target is father than `short`, but closer than `long`
 				// - impossible beyond the `long` range
-				Some(AttackKindValue::Ranged {
-					short_dist,
-					long_dist,
-				}) => {
+				Some(AttackKindValue::Ranged { short_dist, long_dist }) => {
 					attack_sections.push(html! {
 						<div class="property">
 							<strong>{"Kind:"}</strong>
@@ -693,23 +661,23 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 				}
 			}
 
-			let value = attack.check.evaluate(&*state);
+			let (check_ability, atk_bonus, dmg_bonus) = attack.evaluate_bonuses(&*state);
+			let check_ability_mod_str = check_ability
+				.map(|ability| format!("{} modifier", ability.long_name()))
+				.unwrap_or_default();
 			match &attack.check {
-				AttackCheckKind::AttackRoll {
-					ability,
-					proficient,
-				} => {
+				AttackCheckKind::AttackRoll { ability: _, proficient } => {
 					let use_prof = proficient.evaluate(&*state);
 					attack_sections.push(html! {
 						<div class="property">
 							<strong>{"To Hit:"}</strong>
 							<span>
-								{match value >= 0 { true => "+", false => "-" }}
-								{value.abs()}
+								{match atk_bonus >= 0 { true => "+", false => "-" }}
+								{atk_bonus.abs()}
 							</span>
 							<span style="color: var(--bs-gray-600);">
 								{" ("}
-								{format!("{} modifier", ability.long_name())}
+								{&check_ability_mod_str}
 								{use_prof.then(|| html! { {" + proficiency bonus"} }).unwrap_or_default()}
 								{")"}
 							</span>
@@ -726,7 +694,7 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 						<div class="property">
 							<strong>{"Saving Throw:"}</strong>
 							<span>
-								{format!("{} - DC {value}", save_ability.long_name())}
+								{format!("{} - DC {atk_bonus}", save_ability.long_name())}
 							</span>
 							<span class="ms-1" style="color: var(--bs-gray-600);">
 								{"("}
@@ -759,46 +727,44 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 				});
 			}
 
+			//let additional_damage = state.attack_bonuses().get_weapon_damage(action);
 			if let Some(DamageRoll {
 				roll,
 				base_bonus,
 				damage_type,
-				additional_bonuses,
 			}) = &attack.damage
 			{
-				let (check_ability, ability_bonus) = match &attack.check {
-					AttackCheckKind::AttackRoll { ability, .. } => {
-						(Some(*ability), state.ability_modifier(*ability, None))
-					}
-					_ => (None, 0),
-				};
-				let additional_bonus: i32 = additional_bonuses.iter().map(|(v, _)| *v).sum();
-				let bonus = base_bonus + ability_bonus + additional_bonus;
+				// TODO: Show damage roll bonuses inline, when the bonuses themselves can be rolls
+				//let additional_bonus: i32 = additional_damage.iter().map(|(v, _damage_type, _source)| *v).sum();
+				let bonus = base_bonus + dmg_bonus; // + additional_bonus;
 				let roll_str = match &roll {
 					None => None,
 					Some(roll_value) => Some(roll_value.evaluate(&state).to_string()),
 				};
-				let concat_roll_bonus =
-					|roll_str: &Option<String>, bonus: i32| match (&roll_str, bonus) {
-						(None, bonus) => html! {{bonus.max(0)}},
-						(Some(roll), 0) => html! {{roll}},
-						(Some(roll), 1..=i32::MAX) => html! {<>{roll}{" + "}{bonus}</>},
-						(Some(roll), i32::MIN..=-1) => html! {<>{roll}{" - "}{bonus.abs()}</>},
-					};
-				let suffix_info = (bonus > 0 && bonus != *base_bonus).then(|| html! {
-					<span style="color: var(--bs-gray-600);">
-						{" ("}
-						{concat_roll_bonus(&roll_str, *base_bonus)}
-						{check_ability.map(|ability| html! { {format!(" + {} modifier", ability.long_name())} }).unwrap_or_default()}
-						{additional_bonuses.iter().map(|(value, source)| html! {
-							<span>
-								{match *value >= 0 { true => "+", false => "-" }}
-								{value.abs()}
-								{"("}{crate::data::as_feature_path_text(source).unwrap_or_default()}{")"}
-							</span>
-						}).collect::<Vec<_>>()}
-						{")"}
+				let concat_roll_bonus = |roll_str: &Option<String>, bonus: i32| match (&roll_str, bonus) {
+					(None, bonus) => html! {{bonus.max(0)}},
+					(Some(roll), 0) => html! {{roll}},
+					(Some(roll), 1..=i32::MAX) => html! {<>{roll}{" + "}{bonus}</>},
+					(Some(roll), i32::MIN..=-1) => html! {<>{roll}{" - "}{bonus.abs()}</>},
+				};
+				let additional_damage_html = html!() /*additional_damage.iter().map(|(value, _damage_type, source)| html! {
+					<span>
+						{match *value >= 0 { true => "+", false => "-" }}
+						{value.abs()}
+						{"("}{crate::data::as_feature_path_text(source).unwrap_or_default()}{")"}
 					</span>
+				}).collect::<Vec<_>>()*/;
+				let suffix_info = (bonus > 0 && bonus != *base_bonus).then(|| {
+					html! {
+						<span style="color: var(--bs-gray-600);">
+							{" ("}
+							{concat_roll_bonus(&roll_str, *base_bonus)}
+							{" + "}
+							{&check_ability_mod_str}
+							{additional_damage_html}
+							{")"}
+						</span>
+					}
 				});
 				attack_sections.push(html! {
 					<div class="property">
@@ -861,9 +827,7 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 					let iter = action.conditions_to_apply.iter();
 					let iter = iter.filter_map(|indirect| match indirect {
 						IndirectCondition::Custom(custom) => Some(custom),
-						IndirectCondition::Id(id) => fetched_conditions
-							.map(|listings| listings.get(id))
-							.flatten(),
+						IndirectCondition::Id(id) => fetched_conditions.map(|listings| listings.get(id)).flatten(),
 					});
 					let condition_nodes = iter.map(|condition| {
 						html! {
@@ -876,14 +840,6 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 										{mutator_list(&condition.mutators, Some(&state))}
 									</div>
 								</div>
-								{condition.criteria.as_ref().map(|evaluator| {
-									html! {
-										<div>
-											<strong class="me-2">{"Only If:"}</strong>
-											{format!("TODO: missing description for {:?}", evaluator)}
-										</div>
-									}
-								})}
 							</div>
 						}
 					});
@@ -903,16 +859,7 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 	}
 
 	let desc = feature.description.clone().evaluate(&state);
-	sections.push(description(&desc, false));
-
-	if let Some(criteria) = &feature.criteria {
-		sections.push(html! {
-			<div class="property">
-				<strong>{"Criteria:"}</strong>
-				<span>{criteria.description().unwrap_or_else(|| format!("criteria missing description"))}</span>
-			</div>
-		});
-	}
+	sections.push(description(&desc, false, false));
 
 	if !feature.mutators.is_empty() {
 		sections.push(html! {
@@ -926,11 +873,7 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 	}
 
 	html! {<>
-		<div class="modal-header">
-			<h1 class="modal-title fs-4">{feature.name.clone()}</h1>
-			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
-		</div>
-		<div class="modal-body">
+		<div class="details feature">
 			{sections}
 		</div>
 	</>}

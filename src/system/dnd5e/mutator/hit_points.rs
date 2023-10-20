@@ -1,11 +1,12 @@
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt, ValueExt},
 	system::dnd5e::{
 		data::{character::Character, description},
 		Value,
 	},
 	utility::{Dependencies, Mutator},
 };
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AddMaxHitPoints {
@@ -14,7 +15,7 @@ pub struct AddMaxHitPoints {
 }
 
 crate::impl_trait_eq!(AddMaxHitPoints);
-crate::impl_kdl_node!(AddMaxHitPoints, "add_max_hit_points");
+kdlize::impl_kdl_node!(AddMaxHitPoints, "add_max_hit_points");
 
 impl Mutator for AddMaxHitPoints {
 	type Target = Character;
@@ -51,15 +52,11 @@ impl Mutator for AddMaxHitPoints {
 	}
 }
 
-impl FromKDL for AddMaxHitPoints {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
+impl FromKdl<NodeContext> for AddMaxHitPoints {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let id = node.get_str_opt("id")?.map(str::to_owned);
-		let value = Value::from_kdl(node, node.entry_req(ctx.consume_idx())?, ctx, |value| {
-			Ok(value.as_i64_req()? as i32)
-		})?;
+		let value = Value::from_kdl(node)?;
 		Ok(Self { id, value })
 	}
 }
@@ -87,7 +84,7 @@ mod test {
 				core::NodeRegistry,
 				dnd5e::{
 					data::Ability,
-					evaluator::{GetAbilityModifier, GetLevel, Math, MathOp},
+					evaluator::{GetAbilityModifier, GetLevelInt, Math, MathOp},
 					mutator::test::test_utils,
 				},
 			},
@@ -99,7 +96,7 @@ mod test {
 			let mut node_reg = NodeRegistry::default();
 			node_reg.register_mutator::<AddMaxHitPoints>();
 			node_reg.register_evaluator::<GetAbilityModifier>();
-			node_reg.register_evaluator::<GetLevel>();
+			node_reg.register_evaluator::<GetLevelInt>();
 			node_reg.register_evaluator::<Math>();
 			node_reg
 		}
@@ -146,7 +143,7 @@ mod test {
 						maximum: None,
 						values: vec![
 							Value::Evaluated(GetAbilityModifier(Ability::Constitution).into()),
-							Value::Evaluated(GetLevel::default().into()),
+							Value::Evaluated(GetLevelInt::default().into()),
 						],
 					}
 					.into(),

@@ -22,6 +22,10 @@ impl Signal {
 		}
 	}
 
+	pub fn value(&self) -> bool {
+		self.inner.load(Ordering::Acquire)
+	}
+
 	/// Sets the `bool` value to `true`.
 	pub fn set(&self) {
 		self.inner.store(true, Ordering::Release);

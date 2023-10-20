@@ -1,8 +1,9 @@
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
 	system::dnd5e::data::{character::Character, description},
 	utility::{GenericMutator, Mutator},
 };
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::collections::BTreeMap;
 
 // Grants child mutators based on the character's level.
@@ -13,7 +14,7 @@ pub struct GrantByLevel {
 }
 
 crate::impl_trait_eq!(GrantByLevel);
-crate::impl_kdl_node!(GrantByLevel, "by_level");
+kdlize::impl_kdl_node!(GrantByLevel, "by_level");
 
 impl Mutator for GrantByLevel {
 	type Target = Character;
@@ -33,10 +34,7 @@ impl Mutator for GrantByLevel {
 			if batch.is_empty() {
 				continue;
 			}
-			let children: Vec<_> = batch
-				.iter()
-				.map(|mutator| mutator.description(state))
-				.collect();
+			let children: Vec<_> = batch.iter().map(|mutator| mutator.description(state)).collect();
 			if children.is_empty() {
 				continue;
 			}
@@ -51,10 +49,7 @@ impl Mutator for GrantByLevel {
 			title: Some("Grant by Level".into()),
 			content: format!(
 				"You are granted benefits based on your {} level:",
-				self.class_name
-					.as_ref()
-					.map(String::as_str)
-					.unwrap_or("Character")
+				self.class_name.as_ref().map(String::as_str).unwrap_or("Character")
 			)
 			.into(),
 			children: sections,
@@ -77,25 +72,15 @@ impl Mutator for GrantByLevel {
 	}
 }
 
-impl FromKDL for GrantByLevel {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
+impl FromKdl<NodeContext> for GrantByLevel {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let class_name = node.get_str_opt("class")?.map(str::to_owned);
 
 		let mut levels = BTreeMap::new();
-		for node in node.query_all("scope() > level")? {
-			let mut ctx = ctx.next_node();
-
-			let level = node.get_i64_req(ctx.consume_idx())? as usize;
-
-			let mut mutators = Vec::new();
-			for node in node.query_all("scope() > mutator")? {
-				let ctx = ctx.next_node();
-				mutators.push(ctx.parse_mutator(node)?);
-			}
-
+		for node in &mut node.query_all("scope() > level")? {
+			let level = node.next_i64_req()? as usize;
+			let mutators = node.query_all_t("scope() > mutator")?;
 			levels.insert(level, mutators);
 		}
 

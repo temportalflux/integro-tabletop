@@ -1,10 +1,11 @@
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt, ValueExt},
 	system::dnd5e::data::{character::Character, description, DamageType},
-	utility::{InvalidEnumStr, Mutator},
+	utility::{list_as_english, selector, InvalidEnumStr, Mutator},
 };
 use enum_map::Enum;
 use enumset::EnumSetType;
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::str::FromStr;
 
 #[derive(EnumSetType, Enum, Debug)]
@@ -39,7 +40,7 @@ impl FromStr for Defense {
 #[derive(Clone, Debug, PartialEq)]
 pub struct AddDefense {
 	pub defense: Defense,
-	pub damage_type: Option<DamageType>,
+	pub damage_type: Option<selector::Value<Character, DamageType>>,
 	pub context: Option<String>,
 }
 impl Default for AddDefense {
@@ -52,52 +53,68 @@ impl Default for AddDefense {
 	}
 }
 crate::impl_trait_eq!(AddDefense);
-crate::impl_kdl_node!(AddDefense, "add_defense");
+kdlize::impl_kdl_node!(AddDefense, "add_defense");
 impl Mutator for AddDefense {
 	type Target = Character;
 
-	fn description(&self, _state: Option<&Character>) -> description::Section {
+	fn set_data_path(&self, parent: &std::path::Path) {
+		if let Some(selector) = &self.damage_type {
+			selector.set_data_path(parent);
+		}
+	}
+
+	fn description(&self, state: Option<&Character>) -> description::Section {
+		let body = format!(
+			"You are {} to {} damage{}.",
+			match self.defense {
+				Defense::Resistance => "resistant",
+				Defense::Immunity => "immune",
+				Defense::Vulnerability => "vulnerable",
+			},
+			match &self.damage_type {
+				None => "all".to_owned(),
+				Some(selector::Value::Specific(damage_type)) => damage_type.display_name().to_owned(),
+				Some(selector::Value::Options(selector::ValueOptions { options, .. })) if options.is_empty() =>
+					"any single type of".to_owned(),
+				Some(selector::Value::Options(selector::ValueOptions { options, .. })) => {
+					let options = options.iter().map(DamageType::to_string).collect();
+					list_as_english(options, "or").unwrap_or_default()
+				}
+			},
+			self.context
+				.as_ref()
+				.map(|ctx| format!(" from {ctx}"))
+				.unwrap_or_default(),
+		);
+		let mut selectors = selector::DataList::default();
+		if let Some(damage_type) = &self.damage_type {
+			selectors = selectors.with_enum("Damage Type", damage_type, state);
+		}
 		description::Section {
-			content: format!(
-				"You are {} to {} damage{}.",
-				match self.defense {
-					Defense::Resistance => "resistant",
-					Defense::Immunity => "immune",
-					Defense::Vulnerability => "vulnerable",
-				},
-				match &self.damage_type {
-					None => "all",
-					Some(damage_type) => damage_type.display_name(),
-				},
-				self.context
-					.as_ref()
-					.map(|ctx| format!(" from {ctx}"))
-					.unwrap_or_default(),
-			)
-			.into(),
+			content: body.into(),
+			children: vec![selectors.into()],
 			..Default::default()
 		}
 	}
 
 	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
-		stats.defenses_mut().push(
-			self.defense,
-			self.damage_type.clone(),
-			self.context.clone(),
-			parent.to_owned(),
-		);
+		let damage_type = match &self.damage_type {
+			None => None,
+			Some(selector) => stats.resolve_selector(selector),
+		};
+		stats
+			.defenses_mut()
+			.push(self.defense, damage_type, self.context.clone(), parent.to_owned());
 	}
 }
 
-impl FromKDL for AddDefense {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		let defense = Defense::from_str(node.get_str_req(ctx.consume_idx())?)?;
-		let damage_type = match node.entry(ctx.consume_idx()) {
-			Some(entry) => Some(DamageType::from_str(entry.as_str_req()?)?),
-			None => None,
+impl FromKdl<NodeContext> for AddDefense {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let defense = node.next_str_req_t::<Defense>()?;
+		let damage_type = match node.peak_opt().is_some() {
+			true => Some(selector::Value::from_kdl(node)?),
+			false => None,
 		};
 		let context = node.get_str_opt("context")?.map(str::to_owned);
 		Ok(Self {
@@ -113,7 +130,7 @@ impl AsKdl for AddDefense {
 		let mut node = NodeBuilder::default();
 		node.push_entry(self.defense.to_string());
 		if let Some(damage_type) = &self.damage_type {
-			node.push_entry_typed(damage_type.to_string(), "DamageType");
+			node.append_typed("DamageType", damage_type.as_kdl());
 		}
 		if let Some(context) = &self.context {
 			node.push_entry(("context", context.clone()));
@@ -151,12 +168,46 @@ mod test {
 		}
 
 		#[test]
-		fn damage_type() -> anyhow::Result<()> {
+		fn specific() -> anyhow::Result<()> {
 			let doc = "mutator \"add_defense\" \
-				\"Resistance\" (DamageType)\"Cold\"";
+				\"Resistance\" (DamageType)\"Specific\" \"Cold\"";
 			let data = AddDefense {
 				defense: Defense::Resistance,
-				damage_type: Some(DamageType::Cold),
+				damage_type: Some(selector::Value::Specific(DamageType::Cold)),
+				context: None,
+			};
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
+			Ok(())
+		}
+
+		#[test]
+		fn any() -> anyhow::Result<()> {
+			let doc = "mutator \"add_defense\" \"Resistance\" (DamageType)\"Any\"";
+			let data = AddDefense {
+				defense: Defense::Resistance,
+				damage_type: Some(selector::Value::Options(selector::ValueOptions::default())),
+				context: None,
+			};
+			assert_eq_askdl!(&data, doc);
+			assert_eq_fromkdl!(Target, doc, data.into());
+			Ok(())
+		}
+
+		#[test]
+		fn any_of() -> anyhow::Result<()> {
+			let doc = "
+				|mutator \"add_defense\" \"Resistance\" (DamageType)\"Any\" {
+				|    option \"Fire\"
+				|    option \"Force\"
+				|}
+			";
+			let data = AddDefense {
+				defense: Defense::Resistance,
+				damage_type: Some(selector::Value::Options(selector::ValueOptions {
+					options: [DamageType::Fire, DamageType::Force].into(),
+					..Default::default()
+				})),
 				context: None,
 			};
 			assert_eq_askdl!(&data, doc);
@@ -172,7 +223,7 @@ mod test {
 				name: "AddDefense".into(),
 				mutators: vec![AddDefense {
 					defense: Defense::Resistance,
-					damage_type: Some(DamageType::Fire),
+					damage_type: Some(selector::Value::Specific(DamageType::Fire)),
 					context: None,
 				}
 				.into()],
@@ -198,7 +249,7 @@ mod test {
 				name: "AddDefense".into(),
 				mutators: vec![AddDefense {
 					defense: Defense::Immunity,
-					damage_type: Some(DamageType::Cold),
+					damage_type: Some(selector::Value::Specific(DamageType::Cold)),
 					context: None,
 				}
 				.into()],
@@ -224,7 +275,7 @@ mod test {
 				name: "AddDefense".into(),
 				mutators: vec![AddDefense {
 					defense: Defense::Vulnerability,
-					damage_type: Some(DamageType::Psychic),
+					damage_type: Some(selector::Value::Specific(DamageType::Psychic)),
 					context: None,
 				}
 				.into()],

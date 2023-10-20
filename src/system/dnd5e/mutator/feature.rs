@@ -1,23 +1,30 @@
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::dnd5e::data::{character::Character, description, Feature},
 	utility::{Mutator, MutatorGroup},
 };
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct AddFeature(pub Feature);
 
 crate::impl_trait_eq!(AddFeature);
-crate::impl_kdl_node!(AddFeature, "feature");
+kdlize::impl_kdl_node!(AddFeature, "feature");
 
 impl Mutator for AddFeature {
 	type Target = Character;
 
-	fn description(&self, _state: Option<&Character>) -> description::Section {
-		// TODO: Description of mutator is the feature itself
-		description::Section {
+	fn description(&self, state: Option<&Character>) -> description::Section {
+		let mut section = description::Section {
+			title: Some(self.0.name.clone()),
+			format_args: self.0.description.format_args.clone(),
+			children: self.0.description.sections.clone(),
 			..Default::default()
+		};
+		for mutator in &self.0.mutators {
+			section.children.push(mutator.description(state));
 		}
+		section
 	}
 
 	fn set_data_path(&self, parent: &std::path::Path) {
@@ -25,16 +32,14 @@ impl Mutator for AddFeature {
 	}
 
 	fn on_insert(&self, stats: &mut Character, parent: &std::path::Path) {
-		stats.add_feature(&self.0, parent);
+		stats.add_feature(self.0.clone(), parent);
 	}
 }
 
-impl FromKDL for AddFeature {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		Ok(Self(Feature::from_kdl(node, ctx)?))
+impl FromKdl<NodeContext> for AddFeature {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		Ok(Self(Feature::from_kdl(node)?))
 	}
 }
 

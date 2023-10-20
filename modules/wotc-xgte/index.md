@@ -1,5 +1,7 @@
 Xanathar's Guide to Everything
 
+[Names!](https://www.dndbeyond.com/sources/xgte/character-names)
+
 - [Barbarian: Path of the Ancestral Guardian](https://www.dndbeyond.com/compendium/rules/xgte/subclasses#PathoftheAncestralGuardian)
 - [Barbarian: Path of the Storm Herald](https://www.dndbeyond.com/compendium/rules/xgte/subclasses#PathoftheStormHerald)
 - [Barbarian: Path of the Zealot](https://www.dndbeyond.com/compendium/rules/xgte/subclasses#PathoftheZealot)
@@ -33,5 +35,3 @@ Xanathar's Guide to Everything
 - [Wizard: War Magic](https://www.dndbeyond.com/compendium/rules/xgte/subclasses#WarMagic)
 
 - [Racial Feats](https://www.dndbeyond.com/sources/xgte/character-options-racial-feats)
-- [Spells](https://www.dndbeyond.com/compendium/rules/xgte/spells)
-- [Magic Items](https://www.dndbeyond.com/sources/xgte/common-magic-items)

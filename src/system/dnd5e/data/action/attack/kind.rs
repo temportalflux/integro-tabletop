@@ -1,13 +1,22 @@
-use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
-	utility::NotInList,
-};
+use crate::{kdl_ext::NodeContext, utility::NotInList};
+use enumset::EnumSetType;
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::str::FromStr;
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(EnumSetType, PartialOrd, Ord, Hash, Debug)]
 pub enum AttackKind {
 	Melee,
 	Ranged,
+}
+
+impl ToString for AttackKind {
+	fn to_string(&self) -> String {
+		match self {
+			Self::Melee => "Melee",
+			Self::Ranged => "Ranged",
+		}
+		.into()
+	}
 }
 
 impl FromStr for AttackKind {
@@ -37,22 +46,17 @@ impl AttackKindValue {
 	}
 }
 
-impl FromKDL for AttackKindValue {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		match node.get_str_req(ctx.consume_idx())? {
+impl FromKdl<NodeContext> for AttackKindValue {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		match node.next_str_req()? {
 			"Melee" => Ok(Self::Melee {
 				reach: node.get_i64_opt("reach")?.unwrap_or(5) as u32,
 			}),
 			"Ranged" => {
-				let short_dist = node.get_i64_req(ctx.consume_idx())? as u32;
-				let long_dist = node.get_i64_req(ctx.consume_idx())? as u32;
-				Ok(Self::Ranged {
-					short_dist,
-					long_dist,
-				})
+				let short_dist = node.next_i64_req()? as u32;
+				let long_dist = node.next_i64_req()? as u32;
+				Ok(Self::Ranged { short_dist, long_dist })
 			}
 			name => Err(NotInList(name.into(), vec!["Melee", "Ranged"]).into()),
 		}
@@ -70,10 +74,7 @@ impl AsKdl for AttackKindValue {
 				}
 				node
 			}
-			Self::Ranged {
-				short_dist,
-				long_dist,
-			} => node
+			Self::Ranged { short_dist, long_dist } => node
 				.with_entry("Ranged")
 				.with_entry(*short_dist as i64)
 				.with_entry(*long_dist as i64),

@@ -1,9 +1,11 @@
 use super::GenericEvaluator;
-use crate::{
-	kdl_ext::{AsKdl, EntryExt, NodeBuilder, ValueExt},
-	system::dnd5e::data::character::Character,
-};
+use crate::kdl_ext::NodeContext;
+use crate::system::dnd5e::data::character::Character;
 use anyhow::Context;
+use kdlize::{
+	ext::{EntryExt, ValueExt},
+	AsKdl, NodeBuilder,
+};
 use std::{collections::HashSet, fmt::Debug, ops::Deref};
 
 #[derive(Clone)]
@@ -84,29 +86,54 @@ where
 	}
 }
 
+pub trait FromKdlValue {
+	fn parse(value: &kdl::KdlValue) -> Result<Self, kdlize::error::InvalidValueType>
+	where
+		Self: Sized;
+}
+impl FromKdlValue for bool {
+	fn parse(value: &kdl::KdlValue) -> Result<Self, kdlize::error::InvalidValueType>
+	where
+		Self: Sized,
+	{
+		Ok(value.as_bool_req()?)
+	}
+}
+impl FromKdlValue for i32 {
+	fn parse(value: &kdl::KdlValue) -> Result<Self, kdlize::error::InvalidValueType>
+	where
+		Self: Sized,
+	{
+		Ok(value.as_i64_req()? as i32)
+	}
+}
+impl FromKdlValue for String {
+	fn parse(value: &kdl::KdlValue) -> Result<Self, kdlize::error::InvalidValueType>
+	where
+		Self: Sized,
+	{
+		Ok(value.as_str_req()?.to_owned())
+	}
+}
+
 // TODO: Test Value::from_kdl/as_kdl
-impl<V> Value<Character, V>
+impl<V> kdlize::FromKdl<NodeContext> for Value<Character, V>
 where
-	V: 'static,
+	V: 'static + FromKdlValue,
 {
-	pub fn from_kdl(
-		node: &kdl::KdlNode,
-		entry: &kdl::KdlEntry,
-		ctx: &mut crate::kdl_ext::NodeContext,
-		map_value: impl Fn(&kdl::KdlValue) -> anyhow::Result<V>,
-	) -> anyhow::Result<Self> {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let entry = node.next_req()?;
 		match entry.type_opt() {
 			Some("Evaluator") => {
 				let eval_id = entry
 					.as_str_req()
 					.context("Evaluator values must be a string containing the evaluator id")?;
-				let node_reg = ctx.node_reg().clone();
+				let node_reg = node.context().node_reg().clone();
 				let factory = node_reg.get_evaluator_factory(eval_id)?;
-				Ok(Self::Evaluated(
-					factory.from_kdl::<Character, V>(node, ctx)?,
-				))
+				Ok(Self::Evaluated(factory.from_kdl::<Character, V>(node)?))
 			}
-			_ => Ok(Self::Fixed(map_value(entry.value())?)),
+			_ => Ok(Self::Fixed(V::parse(entry.value())?)),
 		}
 	}
 }
@@ -152,5 +179,13 @@ impl Deref for Dependencies {
 
 	fn deref(&self) -> &Self::Target {
 		&self.0
+	}
+}
+
+impl std::ops::AddAssign for Dependencies {
+	fn add_assign(&mut self, rhs: Self) {
+		let mut tmp = Self::default();
+		std::mem::swap(self, &mut tmp);
+		*self = tmp.join(rhs);
 	}
 }

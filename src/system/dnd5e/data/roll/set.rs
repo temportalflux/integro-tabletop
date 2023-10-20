@@ -25,11 +25,38 @@ impl RollSet {
 		}
 	}
 
+	pub fn remove(&mut self, roll: Roll) {
+		match roll.die {
+			None => self.1 = self.1.saturating_sub(roll.amount),
+			Some(die) => {
+				self.0[die] = self.0[die].saturating_sub(roll.amount);
+			}
+		}
+	}
+
 	pub fn extend(&mut self, set: RollSet) {
 		for (die, amt) in set.0 {
 			self.0[die] += amt;
 		}
 		self.1 += set.1;
+	}
+
+	pub fn is_empty(&self) -> bool {
+		if self.1 > 0 {
+			return false;
+		}
+		for (_, amt) in &self.0 {
+			if *amt > 0 {
+				return false;
+			}
+		}
+		true
+	}
+
+	pub fn take_flat_bonus(&mut self) -> u32 {
+		let out = self.1;
+		self.1 = 0;
+		out
 	}
 
 	pub fn rolls(&self) -> Vec<Roll> {
@@ -67,11 +94,14 @@ impl RollSet {
 	}
 
 	pub fn as_nonzero_string(&self) -> Option<String> {
-		let roll_strs = self
+		let mut roll_strs = self
 			.rolls()
 			.iter()
 			.filter_map(Roll::as_nonzero_string)
 			.collect::<Vec<_>>();
+		if self.1 > 0 {
+			roll_strs.push(self.1.to_string());
+		}
 		(!roll_strs.is_empty()).then(|| roll_strs.join(" + "))
 	}
 

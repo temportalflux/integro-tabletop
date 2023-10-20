@@ -1,27 +1,24 @@
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, KDLNode, NodeBuilder, NodeExt},
 	system::dnd5e::{
 		data::character::{Character, HitPoint},
 		mutator::AddMaxHitPoints,
 	},
 	utility::{Dependencies, Evaluator},
 };
-use std::str::FromStr;
+use kdlize::NodeId;
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct GetHitPoints(pub HitPoint);
 
 crate::impl_trait_eq!(GetHitPoints);
-crate::impl_kdl_node!(GetHitPoints, "get_hit_points");
+kdlize::impl_kdl_node!(GetHitPoints, "get_hit_points");
 
-impl FromKDL for GetHitPoints {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		Ok(Self(HitPoint::from_str(
-			node.get_str_req(ctx.consume_idx())?,
-		)?))
+impl FromKdl<NodeContext> for GetHitPoints {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		Ok(Self(node.next_str_req_t::<HitPoint>()?))
 	}
 }
 

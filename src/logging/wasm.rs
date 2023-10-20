@@ -119,11 +119,10 @@ impl Log for WasmLogger {
 					.line()
 					.map_or_else(|| "[Unknown]".to_string(), |line| line.to_string()),
 			);
-			let target_fileline =
-				match self.config.prefer_target_over_fileline && !record.target().is_empty() {
-					true => format!("[{}]", record.target()),
-					false => fileline,
-				};
+			let target_fileline = match self.config.prefer_target_over_fileline && !record.target().is_empty() {
+				true => format!("[{}]", record.target()),
+				false => fileline,
+			};
 			let s = format!(
 				"%c{}%c {}%c{}{}",
 				record.level(),
@@ -136,30 +135,11 @@ impl Log for WasmLogger {
 			let args_style = JsValue::from_str(&style.args);
 
 			match record.level() {
-				Level::Trace => console::debug_4(
-					&s,
-					&JsValue::from(&style.lvl_trace),
-					&tgt_style,
-					&args_style,
-				),
-				Level::Debug => console::log_4(
-					&s,
-					&JsValue::from(&style.lvl_debug),
-					&tgt_style,
-					&args_style,
-				),
-				Level::Info => {
-					console::info_4(&s, &JsValue::from(&style.lvl_info), &tgt_style, &args_style)
-				}
-				Level::Warn => {
-					console::warn_4(&s, &JsValue::from(&style.lvl_warn), &tgt_style, &args_style)
-				}
-				Level::Error => console::error_4(
-					&s,
-					&JsValue::from(&style.lvl_error),
-					&tgt_style,
-					&args_style,
-				),
+				Level::Trace => console::debug_4(&s, &JsValue::from(&style.lvl_trace), &tgt_style, &args_style),
+				Level::Debug => console::log_4(&s, &JsValue::from(&style.lvl_debug), &tgt_style, &args_style),
+				Level::Info => console::info_4(&s, &JsValue::from(&style.lvl_info), &tgt_style, &args_style),
+				Level::Warn => console::warn_4(&s, &JsValue::from(&style.lvl_warn), &tgt_style, &args_style),
+				Level::Error => console::error_4(&s, &JsValue::from(&style.lvl_error), &tgt_style, &args_style),
 			}
 		}
 	}

@@ -1,15 +1,20 @@
+use super::Feature;
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt},
+	kdl_ext::NodeContext,
 	system::{
 		core::SourceId,
 		dnd5e::{
-			data::{character::Character, description, Ability, Feature},
+			data::{character::Character, description, Ability},
 			BoxedMutator, SystemComponent,
 		},
 	},
 	utility::{MutatorGroup, NotInList},
 };
-use std::{collections::HashMap, path::Path, str::FromStr};
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
+use std::{
+	collections::HashMap,
+	path::{Path, PathBuf},
+};
 
 #[derive(Default, Clone, PartialEq, Debug)]
 pub struct Bundle {
@@ -17,13 +22,13 @@ pub struct Bundle {
 	pub name: String,
 	/// The group this bundle is in (Race, RaceVariant, Lineage, Upbringing, Background, Feat, etc).
 	pub category: String,
-	pub description: description::Section,
+	pub description: description::Info,
 	/// The bundles required for this one to be added to a character.
 	pub requirements: Vec<BundleRequirement>,
 	/// The number of times this bundle can be added to a character.
 	pub limit: usize,
 	pub mutators: Vec<BoxedMutator>,
-	pub features: Vec<Feature>,
+	pub feature_config: Option<FeatureConfig>,
 }
 
 // TODO: Could bundle requirements just be a criteria/bool-evaluator?
@@ -35,6 +40,11 @@ pub enum BundleRequirement {
 	Ability(Ability, u32),
 }
 
+#[derive(Clone, PartialEq, Debug, Default)]
+pub struct FeatureConfig {
+	pub parent_path: Option<PathBuf>,
+}
+
 impl MutatorGroup for Bundle {
 	type Target = Character;
 
@@ -43,23 +53,29 @@ impl MutatorGroup for Bundle {
 		for mutator in &self.mutators {
 			mutator.set_data_path(&path_to_self);
 		}
-		for feature in &self.features {
-			feature.set_data_path(&path_to_self);
-		}
 	}
 
 	fn apply_mutators(&self, stats: &mut Character, parent: &Path) {
-		let path_to_self = parent.join(&self.name);
-		for mutator in &self.mutators {
-			stats.apply(mutator, &path_to_self);
-		}
-		for feat in &self.features {
-			stats.add_feature(feat, &path_to_self);
+		// TODO: Check requirements before applying
+		if let Some(config) = &self.feature_config {
+			let feature = Feature {
+				name: self.name.clone(),
+				description: self.description.clone(),
+				mutators: self.mutators.clone(),
+				parent: config.parent_path.clone(),
+				..Default::default()
+			};
+			stats.add_feature(feature, parent);
+		} else {
+			let path_to_self = parent.join(&self.name);
+			for mutator in &self.mutators {
+				stats.apply(mutator, &path_to_self);
+			}
 		}
 	}
 }
 
-crate::impl_kdl_node!(Bundle, "bundle");
+kdlize::impl_kdl_node!(Bundle, "bundle");
 
 impl SystemComponent for Bundle {
 	fn to_metadata(self) -> serde_json::Value {
@@ -94,52 +110,45 @@ impl SystemComponent for Bundle {
 	}
 }
 
-impl FromKDL for Bundle {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
+impl FromKdl<NodeContext> for Bundle {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let name = node.get_str_req("name")?.to_owned();
 		let category = node.get_str_req("category")?.to_owned();
 
 		let id = match category.as_str() {
-			"Feat" => ctx.parse_source_opt(node)?.unwrap_or_default(),
-			_ => ctx.parse_source_req(node)?,
+			"Feat" => crate::kdl_ext::query_source_opt(node)?.unwrap_or_default(),
+			_ => crate::kdl_ext::query_source_req(node)?,
 		};
 
-		let description = match node.query_opt("scope() > description")? {
-			Some(node) => description::Section::from_kdl(node, &mut ctx.next_node())?,
-			None => description::Section::default(),
+		let feature_config = match node.get_bool_opt("display_as_feature")? {
+			Some(true) => Some(FeatureConfig::default()),
+			_ => None,
 		};
+
+		let description = node
+			.query_opt_t::<description::Info>("scope() > description")?
+			.unwrap_or_default();
 		let limit = node.get_i64_opt("limit")?.unwrap_or(1) as usize;
 
 		let mut requirements = Vec::new();
-		for node in node.query_all("scope() > requirement")? {
-			let mut ctx = ctx.next_node();
-			match node.get_str_req(ctx.consume_idx())? {
+		for node in &mut node.query_all("scope() > requirement")? {
+			match node.next_str_req()? {
 				"Bundle" => {
-					let category = node.get_str_req(ctx.consume_idx())?.to_owned();
-					let name = node.get_str_req(ctx.consume_idx())?.to_owned();
+					let category = node.next_str_req()?.to_owned();
+					let name = node.next_str_req()?.to_owned();
 					requirements.push(BundleRequirement::Bundle { category, name });
 				}
 				"Ability" => {
-					let ability = Ability::from_str(node.get_str_req(ctx.consume_idx())?)?;
-					let score = node.get_i64_req(ctx.consume_idx())? as u32;
+					let ability = node.next_str_req_t::<Ability>()?;
+					let score = node.next_i64_req()? as u32;
 					requirements.push(BundleRequirement::Ability(ability, score));
 				}
 				kind => return Err(NotInList(kind.into(), vec!["Bundle", "Ability"]).into()),
 			}
 		}
 
-		let mut mutators = Vec::new();
-		for entry_node in node.query_all("scope() > mutator")? {
-			mutators.push(ctx.parse_mutator(entry_node)?);
-		}
-
-		let mut features = Vec::new();
-		for entry_node in node.query_all("scope() > feature")? {
-			features.push(Feature::from_kdl(entry_node, &mut ctx.next_node())?.into());
-		}
+		let mutators = node.query_all_t("scope() > mutator")?;
 
 		Ok(Self {
 			id,
@@ -149,7 +158,7 @@ impl FromKDL for Bundle {
 			requirements,
 			limit,
 			mutators,
-			features,
+			feature_config,
 		})
 	}
 }
@@ -160,8 +169,11 @@ impl AsKdl for Bundle {
 
 		node.push_entry(("category", self.category.clone()));
 		node.push_entry(("name", self.name.clone()));
+		if let Some(_config) = &self.feature_config {
+			node.push_entry(("display_as_feature", true));
+		}
 
-		node.push_child_t("source", &self.id);
+		node.push_child_opt_t("source", &self.id);
 
 		for requirement in &self.requirements {
 			let kdl = match requirement {
@@ -177,7 +189,7 @@ impl AsKdl for Bundle {
 			node.push_child(kdl.build("requirement"));
 		}
 
-		if self.description != description::Section::default() {
+		if self.description != description::Info::default() {
 			node.push_child_t("description", &self.description);
 		}
 		if self.limit > 1 {
@@ -186,9 +198,6 @@ impl AsKdl for Bundle {
 
 		for mutator in &self.mutators {
 			node.push_child_t("mutator", mutator);
-		}
-		for feature in &self.features {
-			node.push_child_t("feature", feature);
 		}
 
 		node

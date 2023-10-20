@@ -12,6 +12,8 @@ pub use currency::*;
 mod defense;
 pub use defense::*;
 
+pub mod glyph;
+
 mod hit_points;
 pub use hit_points::*;
 
@@ -29,13 +31,11 @@ pub use inspiration::*;
 mod proficiencies;
 pub use proficiencies::*;
 
+pub mod rest;
 pub mod roll;
 
 mod speed_senses;
 pub use speed_senses::*;
-
-mod sheet;
-pub use sheet::*;
 
 mod limited_uses;
 pub use limited_uses::*;

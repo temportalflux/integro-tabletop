@@ -1,60 +1,65 @@
-use itertools::Itertools;
-
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt},
 	system::dnd5e::{
-		data::{character::Character, description, Feature},
+		data::{character::Character, description},
 		BoxedMutator,
 	},
-	utility::{IdPath, Mutator, MutatorGroup, Selector, SelectorMetaVec},
+	utility::{selector, Mutator},
 };
-use std::collections::{HashMap, HashSet};
+use itertools::Itertools;
+use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
+use std::collections::{BTreeSet, HashMap, HashSet};
 
 /// Allows the user to select some number of options where each option can apply a different group of mutators.
 #[derive(Clone, PartialEq, Debug)]
 pub struct PickN {
 	name: String,
+	id: String,
 	options: HashMap<String, PickOption>,
-	selector: Selector<String>,
+	selector: selector::Value<Character, String>,
 }
 
 #[derive(Clone, PartialEq, Debug)]
 struct PickOption {
 	description: Option<description::Section>,
 	mutators: Vec<BoxedMutator>,
-	features: Vec<Feature>,
 }
 
 crate::impl_trait_eq!(PickN);
-crate::impl_kdl_node!(PickN, "pick");
+kdlize::impl_kdl_node!(PickN, "pick");
 
 impl PickN {
-	fn id(&self) -> Option<&String> {
-		let Selector::AnyOf { id, .. } = &self.selector else { return None; };
+	fn id(&self) -> Option<std::borrow::Cow<'_, String>> {
+		let selector::Value::Options(selector::ValueOptions { id, .. }) = &self.selector else {
+			return None;
+		};
 		id.get_id()
 	}
 
-	fn cannot_match(&self) -> &Vec<IdPath> {
-		let Selector::AnyOf { cannot_match, .. } = &self.selector else { unimplemented!(); };
-		cannot_match
-	}
-
 	fn max_selections(&self) -> usize {
-		let Selector::AnyOf { amount, .. } = &self.selector else { return 0; };
-		*amount
+		let selector::Value::Options(selector::ValueOptions { amount, .. }) = &self.selector else {
+			return 0;
+		};
+		let crate::utility::Value::Fixed(amt) = amount else {
+			return 0;
+		};
+		*amt as usize
 	}
 
-	fn option_order(&self) -> Option<&Vec<String>> {
-		let Selector::AnyOf { options, .. } = &self.selector else { return None; };
+	fn option_order(&self) -> Option<&BTreeSet<String>> {
+		let selector::Value::Options(selector::ValueOptions { options, .. }) = &self.selector else {
+			return None;
+		};
 		Some(options)
 	}
 
-	fn get_selections_in<'this, 'c>(
-		&'this self,
-		state: Option<&'c Character>,
-	) -> HashSet<&'c String> {
-		let Some((state, data_path)) = state.zip(self.selector.get_data_path()) else { return HashSet::default(); };
-		let Some(data) = state.get_selections_at(&data_path) else { return HashSet::default(); };
+	fn get_selections_in<'this, 'c>(&'this self, state: Option<&'c Character>) -> HashSet<&'c String> {
+		let Some((state, data_path)) = state.zip(self.selector.get_data_path()) else {
+			return HashSet::default();
+		};
+		let Some(data) = state.get_selections_at(&data_path) else {
+			return HashSet::default();
+		};
 		data.iter().collect::<HashSet<_>>()
 	}
 }
@@ -72,7 +77,9 @@ impl Mutator for PickN {
 				continue;
 			};
 
-			let Some(option) = self.options.get(key) else { continue; };
+			let Some(option) = self.options.get(key) else {
+				continue;
+			};
 			let mut content = String::new().into();
 			let mut option_children = Vec::new();
 			if let Some(description::Section {
@@ -93,9 +100,6 @@ impl Mutator for PickN {
 				}
 				option_children.push(section);
 			}
-			for feature in &option.features {
-				option_children.extend(feature.description.sections.iter().cloned());
-			}
 			children.push(description::Section {
 				title: Some(key.clone()),
 				content,
@@ -104,7 +108,7 @@ impl Mutator for PickN {
 			});
 		}
 
-		let selectors = SelectorMetaVec::default().with_str("Selected Option", &self.selector);
+		let selectors = selector::DataList::default().with_value("Selected Option", &self.selector, state);
 		children.insert(0, selectors.into());
 
 		description::Section {
@@ -123,20 +127,21 @@ impl Mutator for PickN {
 	fn set_data_path(&self, parent: &std::path::Path) {
 		self.selector.set_data_path(parent);
 		for (name, option) in &self.options {
-			let path_to_option = parent.join(name);
+			let path_to_option = parent.join(&self.id).join(name);
 			for mutator in &option.mutators {
 				mutator.set_data_path(&path_to_option);
-			}
-			for feature in &option.features {
-				feature.set_data_path(&path_to_option);
 			}
 		}
 	}
 
-	fn apply(&self, stats: &mut Self::Target, parent: &std::path::Path) {
-		let Some(data_path) = self.selector.get_data_path() else { return; };
+	fn on_insert(&self, stats: &mut Self::Target, parent: &std::path::Path) {
+		let Some(data_path) = self.selector.get_data_path() else {
+			return;
+		};
 		let selected_options = {
-			let Some(selections) = stats.get_selections_at(&data_path) else { return; };
+			let Some(selections) = stats.get_selections_at(&data_path) else {
+				return;
+			};
 			selections
 				.iter()
 				.filter_map(|key| self.options.get(key))
@@ -146,64 +151,45 @@ impl Mutator for PickN {
 			for mutator in &option.mutators {
 				stats.apply(mutator, parent);
 			}
-			for feature in &option.features {
-				stats.add_feature(feature, parent);
-			}
 		}
 	}
 }
 
-impl FromKDL for PickN {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		let max_selections = node.get_i64_req(ctx.consume_idx())? as usize;
+impl FromKdl<NodeContext> for PickN {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let max_selections = node.next_i64_req()? as usize;
 		let name = node.get_str_req("name")?.to_owned();
 
-		let id = IdPath::from(node.get_str_opt("id")?);
-		let cannot_match = node.query_str_all("scope() > cannot-match", 0)?;
-		let cannot_match = cannot_match.into_iter().map(IdPath::from).collect();
+		let id = match node.get_str_opt("id")? {
+			Some(id) => id.to_owned(),
+			None => name.clone(),
+		};
 
-		let mut options = HashMap::new();
-		for node in node.query_all("scope() > option")? {
-			let mut ctx = ctx.next_node();
-			let name = node.get_str_req(ctx.consume_idx())?.to_owned();
-
-			let description = match node.query_opt("scope() > description")? {
-				None => None,
-				Some(node) => Some(description::Section::from_kdl(node, &mut ctx.next_node())?),
-			};
-
-			let mut mutators = Vec::new();
-			for entry_node in node.query_all("scope() > mutator")? {
-				mutators.push(ctx.parse_mutator(entry_node)?);
-			}
-
-			let mut features = Vec::new();
-			for entry_node in node.query_all("scope() > feature")? {
-				features.push(Feature::from_kdl(entry_node, &mut ctx.next_node())?.into());
-			}
-
-			options.insert(
-				name,
-				PickOption {
-					description,
-					mutators,
-					features,
-				},
-			);
+		let mut cannot_match = Vec::new();
+		for path_str in node.query_str_all("scope() > cannot_match", 0)? {
+			cannot_match.push(path_str.into());
 		}
 
-		let selector = Selector::AnyOf {
-			id,
-			cannot_match,
-			amount: max_selections,
+		let mut options = HashMap::new();
+		for node in &mut node.query_all("scope() > option")? {
+			let name = node.next_str_req()?.to_owned();
+			let description = node.query_opt_t::<description::Section>("scope() > description")?;
+			let mutators = node.query_all_t("scope() > mutator")?;
+			options.insert(name, PickOption { description, mutators });
+		}
+
+		let selector = selector::Value::Options(selector::ValueOptions {
+			id: selector::IdPath::from(Some(id.clone())),
+			amount: crate::utility::Value::Fixed(max_selections as i32),
 			options: options.keys().cloned().sorted().collect(),
-		};
+			cannot_match,
+			is_applicable: None,
+		});
 
 		Ok(Self {
 			name,
+			id,
 			options,
 			selector,
 		})
@@ -218,16 +204,24 @@ impl AsKdl for PickN {
 
 		node.push_entry(("name", self.name.clone()));
 		if let Some(id) = self.id() {
-			node.push_entry(("id", id.clone()));
+			if *id != self.name {
+				node.push_entry(("id", id.into_owned()));
+			}
 		}
 
-		for cannot_match in self.cannot_match() {
-			let Some(id) = cannot_match.get_id() else { continue; };
-			node.push_child_t("cannot-match", id);
+		if let selector::Value::Options(selector::ValueOptions { cannot_match, .. }) = &self.selector {
+			for id_path in cannot_match {
+				let Some(id_str) = id_path.get_id() else {
+					continue;
+				};
+				node.push_child_entry("cannot_match", id_str.into_owned());
+			}
 		}
 
 		for name in self.option_order().unwrap() {
-			let Some(option) = self.options.get(name) else { continue; };
+			let Some(option) = self.options.get(name) else {
+				continue;
+			};
 			let mut node_option = NodeBuilder::default();
 			node_option.push_entry(name.clone());
 			if let Some(desc) = &option.description {
@@ -235,9 +229,6 @@ impl AsKdl for PickN {
 			}
 			for mutator in &option.mutators {
 				node_option.push_child_t("mutator", mutator);
-			}
-			for feature in &option.features {
-				node_option.push_child_t("feature", feature);
 			}
 			node.push_child(node_option.build("option"));
 		}
@@ -283,16 +274,13 @@ mod test {
 							argument: BoundValue::Base(15),
 						}
 						.into()],
-						features: vec![],
 					},
 				),
 				(
 					"Swimming".into(),
 					PickOption {
 						description: Some(description::Section {
-							content: description::SectionContent::Body(
-								"You have a swimming speed of 15".into(),
-							),
+							content: description::SectionContent::Body("You have a swimming speed of 15".into()),
 							..Default::default()
 						}),
 						mutators: vec![Speed {
@@ -300,7 +288,6 @@ mod test {
 							argument: BoundValue::Base(15),
 						}
 						.into()],
-						features: vec![],
 					},
 				),
 			]
@@ -322,13 +309,13 @@ mod test {
 			";
 			let data = PickN {
 				name: "Default Speed".into(),
+				id: "Default Speed".into(),
 				options: options(),
-				selector: Selector::AnyOf {
-					id: IdPath::default(),
-					cannot_match: vec![],
-					amount: 1,
-					options: vec!["Climbing".into(), "Swimming".into()],
-				},
+				selector: selector::Value::Options(selector::ValueOptions {
+					id: "Default Speed".into(),
+					options: ["Climbing".into(), "Swimming".into()].into(),
+					..Default::default()
+				}),
 			};
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
@@ -350,13 +337,13 @@ mod test {
 			";
 			let data = PickN {
 				name: "Default Speed".into(),
+				id: "speedA".into(),
 				options: options(),
-				selector: Selector::AnyOf {
-					id: IdPath::from("speedA"),
-					cannot_match: vec![],
-					amount: 1,
-					options: vec!["Climbing".into(), "Swimming".into()],
-				},
+				selector: selector::Value::Options(selector::ValueOptions {
+					id: "speedA".into(),
+					options: ["Climbing".into(), "Swimming".into()].into(),
+					..Default::default()
+				}),
 			};
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
@@ -367,7 +354,7 @@ mod test {
 		fn with_cannot_match() -> anyhow::Result<()> {
 			let doc = "
 				|mutator \"pick\" 1 name=\"Default Speed\" id=\"speedA\" {
-				|    cannot-match \"speedB\"
+				|    cannot_match \"/RootFeature/some_value\"
 				|    option \"Climbing\" {
 				|        mutator \"speed\" \"Climbing\" (Base)15
 				|    }
@@ -379,13 +366,14 @@ mod test {
 			";
 			let data = PickN {
 				name: "Default Speed".into(),
+				id: "speedA".into(),
 				options: options(),
-				selector: Selector::AnyOf {
-					id: IdPath::from("speedA"),
-					cannot_match: vec![IdPath::from("speedB")],
-					amount: 1,
-					options: vec!["Climbing".into(), "Swimming".into()],
-				},
+				selector: selector::Value::Options(selector::ValueOptions {
+					id: "speedA".into(),
+					options: ["Climbing".into(), "Swimming".into()].into(),
+					cannot_match: ["/RootFeature/some_value".into()].into(),
+					..Default::default()
+				}),
 			};
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());

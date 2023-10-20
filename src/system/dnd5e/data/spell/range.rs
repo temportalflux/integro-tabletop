@@ -1,7 +1,6 @@
-use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeContext, NodeExt, ValueExt},
-	utility::NotInList,
-};
+use crate::kdl_ext::NodeContext;
+use crate::utility::NotInList;
+use kdlize::{ext::ValueExt, AsKdl, FromKdl, NodeBuilder};
 
 #[derive(Default, Clone, PartialEq, Debug)]
 pub enum Range {
@@ -16,27 +15,21 @@ pub enum Range {
 	Unlimited,
 }
 
-impl FromKDL for Range {
-	fn from_kdl(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
-		let entry = node.entry_req(ctx.consume_idx())?;
+impl FromKdl<NodeContext> for Range {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let entry = node.next_req()?;
 		match entry.value().as_string() {
 			None => {
 				let distance = entry.as_i64_req()? as u64;
-				let unit = node
-					.get_str_opt(ctx.consume_idx())?
-					.unwrap_or("Feet")
-					.to_owned();
+				let unit = node.next_str_opt()?.unwrap_or("Feet").to_owned();
 				Ok(Self::Unit { distance, unit })
 			}
 			Some("Self") => Ok(Self::OnlySelf),
 			Some("Touch") => Ok(Self::Touch),
 			Some("Sight") => Ok(Self::Sight),
 			Some("Unlimited") => Ok(Self::Unlimited),
-			Some(type_name) => Err(NotInList(
-				type_name.into(),
-				vec!["Self", "Touch", "Sight", "Unlimited"],
-			)
-			.into()),
+			Some(type_name) => Err(NotInList(type_name.into(), vec!["Self", "Touch", "Sight", "Unlimited"]).into()),
 		}
 	}
 }

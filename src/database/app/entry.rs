@@ -1,7 +1,10 @@
-use crate::{database::Record, system::core::SourceId};
+use crate::system::core::SourceId;
+use database::Record;
 use serde::{Deserialize, Serialize};
-use std::str::FromStr;
+use std::{str::FromStr, sync::Arc};
 
+mod module;
+pub use module::*;
 mod module_system;
 pub use module_system::*;
 mod system;
@@ -37,11 +40,33 @@ impl Entry {
 	}
 
 	pub fn get_meta_str(&self, key: impl AsRef<str>) -> Option<&str> {
-		let Some(value) = self.metadata.get(key.as_ref()) else { return None; };
+		let Some(value) = self.metadata.get(key.as_ref()) else {
+			return None;
+		};
 		value.as_str()
 	}
 
 	pub fn name(&self) -> Option<&str> {
 		self.get_meta_str("name")
+	}
+
+	pub fn parse_kdl<T: kdlize::FromKdl<crate::kdl_ext::NodeContext>>(
+		&self,
+		node_reg: Arc<crate::system::core::NodeRegistry>,
+	) -> Option<T> {
+		// Parse the entry's kdl string:
+		// kdl string to document
+		let Ok(document) = self.kdl.parse::<kdl::KdlDocument>() else {
+			return None;
+		};
+		// document to first (and hopefully only) node
+		let Some(node) = document.nodes().get(0) else {
+			return None;
+		};
+		let ctx = crate::kdl_ext::NodeContext::new(Arc::new(self.source_id(true)), node_reg);
+		let Ok(value) = T::from_kdl(&mut crate::kdl_ext::NodeReader::new_root(node, ctx)) else {
+			return None;
+		};
+		Some(value)
 	}
 }

@@ -1,63 +1,59 @@
+use super::GeneralProp;
 use crate::{
 	components::{
+		context_menu,
 		database::{use_query_all_typed, use_typed_fetch_callback, QueryAllArgs, QueryStatus},
-		modal, Spinner, Tag, Tags,
+		IndirectFetch, ObjectLink, Spinner, Tag, Tags,
 	},
+	page::characters::sheet::joined::editor::{mutator_list, CollapsableCard},
+	page::characters::sheet::CharacterHandle,
 	page::characters::sheet::MutatorImpact,
 	system::{
 		core::SourceId,
 		dnd5e::{
-			components::{
-				editor::{mutator_list, CollapsableCard},
-				CharacterHandle,
-			},
-			data::{character::Persistent, Condition},
+			data::{character::Persistent, Condition, Indirect},
 			DnD5e,
 		},
 	},
 	utility::InputExt,
 };
-use std::str::FromStr;
+use itertools::Itertools;
+use std::{rc::Rc, str::FromStr};
 use yew::prelude::*;
+
+fn insert_condition_tag(out: &mut Vec<String>, condition: &Condition) {
+	out.push(condition.name.clone());
+	for implied in &condition.implied {
+		if let Indirect::Custom(condition) = &implied {
+			insert_condition_tag(out, condition);
+		}
+	}
+}
 
 #[function_component]
 pub fn ConditionsCard() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let modal_dispatcher = use_context::<modal::Context>().unwrap();
-	let onclick = modal_dispatcher.callback(|_| {
-		modal::Action::Open(modal::Props {
-			centered: true,
-			scrollable: true,
-			root_classes: classes!("condition"),
-			content: html! {<Modal />},
-			..Default::default()
-		})
+	let onclick = context_menu::use_control_action({
+		|_, _context| context_menu::Action::open_root("Conditions", html!(<Modal />))
 	});
-	let conditions = state
-		.persistent()
-		.conditions
-		.iter()
-		.map(|condition| {
-			// TODO: Show which conditions are disabled in the card
-			let _disabled = match &condition.criteria {
-				None => false,
-				Some(criteria) => criteria.evaluate(&state).is_ok(),
-			};
-			html! {
-				<Tag>
-					{condition.name.clone()}
-				</Tag>
-			}
-		})
-		.collect::<Vec<_>>();
+	let mut condition_names = Vec::new();
+	for condition in state.persistent().conditions.iter() {
+		insert_condition_tag(&mut condition_names, condition);
+	}
 	html! {
-		<div class="card m-1" style="height: 85px;" {onclick}>
+		<div class="card m-1" style="height: 80px;" {onclick}>
 			<div class="card-body text-center" style="padding: 5px 5px;">
 				<h6 class="card-title mb-1" style="font-size: 0.8rem;">{"Conditions"}</h6>
-				<div class="d-flex justify-content-center pe-1" style="overflow: scroll; height: 53px;">
-					{match conditions.is_empty() {
-						true => html! { "None" },
-						false => html! {<Tags> {conditions} </Tags>},
+				<div class="d-flex justify-content-center pe-1" style="overflow: auto; height: 53px;">
+					{match condition_names.is_empty() {
+						true => html!("None"),
+						false => html! {
+							<Tags classes={"scroll-content"}>
+								{condition_names.into_iter().sorted().map(|name| {
+									html!(<Tag>{name}</Tag>)
+								}).collect::<Vec<_>>()}
+							</Tags>
+						},
 					}}
 				</div>
 			</div>
@@ -80,16 +76,18 @@ fn Modal() -> Html {
 		);
 		let add_condition_by_id = use_typed_fetch_callback(
 			"Add Condition".into(),
-			state.new_dispatch(Box::new(
-				move |condition: Condition, persistent: &mut Persistent| {
-					persistent.conditions.insert(condition);
-					MutatorImpact::Recompile
-				},
-			)),
+			state.new_dispatch(Box::new(move |condition: Condition, persistent: &mut Persistent| {
+				persistent.conditions.insert(condition);
+				MutatorImpact::Recompile
+			})),
 		);
 		let on_add_condition = Callback::from(move |evt: web_sys::Event| {
-			let Some(value) = evt.select_value() else { return; };
-			let Ok(source_id) = SourceId::from_str(&value) else { return; };
+			let Some(value) = evt.select_value() else {
+				return;
+			};
+			let Ok(source_id) = SourceId::from_str(&value) else {
+				return;
+			};
 			add_condition_by_id.emit(source_id);
 		});
 
@@ -106,7 +104,9 @@ fn Modal() -> Html {
 				let options = conditions
 					.iter()
 					.map(|condition| {
-						let Some(id) = &condition.id else { return html!(); };
+						let Some(id) = &condition.id else {
+							return html!();
+						};
 						let id = id.unversioned();
 						html! {
 							<option
@@ -145,47 +145,80 @@ fn Modal() -> Html {
 	});
 
 	html! {<>
-		<div class="modal-header">
-			<h1 class="modal-title fs-4">{"Conditions"}</h1>
-			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
+		{add_condition_section}
+		<div>
+			{state.persistent().conditions.iter_keyed().map(|(key, condition)| {
+				let on_remove = on_remove_condition.reform({
+					let key = key.clone();
+					move |_| key.clone()
+				});
+				let ref_id = condition.name.replace(" ", "");
+
+				// TODO: Show degrees in body of collapsable card
+				html! {
+					<CollapsableCard
+						id={ref_id}
+						header_content={{
+							html! {<>
+								<span>{condition.name.clone()}</span>
+								<button
+									type="button" class="btn-close ms-auto" aria-label="Close"
+									onclick={on_remove}
+								/>
+							</>}
+						}}
+					>
+						<ConditionBody value={Rc::new(condition.clone())} />
+					</CollapsableCard>
+				}
+			}).collect::<Vec<_>>()}
 		</div>
-		<div class="modal-body">
-			{add_condition_section}
-			<div>
-				{state.persistent().conditions.iter_keyed().map(|(key, condition)| {
-					let on_remove = on_remove_condition.reform({
-						let key = key.clone();
-						move |_| key.clone()
-					});
-					// TODO: Show degrees in body of collapsable card
-					html! {
-						<CollapsableCard
-							id={condition.name.clone()}
-							header_content={{
-								html! {<>
-									<span>{condition.name.clone()}</span>
-									<button
-										type="button" class="btn-close ms-auto" aria-label="Close"
-										onclick={on_remove}
-									/>
-								</>}
-							}}
-						>
-							<div class="text-block">{condition.description.clone()}</div>
-							{match &condition.criteria {
-								None => html! {},
-								Some(criteria) => html! {
-									<div class="property">
-										<strong>{"Criteria:"}</strong>
-										<span>{criteria.description().unwrap_or_else(|| format!("criteria missing description"))}</span>
-									</div>
-								},
-							}}
-							{mutator_list(&condition.mutators, Some(&state))}
-						</CollapsableCard>
-					}
-				}).collect::<Vec<_>>()}
+	</>}
+}
+
+#[function_component]
+fn ConditionBody(GeneralProp { value: condition }: &GeneralProp<Rc<Condition>>) -> Html {
+	let state = use_context::<CharacterHandle>().unwrap();
+
+	let open_details = context_menu::use_control_action({
+		move |condition: Rc<Condition>, context| {
+			context_menu::Action::open(
+				&context,
+				condition.name.clone(),
+				html!(<ConditionBody value={condition.clone()} />),
+			)
+		}
+	});
+
+	let mut implications = Vec::with_capacity(condition.implied.len());
+	for implied in &condition.implied {
+		implications.push(html!(<IndirectFetch<Condition>
+			indirect={implied.clone()}
+			to_inner={Callback::from({
+				let open_details = open_details.clone();
+				move |condition: Rc<Condition>| html! {
+					<ObjectLink
+						title={condition.name.clone()}
+						subtitle={"Condition"}
+						disabled={false}
+						onclick={open_details.reform({
+							let condition = condition.clone();
+							move |_| condition.clone()
+						})}
+					/>
+				}
+			})}
+		/>));
+	}
+
+	html! {<>
+		<div class="text-block">{condition.description.clone()}</div>
+		{(!implications.is_empty()).then(|| html! {
+			<div class="d-flex flex-row">
+				<span class="me-2">{"Implied Conditions:"}</span>
+				<div>{implications}</div>
 			</div>
-		</div>
+		})}
+		{mutator_list(&condition.mutators, Some(&state))}
 	</>}
 }

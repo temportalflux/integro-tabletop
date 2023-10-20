@@ -1,8 +1,12 @@
 use super::character::Character;
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, EntryExt, FromKDL, NodeBuilder, NodeContext, NodeExt, ValueExt},
 	system::dnd5e::BoxedEvaluator,
-	utility::SelectorMetaVec,
+	utility::{selector, NotInList},
+};
+use kdlize::{
+	ext::{DocumentExt, EntryExt, ValueExt},
+	AsKdl, FromKdl, NodeBuilder,
 };
 use std::{
 	collections::{BTreeMap, HashMap},
@@ -27,7 +31,7 @@ pub struct Section {
 #[derive(Clone, PartialEq, Debug)]
 pub enum SectionContent {
 	Body(String),
-	Selectors(SelectorMetaVec),
+	Selectors(selector::DataList),
 	Table {
 		column_count: usize,
 		headers: Option<Vec<String>>,
@@ -49,11 +53,7 @@ impl Info {
 		self.evaluate_with(state, None)
 	}
 
-	pub fn evaluate_with(
-		mut self,
-		state: &Character,
-		args: Option<HashMap<String, String>>,
-	) -> Self {
+	pub fn evaluate_with(mut self, state: &Character, args: Option<HashMap<String, String>>) -> Self {
 		if !self.contains_format_syntax() {
 			return self;
 		}
@@ -87,12 +87,13 @@ impl Info {
 	}
 }
 
-impl FromKDL for Info {
-	fn from_kdl(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
+impl FromKdl<NodeContext> for Info {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		// If there are no children, this can be treated as a single-section block,
 		// where the section is the long description.
 		if node.children().is_none() {
-			let section = Section::from_kdl(node, ctx)?;
+			let section = Section::from_kdl(node)?;
 			return Ok(Self {
 				short: None,
 				sections: vec![section],
@@ -101,13 +102,8 @@ impl FromKDL for Info {
 		}
 
 		let short = node.query_str_opt("scope() > short", 0)?.map(str::to_owned);
-
-		let mut sections = Vec::new();
-		for node in node.query_all("scope() > section")? {
-			sections.push(Section::from_kdl(node, &mut ctx.next_node())?);
-		}
-
-		let format_args = FormatArgs::from_kdl_all(node, ctx)?;
+		let sections = node.query_all_t::<Section>("scope() > section")?;
+		let format_args = FormatArgs::from_kdl_all(&node)?;
 
 		Ok(Self {
 			short,
@@ -194,8 +190,8 @@ impl Section {
 	}
 }
 
-impl From<SelectorMetaVec> for Section {
-	fn from(value: SelectorMetaVec) -> Self {
+impl From<selector::DataList> for Section {
+	fn from(value: selector::DataList) -> Self {
 		Self {
 			content: SectionContent::Selectors(value),
 			..Default::default()
@@ -203,31 +199,32 @@ impl From<SelectorMetaVec> for Section {
 	}
 }
 
-impl FromKDL for Section {
-	fn from_kdl(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
+impl FromKdl<NodeContext> for Section {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		// Check if the first entry is a title.
 		// There may not be a first entry (e.g. table) or the first entry might not be a title (title-less body),
 		// so we cannot consume the first value in the node.
-		let has_title = match node.entry_opt(ctx.peak_idx()) {
+		let has_title = match node.peak_opt() {
 			Some(entry) => entry.type_opt() == Some("Title"),
 			None => false,
 		};
 		// If the first value IS a title, read it and consume the entry.
 		let title = match has_title {
-			true => Some(node.get_str_req(ctx.consume_idx())?.to_owned()),
+			true => Some(node.next_str_req()?.to_owned()),
 			false => None,
 		};
 
 		// Now parse the remaining values as the content.
 		// This could be a body (using the next value) or a table (which checks properties and uses child nodes).
-		let content = SectionContent::from_kdl(node, ctx)?;
+		let content = SectionContent::from_kdl(node)?;
 
 		// Finally, read format args (if any exist) and any subsections/children.
-		let format_args = FormatArgs::from_kdl_all(node, ctx)?;
+		let format_args = FormatArgs::from_kdl_all(&node)?;
 
 		let mut children = Vec::new();
-		for node in node.query_all("scope() > section")? {
-			children.push(Section::from_kdl(node, &mut ctx.next_node())?);
+		for mut node in &mut node.query_all("scope() > section")? {
+			children.push(Section::from_kdl(&mut node)?);
 		}
 
 		Ok(Self {
@@ -284,14 +281,15 @@ impl From<String> for SectionContent {
 	}
 }
 
-impl FromKDL for SectionContent {
-	fn from_kdl(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
+impl FromKdl<NodeContext> for SectionContent {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let is_table = node.get_bool_opt("table")?.unwrap_or_default();
 		match is_table {
 			// Take note that we never return Self::Selectors.
 			// That type is reserved specifically for hard/in-code descriptions (e.g. from mutators).
 			false => {
-				let content = node.get_str_req(ctx.consume_idx())?.to_owned();
+				let content = node.next_str_req()?.to_owned();
 				Ok(Self::Body(content))
 			}
 			true => {
@@ -307,7 +305,7 @@ impl FromKDL for SectionContent {
 				};
 				let mut max_columns_in_rows = 0;
 				let mut rows = Vec::new();
-				for node in node.query_all("scope() > row")? {
+				for node in &mut node.query_all("scope() > row")? {
 					let col_count = node.entries().len();
 					max_columns_in_rows = max_columns_in_rows.max(col_count);
 					let mut columns = Vec::with_capacity(col_count);
@@ -316,11 +314,7 @@ impl FromKDL for SectionContent {
 					}
 					rows.push(columns);
 				}
-				let column_count = headers
-					.as_ref()
-					.map(|v| v.len())
-					.unwrap_or(0)
-					.max(max_columns_in_rows);
+				let column_count = headers.as_ref().map(|v| v.len()).unwrap_or(0).max(max_columns_in_rows);
 				Ok(Self::Table {
 					column_count,
 					headers,
@@ -370,9 +364,9 @@ impl AsKdl for SectionContent {
 pub struct FormatArgs(BTreeMap<String, Arg>);
 
 #[derive(Clone, PartialEq, Debug)]
-struct Arg {
-	evaluator: BoxedEvaluator<i32>,
-	signed: bool,
+enum Arg {
+	Number(BoxedEvaluator<i32>, bool),
+	String(BoxedEvaluator<String>),
 }
 
 impl<K, V> From<Vec<(K, V, bool)>> for FormatArgs
@@ -383,10 +377,21 @@ where
 	fn from(values: Vec<(K, V, bool)>) -> Self {
 		let mut map = BTreeMap::new();
 		for (key, value, signed) in values {
-			let arg = Arg {
-				evaluator: value.into(),
-				signed,
-			};
+			let arg = Arg::Number(value.into(), signed);
+			map.insert(key.into(), arg);
+		}
+		Self(map)
+	}
+}
+impl<K, V> From<Vec<(K, V)>> for FormatArgs
+where
+	K: Into<String>,
+	V: Into<BoxedEvaluator<String>>,
+{
+	fn from(values: Vec<(K, V)>) -> Self {
+		let mut map = BTreeMap::new();
+		for (key, value) in values {
+			let arg = Arg::String(value.into());
 			map.insert(key.into(), arg);
 		}
 		Self(map)
@@ -404,10 +409,15 @@ impl FormatArgs {
 	fn evaluate(&self, state: &Character) -> HashMap<Rc<String>, Rc<String>> {
 		let mut evaluated = HashMap::default();
 		for (key, arg) in &self.0 {
-			let value = arg.evaluator.evaluate(state);
-			let value = match arg.signed {
-				true => format!("{value:+}"),
-				false => format!("{value}"),
+			let value = match arg {
+				Arg::Number(eval, signed) => {
+					let value = eval.evaluate(state);
+					match *signed {
+						true => format!("{value:+}"),
+						false => format!("{value}"),
+					}
+				}
+				Arg::String(eval) => eval.evaluate(state),
 			};
 			evaluated.insert(format!("{{{key}}}").into(), value.into());
 		}
@@ -424,15 +434,20 @@ impl FormatArgs {
 
 	/// Queries `node` for all child nodes with the name `format-arg`,
 	/// parsing each as a named evaluator argument for the list.
-	pub fn from_kdl_all(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
+	pub fn from_kdl_all<'doc>(node: &crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let mut args = BTreeMap::new();
-		for node in node.query_all("scope() > format-arg")? {
-			let mut ctx = ctx.next_node();
-			let key_entry = node.entry_req(ctx.consume_idx())?;
-			let key = key_entry.as_str_req()?.to_owned();
-			let signed = key_entry.type_opt() == Some("Signed");
-			let evaluator = ctx.parse_evaluator_inline(node)?;
-			let arg = Arg { evaluator, signed };
+		for node in &mut node.query_all("scope() > format-arg")? {
+			let key = node.next_str_req()?.to_owned();
+			let eval_type_entry = node.next_req()?;
+			let arg = match eval_type_entry.as_str_req()? {
+				"int" => {
+					let signed = eval_type_entry.type_opt() == Some("Signed");
+					let eval = BoxedEvaluator::from_kdl(node)?;
+					Arg::Number(eval, signed)
+				}
+				"str" => Arg::String(BoxedEvaluator::from_kdl(node)?),
+				_type => return Err(NotInList(_type.into(), vec!["int", "str"]).into()),
+			};
 			args.insert(key, arg);
 		}
 		Ok(Self(args))
@@ -443,12 +458,22 @@ impl AsKdl for FormatArgs {
 		let mut node = NodeBuilder::default();
 
 		for (key, arg) in &self.0 {
-			let mut entry = kdl::KdlEntry::new(key.clone());
-			if arg.signed {
-				entry.set_ty("Signed");
-			}
-			let mut arg_node = NodeBuilder::default().with_entry(entry);
-			arg_node.append_typed("Evaluator", arg.evaluator.as_kdl());
+			let mut arg_node = NodeBuilder::default().with_entry(key.clone());
+			let eval_kdl = match arg {
+				Arg::Number(eval, signed) => {
+					let mut entry = kdl::KdlEntry::new("int");
+					if *signed {
+						entry.set_ty("Signed");
+					}
+					arg_node.push_entry(entry);
+					eval.as_kdl()
+				}
+				Arg::String(eval) => {
+					arg_node.push_entry("str");
+					eval.as_kdl()
+				}
+			};
+			arg_node.append_typed("Evaluator", eval_kdl);
 			node.push_child(arg_node.build("format-arg"));
 		}
 
@@ -487,9 +512,7 @@ mod test {
 					short: None,
 					sections: vec![Section {
 						title: None,
-						content: SectionContent::Body(
-							"This is some long description w/o a title".into(),
-						),
+						content: SectionContent::Body("This is some long description w/o a title".into()),
 						format_args: FormatArgs::default(),
 						children: vec![],
 					}],
@@ -512,9 +535,7 @@ mod test {
 					short: None,
 					sections: vec![Section {
 						title: None,
-						content: SectionContent::Body(
-							"This is some long description w/o a title".into(),
-						),
+						content: SectionContent::Body("This is some long description w/o a title".into()),
 						format_args: FormatArgs::default(),
 						children: vec![],
 					}],
@@ -547,17 +568,13 @@ mod test {
 				let doc = "
 					|description {
 					|    short \"Success against a DC {DC} Wisdom saving throw\"
-					|    format-arg \"DC\" (Evaluator)\"get_ability_modifier\" (Ability)\"Intelligence\"
+					|    format-arg \"DC\" \"int\" (Evaluator)\"get_ability_modifier\" (Ability)\"Intelligence\"
 					|}
 				";
 				let data = Info {
 					short: Some("Success against a DC {DC} Wisdom saving throw".into()),
 					sections: vec![],
-					format_args: FormatArgs::from(vec![(
-						"DC",
-						GetAbilityModifier(Ability::Intelligence),
-						false,
-					)]),
+					format_args: FormatArgs::from(vec![("DC", GetAbilityModifier(Ability::Intelligence), false)]),
 				};
 				assert_eq_fromkdl!(Info, doc, data);
 				assert_eq_askdl!(&data, doc);
@@ -629,17 +646,13 @@ mod test {
 			fn format_args() -> anyhow::Result<()> {
 				let doc = "
 					|section \"Body with {num} format-args\" {
-					|    format-arg \"num\" (Evaluator)\"get_ability_modifier\" (Ability)\"Intelligence\"
+					|    format-arg \"num\" \"int\" (Evaluator)\"get_ability_modifier\" (Ability)\"Intelligence\"
 					|}
 				";
 				let data = Section {
 					title: None,
 					content: SectionContent::Body("Body with {num} format-args".into()),
-					format_args: FormatArgs::from(vec![(
-						"num",
-						GetAbilityModifier(Ability::Intelligence),
-						false,
-					)]),
+					format_args: FormatArgs::from(vec![("num", GetAbilityModifier(Ability::Intelligence), false)]),
 					children: vec![],
 				};
 				assert_eq_fromkdl!(Section, doc, data);
@@ -685,25 +698,18 @@ mod test {
 
 			static NODE_NAME: &str = "args";
 
-			fn from_kdl(
-				node: &::kdl::KdlNode,
-				ctx: &mut NodeContext,
-			) -> anyhow::Result<FormatArgs> {
-				FormatArgs::from_kdl_all(node, ctx)
+			fn from_kdl<'doc>(node: crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<FormatArgs> {
+				FormatArgs::from_kdl_all(&node)
 			}
 
 			#[test]
 			fn unsigned() -> anyhow::Result<()> {
 				let doc = "
 					|args {
-					|    format-arg \"DC\" (Evaluator)\"get_ability_modifier\" (Ability)\"Intelligence\"
+					|    format-arg \"DC\" \"int\" (Evaluator)\"get_ability_modifier\" (Ability)\"Intelligence\"
 					|}
 				";
-				let data = FormatArgs::from(vec![(
-					"DC",
-					GetAbilityModifier(Ability::Intelligence),
-					false,
-				)]);
+				let data = FormatArgs::from(vec![("DC", GetAbilityModifier(Ability::Intelligence), false)]);
 				assert_eq_fromkdl!(FormatArgs, doc, data);
 				assert_eq_askdl!(&data, doc);
 				Ok(())
@@ -713,14 +719,10 @@ mod test {
 			fn signed() -> anyhow::Result<()> {
 				let doc = "
 					|args {
-					|    format-arg (Signed)\"DC\" (Evaluator)\"get_ability_modifier\" (Ability)\"Intelligence\"
+					|    format-arg \"DC\" (Signed)\"int\" (Evaluator)\"get_ability_modifier\" (Ability)\"Intelligence\"
 					|}
 				";
-				let data = FormatArgs::from(vec![(
-					"DC",
-					GetAbilityModifier(Ability::Intelligence),
-					true,
-				)]);
+				let data = FormatArgs::from(vec![("DC", GetAbilityModifier(Ability::Intelligence), true)]);
 				assert_eq_fromkdl!(FormatArgs, doc, data);
 				assert_eq_askdl!(&data, doc);
 				Ok(())
@@ -755,15 +757,10 @@ mod test {
 				sections: vec![Section {
 					title: None,
 					content: SectionContent::Body(
-						"In addition to {num} dmg on failed {DC} save, take {fire} fire damage."
-							.into(),
+						"In addition to {num} dmg on failed {DC} save, take {fire} fire damage.".into(),
 					),
 					children: vec![],
-					format_args: FormatArgs::from(vec![(
-						"fire",
-						GetAbilityModifier(Ability::Strength),
-						true,
-					)]),
+					format_args: FormatArgs::from(vec![("fire", GetAbilityModifier(Ability::Strength), true)]),
 				}],
 				format_args: FormatArgs::from(vec![
 					("DC", GetAbilityModifier(Ability::Intelligence), false),
@@ -778,11 +775,7 @@ mod test {
 						"In addition to +2 dmg on failed 5 save, take +1 fire damage.".into(),
 					),
 					children: vec![],
-					format_args: FormatArgs::from(vec![(
-						"fire",
-						GetAbilityModifier(Ability::Strength),
-						true,
-					)]),
+					format_args: FormatArgs::from(vec![("fire", GetAbilityModifier(Ability::Strength), true)]),
 				}],
 				format_args: FormatArgs::from(vec![
 					("DC", GetAbilityModifier(Ability::Intelligence), false),

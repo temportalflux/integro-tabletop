@@ -1,14 +1,12 @@
 use super::InventoryItemProps;
 use crate::{
-	components::modal,
+	components::context_menu,
+	page::characters::sheet::CharacterHandle,
 	page::characters::sheet::MutatorImpact,
 	system::dnd5e::{
-		components::{
-			panel::{
-				inventory::equip_toggle::ItemRowEquipBox, item_body, AddItemButton,
-				AddItemOperation, ItemBodyProps,
-			},
-			CharacterHandle,
+		components::panel::{
+			get_inventory_item, inventory::equip_toggle::ItemRowEquipBox, AddItemButton, AddItemOperation,
+			ItemBodyProps, ItemInfo, ItemLocation,
 		},
 		data::item::{self, Item},
 	},
@@ -20,6 +18,7 @@ use yew::prelude::*;
 pub struct ItemRowProps {
 	pub id_path: Vec<Uuid>,
 	pub item: Item,
+	#[prop_or_default]
 	pub is_equipped: Option<bool>,
 }
 
@@ -32,18 +31,10 @@ pub fn ItemRow(
 	}: &ItemRowProps,
 ) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let modal_dispatcher = use_context::<modal::Context>().unwrap();
-	let open_modal = modal_dispatcher.callback({
+	let open_modal = context_menu::use_control_action({
 		let id_path = id_path.clone();
-		move |_| {
-			modal::Action::Open(modal::Props {
-				centered: true,
-				scrollable: true,
-				root_classes: classes!("item"),
-				content: html! {<ItemModal id_path={id_path.clone()} />},
-				..Default::default()
-			})
-		}
+		let name = AttrValue::from(item.name.clone());
+		move |_, _context| context_menu::Action::open_root(name.clone(), html!(<ItemModal id_path={id_path.clone()} />))
 	});
 
 	html! {
@@ -69,24 +60,11 @@ pub fn ItemRow(
 #[function_component]
 pub fn ItemModal(InventoryItemProps { id_path }: &InventoryItemProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let modal_dispatcher = use_context::<modal::Context>().unwrap();
-	let item = {
-		let mut iter = id_path.iter();
-		let mut item = None;
-		while let Some(id) = iter.next() {
-			item = match item {
-				None => state.inventory().get_item(id),
-				Some(prev_item) => match &prev_item.items {
-					None => {
-						return Html::default();
-					}
-					Some(container) => container.get_item(id),
-				},
-			};
-		}
-		item
+	let close_modal = context_menu::use_close_fn();
+	let item = get_inventory_item(&state, id_path);
+	let Some(item) = item else {
+		return Html::default();
 	};
-	let Some(item) = item else { return Html::default(); };
 	// TODO: edit capability for properties:
 	// name, notes, quantity(✔)
 	// dndbeyond also supports worth and weight overrides, idk if I want that or not
@@ -98,7 +76,7 @@ pub fn ItemModal(InventoryItemProps { id_path }: &InventoryItemProps) -> Html {
 
 	let on_delete = state.new_dispatch({
 		let id_path = id_path.clone();
-		let close_modal = modal_dispatcher.callback(|_| modal::Action::Close);
+		let close_modal = close_modal.clone();
 		move |_: MouseEvent, persistent| {
 			let equipped = id_path.len() == 1 && persistent.inventory.is_equipped(&id_path[0]);
 			let _item = persistent.inventory.remove_at_path(&id_path);
@@ -109,7 +87,12 @@ pub fn ItemModal(InventoryItemProps { id_path }: &InventoryItemProps) -> Html {
 			}
 		}
 	});
-	let mut item_props = ItemBodyProps::default();
+	let mut item_props = ItemBodyProps {
+		location: Some(ItemLocation::Inventory {
+			id_path: id_path.clone(),
+		}),
+		..Default::default()
+	};
 	match &item.kind {
 		item::Kind::Simple { .. } => {
 			item_props.on_quantity_changed = Some(state.new_dispatch({
@@ -153,7 +136,7 @@ pub fn ItemModal(InventoryItemProps { id_path }: &InventoryItemProps) -> Html {
 				},
 			}}
 			on_click={state.new_dispatch({
-				let close_modal = modal_dispatcher.callback(|_| modal::Action::Close);
+				let close_modal = close_modal.clone();
 				let id_path = id_path.clone();
 				move |dst_id: Option<Vec<Uuid>>, persistent| {
 					let Some(item) = persistent.inventory.remove_at_path(&id_path) else { return MutatorImpact::None; };
@@ -166,12 +149,8 @@ pub fn ItemModal(InventoryItemProps { id_path }: &InventoryItemProps) -> Html {
 	};
 
 	html! {<>
-		<div class="modal-header">
-			<h1 class="modal-title fs-4">{item.name.clone()}</h1>
-			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
-		</div>
-		<div class="modal-body d-flex flex-column" style="min-height: 200px;">
-			{item_body(item, &state, Some(item_props))}
+		<div class="d-flex flex-column" style="min-height: 200px;">
+			<ItemInfo ..item_props />
 			<span class="hr my-2" />
 			<div class="d-flex justify-content-center mt-auto">
 				{move_button}

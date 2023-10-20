@@ -23,15 +23,11 @@ impl SystemRegistry {
 	where
 		T: System + 'static + Send + Sync,
 	{
-		self.systems
-			.insert(system.id_owned(), Arc::new(Mutex::new(system)));
+		self.systems.insert(system.id_owned(), Arc::new(Mutex::new(system)));
 	}
 
 	/// Get a mutable lock on a system by its id.
-	pub fn get<'this>(
-		&'this self,
-		id: &str,
-	) -> Option<MutexGuard<'this, dyn System + 'static + Send + Sync>> {
+	pub fn get<'this>(&'this self, id: &str) -> Option<MutexGuard<'this, dyn System + 'static + Send + Sync>> {
 		match self.systems.get(id) {
 			None => None,
 			Some(arc) => Some(arc.lock().unwrap()),

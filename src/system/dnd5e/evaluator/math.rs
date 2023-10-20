@@ -1,8 +1,9 @@
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt, ValueExt},
 	system::dnd5e::{data::character::Character, Value},
 	utility::{Dependencies, Evaluator, NotInList},
 };
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 
 #[derive(thiserror::Error, Debug)]
 #[error("Math operation \"Divide\" cannot support {0} values (max is 2).")]
@@ -33,14 +34,12 @@ pub enum Rounding {
 }
 
 crate::impl_trait_eq!(Math);
-crate::impl_kdl_node!(Math, "math");
+kdlize::impl_kdl_node!(Math, "math");
 
-impl FromKDL for Math {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		let operation = match node.get_str_req(ctx.consume_idx())? {
+impl FromKdl<NodeContext> for Math {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let operation = match node.next_str_req()? {
 			"Add" => MathOp::Add,
 			"Subtract" => MathOp::Subtract,
 			"Multiply" => MathOp::Multiply,
@@ -50,34 +49,17 @@ impl FromKDL for Math {
 					Some("ceil" | "ceiling" | "Ceiling") => Rounding::Ceiling,
 					Some("floor" | "Floor") => Rounding::Floor,
 					Some("halfup" | "HalfUp") => Rounding::HalfUp,
-					Some(name) => {
-						return Err(
-							NotInList(name.into(), vec!["Floor", "HalfUp", "Ceiling"]).into()
-						)
-					}
+					Some(name) => return Err(NotInList(name.into(), vec!["Floor", "HalfUp", "Ceiling"]).into()),
 				};
 				MathOp::Divide { round }
 			}
-			name => {
-				return Err(
-					NotInList(name.into(), vec!["Add", "Subtract", "Multiply", "Divide"]).into(),
-				)
-			}
+			name => return Err(NotInList(name.into(), vec!["Add", "Subtract", "Multiply", "Divide"]).into()),
 		};
 
 		let minimum = node.get_i64_opt("min")?.map(|v| v as i32);
 		let maximum = node.get_i64_opt("max")?.map(|v| v as i32);
 
-		let mut values = Vec::new();
-		for node in node.query_all("scope() > value")? {
-			let mut ctx = ctx.next_node();
-			values.push(Value::from_kdl(
-				node,
-				node.entry_req(ctx.consume_idx())?,
-				&mut ctx,
-				|value| Ok(value.as_i64_req()? as i32),
-			)?);
-		}
+		let values = node.query_all_t::<Value<i32>>("scope() > value")?;
 		match (&operation, values.len()) {
 			(MathOp::Divide { .. }, len) if len > 2 => {
 				return Err(DivideTooManyOps(len).into());
@@ -165,9 +147,7 @@ impl Evaluator for Math {
 	fn dependencies(&self) -> Dependencies {
 		self.values
 			.iter()
-			.fold(Dependencies::default(), |deps, value| {
-				deps.join(value.dependencies())
-			})
+			.fold(Dependencies::default(), |deps, value| deps.join(value.dependencies()))
 	}
 
 	fn evaluate(&self, state: &Self::Context) -> Self::Item {
@@ -217,7 +197,7 @@ mod test {
 				core::NodeRegistry,
 				dnd5e::{
 					data::Ability,
-					evaluator::{test::test_utils, GetAbilityModifier, GetLevel},
+					evaluator::{test::test_utils, GetAbilityModifier, GetLevelInt},
 				},
 			},
 		};
@@ -228,7 +208,7 @@ mod test {
 			let mut node_reg = NodeRegistry::default();
 			node_reg.register_evaluator::<Math>();
 			node_reg.register_evaluator::<GetAbilityModifier>();
-			node_reg.register_evaluator::<GetLevel>();
+			node_reg.register_evaluator::<GetLevelInt>();
 			node_reg
 		}
 
@@ -266,10 +246,7 @@ mod test {
 				operation: MathOp::Subtract,
 				minimum: Some(0),
 				maximum: None,
-				values: vec![
-					Value::Evaluated(GetLevel::default().into()),
-					Value::Fixed(10),
-				],
+				values: vec![Value::Evaluated(GetLevelInt::default().into()), Value::Fixed(10)],
 			};
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
@@ -290,7 +267,7 @@ mod test {
 				maximum: None,
 				values: vec![
 					Value::Evaluated(GetAbilityModifier(Ability::Constitution).into()),
-					Value::Evaluated(GetLevel::default().into()),
+					Value::Evaluated(GetLevelInt::default().into()),
 				],
 			};
 			assert_eq_askdl!(&data, doc);
@@ -307,15 +284,10 @@ mod test {
 				|}
 			";
 			let data = Math {
-				operation: MathOp::Divide {
-					round: Rounding::Floor,
-				},
+				operation: MathOp::Divide { round: Rounding::Floor },
 				minimum: Some(1),
 				maximum: None,
-				values: vec![
-					Value::Evaluated(GetLevel::default().into()),
-					Value::Fixed(2),
-				],
+				values: vec![Value::Evaluated(GetLevelInt::default().into()), Value::Fixed(2)],
 			};
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
@@ -375,10 +347,7 @@ mod test {
 				operation: MathOp::Subtract,
 				minimum: Some(0),
 				maximum: None,
-				values: vec![
-					Value::Evaluated(GetLevel::default().into()),
-					Value::Fixed(10),
-				],
+				values: vec![Value::Evaluated(GetLevel::default().into()), Value::Fixed(10)],
 			};
 			// larger than minimum
 			let ctx = character(&[], 12);
@@ -406,15 +375,10 @@ mod test {
 		#[test]
 		fn divide_floor() {
 			let math = Math {
-				operation: MathOp::Divide {
-					round: Rounding::Floor,
-				},
+				operation: MathOp::Divide { round: Rounding::Floor },
 				minimum: None,
 				maximum: None,
-				values: vec![
-					Value::Evaluated(GetLevel::default().into()),
-					Value::Fixed(4),
-				],
+				values: vec![Value::Evaluated(GetLevel::default().into()), Value::Fixed(4)],
 			};
 			let ctx = character(&[], 11);
 			// 11 / 4 = 2.75 => floored = 2
@@ -429,10 +393,7 @@ mod test {
 				},
 				minimum: None,
 				maximum: None,
-				values: vec![
-					Value::Evaluated(GetLevel::default().into()),
-					Value::Fixed(4),
-				],
+				values: vec![Value::Evaluated(GetLevel::default().into()), Value::Fixed(4)],
 			};
 			let ctx = character(&[], 11);
 			// 11 / 4 = 2.75 => round up = 3
@@ -447,10 +408,7 @@ mod test {
 				},
 				minimum: None,
 				maximum: None,
-				values: vec![
-					Value::Evaluated(GetLevel::default().into()),
-					Value::Fixed(5),
-				],
+				values: vec![Value::Evaluated(GetLevel::default().into()), Value::Fixed(5)],
 			};
 			let ctx = character(&[], 11);
 			// 11 / 5 = 2.2 => ceil = 3

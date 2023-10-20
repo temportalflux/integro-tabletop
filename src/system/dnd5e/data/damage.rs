@@ -1,36 +1,27 @@
 use super::roll::EvaluatedRoll;
-use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt},
-	utility::InvalidEnumStr,
-};
+use crate::kdl_ext::NodeContext;
+use crate::utility::InvalidEnumStr;
 use enumset::EnumSetType;
-use std::{path::PathBuf, str::FromStr};
+use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
+use std::str::FromStr;
 
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct DamageRoll {
 	pub roll: Option<EvaluatedRoll>,
 	pub base_bonus: i32,
 	pub damage_type: DamageType,
-	// generated (see BonusDamage mutator)
-	pub additional_bonuses: Vec<(i32, PathBuf)>,
 }
 
-impl FromKDL for DamageRoll {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		let roll = match node.query_opt("scope() > roll")? {
-			None => None,
-			Some(node) => Some(EvaluatedRoll::from_kdl(node, &mut ctx.next_node())?),
-		};
+impl FromKdl<NodeContext> for DamageRoll {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let roll = node.query_opt_t::<EvaluatedRoll>("scope() > roll")?;
 		let base_bonus = node.get_i64_opt("base")?.unwrap_or(0) as i32;
 		let damage_type = DamageType::from_str(node.query_str_req("scope() > damage_type", 0)?)?;
 		Ok(Self {
 			roll,
 			base_bonus,
 			damage_type,
-			additional_bonuses: Vec::new(),
 		})
 	}
 }
@@ -48,7 +39,7 @@ impl AsKdl for DamageRoll {
 	}
 }
 
-#[derive(Debug, Default, EnumSetType)]
+#[derive(Debug, Default, EnumSetType, PartialOrd, Ord)]
 pub enum DamageType {
 	Acid,
 	Bludgeoning,
@@ -94,6 +85,11 @@ impl ToString for DamageType {
 		self.display_name().into()
 	}
 }
+impl AsKdl for DamageType {
+	fn as_kdl(&self) -> NodeBuilder {
+		NodeBuilder::default().with_entry(self.to_string())
+	}
+}
 
 impl DamageType {
 	pub fn display_name(&self) -> &'static str {
@@ -116,26 +112,42 @@ impl DamageType {
 
 	pub fn description(&self) -> &'static str {
 		match self {
-			Self::Acid => "The corrosive spray of an adult black dragon's breath and the dissolving \
-			enzymes secreted by a black pudding deal acid damage.",
-			Self::Bludgeoning => "Blunt force attacks--hammers, falling, constriction, \
-			and the like--deal bludgeoning damage.",
-			Self::Cold => "The infernal chill radiating from an ice devil's spear and the frigid blast \
-			of a young white dragon's breath deal cold damage.",
+			Self::Acid => {
+				"The corrosive spray of an adult black dragon's breath and the dissolving \
+			enzymes secreted by a black pudding deal acid damage."
+			}
+			Self::Bludgeoning => {
+				"Blunt force attacks--hammers, falling, constriction, \
+			and the like--deal bludgeoning damage."
+			}
+			Self::Cold => {
+				"The infernal chill radiating from an ice devil's spear and the frigid blast \
+			of a young white dragon's breath deal cold damage."
+			}
 			Self::Fire => "Ancient red dragons breathe fire, and many spells conjure flames to deal fire damage.",
-			Self::Force => "Force is pure magical energy focused into a damaging form. \
-			Most effects that deal force damage are spells, including magic missile and spiritual weapon.",
+			Self::Force => {
+				"Force is pure magical energy focused into a damaging form. \
+			Most effects that deal force damage are spells, including magic missile and spiritual weapon."
+			}
 			Self::Lightning => "A lightning bolt spell and a blue dragon wyrmling's breath deal lightning damage.",
-			Self::Necrotic => "Necrotic damage, dealt by certain undead and a spell such \
-			as chill touch, withers matter and even the soul.",
-			Self::Piercing => "Puncturing and impaling attacks, including spears and \
-			monsters' bites, deal piercing damage.",
+			Self::Necrotic => {
+				"Necrotic damage, dealt by certain undead and a spell such \
+			as chill touch, withers matter and even the soul."
+			}
+			Self::Piercing => {
+				"Puncturing and impaling attacks, including spears and \
+			monsters' bites, deal piercing damage."
+			}
 			Self::Poison => "Venomous stings and the toxic gas of an adult green dragon's breath deal poison damage.",
 			Self::Psychic => "Mental abilities such as a psionic blast deal psychic damage.",
-			Self::Radiant => "Radiant damage, dealt by a cleric's flame strike spell or an angel's \
-			smiting weapon, sears the flesh like fire and overloads the spirit with power.",
+			Self::Radiant => {
+				"Radiant damage, dealt by a cleric's flame strike spell or an angel's \
+			smiting weapon, sears the flesh like fire and overloads the spirit with power."
+			}
 			Self::Slashing => "Swords, axes, and monsters' claws deal slashing damage.",
-			Self::Thunder => "A concussive burst of sound, such as the effect of the thunderwave spell, deals thunder damage.",
+			Self::Thunder => {
+				"A concussive burst of sound, such as the effect of the thunderwave spell, deals thunder damage."
+			}
 		}
 	}
 }
@@ -161,7 +173,6 @@ mod test {
 				roll: None,
 				base_bonus: 0,
 				damage_type: DamageType::Force,
-				additional_bonuses: vec![],
 			};
 			assert_eq_fromkdl!(DamageRoll, doc, data);
 			assert_eq_askdl!(&data, doc);
@@ -179,7 +190,6 @@ mod test {
 				roll: None,
 				base_bonus: 5,
 				damage_type: DamageType::Force,
-				additional_bonuses: vec![],
 			};
 			assert_eq_fromkdl!(DamageRoll, doc, data);
 			assert_eq_askdl!(&data, doc);
@@ -198,7 +208,6 @@ mod test {
 				roll: Some(EvaluatedRoll::from((2, Die::D4))),
 				base_bonus: 0,
 				damage_type: DamageType::Force,
-				additional_bonuses: vec![],
 			};
 			assert_eq_fromkdl!(DamageRoll, doc, data);
 			assert_eq_askdl!(&data, doc);
@@ -217,7 +226,6 @@ mod test {
 				roll: Some(EvaluatedRoll::from((1, Die::D6))),
 				base_bonus: 2,
 				damage_type: DamageType::Bludgeoning,
-				additional_bonuses: vec![],
 			};
 			assert_eq_fromkdl!(DamageRoll, doc, data);
 			assert_eq_askdl!(&data, doc);

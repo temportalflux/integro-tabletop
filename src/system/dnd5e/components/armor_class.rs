@@ -1,6 +1,7 @@
 use crate::{
-	components::{modal, AnnotatedNumber, AnnotatedNumberCard},
-	system::dnd5e::{components::CharacterHandle, data::ArmorClassFormula},
+	components::{context_menu, AnnotatedNumber, AnnotatedNumberCard},
+	page::characters::sheet::CharacterHandle,
+	system::dnd5e::data::ArmorClassFormula,
 };
 use yew::prelude::*;
 
@@ -15,16 +16,8 @@ Without armor or a shield, your character's AC equals 10 + their Dexterity modif
 #[function_component]
 pub fn ArmorClass() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let modal_dispatcher = use_context::<modal::Context>().unwrap();
-	let on_click = modal_dispatcher.callback({
-		move |_| {
-			modal::Action::Open(modal::Props {
-				centered: true,
-				scrollable: true,
-				content: html! {<Modal />},
-				..Default::default()
-			})
-		}
+	let on_click = context_menu::use_control_action({
+		|_, _context| context_menu::Action::open_root(format!("Armor Class"), html!(<Modal />))
 	});
 	html! {
 		<AnnotatedNumberCard header={"Armor"} footer={"Class"} {on_click}>
@@ -65,7 +58,6 @@ pub fn FormulaInline(FormulaProps { formula }: &FormulaProps) -> Html {
 #[function_component]
 fn Modal() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let value = state.armor_class().evaluate(&*state);
 
 	let formula_table = {
 		let rows = state
@@ -101,9 +93,10 @@ fn Modal() -> Html {
 		let rows = state
 			.armor_class()
 			.iter_bonuses()
-			.map(|(bonus, source)| {
+			.map(|(bonus, context, source)| {
 				html! {<tr>
 					<td class="text-center">{match *bonus >= 0 { true => "+", false => "-" }}{bonus.abs()}</td>
+					<td>{context.clone().unwrap_or_default()}</td>
 					<td>{crate::data::as_feature_path_text(source).unwrap_or_default()}</td>
 				</tr>}
 			})
@@ -115,6 +108,7 @@ fn Modal() -> Html {
 					<thead>
 						<tr class="text-center" style="color: var(--bs-heading-color);">
 							<th scope="col">{"Bonus"}</th>
+							<th scope="col">{"Context"}</th>
 							<th scope="col">{"Source"}</th>
 						</tr>
 					</thead>
@@ -127,16 +121,10 @@ fn Modal() -> Html {
 	};
 
 	html! {<>
-		<div class="modal-header">
-			<h1 class="modal-title fs-4">{format!("Armor Class ({value})")}</h1>
-			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
-		</div>
-		<div class="modal-body">
-			{formula_table}
-			{bonuses_table}
-			<div class="text-block">
-				{TEXT}
-			</div>
+		{formula_table}
+		{bonuses_table}
+		<div class="text-block">
+			{TEXT}
 		</div>
 	</>}
 }

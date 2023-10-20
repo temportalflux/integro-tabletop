@@ -1,13 +1,10 @@
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeContext, NodeExt},
 	path_map::PathMap,
 	system::{
 		core::SourceId,
 		dnd5e::{
-			data::{
-				character::Character, item::container::Inventory, Ability, Bundle, Class,
-				Condition, Spell,
-			},
+			data::{character::Character, item::container::Inventory, Ability, Bundle, Class, Condition, Rest, Spell},
 			SystemComponent,
 		},
 	},
@@ -15,6 +12,9 @@ use crate::{
 };
 use enum_map::EnumMap;
 use itertools::Itertools;
+use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
+use multimap::MultiMap;
+use serde::{Deserialize, Serialize};
 use std::{
 	collections::{BTreeMap, HashMap},
 	path::Path,
@@ -24,6 +24,10 @@ use std::{
 
 mod description;
 pub use description::*;
+
+use super::{ObjectCacheProvider, RestEntry};
+
+pub static MAX_SPELL_RANK: u8 = 9;
 
 /// Core character data which is (de)serializable and
 /// from which the derived data can be compiled.
@@ -63,6 +67,13 @@ impl MutatorGroup for Persistent {
 				.push_bonus(ability, (*score).into(), "Base Score".into());
 		}
 		stats.apply(&super::FinalizeAbilityScores.into(), parent);
+		{
+			// Add the reset data for spell slots (shared by multiple classes when multiclassing).
+			// Non-casters will still have this entry, but since they can't cast/don't have any slots,
+			// there will be no slots that show up or actual data to reset.
+			let (rest, entry) = self.selected_spells.reset_on_rest();
+			stats.rest_resets_mut().add(rest, entry);
+		}
 
 		for bundle in &self.bundles {
 			stats.apply_from(bundle, parent);
@@ -102,6 +113,25 @@ impl Persistent {
 		&mut self.hit_points
 	}
 
+	pub fn get_selections_at(&self, path: impl AsRef<Path>) -> Option<&Vec<String>> {
+		self.selected_values.get(path.as_ref())
+	}
+
+	pub fn get_first_selection(&self, path: impl AsRef<Path>) -> Option<&String> {
+		self.get_selections_at(path).map(|all| all.first()).flatten()
+	}
+
+	pub fn get_first_selection_at<T>(&self, data_path: impl AsRef<Path>) -> Option<Result<T, <T as FromStr>::Err>>
+	where
+		T: Clone + 'static + FromStr,
+	{
+		let selections = self.get_selections_at(data_path);
+		selections
+			.map(|all| all.first())
+			.flatten()
+			.map(|selected| T::from_str(&selected))
+	}
+
 	pub fn set_selected_value(&mut self, key: impl AsRef<Path>, value: impl Into<String>) {
 		self.selected_values.set(key, value.into());
 	}
@@ -122,88 +152,106 @@ impl Persistent {
 	}
 
 	pub fn remove_selection(&mut self, key: impl AsRef<Path>, index: usize) -> Option<String> {
-		let Some(values) = self.selected_values.get_mut(key) else { return None; };
+		let Some(values) = self.selected_values.get_mut(key) else {
+			return None;
+		};
 		if index < values.len() {
 			Some(values.remove(index))
 		} else {
 			None
 		}
 	}
-}
 
-crate::impl_kdl_node!(Persistent, "character");
-impl SystemComponent for Persistent {
-	fn to_metadata(self) -> serde_json::Value {
-		serde_json::json!({
-			"name": &self.description.name,
-		})
+	pub fn remove_selected_value(&mut self, key: impl AsRef<Path>, value: impl Into<String>) {
+		let Some(values) = self.selected_values.get_mut(key) else {
+			return;
+		};
+		let target: String = value.into();
+		values.retain(|value| *value != target);
+	}
+
+	pub fn export_as_kdl(&self) -> kdl::KdlDocument {
+		let mut doc = kdl::KdlDocument::new();
+		doc.nodes_mut().push(self.as_kdl().build("character"));
+		doc
 	}
 }
-impl FromKDL for Persistent {
-	fn from_kdl(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
-		let id = ctx.id().clone();
-		ctx.set_inheiret_source(false);
 
-		let description = Description::from_kdl(
-			node.query_req("scope() > description")?,
-			&mut ctx.next_node(),
-		)?;
+kdlize::impl_kdl_node!(Persistent, "character");
+#[derive(PartialEq, Serialize, Deserialize)]
+pub struct PersistentMetadata {
+	pub name: String,
+	pub pronouns: Vec<String>,
+	pub level: usize,
+	pub classes: Vec<String>,
+	pub bundles: MultiMap<String, String>,
+}
+impl SystemComponent for Persistent {
+	fn to_metadata(self) -> serde_json::Value {
+		let mut level = 0;
+		let mut classes = Vec::with_capacity(self.classes.len());
+		for class in &self.classes {
+			level += class.current_level;
+			classes.push(class.name.clone());
+		}
+		let metadata = PersistentMetadata {
+			name: self.description.name.clone(),
+			pronouns: self.description.iter_pronouns().cloned().collect(),
+			level,
+			classes,
+			bundles: self
+				.bundles
+				.iter()
+				.map(|bundle| (bundle.category.clone(), bundle.name.clone()))
+				.collect(),
+		};
+		serde_json::json!(metadata)
+	}
+}
+impl FromKdl<NodeContext> for Persistent {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let id = node.context().id().clone();
+
+		let description = node.query_req_t::<Description>("scope() > description")?;
 
 		let mut settings = Settings::default();
-		for node in node.query_all("scope() > setting")? {
-			settings.insert_from_kdl(node, &mut ctx.next_node())?;
+		for node in &mut node.query_all("scope() > setting")? {
+			settings.insert_from_kdl(node)?;
 		}
 
 		let mut ability_scores = EnumMap::default();
-		for node in node.query_all("scope() > ability")? {
-			let mut ctx = ctx.next_node();
-			let ability = Ability::from_str(node.get_str_req(ctx.consume_idx())?)?;
-			let score = node.get_i64_req(ctx.consume_idx())? as u32;
+		for node in &mut node.query_all("scope() > ability")? {
+			let ability = node.next_str_req_t::<Ability>()?;
+			let score = node.next_i64_req()? as u32;
 			ability_scores[ability] = score;
 		}
 
-		let hit_points = HitPoints::from_kdl(
-			node.query_req("scope() > hit_points")?,
-			&mut ctx.next_node(),
-		)?;
+		let hit_points = node.query_req_t::<HitPoints>("scope() > hit_points")?;
 
-		let inspiration = node
-			.query_bool_opt("scope() > inspiration", 0)?
-			.unwrap_or_default();
+		let inspiration = node.query_bool_opt("scope() > inspiration", 0)?.unwrap_or_default();
 
 		let mut conditions = Conditions::default();
-		for node in node.query_all("scope() > condition")? {
-			let condition = Condition::from_kdl(node, &mut ctx.next_node())?;
+		for condition in node.query_all_t::<Condition>("scope() > condition")? {
 			conditions.insert(condition);
 		}
 
-		let inventory =
-			Inventory::from_kdl(node.query_req("scope() > inventory")?, &mut ctx.next_node())?;
+		let inventory = node
+			.query_opt_t::<Inventory>("scope() > inventory")?
+			.unwrap_or_default();
 
-		let selected_spells = match node.query_opt("scope() > spells")? {
-			Some(node) => SelectedSpells::from_kdl(node, &mut ctx.next_node())?,
-			None => SelectedSpells::default(),
-		};
+		let selected_spells = node
+			.query_opt_t::<SelectedSpells>("scope() > spells")?
+			.unwrap_or_default();
 
-		let mut bundles = Vec::new();
-		for node in node.query_all("scope() > bundle")? {
-			let mut ctx = ctx.next_node();
-			let bundle = Bundle::from_kdl(node, &mut ctx)?;
-			bundles.push(bundle);
-		}
-
-		let mut classes = Vec::new();
-		for node in node.query_all("scope() > class")? {
-			let class = Class::from_kdl(node, &mut ctx.next_node())?;
-			classes.push(class);
-		}
+		let bundles = node.query_all_t::<Bundle>("scope() > bundle")?;
+		let classes = node.query_all_t::<Class>("scope() > class")?;
 
 		let mut selected_values = PathMap::<String>::default();
 		if let Some(selections) = node.query_opt("scope() > selections")? {
-			for node in selections.query_all("scope() > value")? {
-				let mut ctx = ctx.next_node();
-				let key_str = node.get_str_req(ctx.consume_idx())?;
-				let value = node.get_str_req(ctx.consume_idx())?.to_owned();
+			for mut node in selections.query_all("scope() > value")? {
+				let key_str = node.next_str_req()?;
+				let value = node.next_str_req()?.to_owned();
 				selected_values.insert(Path::new(key_str), value);
 			}
 		}
@@ -280,8 +328,9 @@ pub struct HitPoints {
 	pub failure_saves: u8,
 	pub success_saves: u8,
 }
-impl FromKDL for HitPoints {
-	fn from_kdl(node: &kdl::KdlNode, _ctx: &mut NodeContext) -> anyhow::Result<Self> {
+impl FromKdl<NodeContext> for HitPoints {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let current = node.query_i64_req("scope() > current", 0)? as u32;
 		let temp = node.query_i64_req("scope() > temp", 0)? as u32;
 		let failure_saves = node.query_i64_req("scope() > failure_saves", 0)? as u8;
@@ -358,6 +407,13 @@ pub struct Conditions {
 	custom: Vec<Condition>,
 }
 impl Conditions {
+	pub async fn resolve_indirection(&mut self, provider: &ObjectCacheProvider) -> anyhow::Result<()> {
+		for condition in self.iter_mut() {
+			condition.resolve_indirection(provider).await?;
+		}
+		Ok(())
+	}
+
 	pub fn insert(&mut self, condition: Condition) {
 		match &condition.id {
 			Some(id) => {
@@ -383,6 +439,10 @@ impl Conditions {
 
 	pub fn iter(&self) -> impl Iterator<Item = &Condition> {
 		self.by_id.values().chain(self.custom.iter())
+	}
+
+	pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Condition> {
+		self.by_id.values_mut().chain(self.custom.iter_mut())
 	}
 
 	pub fn iter_keyed(&self) -> impl Iterator<Item = (IdOrIndex, &Condition)> {
@@ -424,14 +484,10 @@ pub struct Settings {
 }
 
 impl Settings {
-	fn insert_from_kdl(
-		&mut self,
-		node: &kdl::KdlNode,
-		ctx: &mut NodeContext,
-	) -> anyhow::Result<()> {
-		match node.get_str_req(ctx.consume_idx())? {
+	fn insert_from_kdl<'doc>(&mut self, node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<()> {
+		match node.next_str_req()? {
 			"currency_auto_exchange" => {
-				self.currency_auto_exchange = node.get_bool_req(ctx.consume_idx())?;
+				self.currency_auto_exchange = node.next_bool_req()?;
 			}
 			key => {
 				return Err(NotInList(key.into(), vec!["currency_auto_exchange"]).into());
@@ -452,7 +508,6 @@ impl Settings {
 
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct SelectedSpells {
-	consumed_slots: HashMap<u8, usize>,
 	cache_by_caster: HashMap<String, SelectedSpellsData>,
 }
 #[derive(Clone, PartialEq, Default, Debug)]
@@ -463,53 +518,26 @@ pub struct SelectedSpellsData {
 	pub num_spells: usize,
 	selections: HashMap<SourceId, Spell>,
 }
-impl FromKDL for SelectedSpells {
-	fn from_kdl(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
-		let mut consumed_slots = HashMap::new();
-		if let Some(node) = node.query_opt("scope() > consumed_slots")? {
-			for node in node.query_all("scope() > slot")? {
-				let mut ctx = ctx.next_node();
-				let slot = node.get_i64_req(ctx.consume_idx())? as u8;
-				let consumed = node.get_i64_req(ctx.consume_idx())? as usize;
-				consumed_slots.insert(slot, consumed);
-			}
-		}
-
+impl FromKdl<NodeContext> for SelectedSpells {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let mut cache_by_caster = HashMap::new();
-		for node in node.query_all("scope() > caster")? {
-			let mut ctx = ctx.next_node();
-			let caster_name = node.get_str_req(ctx.consume_idx())?;
+		for node in &mut node.query_all("scope() > caster")? {
+			let caster_name = node.next_str_req()?;
 			let mut selection_data = SelectedSpellsData::default();
-			for node in node.query_all("scope() > spell")? {
-				let spell = Spell::from_kdl(node, &mut ctx.next_node())?;
+			for mut node in &mut node.query_all("scope() > spell")? {
+				let spell = Spell::from_kdl(&mut node)?;
 				selection_data.insert(spell);
 			}
 			cache_by_caster.insert(caster_name.to_owned(), selection_data);
 		}
 
-		Ok(Self {
-			consumed_slots,
-			cache_by_caster,
-		})
+		Ok(Self { cache_by_caster })
 	}
 }
 impl AsKdl for SelectedSpells {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
-		// Consumed Slots
-		node.push_child_opt({
-			let mut node = NodeBuilder::default();
-			let iter_slots = self.consumed_slots.iter().sorted_by_key(|(slot, _)| *slot);
-			for (slot, consumed) in iter_slots {
-				node.push_child({
-					let mut node = NodeBuilder::default();
-					node.push_entry(*slot as i64);
-					node.push_entry(*consumed as i64);
-					node.build("slot")
-				});
-			}
-			node.build("consumed_slots")
-		});
 		// Casters
 		let iter_casters = self.cache_by_caster.iter();
 		let iter_casters = iter_casters.sorted_by_key(|(name, _)| *name);
@@ -522,8 +550,7 @@ impl AsKdl for SelectedSpells {
 			node_caster.push_entry(caster_name.clone());
 
 			let iter_spells = selected_spells.selections.values();
-			let iter_spells =
-				iter_spells.sorted_by(|a, b| a.rank.cmp(&b.rank).then(a.name.cmp(&b.name)));
+			let iter_spells = iter_spells.sorted_by(|a, b| a.rank.cmp(&b.rank).then(a.name.cmp(&b.name)));
 			for spell in iter_spells {
 				node_caster.push_child_t("spell", spell);
 			}
@@ -547,7 +574,9 @@ impl SelectedSpells {
 	}
 
 	pub fn remove(&mut self, caster_id: &impl AsRef<str>, spell_id: &SourceId) {
-		let Some(caster_list) = self.cache_by_caster.get_mut(caster_id.as_ref()) else { return; };
+		let Some(caster_list) = self.cache_by_caster.get_mut(caster_id.as_ref()) else {
+			return;
+		};
 		caster_list.remove(spell_id);
 	}
 
@@ -556,8 +585,12 @@ impl SelectedSpells {
 	}
 
 	pub fn get_spell(&self, caster_id: &impl AsRef<str>, spell_id: &SourceId) -> Option<&Spell> {
-		let Some(data) = self.cache_by_caster.get(caster_id.as_ref()) else { return None; };
-		let Some(spell) = data.selections.get(spell_id) else { return None; };
+		let Some(data) = self.cache_by_caster.get(caster_id.as_ref()) else {
+			return None;
+		};
+		let Some(spell) = data.selections.get(spell_id) else {
+			return None;
+		};
 		Some(spell)
 	}
 
@@ -566,32 +599,34 @@ impl SelectedSpells {
 	}
 
 	pub fn iter_caster(&self, caster_id: &impl AsRef<str>) -> Option<impl Iterator<Item = &Spell>> {
-		let Some(caster) = self.cache_by_caster.get(caster_id.as_ref()) else { return None; };
+		let Some(caster) = self.cache_by_caster.get(caster_id.as_ref()) else {
+			return None;
+		};
 		Some(caster.selections.values())
 	}
 
 	pub fn has_selected(&self, caster_id: &impl AsRef<str>, spell_id: &SourceId) -> bool {
-		let Some(data) = self.cache_by_caster.get(caster_id.as_ref()) else { return false; };
+		let Some(data) = self.cache_by_caster.get(caster_id.as_ref()) else {
+			return false;
+		};
 		data.selections.contains_key(spell_id)
 	}
 
-	pub fn consumed_slots(&self, rank: u8) -> Option<usize> {
-		self.consumed_slots.get(&rank).map(|v| *v)
+	pub fn consumed_slots_path(&self, rank: u8) -> std::path::PathBuf {
+		Path::new("SpellSlots").join(rank.to_string())
 	}
 
-	pub fn set_slots_consumed(&mut self, rank: u8, count: usize) {
-		if count == 0 {
-			self.consumed_slots.remove(&rank);
-			return;
-		}
-		match self.consumed_slots.get_mut(&rank) {
-			None => {
-				self.consumed_slots.insert(rank, count);
-			}
-			Some(slot_count) => {
-				*slot_count = count;
-			}
-		}
+	pub fn reset_on_rest(&self) -> (Rest, RestEntry) {
+		let data_paths = (1..=MAX_SPELL_RANK)
+			.into_iter()
+			.map(|rank| self.consumed_slots_path(rank))
+			.collect::<Vec<_>>();
+		let entry = RestEntry {
+			restore_amount: None,
+			data_paths,
+			source: Path::new("Standard Spellcasting Slots").to_owned(),
+		};
+		(Rest::Long, entry)
 	}
 }
 impl SelectedSpellsData {

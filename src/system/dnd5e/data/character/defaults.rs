@@ -1,12 +1,13 @@
 use super::Character;
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder},
 	system::{
 		core::SourceId,
-		dnd5e::{data::Feature, BoxedMutator, SystemComponent},
+		dnd5e::{BoxedMutator, SystemComponent},
 	},
 	utility::MutatorGroup,
 };
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::path::Path;
 
 /// Contains mutators and features which are applied to every character using the module it is present in.
@@ -14,10 +15,9 @@ use std::path::Path;
 pub struct DefaultsBlock {
 	pub source_id: Option<SourceId>,
 	pub mutators: Vec<BoxedMutator>,
-	pub features: Vec<Feature>,
 }
 
-crate::impl_kdl_node!(DefaultsBlock, "defaults");
+kdlize::impl_kdl_node!(DefaultsBlock, "defaults");
 
 impl SystemComponent for DefaultsBlock {
 	fn to_metadata(self) -> serde_json::Value {
@@ -32,38 +32,22 @@ impl MutatorGroup for DefaultsBlock {
 		for mutator in &self.mutators {
 			mutator.set_data_path(parent);
 		}
-		for feature in &self.features {
-			feature.set_data_path(parent);
-		}
 	}
 
 	fn apply_mutators(&self, stats: &mut Character, parent: &Path) {
 		for mutator in &self.mutators {
 			stats.apply(mutator, parent);
 		}
-		for feat in &self.features {
-			stats.add_feature(feat, parent);
-		}
 	}
 }
 
-impl FromKDL for DefaultsBlock {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		let mut mutators = Vec::new();
-		for entry_node in node.query_all("scope() > mutator")? {
-			mutators.push(ctx.parse_mutator(entry_node)?);
-		}
-		let mut features = Vec::new();
-		for entry_node in node.query_all("scope() > feature")? {
-			features.push(Feature::from_kdl(entry_node, &mut ctx.next_node())?.into());
-		}
+impl FromKdl<NodeContext> for DefaultsBlock {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let mutators = node.query_all_t("scope() > mutator")?;
 		Ok(Self {
 			source_id: None,
 			mutators,
-			features,
 		})
 	}
 }
@@ -73,9 +57,6 @@ impl AsKdl for DefaultsBlock {
 		let mut node = NodeBuilder::default();
 		for mutator in &self.mutators {
 			node.push_child_t("mutator", mutator);
-		}
-		for feature in &self.features {
-			node.push_child_t("feature", feature);
 		}
 		node
 	}

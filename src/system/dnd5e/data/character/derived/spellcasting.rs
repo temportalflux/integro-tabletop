@@ -1,37 +1,55 @@
-use crate::system::{
-	core::SourceId,
-	dnd5e::{
-		data::{
-			action::LimitedUses,
+use crate::{
+	system::{
+		core::SourceId,
+		dnd5e::data::{
 			character::{Character, ObjectCacheProvider, Persistent},
-			spell, Ability,
+			spell::Spell,
 		},
-		BoxedEvaluator,
 	},
+	utility::AddAssignMap,
 };
+use multimap::MultiMap;
 use std::{
 	collections::{BTreeMap, HashMap, HashSet},
 	path::PathBuf,
 };
 
+mod caster;
+pub use caster::*;
 mod cantrips;
 pub use cantrips::*;
+mod entry;
+pub use entry::*;
+mod filter;
+pub use filter::*;
 mod slots;
-use multimap::MultiMap;
 pub use slots::*;
-use spell::Spell;
 
 #[derive(Clone, Default, PartialEq, Debug)]
 pub struct Spellcasting {
-	// Output goals:
-	// - cantrip capacity
-	// - cantrips prepared
-	// - spell slot map (rank to slot capacity and number used)
-	// - spell capacity (number of spells that can be prepared/known)
-	// - spells prepared (or known)
+	/// The spellcasting features available to a character.
+	/// Each feature contains things like the spellcasting ability,
+	/// ritual casting, cantrip capacity, leveled-spell capacity, slot scaling, etc.
+	/// Keyed by the Caster's name/id.
 	casters: HashMap<String, Caster>,
+	/// Any additional spells that are available to a particular casting feature/class.
+	/// Each entry is a list of additional Spell SourceIds, and the feature which granted that access.
+	/// Spells in this list are made available to be selected (known or prepared) by casters,
+	/// even if that spell is not tagged with this caster/class name.
+	/// When these spells are selected, they are treated as if they are spells that class/caster can traditionally cast.
+	/// Keyed by the Caster's name/id.
+	additional_caster_spells: AdditionalAccess,
+	/// Map of Spell SourceIds to the cached spell and the sources+entries which granted access.
+	/// Spells in this list are always castable/prepared.
 	always_prepared: HashMap<SourceId, AlwaysPreparedSpell>,
+	/// A cache of spells queried from the data provider which casters can ritual cast.
 	ritual_spells: RitualSpellCache,
+}
+
+#[derive(Clone, Default, PartialEq, Debug)]
+pub struct AdditionalAccess {
+	by_caster: MultiMap<String, SourceId>,
+	sources: MultiMap<SourceId, PathBuf>,
 }
 
 #[derive(Clone, Default, PartialEq, Debug)]
@@ -44,6 +62,7 @@ pub struct AlwaysPreparedSpell {
 pub struct RitualSpellCache {
 	pub spells: HashMap<SourceId, Spell>,
 	pub caster_lists: MultiMap<String, SourceId>,
+	pub casters_which_prepare_from_item: HashSet<String>,
 }
 
 impl Spellcasting {
@@ -51,36 +70,51 @@ impl Spellcasting {
 		self.casters.insert(caster.name().clone(), caster);
 	}
 
+	pub fn add_spell_access(&mut self, caster_name: &String, spell_ids: &Vec<SourceId>, source: &std::path::Path) {
+		for spell_id in spell_ids {
+			self.additional_caster_spells
+				.by_caster
+				.insert(caster_name.clone(), spell_id.clone());
+			self.additional_caster_spells
+				.sources
+				.insert(spell_id.clone(), source.to_owned());
+		}
+	}
+
 	pub fn add_prepared(&mut self, spell_id: &SourceId, entry: SpellEntry) {
+		let spell_id = spell_id.unversioned();
 		if !self.always_prepared.contains_key(&spell_id) {
 			self.always_prepared
 				.insert(spell_id.clone(), AlwaysPreparedSpell::default());
 		}
 		self.always_prepared
-			.get_mut(spell_id)
+			.get_mut(&spell_id)
 			.unwrap()
 			.entries
 			.insert(entry.source.clone(), entry);
 	}
 
+	pub fn add_prepared_spell(&mut self, spell: &Spell, entry: SpellEntry) {
+		let id = spell.id.unversioned();
+		self.add_prepared(&id, entry);
+		self.always_prepared.get_mut(&id).unwrap().spell = Some(spell.clone());
+	}
+
 	pub async fn fetch_spell_objects(
 		&mut self,
-		provider: ObjectCacheProvider,
+		provider: &ObjectCacheProvider,
 		persistent: &Persistent,
 	) -> anyhow::Result<()> {
-		self.fetch_always_prepared(&provider).await?;
-		self.ritual_spells = self.fetch_rituals(&provider, persistent).await?;
+		self.fetch_always_prepared(provider).await?;
+		self.ritual_spells = self.fetch_rituals(provider, persistent).await?;
 		Ok(())
 	}
 
-	async fn fetch_always_prepared(
-		&mut self,
-		provider: &ObjectCacheProvider,
-	) -> anyhow::Result<()> {
+	async fn fetch_always_prepared(&mut self, provider: &ObjectCacheProvider) -> anyhow::Result<()> {
 		for (id, spell_entry) in &mut self.always_prepared {
 			spell_entry.spell = provider
 				.database
-				.get_typed_entry::<Spell>(id.clone(), provider.system_depot.clone())
+				.get_typed_entry::<Spell>(id.clone(), provider.system_depot.clone(), None)
 				.await?;
 		}
 		Ok(())
@@ -91,40 +125,58 @@ impl Spellcasting {
 		provider: &ObjectCacheProvider,
 		persistent: &Persistent,
 	) -> anyhow::Result<RitualSpellCache> {
-		use crate::database::app::Criteria;
+		use crate::database::Criteria;
 		use crate::system::{core::System, dnd5e::DnD5e};
 		use futures_util::StreamExt;
-
-		// TODO: For wizards, this should check the spell source instead of always checking the database for spells.
+		use kdlize::NodeId;
 
 		let mut caster_query_criteria = Vec::new();
 		let mut caster_filters = HashMap::new();
+		let mut casters_which_prepare_from_item = HashSet::new();
 		for caster in self.iter_casters() {
-			let Some(ritual_capability) = &caster.ritual_capability else { continue; };
+			let Some(ritual_capability) = &caster.ritual_capability else {
+				continue;
+			};
 			if !ritual_capability.available_spells {
 				continue;
 			}
 
-			let mut filter = caster.spell_filter(persistent);
+			let mut filter = self.get_filter(caster.name(), persistent).unwrap_or_default();
 			// each spell the filter matches must be a ritual
 			filter.ritual = Some(true);
 
-			caster_query_criteria.push(filter.as_criteria());
-			caster_filters.insert(caster.name(), filter);
+			let criteria = filter.as_criteria();
+			caster_query_criteria.push(criteria.clone());
+			caster_filters.insert(caster.name(), criteria);
+
+			// We only store the caster filter if the caster doesnt prepare from the item.
+			// Casters skipped here are handled manually in the spells panel.
+			if caster.prepare_from_item {
+				casters_which_prepare_from_item.insert(caster.name().clone());
+			}
 		}
 		let criteria = Criteria::Any(caster_query_criteria);
 
 		let db = provider.database.clone();
-		let depot = provider.system_depot.clone();
-		let query_async = db.query_typed::<Spell>(DnD5e::id(), depot, Some(criteria.into()));
+		let node_reg = {
+			let system_reg = provider
+				.system_depot
+				.get(&DnD5e::id())
+				.expect("Missing system dnd5e in depot");
+			system_reg.node()
+		};
+		let query_async = db.query_entries(DnD5e::id(), Spell::id(), Some(criteria.into()));
 		let query_stream_res = query_async.await;
-		let mut query_stream = query_stream_res.map_err(crate::database::Error::from)?;
+		let mut query_stream = query_stream_res.map_err(database::Error::from)?;
 
 		let mut ritual_spell_cache = HashMap::new();
 		let mut caster_ritual_list_cache = MultiMap::new();
-		while let Some(spell) = query_stream.next().await {
-			for (caster_id, filter) in &caster_filters {
-				if filter.spell_matches(&spell) {
+		while let Some(entry) = query_stream.next().await {
+			let Some(spell) = entry.parse_kdl::<Spell>(node_reg.clone()) else {
+				continue;
+			};
+			for (caster_id, criteria) in &caster_filters {
+				if criteria.is_relevant(&entry.metadata) {
 					caster_ritual_list_cache.insert((*caster_id).clone(), spell.id.unversioned());
 				}
 			}
@@ -134,12 +186,16 @@ impl Spellcasting {
 		Ok(RitualSpellCache {
 			spells: ritual_spell_cache,
 			caster_lists: caster_ritual_list_cache,
+			casters_which_prepare_from_item,
 		})
 	}
 
 	pub fn iter_ritual_spells(&self) -> impl Iterator<Item = (&String, &Spell, &SpellEntry)> + '_ {
 		let iter = self.casters.iter();
 		let iter = iter.filter_map(|(caster_id, caster)| {
+			if self.ritual_spells.casters_which_prepare_from_item.contains(caster_id) {
+				return None;
+			}
 			match self.ritual_spells.caster_lists.get_vec(caster_id) {
 				Some(spell_ids) => Some((caster_id, &caster.spell_entry, spell_ids)),
 				None => None,
@@ -151,6 +207,16 @@ impl Spellcasting {
 			iter.map(move |spell| (caster_id, spell, caster_spell_entry))
 		});
 		iter.flatten()
+	}
+
+	pub fn get_ritual_spell_for(&self, caster_id: &String, spell_id: &SourceId) -> Option<&Spell> {
+		let Some(spell_ids) = self.ritual_spells.caster_lists.get_vec(caster_id) else {
+			return None;
+		};
+		if !spell_ids.contains(spell_id) {
+			return None;
+		}
+		self.ritual_spells.spells.get(spell_id)
 	}
 
 	pub fn cantrip_capacity(&self, persistent: &Persistent) -> Vec<(usize, &Restriction)> {
@@ -197,29 +263,37 @@ impl Spellcasting {
 			return None;
 		}
 
-		let (total_caster_level, slots_by_level) = if self.casters.len() == 1 {
+		if self.casters.len() == 1 {
 			let (_id, caster) = self.casters.iter().next().unwrap();
 			let current_level = character.level(Some(&caster.class_name));
-			(current_level, &caster.slots.slots_capacity)
+			caster.all_slots().remove(&current_level)
 		} else {
-			let mut levels = 0;
+			let mut total_level = 0;
 			for (_id, caster) in &self.casters {
 				let current_level = character.level(Some(&caster.class_name));
-				levels += match caster.slots.multiclass_half_caster {
-					false => current_level,
-					true => current_level / 2,
+				total_level += match &caster.standard_slots {
+					Some(Slots::Standard {
+						multiclass_half_caster: false,
+						..
+					}) => current_level,
+					Some(Slots::Standard {
+						multiclass_half_caster: true,
+						..
+					}) => current_level / 2,
+					_ => 0,
 				};
 			}
-			(levels, &*MULTICLASS_SLOTS)
-		};
-
-		for (level, ranks) in slots_by_level.iter().rev() {
-			if *level <= total_caster_level {
-				return Some(ranks.clone());
+			let mut slots = MULTICLASS_SLOTS.get(&total_level).cloned().unwrap_or_default();
+			for (_id, caster) in &self.casters {
+				let current_level = character.level(Some(&caster.class_name));
+				for bonus_slots in &caster.bonus_slots {
+					if let Some(ranks) = bonus_slots.capacity().get(&current_level) {
+						slots.add_assign_map(ranks);
+					}
+				}
 			}
+			(!slots.is_empty()).then(|| slots)
 		}
-
-		None
 	}
 
 	pub fn prepared_spells(&self) -> &HashMap<SourceId, AlwaysPreparedSpell> {
@@ -241,227 +315,20 @@ impl Spellcasting {
 	pub fn get_ritual(&self, spell_id: &SourceId) -> Option<&Spell> {
 		self.ritual_spells.spells.get(spell_id)
 	}
-}
 
-#[derive(Clone, PartialEq, Debug)]
-pub struct Caster {
-	pub class_name: String,
-	pub ability: Ability,
-	pub restriction: Restriction,
-	pub cantrip_capacity: Option<BTreeMap<usize, usize>>,
-	pub slots: Slots,
-	pub spell_capacity: SpellCapacity,
-	pub spell_entry: SpellEntry,
-	pub ritual_capability: Option<RitualCapability>,
-}
-
-#[derive(Clone, Copy, PartialEq, Debug)]
-pub enum CasterKind {
-	Known,
-	Prepared,
-}
-
-#[derive(Clone, Copy, PartialEq, Debug)]
-pub struct RitualCapability {
-	/// If true, the caster can ritually cast all spells which:
-	/// 1. have the ritual tag
-	/// 2. are classified as spells for this caster
-	///    (spell has the class tag or was classified and is Always Prepared)
-	/// 3. are available (e.g. all cleric spells, a wizard's spellbook)
-	pub available_spells: bool,
-	/// If true, the caster can ritually cast all spells which:
-	/// 1. have the ritual tag
-	/// 2. are classified as spells for this caster
-	///    (spell has the class tag or was classified and is Always Prepared)
-	/// 3. are selected (i.e. prepared or known)
-	pub selected_spells: bool,
-}
-
-#[derive(Clone, PartialEq, Debug)]
-pub enum SpellCapacity {
-	// the number of spells that can be known, keyed by class level
-	Known(BTreeMap<usize, usize>),
-	// the number of spells that can be prepared
-	Prepared(BoxedEvaluator<i32>),
-}
-
-impl Caster {
-	pub fn name(&self) -> &String {
-		&self.class_name
-	}
-
-	pub fn kind(&self) -> CasterKind {
-		match &self.spell_capacity {
-			SpellCapacity::Known(_) => CasterKind::Known,
-			SpellCapacity::Prepared(_) => CasterKind::Prepared,
-		}
-	}
-
-	pub fn cantrip_capacity(&self, persistent: &Persistent) -> usize {
-		let Some(capacity) = &self.cantrip_capacity else { return 0; };
-		let current_level = persistent.level(Some(&self.class_name));
-		for (level, count) in capacity.iter().rev() {
-			if *level <= current_level {
-				return *count;
-			}
-		}
-		0
-	}
-
-	pub fn spell_capacity(&self, character: &Character) -> usize {
-		match &self.spell_capacity {
-			SpellCapacity::Known(capacity) => {
-				let current_level = character.level(Some(&self.class_name));
-				let mut max_amt = 0;
-				for (level, amount) in capacity {
-					if *level > current_level {
-						break;
-					}
-					max_amt = *amount;
-				}
-				max_amt
-			}
-			SpellCapacity::Prepared(capacity) => capacity.evaluate(&character) as usize,
-		}
-	}
-
-	/// Use to determine what kind of spells can be prepared/known.
-	pub fn max_spell_rank(&self, persistent: &Persistent) -> Option<u8> {
-		let current_level = persistent.level(Some(&self.class_name));
-		let mut max_rank = None;
-		for (level, rank_to_count) in &self.slots.slots_capacity {
-			if *level > current_level {
-				break;
-			}
-			max_rank = rank_to_count.keys().max().cloned();
-		}
-		max_rank
-	}
-
-	pub fn spell_filter(&self, persistent: &Persistent) -> SpellFilter {
-		SpellFilter {
-			can_cast: Some(self.name().clone()),
-			//tags: caster.restriction.tags.iter().cloned().collect(),
-			max_rank: self.max_spell_rank(persistent),
+	pub fn get_filter(&self, id: &str, persistent: &Persistent) -> Option<Filter> {
+		let Some(caster) = self.get_caster(id) else {
+			return None;
+		};
+		let additional_ids = match self.additional_caster_spells.by_caster.get_vec(id) {
+			None => HashSet::new(),
+			Some(entries) => entries.iter().cloned().collect::<HashSet<_>>(),
+		};
+		Some(Filter {
+			tags: caster.restriction.tags.iter().cloned().collect(),
+			max_rank: caster.max_spell_rank(persistent),
+			additional_ids,
 			..Default::default()
-		}
-	}
-}
-
-#[derive(Clone, PartialEq, Debug)]
-pub struct SpellEntry {
-	pub ability: Ability,
-	pub source: PathBuf,
-	pub classified_as: Option<String>,
-	pub cast_via_slot: bool,
-	pub cast_via_uses: Option<LimitedUses>,
-	pub range: Option<spell::Range>,
-	pub forced_rank: Option<u8>,
-}
-
-#[derive(Clone, Debug, PartialEq, Default)]
-pub struct SpellFilter {
-	/// The spell must already be castable by the provided caster class.
-	/// This can be true if the spell contains the class tag OR the spell is in the expanded list
-	/// for the caster data (e.g. spellcasting "add_source").
-	pub can_cast: Option<String>,
-	// If provided, the spell's must or must not be able to be cast as a ritual.
-	pub ritual: Option<bool>,
-	/// The spell must be of one of these ranks.
-	pub ranks: HashSet<u8>,
-	/// The spell's rank must be <= this rank.
-	pub max_rank: Option<u8>,
-	/// The spell must have all of these tags.
-	pub tags: HashSet<String>,
-}
-impl SpellFilter {
-	fn rank_range<T>(&self) -> Option<T>
-	where
-		T: FromIterator<u8>,
-	{
-		match self.max_rank {
-			Some(max_rank) => Some((0..=max_rank).collect::<T>()),
-			None if !self.ranks.is_empty() => Some(self.ranks.iter().map(|i| *i).collect::<T>()),
-			None => None,
-		}
-	}
-
-	pub fn as_criteria(&self) -> crate::database::app::Criteria {
-		use crate::database::app::Criteria;
-		let mut criteria = Vec::new();
-
-		// Using the valid rank range for this filter, insert the rank criteria.
-		// The valid rank range is derived from `self.max_rank` and `self.ranks`.
-		if let Some(rank_range) = self.rank_range::<Vec<_>>() {
-			// What this means:
-			// There exists a root-level metadata property `rank`.
-			// That `rank` property is a number which matches
-			// any value in `rank_range` (the list of valid ranks for this filter).
-			let rank_matches = rank_range.into_iter().map(|rank| Criteria::exact(rank));
-			let rank_is_one_of = Criteria::any(rank_matches);
-			criteria.push(Criteria::contains_prop("rank", rank_is_one_of).into());
-		}
-
-		if !self.tags.is_empty() {
-			// What this means:
-			// There exists a root-level metadata property named `tags`.
-			// That `tags` property is an array, which contains every value contained in the `self.tags` list.
-			let tag_matches = self.tags.iter().map(|tag| Criteria::exact(tag.as_str()));
-			let contains_match = tag_matches.map(|matcher| Criteria::contains_element(matcher));
-			criteria.push(Criteria::contains_prop("tags", Criteria::all(contains_match)).into());
-		}
-
-		if let Some(caster_class) = &self.can_cast {
-			// What this means:
-			// Firstly, there exists a root-level metadata property named `tags`.
-			// That `tags` property contains a string whose value matches the name of the caster class this filter is looking for.
-			let has_class_tag = Criteria::contains_element(Criteria::exact(caster_class.as_str()));
-			// TODO: check if the spell is in the expanded spell list,
-			// as provided by the AddSource spellcasting mutator.
-			let can_cast = Criteria::any(vec![has_class_tag.into()]);
-			criteria.push(Criteria::contains_prop("tags", can_cast).into());
-		}
-
-		if let Some(ritual_flag) = &self.ritual {
-			// What this means:
-			// There exists a root-level metadata property named `casting`.
-			// The `casting` property is an object which has a property named `ritual`.
-			// The value of that `ritual` property is a (json) boolean
-			// with a value which matches the provided `ritual` flag.
-			let matches_ritual = Criteria::exact(*ritual_flag);
-			let ritual = Criteria::contains_prop("ritual", matches_ritual);
-			let casting = Criteria::contains_prop("casting", ritual);
-			criteria.push(casting.into());
-		}
-
-		Criteria::All(criteria)
-	}
-
-	pub fn spell_matches(&self, spell: &spell::Spell) -> bool {
-		if let Some(ritual_flag) = &self.ritual {
-			if spell.casting_time.ritual != *ritual_flag {
-				return false;
-			}
-		}
-		if let Some(range) = self.rank_range::<HashSet<_>>() {
-			if !range.contains(&spell.rank) {
-				return false;
-			}
-		}
-		if !self.tags.is_empty() {
-			for tag in &self.tags {
-				if !spell.tags.contains(tag) {
-					return false;
-				}
-			}
-		}
-		if let Some(caster_class) = &self.can_cast {
-			// TODO: check if the spell is in the expanded spell list,
-			// as provided by the AddSource spellcasting mutator.
-			if !spell.tags.contains(caster_class) {
-				return false;
-			}
-		}
-		true
+		})
 	}
 }

@@ -1,14 +1,15 @@
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{AsKdl, FromKDL},
 	system::dnd5e::data::{character::Character, description, ArmorClassFormula},
 	utility::Mutator,
 };
+use kdlize::{AsKdl, FromKdl};
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct AddArmorClassFormula(pub ArmorClassFormula);
 
 crate::impl_trait_eq!(AddArmorClassFormula);
-crate::impl_kdl_node!(AddArmorClassFormula, "add_armor_class_formula");
+kdlize::impl_kdl_node!(AddArmorClassFormula, "add_armor_class_formula");
 
 impl Mutator for AddArmorClassFormula {
 	type Target = Character;
@@ -25,36 +26,24 @@ impl Mutator for AddArmorClassFormula {
 				(None, Some(max)) => format!(" (max {max:+})"),
 				(Some(min), Some(max)) => format!(" (min {min:+}, max {max:+})"),
 			};
-			args.push(format!(
-				"your {} modifier{}",
-				bonus.ability.long_name(),
-				bounds
-			));
+			args.push(format!("your {} modifier{}", bonus.ability.long_name(), bounds));
 		}
 		description::Section {
 			title: Some("Armor Class".into()),
-			content: format!(
-				"You can calculate your Armor Class using {}.",
-				args.join(" + ")
-			)
-			.into(),
+			content: format!("You can calculate your Armor Class using {}.", args.join(" + ")).into(),
 			..Default::default()
 		}
 	}
 
 	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
-		stats
-			.armor_class_mut()
-			.push_formula(self.0.clone(), parent.to_owned());
+		stats.armor_class_mut().push_formula(self.0.clone(), parent.to_owned());
 	}
 }
 
-impl FromKDL for AddArmorClassFormula {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		Ok(Self(ArmorClassFormula::from_kdl(node, ctx)?))
+impl FromKdl<NodeContext> for AddArmorClassFormula {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		Ok(Self(ArmorClassFormula::from_kdl(node)?))
 	}
 }
 

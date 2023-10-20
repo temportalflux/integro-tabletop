@@ -1,8 +1,7 @@
 use super::equipment::Equipment;
-use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeContext, NodeExt},
-	utility::NotInList,
-};
+use crate::kdl_ext::NodeContext;
+use crate::utility::NotInList;
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum Kind {
@@ -16,15 +15,16 @@ impl Default for Kind {
 	}
 }
 
-impl FromKDL for Kind {
-	fn from_kdl(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
-		match node.get_str_req(ctx.consume_idx())? {
+impl FromKdl<NodeContext> for Kind {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		match node.next_str_req()? {
 			"Simple" => {
 				let count = node.get_i64_opt("count")?.unwrap_or(1) as u32;
 				Ok(Self::Simple { count })
 			}
 			"Equipment" => {
-				let equipment = Equipment::from_kdl(node, ctx)?;
+				let equipment = Equipment::from_kdl(node)?;
 				Ok(Self::Equipment(equipment))
 			}
 			value => Err(NotInList(value.into(), vec!["Simple", "Equipment"]).into()),

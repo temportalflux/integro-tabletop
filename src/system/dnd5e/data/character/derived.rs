@@ -1,17 +1,25 @@
 use super::{AttributedValue, PersonalityKind};
 use crate::system::dnd5e::{
 	data::{
-		proficiency, roll::Modifier, Ability, ArmorClass, DamageType, OtherProficiencies, Skill,
+		action::AttackQuery,
+		proficiency,
+		roll::{Modifier, Roll},
+		Ability, ArmorClass, DamageType, OtherProficiencies, Rest, Skill, Spell,
 	},
 	mutator::{Defense, Flag},
 };
 use enum_map::{enum_map, EnumMap};
-use std::{collections::BTreeMap, path::PathBuf};
+use std::{
+	collections::{BTreeMap, HashSet},
+	path::{Path, PathBuf},
+};
 
 mod ability_score;
 pub use ability_score::*;
 mod actions;
 pub use actions::*;
+mod object_cache;
+pub use object_cache::*;
 mod sense;
 pub use sense::*;
 mod size;
@@ -38,12 +46,15 @@ pub struct Derived {
 	pub senses: Senses,
 	pub defenses: Defenses,
 	pub max_hit_points: MaxHitPoints,
+	pub attack_bonuses: AttackBonuses,
 	pub armor_class: ArmorClass,
 	pub features: Features,
 	pub description: DerivedDescription,
 	pub flags: EnumMap<Flag, bool>,
 	pub spellcasting: Spellcasting,
 	pub starting_equipment: Vec<(Vec<StartingEquipment>, PathBuf)>,
+	pub additional_objects: AdditionalObjectCache,
+	pub rest_resets: RestResets,
 }
 
 impl Default for Derived {
@@ -58,6 +69,7 @@ impl Default for Derived {
 			senses: Default::default(),
 			defenses: Default::default(),
 			max_hit_points: Default::default(),
+			attack_bonuses: Default::default(),
 			armor_class: Default::default(),
 			features: Default::default(),
 			description: Default::default(),
@@ -66,6 +78,8 @@ impl Default for Derived {
 			},
 			spellcasting: Default::default(),
 			starting_equipment: Default::default(),
+			additional_objects: Default::default(),
+			rest_resets: Default::default(),
 		}
 	}
 }
@@ -108,9 +122,7 @@ impl SavingThrows {
 		&self.by_ability[ability].modifiers
 	}
 
-	pub fn iter_modifiers(
-		&self,
-	) -> impl Iterator<Item = (Option<Ability>, Modifier, &ModifierMapItem)> {
+	pub fn iter_modifiers(&self) -> impl Iterator<Item = (Option<Ability>, Modifier, &ModifierMapItem)> {
 		self.by_ability
 			.iter()
 			.map(|(ability, saving_throw)| {
@@ -204,16 +216,8 @@ impl Skills {
 		self.ability_modifiers[ability].insert(modifier, (context, source).into());
 	}
 
-	pub fn add_skill_modifier(
-		&mut self,
-		skill: Skill,
-		modifier: Modifier,
-		context: Option<String>,
-		source: PathBuf,
-	) {
-		self.skills[skill]
-			.modifiers
-			.insert(modifier, (context, source).into());
+	pub fn add_skill_modifier(&mut self, skill: Skill, modifier: Modifier, context: Option<String>, source: PathBuf) {
+		self.skills[skill].modifiers.insert(modifier, (context, source).into());
 	}
 
 	pub fn proficiency(&self, skill: Skill) -> &AttributedValue<proficiency::Level> {
@@ -228,17 +232,11 @@ impl Skills {
 		&self.skills[skill].modifiers
 	}
 
-	pub fn iter_ability_modifiers(
-		&self,
-		ability: Ability,
-	) -> impl Iterator<Item = (Modifier, &Vec<ModifierMapItem>)> {
+	pub fn iter_ability_modifiers(&self, ability: Ability) -> impl Iterator<Item = (Modifier, &Vec<ModifierMapItem>)> {
 		self.ability_modifiers[ability].iter()
 	}
 
-	pub fn iter_skill_modifiers(
-		&self,
-		skill: Skill,
-	) -> impl Iterator<Item = (Modifier, &Vec<ModifierMapItem>)> {
+	pub fn iter_skill_modifiers(&self, skill: Skill) -> impl Iterator<Item = (Modifier, &Vec<ModifierMapItem>)> {
 		self.ability_modifiers[skill.ability()]
 			.iter()
 			.chain(self.skills[skill].modifiers().iter())
@@ -254,13 +252,7 @@ pub struct DefenseEntry {
 	pub source: PathBuf,
 }
 impl Defenses {
-	pub fn push(
-		&mut self,
-		kind: Defense,
-		damage_type: Option<DamageType>,
-		context: Option<String>,
-		source: PathBuf,
-	) {
+	pub fn push(&mut self, kind: Defense, damage_type: Option<DamageType>, context: Option<String>, source: PathBuf) {
 		self.0[kind].push(DefenseEntry {
 			damage_type,
 			context,
@@ -281,7 +273,6 @@ pub struct DerivedDescription {
 	pub life_expectancy: i32,
 	pub size_formula: SizeFormula,
 	pub personality_suggestions: EnumMap<PersonalityKind, Vec<String>>,
-	// TODO: Starter equipment here
 }
 
 #[derive(Clone, Default, PartialEq, Debug)]
@@ -298,5 +289,159 @@ impl MaxHitPoints {
 
 	pub fn sources(&self) -> &BTreeMap<PathBuf, i32> {
 		&self.1
+	}
+}
+
+#[derive(Clone, Default, PartialEq, Debug)]
+pub struct AttackBonuses {
+	attack_roll: Vec<AttackRollBonus>,
+	attack_damage: Vec<AttackDamageBonus>,
+	attack_ability: Vec<AttackAbility>,
+	spell_damage: Vec<SpellDamageBonus>,
+}
+#[derive(Clone, PartialEq, Debug)]
+struct AttackRollBonus {
+	bonus: i32,
+	queries: Vec<AttackQuery>,
+	source: PathBuf,
+}
+#[derive(Clone, PartialEq, Debug)]
+struct AttackDamageBonus {
+	amount: Roll,
+	damage_type: Option<DamageType>,
+	queries: Vec<AttackQuery>,
+	source: PathBuf,
+}
+#[derive(Clone, PartialEq, Debug)]
+struct SpellDamageBonus {
+	amount: Roll,
+	queries: Vec<spellcasting::Filter>,
+	source: PathBuf,
+}
+#[derive(Clone, PartialEq, Debug)]
+struct AttackAbility {
+	ability: Ability,
+	queries: Vec<AttackQuery>,
+	source: PathBuf,
+}
+impl AttackBonuses {
+	pub fn add_to_weapon_attacks(&mut self, bonus: i32, queries: Vec<AttackQuery>, source: PathBuf) {
+		self.attack_roll.push(AttackRollBonus { bonus, queries, source });
+	}
+
+	pub fn add_to_weapon_damage(
+		&mut self,
+		amount: Roll,
+		damage_type: Option<DamageType>,
+		queries: Vec<AttackQuery>,
+		source: PathBuf,
+	) {
+		self.attack_damage.push(AttackDamageBonus {
+			amount,
+			damage_type,
+			queries,
+			source,
+		});
+	}
+
+	pub fn add_ability_modifier(&mut self, ability: Ability, queries: Vec<AttackQuery>, source: PathBuf) {
+		self.attack_ability.push(AttackAbility {
+			ability,
+			queries,
+			source,
+		});
+	}
+
+	pub fn add_to_spell_damage(&mut self, amount: Roll, queries: Vec<spellcasting::Filter>, source: PathBuf) {
+		self.spell_damage.push(SpellDamageBonus {
+			amount,
+			queries,
+			source,
+		});
+	}
+
+	pub fn get_weapon_attack(&self, action: &crate::system::dnd5e::data::action::Action) -> Vec<(i32, &Path)> {
+		let mut bonuses = Vec::new();
+		let Some(attack) = &action.attack else {
+			return bonuses;
+		};
+		for bonus in &self.attack_roll {
+			// Filter out any bonuses which do not meet the restriction
+			'iter_query: for query in &bonus.queries {
+				if query.is_attack_valid(attack) {
+					bonuses.push((bonus.bonus, bonus.source.as_path()));
+					break 'iter_query;
+				}
+			}
+		}
+		bonuses
+	}
+
+	pub fn get_weapon_damage(
+		&self,
+		action: &crate::system::dnd5e::data::action::Action,
+	) -> Vec<(&Roll, &Option<DamageType>, &Path)> {
+		let mut bonuses = Vec::new();
+		let Some(attack) = &action.attack else {
+			return bonuses;
+		};
+		for bonus in &self.attack_damage {
+			// Filter out any bonuses which do not meet the restriction
+			'iter_query: for query in &bonus.queries {
+				if query.is_attack_valid(attack) {
+					bonuses.push((&bonus.amount, &bonus.damage_type, bonus.source.as_path()));
+					break 'iter_query;
+				}
+			}
+		}
+		bonuses
+	}
+
+	pub fn get_attack_ability_variants(&self, attack: &crate::system::dnd5e::data::action::Attack) -> HashSet<Ability> {
+		// TODO: this doesnt report out the sources for the ability variants
+		let mut abilities = HashSet::default();
+		for bonus in &self.attack_ability {
+			'iter_query: for query in &bonus.queries {
+				if query.is_attack_valid(attack) {
+					abilities.insert(bonus.ability);
+					break 'iter_query;
+				}
+			}
+		}
+		abilities
+	}
+
+	pub fn get_spell_damage(&self, spell: &Spell) -> Vec<(&Roll, &Path)> {
+		let mut bonuses = Vec::new();
+		for bonus in &self.spell_damage {
+			// Filter out any bonuses which do not meet the restriction
+			'iter_query: for query in &bonus.queries {
+				if query.matches(spell) {
+					bonuses.push((&bonus.amount, bonus.source.as_path()));
+					break 'iter_query;
+				}
+			}
+		}
+		bonuses
+	}
+}
+
+#[derive(Clone, Default, PartialEq, Debug)]
+pub struct RestResets {
+	entries: EnumMap<Rest, Vec<RestEntry>>,
+}
+#[derive(Clone, PartialEq, Debug)]
+pub struct RestEntry {
+	pub restore_amount: Option<Roll>,
+	pub data_paths: Vec<PathBuf>,
+	pub source: PathBuf,
+}
+impl RestResets {
+	pub fn add(&mut self, rest: Rest, entry: RestEntry) {
+		self.entries[rest].push(entry);
+	}
+
+	pub fn get(&self, rest: Rest) -> &Vec<RestEntry> {
+		&self.entries[rest]
 	}
 }

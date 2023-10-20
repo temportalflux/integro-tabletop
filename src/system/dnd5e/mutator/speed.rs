@@ -1,8 +1,9 @@
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeExt},
 	system::dnd5e::data::{bounded::BoundValue, character::Character, description},
 	utility::Mutator,
 };
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Speed {
@@ -11,7 +12,7 @@ pub struct Speed {
 }
 
 crate::impl_trait_eq!(Speed);
-crate::impl_kdl_node!(Speed, "speed");
+kdlize::impl_kdl_node!(Speed, "speed");
 
 impl Mutator for Speed {
 	type Target = Character;
@@ -40,13 +41,11 @@ impl Mutator for Speed {
 	}
 }
 
-impl FromKDL for Speed {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		let name = node.get_str_req(ctx.consume_idx())?.to_owned();
-		let argument = BoundValue::from_kdl(node, ctx)?;
+impl FromKdl<NodeContext> for Speed {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let name = node.next_str_req()?.to_owned();
+		let argument = BoundValue::from_kdl(node)?;
 		Ok(Self { name, argument })
 	}
 }
@@ -154,11 +153,7 @@ mod test {
 				),
 			]);
 			let sense = character.speeds().get("Walking").unwrap();
-			let expected = [(
-				BoundKind::Minimum,
-				[("A".into(), 40), ("B".into(), 60)].into(),
-			)]
-			.into();
+			let expected = [(BoundKind::Minimum, [("A".into(), 40), ("B".into(), 60)].into())].into();
 			assert_eq!(sense, &expected);
 			assert_eq!(sense.value(), 60);
 		}
@@ -234,10 +229,7 @@ mod test {
 			let sense = character.speeds().get("Walking").unwrap();
 			let expected = [
 				(BoundKind::Minimum, [("A".into(), 60)].into()),
-				(
-					BoundKind::Additive,
-					[("B".into(), 40), ("C".into(), 30)].into(),
-				),
+				(BoundKind::Additive, [("B".into(), 40), ("C".into(), 30)].into()),
 			]
 			.into();
 			assert_eq!(sense, &expected);

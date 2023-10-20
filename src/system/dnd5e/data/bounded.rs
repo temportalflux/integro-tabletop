@@ -1,9 +1,10 @@
-use crate::{
-	kdl_ext::{AsKdl, EntryExt, FromKDL, NodeBuilder, NodeExt, ValueExt},
-	utility::InvalidEnumStr,
-};
+use crate::{kdl_ext::NodeContext, utility::InvalidEnumStr};
 use enum_map::{Enum, EnumMap};
 use enumset::EnumSetType;
+use kdlize::{
+	ext::{EntryExt, ValueExt},
+	AsKdl, FromKdl, NodeBuilder,
+};
 use std::{collections::BTreeMap, path::PathBuf, str::FromStr};
 
 #[derive(Clone, PartialEq, Default, Debug)]
@@ -48,11 +49,7 @@ impl BoundedValue {
 	pub fn iter(&self) -> impl Iterator<Item = (BoundKind, &PathBuf, &i32)> {
 		self.0
 			.iter()
-			.map(|(kind, source_values)| {
-				source_values
-					.iter()
-					.map(move |(path, value)| (kind, path, value))
-			})
+			.map(|(kind, source_values)| source_values.iter().map(move |(path, value)| (kind, path, value)))
 			.flatten()
 	}
 }
@@ -162,12 +159,10 @@ impl BoundValue {
 	}
 }
 
-impl FromKDL for BoundValue {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		let entry = node.entry_req(ctx.consume_idx())?;
+impl FromKdl<NodeContext> for BoundValue {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let entry = node.next_req()?;
 		let kind = BoundKind::from_str(entry.type_req()?)?;
 		let value = entry.as_i64_req()? as i32;
 		Ok(match kind {
@@ -251,10 +246,7 @@ mod test {
 	fn insert_additive() {
 		let mut sense = BoundedValue::default();
 		sense.insert(BoundValue::Additive(10), "FeatAdd".into());
-		assert_eq!(
-			sense.0[BoundKind::Additive],
-			[("FeatAdd".into(), 10)].into()
-		);
+		assert_eq!(sense.0[BoundKind::Additive], [("FeatAdd".into(), 10)].into());
 	}
 
 	#[test]

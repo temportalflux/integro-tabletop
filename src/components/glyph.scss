@@ -1,0 +1,17 @@
+
+@mixin base {
+	--glyph-image: "";
+	--glyph-color: var(--theme-frame-color);
+}
+@mixin solid {
+	@include base;
+	background-image: var(--glyph-image);
+	background-repeat: no-repeat;
+	background-color: transparent;
+}
+@mixin mask {
+	@include base;
+	-webkit-mask: var(--glyph-image) no-repeat 50% 50%;
+	mask: var(--glyph-image) no-repeat 50% 50%;
+	background-color: var(--glyph-color);
+}

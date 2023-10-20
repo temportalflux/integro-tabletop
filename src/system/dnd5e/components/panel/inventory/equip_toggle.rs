@@ -1,9 +1,6 @@
 use crate::{
-	bootstrap::components::Tooltip,
-	components::stop_propagation,
-	page::characters::sheet::MutatorImpact,
-	system::dnd5e::{components::CharacterHandle, data::character::Persistent},
-	utility::InputExt,
+	bootstrap::components::Tooltip, components::stop_propagation, page::characters::sheet::CharacterHandle,
+	page::characters::sheet::MutatorImpact, system::dnd5e::data::character::Persistent, utility::InputExt,
 };
 use uuid::Uuid;
 use yew::prelude::*;
@@ -34,7 +31,9 @@ pub fn ItemRowEquipBox(
 		let id = id.clone();
 		let state = state.clone();
 		move |evt: web_sys::Event| {
-			let Some(should_be_equipped) = evt.input_checked() else { return; };
+			let Some(should_be_equipped) = evt.input_checked() else {
+				return;
+			};
 			state.dispatch(Box::new(move |persistent: &mut Persistent| {
 				persistent.inventory.set_equipped(&id, should_be_equipped);
 				MutatorImpact::Recompile

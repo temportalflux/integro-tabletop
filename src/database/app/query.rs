@@ -1,13 +1,11 @@
 use super::Entry;
-use crate::{
-	database::Cursor,
-	kdl_ext::{FromKDL, NodeContext},
-	system::core::NodeRegistry,
-};
+use crate::{kdl_ext::NodeContext, system::core::NodeRegistry};
+use database::Cursor;
 use futures_util::StreamExt;
+use kdlize::FromKdl;
 use std::{pin::Pin, sync::Arc, task::Poll};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Criteria {
 	/// Passes if the value being evaluated is equal to an expected value.
 	Exact(serde_json::Value),
@@ -73,16 +71,24 @@ impl Criteria {
 			Self::Exact(expected) => value == expected,
 			Self::Not(criteria) => !criteria.is_relevant(value),
 			Self::ContainsSubstring(substring) => {
-				let serde_json::Value::String(value) = value else { return false; };
+				let serde_json::Value::String(value) = value else {
+					return false;
+				};
 				value.to_lowercase().contains(&substring.to_lowercase())
 			}
 			Self::ContainsProperty(key, criteria) => {
-				let serde_json::Value::Object(map) = value else { return false; };
-				let Some(value) = map.get(key) else { return false; };
+				let serde_json::Value::Object(map) = value else {
+					return false;
+				};
+				let Some(value) = map.get(key) else {
+					return false;
+				};
 				criteria.is_relevant(value)
 			}
 			Self::ContainsElement(criteria) => {
-				let serde_json::Value::Array(value_list) = value else { return false; };
+				let serde_json::Value::Array(value_list) = value else {
+					return false;
+				};
 				for value in value_list {
 					if criteria.is_relevant(value) {
 						return true;
@@ -120,13 +126,14 @@ pub struct Query {
 impl futures_util::stream::Stream for Query {
 	type Item = Entry;
 
-	fn poll_next(
-		mut self: Pin<&mut Self>,
-		cx: &mut std::task::Context<'_>,
-	) -> Poll<Option<Self::Item>> {
+	fn poll_next(mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Option<Self::Item>> {
 		loop {
-			let Poll::Ready(entry) = self.cursor.poll_next_unpin(cx) else { return Poll::Pending };
-			let Some(entry) = entry else { return Poll::Ready(None); };
+			let Poll::Ready(entry) = self.cursor.poll_next_unpin(cx) else {
+				return Poll::Pending;
+			};
+			let Some(entry) = entry else {
+				return Poll::Ready(None);
+			};
 			if let Some(criteria) = &self.criteria {
 				if !criteria.is_relevant(&entry.metadata) {
 					continue;
@@ -146,26 +153,22 @@ pub struct QueryDeserialize<Output> {
 }
 impl<Output> futures_util::stream::Stream for QueryDeserialize<Output>
 where
-	Output: FromKDL + Unpin,
+	Output: FromKdl<NodeContext> + Unpin,
 {
 	type Item = Output;
 
-	fn poll_next(
-		mut self: Pin<&mut Self>,
-		cx: &mut std::task::Context<'_>,
-	) -> Poll<Option<Self::Item>> {
+	fn poll_next(mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Option<Self::Item>> {
 		loop {
 			// Get the next database entry based on the query and underlying cursor
-			let Poll::Ready(entry) = self.query.poll_next_unpin(cx) else { return Poll::Pending };
-			let Some(entry) = entry else { return Poll::Ready(None); };
-			// Parse the entry's kdl string:
-			// kdl string to document
-			let Ok(document) = entry.kdl.parse::<kdl::KdlDocument>() else { continue; };
-			// document to first (and hopefully only) node
-			let Some(node) = document.nodes().get(0) else { continue; };
-			// node to value based on the expected type
-			let mut ctx = NodeContext::new(Arc::new(entry.source_id(true)), self.node_reg.clone());
-			let Ok(value) = Output::from_kdl(node, &mut ctx) else { continue; };
+			let Poll::Ready(entry) = self.query.poll_next_unpin(cx) else {
+				return Poll::Pending;
+			};
+			let Some(entry) = entry else {
+				return Poll::Ready(None);
+			};
+			let Some(value) = entry.parse_kdl::<Output>(self.node_reg.clone()) else {
+				continue;
+			};
 			// we found a sucessful value! we can return it
 			return Poll::Ready(Some(value));
 		}
@@ -173,7 +176,7 @@ where
 }
 impl<Output> QueryDeserialize<Output>
 where
-	Output: FromKDL + Unpin,
+	Output: FromKdl<NodeContext> + Unpin,
 {
 	pub async fn first_n(mut self, limit: Option<usize>) -> Vec<Output> {
 		let mut items = Vec::new();

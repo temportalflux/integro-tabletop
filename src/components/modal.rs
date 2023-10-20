@@ -3,6 +3,9 @@ use std::rc::Rc;
 use wasm_bindgen::{prelude::Closure, JsCast};
 use yew::{html::ChildrenProps, prelude::*};
 
+// TODO: Use portals to solve the "modal contents require page-specific-provider" problem:
+// https://yew.rs/docs/advanced-topics/portals
+
 #[function_component]
 pub fn Provider(props: &ChildrenProps) -> Html {
 	let modal_dispatcher = Context::from(use_reducer(|| State::default()));
@@ -46,7 +49,7 @@ impl std::ops::Deref for Context {
 }
 
 /// The global-context state of the [GeneralPurpose] modal.
-#[derive(PartialEq, Default)]
+#[derive(PartialEq, Default, Debug)]
 pub struct State {
 	/// If the modal should show/hide.
 	/// If none, no action is taken. Otherwise, the bool determines if the
@@ -145,7 +148,7 @@ impl Reducible for State {
 }
 
 /// Properties provided to [GeneralPurpose] via the global [State].
-#[derive(Clone, PartialEq, Default, Properties)]
+#[derive(Clone, PartialEq, Default, Properties, Debug)]
 pub struct Props {
 	#[prop_or_default]
 	pub root_classes: Classes,
@@ -173,67 +176,59 @@ pub fn GeneralPurpose() -> Html {
 	let bootstrap = use_state(|| None);
 
 	// Callback sent to bootstrap-js to be emited when the animation has finished.
-	let js_on_hidden: Rc<Closure<dyn Fn()>> = use_memo(
-		{
-			let context = context.clone();
-			move |_| {
-				Closure::<dyn Fn()>::new(move || {
-					// When the modal has fully closed, reset the context data so there is no props and no show signal.
-					// This allows the context to be re-opened with the same content,
-					// AND prevents the bootstrap-js show/hide functions from triggering right away
-					// (the Close actions causes bootstrap::Modal::hide to be executed, see below).
-					context.dispatch(Action::Closed);
-				})
-			}
-		},
-		(),
-	);
+	let js_on_hidden: Rc<Closure<dyn Fn()>> = use_memo((), {
+		let context = context.clone();
+		move |_| {
+			Closure::<dyn Fn()>::new(move || {
+				// When the modal has fully closed, reset the context data so there is no props and no show signal.
+				// This allows the context to be re-opened with the same content,
+				// AND prevents the bootstrap-js show/hide functions from triggering right away
+				// (the Close actions causes bootstrap::Modal::hide to be executed, see below).
+				context.dispatch(Action::Closed);
+			})
+		}
+	});
 
 	// Generate the bootstrap-js modal when a node is found.
 	// Also subscribe to event listeners on that node, which are emited by bootstrap.
-	use_effect_with_deps(
-		{
-			let bootstrap = bootstrap.clone();
-			let on_hidden = js_on_hidden.clone();
-			move |node: &NodeRef| {
-				bootstrap.set(bootstrap::Modal::from(node));
-				if let Some(node) = node.get() {
-					let _ = node.add_event_listener_with_callback(
-						"hidden.bs.modal",
-						(*on_hidden).as_ref().unchecked_ref(),
-					);
-				}
+	use_effect_with(node.clone(), {
+		let bootstrap = bootstrap.clone();
+		let on_hidden = js_on_hidden.clone();
+		move |node: &NodeRef| {
+			bootstrap.set(bootstrap::Modal::from(node));
+			if let Some(node) = node.get() {
+				let _ = node.add_event_listener_with_callback("hidden.bs.modal", (*on_hidden).as_ref().unchecked_ref());
 			}
-		},
-		node.clone(),
-	);
+		}
+	});
 
 	// Trigger bootstrap-js modal functions when context updates (for showing/hiding).
-	use_effect_with_deps(
-		{
-			let bootstrap = bootstrap.clone();
-			move |context: &Context| {
-				// If the node hasn't been found yet, we can't do anything.
-				// Since the node is populated when the component first renders,
-				// we can safely assume that it will exist for all future calls,
-				// as long as context defaults to no-modal-exists.
-				let Some(modal) = &*bootstrap else { return; };
-				// Show or hide the modal if the flag has been set. If the flag isn't set (i.e. None),
-				// then this is likely a data reset/update that shouldn't re-animate anything.
-				// i.e. `js_on_hidden` was triggered by bootstrap-js to indicate the modal has closed.
-				let Some(should_show) = &context.should_show else { return; };
-				match should_show {
-					true => {
-						modal.show(JsValue::UNDEFINED);
-					}
-					false => {
-						modal.hide();
-					}
+	use_effect_with((context.clone(), bootstrap.is_some()), {
+		let bootstrap = bootstrap.clone();
+		move |(context, _has_modal): &(Context, bool)| {
+			// If the node hasn't been found yet, we can't do anything.
+			// Since the node is populated when the component first renders,
+			// we can safely assume that it will exist for all future calls,
+			// as long as context defaults to no-modal-exists.
+			let Some(modal) = &*bootstrap else {
+				return;
+			};
+			// Show or hide the modal if the flag has been set. If the flag isn't set (i.e. None),
+			// then this is likely a data reset/update that shouldn't re-animate anything.
+			// i.e. `js_on_hidden` was triggered by bootstrap-js to indicate the modal has closed.
+			let Some(should_show) = &context.should_show else {
+				return;
+			};
+			match should_show {
+				true => {
+					modal.show(JsValue::UNDEFINED);
+				}
+				false => {
+					modal.hide();
 				}
 			}
-		},
-		context.clone(),
-	);
+		}
+	});
 
 	let mut root_classes = classes!("modal", "fade");
 	root_classes.extend(context.map_props(|props| props.root_classes.clone()));

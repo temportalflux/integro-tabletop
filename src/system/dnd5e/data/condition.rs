@@ -1,12 +1,14 @@
-use super::character::Character;
+use super::character::{Character, ObjectCacheProvider};
+use crate::kdl_ext::NodeContext;
 use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt},
 	system::{
 		core::SourceId,
-		dnd5e::{BoxedCriteria, BoxedMutator, SystemComponent},
+		dnd5e::{BoxedMutator, SystemComponent},
 	},
 	utility::MutatorGroup,
 };
+use async_recursion::async_recursion;
+use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
 use std::path::Path;
 
 mod indirect;
@@ -21,10 +23,40 @@ pub struct Condition {
 	pub name: String,
 	pub description: String,
 	pub mutators: Vec<BoxedMutator>,
-	pub criteria: Option<BoxedCriteria>,
+	pub implied: Vec<Indirect<Self>>,
 }
 
-crate::impl_kdl_node!(Condition, "condition");
+kdlize::impl_kdl_node!(Condition, "condition");
+
+impl Condition {
+	#[async_recursion(?Send)]
+	pub async fn resolve_indirection(&mut self, provider: &ObjectCacheProvider) -> anyhow::Result<()> {
+		let pending = self.implied.drain(..).collect::<Vec<_>>();
+		let mut resolved = Vec::with_capacity(pending.len());
+		for indirect in pending {
+			match indirect {
+				Indirect::Id(condition_id) => {
+					let condition = provider
+						.database
+						.get_typed_entry::<Condition>(condition_id.unversioned(), provider.system_depot.clone(), None)
+						.await?;
+					match condition {
+						None => self.implied.push(Indirect::Id(condition_id)),
+						Some(condition) => resolved.push(condition),
+					}
+				}
+				Indirect::Custom(condition) => {
+					resolved.push(condition);
+				}
+			}
+		}
+		for mut condition in resolved {
+			condition.resolve_indirection(provider).await?;
+			self.implied.push(Indirect::Custom(condition));
+		}
+		Ok(())
+	}
+}
 
 impl MutatorGroup for Condition {
 	type Target = Character;
@@ -34,18 +66,22 @@ impl MutatorGroup for Condition {
 		for mutator in &self.mutators {
 			mutator.set_data_path(&path_to_self);
 		}
+		for implied in &self.implied {
+			if let Indirect::Custom(condition) = implied {
+				condition.set_data_path(parent);
+			}
+		}
 	}
 
 	fn apply_mutators(&self, stats: &mut Character, parent: &Path) {
 		let path_to_self = parent.join(&self.name);
-		if let Some(criteria) = &self.criteria {
-			// TODO: Somehow save the error text for display in feature UI
-			if stats.evaluate(criteria).is_err() {
-				return;
-			}
-		}
 		for mutator in &self.mutators {
 			stats.apply(mutator, &path_to_self);
+		}
+		for implied in &self.implied {
+			if let Indirect::Custom(condition) = implied {
+				stats.apply_from(condition, &path_to_self);
+			}
 		}
 	}
 }
@@ -58,36 +94,26 @@ impl SystemComponent for Condition {
 	}
 }
 
-impl FromKDL for Condition {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
-		let id = ctx.parse_source_opt(node)?;
+impl FromKdl<NodeContext> for Condition {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let id = crate::kdl_ext::query_source_opt(node)?;
 
 		let name = node.get_str_req("name")?.to_owned();
 		let description = node
 			.query_str_opt("scope() > description", 0)?
 			.unwrap_or_default()
 			.to_owned();
-		let mut mutators = Vec::new();
-		for entry_node in node.query_all("scope() > mutator")? {
-			mutators.push(ctx.parse_mutator(entry_node)?);
-		}
+		let mutators = node.query_all_t("scope() > mutator")?;
 
-		let criteria = match node.query("scope() > criteria")? {
-			None => None,
-			Some(entry_node) => {
-				Some(ctx.parse_evaluator::<Character, Result<(), String>>(entry_node)?)
-			}
-		};
+		let implied = node.query_all_t("scope() > implies")?;
 
 		Ok(Self {
 			id,
 			name,
 			description,
 			mutators,
-			criteria,
+			implied,
 		})
 	}
 }
@@ -103,15 +129,12 @@ impl AsKdl for Condition {
 		}
 		node.push_child_opt_t("description", &self.description);
 
-		if let Some(criteria) = &self.criteria {
-			node.push_child({
-				let mut node = criteria.as_kdl();
-				node.set_first_entry_ty("Evaluator");
-				node.build("criteria")
-			});
-		}
 		for mutator in &self.mutators {
 			node.push_child_t("mutator", mutator);
+		}
+
+		for implied in &self.implied {
+			node.push_child_t("implies", implied);
 		}
 
 		node
@@ -176,37 +199,6 @@ mod test {
 					argument: BoundValue::Additive(15),
 				}
 				.into()],
-				..Default::default()
-			};
-			assert_eq_fromkdl!(Condition, doc, data);
-			assert_eq_askdl!(&data, doc);
-			Ok(())
-		}
-
-		#[test]
-		fn criteria() -> anyhow::Result<()> {
-			let doc = "
-				|condition name=\"Expedient\" {
-				|    description \"You are particularly quick, when not wearing armor.\"
-				|    criteria (Evaluator)\"has_armor_equipped\" inverted=true
-				|    mutator \"speed\" \"Walking\" (Additive)15
-				|}
-			";
-			let data = Condition {
-				name: "Expedient".into(),
-				description: "You are particularly quick, when not wearing armor.".into(),
-				mutators: vec![Speed {
-					name: "Walking".into(),
-					argument: BoundValue::Additive(15),
-				}
-				.into()],
-				criteria: Some(
-					HasArmorEquipped {
-						inverted: true,
-						..Default::default()
-					}
-					.into(),
-				),
 				..Default::default()
 			};
 			assert_eq_fromkdl!(Condition, doc, data);

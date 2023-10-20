@@ -1,8 +1,9 @@
 use crate::{
 	bootstrap::components::Tooltip,
-	components::{modal, AnnotatedNumber},
+	components::{context_menu, mobile, AnnotatedNumber},
+	page::characters::sheet::CharacterHandle,
 	system::dnd5e::{
-		components::{ability::AbilityGlyph, CharacterHandle},
+		components::glyph,
 		data::{Ability, Skill},
 	},
 };
@@ -17,58 +18,135 @@ pub struct ScoreProps {
 #[function_component]
 pub fn Score(ScoreProps { ability }: &ScoreProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let modal_dispatcher = use_context::<modal::Context>().unwrap();
+	let screen_size = mobile::use_mobile_kind();
 
 	// TODO: Display roll modifiers for ability checks.
 	// Data is stored in `state.skills().iter_ability_modifiers()`
 
 	let ability_score = state.ability_scores().get(*ability);
-	let onclick = modal_dispatcher.callback({
+
+	let onclick = context_menu::use_control_action({
 		let ability = *ability;
-		move |_| {
-			modal::Action::Open(modal::Props {
-				centered: true,
-				scrollable: true,
-				root_classes: classes!("ability-score"),
-				content: html! {<Modal {ability} />},
-				..Default::default()
-			})
-		}
+		move |_, _context| context_menu::Action::open_root(ability.long_name(), html!(<Modal {ability} />))
 	});
 
 	let tooltip = (ability_score.iter_bonuses().count() > 0).then(|| {
 		format!(
 			"<div class=\"attributed-tooltip\">{}</div>",
-			ability_score.iter_bonuses().fold(
-				String::new(),
-				|mut content, (bonus, path, included_in_total)| {
+			ability_score
+				.iter_bonuses()
+				.fold(String::new(), |mut content, (bonus, path, included_in_total)| {
 					if *included_in_total {
-						let source_text =
-							crate::data::as_feature_path_text(&path).unwrap_or_default();
-						content +=
-							format!("<span>+{} ({source_text})</span>", bonus.value).as_str();
+						let source_text = crate::data::as_feature_path_text(&path).unwrap_or_default();
+						content += format!("<span>+{} ({source_text})</span>", bonus.value).as_str();
 					}
 					content
-				}
-			)
+				})
 		)
 	});
-	html! {
-		<div class="card ability-card m-1" style="border-color: var(--theme-frame-color-muted);">
-			<div class="card-body text-center" {onclick}>
-				<h6 class="card-title">{ability.long_name()}</h6>
-				<div class="primary-stat">
-					<AnnotatedNumber value={ability_score.score().modifier()} show_sign={true} />
+	let score_modifier = html! {
+		<AnnotatedNumber
+			value={ability_score.score().modifier()}
+			show_sign={true}
+		/>
+	};
+	match screen_size {
+		mobile::Kind::Desktop => html! {
+			<div class="card ability-card m-1" style="border-color: var(--theme-frame-color-muted);">
+				<div class="card-body text-center" {onclick}>
+					<h6 class="card-title">{ability.long_name()}</h6>
+					<div class="primary-stat">
+						{score_modifier}
+					</div>
+					<Tooltip classes={"secondary-stat"} content={tooltip} use_html={true}>
+						{*ability_score.score()}
+					</Tooltip>
 				</div>
-				<Tooltip classes={"secondary-stat"} content={tooltip} use_html={true}>{*ability_score.score()}</Tooltip>
 			</div>
-		</div>
+		},
+		mobile::Kind::Mobile => {
+			let saving_throw_prof = state.saving_throws().get_prof(*ability);
+			let saving_throw_modifier = state.ability_modifier(*ability, Some(*saving_throw_prof.value()));
+
+			html! {
+				<div class="p-1 text-center" {onclick}>
+					<div class="row" style="--bs-gutter-x: 0;">
+						<div class="col">
+							<h5>{ability.long_name()}</h5>
+						</div>
+						<div class="col-3">
+							<h5>
+								{match ability_score.score().modifier() >= 0 {
+									true => "+",
+									false => "-",
+								}}
+								{ability_score.score().modifier().abs()}
+							</h5>
+						</div>
+					</div>
+					<div class="row" style="--bs-gutter-x: 0;">
+						<div class="col">
+							<div style="font-size: 0.75rem;">{"Score"}</div>
+						</div>
+						<div class="col-3">
+							<div>{*ability_score.score()}</div>
+						</div>
+					</div>
+					<div class="row align-items-center" style="--bs-gutter-x: 0;">
+						<div class="col-auto" style="font-size: 0.75rem;">
+							<glyph::ProficiencyLevel value={*saving_throw_prof.value()} />
+						</div>
+						<div class="col">
+							<div style="font-size: 0.75rem;">{"Saving Throw"}</div>
+						</div>
+						<div class="col-3">
+							{match saving_throw_modifier >= 0 {
+								true => "+",
+								false => "-",
+							}}
+							{saving_throw_modifier.abs()}
+						</div>
+					</div>
+				</div>
+			}
+		}
 	}
 }
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct AbilityProps {
 	pub ability: Ability,
+}
+
+#[function_component]
+pub fn AbilityModifiers() -> Html {
+	let style = "height: 14px; margin-right: 2px; margin-top: -2px; width: 14px; vertical-align: middle;";
+	let state = use_context::<CharacterHandle>().unwrap();
+	let mut modifiers = Vec::new();
+	for ability in EnumSet::<Ability>::all() {
+		for (modifier, items) in state.skills().iter_ability_modifiers(ability) {
+			for item in items {
+				modifiers.push(html! {<div>
+					<span class="d-inline-flex" aria-label="Advantage" {style}>
+						<glyph::RollModifier value={modifier} />
+					</span>
+					<span>{"on "}{ability.abbreviated_name().to_uppercase()}{" checks"}</span>
+					<span>
+						{item.context.as_ref().map(|target| format!(" when {target}")).unwrap_or_default()}
+					</span>
+				</div>});
+			}
+		}
+	}
+	let content = match modifiers.is_empty() {
+		false => html! {<>{modifiers}</>},
+		true => html!("None"),
+	};
+	html! {
+		<div style="font-size: 11px;">
+			{content}
+		</div>
+	}
 }
 
 #[function_component]
@@ -143,33 +221,28 @@ fn Modal(AbilityProps { ability }: &AbilityProps) -> Html {
 		.into_iter()
 		.filter(|skill| skill.ability() == *ability);
 	html! {<>
-		<div class="modal-header">
-			<h1 class="modal-title fs-4">
-				<AbilityGlyph ability={*ability} />
-				{ability.long_name()}
-			</h1>
-			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
+		<h1>
+			<glyph::Ability value={*ability} />
+			<span class="ms-2">{ability.long_name()}</span>
+		</h1>
+
+		<ScoreBreakdown ability={*ability} />
+
+		<div style="margin-top: 10px; margin-bottom: 10px;">
+			{ability.short_description()}
 		</div>
-		<div class="modal-body">
-			<ScoreBreakdown ability={*ability} />
 
-			<div style="margin-top: 10px; margin-bottom: 10px;">
-				{ability.short_description()}
-			</div>
+		<h6>{ability.long_name()}{" Checks"}</h6>
+		<div class="text-block" style="margin-bottom: 10px;">{ability.checks_description()}</div>
 
-			<h6>{ability.long_name()}{" Checks"}</h6>
-			<div class="text-block" style="margin-bottom: 10px;">{ability.checks_description()}</div>
+		{skills.map(|skill| html! {<>
+			<h6>{skill.display_name()}</h6>
+			<div class="text-block" style="margin-bottom: 10px;">{skill.description()}</div>
+		</>}).collect::<Vec<_>>()}
 
-			{skills.map(|skill| html! {<>
-				<h6>{skill.display_name()}</h6>
-				<div class="text-block" style="margin-bottom: 10px;">{skill.description()}</div>
-			</>}).collect::<Vec<_>>()}
-
-			{ability.addendum_description().into_iter().map(|(title, content)| html! {<>
-				<h6>{title}</h6>
-				<div class="text-block" style="margin-bottom: 10px;">{content}</div>
-			</>}).collect::<Vec<_>>()}
-
-		</div>
+		{ability.addendum_description().into_iter().map(|(title, content)| html! {<>
+			<h6>{title}</h6>
+			<div class="text-block" style="margin-bottom: 10px;">{content}</div>
+		</>}).collect::<Vec<_>>()}
 	</>}
 }

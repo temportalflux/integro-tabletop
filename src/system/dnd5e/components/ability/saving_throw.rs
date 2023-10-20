@@ -1,8 +1,11 @@
 use crate::{
 	bootstrap::components::Tooltip,
-	components::modal,
-	system::dnd5e::components::{roll::ModifierIcon, CharacterHandle},
-	system::dnd5e::data::Ability,
+	components::context_menu,
+	page::characters::sheet::CharacterHandle,
+	system::dnd5e::{
+		components::glyph,
+		data::{character::ModifierMapItem, roll::Modifier, Ability},
+	},
 };
 use enumset::EnumSet;
 use yew::prelude::*;
@@ -38,14 +41,9 @@ pub struct SavingThrowProps {
 }
 
 #[function_component]
-pub fn SavingThrow(
-	SavingThrowProps {
-		ability,
-		abbreviated,
-	}: &SavingThrowProps,
-) -> Html {
+pub fn SavingThrow(SavingThrowProps { ability, abbreviated }: &SavingThrowProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let proficiency = &state.saving_throws().get_prof(*ability);
+	let proficiency = state.saving_throws().get_prof(*ability);
 	let modifier = state.ability_modifier(*ability, Some(*proficiency.value()));
 	let mod_sign = match modifier >= 0 {
 		true => "+",
@@ -55,7 +53,7 @@ pub fn SavingThrow(
 		<Tooltip tag={"td"} classes={"text-center"} use_html={true} content={abbreviated.then(|| {
 			crate::data::as_feature_paths_html(proficiency.sources().iter().map(|(path, _)| path))
 		}).flatten()}>
-			{*proficiency.value()}
+			<glyph::ProficiencyLevel value={*proficiency.value()} />
 		</Tooltip>
 		<td class={"text-center"}>{match *abbreviated {
 			true => ability.abbreviated_name().to_uppercase(),
@@ -76,18 +74,8 @@ pub fn SavingThrow(
 
 #[function_component]
 pub fn SavingThrowContainer() -> Html {
-	let state = use_context::<CharacterHandle>().unwrap();
-	let modal_dispatcher = use_context::<modal::Context>().unwrap();
-
-	let on_click = modal_dispatcher.callback({
-		move |_| {
-			modal::Action::Open(modal::Props {
-				centered: true,
-				scrollable: true,
-				content: html! {<Modal />},
-				..Default::default()
-			})
-		}
+	let on_click = context_menu::use_control_action({
+		|_, _context| context_menu::Action::open_root("Saving Throws", html!(<Modal />))
 	});
 
 	html! {
@@ -115,27 +103,68 @@ pub fn SavingThrowContainer() -> Html {
 						</table>
 					</div>
 				</div>
-				<div style="font-size: 11px;">
-					{state.saving_throws().iter_modifiers().map(|(ability, modifier, item)| {
-						let style="height: 14px; margin-right: 2px; margin-top: -2px; width: 14px; vertical-align: middle;";
-						html! {
-							<Tooltip content={crate::data::as_feature_path_text(&item.source)}>
-								<span class="d-inline-flex" aria-label="Advantage" {style}>
-									<ModifierIcon value={modifier} />
-								</span>
-								{ability.map(|ability| html! {
-									<span>{"on "}{ability.abbreviated_name().to_uppercase()}</span>
-								}).unwrap_or_default()}
-								<span>
-									{item.context.as_ref().map(|target| format!(" against {target}")).unwrap_or_default()}
-								</span>
-							</Tooltip>
-						}
-					}).collect::<Vec<_>>()}
-				</div>
+				<SavingThrowModifiers show_tooltip={true} />
 			</div>
 		</div>
 	}
+}
+
+#[derive(Clone, PartialEq, Properties)]
+pub struct ModifiersProps {
+	#[prop_or_default]
+	pub show_tooltip: bool,
+	#[prop_or_default]
+	pub show_none_label: bool,
+}
+
+#[function_component]
+pub fn SavingThrowModifiers(
+	ModifiersProps {
+		show_tooltip,
+		show_none_label,
+	}: &ModifiersProps,
+) -> Html {
+	let state = use_context::<CharacterHandle>().unwrap();
+	let modifiers = state
+		.saving_throws()
+		.iter_modifiers()
+		.map(|(ability, modifier, item)| {
+			let entry = saving_throw_modifier(ability, modifier, item);
+			if !*show_tooltip {
+				return html!(<div>{entry}</div>);
+			}
+			html! {
+				<Tooltip content={crate::data::as_feature_path_text(&item.source)}>
+					{entry}
+				</Tooltip>
+			}
+		})
+		.collect::<Vec<_>>();
+	let content = match (modifiers.is_empty(), *show_none_label) {
+		(false, _) => html! {<>{modifiers}</>},
+		(true, false) => html!(),
+		(true, true) => html!("None"),
+	};
+	html! {
+		<div style="font-size: 11px;">
+			{content}
+		</div>
+	}
+}
+
+pub fn saving_throw_modifier(ability: Option<Ability>, modifier: Modifier, item: &ModifierMapItem) -> Html {
+	let style = "height: 14px; margin-right: 2px; margin-top: -2px; width: 14px; vertical-align: middle;";
+	html! {<>
+		<span class="d-inline-flex" aria-label="Advantage" {style}>
+			<glyph::RollModifier value={modifier} />
+		</span>
+		{ability.map(|ability| html! {
+			<span>{"on "}{ability.abbreviated_name().to_uppercase()}</span>
+		}).unwrap_or_default()}
+		<span>
+			{item.context.as_ref().map(|target| format!(" against {target}")).unwrap_or_default()}
+		</span>
+	</>}
 }
 
 #[function_component]
@@ -151,12 +180,12 @@ fn Modal() -> Html {
 			.saving_throws()
 			.iter_modifiers()
 			.map(|(ability, modifier, item)| {
-				let style="height: 14px; margin-right: 2px; margin-top: -2px; width: 14px; vertical-align: middle;";
+				let style = "height: 14px; margin-right: 2px; margin-top: -2px; width: 14px; vertical-align: middle;";
 				html! {
 					<tr>
 						<td class="text-center">
 							<span class="d-inline-flex" aria-label="Advantage" {style}>
-								<ModifierIcon value={modifier} />
+								<glyph::RollModifier value={modifier} />
 							</span>
 						</td>
 						<td class="text-center">{ability.map(|ability| ability.long_name()).unwrap_or_default()}</td>
@@ -189,30 +218,24 @@ fn Modal() -> Html {
 	};
 
 	html! {<>
-		<div class="modal-header">
-			<h1 class="modal-title fs-4">{"Saving Throws"}</h1>
-			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
-		</div>
-		<div class="modal-body">
-			<table class="table table-compact table-striped m-0">
-				<thead>
-					<tr class="text-center" style="color: var(--bs-heading-color);">
-						<th scope="col">{"Prof"}</th>
-						<th scope="col">{"Ability"}</th>
-						<th scope="col">{"Bonus"}</th>
-						<th scope="col">{"Sources"}</th>
-					</tr>
-				</thead>
-				<tbody>
-					{abilities.into_iter().map(|ability| html! {
-						<SavingThrow {ability} abbreviated={false} />
-					}).collect::<Vec<_>>()}
-				</tbody>
-			</table>
-			{modifiers_section}
-			<div class="text-block" style="margin-top: 15px;">
-				{TEXT}
-			</div>
+		<table class="table table-compact table-striped m-0">
+			<thead>
+				<tr class="text-center" style="color: var(--bs-heading-color);">
+					<th scope="col">{"Prof"}</th>
+					<th scope="col">{"Ability"}</th>
+					<th scope="col">{"Bonus"}</th>
+					<th scope="col">{"Sources"}</th>
+				</tr>
+			</thead>
+			<tbody>
+				{abilities.into_iter().map(|ability| html! {
+					<SavingThrow {ability} abbreviated={false} />
+				}).collect::<Vec<_>>()}
+			</tbody>
+		</table>
+		{modifiers_section}
+		<div class="text-block" style="margin-top: 15px;">
+			{TEXT}
 		</div>
 	</>}
 }

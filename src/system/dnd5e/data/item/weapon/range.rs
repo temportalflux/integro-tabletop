@@ -1,4 +1,5 @@
-use crate::kdl_ext::{AsKdl, FromKDL, NodeBuilder, NodeContext, NodeExt};
+use crate::kdl_ext::NodeContext;
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct Range {
@@ -8,12 +9,13 @@ pub struct Range {
 	pub requires_loading: bool,
 }
 
-impl FromKDL for Range {
-	fn from_kdl(node: &kdl::KdlNode, ctx: &mut NodeContext) -> anyhow::Result<Self> {
-		let short_range = node.get_i64_req(ctx.consume_idx())? as u32;
-		let long_range = node.get_i64_req(ctx.consume_idx())? as u32;
-		let requires_ammunition = node.query("scope() > ammunition")?.is_some();
-		let requires_loading = node.query("scope() > loading")?.is_some();
+impl FromKdl<NodeContext> for Range {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let short_range = node.next_i64_req()? as u32;
+		let long_range = node.next_i64_req()? as u32;
+		let requires_ammunition = node.query_opt("scope() > ammunition")?.is_some();
+		let requires_loading = node.query_opt("scope() > loading")?.is_some();
 		Ok(Self {
 			short_range,
 			long_range,

@@ -1,6 +1,6 @@
-use super::CharacterHandle;
 use crate::{
 	components::stop_propagation,
+	page::characters::sheet::CharacterHandle,
 	page::characters::sheet::MutatorImpact,
 	system::dnd5e::data::{action::LimitedUses, character::Persistent},
 	utility::InputExt,
@@ -76,7 +76,9 @@ impl<'parent> UsesCounter<'parent> {
 					let toggle_use = Callback::from({
 						let consume_delta = consume_delta.clone();
 						move |evt: web_sys::Event| {
-							let Some(consume_use) = evt.input_checked() else { return; };
+							let Some(consume_use) = evt.input_checked() else {
+								return;
+							};
 							consume_delta.emit(consume_use.then_some(1).unwrap_or(-1));
 						}
 					});
@@ -118,14 +120,14 @@ impl<'parent> UsesCounter<'parent> {
 }
 
 #[derive(Clone, PartialEq, Properties)]
-struct UseCounterDeltaProps {
-	max_uses: u32,
-	consumed_uses: u32,
-	on_apply: Callback<i32>,
+pub struct UseCounterDeltaProps {
+	pub max_uses: u32,
+	pub consumed_uses: u32,
+	pub on_apply: Callback<i32>,
 }
 
 #[function_component]
-fn UseCounterDelta(
+pub fn UseCounterDelta(
 	UseCounterDeltaProps {
 		max_uses,
 		consumed_uses,

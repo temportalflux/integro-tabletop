@@ -4,11 +4,17 @@ pub use ability_score::*;
 mod action_budget;
 pub use action_budget::*;
 
+mod add_bundle;
+pub use add_bundle::*;
+
+mod apply_if;
+pub use apply_if::*;
+
 mod armor_class;
 pub use armor_class::*;
 
-mod bonus_damage;
-pub use bonus_damage::*;
+mod bonus;
+pub use bonus::*;
 
 mod description;
 pub use description::*;
@@ -60,18 +66,14 @@ pub(crate) mod test {
 		};
 		($mut_ty:ty, $node_reg:expr) => {
 			static NODE_NAME: &str = "mutator";
-			type Target =
-				crate::utility::GenericMutator<<$mut_ty as crate::utility::Mutator>::Target>;
+			type Target = crate::utility::GenericMutator<<$mut_ty as crate::utility::Mutator>::Target>;
 
 			fn node_ctx() -> crate::kdl_ext::NodeContext {
 				crate::kdl_ext::NodeContext::registry($node_reg)
 			}
 
-			fn from_kdl(
-				node: &::kdl::KdlNode,
-				ctx: &mut crate::kdl_ext::NodeContext,
-			) -> anyhow::Result<Target> {
-				ctx.parse_mutator(node)
+			fn from_kdl<'doc>(mut node: crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Target> {
+				Target::from_kdl(&mut node)
 			}
 
 			fn as_kdl<E: crate::utility::Mutator>(data: &E) -> crate::kdl_ext::NodeBuilder {

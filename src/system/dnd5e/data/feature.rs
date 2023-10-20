@@ -3,12 +3,10 @@ use super::{
 	character::Character,
 	description,
 };
-use crate::{
-	kdl_ext::{AsKdl, DocumentExt, FromKDL, NodeBuilder, NodeExt},
-	system::dnd5e::{BoxedCriteria, BoxedMutator},
-	utility::MutatorGroup,
-};
+use crate::kdl_ext::NodeContext;
+use crate::{system::dnd5e::BoxedMutator, utility::MutatorGroup};
 use derivative::Derivative;
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::{
 	collections::HashMap,
 	path::{Path, PathBuf},
@@ -31,7 +29,6 @@ pub struct Feature {
 	pub parent: Option<PathBuf>,
 
 	pub mutators: Vec<BoxedMutator>,
-	pub criteria: Option<BoxedCriteria>,
 	pub action: Option<Action>,
 
 	#[derivative(PartialEq = "ignore")]
@@ -46,7 +43,9 @@ impl Feature {
 	}
 
 	pub fn get_missing_selection_text_for(&self, key: &str) -> Option<&String> {
-		let Some((default_text, specialized)) = &self.missing_selection_text else { return None; };
+		let Some((default_text, specialized)) = &self.missing_selection_text else {
+			return None;
+		};
 		if let Some(key_specific) = specialized.get(key) {
 			return Some(key_specific);
 		}
@@ -73,16 +72,20 @@ impl MutatorGroup for Feature {
 
 	fn apply_mutators(&self, stats: &mut Character, parent: &Path) {
 		let path_to_self = parent.join(&self.name);
-		if let Some(criteria) = &self.criteria {
-			// TODO: Somehow save the error text for display in feature UI
-			if stats.evaluate(criteria).is_err() {
-				return;
-			}
-		}
 		if let Some(action) = &self.action {
 			if let Some(uses) = &action.limited_uses {
 				if let LimitedUses::Usage(data) = uses {
 					stats.features_mut().register_usage(data, &path_to_self);
+					if let Some(rest) = data.get_reset_rest(stats) {
+						if let Some(data_path) = data.get_data_path() {
+							let entry = super::character::RestEntry {
+								restore_amount: None,
+								data_paths: vec![data_path],
+								source: path_to_self.clone(),
+							};
+							stats.rest_resets_mut().add(rest, entry);
+						}
+					}
 				}
 			}
 		}
@@ -93,17 +96,13 @@ impl MutatorGroup for Feature {
 	}
 }
 
-impl FromKDL for Feature {
-	fn from_kdl(
-		node: &kdl::KdlNode,
-		ctx: &mut crate::kdl_ext::NodeContext,
-	) -> anyhow::Result<Self> {
+impl FromKdl<NodeContext> for Feature {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let name = node.get_str_req("name")?.to_owned();
-		let description = match node.query_opt("scope() > description")? {
-			None => description::Info::default(),
-			Some(node) => description::Info::from_kdl(node, &mut ctx.next_node())?,
-		};
-
+		let description = node
+			.query_opt_t::<description::Info>("scope() > description")?
+			.unwrap_or_default();
 		let collapsed = node.get_bool_opt("collapsed")?.unwrap_or_default();
 		let parent = node.get_str_opt("parent")?.map(PathBuf::from);
 
@@ -112,22 +111,9 @@ impl FromKDL for Feature {
 		// TODO: Unimplemented
 		let _is_unique = node.get_bool_opt("unique")?.unwrap_or_default();
 
-		let criteria = match node.query("scope() > criteria")? {
-			None => None,
-			Some(entry_node) => {
-				Some(ctx.parse_evaluator::<Character, Result<(), String>>(entry_node)?)
-			}
-		};
+		let mutators = node.query_all_t("scope() > mutator")?;
 
-		let mut mutators = Vec::new();
-		for entry_node in node.query_all("scope() > mutator")? {
-			mutators.push(ctx.parse_mutator(entry_node)?);
-		}
-
-		let action = match node.query_opt("scope() > action")? {
-			None => None,
-			Some(node) => Some(Action::from_kdl(node, &mut ctx.next_node())?),
-		};
+		let action = node.query_opt_t::<Action>("scope() > action")?;
 
 		Ok(Self {
 			name,
@@ -135,7 +121,6 @@ impl FromKDL for Feature {
 			collapsed,
 			parent,
 			mutators,
-			criteria,
 			action,
 			// Generated data
 			absolute_path: Arc::new(RwLock::new(PathBuf::new())),
@@ -160,13 +145,6 @@ impl AsKdl for Feature {
 			node.push_entry(("parent", parent.display().to_string()));
 		}
 
-		if let Some(criteria) = &self.criteria {
-			node.push_child({
-				let mut node = criteria.as_kdl();
-				node.set_first_entry_ty("Evaluator");
-				node.build("criteria")
-			});
-		}
 		for mutator in &self.mutators {
 			node.push_child_t("mutator", mutator);
 		}
@@ -265,23 +243,6 @@ mod test {
 			let data = Feature {
 				name: "Test Feature".into(),
 				parent: Some("Bundle/FeatureName".into()),
-				..Default::default()
-			};
-			assert_eq_fromkdl!(Feature, doc, data);
-			assert_eq_askdl!(&data, doc);
-			Ok(())
-		}
-
-		#[test]
-		fn criteria() -> anyhow::Result<()> {
-			let doc = "
-				|feature name=\"Test Feature\" {
-				|    criteria (Evaluator)\"has_armor_equipped\"
-				|}
-			";
-			let data = Feature {
-				name: "Test Feature".into(),
-				criteria: Some(HasArmorEquipped::default().into()),
 				..Default::default()
 			};
 			assert_eq_fromkdl!(Feature, doc, data);
