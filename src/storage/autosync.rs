@@ -1,7 +1,10 @@
 use crate::{
 	database::{Database, Module},
 	storage::USER_HOMEBREW_REPO_NAME,
-	system::core::{ModuleId, SourceId},
+	system::{
+		self,
+		core::{ModuleId, SourceId},
+	},
 };
 use derivative::Derivative;
 use std::{
@@ -210,318 +213,8 @@ pub fn Provider(props: &ChildrenProps) -> Html {
 			let status = status.clone();
 			async move {
 				while let Ok(req) = recv_req.recv().await {
-					let auth_status = yewdux::dispatch::get::<crate::auth::Status>();
-					let Some(storage) = crate::storage::get(&*auth_status) else {
-						log::error!(target: "autosync", "No storage available, cannot progess request {req:?}");
-						continue;
-					};
-
-					let mut scan_storage_for_modules = false;
-					let mut modules = BTreeMap::new();
-					let mut modules_to_fetch = BTreeSet::new();
-					let mut modules_to_install = BTreeSet::new();
-					let mut modules_to_uninstall = BTreeSet::new();
-					match req {
-						Request::FetchLatestVersionAllModules => {
-							scan_storage_for_modules = true;
-							for module in database.clone().query_modules(None).await? {
-								modules.insert(module.id.clone(), module);
-							}
-						}
-						Request::InstallModules(new_installation_status) => {
-							for (id, should_be_installed) in new_installation_status {
-								let module = database.get::<Module>(id.to_string()).await?;
-								let Some(module) = module else {
-									continue;
-								};
-								if should_be_installed {
-									modules_to_install.insert(module.id.clone());
-								} else {
-									modules_to_uninstall.insert(module.id.clone());
-								}
-								modules.insert(module.id.clone(), module);
-							}
-						}
-						Request::UpdateModules(module_ids) => {
-							for id in module_ids {
-								let module = database.get::<Module>(id.to_string()).await?;
-								let Some(module) = module else {
-									continue;
-								};
-								modules_to_fetch.insert(module.id.clone());
-								modules_to_install.insert(module.id.clone());
-								modules.insert(module.id.clone(), module);
-							}
-						}
-						Request::UpdateFile(source_id) => {
-							if let Some(id) = source_id.module {
-								let module = database.get::<Module>(id.to_string()).await?;
-								let Some(module) = module else {
-									continue;
-								};
-								modules_to_fetch.insert(module.id.clone());
-								modules_to_install.insert(module.id.clone());
-								modules.insert(module.id.clone(), module);
-							}
-						}
-					}
-
-					status.push_stage("Checking authentiation", None);
-					let (viewer, repo_owners) = {
-						let mut query_module_owners = QueryModuleOwners {
-							status: status.clone(),
-							client: storage.clone(),
-							user: None,
-							found_homebrew: false,
-						};
-						let owners = query_module_owners.run().await?;
-
-						// If the homebrew repo was not found when querying who the user is,
-						// then we need to generate one, since this is where their user data is stored
-						// and is the default location for any creations.
-						if !query_module_owners.found_homebrew {
-							let generate_homebrew = GenerateHomebrew {
-								status: status.clone(),
-								client: storage.clone(),
-							};
-							generate_homebrew.run().await?;
-						}
-
-						(query_module_owners.user.take(), owners)
-					};
-					status.pop_stage();
-
-					let mut remote_repositories = BTreeMap::new();
-					if scan_storage_for_modules {
-						status.push_stage("Scanning Storage", None);
-						let scan_for_modules = ScanForModules {
-							status: status.clone(),
-							client: storage.clone(),
-							owners: repo_owners,
-						};
-						let repositories = scan_for_modules.run().await?;
-						for repository in repositories {
-							remote_repositories.insert((&repository).into(), repository);
-						}
-						status.pop_stage();
-					} else {
-						status.push_stage("Checking for module updates", None);
-						let module_names = modules_to_fetch.iter().map(ModuleId::to_string).collect();
-						let mut find_modules = FindModules {
-							status: status.clone(),
-							client: storage.clone(),
-							names: module_names,
-						};
-						let repositories = find_modules.run().await?;
-						for repository in repositories {
-							remote_repositories.insert((&repository).into(), repository);
-						}
-						status.pop_stage();
-					}
-
-					if !remote_repositories.is_empty() {
-						use database::{ObjectStoreExt, TransactionExt};
-						status.push_stage("Updating database", None);
-
-						let transaction = database.write()?;
-						let module_store = transaction.object_store_of::<Module>()?;
-
-						for (module_id, repository) in remote_repositories {
-							let module = match modules.get_mut(&module_id) {
-								Some(module) => {
-									module.remote_version = repository.version.clone();
-									module
-								}
-								None => {
-									let module = Module {
-										id: module_id.clone(),
-										name: module_id.to_string(),
-										systems: repository.root_trees.iter().cloned().collect(),
-										version: repository.version.clone(),
-										remote_version: repository.version.clone(),
-										installed: false,
-									};
-									modules.insert(module_id.clone(), module);
-									modules.get(&module_id).unwrap()
-								}
-							};
-							module_store.put_record(module).await?;
-						}
-
-						transaction.commit().await.map_err(database::Error::from)?;
-
-						status.pop_stage();
-					}
-
-					if let Some(viewer) = &viewer {
-						let homebrew_id = ModuleId::Github {
-							user_org: viewer.clone(),
-							repository: USER_HOMEBREW_REPO_NAME.to_owned(),
-						};
-						modules_to_uninstall.remove(&homebrew_id);
-						if let Some(module) = modules.get(&homebrew_id) {
-							if !module.installed {
-								modules_to_install.insert(homebrew_id);
-							}
-						}
-					}
-
-					if !modules_to_uninstall.is_empty() {
-						let transaction = database.write()?;
-						for module_id in &modules_to_uninstall {
-							use crate::database::{entry::ModuleSystem, Entry};
-							use database::{ObjectStoreExt, TransactionExt};
-							use futures_util::StreamExt;
-
-							let Some(module) = modules.get_mut(module_id) else {
-								continue;
-							};
-
-							let module_store = transaction.object_store_of::<Module>()?;
-							module.installed = false;
-							module_store.put_record(module).await?;
-
-							let entry_store = transaction.object_store_of::<Entry>()?;
-							let idx_module_system = entry_store.index_of::<ModuleSystem>();
-							let idx_module_system = idx_module_system.map_err(database::Error::from)?;
-							for system in &module.systems {
-								let query = ModuleSystem {
-									module: module.id.to_string(),
-									system: system.clone(),
-								};
-								let cursor = idx_module_system.open_cursor(Some(&query)).await;
-								let mut cursor = cursor.map_err(database::Error::from)?;
-								while let Some(entry) = cursor.next().await {
-									entry_store.delete_record(entry.id).await?;
-								}
-							}
-						}
-						transaction.commit().await.map_err(database::Error::from)?;
-					}
-
-					if !modules_to_install.is_empty() {
-						struct ModuleUpdate {
-							module_id: ModuleId,
-							files: Vec<ModuleFileUpdate>,
-						}
-
-						status.push_stage("Installing modules", None);
-
-						let mut module_updates = Vec::with_capacity(modules_to_install.len());
-						status.push_stage("Gathering updates", Some(modules_to_install.len()));
-						for module_id in modules_to_install {
-							status.increment_progress();
-
-							let ModuleId::Github { user_org, repository } = &module_id else {
-								// ERROR: Invalid module id to scan
-								continue;
-							};
-							let Some(module) = modules.get_mut(&module_id) else {
-								continue;
-							};
-
-							// For prev uninstalled modules, scan the remote for all files at the latest state.
-							if !module.installed {
-								module.installed = true;
-
-								let scan = ScanRepository {
-									status: status.clone(),
-									client: storage.clone(),
-									owner: user_org.clone(),
-									name: repository.clone(),
-									tree_id: None,
-								};
-								let files = scan.run().await?;
-								let files = files
-									.into_iter()
-									.map(|file| ModuleFileUpdate {
-										file,
-										status: github::ChangedFileStatus::Added,
-									})
-									.collect();
-
-								module_updates.push(ModuleUpdate { module_id, files });
-							}
-							// For module updates, ask repo for changed files since current version.
-							else if module.version != module.remote_version {
-								let scan = FindFileUpdates {
-									status: status.clone(),
-									client: storage.clone(),
-									owner: user_org.clone(),
-									name: repository.clone(),
-									old_version: module.version.clone(),
-									new_version: module.remote_version.clone(),
-								};
-								module.version = module.remote_version.clone();
-
-								let files = scan.run().await?;
-								module_updates.push(ModuleUpdate { module_id, files });
-							}
-						}
-						status.pop_stage(); // Gathering Updates
-
-						// For all files to fetch, across all modules, fetch each file and update progress.
-						// Iterate per module so updates can be committed to database as each is fetched.
-						status.push_stage("Downloading Modules", Some(module_updates.len()));
-						for ModuleUpdate { module_id, files } in module_updates {
-							use crate::database::{Entry, Module};
-							use database::{ObjectStoreExt, TransactionExt};
-
-							status.increment_progress();
-
-							let Some(module) = modules.get(&module_id) else {
-								continue;
-							};
-
-							let download = DownloadFileUpdates {
-								status: status.clone(),
-								client: storage.clone(),
-								system_depot: system_depot.clone(),
-								module_id: module.id.clone(),
-								version: module.remote_version.clone(),
-								files,
-							};
-							let (entries, removed_file_ids) = download.run().await?;
-
-							status.push_stage(format!("Installing {}", module.id.to_string()), None);
-
-							let transaction = database.write()?;
-
-							let module_store = transaction.object_store_of::<Module>()?;
-							module_store.put_record(module).await?;
-
-							let entry_store = transaction.object_store_of::<Entry>()?;
-							for record in entries {
-								entry_store.put_record(&record).await?;
-							}
-							// Delete entries by module and file-id
-							let entry_ids_to_remove = {
-								use futures_util::StreamExt;
-								let mut cursor = Database::query_entries_in(&entry_store, &module.id).await?;
-								let mut entry_ids_to_remove = Vec::with_capacity(removed_file_ids.len());
-								while let Some(entry) = cursor.next().await {
-									let Some(file_id) = &entry.file_id else {
-										continue;
-									};
-									if removed_file_ids.contains(file_id) {
-										entry_ids_to_remove.push(entry.id.clone());
-									}
-								}
-								entry_ids_to_remove
-							};
-							for entry_id in entry_ids_to_remove {
-								entry_store.delete_record(entry_id).await?;
-							}
-
-							transaction
-								.commit()
-								.await
-								.map_err(|err| StorageSyncError::Database(err.into()))?;
-
-							status.pop_stage(); // Installing owner/repo
-						}
-						status.pop_stage(); // Downloading Files
-						status.pop_stage(); // Installing Modules
+					if let Err(err) = process_request(req, &database, &system_depot, &status).await {
+						log::error!(target: "autosync", "{err:?}");
 					}
 				}
 				Ok(()) as Result<(), StorageSyncError>
@@ -537,6 +230,329 @@ pub fn Provider(props: &ChildrenProps) -> Html {
 			</ContextProvider<Status>>
 		</ContextProvider<Channel>>
 	}
+}
+
+async fn process_request(
+	req: Request,
+	database: &Database,
+	system_depot: &system::Depot,
+	status: &Status,
+) -> Result<(), StorageSyncError> {
+	let auth_status = yewdux::dispatch::get::<crate::auth::Status>();
+	let Some(storage) = crate::storage::get(&*auth_status) else {
+		log::error!(target: "autosync", "No storage available, cannot progess request {req:?}");
+		return Ok(());
+	};
+
+	let mut scan_storage_for_modules = false;
+	let mut modules = BTreeMap::new();
+	let mut modules_to_fetch = BTreeSet::new();
+	let mut modules_to_install = BTreeSet::new();
+	let mut modules_to_uninstall = BTreeSet::new();
+	match req {
+		Request::FetchLatestVersionAllModules => {
+			scan_storage_for_modules = true;
+			for module in database.clone().query_modules(None).await? {
+				modules.insert(module.id.clone(), module);
+			}
+		}
+		Request::InstallModules(new_installation_status) => {
+			for (id, should_be_installed) in new_installation_status {
+				let module = database.get::<Module>(id.to_string()).await?;
+				let Some(module) = module else {
+					continue;
+				};
+				if should_be_installed {
+					modules_to_install.insert(module.id.clone());
+				} else {
+					modules_to_uninstall.insert(module.id.clone());
+				}
+				modules.insert(module.id.clone(), module);
+			}
+		}
+		Request::UpdateModules(module_ids) => {
+			for id in module_ids {
+				let module = database.get::<Module>(id.to_string()).await?;
+				let Some(module) = module else {
+					continue;
+				};
+				modules_to_fetch.insert(module.id.clone());
+				modules_to_install.insert(module.id.clone());
+				modules.insert(module.id.clone(), module);
+			}
+		}
+		Request::UpdateFile(source_id) => {
+			if let Some(id) = source_id.module {
+				let module = database.get::<Module>(id.to_string()).await?;
+				let Some(module) = module else {
+					log::error!(target: "autosync", "Failed to find module {id:?}");
+					return Ok(());
+				};
+				modules_to_fetch.insert(module.id.clone());
+				modules_to_install.insert(module.id.clone());
+				modules.insert(module.id.clone(), module);
+			}
+		}
+	}
+
+	status.push_stage("Checking authentiation", None);
+	let (viewer, repo_owners) = {
+		let mut query_module_owners = QueryModuleOwners {
+			status: status.clone(),
+			client: storage.clone(),
+			user: None,
+			found_homebrew: false,
+		};
+		let owners = query_module_owners.run().await?;
+
+		// If the homebrew repo was not found when querying who the user is,
+		// then we need to generate one, since this is where their user data is stored
+		// and is the default location for any creations.
+		if !query_module_owners.found_homebrew {
+			let generate_homebrew = GenerateHomebrew {
+				status: status.clone(),
+				client: storage.clone(),
+			};
+			generate_homebrew.run().await?;
+		}
+
+		(query_module_owners.user.take(), owners)
+	};
+	status.pop_stage();
+
+	let mut remote_repositories = BTreeMap::new();
+	if scan_storage_for_modules {
+		status.push_stage("Scanning Storage", None);
+		let scan_for_modules = ScanForModules {
+			status: status.clone(),
+			client: storage.clone(),
+			owners: repo_owners,
+		};
+		let repositories = scan_for_modules.run().await?;
+		for repository in repositories {
+			remote_repositories.insert((&repository).into(), repository);
+		}
+		status.pop_stage();
+	} else {
+		status.push_stage("Checking for module updates", None);
+		let module_names = modules_to_fetch.iter().map(ModuleId::to_string).collect();
+		let mut find_modules = FindModules {
+			status: status.clone(),
+			client: storage.clone(),
+			names: module_names,
+		};
+		let repositories = find_modules.run().await?;
+		for repository in repositories {
+			remote_repositories.insert((&repository).into(), repository);
+		}
+		status.pop_stage();
+	}
+
+	if !remote_repositories.is_empty() {
+		use database::{ObjectStoreExt, TransactionExt};
+		status.push_stage("Updating database", None);
+
+		let transaction = database.write()?;
+		let module_store = transaction.object_store_of::<Module>()?;
+
+		for (module_id, repository) in remote_repositories {
+			let module = match modules.get_mut(&module_id) {
+				Some(module) => {
+					module.remote_version = repository.version.clone();
+					module
+				}
+				None => {
+					let module = Module {
+						id: module_id.clone(),
+						name: module_id.to_string(),
+						systems: repository.root_trees.iter().cloned().collect(),
+						version: repository.version.clone(),
+						remote_version: repository.version.clone(),
+						installed: false,
+					};
+					modules.insert(module_id.clone(), module);
+					modules.get(&module_id).unwrap()
+				}
+			};
+			module_store.put_record(module).await?;
+		}
+
+		transaction.commit().await.map_err(database::Error::from)?;
+
+		status.pop_stage();
+	}
+
+	if let Some(viewer) = &viewer {
+		let homebrew_id = ModuleId::Github {
+			user_org: viewer.clone(),
+			repository: USER_HOMEBREW_REPO_NAME.to_owned(),
+		};
+		modules_to_uninstall.remove(&homebrew_id);
+		if let Some(module) = modules.get(&homebrew_id) {
+			if !module.installed {
+				modules_to_install.insert(homebrew_id);
+			}
+		}
+	}
+
+	if !modules_to_uninstall.is_empty() {
+		let transaction = database.write()?;
+		for module_id in &modules_to_uninstall {
+			use crate::database::{entry::ModuleSystem, Entry};
+			use database::{ObjectStoreExt, TransactionExt};
+			use futures_util::StreamExt;
+
+			let Some(module) = modules.get_mut(module_id) else {
+				continue;
+			};
+
+			let module_store = transaction.object_store_of::<Module>()?;
+			module.installed = false;
+			module_store.put_record(module).await?;
+
+			let entry_store = transaction.object_store_of::<Entry>()?;
+			let idx_module_system = entry_store.index_of::<ModuleSystem>();
+			let idx_module_system = idx_module_system.map_err(database::Error::from)?;
+			for system in &module.systems {
+				let query = ModuleSystem {
+					module: module.id.to_string(),
+					system: system.clone(),
+				};
+				let cursor = idx_module_system.open_cursor(Some(&query)).await;
+				let mut cursor = cursor.map_err(database::Error::from)?;
+				while let Some(entry) = cursor.next().await {
+					entry_store.delete_record(entry.id).await?;
+				}
+			}
+		}
+		transaction.commit().await.map_err(database::Error::from)?;
+	}
+
+	if !modules_to_install.is_empty() {
+		struct ModuleUpdate {
+			module_id: ModuleId,
+			files: Vec<ModuleFileUpdate>,
+		}
+
+		status.push_stage("Installing modules", None);
+
+		let mut module_updates = Vec::with_capacity(modules_to_install.len());
+		status.push_stage("Gathering updates", Some(modules_to_install.len()));
+		for module_id in modules_to_install {
+			status.increment_progress();
+
+			let ModuleId::Github { user_org, repository } = &module_id else {
+				// ERROR: Invalid module id to scan
+				continue;
+			};
+			let Some(module) = modules.get_mut(&module_id) else {
+				continue;
+			};
+
+			// For prev uninstalled modules, scan the remote for all files at the latest state.
+			if !module.installed {
+				module.installed = true;
+
+				let scan = ScanRepository {
+					status: status.clone(),
+					client: storage.clone(),
+					owner: user_org.clone(),
+					name: repository.clone(),
+					tree_id: None,
+				};
+				let files = scan.run().await?;
+				let files = files
+					.into_iter()
+					.map(|file| ModuleFileUpdate {
+						file,
+						status: github::ChangedFileStatus::Added,
+					})
+					.collect();
+
+				module_updates.push(ModuleUpdate { module_id, files });
+			}
+			// For module updates, ask repo for changed files since current version.
+			else if module.version != module.remote_version {
+				let scan = FindFileUpdates {
+					status: status.clone(),
+					client: storage.clone(),
+					owner: user_org.clone(),
+					name: repository.clone(),
+					old_version: module.version.clone(),
+					new_version: module.remote_version.clone(),
+				};
+				module.version = module.remote_version.clone();
+
+				let files = scan.run().await?;
+				module_updates.push(ModuleUpdate { module_id, files });
+			}
+		}
+		status.pop_stage(); // Gathering Updates
+
+		// For all files to fetch, across all modules, fetch each file and update progress.
+		// Iterate per module so updates can be committed to database as each is fetched.
+		status.push_stage("Downloading Modules", Some(module_updates.len()));
+		for ModuleUpdate { module_id, files } in module_updates {
+			use crate::database::Entry;
+			use database::{ObjectStoreExt, TransactionExt};
+
+			status.increment_progress();
+
+			let Some(module) = modules.get(&module_id) else {
+				continue;
+			};
+
+			let download = DownloadFileUpdates {
+				status: status.clone(),
+				client: storage.clone(),
+				system_depot: system_depot.clone(),
+				module_id: module.id.clone(),
+				version: module.remote_version.clone(),
+				files,
+			};
+			let (entries, removed_file_ids) = download.run().await?;
+
+			status.push_stage(format!("Installing {}", module.id.to_string()), None);
+
+			let transaction = database.write()?;
+
+			let module_store = transaction.object_store_of::<Module>()?;
+			module_store.put_record(module).await?;
+
+			let entry_store = transaction.object_store_of::<Entry>()?;
+			for record in entries {
+				entry_store.put_record(&record).await?;
+			}
+			// Delete entries by module and file-id
+			let entry_ids_to_remove = {
+				use futures_util::StreamExt;
+				let mut cursor = Database::query_entries_in(&entry_store, &module.id).await?;
+				let mut entry_ids_to_remove = Vec::with_capacity(removed_file_ids.len());
+				while let Some(entry) = cursor.next().await {
+					let Some(file_id) = &entry.file_id else {
+						continue;
+					};
+					if removed_file_ids.contains(file_id) {
+						entry_ids_to_remove.push(entry.id.clone());
+					}
+				}
+				entry_ids_to_remove
+			};
+			for entry_id in entry_ids_to_remove {
+				entry_store.delete_record(entry_id).await?;
+			}
+
+			transaction
+				.commit()
+				.await
+				.map_err(|err| StorageSyncError::Database(err.into()))?;
+
+			status.pop_stage(); // Installing owner/repo
+		}
+		status.pop_stage(); // Downloading Files
+		status.pop_stage(); // Installing Modules
+	}
+	Ok(())
 }
 
 pub struct ModuleFile {

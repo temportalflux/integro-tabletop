@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::str::FromStr;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum ModuleId {
 	Local { name: String },
 	Github { user_org: String, repository: String },
@@ -13,6 +13,14 @@ impl Default for ModuleId {
 	fn default() -> Self {
 		Self::Local {
 			name: Default::default(),
+		}
+	}
+}
+impl std::fmt::Debug for ModuleId {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Local { name } => write!(f, "Local({name})"),
+			Self::Github { user_org, repository } => write!(f, "Github({user_org}/{repository})"),
 		}
 	}
 }

@@ -193,10 +193,18 @@ fn ModuleCard(props: &ModuleCardProps) -> Html {
 			));
 		}
 	});
+	let on_update = Callback::from({
+		let channel = autosync_channel.clone();
+		let module_id = module.id.clone();
+		move |_| {
+			channel.try_send_req(autosync::Request::UpdateModules([module_id.clone()].into()));
+		}
+	});
 	let show_as_installed = pending_module_installations
 		.get(&module.id)
 		.copied()
 		.unwrap_or(module.installed);
+	let show_update = module.installed && module.version != module.remote_version;
 	html! {
 		<div class="card m-1 module" style="min-width: 300px;">
 			<div class="card-header d-flex align-items-center">
@@ -247,6 +255,12 @@ fn ModuleCard(props: &ModuleCardProps) -> Html {
 					/>
 					{"Installed"}
 				</div>
+				{show_update.then(|| html! {
+					<button class="btn btn-success" onclick={on_update}>
+						<i class="bi bi-cloud-download" />
+						{"Update"}
+					</button>
+				})}
 			</div>
 		</div>
 	}
