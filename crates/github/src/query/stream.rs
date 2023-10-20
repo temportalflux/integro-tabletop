@@ -54,7 +54,7 @@ where
 			let data = match result {
 				Ok(data) => data,
 				Err(err) => {
-					log::error!("GraphQL Query failed: {err:?}");
+					log::error!(target: "GraphQL Query Stream", "{err:?}");
 					return Poll::Ready(None);
 				}
 			};

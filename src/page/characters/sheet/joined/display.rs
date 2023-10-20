@@ -3,7 +3,6 @@ use crate::{
 	components::{use_media_query, Nav, NavDisplay, TabContent},
 	database::app::{Database, Entry},
 	page::characters::sheet::{CharacterHandle, ViewProps},
-	storage::github::FileContentArgs,
 	system::{
 		self,
 		core::{ModuleId, SourceId},
@@ -42,7 +41,7 @@ pub fn Display(ViewProps { swap_view }: &ViewProps) -> Html {
 		let database = database.clone();
 		let id = state.id().clone();
 		move |_| {
-			let Some(client) = auth_status.storage() else {
+			let Some(client) = crate::storage::get(&*auth_status) else {
 				log::debug!("no storage client");
 				return;
 			};
@@ -81,7 +80,7 @@ pub fn Display(ViewProps { swap_view }: &ViewProps) -> Html {
 				let user_org = user_org.clone();
 				let repository = repository.clone();
 
-				let args = FileContentArgs {
+				let args = github::repos::contents::get::Args {
 					owner: user_org.as_str(),
 					repo: repository.as_str(),
 					path: path_in_repo.as_path(),
@@ -139,7 +138,7 @@ pub fn Display(ViewProps { swap_view }: &ViewProps) -> Html {
 		let navigator = navigator.clone();
 		let id = state.id().unversioned();
 		move |_| {
-			let Some(client) = auth_status.storage() else {
+			let Some(client) = crate::storage::get(&*auth_status) else {
 				log::debug!("no storage client");
 				return;
 			};
@@ -209,7 +208,7 @@ pub fn Display(ViewProps { swap_view }: &ViewProps) -> Html {
 						}
 					},
 				};
-				let args = crate::storage::github::CreateOrUpdateFileArgs {
+				let args = github::repos::contents::update::Args {
 					repo_org: &repo_org,
 					repo_name: &repo_name,
 					path_in_repo: &path_in_repo,

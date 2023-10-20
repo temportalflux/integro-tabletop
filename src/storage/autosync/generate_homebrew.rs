@@ -1,5 +1,5 @@
 use crate::storage::{
-	github::{CreateRepoArgs, GithubClient, SetRepoTopicsArgs},
+	github::{repos, GithubClient},
 	USER_HOMEBREW_REPO_NAME,
 };
 
@@ -11,18 +11,18 @@ pub struct GenerateHomebrew {
 	pub client: GithubClient,
 }
 impl GenerateHomebrew {
-	pub async fn run(self) -> Result<(), crate::storage::github::Error> {
+	pub async fn run(self) -> Result<(), github::Error> {
 		self.status.push_stage("Initializing homebrew module", None);
 
-		use crate::storage::github::MODULE_TOPIC;
-		let create_repo = CreateRepoArgs {
+		use crate::storage::MODULE_TOPIC;
+		let create_repo = repos::create::Args {
 			org: None,
 			name: USER_HOMEBREW_REPO_NAME,
 			private: true,
 		};
 		let owner = self.client.create_repo(create_repo).await?;
 
-		let set_topics = SetRepoTopicsArgs {
+		let set_topics = repos::set_topics::Args {
 			owner: owner.as_str(),
 			repo: USER_HOMEBREW_REPO_NAME,
 			topics: vec![MODULE_TOPIC.to_owned()],

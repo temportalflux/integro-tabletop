@@ -1,7 +1,7 @@
 use crate::{
 	storage::{
 		autosync::{ModuleFile, ModuleFileUpdate},
-		github::{ChangedFileStatus, Error, FileContentArgs, GithubClient},
+		github::{repos, ChangedFileStatus, Error, GithubClient},
 	},
 	system::{
 		self,
@@ -45,7 +45,7 @@ impl DownloadFileUpdates {
 
 			self.status.increment_progress();
 
-			let args = FileContentArgs {
+			let args = repos::contents::get::Args {
 				owner: user_org.as_str(),
 				repo: repository.as_str(),
 				path: Path::new(path_in_repo.as_str()),

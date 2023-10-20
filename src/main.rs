@@ -36,7 +36,7 @@ fn ProviderChain(props: &html::ChildrenProps) -> Html {
 	use crate::components::{mobile, object_browser};
 	html! {
 		<mobile::Provider threshold={1200}>
-			<auth::ActionProvider>
+			<auth::Provider>
 				<task::Provider>
 					<system::Provider>
 						<DatabaseProvider>
@@ -52,7 +52,7 @@ fn ProviderChain(props: &html::ChildrenProps) -> Html {
 						</DatabaseProvider>
 					</system::Provider>
 				</task::Provider>
-			</auth::ActionProvider>
+			</auth::Provider>
 		</mobile::Provider>
 	}
 }

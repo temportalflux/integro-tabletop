@@ -1,6 +1,9 @@
+use github::Query;
+
 use crate::storage::{
 	autosync::ModuleFile,
-	github::{Error, GetTreeArgs, GithubClient},
+	github::{repos, Error, GithubClient, SearchRepositoriesParams},
+	MODULE_TOPIC,
 };
 use std::{collections::VecDeque, path::PathBuf};
 
@@ -14,7 +17,6 @@ pub struct ScanRepository {
 }
 impl ScanRepository {
 	pub async fn run(self) -> Result<Vec<ModuleFile>, Error> {
-		use futures_util::stream::StreamExt;
 		let repo_id = format!("{}/{}", self.owner, self.name);
 		let mut tree_count = 1;
 		self.status.push_stage(format!("Scanning {repo_id}"), Some(tree_count));
@@ -22,11 +24,13 @@ impl ScanRepository {
 		let tree_id = match self.tree_id {
 			Some(id) => id,
 			None => {
-				let mut stream = self.client.search_specific_repos(vec![repo_id.clone()].iter());
-				let Some(metadata) = stream.next().await else {
-					return Err(Error::InvalidResponse(format!("Missing repository metadata").into()));
+				let search_params = SearchRepositoriesParams {
+					query: Query::default().keyed("repo", &repo_id).keyed("topic", MODULE_TOPIC),
+					page_size: 1,
 				};
-				let Some(metadata) = metadata.into_iter().next() else {
+				let (_, repositories) = self.client.search_repositories(search_params).await;
+
+				let Some(metadata) = repositories.into_iter().next() else {
 					return Err(Error::InvalidResponse(format!("Empty repository metadata").into()));
 				};
 				metadata.tree_id
@@ -36,7 +40,7 @@ impl ScanRepository {
 		let mut tree_ids = VecDeque::from([(PathBuf::new(), tree_id)]);
 		let mut files = Vec::new();
 		while let Some((tree_path, tree_id)) = tree_ids.pop_front() {
-			let args = GetTreeArgs {
+			let args = repos::tree::Args {
 				owner: self.owner.as_str(),
 				repo: self.name.as_str(),
 				tree_id: tree_id.as_str(),

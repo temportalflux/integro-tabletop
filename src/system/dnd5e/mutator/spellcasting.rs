@@ -376,7 +376,6 @@ impl FromKdl<NodeContext> for Spellcasting {
 					None => None,
 					Some(mut node) => {
 						let info = PreparedInfo::from_kdl(&mut node)?;
-						let mut filter = None;
 						let amount = node.query_opt_t("scope() > amount")?.unwrap_or(Value::Fixed(1));
 						let mut selector = selector::Object {
 							id: Default::default(),
@@ -384,7 +383,7 @@ impl FromKdl<NodeContext> for Spellcasting {
 							amount,
 							criteria: None,
 						};
-						filter = node.query_opt_t::<spellcasting::Filter>("scope() > filter")?;
+						let filter = node.query_opt_t::<spellcasting::Filter>("scope() > filter")?;
 						if let Some(filter) = &filter {
 							selector.set_criteria(filter.as_criteria());
 						}

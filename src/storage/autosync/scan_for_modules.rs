@@ -1,4 +1,9 @@
-use crate::storage::github::{GithubClient, RepositoryMetadata};
+use github::Query;
+
+use crate::storage::{
+	github::{GithubClient, RepositoryMetadata, SearchRepositoriesParams},
+	MODULE_TOPIC,
+};
 
 pub struct ScanForModules {
 	pub status: super::Status,
@@ -6,16 +11,15 @@ pub struct ScanForModules {
 	pub owners: Vec<String>,
 }
 impl ScanForModules {
-	pub async fn run(self) -> Result<Vec<RepositoryMetadata>, crate::storage::github::Error> {
-		use futures_util::stream::StreamExt;
-		// Regardless of if the homebrew already existed, lets gather ALL of the relevant
-		// repositories which are content modules. This will always include the homebrew repo,
-		// since it is garunteed to exist due to the above code.
-		let mut metadata = Vec::new();
-		let mut stream = self.client.search_for_repos(self.owners.iter());
-		while let Some(repos) = stream.next().await {
-			metadata.extend(repos.clone());
-		}
-		Ok(metadata)
+	pub async fn run(self) -> Result<Vec<RepositoryMetadata>, github::Error> {
+		// Query github for all modules with the topic MODULE_TOPIC which are owned by the provided owners (user or organization).
+
+		let iter_owners = self.owners.into_iter();
+		let query = iter_owners.fold(Query::default(), |query, owner| query.keyed("user", owner));
+		let query = query.keyed("topic", MODULE_TOPIC);
+
+		let search_params = SearchRepositoriesParams { query, page_size: 25 };
+		let (_, repositories) = self.client.search_repositories(search_params).await;
+		Ok(repositories)
 	}
 }

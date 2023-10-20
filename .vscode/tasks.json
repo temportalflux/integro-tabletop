@@ -28,7 +28,7 @@
 		{
 			"label": "4. [Cargo] Format",
 			"command": "cargo",
-			"args": [ "fmt" ],
+			"args": [ "fmt", "--all" ],
 			"group": "build",
 			"problemMatcher": []
 		},

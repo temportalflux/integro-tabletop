@@ -42,7 +42,7 @@ pub fn LoginButton() -> Html {
 	} else {
 		let onclick = auth
 			.login_callback()
-			.reform(|_: MouseEvent| auth::OAuthProvider::Github);
+			.reform(|_: MouseEvent| auth::OAuthProvider::Github.request());
 		html! {
 			<button
 				class="btn btn-success"

@@ -17,9 +17,7 @@ pub trait ValueExt {
 
 impl ValueExt for kdl::KdlValue {
 	fn as_bool_req(&self) -> Result<bool, InvalidValueType> {
-		Ok(self
-			.as_bool()
-			.ok_or(InvalidValueType(self.clone(), "bool"))?)
+		Ok(self.as_bool().ok_or(InvalidValueType(self.clone(), "bool"))?)
 	}
 
 	fn as_i64_req(&self) -> Result<i64, InvalidValueType> {
@@ -31,9 +29,7 @@ impl ValueExt for kdl::KdlValue {
 	}
 
 	fn as_str_req(&self) -> Result<&str, InvalidValueType> {
-		Ok(self
-			.as_string()
-			.ok_or(InvalidValueType(self.clone(), "string"))?)
+		Ok(self.as_string().ok_or(InvalidValueType(self.clone(), "string"))?)
 	}
 }
 

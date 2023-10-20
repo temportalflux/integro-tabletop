@@ -1,5 +1,7 @@
 use super::{armor::Armor, weapon::Weapon};
 use crate::kdl_ext::NodeContext;
+use crate::system::dnd5e::data::roll::Roll;
+use crate::system::dnd5e::data::Rest;
 use crate::{
 	system::dnd5e::{data::character::Character, BoxedCriteria, BoxedMutator},
 	utility::MutatorGroup,
@@ -21,6 +23,19 @@ pub struct Equipment {
 	pub weapon: Option<Weapon>,
 	/// If this weapon can be attuned, this is the attunement data.
 	pub attunement: Option<Attunement>,
+	pub charges: Option<Charges>,
+}
+
+#[derive(Clone, PartialEq, Debug)]
+pub struct Charges {
+	pub capacity: usize,
+	pub reset: Option<ChargesReset>,
+}
+#[derive(Clone, PartialEq, Debug)]
+pub struct ChargesReset {
+	pub roll: Roll,
+	pub base: usize,
+	pub rest: Rest,
 }
 
 impl MutatorGroup for Equipment {
@@ -94,6 +109,7 @@ impl FromKdl<NodeContext> for Equipment {
 			shield,
 			weapon,
 			attunement,
+			charges: None,
 		})
 	}
 }
@@ -190,9 +206,7 @@ mod test {
 					},
 					min_strength_score: Some(15),
 				}),
-				shield: None,
-				weapon: None,
-				attunement: None,
+				..Default::default()
 			};
 			assert_eq_fromkdl!(Equipment, doc, data);
 			assert_eq_askdl!(&data, doc);
@@ -211,10 +225,6 @@ mod test {
 				|}
 			";
 			let data = Equipment {
-				criteria: None,
-				mutators: vec![],
-				armor: None,
-				shield: None,
 				weapon: Some(Weapon {
 					kind: weapon::Kind::Martial,
 					classification: "Maul".into(),
@@ -226,7 +236,7 @@ mod test {
 					properties: vec![weapon::Property::Heavy, weapon::Property::TwoHanded],
 					range: None,
 				}),
-				attunement: None,
+				..Default::default()
 			};
 			assert_eq_fromkdl!(Equipment, doc, data);
 			assert_eq_askdl!(&data, doc);
@@ -241,12 +251,8 @@ mod test {
 				|}
 			";
 			let data = Equipment {
-				criteria: None,
-				mutators: vec![],
-				armor: None,
 				shield: Some(2),
-				weapon: None,
-				attunement: None,
+				..Default::default()
 			};
 			assert_eq_fromkdl!(Equipment, doc, data);
 			assert_eq_askdl!(&data, doc);

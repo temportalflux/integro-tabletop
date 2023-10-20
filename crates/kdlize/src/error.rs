@@ -1,4 +1,3 @@
-
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
 	#[error(transparent)]
@@ -32,12 +31,7 @@ impl std::fmt::Display for MissingEntryValue {
 		match &self.1 {
 			kdl::NodeKey::Index(v) => write!(f, "Node {} is missing an entry at index {v}", self.0),
 			kdl::NodeKey::Key(v) => {
-				write!(
-					f,
-					"Node {} is missing an entry at property {}",
-					self.0,
-					v.value()
-				)
+				write!(f, "Node {} is missing an entry at property {}", self.0, v.value())
 			}
 		}
 	}

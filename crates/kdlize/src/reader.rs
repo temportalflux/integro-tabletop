@@ -1,5 +1,9 @@
+use crate::{
+	error::{Error, InvalidQueryFormat, InvalidValueType, MissingEntryValue},
+	ext::{DocumentExt, DocumentQueryExt, EntryExt, NodeExt},
+	FromKdl,
+};
 use std::str::FromStr;
-use crate::{error::{Error, MissingEntryValue, InvalidValueType, InvalidQueryFormat}, FromKdl, ext::{EntryExt, NodeExt, DocumentQueryExt, DocumentExt}};
 
 pub struct NodeReader<'doc, Context> {
 	node: &'doc kdl::KdlNode,
@@ -33,7 +37,10 @@ impl<'doc, Context> NodeReader<'doc, Context> {
 		}
 	}
 
-	fn next_node(&self, node: &'doc kdl::KdlNode) -> Self where Context: Clone {
+	fn next_node(&self, node: &'doc kdl::KdlNode) -> Self
+	where
+		Context: Clone,
+	{
 		Self::new_child(node, self.ctx.clone())
 	}
 
@@ -53,17 +60,19 @@ impl<'doc, Context> NodeReader<'doc, Context> {
 		self.node.entries()
 	}
 
-	pub fn children(&self) -> Option<Vec<Self>> where Context: Clone {
+	pub fn children(&self) -> Option<Vec<Self>>
+	where
+		Context: Clone,
+	{
 		let Some(doc) = self.node.children() else { return None; };
 		Some(Self::iter_from(&self.ctx, doc.nodes().iter()))
 	}
 
-	fn iter_from(
-		ctx: &Context,
-		iter: impl Iterator<Item = &'doc kdl::KdlNode> + 'doc,
-	) -> Vec<Self> where Context: Clone {
-		iter.map(|node| Self::new_child(node, ctx.clone()))
-			.collect()
+	fn iter_from(ctx: &Context, iter: impl Iterator<Item = &'doc kdl::KdlNode> + 'doc) -> Vec<Self>
+	where
+		Context: Clone,
+	{
+		iter.map(|node| Self::new_child(node, ctx.clone())).collect()
 	}
 }
 
@@ -147,34 +156,19 @@ impl<'doc, Context> NodeReader<'doc, Context> {
 	pub fn get_opt(&self, key: impl AsRef<str>) -> Option<&'doc kdl::KdlEntry> {
 		self.node.entry_opt(key.as_ref())
 	}
-	pub fn get_req(
-		&self,
-		key: impl AsRef<str>,
-	) -> Result<&'doc kdl::KdlEntry, MissingEntryValue> {
+	pub fn get_req(&self, key: impl AsRef<str>) -> Result<&'doc kdl::KdlEntry, MissingEntryValue> {
 		self.node.entry_req(key.as_ref())
 	}
-	pub fn get_bool_opt(
-		&self,
-		key: impl AsRef<str>,
-	) -> Result<Option<bool>, InvalidValueType> {
+	pub fn get_bool_opt(&self, key: impl AsRef<str>) -> Result<Option<bool>, InvalidValueType> {
 		self.node.get_bool_opt(key.as_ref())
 	}
-	pub fn get_i64_opt(
-		&self,
-		key: impl AsRef<str>,
-	) -> Result<Option<i64>, InvalidValueType> {
+	pub fn get_i64_opt(&self, key: impl AsRef<str>) -> Result<Option<i64>, InvalidValueType> {
 		self.node.get_i64_opt(key.as_ref())
 	}
-	pub fn get_f64_opt(
-		&self,
-		key: impl AsRef<str>,
-	) -> Result<Option<f64>, InvalidValueType> {
+	pub fn get_f64_opt(&self, key: impl AsRef<str>) -> Result<Option<f64>, InvalidValueType> {
 		self.node.get_f64_opt(key.as_ref())
 	}
-	pub fn get_str_opt(
-		&self,
-		key: impl AsRef<str>,
-	) -> Result<Option<&'doc str>, InvalidValueType> {
+	pub fn get_str_opt(&self, key: impl AsRef<str>) -> Result<Option<&'doc str>, InvalidValueType> {
 		self.node.get_str_opt(key.as_ref())
 	}
 	pub fn get_bool_req(&self, key: impl AsRef<str>) -> Result<bool, Error> {
@@ -191,7 +185,10 @@ impl<'doc, Context> NodeReader<'doc, Context> {
 	}
 }
 
-impl<'doc, Context> NodeReader<'doc, Context> where Context: Clone {
+impl<'doc, Context> NodeReader<'doc, Context>
+where
+	Context: Clone,
+{
 	pub fn query_opt(&self, query: impl AsRef<str>) -> Result<Option<Self>, InvalidQueryFormat> {
 		Ok(self.node.query_opt(query)?.map(|node| self.next_node(node)))
 	}
@@ -241,18 +238,30 @@ impl<'doc, Context> NodeReader<'doc, Context> {
 	}
 
 	pub fn query_opt_t<T>(&self, query: impl AsRef<str>) -> Result<Option<T>, anyhow::Error>
-	where T: FromKdl<Context>, anyhow::Error: From<T::Error>, Context: Clone {
+	where
+		T: FromKdl<Context>,
+		anyhow::Error: From<T::Error>,
+		Context: Clone,
+	{
 		let Some(mut node) = self.query_opt(query).map_err(Error::from)? else { return Ok(None); };
 		Ok(Some(T::from_kdl(&mut node)?))
 	}
 
 	pub fn query_req_t<T>(&self, query: impl AsRef<str>) -> Result<T, anyhow::Error>
-	where T: FromKdl<Context>, anyhow::Error: From<T::Error>, Context: Clone {
+	where
+		T: FromKdl<Context>,
+		anyhow::Error: From<T::Error>,
+		Context: Clone,
+	{
 		Ok(T::from_kdl(&mut self.query_req(query)?)?)
 	}
 
 	pub fn query_all_t<T>(&self, query: impl kdl::IntoKdlQuery) -> Result<Vec<T>, anyhow::Error>
-	where T: FromKdl<Context>, anyhow::Error: From<T::Error>, Context: Clone {
+	where
+		T: FromKdl<Context>,
+		anyhow::Error: From<T::Error>,
+		Context: Clone,
+	{
 		let nodes = self.query_all(query).map_err(Error::from)?;
 		let mut vec = Vec::with_capacity(nodes.len());
 		for mut node in nodes {
@@ -274,11 +283,7 @@ impl<'doc, Context> NodeReader<'doc, Context> {
 		Ok(Some(T::from_str(str)?))
 	}
 
-	pub fn query_str_req_t<T>(
-		&self,
-		query: impl AsRef<str>,
-		key: impl Into<kdl::NodeKey>,
-	) -> Result<T, anyhow::Error>
+	pub fn query_str_req_t<T>(&self, query: impl AsRef<str>, key: impl Into<kdl::NodeKey>) -> Result<T, anyhow::Error>
 	where
 		T: FromStr,
 		T::Err: std::error::Error + Send + Sync + 'static,
@@ -288,90 +293,42 @@ impl<'doc, Context> NodeReader<'doc, Context> {
 }
 
 impl<'doc, Context> DocumentExt for NodeReader<'doc, Context> {
-	fn query_bool_opt(
-		&self,
-		query: impl AsRef<str>,
-		key: impl Into<kdl::NodeKey>,
-	) -> Result<Option<bool>, Error> {
+	fn query_bool_opt(&self, query: impl AsRef<str>, key: impl Into<kdl::NodeKey>) -> Result<Option<bool>, Error> {
 		self.node.query_bool_opt(query, key)
 	}
-	fn query_i64_opt(
-		&self,
-		query: impl AsRef<str>,
-		key: impl Into<kdl::NodeKey>,
-	) -> Result<Option<i64>, Error> {
+	fn query_i64_opt(&self, query: impl AsRef<str>, key: impl Into<kdl::NodeKey>) -> Result<Option<i64>, Error> {
 		self.node.query_i64_opt(query, key)
 	}
-	fn query_f64_opt(
-		&self,
-		query: impl AsRef<str>,
-		key: impl Into<kdl::NodeKey>,
-	) -> Result<Option<f64>, Error> {
+	fn query_f64_opt(&self, query: impl AsRef<str>, key: impl Into<kdl::NodeKey>) -> Result<Option<f64>, Error> {
 		self.node.query_f64_opt(query, key)
 	}
-	fn query_str_opt(
-		&self,
-		query: impl AsRef<str>,
-		key: impl Into<kdl::NodeKey>,
-	) -> Result<Option<&str>, Error> {
+	fn query_str_opt(&self, query: impl AsRef<str>, key: impl Into<kdl::NodeKey>) -> Result<Option<&str>, Error> {
 		self.node.query_str_opt(query, key)
 	}
 
-	fn query_bool_req(
-		&self,
-		query: impl AsRef<str>,
-		key: impl Into<kdl::NodeKey>,
-	) -> Result<bool, Error> {
+	fn query_bool_req(&self, query: impl AsRef<str>, key: impl Into<kdl::NodeKey>) -> Result<bool, Error> {
 		self.node.query_bool_req(query, key)
 	}
-	fn query_i64_req(
-		&self,
-		query: impl AsRef<str>,
-		key: impl Into<kdl::NodeKey>,
-	) -> Result<i64, Error> {
+	fn query_i64_req(&self, query: impl AsRef<str>, key: impl Into<kdl::NodeKey>) -> Result<i64, Error> {
 		self.node.query_i64_req(query, key)
 	}
-	fn query_f64_req(
-		&self,
-		query: impl AsRef<str>,
-		key: impl Into<kdl::NodeKey>,
-	) -> Result<f64, Error> {
+	fn query_f64_req(&self, query: impl AsRef<str>, key: impl Into<kdl::NodeKey>) -> Result<f64, Error> {
 		self.node.query_f64_req(query, key)
 	}
-	fn query_str_req(
-		&self,
-		query: impl AsRef<str>,
-		key: impl Into<kdl::NodeKey>,
-	) -> Result<&str, Error> {
+	fn query_str_req(&self, query: impl AsRef<str>, key: impl Into<kdl::NodeKey>) -> Result<&str, Error> {
 		self.node.query_str_req(query, key)
 	}
 
-	fn query_bool_all(
-		&self,
-		query: impl AsRef<str>,
-		key: impl Into<kdl::NodeKey>,
-	) -> Result<Vec<bool>, Error> {
+	fn query_bool_all(&self, query: impl AsRef<str>, key: impl Into<kdl::NodeKey>) -> Result<Vec<bool>, Error> {
 		self.node.query_bool_all(query, key)
 	}
-	fn query_i64_all(
-		&self,
-		query: impl AsRef<str>,
-		key: impl Into<kdl::NodeKey>,
-	) -> Result<Vec<i64>, Error> {
+	fn query_i64_all(&self, query: impl AsRef<str>, key: impl Into<kdl::NodeKey>) -> Result<Vec<i64>, Error> {
 		self.node.query_i64_all(query, key)
 	}
-	fn query_f64_all(
-		&self,
-		query: impl AsRef<str>,
-		key: impl Into<kdl::NodeKey>,
-	) -> Result<Vec<f64>, Error> {
+	fn query_f64_all(&self, query: impl AsRef<str>, key: impl Into<kdl::NodeKey>) -> Result<Vec<f64>, Error> {
 		self.node.query_f64_all(query, key)
 	}
-	fn query_str_all(
-		&self,
-		query: impl AsRef<str>,
-		key: impl Into<kdl::NodeKey>,
-	) -> Result<Vec<&str>, Error> {
+	fn query_str_all(&self, query: impl AsRef<str>, key: impl Into<kdl::NodeKey>) -> Result<Vec<&str>, Error> {
 		self.node.query_str_all(query, key)
 	}
 }

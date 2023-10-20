@@ -143,17 +143,24 @@ pub fn CharacterLanding() -> Html {
 		let navigator = navigator.clone();
 		let task_dispatch = task_dispatch.clone();
 		move |_| {
-			let Some(client) = auth_status.storage() else {
+			let Some(client) = crate::storage::get(&*auth_status) else {
 				log::debug!("no storage client");
 				return;
 			};
 			let navigator = navigator.clone();
 			task_dispatch.spawn("Prepare Character", None, async move {
-				let (_, homebrew_repo) = client.viewer().await?;
-				let Some(homebrew_repo) = homebrew_repo else {
+				let search_params = github::SearchRepositoriesParams {
+					query: github::Query::default()
+						.keyed("user", "@me")
+						.keyed("repo", crate::storage::USER_HOMEBREW_REPO_NAME)
+						.keyed("in", "name"),
+					page_size: 1,
+				};
+				let (_, mut repositories) = client.search_repositories(search_params).await;
+				let Some(homebrew_repo) = repositories.pop() else {
 					return Ok(());
 				};
-				let module_id = homebrew_repo.module_id();
+				let module_id = (&homebrew_repo).into();
 
 				let system = DnD5e::id();
 				let source_id_unversioned = SourceId {
@@ -354,7 +361,7 @@ fn ModalCreate() -> Html {
 			if action_in_progress.value() {
 				return;
 			}
-			let Some(client) = auth_status.storage() else {
+			let Some(client) = crate::storage::get(&*auth_status) else {
 				log::debug!("no storage client");
 				return;
 			};
@@ -362,11 +369,18 @@ fn ModalCreate() -> Html {
 			let database = database.clone();
 			let close_modal = close_modal.clone();
 			let signal = task_dispatch.spawn("Create Character File", None, async move {
-				let (_, homebrew_repo) = client.viewer().await?;
-				let Some(homebrew_repo) = homebrew_repo else {
+				let search_params = github::SearchRepositoriesParams {
+					query: github::Query::default()
+						.keyed("user", "@me")
+						.keyed("repo", crate::storage::USER_HOMEBREW_REPO_NAME)
+						.keyed("in", "name"),
+					page_size: 1,
+				};
+				let (_, mut repositories) = client.search_repositories(search_params).await;
+				let Some(homebrew_repo) = repositories.pop() else {
 					return Ok(());
 				};
-				let module_id = homebrew_repo.module_id();
+				let module_id = ModuleId::from(&homebrew_repo);
 
 				// NOTE: Cannot continue if our local version is not the latest version in storage (github).
 				// We need to ensure that all files from the local ddb module are on the correct version,
@@ -422,7 +436,7 @@ fn ModalCreate() -> Html {
 					}
 				};
 
-				let args = crate::storage::github::CreateOrUpdateFileArgs {
+				let args = github::repos::contents::update::Args {
 					repo_org: &homebrew_repo.owner,
 					repo_name: &homebrew_repo.name,
 					path_in_repo: &path_in_repo,
@@ -539,7 +553,7 @@ fn ModalDelete(ModalDeleteProps { id, file_id, on_click }: &ModalDeleteProps) ->
 
 			let message = "Delete character";
 			let file_id = file_id.clone();
-			let Some(client) = auth_status.storage() else {
+			let Some(client) = crate::storage::get(&*auth_status) else {
 				log::debug!("no storage client");
 				return;
 			};
@@ -548,7 +562,7 @@ fn ModalDelete(ModalDeleteProps { id, file_id, on_click }: &ModalDeleteProps) ->
 			let close_modal = close_modal.clone();
 			let on_success = on_success.clone();
 			let signal = task_dispatch.spawn("Delete Character File", None, async move {
-				let args = crate::storage::github::DeleteFileArgs {
+				let args = github::repos::contents::delete::Args {
 					repo_org: repo_org.as_str(),
 					repo_name: repo_name.as_str(),
 					path_in_repo: path_in_repo.as_path(),

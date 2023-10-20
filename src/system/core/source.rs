@@ -24,6 +24,14 @@ impl ToString for ModuleId {
 		}
 	}
 }
+impl From<&github::RepositoryMetadata> for ModuleId {
+	fn from(value: &github::RepositoryMetadata) -> Self {
+		Self::Github {
+			user_org: value.owner.clone(),
+			repository: value.name.clone(),
+		}
+	}
+}
 
 #[derive(Clone, Default, Hash, PartialOrd, Ord, Derivative)]
 #[derivative(Debug, PartialEq, Eq)]

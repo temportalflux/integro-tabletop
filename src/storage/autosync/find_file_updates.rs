@@ -1,6 +1,6 @@
 use crate::storage::{
 	autosync::{ModuleFile, ModuleFileUpdate},
-	github::{FilesChangedArgs, GithubClient},
+	github::{repos, GithubClient},
 };
 
 pub struct FindFileUpdates {
@@ -13,9 +13,9 @@ pub struct FindFileUpdates {
 	pub new_version: String,
 }
 impl FindFileUpdates {
-	pub async fn run(self) -> Result<Vec<ModuleFileUpdate>, crate::storage::github::Error> {
+	pub async fn run(self) -> Result<Vec<ModuleFileUpdate>, github::Error> {
 		// Getting the files changed for this upgrade
-		let args = FilesChangedArgs {
+		let args = repos::compare::Args {
 			owner: self.owner.as_str(),
 			repo: self.name.as_str(),
 			commit_start: self.old_version.as_str(),

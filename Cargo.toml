@@ -9,6 +9,8 @@ edition = "2021"
 
 [dependencies]
 kdlize = { path = "crates/kdlize" }
+netlify-oauth = { path = "crates/netlify-oauth" }
+github = { path = "crates/github" }
 any-range = "0.1"
 wasm-bindgen = "0.2"
 log = { version = "0.4", features = ["std"] }

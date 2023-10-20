@@ -1,4 +1,9 @@
-use crate::storage::github::{GithubClient, RepositoryMetadata};
+use github::Query;
+
+use crate::storage::{
+	github::{GithubClient, RepositoryMetadata, SearchRepositoriesParams},
+	MODULE_TOPIC,
+};
 
 pub struct FindModules {
 	pub status: super::Status,
@@ -6,22 +11,18 @@ pub struct FindModules {
 	pub names: Vec<String>,
 }
 impl FindModules {
-	pub async fn run(&mut self) -> Result<Vec<RepositoryMetadata>, crate::storage::github::Error> {
-		use futures_util::stream::StreamExt;
+	pub async fn run(&mut self) -> Result<Vec<RepositoryMetadata>, github::Error> {
 		self.status.push_stage("Fetching info on specific modules", None);
 
-		// Regardless of if the homebrew already existed, lets gather ALL of the relevant
-		// repositories which are content modules. This will always include the homebrew repo,
-		// since it is garunteed to exist due to the above code.
-		let mut metadata = Vec::new();
-		if !self.names.is_empty() {
-			let mut stream = self.client.search_specific_repos(self.names.iter());
-			while let Some(repos) = stream.next().await {
-				metadata.extend(repos.clone());
-			}
-		}
+		let iter_reponames = self.names.iter().cloned();
+		let query = iter_reponames.fold(Query::default(), |query, name| query.keyed("repo", name));
+		let query = query.keyed("topic", MODULE_TOPIC);
+
+		let search_params = SearchRepositoriesParams { query, page_size: 25 };
+		let (_, repositories) = self.client.search_repositories(search_params).await;
 
 		self.status.pop_stage();
-		Ok(metadata)
+
+		Ok(repositories)
 	}
 }

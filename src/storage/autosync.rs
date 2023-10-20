@@ -214,7 +214,7 @@ pub fn Provider(props: &ChildrenProps) -> Html {
 			async move {
 				while let Ok(req) = recv_req.recv().await {
 					let auth_status = yewdux::dispatch::get::<crate::auth::Status>();
-					let Some(storage) = auth_status.storage() else {
+					let Some(storage) = crate::storage::get(&*auth_status) else {
 						log::error!(target: "autosync", "No storage available, cannot progess request {req:?}");
 						continue;
 					};
@@ -304,7 +304,7 @@ pub fn Provider(props: &ChildrenProps) -> Html {
 						};
 						let repositories = scan_for_modules.run().await?;
 						for repository in repositories {
-							remote_repositories.insert(repository.module_id(), repository);
+							remote_repositories.insert((&repository).into(), repository);
 						}
 						status.pop_stage();
 					} else {
@@ -317,7 +317,7 @@ pub fn Provider(props: &ChildrenProps) -> Html {
 						};
 						let repositories = find_modules.run().await?;
 						for repository in repositories {
-							remote_repositories.insert(repository.module_id(), repository);
+							remote_repositories.insert((&repository).into(), repository);
 						}
 						status.pop_stage();
 					}
@@ -339,7 +339,7 @@ pub fn Provider(props: &ChildrenProps) -> Html {
 									let module = Module {
 										id: module_id.clone(),
 										name: module_id.to_string(),
-										systems: repository.systems.iter().cloned().collect(),
+										systems: repository.root_trees.iter().cloned().collect(),
 										version: repository.version.clone(),
 										remote_version: repository.version.clone(),
 										installed: false,

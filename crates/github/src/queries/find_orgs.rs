@@ -1,10 +1,10 @@
-use crate::storage::github::{Cursor, StreamableQuery};
+use crate::{Cursor, StreamableQuery};
 use graphql_client::GraphQLQuery;
 
 #[derive(GraphQLQuery)]
 #[graphql(
-	schema_path = "src/storage/github/queries/graphql/schema.graphql",
-	query_path = "src/storage/github/queries/graphql/query_find_orgs.graphql",
+	schema_path = "src/queries/graphql/schema.graphql",
+	query_path = "src/queries/graphql/query_find_orgs.graphql",
 	response_derives = "Debug"
 )]
 pub struct FindOrgs;

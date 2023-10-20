@@ -1,4 +1,7 @@
-use crate::{error::{InvalidValueType, MissingEntryValue, Error}, ext::ValueExt};
+use crate::{
+	error::{Error, InvalidValueType, MissingEntryValue},
+	ext::ValueExt,
+};
 
 pub trait NodeExt {
 	/// The node is searched for an entry which matches the given key. If no entry is found, None is returned.
@@ -40,8 +43,7 @@ impl NodeExt for kdl::KdlNode {
 
 	fn entry_req(&self, key: impl Into<kdl::NodeKey>) -> Result<&kdl::KdlEntry, MissingEntryValue> {
 		let key = key.into();
-		self.entry_opt(key.clone())
-			.ok_or(MissingEntryValue(self.clone(), key))
+		self.entry_opt(key.clone()).ok_or(MissingEntryValue(self.clone(), key))
 	}
 
 	fn get_bool_opt(&self, key: impl Into<kdl::NodeKey>) -> Result<Option<bool>, InvalidValueType> {

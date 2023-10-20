@@ -74,11 +74,7 @@ impl NodeBuilder {
 		self.entries.push(entry.into());
 	}
 
-	pub fn push_entry_typed(
-		&mut self,
-		entry: impl Into<kdl::KdlEntry>,
-		ty: impl Into<kdl::KdlIdentifier>,
-	) {
+	pub fn push_entry_typed(&mut self, entry: impl Into<kdl::KdlEntry>, ty: impl Into<kdl::KdlIdentifier>) {
 		self.entries.push({
 			let mut entry = entry.into();
 			entry.set_ty(ty);
@@ -91,11 +87,7 @@ impl NodeBuilder {
 		self
 	}
 
-	pub fn with_entry_typed(
-		mut self,
-		entry: impl Into<kdl::KdlEntry>,
-		ty: impl Into<kdl::KdlIdentifier>,
-	) -> Self {
+	pub fn with_entry_typed(mut self, entry: impl Into<kdl::KdlEntry>, ty: impl Into<kdl::KdlIdentifier>) -> Self {
 		self.push_entry_typed(entry, ty);
 		self
 	}
@@ -124,11 +116,7 @@ impl NodeBuilder {
 		self
 	}
 
-	pub fn push_child_entry(
-		&mut self,
-		name: impl Into<kdl::KdlIdentifier>,
-		entry: impl Into<kdl::KdlEntry>,
-	) {
+	pub fn push_child_entry(&mut self, name: impl Into<kdl::KdlIdentifier>, entry: impl Into<kdl::KdlEntry>) {
 		self.push_child(Self::default().with_entry(entry.into()).build(name));
 	}
 
@@ -138,11 +126,7 @@ impl NodeBuilder {
 		ty: impl Into<kdl::KdlIdentifier>,
 		entry: impl Into<kdl::KdlEntry>,
 	) {
-		self.push_child(
-			Self::default()
-				.with_entry_typed(entry.into(), ty)
-				.build(name),
-		);
+		self.push_child(Self::default().with_entry_typed(entry.into(), ty).build(name));
 	}
 }
 

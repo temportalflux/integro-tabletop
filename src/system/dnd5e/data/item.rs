@@ -323,7 +323,6 @@ mod test {
 				weight: 65.0,
 				worth: Wallet::from([(1500, currency::Kind::Gold)]),
 				kind: Kind::Equipment(Equipment {
-					criteria: None,
 					mutators: vec![AddModifier {
 						modifier: Modifier::Disadvantage,
 						context: None,
@@ -338,9 +337,7 @@ mod test {
 						},
 						min_strength_score: Some(15),
 					}),
-					shield: None,
-					weapon: None,
-					attunement: None,
+					..Default::default()
 				}),
 				..Default::default()
 			};
