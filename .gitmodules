@@ -16,3 +16,15 @@
 [submodule "modules/homebrew"]
 	path = modules/homebrew
 	url = git@github.com:temportalflux/integro-homebrew.git
+[submodule "crates/netlify-oauth"]
+	path = crates/netlify-oauth
+	url = git@github.com:temportalflux/netlify-oauth-rs.git
+[submodule "crates/github"]
+	path = crates/github
+	url = git@github.com:temportalflux/github-rs.git
+[submodule "crates/database"]
+	path = crates/database
+	url = git@github.com:temportalflux/idb-database.git
+[submodule "crates/kdlize"]
+	path = crates/kdlize
+	url = git@github.com:temportalflux/kdlize.git
