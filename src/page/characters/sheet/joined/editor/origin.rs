@@ -5,7 +5,7 @@ use crate::{
 		object_browser::{self, ObjectSelectorList},
 		Spinner,
 	},
-	database::app::Criteria,
+	database::Criteria,
 	page::characters::sheet::{CharacterHandle, MutatorImpact},
 	system::{
 		core::System,

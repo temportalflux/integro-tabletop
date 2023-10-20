@@ -59,7 +59,7 @@ fn ProviderChain(props: &html::ChildrenProps) -> Html {
 
 #[function_component]
 fn DatabaseProvider(props: &html::ChildrenProps) -> Html {
-	use database::app::Database;
+	use crate::database::Database;
 	let database = yew_hooks::use_async(async move {
 		match Database::open().await {
 			Ok(db) => Ok(db),

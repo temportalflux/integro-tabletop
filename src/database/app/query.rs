@@ -1,5 +1,6 @@
 use super::Entry;
-use crate::{database::Cursor, kdl_ext::NodeContext, system::core::NodeRegistry};
+use crate::{kdl_ext::NodeContext, system::core::NodeRegistry};
+use database::Cursor;
 use futures_util::StreamExt;
 use kdlize::FromKdl;
 use std::{pin::Pin, sync::Arc, task::Poll};

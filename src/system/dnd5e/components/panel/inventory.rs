@@ -4,7 +4,7 @@ use crate::{
 		database::{use_query_all_typed, QueryAllArgs, QueryStatus},
 		stop_propagation, IndirectFetch, ObjectLink,
 	},
-	database::app::Database,
+	database::Database,
 	page::characters::sheet::{CharacterHandle, MutatorImpact},
 	system::{
 		self,
@@ -363,7 +363,7 @@ fn BrowseStartingEquipment() -> Html {
 					// recompiling for resolving item indirection
 					MutatorImpact::Recompile
 				});
-				Ok(()) as Result<(), crate::database::app::FetchError>
+				Ok(()) as Result<(), crate::database::FetchError>
 			});
 		}
 	});

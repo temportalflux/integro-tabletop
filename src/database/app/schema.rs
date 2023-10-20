@@ -1,4 +1,4 @@
-use crate::database::{app, MissingVersion, ObjectStoreExt, Record, Schema};
+use database::{MissingVersion, ObjectStoreExt, Record, Schema};
 
 /// The schema for the `tabletop-tools` client database.
 /// Use with `Client::open`.
@@ -27,7 +27,7 @@ impl Schema for SchemaVersion {
 			Self::Version1 => {
 				// Create modules table
 				{
-					use app::module::{Module, System};
+					use crate::database::module::{Module, System};
 					let mut params = idb::ObjectStoreParams::new();
 					params.auto_increment(true);
 					params.key_path(Some(idb::KeyPath::new_single("name")));
@@ -40,7 +40,7 @@ impl Schema for SchemaVersion {
 				}
 				// Create entries table
 				{
-					use app::entry::{Entry, Module, ModuleSystem, System, SystemCategory};
+					use crate::database::entry::{Entry, Module, ModuleSystem, System, SystemCategory};
 					let mut params = idb::ObjectStoreParams::new();
 					params.auto_increment(true);
 					params.key_path(Some(idb::KeyPath::new_single("id")));

@@ -1,7 +1,7 @@
 use crate::{
 	auth,
 	components::{use_media_query, Nav, NavDisplay, TabContent},
-	database::app::{Database, Entry},
+	database::{Database, Entry},
 	page::characters::sheet::{CharacterHandle, ViewProps},
 	system::{
 		self,
@@ -111,7 +111,8 @@ pub fn Display(ViewProps { swap_view }: &ViewProps) -> Html {
 
 				database
 					.mutate(move |transaction| {
-						use crate::database::{app::Entry, ObjectStoreExt, TransactionExt};
+						use crate::database::Entry;
+						use database::{ObjectStoreExt, TransactionExt};
 						Box::pin(async move {
 							let entry_store = transaction.object_store_of::<Entry>()?;
 							entry_store.put_record(&entry).await?;
@@ -232,10 +233,8 @@ pub fn Display(ViewProps { swap_view }: &ViewProps) -> Html {
 				// Commit the module version and entry changes to database
 				database
 					.mutate(move |transaction| {
-						use crate::database::{
-							app::{Entry, Module},
-							ObjectStoreExt, TransactionExt,
-						};
+						use crate::database::{Entry, Module};
+						use database::{ObjectStoreExt, TransactionExt};
 						Box::pin(async move {
 							let module_store = transaction.object_store_of::<Module>()?;
 							let entry_store = transaction.object_store_of::<Entry>()?;

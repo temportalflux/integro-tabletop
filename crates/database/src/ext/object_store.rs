@@ -1,25 +1,25 @@
-use super::{Error, Index, IndexType, Record};
-use crate::utility::PinFutureLifetimeNoSend;
+use super::super::{Error, Index, IndexType, Record};
+use futures_util::future::LocalBoxFuture;
 use wasm_bindgen::JsValue;
 
 pub trait ObjectStoreExt {
 	fn get_record<'store, V>(
 		&'store self,
 		key: impl Into<JsValue> + 'store,
-	) -> PinFutureLifetimeNoSend<'store, Result<Option<V>, Error>>
+	) -> LocalBoxFuture<'store, Result<Option<V>, Error>>
 	where
 		V: Record + serde::de::DeserializeOwned;
 
 	fn delete_record<'store>(
 		&'store self,
 		key: impl Into<JsValue> + 'store,
-	) -> PinFutureLifetimeNoSend<'store, Result<(), Error>>;
+	) -> LocalBoxFuture<'store, Result<(), Error>>;
 
-	fn add_record<'store, V>(&'store self, record: &'store V) -> PinFutureLifetimeNoSend<'store, Result<(), Error>>
+	fn add_record<'store, V>(&'store self, record: &'store V) -> LocalBoxFuture<'store, Result<(), Error>>
 	where
 		V: Record;
 
-	fn put_record<'store, V>(&'store self, record: &'store V) -> PinFutureLifetimeNoSend<'store, Result<(), Error>>
+	fn put_record<'store, V>(&'store self, record: &'store V) -> LocalBoxFuture<'store, Result<(), Error>>
 	where
 		V: Record;
 
@@ -27,7 +27,7 @@ pub trait ObjectStoreExt {
 		&'store self,
 		key: &'store K,
 		record: &'store V,
-	) -> PinFutureLifetimeNoSend<'store, Result<(), Error>>
+	) -> LocalBoxFuture<'store, Result<(), Error>>
 	where
 		K: 'static + wasm_bindgen::JsCast,
 		JsValue: From<&'store K>,
@@ -41,7 +41,7 @@ impl ObjectStoreExt for idb::ObjectStore {
 	fn get_record<'store, V>(
 		&'store self,
 		key: impl Into<JsValue> + 'store,
-	) -> PinFutureLifetimeNoSend<'store, Result<Option<V>, Error>>
+	) -> LocalBoxFuture<'store, Result<Option<V>, Error>>
 	where
 		V: Record + serde::de::DeserializeOwned,
 	{
@@ -56,14 +56,14 @@ impl ObjectStoreExt for idb::ObjectStore {
 	fn delete_record<'store>(
 		&'store self,
 		key: impl Into<JsValue> + 'store,
-	) -> PinFutureLifetimeNoSend<'store, Result<(), Error>> {
+	) -> LocalBoxFuture<'store, Result<(), Error>> {
 		Box::pin(async move {
 			self.delete(idb::Query::Key(key.into())).await?;
 			Ok(())
 		})
 	}
 
-	fn add_record<'store, V>(&'store self, record: &'store V) -> PinFutureLifetimeNoSend<'store, Result<(), Error>>
+	fn add_record<'store, V>(&'store self, record: &'store V) -> LocalBoxFuture<'store, Result<(), Error>>
 	where
 		V: Record,
 	{
@@ -75,7 +75,7 @@ impl ObjectStoreExt for idb::ObjectStore {
 		})
 	}
 
-	fn put_record<'store, V>(&'store self, record: &'store V) -> PinFutureLifetimeNoSend<'store, Result<(), Error>>
+	fn put_record<'store, V>(&'store self, record: &'store V) -> LocalBoxFuture<'store, Result<(), Error>>
 	where
 		V: Record,
 	{
@@ -90,7 +90,7 @@ impl ObjectStoreExt for idb::ObjectStore {
 		&'store self,
 		key: &'store K,
 		record: &'store V,
-	) -> PinFutureLifetimeNoSend<'store, Result<(), Error>>
+	) -> LocalBoxFuture<'store, Result<(), Error>>
 	where
 		K: 'static + wasm_bindgen::JsCast,
 		JsValue: From<&'store K>,
@@ -110,32 +110,5 @@ impl ObjectStoreExt for idb::ObjectStore {
 
 	fn index_of<T: IndexType>(&self) -> Result<Index<T>, idb::Error> {
 		Ok(Index::<T>::from(self.index(T::name())?))
-	}
-}
-
-pub trait QueryExt {
-	fn from_items<T: Into<JsValue>, const N: usize>(items: [T; N]) -> Result<idb::Query, idb::Error>;
-}
-impl QueryExt for idb::Query {
-	fn from_items<T: Into<JsValue>, const N: usize>(items: [T; N]) -> Result<idb::Query, idb::Error> {
-		if items.len() == 1 {
-			let t_val = items.into_iter().next().unwrap();
-			Ok(idb::Query::Key(t_val.into()))
-		} else {
-			let values = js_sys::Array::new_with_length(items.len() as u32);
-			for (idx, t_val) in items.into_iter().enumerate() {
-				values.set(idx as u32, t_val.into());
-			}
-			Ok(idb::Query::KeyRange(idb::KeyRange::only(&values)?))
-		}
-	}
-}
-
-pub trait TransactionExt {
-	fn object_store_of<T: Record>(&self) -> Result<idb::ObjectStore, super::Error>;
-}
-impl TransactionExt for idb::Transaction {
-	fn object_store_of<T: Record>(&self) -> Result<idb::ObjectStore, super::Error> {
-		Ok(self.object_store(T::store_id())?)
 	}
 }

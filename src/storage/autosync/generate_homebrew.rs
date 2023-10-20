@@ -1,7 +1,5 @@
-use crate::storage::{
-	github::{repos, GithubClient},
-	USER_HOMEBREW_REPO_NAME,
-};
+use crate::storage::USER_HOMEBREW_REPO_NAME;
+use github::{repos, GithubClient};
 
 // Create the homebrew repo on the github client viewer (the user that is logged in).
 // https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#create-a-repository-for-the-authenticated-user

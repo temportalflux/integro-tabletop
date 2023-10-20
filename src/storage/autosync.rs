@@ -1,9 +1,6 @@
 use crate::{
-	database::{
-		self,
-		app::{Database, Module},
-	},
-	storage::{github::ChangedFileStatus, USER_HOMEBREW_REPO_NAME},
+	database::{Database, Module},
+	storage::USER_HOMEBREW_REPO_NAME,
 	system::core::{ModuleId, SourceId},
 };
 use derivative::Derivative;
@@ -164,9 +161,9 @@ impl Status {
 #[derive(thiserror::Error, Debug, Clone)]
 enum StorageSyncError {
 	#[error(transparent)]
-	Database(#[from] crate::database::Error),
+	Database(#[from] database::Error),
 	#[error(transparent)]
-	StorageError(#[from] super::github::Error),
+	StorageError(#[from] github::Error),
 }
 
 #[function_component]
@@ -323,7 +320,7 @@ pub fn Provider(props: &ChildrenProps) -> Html {
 					}
 
 					if !remote_repositories.is_empty() {
-						use crate::database::{ObjectStoreExt, TransactionExt};
+						use database::{ObjectStoreExt, TransactionExt};
 						status.push_stage("Updating database", None);
 
 						let transaction = database.write()?;
@@ -372,10 +369,8 @@ pub fn Provider(props: &ChildrenProps) -> Html {
 					if !modules_to_uninstall.is_empty() {
 						let transaction = database.write()?;
 						for module_id in &modules_to_uninstall {
-							use crate::database::{
-								app::{entry::ModuleSystem, Entry},
-								ObjectStoreExt, TransactionExt,
-							};
+							use crate::database::{entry::ModuleSystem, Entry};
+							use database::{ObjectStoreExt, TransactionExt};
 							use futures_util::StreamExt;
 
 							let Some(module) = modules.get_mut(module_id) else {
@@ -441,7 +436,7 @@ pub fn Provider(props: &ChildrenProps) -> Html {
 									.into_iter()
 									.map(|file| ModuleFileUpdate {
 										file,
-										status: ChangedFileStatus::Added,
+										status: github::ChangedFileStatus::Added,
 									})
 									.collect();
 
@@ -469,10 +464,8 @@ pub fn Provider(props: &ChildrenProps) -> Html {
 						// Iterate per module so updates can be committed to database as each is fetched.
 						status.push_stage("Downloading Modules", Some(module_updates.len()));
 						for ModuleUpdate { module_id, files } in module_updates {
-							use crate::database::{
-								app::{Entry, Module},
-								ObjectStoreExt, TransactionExt,
-							};
+							use crate::database::{Entry, Module};
+							use database::{ObjectStoreExt, TransactionExt};
 
 							status.increment_progress();
 
@@ -556,7 +549,7 @@ pub struct ModuleFile {
 }
 pub struct ModuleFileUpdate {
 	pub file: ModuleFile,
-	pub status: super::github::ChangedFileStatus,
+	pub status: github::ChangedFileStatus,
 }
 
 impl ModuleFile {

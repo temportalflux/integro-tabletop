@@ -1,10 +1,5 @@
-use github::Query;
-
-use crate::storage::{
-	autosync::ModuleFile,
-	github::{repos, Error, GithubClient, SearchRepositoriesParams},
-	MODULE_TOPIC,
-};
+use crate::storage::{autosync::ModuleFile, MODULE_TOPIC};
+use github::{repos, Error, GithubClient, Query, SearchRepositoriesParams};
 use std::{collections::VecDeque, path::PathBuf};
 
 pub struct ScanRepository {

@@ -1,5 +1,5 @@
 use crate::{
-	database::app::Criteria,
+	database::Criteria,
 	system::dnd5e::{components::GeneralProp, data::character::spellcasting::AbilityOrStat},
 };
 use std::{collections::HashMap, path::PathBuf, rc::Rc, str::FromStr, sync::Arc};

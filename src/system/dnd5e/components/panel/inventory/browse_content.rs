@@ -3,7 +3,7 @@ use crate::{
 		database::{use_query_all_typed, use_typed_fetch_callback_tuple, QueryAllArgs, QueryStatus},
 		Spinner,
 	},
-	database::app::Criteria,
+	database::Criteria,
 	page::characters::sheet::joined::editor::CollapsableCard,
 	page::characters::sheet::CharacterHandle,
 	page::characters::sheet::MutatorImpact,

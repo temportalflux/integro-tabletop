@@ -1,5 +1,4 @@
 pub mod autosync;
-pub mod github;
 
 pub static USER_HOMEBREW_REPO_NAME: &str = "integro-homebrew";
 pub static MODULE_TOPIC: &str = "integro-tabletop-module";

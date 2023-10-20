@@ -1,4 +1,5 @@
-use crate::database::{app::Entry, IndexType, QueryExt};
+use crate::database::Entry;
+use database::{IndexType, QueryExt};
 
 pub struct Module {
 	pub module: String,

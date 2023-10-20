@@ -3,7 +3,7 @@ use crate::{
 		database::{use_query_modules, QueryStatus, UseQueryModulesHandle},
 		stop_propagation, Spinner,
 	},
-	database::app::{Database, Module},
+	database::{Database, Module},
 	storage::autosync,
 	system::core::ModuleId,
 	task,
@@ -29,7 +29,7 @@ pub fn ModulesLanding() -> Html {
 			let database = database.clone();
 			task_dispatch.spawn("Clear Database", None, async move {
 				database.clear().await?;
-				Ok(()) as Result<(), crate::database::Error>
+				Ok(()) as Result<(), database::Error>
 			});
 		}
 	});

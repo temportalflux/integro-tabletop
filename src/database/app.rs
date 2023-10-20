@@ -1,5 +1,5 @@
-use super::Record;
 use crate::{kdl_ext::NodeContext, system::core::ModuleId};
+use database::{Error, Record, Transaction};
 use futures_util::future::LocalBoxFuture;
 use std::sync::Arc;
 
@@ -13,39 +13,39 @@ mod schema;
 pub use schema::*;
 
 #[derive(Clone, PartialEq)]
-pub struct Database(super::Client);
+pub struct Database(database::Client);
 
 impl Database {
-	pub async fn open() -> Result<Self, super::Error> {
-		let client = super::Client::open::<SchemaVersion>("tabletop-tools").await?;
+	pub async fn open() -> Result<Self, Error> {
+		let client = database::Client::open::<SchemaVersion>("tabletop-tools").await?;
 		Ok(Self(client))
 	}
 
-	pub fn write(&self) -> Result<idb::Transaction, super::Error> {
-		Ok(self.0.transaction(
+	pub fn write(&self) -> Result<Transaction, Error> {
+		self.0.transaction(
 			&[Entry::store_id(), Module::store_id()],
 			idb::TransactionMode::ReadWrite,
-		)?)
+		)
 	}
 
-	pub fn read_entries(&self) -> Result<idb::Transaction, idb::Error> {
-		Ok(self.0.read_only::<Entry>()?)
+	pub fn read_entries(&self) -> Result<Transaction, Error> {
+		self.0.read_only::<Entry>()
 	}
 
-	pub fn write_entries(&self) -> Result<idb::Transaction, idb::Error> {
-		Ok(self.0.read_write::<Entry>()?)
+	pub fn write_entries(&self) -> Result<Transaction, Error> {
+		self.0.read_write::<Entry>()
 	}
 
-	pub fn read_modules(&self) -> Result<idb::Transaction, idb::Error> {
-		Ok(self.0.read_only::<Module>()?)
+	pub fn read_modules(&self) -> Result<Transaction, Error> {
+		self.0.read_only::<Module>()
 	}
 
-	pub fn write_modules(&self) -> Result<idb::Transaction, idb::Error> {
-		Ok(self.0.read_write::<Module>()?)
+	pub fn write_modules(&self) -> Result<Transaction, Error> {
+		self.0.read_write::<Module>()
 	}
 
-	pub async fn clear(&self) -> Result<(), super::Error> {
-		use crate::database::TransactionExt;
+	pub async fn clear(&self) -> Result<(), Error> {
+		use database::TransactionExt;
 		let transaction = self.write()?;
 		transaction.object_store_of::<Module>()?.clear().await?;
 		transaction.object_store_of::<Entry>()?.clear().await?;
@@ -53,21 +53,18 @@ impl Database {
 		Ok(())
 	}
 
-	fn read_index<I: super::IndexType>(&self) -> Result<super::Index<I>, super::Error> {
-		use super::{ObjectStoreExt, TransactionExt};
+	fn read_index<I: database::IndexType>(&self) -> Result<database::Index<I>, Error> {
+		use database::{ObjectStoreExt, TransactionExt};
 		let transaction = self.read_entries()?;
 		let entries_store = transaction.object_store_of::<I::Record>()?;
 		Ok(entries_store.index_of::<I>()?)
 	}
 
-	pub async fn get<T>(&self, key: impl Into<wasm_bindgen::JsValue>) -> Result<Option<T>, super::Error>
+	pub async fn get<T>(&self, key: impl Into<wasm_bindgen::JsValue>) -> Result<Option<T>, Error>
 	where
 		T: Record + serde::de::DeserializeOwned,
 	{
-		use super::{ObjectStoreExt, TransactionExt};
-		let transaction = self.0.read_only::<T>()?;
-		let store = transaction.object_store_of::<T>()?;
-		Ok(store.get_record(key).await?)
+		self.0.get::<T>(key).await
 	}
 
 	pub async fn get_typed_entry<T>(
@@ -119,7 +116,7 @@ impl Database {
 		system: impl Into<String>,
 		category: impl Into<String>,
 		criteria: Option<Box<Criteria>>,
-	) -> Result<Query, super::Error> {
+	) -> Result<Query, Error> {
 		let idx_by_sys_cate = self.read_index::<entry::SystemCategory>();
 		let index = entry::SystemCategory {
 			system: system.into(),
@@ -134,7 +131,7 @@ impl Database {
 		system: impl Into<String>,
 		system_depot: crate::system::Depot,
 		criteria: Option<Box<Criteria>>,
-	) -> Result<QueryDeserialize<Output>, super::Error>
+	) -> Result<QueryDeserialize<Output>, Error>
 	where
 		Output: kdlize::NodeId + kdlize::FromKdl<NodeContext> + crate::system::dnd5e::SystemComponent + Unpin,
 	{
@@ -158,8 +155,8 @@ impl Database {
 		Ok(query_typed)
 	}
 
-	pub async fn query_modules(self, system: Option<std::borrow::Cow<'_, str>>) -> Result<Vec<Module>, super::Error> {
-		use crate::database::{ObjectStoreExt, TransactionExt};
+	pub async fn query_modules(self, system: Option<std::borrow::Cow<'_, str>>) -> Result<Vec<Module>, Error> {
+		use database::{ObjectStoreExt, TransactionExt};
 		use futures_util::StreamExt;
 		let transaction = self.read_modules()?;
 		let entries_store = transaction.object_store_of::<Module>()?;
@@ -178,8 +175,8 @@ impl Database {
 	pub async fn query_entries_in(
 		entry_store: &idb::ObjectStore,
 		module_id: &ModuleId,
-	) -> Result<super::Cursor<Entry>, super::Error> {
-		use crate::database::ObjectStoreExt;
+	) -> Result<database::Cursor<Entry>, Error> {
+		use database::ObjectStoreExt;
 		let idx_module = entry_store.index_of::<entry::Module>()?;
 		Ok(idx_module
 			.open_cursor(Some(&entry::Module {
@@ -188,9 +185,9 @@ impl Database {
 			.await?)
 	}
 
-	pub async fn mutate<F>(&self, fn_transaction: F) -> Result<(), super::Error>
+	pub async fn mutate<F>(&self, fn_transaction: F) -> Result<(), Error>
 	where
-		F: FnOnce(&idb::Transaction) -> LocalBoxFuture<'_, Result<(), super::Error>>,
+		F: FnOnce(&database::Transaction) -> LocalBoxFuture<'_, Result<(), Error>>,
 	{
 		let transaction = self.write()?;
 		fn_transaction(&transaction).await?;
@@ -200,7 +197,7 @@ impl Database {
 }
 
 impl std::ops::Deref for Database {
-	type Target = super::Client;
+	type Target = database::Client;
 
 	fn deref(&self) -> &Self::Target {
 		&self.0
@@ -210,7 +207,7 @@ impl std::ops::Deref for Database {
 #[derive(thiserror::Error, Debug, Clone, PartialEq)]
 pub enum FetchError {
 	#[error(transparent)]
-	FindEntry(#[from] super::Error),
+	FindEntry(#[from] Error),
 	#[error(transparent)]
 	InvalidDocument(#[from] kdl::KdlError),
 	#[error("Entry document is empty")]

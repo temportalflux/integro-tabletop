@@ -1,4 +1,5 @@
-use crate::database::{app::Module, IndexType, QueryExt};
+use crate::database::Module;
+use database::{IndexType, QueryExt};
 
 #[derive(Default)]
 pub struct System {

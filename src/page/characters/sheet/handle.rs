@@ -1,5 +1,5 @@
 use crate::{
-	database::app::{Database, FetchError},
+	database::{Database, FetchError},
 	system::{
 		self,
 		core::SourceId,

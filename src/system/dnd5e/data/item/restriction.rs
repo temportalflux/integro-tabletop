@@ -65,8 +65,8 @@ impl AsKdl for Weapon {
 }
 
 impl Restriction {
-	pub fn as_criteria(&self) -> crate::database::app::Criteria {
-		use crate::database::app::Criteria;
+	pub fn as_criteria(&self) -> crate::database::Criteria {
+		use crate::database::Criteria;
 		let mut criteria = Vec::new();
 
 		if !self.tags.is_empty() {

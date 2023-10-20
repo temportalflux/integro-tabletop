@@ -1,6 +1,6 @@
 use crate::kdl_ext::NodeContext;
 use crate::{
-	database::app::Criteria,
+	database::Criteria,
 	system::{
 		core::SourceId,
 		dnd5e::{

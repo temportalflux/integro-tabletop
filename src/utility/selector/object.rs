@@ -1,5 +1,5 @@
 use super::id::IdPath;
-use crate::{database::app::Criteria, utility::Value};
+use crate::{database::Criteria, utility::Value};
 use std::path::{Path, PathBuf};
 
 #[derive(Clone, PartialEq, Debug)]

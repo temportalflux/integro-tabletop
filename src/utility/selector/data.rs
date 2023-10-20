@@ -1,4 +1,4 @@
-use crate::database::app::Criteria;
+use crate::database::Criteria;
 use enumset::EnumSetType;
 use std::{collections::BTreeSet, path::PathBuf};
 

@@ -1,6 +1,6 @@
 use crate::{
 	components::{context_menu, database::use_typed_fetch_callback, stop_propagation, Spinner},
-	database::app::{Criteria, Database},
+	database::{Criteria, Database},
 	page::characters::sheet::joined::editor::{CollapsableCard, DescriptionSection},
 	page::characters::sheet::CharacterHandle,
 	page::characters::sheet::MutatorImpact,
@@ -1320,7 +1320,7 @@ fn spell_content(spell: &Spell, entry: Option<&SpellEntry>, state: &CharacterHan
 
 #[derive(Clone, PartialEq, Properties)]
 pub struct AvailableSpellListProps {
-	pub criteria: Option<crate::database::app::Criteria>,
+	pub criteria: Option<crate::database::Criteria>,
 	pub entry: Option<SpellEntry>,
 	pub header_addon: HeaderAddon,
 	#[prop_or(SpellSource::Database)]

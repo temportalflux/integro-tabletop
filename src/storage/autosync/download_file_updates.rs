@@ -1,13 +1,11 @@
 use crate::{
-	storage::{
-		autosync::{ModuleFile, ModuleFileUpdate},
-		github::{repos, ChangedFileStatus, Error, GithubClient},
-	},
+	storage::autosync::{ModuleFile, ModuleFileUpdate},
 	system::{
 		self,
 		core::{ModuleId, SourceId},
 	},
 };
+use github::{repos, ChangedFileStatus, Error, GithubClient};
 use std::{
 	collections::HashSet,
 	path::{Path, PathBuf},
@@ -23,7 +21,7 @@ pub struct DownloadFileUpdates {
 	pub files: Vec<ModuleFileUpdate>,
 }
 impl DownloadFileUpdates {
-	pub async fn run(mut self) -> Result<(Vec<crate::database::app::Entry>, HashSet<String>), Error> {
+	pub async fn run(mut self) -> Result<(Vec<crate::database::Entry>, HashSet<String>), Error> {
 		let ModuleId::Github { user_org, repository } = &self.module_id else {
 			// ERROR: Invalid module id
 			return Ok((Vec::new(), HashSet::new()));
@@ -79,7 +77,7 @@ impl DownloadFileUpdates {
 		file_path: String,
 		file_id: String,
 		content: String,
-	) -> anyhow::Result<Vec<crate::database::app::Entry>> {
+	) -> anyhow::Result<Vec<crate::database::Entry>> {
 		let Some(system_reg) = self.system_depot.get(&system) else {
 			return Ok(Vec::new());
 		};
@@ -100,7 +98,7 @@ impl DownloadFileUpdates {
 			source_id.node_idx = idx;
 			let category = node.name().value().to_owned();
 			let metadata = system_reg.parse_metadata(node, &source_id)?;
-			let record = crate::database::app::Entry {
+			let record = crate::database::Entry {
 				id: source_id.to_string(),
 				module: self.module_id.to_string(),
 				system: system.clone(),

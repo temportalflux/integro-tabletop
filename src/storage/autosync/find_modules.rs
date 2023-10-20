@@ -1,9 +1,5 @@
-use github::Query;
-
-use crate::storage::{
-	github::{GithubClient, RepositoryMetadata, SearchRepositoriesParams},
-	MODULE_TOPIC,
-};
+use crate::storage::MODULE_TOPIC;
+use github::{GithubClient, Query, RepositoryMetadata, SearchRepositoriesParams};
 
 pub struct FindModules {
 	pub status: super::Status,

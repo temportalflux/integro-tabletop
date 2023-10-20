@@ -125,7 +125,7 @@ impl Spellcasting {
 		provider: &ObjectCacheProvider,
 		persistent: &Persistent,
 	) -> anyhow::Result<RitualSpellCache> {
-		use crate::database::app::Criteria;
+		use crate::database::Criteria;
 		use crate::system::{core::System, dnd5e::DnD5e};
 		use futures_util::StreamExt;
 		use kdlize::NodeId;
@@ -167,7 +167,7 @@ impl Spellcasting {
 		};
 		let query_async = db.query_entries(DnD5e::id(), Spell::id(), Some(criteria.into()));
 		let query_stream_res = query_async.await;
-		let mut query_stream = query_stream_res.map_err(crate::database::Error::from)?;
+		let mut query_stream = query_stream_res.map_err(database::Error::from)?;
 
 		let mut ritual_spell_cache = HashMap::new();
 		let mut caster_ritual_list_cache = MultiMap::new();

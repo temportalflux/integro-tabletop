@@ -1,8 +1,5 @@
 use crate::{
-	database::{
-		app::{Criteria, Database, Entry, FetchError, Module},
-		Error as DatabaseError,
-	},
+	database::{Criteria, Database, Entry, FetchError, Module},
 	kdl_ext::NodeContext,
 	system::{self, core::SourceId, dnd5e::SystemComponent},
 };
@@ -36,7 +33,7 @@ impl<T> Default for QueryAllArgs<T> {
 
 #[derive(Clone)]
 pub struct UseQueryAllHandle<T> {
-	async_handle: UseAsyncHandle<Vec<T>, DatabaseError>,
+	async_handle: UseAsyncHandle<Vec<T>, database::Error>,
 	run: Rc<dyn Fn(Option<QueryAllArgs<T>>)>,
 }
 
@@ -55,7 +52,7 @@ pub enum QueryStatus<T, E> {
 }
 
 impl<T> UseQueryAllHandle<T> {
-	pub fn status(&self) -> QueryStatus<&Vec<T>, DatabaseError> {
+	pub fn status(&self) -> QueryStatus<&Vec<T>, database::Error> {
 		if self.async_handle.loading {
 			return QueryStatus::Pending;
 		}
@@ -82,7 +79,7 @@ impl<T> UseQueryAllHandle<T> {
 
 #[derive(Clone)]
 pub struct UseQueryModulesHandle {
-	async_handle: UseAsyncHandle<Vec<Module>, DatabaseError>,
+	async_handle: UseAsyncHandle<Vec<Module>, database::Error>,
 	run: Rc<dyn Fn()>,
 }
 
@@ -93,7 +90,7 @@ impl PartialEq for UseQueryModulesHandle {
 }
 
 impl UseQueryModulesHandle {
-	pub fn status(&self) -> QueryStatus<&Vec<Module>, DatabaseError> {
+	pub fn status(&self) -> QueryStatus<&Vec<Module>, database::Error> {
 		if self.async_handle.loading {
 			return QueryStatus::Pending;
 		}
@@ -265,9 +262,9 @@ impl<T, E> UseQueryDiscreteHandle<T, E> {
 	}
 }
 
-type QueryEntriesStatus = QueryStatus<(Vec<SourceId>, BTreeMap<SourceId, Entry>), DatabaseError>;
+type QueryEntriesStatus = QueryStatus<(Vec<SourceId>, BTreeMap<SourceId, Entry>), database::Error>;
 #[hook]
-pub fn use_query_entries() -> UseQueryDiscreteHandle<Entry, DatabaseError> {
+pub fn use_query_entries() -> UseQueryDiscreteHandle<Entry, database::Error> {
 	let database = use_context::<Database>().unwrap();
 	let status = use_state(|| QueryEntriesStatus::Empty);
 	let run = Rc::new({

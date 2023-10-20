@@ -1,7 +1,7 @@
 use super::app;
 use crate::{
 	components::{modal, Spinner},
-	database::{app::Database, ObjectStoreExt, TransactionExt},
+	database::Database,
 	system::{
 		core::{ModuleId, SourceId, System},
 		dnd5e::{
@@ -14,6 +14,7 @@ use crate::{
 	utility::InputExt,
 	GeneralError,
 };
+use database::{ObjectStoreExt, TransactionExt};
 use itertools::Itertools;
 use kdlize::NodeId;
 use std::{path::Path, rc::Rc};
@@ -388,10 +389,7 @@ fn ModalCreate() -> Html {
 				// e.g. creating a new file without having latest means our module either
 				// has an old version and a new file locally,
 				// or a new version and missing updates between current local and the new version.
-				let local_module_version = match database
-					.get::<crate::database::app::Module>(module_id.to_string())
-					.await
-				{
+				let local_module_version = match database.get::<crate::database::Module>(module_id.to_string()).await {
 					Ok(Some(local_module)) => local_module.version,
 					_ => return Ok(()),
 				};
@@ -448,7 +446,7 @@ fn ModalCreate() -> Html {
 				let response = client.create_or_update_file(args).await?;
 				let updated_version = response.version;
 
-				let record = crate::database::app::Entry {
+				let record = crate::database::Entry {
 					id: source_id_unversioned.to_string(),
 					module: module_id_str.clone(),
 					system: system.to_string(),
@@ -460,7 +458,7 @@ fn ModalCreate() -> Html {
 				};
 				if let Err(err) = database
 					.mutate(move |transaction| {
-						use crate::database::app::{Entry, Module};
+						use crate::database::{Entry, Module};
 						let module_id_str = module_id_str.clone();
 						Box::pin(async move {
 							// Update module version in database for the submitted change
@@ -574,7 +572,7 @@ fn ModalDelete(ModalDeleteProps { id, file_id, on_click }: &ModalDeleteProps) ->
 
 				if let Err(err) = database
 					.mutate(move |transaction| {
-						use crate::database::app::{Entry, Module};
+						use crate::database::{Entry, Module};
 						let module_id_str = module_id_str.clone();
 						let id_str = id_str.clone();
 						let updated_version = updated_version.clone();

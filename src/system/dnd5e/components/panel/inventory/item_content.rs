@@ -4,7 +4,7 @@ use crate::{
 		database::{use_query_typed, QueryStatus, UseQueryAllHandle, UseQueryDiscreteHandle},
 		progress_bar,
 	},
-	database::app::{Criteria, FetchError},
+	database::{Criteria, FetchError},
 	page::characters::sheet::CharacterHandle,
 	page::characters::sheet::{
 		joined::editor::{description, mutator_list},

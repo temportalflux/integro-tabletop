@@ -1,6 +1,8 @@
-use super::{MissingVersion, Schema, UpgradeError};
+use super::{Error, MissingVersion, Schema, UpgradeError};
 use idb::VersionChangeEvent;
 use std::sync::Arc;
+
+pub use idb::TransactionMode;
 
 /// A connection to a local IndexedDB database.
 #[derive(Clone)]
@@ -64,18 +66,48 @@ impl Drop for Client {
 	}
 }
 
-impl Client {
-	pub fn read_only<T: super::Record>(&self) -> Result<idb::Transaction, idb::Error> {
-		self.0.transaction(&[T::store_id()], idb::TransactionMode::ReadOnly)
-	}
+impl std::ops::Deref for Client {
+	type Target = idb::Database;
 
-	pub fn read_write<T: super::Record>(&self) -> Result<idb::Transaction, idb::Error> {
-		self.0.transaction(&[T::store_id()], idb::TransactionMode::ReadWrite)
+	fn deref(&self) -> &Self::Target {
+		&self.0
 	}
 }
 
-impl std::ops::Deref for Client {
-	type Target = idb::Database;
+impl Client {
+	pub fn transaction<T: AsRef<str>>(&self, store_ids: &[T], mode: TransactionMode) -> Result<Transaction, Error> {
+		Ok(Transaction(self.0.transaction(store_ids, mode)?))
+	}
+
+	pub fn read_only<T: super::Record>(&self) -> Result<Transaction, Error> {
+		self.transaction(&[T::store_id()], TransactionMode::ReadOnly)
+	}
+
+	pub fn read_write<T: super::Record>(&self) -> Result<Transaction, Error> {
+		self.transaction(&[T::store_id()], TransactionMode::ReadWrite)
+	}
+
+	pub async fn get<T>(&self, key: impl Into<wasm_bindgen::JsValue>) -> Result<Option<T>, Error>
+	where
+		T: crate::Record + serde::de::DeserializeOwned,
+	{
+		use crate::{ObjectStoreExt, TransactionExt};
+		let transaction = self.read_only::<T>()?;
+		let store = transaction.object_store_of::<T>()?;
+		Ok(store.get_record(key).await?)
+	}
+}
+
+pub struct Transaction(idb::Transaction);
+
+impl Transaction {
+	pub async fn commit(self) -> Result<(), Error> {
+		Ok(self.0.commit().await?)
+	}
+}
+
+impl std::ops::Deref for Transaction {
+	type Target = idb::Transaction;
 
 	fn deref(&self) -> &Self::Target {
 		&self.0

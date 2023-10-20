@@ -1,4 +1,5 @@
-use crate::{database::Record, system::core::SourceId};
+use crate::system::core::SourceId;
+use database::Record;
 use serde::{Deserialize, Serialize};
 use std::{str::FromStr, sync::Arc};
 
