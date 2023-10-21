@@ -12,5 +12,9 @@
 	},
 	"rust-analyzer.check.extraArgs": [
 		"--target-dir=target_analyzer"
-	]
+	],
+	"search.exclude": {
+		"**/target": true,
+		"**/target_analyzer": true
+	}
 }

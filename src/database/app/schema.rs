@@ -1,4 +1,4 @@
-use database::{MissingVersion, ObjectStoreExt, Record, Schema};
+use database::{MissingVersion, ObjectStoreExt, Record, Schema, Error, Transaction, Client};
 
 /// The schema for the `tabletop-tools` client database.
 /// Use with `Client::open`.
@@ -22,7 +22,7 @@ impl Schema for SchemaVersion {
 		Self::Version1 as u32
 	}
 
-	fn apply(&self, database: &idb::Database, _transaction: Option<&idb::Transaction>) -> Result<(), idb::Error> {
+	fn apply(&self, database: &Client, _transaction: Option<&Transaction>) -> Result<(), Error> {
 		match self {
 			Self::Version1 => {
 				// Create modules table
