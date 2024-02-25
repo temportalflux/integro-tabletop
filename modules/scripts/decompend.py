@@ -4,6 +4,9 @@ from pathlib import Path
 import sys
 import os
 
+# Usage:
+# python ./scripts/decompend.py ./modulename/dnd5e/items/magic.kdl ./modulename/dnd5e/items/magic/
+
 compendium_file = Path(sys.argv[1])
 dst_dir = Path(sys.argv[2])
 
