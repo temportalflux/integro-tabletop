@@ -238,7 +238,7 @@ async fn process_request(
 	system_depot: &system::Depot,
 	status: &Status,
 ) -> Result<(), StorageSyncError> {
-	let auth_status = yewdux::dispatch::get::<crate::auth::Status>();
+	let auth_status = yewdux::Dispatch::<crate::auth::Status>::global().get();
 	let Some(storage) = crate::storage::get(&*auth_status) else {
 		log::error!(target: "autosync", "No storage available, cannot progess request {req:?}");
 		return Ok(());

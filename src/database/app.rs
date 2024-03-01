@@ -47,8 +47,8 @@ impl Database {
 	pub async fn clear(&self) -> Result<(), Error> {
 		use database::TransactionExt;
 		let transaction = self.write()?;
-		transaction.object_store_of::<Module>()?.clear().await?;
-		transaction.object_store_of::<Entry>()?.clear().await?;
+		transaction.object_store_of::<Module>()?.clear()?.await?;
+		transaction.object_store_of::<Entry>()?.clear()?.await?;
 		transaction.commit().await?;
 		Ok(())
 	}

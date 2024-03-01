@@ -21,7 +21,7 @@ impl Record for Module {
 		"modules"
 	}
 
-	fn key(&self) -> Option<String> {
+	fn key(&self) -> Option<&String> {
 		None // Some(self.module_id.to_string())
 	}
 }
