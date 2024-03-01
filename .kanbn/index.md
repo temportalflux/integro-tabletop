@@ -44,7 +44,6 @@ columnSorting:
 
 ## Pending
 
-- [generator-module-components](tasks/generator-module-components.md)
 - [condition-degrees](tasks/condition-degrees.md)
 - [item-charges](tasks/item-charges.md)
 - [attunement](tasks/attunement.md)
@@ -57,6 +56,8 @@ columnSorting:
 - [autosave](tasks/autosave.md)
 
 ## In Progress
+
+- [generator-module-components](tasks/generator-module-components.md)
 
 ## Done
 

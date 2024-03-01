@@ -1,4 +1,4 @@
-use database::{MissingVersion, ObjectStoreExt, Record, Schema, Error, Transaction, Client};
+use database::{Client, Error, MissingVersion, ObjectStoreExt, Record, Schema, Transaction};
 
 /// The schema for the `tabletop-tools` client database.
 /// Use with `Client::open`.

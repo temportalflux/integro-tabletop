@@ -104,6 +104,7 @@ async fn main() -> anyhow::Result<()> {
 	let comp_reg = dnd5e::component_registry();
 	let node_reg = Arc::new(dnd5e::node_registry());
 
+	// Compile the list of local modules (path to module, the module id, and systems it supports)
 	let mut modules = Vec::new();
 	for entry in std::fs::read_dir("./modules")? {
 		let entry = entry?;
@@ -124,6 +125,7 @@ async fn main() -> anyhow::Result<()> {
 		modules.push((entry.path(), module_id, system_ids));
 	}
 
+	// Gather the list of file sources for each module
 	let mut sources = BTreeMap::new();
 	for (module_path, module_id, system_ids) in modules {
 		for system_id in system_ids {

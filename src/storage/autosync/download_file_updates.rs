@@ -83,7 +83,9 @@ impl DownloadFileUpdates {
 			return Ok(Vec::new());
 		};
 
-		let document = content.parse::<kdl::KdlDocument>().with_context(|| format!("Failed to parse content: {content:?}"))?;
+		let document = content
+			.parse::<kdl::KdlDocument>()
+			.with_context(|| format!("Failed to parse content: {content:?}"))?;
 		let path_in_system = match file_path.strip_prefix(&format!("{system}/")) {
 			Some(systemless) => PathBuf::from(systemless),
 			None => PathBuf::from(&file_path),

@@ -122,7 +122,7 @@ pub fn Nav(
 	let mut nav_items = Vec::with_capacity(children.len());
 	let mut tab_children = Vec::with_capacity(children.len());
 	for mut child in children.iter() {
-		let mut props = Rc::make_mut(&mut child.props);
+		let props = Rc::make_mut(&mut child.props);
 		props.active = *selected_tab == props.id.as_str();
 
 		let mut classes = classes!("nav-link");

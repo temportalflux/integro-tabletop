@@ -7,6 +7,7 @@ use std::{collections::HashMap, sync::Arc};
 pub mod components;
 pub mod data;
 pub mod evaluator;
+pub mod generator;
 pub mod mutator;
 
 pub type BoxedCriteria = crate::utility::GenericEvaluator<Character, Result<(), String>>;
@@ -81,6 +82,7 @@ pub fn component_registry() -> ComponentRegistry {
 	registry.register::<data::Condition>();
 	registry.register::<data::item::Item>();
 	registry.register::<data::Spell>();
+	registry.register::<generator::Generator>();
 	registry
 }
 

@@ -7,10 +7,7 @@ static APP_USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_P
 pub fn get(status: &crate::auth::Status) -> Option<github::GithubClient> {
 	use crate::auth::*;
 	use std::str::FromStr;
-	let Status::Successful {
-		oauth_id,
-		token,
-	} = status else {
+	let Status::Successful { oauth_id, token } = status else {
 		return None;
 	};
 	let Ok(oauth) = OAuthProvider::from_str(oauth_id) else {

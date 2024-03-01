@@ -190,9 +190,9 @@ fn CategoryPicker(
 				>{"Select a category..."}</option>
 				{options.iter().map(|item| html! {
 					<option
-						value={item.clone()}
+						value={item.to_owned()}
 						selected={value.as_ref().map(AttrValue::as_str) == Some(*item)}
-					>{item.clone()}</option>
+					>{item}</option>
 				}).collect::<Vec<_>>()}
 			</select>
 			{close_btn}
