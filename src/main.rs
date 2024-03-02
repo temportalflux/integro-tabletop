@@ -157,32 +157,40 @@ async fn main() -> anyhow::Result<()> {
 		}
 	}
 
-	for (mut source_id, content) in sources {
+	for (source_id, content) in sources {
 		let document = content
 			.parse::<kdl::KdlDocument>()
 			.with_context(|| format!("Invalid KDL format in {:?}", source_id.to_string()))?;
-		let mut reserialized_nodes = Vec::with_capacity(document.nodes().len());
-		for (idx, node) in document.nodes().iter().enumerate() {
-			source_id.node_idx = idx;
-			let node_name = node.name().value();
-			let Some(comp_factory) = comp_reg.get_factory(node_name).cloned() else {
-				log::error!("Failed to find factory to deserialize node \"{node_name}\".");
-				continue;
-			};
-			let ctx = kdl_ext::NodeContext::new(Arc::new(source_id.clone()), node_reg.clone());
-			#[allow(unused_variables)]
-			let metadata = comp_factory.metadata_from_kdl(kdl_ext::NodeReader::new_root(node, ctx))?;
-			/*
-			if node_name == "bundle" {
-				log::debug!("{}", metadata.to_string());
-			}
-			*/
-
-			// NOTE: This will re-write the local data using the re-serialized node.
-			// Do not enable unless you are specifically testing input vs output on documents.
-			//reserialized_nodes.push(comp_factory.reserialize_kdl(kdl_ext::NodeReader::new_root(node, ctx))?);
+		if document.nodes().len() > 1 {
+			log::error!(
+				"Cannot process more than 1 entry per file, due to \
+				limitations around diffing content and variant generators. \
+				Only the first entry of {} will be processed.",
+				source_id.to_string()
+			);
 		}
-		if !reserialized_nodes.is_empty() {
+		let Some(node) = document.nodes().first() else { continue; };
+
+		let node_name = node.name().value();
+		let Some(comp_factory) = comp_reg.get_factory(node_name).cloned() else {
+			log::error!("Failed to find factory to deserialize node \"{node_name}\".");
+			continue;
+		};
+		let ctx = kdl_ext::NodeContext::new(Arc::new(source_id.clone()), node_reg.clone());
+		#[allow(unused_variables)]
+		let metadata = comp_factory.metadata_from_kdl(kdl_ext::NodeReader::new_root(node, ctx))?;
+		/*
+		if node_name == "bundle" {
+			log::debug!("{}", metadata.to_string());
+		}
+		*/
+
+		// NOTE: This will re-write the local data using the re-serialized node.
+		// Do not enable unless you are specifically testing input vs output on documents.
+		let reserialized_node: Option<kdl::KdlNode> = None;
+		//let reserialized_node = comp_factory.reserialize_kdl(kdl_ext::NodeReader::new_root(node, ctx))?;
+
+		if let Some(reserialized) = reserialized_node {
 			let Some(ModuleId::Local { name: module_name }) = &source_id.module else {
 				continue;
 			};
@@ -191,7 +199,7 @@ async fn main() -> anyhow::Result<()> {
 			};
 			let dest_path = std::path::PathBuf::from(format!("./modules/{module_name}/{system}")).join(&source_id.path);
 			let mut doc = kdl::KdlDocument::new();
-			doc.nodes_mut().append(&mut reserialized_nodes);
+			doc.nodes_mut().push(reserialized);
 			let out_str = doc.to_string();
 			let out_str = out_str.replace("\\r", "");
 			let out_str = out_str.replace("\\n", "\n");

@@ -12,6 +12,15 @@ use std::{
 	path::{Path, PathBuf},
 };
 
+// One node per document is required for 2 reasons:
+// 1. Updating the content of a file is much more complicated if there are more than 1 entry per document,
+//    because other content has to either be reparsed or fetched from database for any one entry to be written.
+// 2. Variants need a way to document that they are not the original object they are based on,
+//    without creating a whole new id. The marker for this replaced the old `node_idx` field in the source id.
+#[derive(thiserror::Error, Debug)]
+#[error("Too many entries in document {0}, only one node per document is permitted.")]
+pub struct TooManyEntries(pub String);
+
 pub struct DownloadFileUpdates {
 	pub status: super::Status,
 	pub client: GithubClient,
@@ -57,10 +66,11 @@ impl DownloadFileUpdates {
 				| ChangedFileStatus::Copied
 				| ChangedFileStatus::Changed => {
 					let content = self.client.get_file_content(args).await?;
-					let parsed_entries = self.parse_content(system, path_in_repo, file_id, content);
-					let parsed_entries =
-						parsed_entries.map_err(|err| Error::InvalidResponse(format!("{err:?}").into()))?;
-					entries.extend(parsed_entries);
+					let parsed_record = self.parse_content(system, path_in_repo, file_id, content);
+					let parsed_record = parsed_record.map_err(|err| Error::InvalidResponse(format!("{err:?}").into()))?;
+					if let Some(record) = parsed_record {
+						entries.push(record);
+					}
 				}
 				ChangedFileStatus::Removed => {
 					removed_file_ids.insert(file_id);
@@ -78,9 +88,9 @@ impl DownloadFileUpdates {
 		file_path: String,
 		file_id: String,
 		content: String,
-	) -> anyhow::Result<Vec<crate::database::Entry>> {
+	) -> anyhow::Result<Option<crate::database::Entry>> {
 		let Some(system_reg) = self.system_depot.get(&system) else {
-			return Ok(Vec::new());
+			return Ok(None);
 		};
 
 		let document = content
@@ -90,29 +100,31 @@ impl DownloadFileUpdates {
 			Some(systemless) => PathBuf::from(systemless),
 			None => PathBuf::from(&file_path),
 		};
-		let mut source_id = SourceId {
+		let source_id = SourceId {
 			module: Some(self.module_id.clone()),
 			system: Some(system.clone()),
 			path: path_in_system,
 			..Default::default()
 		};
-		let mut entries = Vec::with_capacity(document.nodes().len());
-		for (idx, node) in document.nodes().iter().enumerate() {
-			source_id.node_idx = idx;
-			let category = node.name().value().to_owned();
-			let metadata = system_reg.parse_metadata(node, &source_id)?;
-			let record = crate::database::Entry {
-				id: source_id.to_string(),
-				module: self.module_id.to_string(),
-				system: system.clone(),
-				category: category,
-				version: Some(self.version.clone()),
-				metadata,
-				kdl: node.to_string(),
-				file_id: Some(file_id.clone()),
-			};
-			entries.push(record);
+		if document.nodes().len() > 1 {
+			return Err(TooManyEntries(source_id.to_string()).into());
 		}
-		Ok(entries)
+		let Some(node) = document.nodes().first() else { return Ok(None); };
+
+		let category = node.name().value().to_owned();
+		let metadata = system_reg.parse_metadata(node, &source_id)?;
+		let record = crate::database::Entry {
+			id: source_id.to_string(),
+			module: self.module_id.to_string(),
+			system: system.clone(),
+			category: category,
+			version: Some(self.version.clone()),
+			metadata,
+			kdl: node.to_string(),
+			file_id: Some(file_id.clone()),
+			generated: false,
+		};
+
+		Ok(Some(record))
 	}
 }

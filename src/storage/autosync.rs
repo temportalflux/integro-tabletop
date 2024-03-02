@@ -255,6 +255,7 @@ async fn process_request(
 	let mut modules_to_fetch = BTreeSet::new();
 	let mut modules_to_install = BTreeSet::new();
 	let mut modules_to_uninstall = BTreeSet::new();
+	let mut execute_generators = false;
 	match req {
 		Request::FetchLatestVersionAllModules => {
 			scan_storage_for_modules = true;
@@ -263,6 +264,7 @@ async fn process_request(
 			}
 		}
 		Request::InstallModules(new_installation_status) => {
+			execute_generators = true;
 			for (id, should_be_installed) in new_installation_status {
 				let module = database.get::<Module>(id.to_string()).await?;
 				let Some(module) = module else {
@@ -277,6 +279,7 @@ async fn process_request(
 			}
 		}
 		Request::UpdateModules(module_ids) => {
+			execute_generators = true;
 			for id in module_ids {
 				let module = database.get::<Module>(id.to_string()).await?;
 				let Some(module) = module else {
@@ -294,6 +297,7 @@ async fn process_request(
 					log::error!(target: "autosync", "Failed to find module {id:?}");
 					return Ok(());
 				};
+				execute_generators = true;
 				modules_to_fetch.insert(module.id.clone());
 				modules_to_install.insert(module.id.clone());
 				modules.insert(module.id.clone(), module);
@@ -326,6 +330,7 @@ async fn process_request(
 	};
 	status.pop_stage();
 
+	// Scan storage or check for updates
 	let mut remote_repositories = BTreeMap::new();
 	if scan_storage_for_modules {
 		status.push_stage("Scanning Storage", None);
@@ -354,6 +359,7 @@ async fn process_request(
 		status.pop_stage();
 	}
 
+	// Update module versions or add modules
 	if !remote_repositories.is_empty() {
 		use database::{ObjectStoreExt, TransactionExt};
 		status.push_stage("Updating database", None);
@@ -388,6 +394,7 @@ async fn process_request(
 		status.pop_stage();
 	}
 
+	// Install homebrew
 	if let Some(viewer) = &viewer {
 		let homebrew_id = ModuleId::Github {
 			user_org: viewer.clone(),
@@ -401,6 +408,7 @@ async fn process_request(
 		}
 	}
 
+	// Uninstall undesired modules
 	if !modules_to_uninstall.is_empty() {
 		let transaction = database.write()?;
 		for module_id in &modules_to_uninstall {
@@ -434,6 +442,7 @@ async fn process_request(
 		transaction.commit().await.map_err(database::Error::from)?;
 	}
 
+	// Install desired modules
 	if !modules_to_install.is_empty() {
 		struct ModuleUpdate {
 			module_id: ModuleId,
@@ -558,6 +567,24 @@ async fn process_request(
 		status.pop_stage(); // Downloading Files
 		status.pop_stage(); // Installing Modules
 	}
+	
+	// TODO: If I revoke the `node_idx` property on sourceid now, then I can use that field to indicate that an object is a variant (its unique variant id).
+	//       while also using `Entry::basis_id` to mark the generator that created the variant.
+	// TODO: clear generated content for any modules uninstalled (always if something was uninstalled, do it in that block above)
+	//       these are entries whose variant basis field is in the uninstalled module
+	// TODO: if execute_generators
+	// - gather all generators, insert into generator queue (kdl first, then objects)
+	// - gather all variants into a cache (variants are objects marked as created by a generator, they have a uniquely formatted source id)
+	// - process generators in priority queue; first kdls, then object/item generators.
+	//   When a generator runs, any generators it creates get inserted into the priority queue.
+	// - after a generator runs, all variants are gathered in a cache and compared again previously generated content.
+	//   variants in the old cache and missing in the new cache are deleted via the pending transaction
+	//   variants in the new cache and not the old are added to the pending transaction
+	//   variants in both caches (by id) with the same content are maintained (not changed or removed). this means just not updating it in the new transaction.
+	//   variants in both caches and not the same content are marked for update in the pending transaction.
+	// - object/item generators will need to query the database for all non-variant entries of a particular category (i.e. item)
+	// - Entry objects which are variants need a secondary SourceId field indicating their basis. Database entry records which have a `basis` property are considered variants.
+
 	Ok(())
 }
 

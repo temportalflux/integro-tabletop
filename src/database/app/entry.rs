@@ -22,6 +22,7 @@ pub struct Entry {
 	pub metadata: serde_json::Value,
 	pub kdl: String,
 	pub file_id: Option<String>,
+	pub generated: bool,
 }
 
 impl Record for Entry {

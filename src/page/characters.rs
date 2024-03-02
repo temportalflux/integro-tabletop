@@ -455,6 +455,7 @@ fn ModalCreate() -> Html {
 					metadata,
 					kdl: content.clone(),
 					file_id: Some(response.file_id),
+					generated: false,
 				};
 				if let Err(err) = database
 					.mutate(move |transaction| {

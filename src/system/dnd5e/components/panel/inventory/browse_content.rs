@@ -199,9 +199,9 @@ fn BrowsedItemCard(props: &GeneralProp<ItemLocation>) -> Html {
 			let path = item.id.path.with_extension("");
 			path.to_str().unwrap().replace("/", "_")
 		},
-		match item.id.node_idx {
-			0 => String::new(),
-			idx => format!("_{idx}"),
+		match item.id.variant_idx {
+			None => String::new(),
+			Some(idx) => format!("_{idx}"),
 		}
 	);
 	let batch_size = match &item.kind {

@@ -48,7 +48,7 @@ pub struct SourceId {
 	pub system: Option<String>,
 	pub path: PathBuf,
 	pub version: Option<String>,
-	pub node_idx: usize,
+	pub variant_idx: Option<usize>,
 }
 
 impl SourceId {
@@ -130,8 +130,8 @@ impl ToString for SourceId {
 		if let Some(version) = &self.version {
 			comps.push(format!("?version={version}"));
 		}
-		if self.node_idx > 0 {
-			comps.push(format!("#{}", self.node_idx));
+		if let Some(idx) = self.variant_idx {
+			comps.push(format!("#{}", idx));
 		}
 		comps.join("")
 	}
@@ -174,17 +174,16 @@ impl FromStr for SourceId {
 			Some((key, value)) if key == "version" => Some(value.to_string()),
 			_ => None,
 		};
-		let node_idx = match url.fragment() {
+		let variant_idx = match url.fragment() {
 			None => None,
 			Some(fragment) => Some(fragment.parse::<usize>()?),
-		}
-		.unwrap_or_default();
+		};
 		Ok(Self {
 			system: Some(system),
 			module: Some(module),
 			path,
 			version,
-			node_idx,
+			variant_idx,
 		})
 	}
 }
@@ -231,11 +230,8 @@ mod test {
 		assert_eq!(
 			source_id,
 			SourceId {
-				module: None,
-				system: None,
 				path: "items/trinket.kdl".into(),
-				version: None,
-				node_idx: 0,
+				..Default::default()
 			}
 		);
 		Ok(())
@@ -253,8 +249,7 @@ mod test {
 				}),
 				system: Some("dnd5e".into()),
 				path: "items/trinket.kdl".into(),
-				version: None,
-				node_idx: 32,
+				..Default::default()
 			}
 		);
 		Ok(())
@@ -268,8 +263,7 @@ mod test {
 			}),
 			system: Some("dnd5e".into()),
 			path: "items/trinket.kdl".into(),
-			version: None,
-			node_idx: 0,
+			..Default::default()
 		};
 		assert_eq!(source.to_string(), "local://homebrew@dnd5e/items/trinket.kdl");
 	}
@@ -288,7 +282,7 @@ mod test {
 				system: Some("dnd5e".into()),
 				path: "items/trinket.kdl".into(),
 				version: Some("4b37d0e2a".into()),
-				node_idx: 5,
+				variant_idx: Some(5),
 			}
 		);
 		Ok(())
@@ -304,7 +298,7 @@ mod test {
 			system: Some("dnd5e".into()),
 			path: "items/trinket.kdl".into(),
 			version: Some("4b37d0e2a".into()),
-			node_idx: 7,
+			variant_idx: Some(7),
 		};
 		assert_eq!(
 			source.to_string(),
@@ -315,11 +309,8 @@ mod test {
 	#[test]
 	fn path_to_str() {
 		let source = SourceId {
-			module: None,
-			system: None,
 			path: "items/trinket.kdl".into(),
-			version: None,
-			node_idx: 0,
+			..Default::default()
 		};
 		assert_eq!(source.to_string(), "items/trinket.kdl");
 	}
