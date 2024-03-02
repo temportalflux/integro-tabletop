@@ -60,7 +60,7 @@ impl AsKdl for SuggestedPersonality {
 			PersonalityKind::Flaw => "Flaw",
 		});
 		for option in &self.options {
-			node.push_child_opt_t("option", option);
+			node.push_child_nonempty_t("option", option);
 		}
 		node
 	}

@@ -106,13 +106,13 @@ impl AsKdl for Spell {
 		let mut node = NodeBuilder::default();
 
 		node.push_entry(("name", self.name.clone()));
-		node.push_child_opt_t("source", &self.id);
+		node.push_child_nonempty_t("source", &self.id);
 
 		if let Some(school) = &self.school_tag {
-			node.push_child_opt_t("school", school);
+			node.push_child_nonempty_t("school", school);
 		}
 		for tag in &self.tags {
-			node.push_child_opt_t("tag", tag);
+			node.push_child_nonempty_t("tag", tag);
 		}
 		node.push_child_t("rank", &self.rank);
 
@@ -132,7 +132,7 @@ impl AsKdl for Spell {
 			node.push_child_t("damage", damage);
 		}
 
-		node.push_child_opt_t("description", &self.description);
+		node.push_child_nonempty_t("description", &self.description);
 
 		node
 	}

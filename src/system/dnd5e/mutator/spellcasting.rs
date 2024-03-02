@@ -444,7 +444,7 @@ impl AsKdl for Spellcasting {
 					});
 				}
 				if let Some(level_map) = &caster.cantrip_capacity {
-					node.push_child_opt({
+					node.push_child_nonempty({
 						let mut node = NodeBuilder::default();
 						for (level, amt) in level_map {
 							node.push_child(
@@ -470,7 +470,7 @@ impl AsKdl for Spellcasting {
 						}
 						spellcasting::Capacity::Known(level_map) => {
 							node.push_entry("Known");
-							node.push_child_opt({
+							node.push_child_nonempty({
 								let mut node = NodeBuilder::default();
 								for (level, amt) in level_map {
 									node.push_child(

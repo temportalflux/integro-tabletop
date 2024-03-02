@@ -312,9 +312,9 @@ impl<T: AsKdl> AsKdl for ItemContainer<T> {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 
-		node.push_child_opt_t("wallet", &self.wallet);
+		node.push_child_nonempty_t("wallet", &self.wallet);
 
-		node.push_child_opt({
+		node.push_child_nonempty({
 			let mut node = NodeBuilder::default();
 			if let Some(count) = &self.capacity.count {
 				node.push_entry(("count", *count as i64));
@@ -333,7 +333,7 @@ impl<T: AsKdl> AsKdl for ItemContainer<T> {
 			for tag in &restriction.tags {
 				restriction_node.push_child_t("tag", tag);
 			}
-			node.push_child_opt(restriction_node.build("restriction"));
+			node.push_child_nonempty(restriction_node.build("restriction"));
 		}
 
 		for (id, count) in &self.item_templates {

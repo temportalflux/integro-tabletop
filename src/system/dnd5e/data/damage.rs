@@ -31,9 +31,7 @@ impl AsKdl for DamageRoll {
 		if self.base_bonus != 0 {
 			node.push_entry(("base", self.base_bonus as i64));
 		}
-		if let Some(roll) = &self.roll {
-			node.push_child_t("roll", roll);
-		}
+		node.push_child_opt_t("roll", &self.roll);
 		node.push_child_entry("damage_type", self.damage_type.to_string());
 		node
 	}

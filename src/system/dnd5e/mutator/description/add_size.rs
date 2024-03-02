@@ -108,7 +108,7 @@ impl FromKdl<NodeContext> for AddSize {
 impl AsKdl for AddSize {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
-		node.push_child_opt({
+		node.push_child_nonempty({
 			let mut node = NodeBuilder::default();
 			for formula in &self.height {
 				match formula {
@@ -123,7 +123,7 @@ impl AsKdl for AddSize {
 			}
 			node.build("height")
 		});
-		node.push_child_opt({
+		node.push_child_nonempty({
 			let mut node = NodeBuilder::default();
 			for formula in &self.weight {
 				match formula {

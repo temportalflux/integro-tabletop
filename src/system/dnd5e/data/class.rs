@@ -132,8 +132,8 @@ impl AsKdl for Class {
 			node.push_entry(("level", self.current_level as i64));
 		}
 
-		node.push_child_opt_t("source", &self.id);
-		node.push_child_opt_t("description", &self.description);
+		node.push_child_nonempty_t("source", &self.id);
+		node.push_child_nonempty_t("description", &self.description);
 		node.push_child_entry("hit-die", self.hit_die.to_string());
 
 		for mutator in &self.mutators {
@@ -334,8 +334,8 @@ impl AsKdl for Subclass {
 
 		node.push_entry(("class", self.class_name.clone()));
 		node.push_entry(("name", self.name.clone()));
-		node.push_child_opt_t("source", &self.id);
-		node.push_child_opt_t("description", &self.description);
+		node.push_child_nonempty_t("source", &self.id);
+		node.push_child_nonempty_t("description", &self.description);
 
 		for mutator in &self.mutators {
 			node.push_child_t("mutator", mutator);

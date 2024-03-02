@@ -166,7 +166,7 @@ impl AsKdl for SpellContainer {
 			node.push_entry(("prepare_from", true));
 		}
 
-		node.push_child_opt_t("capacity", &self.capacity);
+		node.push_child_nonempty_t("capacity", &self.capacity);
 		if let Some(casting) = &self.casting {
 			node.push_child_t("casting", casting);
 		}
@@ -202,7 +202,7 @@ impl AsKdl for Capacity {
 			node.push_entry(*num as i64);
 		}
 
-		node.push_child_opt({
+		node.push_child_nonempty({
 			let mut node = NodeBuilder::default();
 			if let Some(num) = &self.rank_min {
 				node.push_entry(("min", *num as i64));

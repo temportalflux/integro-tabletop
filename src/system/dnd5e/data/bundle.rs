@@ -173,7 +173,7 @@ impl AsKdl for Bundle {
 			node.push_entry(("display_as_feature", true));
 		}
 
-		node.push_child_opt_t("source", &self.id);
+		node.push_child_nonempty_t("source", &self.id);
 
 		for requirement in &self.requirements {
 			let kdl = match requirement {

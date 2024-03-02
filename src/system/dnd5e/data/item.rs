@@ -204,7 +204,7 @@ impl AsKdl for Item {
 
 		node.push_entry(("name", self.name.clone()));
 
-		node.push_child_opt_t("source", &self.id);
+		node.push_child_nonempty_t("source", &self.id);
 		if let Some(rarity) = &self.rarity {
 			node.push_child_entry("rarity", rarity.to_string());
 		}
@@ -218,8 +218,8 @@ impl AsKdl for Item {
 			node.push_entry(("weight", stack_weight));
 		}
 
-		node.push_child_opt_t("description", &self.description);
-		node.push_child_opt_t("worth", &self.worth);
+		node.push_child_nonempty_t("description", &self.description);
+		node.push_child_nonempty_t("worth", &self.worth);
 
 		if let Some(notes) = &self.notes {
 			node.push_child_t("notes", notes);
@@ -243,7 +243,7 @@ impl AsKdl for Item {
 			};
 			node.push_child({
 				let mut node = items.as_kdl();
-				node.push_child_opt(templates);
+				node.push_child_nonempty(templates);
 				node.build("items")
 			});
 		}

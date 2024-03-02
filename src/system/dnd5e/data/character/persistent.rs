@@ -291,17 +291,17 @@ impl AsKdl for Persistent {
 		node.push_child_t("hit_points", &self.hit_points);
 		node.push_child_t("inspiration", &self.inspiration);
 
-		node.push_child_opt_t("inventory", &self.inventory);
-		node.push_child_opt_t("spells", &self.selected_spells);
+		node.push_child_nonempty_t("inventory", &self.inventory);
+		node.push_child_nonempty_t("spells", &self.selected_spells);
 
 		for bundle in &self.bundles {
-			node.push_child_opt_t("bundle", bundle);
+			node.push_child_nonempty_t("bundle", bundle);
 		}
 		for class in &self.classes {
-			node.push_child_opt_t("class", class);
+			node.push_child_nonempty_t("class", class);
 		}
 
-		node.push_child_opt({
+		node.push_child_nonempty({
 			let mut node = NodeBuilder::default();
 			for (path, value) in self.selected_values.as_vec() {
 				node.push_child(

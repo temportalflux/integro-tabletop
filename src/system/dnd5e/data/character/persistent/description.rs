@@ -119,7 +119,7 @@ impl AsKdl for Description {
 		if self.weight != 0 {
 			node.push_child_t("weight", &self.weight);
 		}
-		node.push_child_opt({
+		node.push_child_nonempty({
 			let mut node = NodeBuilder::default();
 			for (kind, items) in &self.personality {
 				for item in items {

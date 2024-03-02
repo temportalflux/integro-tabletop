@@ -248,7 +248,7 @@ impl AsKdl for Section {
 		node += self.content.as_kdl();
 
 		for section in &self.children {
-			node.push_child_opt_t("section", section);
+			node.push_child_nonempty_t("section", section);
 		}
 
 		node += self.format_args.as_kdl();
@@ -337,15 +337,13 @@ impl AsKdl for SectionContent {
 				rows,
 			} => {
 				node.push_entry(("table", true));
-				if let Some(headers) = headers {
-					node.push_child({
-						let mut node = NodeBuilder::default();
-						for name in headers {
-							node.push_entry(name.clone());
-						}
-						node.build("headers")
-					});
-				}
+				node.push_child_opt(headers.as_ref().map(|headers| {
+					let mut node = NodeBuilder::default();
+					for name in headers {
+						node.push_entry(name.clone());
+					}
+					node.build("headers")
+				}));
 				for row in rows {
 					let mut row_node = NodeBuilder::default();
 					for col in row {

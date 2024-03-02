@@ -121,22 +121,11 @@ impl FromKdl<NodeContext> for Condition {
 impl AsKdl for Condition {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
-
 		node.push_entry(("name", self.name.clone()));
-
-		if let Some(id) = &self.id {
-			node.push_child_opt_t("source", id);
-		}
-		node.push_child_opt_t("description", &self.description);
-
-		for mutator in &self.mutators {
-			node.push_child_t("mutator", mutator);
-		}
-
-		for implied in &self.implied {
-			node.push_child_t("implies", implied);
-		}
-
+		node.push_child_opt_nonempty_t("source", &self.id);
+		node.push_child_nonempty_t("description", &self.description);
+		node.push_children_t("mutator", self.mutators.iter());
+		node.push_children_t("implies", self.implied.iter());
 		node
 	}
 }

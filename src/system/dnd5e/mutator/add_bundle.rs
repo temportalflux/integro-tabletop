@@ -195,7 +195,7 @@ impl AsKdl for AddBundle {
 		if self.selector.amount != Value::Fixed(1) {
 			node.push_child_t("amount", &self.selector.amount);
 		}
-		node.push_child_opt_t("filter", &self.filter);
+		node.push_child_nonempty_t("filter", &self.filter);
 		node
 	}
 }

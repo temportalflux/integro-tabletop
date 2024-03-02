@@ -225,7 +225,7 @@ impl AsKdl for PickN {
 			let mut node_option = NodeBuilder::default();
 			node_option.push_entry(name.clone());
 			if let Some(desc) = &option.description {
-				node_option.push_child_opt_t("description", desc);
+				node_option.push_child_nonempty_t("description", desc);
 			}
 			for mutator in &option.mutators {
 				node_option.push_child_t("mutator", mutator);
