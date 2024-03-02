@@ -2,7 +2,7 @@ pub mod autosync;
 
 pub static USER_HOMEBREW_REPO_NAME: &str = "integro-homebrew";
 pub static MODULE_TOPIC: &str = "integro-tabletop-module";
-static APP_USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
+pub static APP_USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
 
 pub fn get(status: &crate::auth::Status) -> Option<github::GithubClient> {
 	use crate::auth::*;

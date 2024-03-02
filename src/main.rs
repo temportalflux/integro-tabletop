@@ -212,10 +212,12 @@ impl std::fmt::Display for GeneralError {
 	}
 }
 
+#[cfg(target_family = "windows")]
 struct WalkDir {
 	iter: Option<std::fs::ReadDir>,
 	stack: Vec<std::fs::ReadDir>,
 }
+#[cfg(target_family = "windows")]
 impl WalkDir {
 	fn new(path: impl AsRef<std::path::Path>) -> Self {
 		Self {
@@ -224,6 +226,7 @@ impl WalkDir {
 		}
 	}
 }
+#[cfg(target_family = "windows")]
 impl Iterator for WalkDir {
 	type Item = std::path::PathBuf;
 

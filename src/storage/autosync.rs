@@ -238,11 +238,17 @@ async fn process_request(
 	system_depot: &system::Depot,
 	status: &Status,
 ) -> Result<(), StorageSyncError> {
-	let auth_status = yewdux::Dispatch::<crate::auth::Status>::global().get();
-	let Some(storage) = crate::storage::get(&*auth_status) else {
-		log::error!(target: "autosync", "No storage available, cannot progess request {req:?}");
-		return Ok(());
+	#[cfg(target_family = "wasm")]
+	let storage = {
+		let auth_status = yewdux::Dispatch::<crate::auth::Status>::global().get();
+		let Some(storage) = crate::storage::get(&*auth_status) else {
+			log::error!(target: "autosync", "No storage available, cannot progess request {req:?}");
+			return Ok(());
+		};
+		storage
 	};
+	#[cfg(target_family = "windows")]
+	let storage = github::GithubClient::new("INVALID", crate::storage::APP_USER_AGENT).unwrap();
 
 	let mut scan_storage_for_modules = false;
 	let mut modules = BTreeMap::new();
