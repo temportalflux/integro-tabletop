@@ -8,6 +8,7 @@ use crate::{
 	utility::MutatorGroup,
 };
 use async_recursion::async_recursion;
+use kdlize::OmitIfEmpty;
 use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
 use std::path::Path;
 
@@ -122,10 +123,10 @@ impl AsKdl for Condition {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 		node.push_entry(("name", self.name.clone()));
-		node.push_child_opt_nonempty_t("source", &self.id);
-		node.push_child_nonempty_t("description", &self.description);
-		node.push_children_t("mutator", self.mutators.iter());
-		node.push_children_t("implies", self.implied.iter());
+		node.push_child_t(("source", &self.id, OmitIfEmpty));
+		node.push_child_t(("description", &self.description, OmitIfEmpty));
+		node.push_children_t(("mutator", self.mutators.iter()));
+		node.push_children_t(("implies", self.implied.iter()));
 		node
 	}
 }

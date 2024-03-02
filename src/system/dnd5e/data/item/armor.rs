@@ -37,10 +37,8 @@ impl AsKdl for Armor {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 		node.push_entry(self.kind.to_string());
-		node.push_child_t("formula", &self.formula);
-		if let Some(score) = &self.min_strength_score {
-			node.push_child_entry("min-strength", *score as i64);
-		}
+		node.push_child_t(("formula", &self.formula));
+		node.push_child_t(("min-strength", &self.min_strength_score));
 		node
 	}
 }

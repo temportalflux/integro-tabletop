@@ -97,9 +97,7 @@ impl AsKdl for GrantByLevel {
 		for (level, mutators) in &self.levels {
 			node.push_child({
 				let mut node = NodeBuilder::default().with_entry(*level as i64);
-				for mutator in mutators {
-					node.push_child_t("mutator", mutator);
-				}
+				node.push_children_t(("mutator", mutators.iter()));
 				node.build("level")
 			})
 		}

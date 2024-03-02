@@ -30,12 +30,8 @@ impl FromKdl<NodeContext> for Restriction {
 impl AsKdl for Restriction {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
-		for tag in &self.tags {
-			node.push_child_t("tag", tag);
-		}
-		if let Some(weapon_filter) = &self.weapon {
-			node.push_child_t("weapon", weapon_filter);
-		}
+		node.push_children_t(("tag", self.tags.iter()));
+		node.push_child_t(("weapon", &self.weapon));
 		node
 	}
 }

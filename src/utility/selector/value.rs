@@ -193,7 +193,7 @@ where
 					node.push_entry(("id", id.into_owned()));
 				}
 				if amount != &crate::utility::Value::Fixed(1) {
-					node.push_child_t("amount", amount);
+					node.push_child_t(("amount", amount));
 				}
 				for id_path in cannot_match {
 					let Some(id_str) = id_path.get_id() else {
@@ -202,7 +202,7 @@ where
 					node.push_child_entry("cannot_match", id_str.into_owned());
 				}
 				for option in options {
-					node.push_child_t("option", option);
+					node.push_child_t(("option", option));
 				}
 				node
 			}

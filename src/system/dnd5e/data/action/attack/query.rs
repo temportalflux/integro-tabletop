@@ -226,9 +226,7 @@ impl crate::kdl_ext::AsKdl for AttackQuery {
 			node.push_child(property.as_kdl().with_entry(*required).build("property"));
 		}
 
-		for class in self.classification.iter().sorted() {
-			node.push_child_t("class", class);
-		}
+		node.push_children_t(("class", self.classification.iter().sorted()));
 
 		node
 	}

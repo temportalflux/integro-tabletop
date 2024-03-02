@@ -167,15 +167,9 @@ impl AsKdl for Weapon {
 		let mut node = NodeBuilder::default();
 		node.push_entry(self.kind.to_string());
 		node.push_entry(("class", self.classification.clone()));
-		if let Some(damage) = &self.damage {
-			node.push_child_t("damage", damage);
-		}
-		for property in &self.properties {
-			node.push_child_t("property", property);
-		}
-		if let Some(range) = &self.range {
-			node.push_child_t("range", range);
-		}
+		node.push_child_t(("damage", &self.damage));
+		node.push_children_t(("property", self.properties.iter()));
+		node.push_child_t(("range", &self.range));
 		node
 	}
 }

@@ -145,9 +145,7 @@ impl AsKdl for ApplyIf {
 				node.build("criteria")
 			});
 		}
-		for mutator in &self.mutators {
-			node.push_child_t("mutator", mutator);
-		}
+		node.push_children_t(("mutator", self.mutators.iter()));
 		node
 	}
 }

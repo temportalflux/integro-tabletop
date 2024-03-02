@@ -18,7 +18,7 @@ use crate::{
 	},
 	utility::{selector, Mutator, NotInList, Value},
 };
-use kdlize::NodeId;
+use kdlize::{NodeId, OmitIfEmpty};
 use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
 use std::{collections::BTreeMap, str::FromStr};
 
@@ -419,9 +419,7 @@ impl AsKdl for Spellcasting {
 				node.push_entry(("class", caster.class_name.clone()));
 				node.push_child({
 					let mut node = NodeBuilder::default();
-					for tag in &caster.restriction.tags {
-						node.push_child_t("tag", tag);
-					}
+					node.push_children_t(("tag", caster.restriction.tags.iter()));
 					node.build("restriction")
 				});
 				if caster.prepare_from_item {
@@ -444,7 +442,7 @@ impl AsKdl for Spellcasting {
 					});
 				}
 				if let Some(level_map) = &caster.cantrip_capacity {
-					node.push_child_nonempty({
+					node.push_child(({
 						let mut node = NodeBuilder::default();
 						for (level, amt) in level_map {
 							node.push_child(
@@ -455,7 +453,7 @@ impl AsKdl for Spellcasting {
 							);
 						}
 						node.build("cantrips")
-					});
+					}, OmitIfEmpty));
 				}
 				node.push_child({
 					let mut node = NodeBuilder::default();
@@ -470,7 +468,7 @@ impl AsKdl for Spellcasting {
 						}
 						spellcasting::Capacity::Known(level_map) => {
 							node.push_entry("Known");
-							node.push_child_nonempty({
+							node.push_child(({
 								let mut node = NodeBuilder::default();
 								for (level, amt) in level_map {
 									node.push_child(
@@ -481,25 +479,19 @@ impl AsKdl for Spellcasting {
 									);
 								}
 								node.build("capacity")
-							});
+							}, OmitIfEmpty));
 						}
 					}
 					node.build("kind")
 				});
-				if let Some(slots) = &caster.standard_slots {
-					node.push_child_t("slots", slots);
-				}
-				for bonus_slots in &caster.bonus_slots {
-					node.push_child_t("slots", bonus_slots);
-				}
+				node.push_child_t(("slots", &caster.standard_slots));
+				node.push_children_t(("slots", caster.bonus_slots.iter()));
 				node
 			}
 			Operation::AddSource { class_name, spell_ids } => {
 				node.push_entry("add_source");
 				node.push_entry(("class", class_name.clone()));
-				for spell_id in spell_ids {
-					node.push_child_t("spell", spell_id);
-				}
+				node.push_children_t(("spell", spell_ids.iter()));
 				node
 			}
 			Operation::AddPrepared {
@@ -531,17 +523,13 @@ impl AsKdl for Spellcasting {
 					node.push_child({
 						let mut node = NodeBuilder::default();
 						node += selectable.prepared.as_kdl();
-						node.push_child_t("amount", &selectable.selector.amount);
-						if let Some(filter) = &selectable.filter {
-							node.push_child_t("filter", filter);
-						}
+						node.push_child_t(("amount", &selectable.selector.amount));
+						node.push_child_t(("filter", &selectable.filter));
 						node.build("options")
 					});
 				}
 
-				if let Some(limited_uses) = limited_uses {
-					node.push_child_t("limited_uses", limited_uses);
-				}
+				node.push_child_t(("limited_uses", limited_uses));
 
 				node
 			}
@@ -578,7 +566,7 @@ impl AsKdl for PreparedInfo {
 			node.push_entry(("rank", *rank as i64));
 		}
 		if let Some(range) = &self.range {
-			node.push_child_t("range", range);
+			node.push_child_t(("range", range));
 		}
 		node
 	}

@@ -116,7 +116,7 @@ impl FromKdl<NodeContext> for AbilityScoreChange {
 impl AsKdl for AbilityScoreChange {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
-		node.push_child_t("ability", &self.ability);
+		node.push_child_t(("ability", &self.ability));
 		for operation in &self.operations {
 			match operation {
 				AbilityScoreOp::Bonus { value, max_total_score } => {

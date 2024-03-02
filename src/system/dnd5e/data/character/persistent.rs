@@ -12,6 +12,7 @@ use crate::{
 };
 use enum_map::EnumMap;
 use itertools::Itertools;
+use kdlize::OmitIfEmpty;
 use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
 use multimap::MultiMap;
 use serde::{Deserialize, Serialize};
@@ -276,7 +277,7 @@ impl AsKdl for Persistent {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 
-		node.push_child_t("description", &self.description);
+		node.push_child_t(("description", &self.description));
 		self.settings.export_as_kdl(&mut node);
 
 		for (ability, score) in self.ability_scores {
@@ -288,20 +289,16 @@ impl AsKdl for Persistent {
 			);
 		}
 
-		node.push_child_t("hit_points", &self.hit_points);
-		node.push_child_t("inspiration", &self.inspiration);
+		node.push_child_t(("hit_points", &self.hit_points));
+		node.push_child_t(("inspiration", &self.inspiration));
 
-		node.push_child_nonempty_t("inventory", &self.inventory);
-		node.push_child_nonempty_t("spells", &self.selected_spells);
+		node.push_child_t(("inventory", &self.inventory, OmitIfEmpty));
+		node.push_child_t(("spells", &self.selected_spells, OmitIfEmpty));
 
-		for bundle in &self.bundles {
-			node.push_child_nonempty_t("bundle", bundle);
-		}
-		for class in &self.classes {
-			node.push_child_nonempty_t("class", class);
-		}
+		node.push_children_t(("bundle", self.bundles.iter(), OmitIfEmpty));
+		node.push_children_t(("class", self.classes.iter(), OmitIfEmpty));
 
-		node.push_child_nonempty({
+		node.push_child(({
 			let mut node = NodeBuilder::default();
 			for (path, value) in self.selected_values.as_vec() {
 				node.push_child(
@@ -315,7 +312,7 @@ impl AsKdl for Persistent {
 				);
 			}
 			node.build("selections")
-		});
+		}, OmitIfEmpty));
 
 		node
 	}
@@ -346,10 +343,10 @@ impl FromKdl<NodeContext> for HitPoints {
 impl AsKdl for HitPoints {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
-		node.push_child_t("current", &self.current);
-		node.push_child_t("temp", &self.temp);
-		node.push_child_t("failure_saves", &self.failure_saves);
-		node.push_child_t("success_saves", &self.success_saves);
+		node.push_child_t(("current", &self.current));
+		node.push_child_t(("temp", &self.temp));
+		node.push_child_t(("failure_saves", &self.failure_saves));
+		node.push_child_t(("success_saves", &self.success_saves));
 		node
 	}
 }
@@ -551,10 +548,8 @@ impl AsKdl for SelectedSpells {
 
 			let iter_spells = selected_spells.selections.values();
 			let iter_spells = iter_spells.sorted_by(|a, b| a.rank.cmp(&b.rank).then(a.name.cmp(&b.name)));
-			for spell in iter_spells {
-				node_caster.push_child_t("spell", spell);
-			}
-
+			node_caster.push_children_t(("spell", iter_spells));
+			
 			node.push_child(node_caster.build("caster"));
 		}
 		node

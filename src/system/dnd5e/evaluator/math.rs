@@ -100,9 +100,7 @@ impl AsKdl for Math {
 		if let Some(max) = &self.maximum {
 			node.push_entry(("max", *max as i64));
 		}
-		for value in &self.values {
-			node.push_child_t("value", value);
-		}
+		node.push_children_t(("value", self.values.iter()));
 		node
 	}
 }

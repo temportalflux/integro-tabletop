@@ -77,10 +77,8 @@ impl AsKdl for EvaluatedRoll {
 			} => node.with_entry_typed(format!("{amt}d{die}"), "Roll"),
 			// While this one puts the amount and die into child nodes for evaluator serialization
 			Self { amount, die } => {
-				node.push_child_t("amount", amount);
-				if let Some(die) = die {
-					node.push_child_t("die", die);
-				}
+				node.push_child_t(("amount", amount));
+				node.push_child_t(("die", die));
 				node
 			}
 		}

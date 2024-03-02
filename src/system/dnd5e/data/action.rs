@@ -46,9 +46,9 @@ impl FromKdl<NodeContext> for Action {
 impl AsKdl for Action {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = self.activation_kind.as_kdl();
-		node.push_child_opt_t("attack", &self.attack);
-		node.push_child_opt_t("limited_uses", &self.limited_uses);
-		node.push_children_t("condition", self.conditions_to_apply.iter());
+		node.push_child_t(("attack", &self.attack));
+		node.push_child_t(("limited_uses", &self.limited_uses));
+		node.push_children_t(("condition", self.conditions_to_apply.iter()));
 		node
 	}
 }

@@ -168,9 +168,7 @@ impl crate::kdl_ext::AsKdl for Bonus {
 			Self::AttackRoll { bonus, query } => {
 				node.push_entry_typed("Roll", "Attack");
 				node.push_child_entry("bonus", *bonus as i64);
-				for query in query {
-					node.push_child_t("query", query);
-				}
+				node.push_children_t(("query", query.iter()));
 				node
 			}
 			Self::AttackDamage {
@@ -179,21 +177,15 @@ impl crate::kdl_ext::AsKdl for Bonus {
 				query,
 			} => {
 				node.push_entry_typed("Damage", "Attack");
-				node.push_child_t("damage", damage);
-				if let Some(kind) = damage_type {
-					node.push_child_entry("damage_type", kind.to_string());
-				}
-				for query in query {
-					node.push_child_t("query", query);
-				}
+				node.push_child_t(("damage", damage));
+				node.push_child_t(("damage_type", &damage_type.as_ref().map(DamageType::to_string)));
+				node.push_children_t(("query", query.iter()));
 				node
 			}
 			Self::AttackAbilityModifier { ability, query } => {
 				node.push_entry_typed("AbilityModifier", "Attack");
 				node.push_entry_typed(ability.to_string(), "Ability");
-				for query in query {
-					node.push_child_t("query", query);
-				}
+				node.push_children_t(("query", query.iter()));
 				node
 			}
 			Self::ArmorClass { bonus, context } => {
@@ -206,10 +198,8 @@ impl crate::kdl_ext::AsKdl for Bonus {
 			}
 			Self::SpellDamage { damage, query } => {
 				node.push_entry_typed("Damage", "Spell");
-				node.push_child_t("damage", damage);
-				for query in query {
-					node.push_child_t("query", query);
-				}
+				node.push_child_t(("damage", damage));
+				node.push_children_t(("query", query.iter()));
 				node
 			}
 		}

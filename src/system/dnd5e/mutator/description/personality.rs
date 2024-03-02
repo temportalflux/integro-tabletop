@@ -6,6 +6,7 @@ use crate::{
 	},
 	utility::{Mutator, NotInList},
 };
+use kdlize::OmitIfEmpty;
 use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
 
 #[derive(Clone, PartialEq, Debug)]
@@ -59,9 +60,7 @@ impl AsKdl for SuggestedPersonality {
 			PersonalityKind::Bond => "Bond",
 			PersonalityKind::Flaw => "Flaw",
 		});
-		for option in &self.options {
-			node.push_child_nonempty_t("option", option);
-		}
+		node.push_children_t(("option", self.options.iter(), OmitIfEmpty));
 		node
 	}
 }

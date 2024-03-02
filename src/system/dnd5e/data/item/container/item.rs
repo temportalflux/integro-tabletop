@@ -12,7 +12,7 @@ use crate::{
 	utility::MutatorGroup,
 };
 use async_recursion::async_recursion;
-use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
+use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder, OmitIfEmpty};
 use std::{collections::HashMap, path::Path};
 use uuid::Uuid;
 
@@ -312,9 +312,9 @@ impl<T: AsKdl> AsKdl for ItemContainer<T> {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 
-		node.push_child_nonempty_t("wallet", &self.wallet);
+		node.push_child_t(("wallet", &self.wallet, OmitIfEmpty));
 
-		node.push_child_nonempty({
+		node.push_child(({
 			let mut node = NodeBuilder::default();
 			if let Some(count) = &self.capacity.count {
 				node.push_entry(("count", *count as i64));
@@ -326,14 +326,12 @@ impl<T: AsKdl> AsKdl for ItemContainer<T> {
 				node.push_entry(("volume", *volume));
 			}
 			node.build("capacity")
-		});
+		}, OmitIfEmpty));
 
 		if let Some(restriction) = &self.restriction {
 			let mut restriction_node = NodeBuilder::default();
-			for tag in &restriction.tags {
-				restriction_node.push_child_t("tag", tag);
-			}
-			node.push_child_nonempty(restriction_node.build("restriction"));
+			restriction_node.push_children_t(("tag", restriction.tags.iter()));
+			node.push_child((restriction_node.build("restriction"), OmitIfEmpty));
 		}
 
 		for (id, count) in &self.item_templates {

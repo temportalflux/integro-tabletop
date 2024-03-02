@@ -80,9 +80,7 @@ impl AsKdl for HasCondition {
 		if self.inverted {
 			node.push_entry(("inverted", true));
 		}
-		for filter in &self.filters {
-			node.push_child_t("filter", filter);
-		}
+		node.push_children_t(("filter", self.filters.iter()));
 		node
 	}
 }
@@ -120,10 +118,10 @@ impl AsKdl for ConditionFilter {
 		for property in &self.properties {
 			match property {
 				ConditionProperty::Id(id) => {
-					node.push_child_t("id", id);
+					node.push_child_t(("id", id));
 				}
 				ConditionProperty::Name(name) => {
-					node.push_child_t("name", name);
+					node.push_child_t(("name", name));
 				}
 			}
 		}

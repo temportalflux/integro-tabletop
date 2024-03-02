@@ -3,7 +3,7 @@ use crate::{
 	system::dnd5e::data::{character::Character, description, roll::Roll},
 	utility::Mutator,
 };
-use kdlize::{AsKdl, FromKdl, NodeBuilder};
+use kdlize::{AsKdl, FromKdl, NodeBuilder, OmitIfEmpty};
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct AddSize {
@@ -108,7 +108,7 @@ impl FromKdl<NodeContext> for AddSize {
 impl AsKdl for AddSize {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
-		node.push_child_nonempty({
+		node.push_child(({
 			let mut node = NodeBuilder::default();
 			for formula in &self.height {
 				match formula {
@@ -122,8 +122,8 @@ impl AsKdl for AddSize {
 				}
 			}
 			node.build("height")
-		});
-		node.push_child_nonempty({
+		}, OmitIfEmpty));
+		node.push_child(({
 			let mut node = NodeBuilder::default();
 			for formula in &self.weight {
 				match formula {
@@ -139,7 +139,7 @@ impl AsKdl for AddSize {
 				}
 			}
 			node.build("weight")
-		});
+		}, OmitIfEmpty));
 		node
 	}
 }

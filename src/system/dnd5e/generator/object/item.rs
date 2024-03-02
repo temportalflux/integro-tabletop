@@ -12,7 +12,7 @@ use crate::{
 
 use kdlize::{
 	ext::{DocumentExt, ValueExt},
-	AsKdl, FromKdl, NodeBuilder,
+	AsKdl, FromKdl, NodeBuilder, OmitIfEmpty,
 };
 use std::{collections::BTreeSet, str::FromStr};
 
@@ -90,11 +90,9 @@ impl FromKdl<NodeContext> for Generator {
 impl AsKdl for Generator {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
-		node.push_child_nonempty_t("source", &self.id);
-		node.push_child_t("filter", &self.filter);
-		for variant in &self.variants {
-			node.push_child_nonempty_t("variant", variant);
-		}
+		node.push_child_t(("source", &self.id, OmitIfEmpty));
+		node.push_child_t(("filter", &self.filter));
+		node.push_children_t(("variant", self.variants.iter(), OmitIfEmpty));
 		node
 	}
 }
@@ -141,7 +139,7 @@ impl AsKdl for ItemFilter {
 		let mut node = NodeBuilder::default();
 
 		for tag in &self.tags {
-			node.push_child_t("tag", tag);
+			node.push_child_t(("tag", tag));
 		}
 
 		if let Some(armor_kinds) = &self.armor {
@@ -182,7 +180,7 @@ impl AsKdl for ItemVariant {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 		for extension in &self.0 {
-			node.push_child_t("extend", extension);
+			node.push_child_t(("extend", extension));
 		}
 		node
 	}
@@ -230,7 +228,7 @@ impl AsKdl for ItemExtension {
 			Self::Description(sections) => {
 				node.push_entry("description");
 				for section in sections {
-					node.push_child_t("section", section);
+					node.push_child_t(("section", section));
 				}
 				node
 			}
@@ -243,12 +241,8 @@ impl AsKdl for ItemExtension {
 				if let Some(required) = requires_attunement {
 					node.push_entry(("requires_attunement", *required));
 				}
-				if let Some(armor) = armor {
-					node.push_child_t("armor", armor);
-				}
-				for mutator in mutators {
-					node.push_child_t("mutator", mutator);
-				}
+				node.push_child_t(("armor", armor));
+				node.push_children_t(("mutator", mutators.iter()));
 				node
 			}
 		}
@@ -267,7 +261,7 @@ impl AsKdl for ArmorExtension {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 		if let Some(formula) = &self.formula {
-			node.push_child_t("formula", formula);
+			node.push_child_t(("formula", formula));
 		}
 		node
 	}

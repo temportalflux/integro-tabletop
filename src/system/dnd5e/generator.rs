@@ -72,7 +72,6 @@ mod test {
 	use super::*;
 
 	mod generator {
-		use ::kdl::KdlDocument;
 		use super::{
 			kdl::KdlVariant,
 			object::item::{ArmorExtension, ArmorFormulaExtension, ItemExtension, ItemFilter, ItemVariant},
@@ -89,6 +88,7 @@ mod test {
 			},
 			utility::selector,
 		};
+		use ::kdl::KdlDocument;
 
 		static NODE_NAME: &str = "generator";
 

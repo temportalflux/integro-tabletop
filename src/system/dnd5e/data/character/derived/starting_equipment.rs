@@ -44,7 +44,7 @@ impl StartingEquipment {
 	pub fn to_kdl_vec(entries: &Vec<Self>) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 		for entry in entries {
-			node.push_child_t(entry.node_name(), entry);
+			node.push_child_t((entry.node_name(), entry));
 		}
 		node
 	}

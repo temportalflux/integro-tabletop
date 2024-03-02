@@ -154,16 +154,14 @@ impl AsKdl for LimitedUses {
 		let mut node = NodeBuilder::default();
 		match self {
 			Self::Usage(use_counter) => {
-				node.push_child_t("max_uses", &use_counter.max_uses);
-				if let Some(reset_on) = &use_counter.reset_on {
-					node.push_child_t("reset_on", reset_on);
-				}
+				node.push_child_t(("max_uses", &use_counter.max_uses));
+				node.push_child_t(("reset_on", &use_counter.reset_on));
 				node
 			}
 			Self::Consumer { resource, cost } => {
 				node.push_child_entry("resource", resource.display().to_string());
 				if *cost > 1 {
-					node.push_child_t("cost", cost);
+					node.push_child_t(("cost", cost));
 				}
 				node
 			}

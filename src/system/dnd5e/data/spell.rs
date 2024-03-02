@@ -1,6 +1,7 @@
 use super::{description, AreaOfEffect};
 use crate::kdl_ext::NodeContext;
 use crate::system::{core::SourceId, dnd5e::SystemComponent};
+use kdlize::OmitIfEmpty;
 use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
 
 mod casting_time;
@@ -106,33 +107,19 @@ impl AsKdl for Spell {
 		let mut node = NodeBuilder::default();
 
 		node.push_entry(("name", self.name.clone()));
-		node.push_child_nonempty_t("source", &self.id);
+		node.push_child_t(("source", &self.id, OmitIfEmpty));
 
-		if let Some(school) = &self.school_tag {
-			node.push_child_nonempty_t("school", school);
-		}
-		for tag in &self.tags {
-			node.push_child_nonempty_t("tag", tag);
-		}
-		node.push_child_t("rank", &self.rank);
-
-		node.push_child_t("casting-time", &self.casting_time);
-		node.push_child_t("range", &self.range);
-		if let Some(area_of_effect) = &self.area_of_effect {
-			node.push_child_t("area_of_effect", area_of_effect);
-		}
-
+		node.push_child_t(("school", &self.school_tag, OmitIfEmpty));
+		node.push_children_t(("tag", self.tags.iter(), OmitIfEmpty));
+		node.push_child_t(("rank", &self.rank));
+		node.push_child_t(("casting-time", &self.casting_time));
+		node.push_child_t(("range", &self.range));
+		node.push_child_t(("area_of_effect", &self.area_of_effect));
 		node += self.components.as_kdl();
-
-		node.push_child_t("duration", &self.duration);
-		if let Some(check) = &self.check {
-			node.push_child_t("check", check);
-		}
-		if let Some(damage) = &self.damage {
-			node.push_child_t("damage", damage);
-		}
-
-		node.push_child_nonempty_t("description", &self.description);
+		node.push_child_t(("duration", &self.duration));
+		node.push_child_t(("check", &self.check));
+		node.push_child_t(("damage", &self.damage));
+		node.push_child_t(("description", &self.description, OmitIfEmpty));
 
 		node
 	}

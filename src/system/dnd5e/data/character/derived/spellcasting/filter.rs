@@ -40,15 +40,9 @@ impl FromKdl<NodeContext> for Filter {
 impl AsKdl for Filter {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
-		for rank in self.ranks.iter().sorted() {
-			node.push_child_t("rank", rank);
-		}
-		if let Some(tag) = &self.school_tag {
-			node.push_child_t("school", tag);
-		}
-		for tag in self.tags.iter().sorted() {
-			node.push_child_t("tag", tag);
-		}
+		node.push_children_t(("rank", self.ranks.iter().sorted()));
+		node.push_child_t(("school", &self.school_tag));
+		node.push_children_t(("tag", self.tags.iter().sorted()));
 		node
 	}
 }

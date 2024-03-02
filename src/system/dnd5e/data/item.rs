@@ -7,6 +7,7 @@ use crate::system::{
 		SystemComponent,
 	},
 };
+use kdlize::OmitIfEmpty;
 use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
 use std::{collections::HashMap, str::FromStr};
 
@@ -203,11 +204,8 @@ impl AsKdl for Item {
 		let mut node = NodeBuilder::default();
 
 		node.push_entry(("name", self.name.clone()));
-
-		node.push_child_nonempty_t("source", &self.id);
-		if let Some(rarity) = &self.rarity {
-			node.push_child_entry("rarity", rarity.to_string());
-		}
+		node.push_child_t(("source", &self.id, OmitIfEmpty));
+		node.push_child_t(("rarity", &self.rarity.as_ref().map(Rarity::to_string)));
 
 		if self.weight > 0.0 {
 			let mut stack_weight = self.weight as f64;
@@ -218,38 +216,29 @@ impl AsKdl for Item {
 			node.push_entry(("weight", stack_weight));
 		}
 
-		node.push_child_nonempty_t("description", &self.description);
-		node.push_child_nonempty_t("worth", &self.worth);
-
-		if let Some(notes) = &self.notes {
-			node.push_child_t("notes", notes);
-		}
-
-		for tag in &self.tags {
-			node.push_child_t("tag", tag);
-		}
+		node.push_child_t(("description", &self.description, OmitIfEmpty));
+		node.push_child_t(("worth", &self.worth, OmitIfEmpty));
+		node.push_child_t(("notes", &self.notes));
+		node.push_children_t(("tag", self.tags.iter()));
 
 		if self.kind != Kind::default() {
-			node.push_child_t("kind", &self.kind);
+			node.push_child_t(("kind", &self.kind));
 		}
 
 		if let Some(items) = &self.items {
 			let templates = {
 				let mut node = NodeBuilder::default();
-				for item_ref in &self.item_refs {
-					node.push_child_t("item", item_ref);
-				}
+				node.push_children_t(("item", self.item_refs.iter()));
 				node.build("templates")
 			};
 			node.push_child({
 				let mut node = items.as_kdl();
-				node.push_child_nonempty(templates);
+				node.push_child((templates, OmitIfEmpty));
 				node.build("items")
 			});
 		}
-		if let Some(spells) = &self.spells {
-			node.push_child_t("spells", spells);
-		}
+
+		node.push_child_t(("spells", &self.spells));
 
 		node
 	}

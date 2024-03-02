@@ -135,7 +135,7 @@ impl AsKdl for Feature {
 
 		node.push_entry(("name", self.name.clone()));
 		if self.description != description::Info::default() {
-			node.push_child_t("description", &self.description);
+			node.push_child_t(("description", &self.description));
 		}
 
 		if self.collapsed {
@@ -144,14 +144,9 @@ impl AsKdl for Feature {
 		if let Some(parent) = &self.parent {
 			node.push_entry(("parent", parent.display().to_string()));
 		}
-
-		for mutator in &self.mutators {
-			node.push_child_t("mutator", mutator);
-		}
-
-		if let Some(action) = &self.action {
-			node.push_child_t("action", action);
-		}
+		
+		node.push_children_t(("mutator", self.mutators.iter()));
+		node.push_child_t(("action", &self.action));
 
 		node
 	}

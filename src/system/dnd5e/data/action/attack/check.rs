@@ -69,7 +69,7 @@ impl AsKdl for AttackCheckKind {
 				match proficient {
 					Value::Fixed(false) => {}
 					Value::Fixed(true) => node.push_entry(("proficient", true)),
-					value => node.push_child_t("proficient", value),
+					value => node.push_child_t(("proficient", value)),
 				}
 				node
 			}

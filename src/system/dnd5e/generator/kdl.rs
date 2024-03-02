@@ -1,7 +1,7 @@
 use crate::{kdl_ext::NodeContext, system::core::SourceId};
 use derivative::Derivative;
 use kdl::{KdlDocument, KdlValue};
-use kdlize::{AsKdl, FromKdl, NodeBuilder};
+use kdlize::{AsKdl, FromKdl, NodeBuilder, OmitIfEmpty};
 use std::collections::BTreeMap;
 
 #[derive(Clone, Derivative)]
@@ -45,7 +45,7 @@ impl FromKdl<NodeContext> for Generator {
 impl AsKdl for Generator {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
-		node.push_child_nonempty_t("source", &self.id);
+		node.push_child_t(("source", &self.id, OmitIfEmpty));
 		// pushing the base means cloning all of the nodes in the document,
 		// as children of a "base" node that we build
 		node.push_child({
@@ -56,9 +56,7 @@ impl AsKdl for Generator {
 			node.build("base")
 		});
 		// pushing variants by delegating to the variant struct
-		for variant in &self.variants {
-			node.push_child_nonempty_t("variant", variant);
-		}
+		node.push_children_t(("variant", self.variants.iter(), OmitIfEmpty));
 		node
 	}
 }

@@ -10,7 +10,7 @@ use crate::{
 	},
 	utility::{MutatorGroup, NotInList},
 };
-use kdlize::{AsKdl, FromKdl, NodeBuilder};
+use kdlize::{AsKdl, FromKdl, NodeBuilder, OmitIfEmpty};
 use std::{
 	collections::HashMap,
 	path::{Path, PathBuf},
@@ -173,7 +173,7 @@ impl AsKdl for Bundle {
 			node.push_entry(("display_as_feature", true));
 		}
 
-		node.push_child_nonempty_t("source", &self.id);
+		node.push_child_t(("source", &self.id, OmitIfEmpty));
 
 		for requirement in &self.requirements {
 			let kdl = match requirement {
@@ -190,15 +190,13 @@ impl AsKdl for Bundle {
 		}
 
 		if self.description != description::Info::default() {
-			node.push_child_t("description", &self.description);
+			node.push_child_t(("description", &self.description));
 		}
 		if self.limit > 1 {
 			node.push_entry(("limit", self.limit as i64));
 		}
 
-		for mutator in &self.mutators {
-			node.push_child_t("mutator", mutator);
-		}
+		node.push_children_t(("mutator", self.mutators.iter()));
 
 		node
 	}

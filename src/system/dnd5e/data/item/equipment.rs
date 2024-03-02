@@ -118,25 +118,23 @@ impl AsKdl for Equipment {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 
-		node.push_child_opt_t("armor", &self.armor);
+		node.push_child_t(("armor", &self.armor));
 
-		node.push_child_opt(self.shield.as_ref().map(|shield| {
+		node.push_child(self.shield.as_ref().map(|shield| {
 			NodeBuilder::default()
-			.with_entry(("bonus", *shield as i64))
-			.build("shield")
+				.with_entry(("bonus", *shield as i64))
+				.build("shield")
 		}));
 
-		node.push_child_opt_t("weapon", &self.weapon);
+		node.push_child_t(("weapon", &self.weapon));
 
 		if let Some(_attunement) = &self.attunement {
-			// TODO: Attunement node.push_child_t("attunement", attunement);
+			// TODO: Attunement node.push_child_t(("attunement", attunement));
 		}
 
-		node.push_child_opt_t("criteria", &self.criteria);
+		node.push_child_t(("criteria", &self.criteria));
 
-		for mutator in &self.mutators {
-			node.push_child_t("mutator", mutator);
-		}
+		node.push_children_t(("mutator", self.mutators.iter()));
 
 		node
 	}

@@ -4,6 +4,7 @@ use crate::{
 	system::dnd5e::BoxedEvaluator,
 	utility::{selector, NotInList},
 };
+use kdlize::OmitIfEmpty;
 use kdlize::{
 	ext::{DocumentExt, EntryExt, ValueExt},
 	AsKdl, FromKdl, NodeBuilder,
@@ -119,17 +120,9 @@ impl AsKdl for Info {
 		}
 
 		let mut node = NodeBuilder::default();
-
-		if let Some(short) = &self.short {
-			node.push_child_t("short", short);
-		}
-
-		for section in &self.sections {
-			node.push_child_t("section", section);
-		}
-
+		node.push_child_t(("short", &self.short));
+		node.push_children_t(("section", self.sections.iter()));
 		node += self.format_args.as_kdl();
-
 		node
 	}
 }
@@ -246,13 +239,8 @@ impl AsKdl for Section {
 		}
 
 		node += self.content.as_kdl();
-
-		for section in &self.children {
-			node.push_child_nonempty_t("section", section);
-		}
-
+		node.push_children_t(("section", self.children.iter(), OmitIfEmpty));
 		node += self.format_args.as_kdl();
-
 		node
 	}
 }
@@ -337,7 +325,7 @@ impl AsKdl for SectionContent {
 				rows,
 			} => {
 				node.push_entry(("table", true));
-				node.push_child_opt(headers.as_ref().map(|headers| {
+				node.push_child(headers.as_ref().map(|headers| {
 					let mut node = NodeBuilder::default();
 					for name in headers {
 						node.push_entry(name.clone());

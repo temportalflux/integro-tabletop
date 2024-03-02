@@ -7,6 +7,7 @@ use crate::{
 	utility::{selector, Mutator},
 };
 use itertools::Itertools;
+use kdlize::OmitIfEmpty;
 use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
 use std::collections::{BTreeSet, HashMap, HashSet};
 
@@ -224,12 +225,8 @@ impl AsKdl for PickN {
 			};
 			let mut node_option = NodeBuilder::default();
 			node_option.push_entry(name.clone());
-			if let Some(desc) = &option.description {
-				node_option.push_child_nonempty_t("description", desc);
-			}
-			for mutator in &option.mutators {
-				node_option.push_child_t("mutator", mutator);
-			}
+			node_option.push_child_t(("description", &option.description, OmitIfEmpty));
+			node_option.push_children_t(("mutator", option.mutators.iter()));
 			node.push_child(node_option.build("option"));
 		}
 

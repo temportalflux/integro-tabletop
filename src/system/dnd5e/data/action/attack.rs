@@ -52,16 +52,10 @@ impl AsKdl for Attack {
 		if let Some(classification) = &self.classification {
 			node.push_entry(("class", classification.clone()));
 		}
-		if let Some(kind) = &self.kind {
-			node.push_child_t("kind", kind);
-		}
-		node.push_child_t("check", &self.check);
-		if let Some(area_of_effect) = &self.area_of_effect {
-			node.push_child_t("area_of_effect", area_of_effect);
-		}
-		if let Some(damage) = &self.damage {
-			node.push_child_t("damage", damage);
-		}
+		node.push_child_t(("kind", &self.kind));
+		node.push_child_t(("check", &self.check));
+		node.push_child_t(("area_of_effect", &self.area_of_effect));
+		node.push_child_t(("damage", &self.damage));
 		node
 	}
 }

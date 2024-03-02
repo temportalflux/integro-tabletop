@@ -10,6 +10,7 @@ use crate::system::{
 		Indirect, Spell,
 	},
 };
+use kdlize::OmitIfEmpty;
 use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
 use std::path::{Path, PathBuf};
 
@@ -166,14 +167,9 @@ impl AsKdl for SpellContainer {
 			node.push_entry(("prepare_from", true));
 		}
 
-		node.push_child_nonempty_t("capacity", &self.capacity);
-		if let Some(casting) = &self.casting {
-			node.push_child_t("casting", casting);
-		}
-
-		for container_spell in &self.spells {
-			node.push_child_t("spell", container_spell);
-		}
+		node.push_child_t(("capacity", &self.capacity, OmitIfEmpty));
+		node.push_child_t(("casting", &self.casting));
+		node.push_children_t(("spell", self.spells.iter()));
 
 		node
 	}
@@ -202,7 +198,7 @@ impl AsKdl for Capacity {
 			node.push_entry(*num as i64);
 		}
 
-		node.push_child_nonempty({
+		node.push_child(({
 			let mut node = NodeBuilder::default();
 			if let Some(num) = &self.rank_min {
 				node.push_entry(("min", *num as i64));
@@ -214,7 +210,7 @@ impl AsKdl for Capacity {
 				node.push_entry(("total", *num as i64));
 			}
 			node.build("rank")
-		});
+		}, OmitIfEmpty));
 
 		node
 	}
@@ -255,12 +251,8 @@ impl AsKdl for Casting {
 			node.push_child_entry("consume_spell", true);
 		}
 
-		if let Some(num) = &self.save_dc {
-			node.push_child_t("save_dc", num);
-		}
-		if let Some(num) = &self.attack_bonus {
-			node.push_child_t("atk_bonus", num);
-		}
+		node.push_child_t(("save_dc", &self.save_dc));
+		node.push_child_t(("atk_bonus", &self.attack_bonus));
 
 		node
 	}
