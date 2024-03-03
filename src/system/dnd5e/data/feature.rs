@@ -144,7 +144,7 @@ impl AsKdl for Feature {
 		if let Some(parent) = &self.parent {
 			node.push_entry(("parent", parent.display().to_string()));
 		}
-		
+
 		node.push_children_t(("mutator", self.mutators.iter()));
 		node.push_child_t(("action", &self.action));
 

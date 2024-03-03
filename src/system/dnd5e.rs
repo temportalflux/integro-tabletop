@@ -19,6 +19,9 @@ type FnMetadataFromKdl =
 	Box<dyn Fn(crate::kdl_ext::NodeReader<'_>) -> anyhow::Result<serde_json::Value> + 'static + Send + Sync>;
 type FnReserializeKdl =
 	Box<dyn Fn(crate::kdl_ext::NodeReader<'_>) -> anyhow::Result<kdl::KdlNode> + 'static + Send + Sync>;
+
+/// A factory which parses a block (root-level kdl node) into some concrete type, and exposes methods for calling
+/// specific functions on that type (converting it to database record metadata, or reserializing into text).
 pub struct ComponentFactory {
 	metadata_from_kdl: FnMetadataFromKdl,
 	reserialize_kdl: FnReserializeKdl,
@@ -49,6 +52,8 @@ impl ComponentFactory {
 		(*self.reserialize_kdl)(node)
 	}
 }
+
+/// A registry of all of the root-level nodes (aka blocks) which could be parsed from kdl.
 #[derive(Default)]
 pub struct ComponentRegistry(HashMap<&'static str, Arc<ComponentFactory>>);
 impl ComponentRegistry {
@@ -66,10 +71,19 @@ impl ComponentRegistry {
 	}
 }
 
+/// A block (root-level kdl node) which exposes functionality for
+/// constructing metadata about the struct, for embedding in the database record.
 pub trait SystemComponent {
 	fn to_metadata(self) -> serde_json::Value
 	where
 		Self: Sized;
+}
+
+impl SystemComponent for crate::utility::GenericGenerator {
+	fn to_metadata(self) -> serde_json::Value {
+		// TODO: id (SourceId) and kind (<Generator as NodeId>::id) fields
+		serde_json::json!(null)
+	}
 }
 
 pub fn component_registry() -> ComponentRegistry {
@@ -82,12 +96,13 @@ pub fn component_registry() -> ComponentRegistry {
 	registry.register::<data::Condition>();
 	registry.register::<data::item::Item>();
 	registry.register::<data::Spell>();
-	registry.register::<generator::Generator>();
+	registry.register::<crate::utility::GenericGenerator>();
 	registry
 }
 
 pub fn node_registry() -> NodeRegistry {
 	use evaluator::*;
+	use generator::*;
 	use mutator::*;
 	let mut registry = NodeRegistry::default();
 
@@ -123,6 +138,11 @@ pub fn node_registry() -> NodeRegistry {
 	registry.register_evaluator::<HasCondition>();
 	registry.register_evaluator::<IsProficientWith>();
 	registry.register_evaluator::<Math>();
+
+	// Order matters here! Block generators are first because they can make other generators.
+	// This order instructs the priority queue to the order in which generators are processed.
+	registry.register_generator::<BlockGenerator>();
+	registry.register_generator::<ItemGenerator>();
 
 	registry
 }

@@ -67,7 +67,8 @@ impl DownloadFileUpdates {
 				| ChangedFileStatus::Changed => {
 					let content = self.client.get_file_content(args).await?;
 					let parsed_record = self.parse_content(system, path_in_repo, file_id, content);
-					let parsed_record = parsed_record.map_err(|err| Error::InvalidResponse(format!("{err:?}").into()))?;
+					let parsed_record =
+						parsed_record.map_err(|err| Error::InvalidResponse(format!("{err:?}").into()))?;
 					if let Some(record) = parsed_record {
 						entries.push(record);
 					}
@@ -109,7 +110,9 @@ impl DownloadFileUpdates {
 		if document.nodes().len() > 1 {
 			return Err(TooManyEntries(source_id.to_string()).into());
 		}
-		let Some(node) = document.nodes().first() else { return Ok(None); };
+		let Some(node) = document.nodes().first() else {
+			return Ok(None);
+		};
 
 		let category = node.name().value().to_owned();
 		let metadata = system_reg.parse_metadata(node, &source_id)?;
@@ -122,6 +125,7 @@ impl DownloadFileUpdates {
 			metadata,
 			kdl: node.to_string(),
 			file_id: Some(file_id.clone()),
+			generator_id: None,
 			generated: false,
 		};
 

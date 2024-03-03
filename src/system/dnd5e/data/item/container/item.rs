@@ -314,19 +314,22 @@ impl<T: AsKdl> AsKdl for ItemContainer<T> {
 
 		node.push_child_t(("wallet", &self.wallet, OmitIfEmpty));
 
-		node.push_child(({
-			let mut node = NodeBuilder::default();
-			if let Some(count) = &self.capacity.count {
-				node.push_entry(("count", *count as i64));
-			}
-			if let Some(weight) = &self.capacity.weight {
-				node.push_entry(("weight", *weight));
-			}
-			if let Some(volume) = &self.capacity.volume {
-				node.push_entry(("volume", *volume));
-			}
-			node.build("capacity")
-		}, OmitIfEmpty));
+		node.push_child((
+			{
+				let mut node = NodeBuilder::default();
+				if let Some(count) = &self.capacity.count {
+					node.push_entry(("count", *count as i64));
+				}
+				if let Some(weight) = &self.capacity.weight {
+					node.push_entry(("weight", *weight));
+				}
+				if let Some(volume) = &self.capacity.volume {
+					node.push_entry(("volume", *volume));
+				}
+				node.build("capacity")
+			},
+			OmitIfEmpty,
+		));
 
 		if let Some(restriction) = &self.restriction {
 			let mut restriction_node = NodeBuilder::default();

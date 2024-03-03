@@ -1,9 +1,11 @@
-mod evaluator;
 use std::ops::AddAssign;
 
-pub use evaluator::*;
 mod error;
 pub use error::*;
+mod evaluator;
+pub use evaluator::*;
+mod generator;
+pub use generator::*;
 mod mutator;
 pub use mutator::*;
 pub mod selector;

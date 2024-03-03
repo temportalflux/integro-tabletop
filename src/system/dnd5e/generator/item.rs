@@ -17,12 +17,17 @@ use kdlize::{
 use std::{collections::BTreeSet, str::FromStr};
 
 #[derive(Clone, PartialEq, Debug)]
-pub struct Generator {
+pub struct ItemGenerator {
 	pub(in super::super) id: SourceId,
 	// the filter applied to search for the item objects
 	pub(in super::super) filter: ItemFilter,
 	pub(in super::super) variants: Vec<ItemVariant>,
 }
+
+kdlize::impl_kdl_node!(ItemGenerator, "item");
+crate::impl_trait_eq!(ItemGenerator);
+
+impl crate::utility::Generator for ItemGenerator {}
 
 // NOTE: always exclude generated objects
 #[derive(Clone, PartialEq, Debug)]
@@ -71,13 +76,13 @@ pub struct ArmorFormulaExtension {
 	pub(in super::super) base_bonus: Option<i32>,
 }
 
-impl Generator {
+impl ItemGenerator {
 	pub fn id(&self) -> &SourceId {
 		&self.id
 	}
 }
 
-impl FromKdl<NodeContext> for Generator {
+impl FromKdl<NodeContext> for ItemGenerator {
 	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let id = crate::kdl_ext::query_source_req(node)?;
@@ -87,7 +92,7 @@ impl FromKdl<NodeContext> for Generator {
 	}
 }
 
-impl AsKdl for Generator {
+impl AsKdl for ItemGenerator {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 		node.push_child_t(("source", &self.id, OmitIfEmpty));
@@ -282,5 +287,150 @@ impl AsKdl for ArmorFormulaExtension {
 			node.push_entry(("base_bonus", *base_bonus as i64));
 		}
 		node
+	}
+}
+
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	mod generator {
+		use super::*;
+		use crate::{
+			kdl_ext::{test_utils::*, NodeContext},
+			system::{
+				core::{ModuleId, NodeRegistry, SourceId},
+				dnd5e::{
+					data::{description, item::armor, DamageType, Rarity},
+					mutator::{AddDefense, Defense},
+				},
+			},
+			utility::{selector, GenericGenerator},
+		};
+
+		static NODE_NAME: &str = "generator";
+
+		fn node_ctx() -> NodeContext {
+			NodeContext::registry({
+				let mut node_reg = NodeRegistry::default();
+				node_reg.register_mutator::<AddDefense>();
+				node_reg.register_generator::<ItemGenerator>();
+				node_reg
+			})
+		}
+
+		#[test]
+		fn item_simple() -> anyhow::Result<()> {
+			let doc = "
+				|generator \"item\" {
+				|    source \"local://homebrew@dnd5e/items/generator.kdl\"
+				|    filter {
+				|        tag \"Arrow\"
+				|    }
+				|    variant {
+				|        extend \"name\" \"{name} +1\"
+				|        extend \"rarity\" \"Rare\"
+				|        extend \"description\" {
+				|            section \"Does +1 extra damage (probably).\"
+				|        }
+				|    }
+				|}
+			";
+			let data = ItemGenerator {
+				id: SourceId {
+					module: Some(ModuleId::Local {
+						name: "homebrew".into(),
+					}),
+					system: Some("dnd5e".into()),
+					path: "items/generator.kdl".into(),
+					..Default::default()
+				},
+				filter: ItemFilter {
+					tags: ["Arrow".into()].into(),
+					armor: None,
+					rarity: [].into(),
+				},
+				variants: vec![ItemVariant(vec![
+					ItemExtension::Name("{name} +1".into()),
+					ItemExtension::Rarity(Some(Rarity::Rare)),
+					ItemExtension::Description(vec![description::Section {
+						content: description::SectionContent::Body("Does +1 extra damage (probably).".into()),
+						..Default::default()
+					}]),
+				])],
+			};
+			let generator = GenericGenerator::from(data);
+			assert_eq_fromkdl!(GenericGenerator, doc, generator);
+			assert_eq_askdl!(&generator, doc);
+			Ok(())
+		}
+
+		#[test]
+		fn item_equipment() -> anyhow::Result<()> {
+			let doc = "
+				|generator \"item\" {
+				|    source \"local://homebrew@dnd5e/items/generator.kdl\"
+				|    filter {
+				|        armor \"Medium\" \"Heavy\"
+				|        rarity \"None\" \"Common\"
+				|    }
+				|    variant {
+				|        extend \"name\" \"{name} Armor of Magic Resistance\"
+				|        extend \"rarity\" \"Legendary\"
+				|        extend \"description\" {
+				|            section \"You have resistance to magic damage while you wear this armor.\"
+				|        }
+				|        extend \"equipment\" requires_attunement=true {
+				|            armor {
+				|                formula base_bonus=5
+				|            }
+				|            mutator \"add_defense\" \"Resistance\" (DamageType)\"Specific\" \"Psychic\"
+				|        }
+				|    }
+				|}
+			";
+			let data = ItemGenerator {
+				id: SourceId {
+					module: Some(ModuleId::Local {
+						name: "homebrew".into(),
+					}),
+					system: Some("dnd5e".into()),
+					path: "items/generator.kdl".into(),
+					..Default::default()
+				},
+				filter: ItemFilter {
+					tags: [].into(),
+					armor: Some([armor::Kind::Medium, armor::Kind::Heavy].into()),
+					rarity: [None, Some(Rarity::Common)].into(),
+				},
+				variants: vec![ItemVariant(vec![
+					ItemExtension::Name("{name} Armor of Magic Resistance".into()),
+					ItemExtension::Rarity(Some(Rarity::Legendary)),
+					ItemExtension::Description(vec![description::Section {
+						content: description::SectionContent::Body(
+							"You have resistance to magic damage while you wear this armor.".into(),
+						),
+						..Default::default()
+					}]),
+					ItemExtension::Equipment {
+						requires_attunement: Some(true),
+						armor: Some(ArmorExtension {
+							formula: Some(ArmorFormulaExtension { base_bonus: Some(5) }),
+						}),
+						mutators: [AddDefense {
+							defense: Defense::Resistance,
+							damage_type: Some(selector::Value::Specific(DamageType::Psychic)),
+							context: None,
+						}
+						.into()]
+						.into(),
+					},
+				])],
+			};
+			let generator = GenericGenerator::from(data);
+			assert_eq_fromkdl!(GenericGenerator, doc, generator);
+			assert_eq_askdl!(&generator, doc);
+			Ok(())
+		}
 	}
 }

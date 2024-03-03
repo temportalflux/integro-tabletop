@@ -28,6 +28,11 @@ impl Database {
 		)
 	}
 
+	pub fn read(&self) -> Result<Transaction, Error> {
+		self.0
+			.transaction(&[Entry::store_id(), Module::store_id()], idb::TransactionMode::ReadOnly)
+	}
+
 	pub fn read_entries(&self) -> Result<Transaction, Error> {
 		self.0.read_only::<Entry>()
 	}

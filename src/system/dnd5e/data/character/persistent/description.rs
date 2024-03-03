@@ -114,13 +114,16 @@ impl AsKdl for Description {
 		if self.weight != 0 {
 			node.push_child_t(("weight", &self.weight));
 		}
-		node.push_child(({
-			let mut node = NodeBuilder::default();
-			for (kind, items) in &self.personality {
-				node.push_children_t((kind.node_id(), items.iter()));
-			}
-			node.build("personality")
-		}, OmitIfEmpty));
+		node.push_child((
+			{
+				let mut node = NodeBuilder::default();
+				for (kind, items) in &self.personality {
+					node.push_children_t((kind.node_id(), items.iter()));
+				}
+				node.build("personality")
+			},
+			OmitIfEmpty,
+		));
 		if !self.appearance.is_empty() {
 			node.push_child_t(("appearance", &self.appearance));
 		}

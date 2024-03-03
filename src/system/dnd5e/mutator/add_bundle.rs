@@ -14,8 +14,8 @@ use crate::{
 	utility::{selector, Mutator},
 	GeneralError,
 };
-use kdlize::{NodeId, OmitIfEmpty};
 use kdlize::{ext::ValueExt, AsKdl, FromKdl, NodeBuilder};
+use kdlize::{NodeId, OmitIfEmpty};
 use std::{collections::BTreeMap, str::FromStr};
 
 #[derive(Clone, Debug, PartialEq)]

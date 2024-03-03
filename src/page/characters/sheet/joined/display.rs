@@ -181,6 +181,7 @@ pub fn Display(ViewProps { swap_view }: &ViewProps) -> Html {
 					metadata: Default::default(),
 					kdl: Default::default(),
 					file_id: None,
+					generator_id: None,
 					generated: false,
 				}),
 			};

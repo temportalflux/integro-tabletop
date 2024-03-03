@@ -298,21 +298,24 @@ impl AsKdl for Persistent {
 		node.push_children_t(("bundle", self.bundles.iter(), OmitIfEmpty));
 		node.push_children_t(("class", self.classes.iter(), OmitIfEmpty));
 
-		node.push_child(({
-			let mut node = NodeBuilder::default();
-			for (path, value) in self.selected_values.as_vec() {
-				node.push_child(
-					NodeBuilder::default()
-						.with_entry({
-							let path_str = path.display().to_string();
-							path_str.replace("\\", "/")
-						})
-						.with_entry(value.clone())
-						.build("value"),
-				);
-			}
-			node.build("selections")
-		}, OmitIfEmpty));
+		node.push_child((
+			{
+				let mut node = NodeBuilder::default();
+				for (path, value) in self.selected_values.as_vec() {
+					node.push_child(
+						NodeBuilder::default()
+							.with_entry({
+								let path_str = path.display().to_string();
+								path_str.replace("\\", "/")
+							})
+							.with_entry(value.clone())
+							.build("value"),
+					);
+				}
+				node.build("selections")
+			},
+			OmitIfEmpty,
+		));
 
 		node
 	}
@@ -549,7 +552,7 @@ impl AsKdl for SelectedSpells {
 			let iter_spells = selected_spells.selections.values();
 			let iter_spells = iter_spells.sorted_by(|a, b| a.rank.cmp(&b.rank).then(a.name.cmp(&b.name)));
 			node_caster.push_children_t(("spell", iter_spells));
-			
+
 			node.push_child(node_caster.build("caster"));
 		}
 		node

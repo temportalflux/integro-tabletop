@@ -188,22 +188,7 @@ fn BrowsedItemCard(props: &GeneralProp<ItemLocation>) -> Html {
 		move |container_id| (id.clone(), container_id)
 	});
 
-	let card_id = format!(
-		"{}{}{}",
-		match &item.id.module {
-			None => String::new(),
-			Some(ModuleId::Local { name }) => format!("{name}_"),
-			Some(ModuleId::Github { user_org, repository }) => format!("{user_org}_{repository}_"),
-		},
-		{
-			let path = item.id.path.with_extension("");
-			path.to_str().unwrap().replace("/", "_")
-		},
-		match item.id.variant_idx {
-			None => String::new(),
-			Some(idx) => format!("_{idx}"),
-		}
-	);
+	let card_id = item.id.unversioned().ref_id();
 	let batch_size = match &item.kind {
 		item::Kind::Simple { count } => Some(*count),
 		_ => None,

@@ -198,19 +198,22 @@ impl AsKdl for Capacity {
 			node.push_entry(*num as i64);
 		}
 
-		node.push_child(({
-			let mut node = NodeBuilder::default();
-			if let Some(num) = &self.rank_min {
-				node.push_entry(("min", *num as i64));
-			}
-			if let Some(num) = &self.rank_max {
-				node.push_entry(("max", *num as i64));
-			}
-			if let Some(num) = &self.rank_total {
-				node.push_entry(("total", *num as i64));
-			}
-			node.build("rank")
-		}, OmitIfEmpty));
+		node.push_child((
+			{
+				let mut node = NodeBuilder::default();
+				if let Some(num) = &self.rank_min {
+					node.push_entry(("min", *num as i64));
+				}
+				if let Some(num) = &self.rank_max {
+					node.push_entry(("max", *num as i64));
+				}
+				if let Some(num) = &self.rank_total {
+					node.push_entry(("total", *num as i64));
+				}
+				node.build("rank")
+			},
+			OmitIfEmpty,
+		));
 
 		node
 	}

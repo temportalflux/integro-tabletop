@@ -11,6 +11,8 @@ mod system;
 pub use system::*;
 mod system_category;
 pub use system_category::*;
+mod system_variants;
+pub use system_variants::*;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Entry {
@@ -22,6 +24,12 @@ pub struct Entry {
 	pub metadata: serde_json::Value,
 	pub kdl: String,
 	pub file_id: Option<String>,
+	// The stringify SourceId of the generator that created this variant.
+	// The object which was used as a basis is this entry's id w/o the variant index.
+	// If the generator id matches this entry id w/o variant index, then this object
+	// had no external basis (the generator creates object entries from scratch).
+	pub generator_id: Option<String>,
+	// marker for variants in order for idb to index (idb cannot check if `generator_id` is non-empty)
 	pub generated: bool,
 }
 

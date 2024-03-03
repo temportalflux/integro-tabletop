@@ -1,6 +1,9 @@
 use crate::{
 	kdl_ext::NodeContext,
-	utility::{ArcEvaluator, ArcMutator, Evaluator, GenericEvaluator, GenericMutator, Mutator},
+	utility::{
+		ArcEvaluator, ArcGenerator, ArcMutator, Evaluator, Generator, GenericEvaluator, GenericGenerator,
+		GenericMutator, Mutator,
+	},
 };
 use kdlize::{FromKdl, NodeId};
 use std::{
@@ -37,6 +40,8 @@ impl PartialEq for ArcNodeRegistry {
 pub struct NodeRegistry {
 	mutators: HashMap<&'static str, MutatorFactory>,
 	evaluators: HashMap<&'static str, EvaluatorFactory>,
+	generators: HashMap<&'static str, GeneratorFactory>,
+	generator_order: Vec<&'static str>,
 }
 
 impl Default for NodeRegistry {
@@ -44,6 +49,8 @@ impl Default for NodeRegistry {
 		Self {
 			mutators: HashMap::new(),
 			evaluators: HashMap::new(),
+			generators: HashMap::new(),
+			generator_order: Vec::new(),
 		}
 	}
 }
@@ -63,8 +70,18 @@ impl NodeRegistry {
 		E: Evaluator + NodeId + FromKdl<NodeContext> + 'static + Send + Sync,
 		anyhow::Error: From<E::Error>,
 	{
-		assert!(!self.mutators.contains_key(E::id()));
+		assert!(!self.evaluators.contains_key(E::id()));
 		self.evaluators.insert(E::id(), EvaluatorFactory::new::<E>());
+	}
+
+	pub fn register_generator<G>(&mut self)
+	where
+		G: Generator + NodeId + FromKdl<NodeContext> + 'static + Send + Sync,
+		anyhow::Error: From<<G as FromKdl<NodeContext>>::Error>,
+	{
+		assert!(!self.generators.contains_key(G::id()));
+		self.generator_order.push(G::id());
+		self.generators.insert(G::id(), GeneratorFactory::new::<G>());
 	}
 
 	pub fn get_mutator_factory(&self, id: &str) -> anyhow::Result<&MutatorFactory> {
@@ -77,6 +94,16 @@ impl NodeRegistry {
 		self.evaluators
 			.get(id)
 			.ok_or(MissingRegistration("evaluator", id.to_owned()).into())
+	}
+
+	pub fn get_generator_factory(&self, id: &str) -> anyhow::Result<&GeneratorFactory> {
+		self.generators
+			.get(id)
+			.ok_or(MissingRegistration("generator", id.to_owned()).into())
+	}
+
+	pub fn get_generator_order(&self) -> &[&'static str] {
+		&self.generator_order
 	}
 }
 
@@ -189,6 +216,33 @@ impl EvaluatorFactory {
 			.downcast::<ArcEvaluator<C, T>>()
 			.expect("failed to unpack boxed arc-evaluator");
 		Ok(GenericEvaluator::new(*eval))
+	}
+}
+
+pub struct GeneratorFactory {
+	fn_from_kdl: Box<dyn Fn(&mut crate::kdl_ext::NodeReader<'_>) -> anyhow::Result<BoxAny> + 'static + Send + Sync>,
+}
+
+impl GeneratorFactory {
+	pub fn new<M>() -> Self
+	where
+		M: Generator + FromKdl<NodeContext> + 'static + Send + Sync,
+		anyhow::Error: From<M::Error>,
+	{
+		Self {
+			fn_from_kdl: Box::new(|node| {
+				let arc_eval: ArcGenerator = Arc::new(M::from_kdl(node)?);
+				Ok(Box::new(arc_eval))
+			}),
+		}
+	}
+
+	pub fn from_kdl<'doc>(&self, node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<GenericGenerator> {
+		let any = (self.fn_from_kdl)(node)?;
+		let eval = any
+			.downcast::<ArcGenerator>()
+			.expect("failed to unpack boxed arc-evaluator");
+		Ok(GenericGenerator::new(*eval))
 	}
 }
 

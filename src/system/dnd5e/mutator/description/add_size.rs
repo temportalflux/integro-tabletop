@@ -108,38 +108,44 @@ impl FromKdl<NodeContext> for AddSize {
 impl AsKdl for AddSize {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
-		node.push_child(({
-			let mut node = NodeBuilder::default();
-			for formula in &self.height {
-				match formula {
-					FormulaComponent::Base(value) => {
-						node.push_entry(("base", *value as i64));
-					}
-					FormulaComponent::Bonus(roll) => {
-						node.push_entry(("bonus", roll.to_string()));
-					}
-					FormulaComponent::WeightMultiplier(_) => {}
-				}
-			}
-			node.build("height")
-		}, OmitIfEmpty));
-		node.push_child(({
-			let mut node = NodeBuilder::default();
-			for formula in &self.weight {
-				match formula {
-					FormulaComponent::Base(value) => {
-						node.push_entry(("base", *value as i64));
-					}
-					FormulaComponent::Bonus(roll) => {
-						node.push_entry(("bonus", roll.to_string()));
-					}
-					FormulaComponent::WeightMultiplier(roll) => {
-						node.push_entry(("multiplier", roll.to_string()));
+		node.push_child((
+			{
+				let mut node = NodeBuilder::default();
+				for formula in &self.height {
+					match formula {
+						FormulaComponent::Base(value) => {
+							node.push_entry(("base", *value as i64));
+						}
+						FormulaComponent::Bonus(roll) => {
+							node.push_entry(("bonus", roll.to_string()));
+						}
+						FormulaComponent::WeightMultiplier(_) => {}
 					}
 				}
-			}
-			node.build("weight")
-		}, OmitIfEmpty));
+				node.build("height")
+			},
+			OmitIfEmpty,
+		));
+		node.push_child((
+			{
+				let mut node = NodeBuilder::default();
+				for formula in &self.weight {
+					match formula {
+						FormulaComponent::Base(value) => {
+							node.push_entry(("base", *value as i64));
+						}
+						FormulaComponent::Bonus(roll) => {
+							node.push_entry(("bonus", roll.to_string()));
+						}
+						FormulaComponent::WeightMultiplier(roll) => {
+							node.push_entry(("multiplier", roll.to_string()));
+						}
+					}
+				}
+				node.build("weight")
+			},
+			OmitIfEmpty,
+		));
 		node
 	}
 }

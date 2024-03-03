@@ -169,7 +169,9 @@ async fn main() -> anyhow::Result<()> {
 				source_id.to_string()
 			);
 		}
-		let Some(node) = document.nodes().first() else { continue; };
+		let Some(node) = document.nodes().first() else {
+			continue;
+		};
 
 		let node_name = node.name().value();
 		let Some(comp_factory) = comp_reg.get_factory(node_name).cloned() else {

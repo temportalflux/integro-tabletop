@@ -18,8 +18,8 @@ use crate::{
 	},
 	utility::{selector, Mutator, NotInList, Value},
 };
-use kdlize::{NodeId, OmitIfEmpty};
 use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
+use kdlize::{NodeId, OmitIfEmpty};
 use std::{collections::BTreeMap, str::FromStr};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -442,18 +442,21 @@ impl AsKdl for Spellcasting {
 					});
 				}
 				if let Some(level_map) = &caster.cantrip_capacity {
-					node.push_child(({
-						let mut node = NodeBuilder::default();
-						for (level, amt) in level_map {
-							node.push_child(
-								NodeBuilder::default()
-									.with_entry(*level as i64)
-									.with_entry(*amt as i64)
-									.build("level"),
-							);
-						}
-						node.build("cantrips")
-					}, OmitIfEmpty));
+					node.push_child((
+						{
+							let mut node = NodeBuilder::default();
+							for (level, amt) in level_map {
+								node.push_child(
+									NodeBuilder::default()
+										.with_entry(*level as i64)
+										.with_entry(*amt as i64)
+										.build("level"),
+								);
+							}
+							node.build("cantrips")
+						},
+						OmitIfEmpty,
+					));
 				}
 				node.push_child({
 					let mut node = NodeBuilder::default();
@@ -468,18 +471,21 @@ impl AsKdl for Spellcasting {
 						}
 						spellcasting::Capacity::Known(level_map) => {
 							node.push_entry("Known");
-							node.push_child(({
-								let mut node = NodeBuilder::default();
-								for (level, amt) in level_map {
-									node.push_child(
-										NodeBuilder::default()
-											.with_entry(*level as i64)
-											.with_entry(*amt as i64)
-											.build("level"),
-									);
-								}
-								node.build("capacity")
-							}, OmitIfEmpty));
+							node.push_child((
+								{
+									let mut node = NodeBuilder::default();
+									for (level, amt) in level_map {
+										node.push_child(
+											NodeBuilder::default()
+												.with_entry(*level as i64)
+												.with_entry(*amt as i64)
+												.build("level"),
+										);
+									}
+									node.build("capacity")
+								},
+								OmitIfEmpty,
+							));
 						}
 					}
 					node.build("kind")
