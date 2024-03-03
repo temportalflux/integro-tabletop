@@ -2,13 +2,13 @@ use super::Feature;
 use crate::{
 	kdl_ext::NodeContext,
 	system::{
-		core::SourceId,
 		dnd5e::{
 			data::{character::Character, description, Ability},
-			BoxedMutator, SystemBlock,
+			BoxedMutator,
 		},
+		mutator, Block, SourceId,
 	},
-	utility::{MutatorGroup, NotInList},
+	utility::NotInList,
 };
 use kdlize::{AsKdl, FromKdl, NodeBuilder, OmitIfEmpty};
 use std::{
@@ -45,7 +45,7 @@ pub struct FeatureConfig {
 	pub parent_path: Option<PathBuf>,
 }
 
-impl MutatorGroup for Bundle {
+impl mutator::Group for Bundle {
 	type Target = Character;
 
 	fn set_data_path(&self, parent: &std::path::Path) {
@@ -77,7 +77,7 @@ impl MutatorGroup for Bundle {
 
 kdlize::impl_kdl_node!(Bundle, "bundle");
 
-impl SystemBlock for Bundle {
+impl Block for Bundle {
 	fn to_metadata(self) -> serde_json::Value {
 		let requirements = {
 			let mut requirements = HashMap::new();

@@ -28,14 +28,14 @@ pub(crate) mod test {
 		($eval_ty:ty) => {
 			test_utils!(
 				$eval_ty,
-				crate::system::core::NodeRegistry::default_with_eval::<$eval_ty>()
+				crate::system::generics::Registry::default_with_eval::<$eval_ty>()
 			);
 		};
 		($eval_ty:ty, $node_reg:expr) => {
 			static NODE_NAME: &str = "evaluator";
-			type Target = crate::utility::GenericEvaluator<
-				<$eval_ty as crate::utility::Evaluator>::Context,
-				<$eval_ty as crate::utility::Evaluator>::Item,
+			type Target = crate::system::evaluator::Generic<
+				<$eval_ty as crate::system::Evaluator>::Context,
+				<$eval_ty as crate::system::Evaluator>::Item,
 			>;
 
 			fn node_ctx() -> crate::kdl_ext::NodeContext {
@@ -46,7 +46,7 @@ pub(crate) mod test {
 				Target::from_kdl(&mut node)
 			}
 
-			fn as_kdl<E: crate::utility::Evaluator>(data: &E) -> crate::kdl_ext::NodeBuilder {
+			fn as_kdl<E: crate::system::Evaluator>(data: &E) -> crate::kdl_ext::NodeBuilder {
 				crate::kdl_ext::NodeBuilder::default()
 					.with_entry(data.get_id())
 					.with_extension(data.as_kdl())

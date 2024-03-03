@@ -1,7 +1,8 @@
 use crate::kdl_ext::NodeContext;
 use crate::{
 	system::dnd5e::{data::character::Character, Value},
-	utility::{Dependencies, Evaluator, NotInList},
+	system::Evaluator,
+	utility::{Dependencies, NotInList},
 };
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
 
@@ -192,18 +193,18 @@ mod test {
 		use crate::{
 			kdl_ext::test_utils::*,
 			system::{
-				core::NodeRegistry,
 				dnd5e::{
 					data::Ability,
 					evaluator::{test::test_utils, GetAbilityModifier, GetLevelInt},
 				},
+				generics,
 			},
 		};
 
 		test_utils!(Math, node_reg());
 
-		fn node_reg() -> NodeRegistry {
-			let mut node_reg = NodeRegistry::default();
+		fn node_reg() -> generics::Registry {
+			let mut node_reg = generics::Registry::default();
 			node_reg.register_evaluator::<Math>();
 			node_reg.register_evaluator::<GetAbilityModifier>();
 			node_reg.register_evaluator::<GetLevelInt>();

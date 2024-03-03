@@ -4,7 +4,8 @@ use crate::{
 		character::{Character, PersonalityKind},
 		description,
 	},
-	utility::{Mutator, NotInList},
+	system::Mutator,
+	utility::NotInList,
 };
 use kdlize::OmitIfEmpty;
 use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};

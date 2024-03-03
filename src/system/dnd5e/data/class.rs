@@ -2,10 +2,10 @@ use super::{character::Character, roll::Die};
 use crate::kdl_ext::NodeContext;
 use crate::{
 	system::{
-		core::SourceId,
-		dnd5e::{mutator::AddMaxHitPoints, BoxedMutator, SystemBlock, Value},
+		dnd5e::{mutator::AddMaxHitPoints, BoxedMutator, Value},
+		mutator, Block, SourceId,
 	},
-	utility::{selector, MutatorGroup},
+	utility::selector,
 };
 use kdlize::OmitIfEmpty;
 use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
@@ -53,7 +53,7 @@ impl Class {
 	}
 }
 
-impl MutatorGroup for Class {
+impl mutator::Group for Class {
 	type Target = Character;
 
 	fn set_data_path(&self, parent: &std::path::Path) {
@@ -78,7 +78,7 @@ impl MutatorGroup for Class {
 	}
 }
 
-impl SystemBlock for Class {
+impl Block for Class {
 	fn to_metadata(self) -> serde_json::Value {
 		serde_json::json!({
 			"name": self.name.clone(),
@@ -214,7 +214,7 @@ impl<'a> LevelWithIndex<'a> {
 		format!("level{:02}", self.0 + 1)
 	}
 }
-impl<'a> MutatorGroup for LevelWithIndex<'a> {
+impl<'a> mutator::Group for LevelWithIndex<'a> {
 	type Target = Character;
 
 	fn set_data_path(&self, parent: &Path) {
@@ -250,7 +250,7 @@ pub struct Subclass {
 	pub levels: Vec<Level>,
 }
 
-impl SystemBlock for Subclass {
+impl Block for Subclass {
 	fn to_metadata(self) -> serde_json::Value {
 		serde_json::json!({
 			"name": &self.name,
@@ -270,7 +270,7 @@ impl Subclass {
 	}
 }
 
-impl MutatorGroup for Subclass {
+impl mutator::Group for Subclass {
 	type Target = Character;
 
 	fn set_data_path(&self, parent: &Path) {

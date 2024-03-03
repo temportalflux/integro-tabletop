@@ -5,7 +5,7 @@ use crate::{
 	},
 	database::{Database, Module},
 	storage::autosync,
-	system::core::ModuleId,
+	system::ModuleId,
 	task,
 	utility::InputExt,
 };

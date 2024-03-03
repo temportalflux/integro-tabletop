@@ -1,7 +1,7 @@
 use crate::kdl_ext::NodeContext;
 use crate::{
 	system::dnd5e::data::{character::Character, description},
-	utility::Mutator,
+	system::Mutator,
 };
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
 

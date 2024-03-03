@@ -1,5 +1,5 @@
 use crate::kdl_ext::NodeContext;
-use crate::system::{core::SourceId, dnd5e::data::Spell};
+use crate::system::{dnd5e::data::Spell, SourceId};
 use itertools::Itertools;
 use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
 use std::collections::HashSet;

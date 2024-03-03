@@ -2,13 +2,12 @@ use crate::kdl_ext::NodeContext;
 use crate::{
 	path_map::PathMap,
 	system::{
-		core::SourceId,
-		dnd5e::{
-			data::{character::Character, item::container::Inventory, Ability, Bundle, Class, Condition, Rest, Spell},
-			SystemBlock,
+		dnd5e::data::{
+			character::Character, item::container::Inventory, Ability, Bundle, Class, Condition, Rest, Spell,
 		},
+		mutator, Block, SourceId,
 	},
-	utility::{MutatorGroup, NotInList},
+	utility::NotInList,
 };
 use enum_map::EnumMap;
 use itertools::Itertools;
@@ -47,7 +46,7 @@ pub struct Persistent {
 	pub inspiration: bool,
 	pub settings: Settings,
 }
-impl MutatorGroup for Persistent {
+impl mutator::Group for Persistent {
 	type Target = Character;
 
 	fn set_data_path(&self, parent: &std::path::Path) {
@@ -187,7 +186,7 @@ pub struct PersistentMetadata {
 	pub classes: Vec<String>,
 	pub bundles: MultiMap<String, String>,
 }
-impl SystemBlock for Persistent {
+impl Block for Persistent {
 	fn to_metadata(self) -> serde_json::Value {
 		let mut level = 0;
 		let mut classes = Vec::with_capacity(self.classes.len());
@@ -462,7 +461,7 @@ impl Conditions {
 		self.by_id.contains_key(id)
 	}
 }
-impl MutatorGroup for Conditions {
+impl mutator::Group for Conditions {
 	type Target = Character;
 
 	fn set_data_path(&self, parent: &Path) {

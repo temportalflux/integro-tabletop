@@ -9,11 +9,11 @@ use crate::{
 	page::characters::sheet::CharacterHandle,
 	page::characters::sheet::MutatorImpact,
 	system::{
-		core::SourceId,
 		dnd5e::{
 			data::{character::Persistent, Condition, Indirect},
 			DnD5e,
 		},
+		SourceId,
 	},
 	utility::InputExt,
 };
@@ -66,7 +66,7 @@ fn Modal() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 
 	let add_condition_section = {
-		use crate::system::core::System;
+		use crate::system::System;
 		let conditions_handle = use_query_all_typed::<Condition>(
 			true,
 			Some(QueryAllArgs {

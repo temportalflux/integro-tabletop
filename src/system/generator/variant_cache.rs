@@ -1,4 +1,4 @@
-use crate::{database::Entry, system::core::SourceId};
+use crate::{database::Entry, system::SourceId};
 use multimap::MultiMap;
 use std::collections::HashMap;
 

@@ -1,4 +1,4 @@
-use crate::system::core::ModuleId;
+use crate::system::ModuleId;
 use database::Record;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;

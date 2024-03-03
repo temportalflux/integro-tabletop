@@ -4,7 +4,8 @@ use crate::{
 		data::{character::Character, description},
 		BoxedCriteria, BoxedMutator,
 	},
-	utility::{Mutator, NotInList},
+	system::Mutator,
+	utility::NotInList,
 };
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::str::FromStr;
@@ -159,18 +160,18 @@ mod test {
 		use crate::{
 			kdl_ext::test_utils::*,
 			system::{
-				core::NodeRegistry,
 				dnd5e::{
 					evaluator::HasArmorEquipped,
 					mutator::{test::test_utils, Bonus},
 				},
+				generics,
 			},
 		};
 
 		test_utils!(ApplyIf, node_reg());
 
-		fn node_reg() -> NodeRegistry {
-			let mut node_reg = NodeRegistry::default();
+		fn node_reg() -> generics::Registry {
+			let mut node_reg = generics::Registry::default();
 			node_reg.register_mutator::<ApplyIf>();
 			node_reg.register_evaluator::<HasArmorEquipped>();
 			node_reg.register_mutator::<Bonus>();

@@ -1,5 +1,5 @@
 use super::Entry;
-use crate::{kdl_ext::NodeContext, system::core::NodeRegistry};
+use crate::{kdl_ext::NodeContext, system::generics};
 use database::Cursor;
 use futures_util::StreamExt;
 use kdlize::FromKdl;
@@ -148,7 +148,7 @@ pub struct QueryDeserialize<Output> {
 	#[allow(dead_code)]
 	pub db: super::Database,
 	pub query: Query,
-	pub node_reg: Arc<NodeRegistry>,
+	pub node_reg: Arc<generics::Registry>,
 	pub marker: std::marker::PhantomData<Output>,
 }
 impl<Output> futures_util::stream::Stream for QueryDeserialize<Output>

@@ -3,12 +3,12 @@ use crate::{
 	components::{modal, Spinner},
 	database::Database,
 	system::{
-		core::{ModuleId, SourceId, System},
 		dnd5e::{
 			components::GeneralProp,
 			data::character::{Persistent, PersistentMetadata},
-			DnD5e, SystemBlock,
+			DnD5e,
 		},
+		Block, ModuleId, SourceId, System,
 	},
 	task::Signal,
 	utility::InputExt,
@@ -209,8 +209,8 @@ fn CharacterList(GeneralProp { value: on_delete }: &GeneralProp<Callback<ModalDe
 	use crate::{
 		components::database::{use_query_all, QueryAllArgs, QueryStatus},
 		system::{
-			core::System,
 			dnd5e::{data::character::Persistent, DnD5e},
+			System,
 		},
 	};
 	use kdlize::NodeId;

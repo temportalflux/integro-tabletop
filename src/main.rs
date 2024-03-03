@@ -92,10 +92,7 @@ fn DatabaseProvider(props: &html::ChildrenProps) -> Html {
 #[cfg(target_family = "windows")]
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-	use crate::system::{
-		core::{ModuleId, SourceId},
-		dnd5e,
-	};
+	use crate::system::{dnd5e, ModuleId, SourceId};
 	use anyhow::Context;
 	use std::{collections::BTreeMap, sync::Arc};
 

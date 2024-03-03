@@ -1,4 +1,3 @@
-use super::GenericEvaluator;
 use crate::kdl_ext::NodeContext;
 use crate::system::dnd5e::data::character::Character;
 use anyhow::Context;
@@ -11,7 +10,7 @@ use std::{collections::HashSet, fmt::Debug, ops::Deref};
 #[derive(Clone)]
 pub enum Value<C, V> {
 	Fixed(V),
-	Evaluated(GenericEvaluator<C, V>),
+	Evaluated(crate::system::evaluator::Generic<C, V>),
 }
 
 impl<C, V> Default for Value<C, V>

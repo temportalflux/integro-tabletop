@@ -1,5 +1,5 @@
 use self::data::character::Character;
-use super::{Block, BlockRegistry, NodeRegistry};
+use super::{block, generics};
 use std::sync::Arc;
 
 pub mod components;
@@ -8,21 +8,13 @@ pub mod evaluator;
 pub mod generator;
 pub mod mutator;
 
-pub type BoxedCriteria = crate::utility::GenericEvaluator<Character, Result<(), String>>;
-pub type BoxedEvaluator<V> = crate::utility::GenericEvaluator<Character, V>;
-pub type BoxedMutator = crate::utility::GenericMutator<Character>;
+pub type BoxedCriteria = crate::system::evaluator::Generic<Character, Result<(), String>>;
+pub type BoxedEvaluator<V> = crate::system::evaluator::Generic<Character, V>;
+pub type BoxedMutator = crate::system::mutator::Generic<Character>;
 pub type Value<T> = crate::utility::Value<Character, T>;
-pub use crate::system::Block as SystemBlock;
 
-impl Block for crate::utility::GenericGenerator {
-	fn to_metadata(self) -> serde_json::Value {
-		// TODO: id (SourceId) and kind (<Generator as NodeId>::id) fields
-		serde_json::json!(null)
-	}
-}
-
-pub fn block_registry() -> BlockRegistry {
-	let mut registry = BlockRegistry::default();
+pub fn block_registry() -> block::Registry {
+	let mut registry = block::Registry::default();
 	registry.register::<data::character::DefaultsBlock>();
 	registry.register::<data::character::Persistent>();
 	registry.register::<data::Bundle>();
@@ -31,15 +23,15 @@ pub fn block_registry() -> BlockRegistry {
 	registry.register::<data::Condition>();
 	registry.register::<data::item::Item>();
 	registry.register::<data::Spell>();
-	registry.register::<crate::utility::GenericGenerator>();
+	registry.register::<crate::system::generator::Generic>();
 	registry
 }
 
-pub fn node_registry() -> NodeRegistry {
+pub fn node_registry() -> generics::Registry {
 	use evaluator::*;
 	use generator::*;
 	use mutator::*;
-	let mut registry = NodeRegistry::default();
+	let mut registry = generics::Registry::default();
 
 	registry.register_mutator::<AbilityScoreChange>();
 	registry.register_mutator::<AddArmorClassFormula>();
@@ -83,8 +75,8 @@ pub fn node_registry() -> NodeRegistry {
 }
 
 pub struct DnD5e {
-	blocks: BlockRegistry,
-	generics: Arc<NodeRegistry>,
+	blocks: block::Registry,
+	generics: Arc<generics::Registry>,
 }
 
 impl DnD5e {
@@ -105,11 +97,11 @@ impl super::System for DnD5e {
 		Self::id()
 	}
 
-	fn blocks(&self) -> &BlockRegistry {
+	fn blocks(&self) -> &block::Registry {
 		&self.blocks
 	}
 
-	fn generics(&self) -> &Arc<NodeRegistry> {
+	fn generics(&self) -> &Arc<generics::Registry> {
 		&self.generics
 	}
 }

@@ -1,7 +1,7 @@
 use crate::{
 	kdl_ext::NodeContext,
-	system::core::SourceId,
-	utility::{PinFuture, SystemObjectList},
+	system::{generator::SystemObjectList, SourceId},
+	utility::PinFuture,
 };
 use database::Transaction;
 use derivative::Derivative;
@@ -24,7 +24,7 @@ pub struct BlockGenerator {
 kdlize::impl_kdl_node!(BlockGenerator, "block");
 crate::impl_trait_eq!(BlockGenerator);
 
-impl crate::utility::Generator for BlockGenerator {
+impl crate::system::Generator for BlockGenerator {
 	fn source_id(&self) -> &SourceId {
 		&self.id
 	}
@@ -138,8 +138,7 @@ mod test {
 		use super::*;
 		use crate::{
 			kdl_ext::{test_utils::*, NodeContext},
-			system::core::{ModuleId, NodeRegistry, SourceId},
-			utility::GenericGenerator,
+			system::{generator, generics, ModuleId, SourceId},
 		};
 		use ::kdl::KdlDocument;
 
@@ -147,7 +146,7 @@ mod test {
 
 		fn node_ctx() -> NodeContext {
 			NodeContext::registry({
-				let mut node_reg = NodeRegistry::default();
+				let mut node_reg = generics::Registry::default();
 				node_reg.register_generator::<BlockGenerator>();
 				node_reg
 			})
@@ -211,8 +210,8 @@ mod test {
 				]
 				.into(),
 			};
-			let generator = GenericGenerator::from(data);
-			assert_eq_fromkdl!(GenericGenerator, doc, generator);
+			let generator = generator::Generic::from(data);
+			assert_eq_fromkdl!(generator::Generic, doc, generator);
 			assert_eq_askdl!(&generator, doc);
 			Ok(())
 		}

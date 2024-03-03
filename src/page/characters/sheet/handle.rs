@@ -2,8 +2,8 @@ use crate::{
 	database::{Database, FetchError},
 	system::{
 		self,
-		core::SourceId,
 		dnd5e::data::character::{Character, DefaultsBlock, ObjectCacheProvider, Persistent},
+		SourceId,
 	},
 	task,
 };
@@ -16,7 +16,7 @@ use yew::prelude::*;
 #[hook]
 pub fn use_character(id: SourceId) -> CharacterHandle {
 	let database = use_context::<Database>().unwrap();
-	let system_depot = use_context::<system::Depot>().unwrap();
+	let system_depot = use_context::<system::Registry>().unwrap();
 	let task_dispatch = use_context::<task::Dispatch>().unwrap();
 
 	let state = use_state(|| CharacterState::default());
@@ -53,7 +53,7 @@ enum CharacterInitializationError {
 #[derive(Clone)]
 pub struct CharacterHandle {
 	database: Database,
-	system_depot: system::Depot,
+	system_depot: system::Registry,
 	task_dispatch: task::Dispatch,
 	state: UseStateHandle<CharacterState>,
 	is_recompiling: Rc<AtomicBool>,

@@ -61,12 +61,12 @@ pub(crate) mod test {
 		($mut_ty:ty) => {
 			test_utils!(
 				$mut_ty,
-				crate::system::core::NodeRegistry::default_with_mut::<$mut_ty>()
+				crate::system::generics::Registry::default_with_mut::<$mut_ty>()
 			);
 		};
 		($mut_ty:ty, $node_reg:expr) => {
 			static NODE_NAME: &str = "mutator";
-			type Target = crate::utility::GenericMutator<<$mut_ty as crate::utility::Mutator>::Target>;
+			type Target = crate::system::mutator::Generic<<$mut_ty as crate::system::Mutator>::Target>;
 
 			fn node_ctx() -> crate::kdl_ext::NodeContext {
 				crate::kdl_ext::NodeContext::registry($node_reg)
@@ -76,7 +76,7 @@ pub(crate) mod test {
 				Target::from_kdl(&mut node)
 			}
 
-			fn as_kdl<E: crate::utility::Mutator>(data: &E) -> crate::kdl_ext::NodeBuilder {
+			fn as_kdl<E: crate::system::Mutator>(data: &E) -> crate::kdl_ext::NodeBuilder {
 				crate::kdl_ext::NodeBuilder::default()
 					.with_entry(data.get_id())
 					.with_extension(data.as_kdl())

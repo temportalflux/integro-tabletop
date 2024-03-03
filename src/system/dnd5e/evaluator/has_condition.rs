@@ -1,7 +1,8 @@
 use crate::kdl_ext::NodeContext;
+use crate::system::Evaluator;
 use crate::system::{
-	core::SourceId,
 	dnd5e::data::{character::Character, Condition},
+	SourceId,
 };
 use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
 use std::str::FromStr;
@@ -15,7 +16,7 @@ pub struct HasCondition {
 crate::impl_trait_eq!(HasCondition);
 kdlize::impl_kdl_node!(HasCondition, "has_condition");
 
-impl crate::utility::Evaluator for HasCondition {
+impl Evaluator for HasCondition {
 	type Context = Character;
 	type Item = Result<(), String>;
 
@@ -231,7 +232,7 @@ mod test {
 	// TODO: Test has_condition evaluate
 	mod evaluate {
 		use super::*;
-		use crate::{system::dnd5e::data::character::Persistent, utility::Evaluator};
+		use crate::{system::dnd5e::data::character::Persistent, system::Evaluator};
 
 		fn character(conditions: Vec<Condition>) -> Character {
 			let mut persistent = Persistent::default();

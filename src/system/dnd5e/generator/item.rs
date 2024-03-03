@@ -1,13 +1,14 @@
 use crate::{
 	kdl_ext::NodeContext,
 	system::{
-		core::SourceId,
 		dnd5e::{
 			data::{description, item::armor, Rarity},
 			BoxedMutator,
 		},
+		generator::SystemObjectList,
+		SourceId,
 	},
-	utility::{NotInList, PinFuture, SystemObjectList},
+	utility::{NotInList, PinFuture},
 };
 
 use database::Transaction;
@@ -28,7 +29,7 @@ pub struct ItemGenerator {
 kdlize::impl_kdl_node!(ItemGenerator, "item");
 crate::impl_trait_eq!(ItemGenerator);
 
-impl crate::utility::Generator for ItemGenerator {
+impl crate::system::Generator for ItemGenerator {
 	fn source_id(&self) -> &SourceId {
 		&self.id
 	}
@@ -310,20 +311,20 @@ mod test {
 		use crate::{
 			kdl_ext::{test_utils::*, NodeContext},
 			system::{
-				core::{ModuleId, NodeRegistry, SourceId},
 				dnd5e::{
 					data::{description, item::armor, DamageType, Rarity},
 					mutator::{AddDefense, Defense},
 				},
+				generator, generics, ModuleId, SourceId,
 			},
-			utility::{selector, GenericGenerator},
+			utility::selector,
 		};
 
 		static NODE_NAME: &str = "generator";
 
 		fn node_ctx() -> NodeContext {
 			NodeContext::registry({
-				let mut node_reg = NodeRegistry::default();
+				let mut node_reg = generics::Registry::default();
 				node_reg.register_mutator::<AddDefense>();
 				node_reg.register_generator::<ItemGenerator>();
 				node_reg
@@ -370,8 +371,8 @@ mod test {
 					}]),
 				])],
 			};
-			let generator = GenericGenerator::from(data);
-			assert_eq_fromkdl!(GenericGenerator, doc, generator);
+			let generator = generator::Generic::from(data);
+			assert_eq_fromkdl!(generator::Generic, doc, generator);
 			assert_eq_askdl!(&generator, doc);
 			Ok(())
 		}
@@ -438,8 +439,8 @@ mod test {
 					},
 				])],
 			};
-			let generator = GenericGenerator::from(data);
-			assert_eq_fromkdl!(GenericGenerator, doc, generator);
+			let generator = generator::Generic::from(data);
+			assert_eq_fromkdl!(generator::Generic, doc, generator);
 			assert_eq_askdl!(&generator, doc);
 			Ok(())
 		}

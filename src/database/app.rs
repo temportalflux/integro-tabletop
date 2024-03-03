@@ -1,4 +1,4 @@
-use crate::system::core::ModuleId;
+use crate::system::{Block, ModuleId};
 use database::{Error, Record, Transaction};
 use futures_util::future::LocalBoxFuture;
 use std::sync::Arc;
@@ -74,14 +74,14 @@ impl Database {
 
 	pub async fn get_typed_entry<T>(
 		&self,
-		key: crate::system::core::SourceId,
-		system_depot: crate::system::Depot,
+		key: crate::system::SourceId,
+		system_depot: crate::system::Registry,
 		criteria: Option<Criteria>,
 	) -> Result<Option<T>, FetchError>
 	where
-		T: crate::system::dnd5e::SystemBlock + Unpin,
+		T: Block + Unpin,
 	{
-		use crate::system::core::System;
+		use crate::system::System;
 		let Some(entry) = self.get::<Entry>(key.to_string()).await? else {
 			return Ok(None);
 		};
@@ -131,11 +131,11 @@ impl Database {
 	pub async fn query_typed<Output>(
 		self,
 		system: impl Into<String>,
-		system_depot: crate::system::Depot,
+		system_depot: crate::system::Registry,
 		criteria: Option<Box<Criteria>>,
 	) -> Result<QueryDeserialize<Output>, Error>
 	where
-		Output: crate::system::dnd5e::SystemBlock + Unpin,
+		Output: Block + Unpin,
 	{
 		let system = system.into();
 		let node_reg = {

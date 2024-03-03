@@ -1,10 +1,13 @@
 use crate::kdl_ext::NodeContext;
 use crate::{
-	system::dnd5e::{
-		data::{character::Character, ArmorClassFormula},
-		mutator::ArmorStrengthRequirement,
+	system::{
+		dnd5e::{
+			data::{character::Character, ArmorClassFormula},
+			mutator::ArmorStrengthRequirement,
+		},
+		mutator,
 	},
-	utility::{InvalidEnumStr, MutatorGroup},
+	utility::InvalidEnumStr,
 };
 use enumset::EnumSetType;
 use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
@@ -67,7 +70,7 @@ impl FromStr for Kind {
 	}
 }
 
-impl MutatorGroup for Armor {
+impl mutator::Group for Armor {
 	type Target = Character;
 
 	fn set_data_path(&self, _path_to_item: &std::path::Path) {}

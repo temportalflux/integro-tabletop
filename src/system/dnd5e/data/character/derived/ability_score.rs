@@ -29,7 +29,7 @@ impl AbilityScores {
 pub struct FinalizeAbilityScores;
 crate::impl_trait_eq!(FinalizeAbilityScores);
 kdlize::impl_kdl_node!(FinalizeAbilityScores, "ability_score_finalize");
-impl crate::utility::Mutator for FinalizeAbilityScores {
+impl crate::system::Mutator for FinalizeAbilityScores {
 	type Target = Character;
 
 	fn dependencies(&self) -> crate::utility::Dependencies {

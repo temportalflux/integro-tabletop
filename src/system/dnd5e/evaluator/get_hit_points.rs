@@ -4,7 +4,8 @@ use crate::{
 		data::character::{Character, HitPoint},
 		mutator::AddMaxHitPoints,
 	},
-	utility::{Dependencies, Evaluator},
+	system::Evaluator,
+	utility::Dependencies,
 };
 use kdlize::NodeId;
 use kdlize::{AsKdl, FromKdl, NodeBuilder};

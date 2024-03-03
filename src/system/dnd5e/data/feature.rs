@@ -4,7 +4,7 @@ use super::{
 	description,
 };
 use crate::kdl_ext::NodeContext;
-use crate::{system::dnd5e::BoxedMutator, utility::MutatorGroup};
+use crate::system::{dnd5e::BoxedMutator, mutator};
 use derivative::Derivative;
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::{
@@ -53,7 +53,7 @@ impl Feature {
 	}
 }
 
-impl MutatorGroup for Feature {
+impl mutator::Group for Feature {
 	type Target = Character;
 
 	fn set_data_path(&self, parent: &Path) {
@@ -161,20 +161,20 @@ mod test {
 		use crate::{
 			kdl_ext::{test_utils::*, NodeContext},
 			system::{
-				core::NodeRegistry,
 				dnd5e::{
 					data::{action::ActivationKind, character::ActionBudgetKind},
 					evaluator::HasArmorEquipped,
 					mutator::AddToActionBudget,
 					Value,
 				},
+				generics,
 			},
 		};
 
 		static NODE_NAME: &str = "feature";
 
 		fn node_ctx() -> NodeContext {
-			let mut registry = NodeRegistry::default();
+			let mut registry = generics::Registry::default();
 			registry.register_evaluator::<HasArmorEquipped>();
 			registry.register_mutator::<AddToActionBudget>();
 			NodeContext::registry(registry)

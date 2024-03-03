@@ -5,15 +5,14 @@ use crate::{
 	page::characters::sheet::{CharacterHandle, ViewProps},
 	system::{
 		self,
-		core::{ModuleId, SourceId},
 		dnd5e::{
 			components::{
 				ability, panel, rest, ArmorClass, ConditionsCard, DefensesCard, HitPointMgmtCard, InitiativeBonus,
 				Inspiration, ProfBonus, Proficiencies, SpeedAndSenses,
 			},
 			data::{character::Persistent, Ability},
-			SystemBlock,
 		},
+		Block, ModuleId, SourceId,
 	},
 };
 use anyhow::Context;
@@ -31,7 +30,7 @@ pub fn Display(ViewProps { swap_view }: &ViewProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let (auth_status, _dispatch) = use_store::<auth::Status>();
 	let task_dispatch = use_context::<crate::task::Dispatch>().unwrap();
-	let system_depot = use_context::<system::Depot>().unwrap();
+	let system_depot = use_context::<system::Registry>().unwrap();
 	let navigator = use_navigator().unwrap();
 
 	let fetch_from_storage = Callback::from({

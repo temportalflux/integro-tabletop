@@ -8,7 +8,6 @@ use crate::{
 	page::characters::sheet::{CharacterHandle, MutatorImpact},
 	system::{
 		self,
-		core::{SourceId, System},
 		dnd5e::{
 			components::{WalletInline, WalletInlineButton},
 			data::{
@@ -18,6 +17,7 @@ use crate::{
 				Indirect,
 			},
 		},
+		SourceId, System,
 	},
 	utility::InputExt,
 };
@@ -270,7 +270,7 @@ impl SelectedEquipment {
 fn BrowseStartingEquipment() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let database = use_context::<Database>().unwrap();
-	let system_depot = use_context::<system::Depot>().unwrap();
+	let system_depot = use_context::<system::Registry>().unwrap();
 	let task_dispatch = use_context::<crate::task::Dispatch>().unwrap();
 	let close_details = context_menu::use_close_fn::<()>();
 

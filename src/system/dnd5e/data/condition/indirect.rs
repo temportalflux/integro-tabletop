@@ -1,6 +1,6 @@
 use super::Condition;
 use crate::kdl_ext::NodeContext;
-use crate::system::core::SourceId;
+use crate::system::SourceId;
 use anyhow::Context;
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::str::FromStr;

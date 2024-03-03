@@ -1,6 +1,6 @@
 use crate::{
 	components::{database::use_typed_fetch_callback, Spinner},
-	system::dnd5e::{data::Indirect, SystemBlock},
+	system::{dnd5e::data::Indirect, Block},
 };
 use std::rc::Rc;
 use yew::prelude::*;
@@ -15,7 +15,7 @@ pub struct IndirectFetchProps<T: PartialEq> {
 #[function_component]
 pub fn IndirectFetch<T>(props: &IndirectFetchProps<T>) -> Html
 where
-	T: 'static + Clone + PartialEq + SystemBlock + Unpin,
+	T: 'static + Clone + PartialEq + Block + Unpin,
 {
 	let IndirectFetchProps { indirect, to_inner } = props;
 

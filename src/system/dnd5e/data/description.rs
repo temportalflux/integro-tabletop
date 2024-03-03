@@ -477,13 +477,13 @@ mod test {
 		use crate::{
 			kdl_ext::NodeContext,
 			system::{
-				core::NodeRegistry,
 				dnd5e::{data::Ability, evaluator::GetAbilityModifier},
+				generics,
 			},
 		};
 
 		fn node_ctx() -> NodeContext {
-			NodeContext::registry(NodeRegistry::default_with_eval::<GetAbilityModifier>())
+			NodeContext::registry(generics::Registry::default_with_eval::<GetAbilityModifier>())
 		}
 
 		mod info {

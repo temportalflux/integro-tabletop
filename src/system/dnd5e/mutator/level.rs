@@ -1,7 +1,10 @@
-use crate::kdl_ext::NodeContext;
 use crate::{
-	system::dnd5e::data::{character::Character, description},
-	utility::{GenericMutator, Mutator},
+	kdl_ext::NodeContext,
+	system::Mutator,
+	system::{
+		dnd5e::data::{character::Character, description},
+		mutator,
+	},
 };
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::collections::BTreeMap;
@@ -10,7 +13,7 @@ use std::collections::BTreeMap;
 #[derive(Clone, PartialEq, Debug)]
 pub struct GrantByLevel {
 	class_name: Option<String>,
-	levels: BTreeMap<usize, Vec<GenericMutator<Character>>>,
+	levels: BTreeMap<usize, Vec<mutator::Generic<Character>>>,
 }
 
 crate::impl_trait_eq!(GrantByLevel);
@@ -114,18 +117,18 @@ mod test {
 		use crate::{
 			kdl_ext::test_utils::*,
 			system::{
-				core::NodeRegistry,
 				dnd5e::{
 					data::bounded::BoundValue,
 					mutator::{test::test_utils, Speed},
 				},
+				generics,
 			},
 		};
 
 		test_utils!(GrantByLevel, node_reg());
 
-		fn node_reg() -> NodeRegistry {
-			let mut node_reg = NodeRegistry::default();
+		fn node_reg() -> generics::Registry {
+			let mut node_reg = generics::Registry::default();
 			node_reg.register_mutator::<GrantByLevel>();
 			node_reg.register_mutator::<Speed>();
 			node_reg

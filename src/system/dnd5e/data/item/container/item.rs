@@ -1,15 +1,14 @@
 use crate::{
 	kdl_ext::NodeContext,
 	system::{
-		core::SourceId,
 		dnd5e::data::{
 			character::{Character, ObjectCacheProvider},
 			currency::Wallet,
 			item::{Item, Restriction},
 			Indirect, Spell,
 		},
+		mutator, SourceId,
 	},
-	utility::MutatorGroup,
 };
 use async_recursion::async_recursion;
 use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder, OmitIfEmpty};
@@ -373,7 +372,7 @@ impl Inventory {
 	}
 }
 
-impl MutatorGroup for Inventory {
+impl mutator::Group for Inventory {
 	type Target = Character;
 
 	fn set_data_path(&self, parent: &std::path::Path) {

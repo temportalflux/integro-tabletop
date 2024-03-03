@@ -67,7 +67,6 @@ mod test {
 		use crate::{
 			kdl_ext::NodeContext,
 			system::{
-				core::{NodeRegistry, SourceId},
 				dnd5e::{
 					data::{
 						roll::{Die, EvaluatedRoll},
@@ -76,6 +75,7 @@ mod test {
 					evaluator::GetLevelInt,
 					Value,
 				},
+				generics, SourceId,
 			},
 			utility,
 		};
@@ -83,7 +83,7 @@ mod test {
 		static NODE_NAME: &str = "action";
 
 		fn node_ctx() -> NodeContext {
-			NodeContext::registry(NodeRegistry::default_with_eval::<GetLevelInt>())
+			NodeContext::registry(generics::Registry::default_with_eval::<GetLevelInt>())
 		}
 
 		#[test]

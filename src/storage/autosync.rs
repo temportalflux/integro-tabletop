@@ -2,12 +2,7 @@ use crate::{
 	database::{Database, Module},
 	kdl_ext::NodeContext,
 	storage::USER_HOMEBREW_REPO_NAME,
-	system::{
-		self,
-		core::{ModuleId, NodeRegistry, SourceId, System},
-		dnd5e::generator::{self, VariantCache},
-	},
-	utility::GenericGenerator,
+	system::{self, generator, generics, ModuleId, SourceId, System},
 };
 use database::Transaction;
 use derivative::Derivative;
@@ -178,7 +173,7 @@ enum StorageSyncError {
 #[function_component]
 pub fn Provider(props: &ChildrenProps) -> Html {
 	let database = use_context::<Database>().unwrap();
-	let system_depot = use_context::<crate::system::Depot>().unwrap();
+	let system_depot = use_context::<crate::system::Registry>().unwrap();
 	let channel = Channel(use_memo((), |_| {
 		let (send_req, recv_req) = async_channel::unbounded();
 		RequestChannel { send_req, recv_req }
@@ -241,7 +236,7 @@ pub fn Provider(props: &ChildrenProps) -> Html {
 async fn process_request(
 	req: Request,
 	database: &Database,
-	system_depot: &system::Depot,
+	system_depot: &system::Registry,
 	status: &Status,
 ) -> Result<(), StorageSyncError> {
 	#[cfg(target_family = "wasm")]
@@ -618,7 +613,7 @@ async fn process_request(
 async fn gather_generators(
 	system: &str,
 	transaction: &Transaction,
-	node_reg: Arc<NodeRegistry>,
+	node_reg: Arc<generics::Registry>,
 ) -> Result<generator::Queue, StorageSyncError> {
 	use crate::database::{entry::SystemCategory, Entry};
 	use database::{ObjectStoreExt, TransactionExt};
@@ -632,12 +627,12 @@ async fn gather_generators(
 
 	let query = SystemCategory {
 		system: system.into(),
-		category: GenericGenerator::id().into(),
+		category: generator::Generic::id().into(),
 	};
 	let cursor = idx_system_category.open_cursor(Some(&query)).await;
 	let mut cursor = cursor.map_err(database::Error::from)?;
 	while let Some(entry) = cursor.next().await {
-		let Some(value) = entry.parse_kdl::<GenericGenerator>(node_reg.clone()) else {
+		let Some(value) = entry.parse_kdl::<generator::Generic>(node_reg.clone()) else {
 			continue;
 		};
 		queue.enqueue(value);
@@ -646,11 +641,11 @@ async fn gather_generators(
 	Ok(queue)
 }
 
-async fn gather_variants(system: &str, transaction: &Transaction) -> Result<VariantCache, StorageSyncError> {
+async fn gather_variants(system: &str, transaction: &Transaction) -> Result<generator::VariantCache, StorageSyncError> {
 	use crate::database::{entry::SystemVariants, Entry};
 	use database::{ObjectStoreExt, TransactionExt};
 
-	let mut cache = VariantCache::default();
+	let mut cache = generator::VariantCache::default();
 
 	let entry_store = transaction.object_store_of::<Entry>()?;
 	let idx_system_category = entry_store.index_of::<SystemVariants>();

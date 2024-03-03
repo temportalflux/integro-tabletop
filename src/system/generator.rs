@@ -9,6 +9,10 @@ mod factory;
 pub use factory::*;
 mod generic;
 pub use generic::*;
+mod queue;
+pub use queue::*;
+mod variant_cache;
+pub use variant_cache::*;
 
 #[derive(Default)]
 pub struct SystemObjectList {}

@@ -4,7 +4,8 @@ use crate::{
 		data::{character::Character, description},
 		Value,
 	},
-	utility::{Dependencies, Mutator},
+	system::Mutator,
+	utility::Dependencies,
 };
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
 
@@ -81,19 +82,19 @@ mod test {
 		use crate::{
 			kdl_ext::test_utils::*,
 			system::{
-				core::NodeRegistry,
 				dnd5e::{
 					data::Ability,
 					evaluator::{GetAbilityModifier, GetLevelInt, Math, MathOp},
 					mutator::test::test_utils,
 				},
+				generics,
 			},
 		};
 
 		test_utils!(AddMaxHitPoints, node_reg());
 
-		fn node_reg() -> NodeRegistry {
-			let mut node_reg = NodeRegistry::default();
+		fn node_reg() -> generics::Registry {
+			let mut node_reg = generics::Registry::default();
 			node_reg.register_mutator::<AddMaxHitPoints>();
 			node_reg.register_evaluator::<GetAbilityModifier>();
 			node_reg.register_evaluator::<GetLevelInt>();

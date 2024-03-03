@@ -1,12 +1,6 @@
 use super::Character;
 use crate::kdl_ext::NodeContext;
-use crate::{
-	system::{
-		core::SourceId,
-		dnd5e::{BoxedMutator, SystemBlock},
-	},
-	utility::MutatorGroup,
-};
+use crate::system::{dnd5e::BoxedMutator, mutator, Block, SourceId};
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::path::Path;
 
@@ -19,13 +13,13 @@ pub struct DefaultsBlock {
 
 kdlize::impl_kdl_node!(DefaultsBlock, "defaults");
 
-impl SystemBlock for DefaultsBlock {
+impl Block for DefaultsBlock {
 	fn to_metadata(self) -> serde_json::Value {
 		serde_json::json!(null)
 	}
 }
 
-impl MutatorGroup for DefaultsBlock {
+impl mutator::Group for DefaultsBlock {
 	type Target = Character;
 
 	fn set_data_path(&self, parent: &Path) {

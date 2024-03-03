@@ -5,7 +5,6 @@ use super::{
 use crate::{
 	path_map::PathMap,
 	system::{
-		core::SourceId,
 		dnd5e::{
 			data::{
 				character::{
@@ -18,8 +17,10 @@ use crate::{
 			mutator::Flag,
 			BoxedCriteria, BoxedMutator,
 		},
+		mutator::{self, Group},
+		SourceId,
 	},
-	utility::{selector, Dependencies, MutatorGroup},
+	utility::{selector, Dependencies},
 };
 use enum_map::EnumMap;
 use std::{
@@ -132,7 +133,7 @@ impl Character {
 		Ok(())
 	}
 
-	pub fn apply_from(&mut self, container: &impl MutatorGroup<Target = Self>, parent: &Path) {
+	pub fn apply_from(&mut self, container: &impl mutator::Group<Target = Self>, parent: &Path) {
 		container.apply_mutators(self, parent);
 	}
 
@@ -492,5 +493,5 @@ pub struct ObjectCacheProvider {
 	// TODO: Decouple database+system_depot from dnd data - there can be an abstraction/trait
 	// which specifies the minimal API for getting a cached object from a database of content
 	pub database: crate::database::Database,
-	pub system_depot: crate::system::Depot,
+	pub system_depot: crate::system::Registry,
 }

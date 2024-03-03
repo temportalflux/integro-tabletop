@@ -4,7 +4,8 @@ use crate::{
 		character::{AbilityScoreBonus, Character},
 		description, Ability,
 	},
-	utility::{selector, Mutator},
+	system::Mutator,
+	utility::selector,
 };
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
 

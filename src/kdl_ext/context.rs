@@ -1,4 +1,4 @@
-use crate::system::core::{NodeRegistry, SourceId};
+use crate::system::{generics, SourceId};
 use kdlize::{ext::DocumentExt, NodeReader};
 use std::{str::FromStr, sync::Arc};
 
@@ -9,11 +9,11 @@ pub struct MissingSource;
 #[derive(Default, Clone)]
 pub struct NodeContext {
 	root_id: Arc<SourceId>,
-	node_registry: Arc<NodeRegistry>,
+	node_registry: Arc<generics::Registry>,
 }
 
 impl NodeContext {
-	pub fn new(id: Arc<SourceId>, registry: Arc<NodeRegistry>) -> Self {
+	pub fn new(id: Arc<SourceId>, registry: Arc<generics::Registry>) -> Self {
 		Self {
 			root_id: id,
 			node_registry: registry,
@@ -21,7 +21,7 @@ impl NodeContext {
 	}
 
 	#[cfg(test)]
-	pub fn registry(registry: NodeRegistry) -> Self {
+	pub fn registry(registry: generics::Registry) -> Self {
 		Self {
 			node_registry: Arc::new(registry),
 			..Default::default()
@@ -32,7 +32,7 @@ impl NodeContext {
 		&*self.root_id
 	}
 
-	pub fn node_reg(&self) -> &Arc<NodeRegistry> {
+	pub fn node_reg(&self) -> &Arc<generics::Registry> {
 		&self.node_registry
 	}
 }

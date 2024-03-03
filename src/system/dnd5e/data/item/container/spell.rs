@@ -1,6 +1,5 @@
 use crate::kdl_ext::NodeContext;
 use crate::system::{
-	core::SourceId,
 	dnd5e::data::{
 		character::{
 			spellcasting::{AbilityOrStat, CastingMethod, SpellEntry},
@@ -9,6 +8,7 @@ use crate::system::{
 		spell::CastingDuration,
 		Indirect, Spell,
 	},
+	SourceId,
 };
 use kdlize::OmitIfEmpty;
 use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};

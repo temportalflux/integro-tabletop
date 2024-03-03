@@ -1,4 +1,4 @@
-use crate::{system::core::NodeRegistry, utility::GenericGenerator};
+use crate::system::{generator, generics};
 use std::{
 	collections::{BTreeMap, VecDeque},
 	sync::Arc,
@@ -6,26 +6,26 @@ use std::{
 
 // Priority Queue of generators used to generate variants per generator in order of their urgency.
 pub struct Queue {
-	node_reg: Arc<NodeRegistry>,
-	generators_by_kind: BTreeMap<&'static str, VecDeque<GenericGenerator>>,
+	node_reg: Arc<generics::Registry>,
+	generators_by_kind: BTreeMap<&'static str, VecDeque<generator::Generic>>,
 }
 
 impl Queue {
-	pub fn new(node_reg: Arc<NodeRegistry>) -> Self {
+	pub fn new(node_reg: Arc<generics::Registry>) -> Self {
 		Self {
 			node_reg,
 			generators_by_kind: BTreeMap::default(),
 		}
 	}
 
-	pub fn enqueue(&mut self, generator: GenericGenerator) {
+	pub fn enqueue(&mut self, generator: generator::Generic) {
 		let Some(category) = self.generators_by_kind.get_mut(generator.kind()) else {
 			return;
 		};
 		category.push_back(generator);
 	}
 
-	pub fn dequeue(&mut self) -> Option<GenericGenerator> {
+	pub fn dequeue(&mut self) -> Option<generator::Generic> {
 		for generator_kind in self.node_reg.get_generator_order() {
 			let Some(generators) = self.generators_by_kind.get_mut(*generator_kind) else {
 				continue;

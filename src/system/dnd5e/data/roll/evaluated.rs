@@ -93,13 +93,13 @@ mod test {
 		use super::*;
 		use crate::{
 			kdl_ext::{test_utils::*, NodeContext},
-			system::{core::NodeRegistry, dnd5e::evaluator::GetProficiencyBonus},
+			system::{dnd5e::evaluator::GetProficiencyBonus, generics},
 		};
 
 		static NODE_NAME: &str = "roll";
 
 		fn node_ctx() -> NodeContext {
-			NodeContext::registry(NodeRegistry::default_with_eval::<GetProficiencyBonus>())
+			NodeContext::registry(generics::Registry::default_with_eval::<GetProficiencyBonus>())
 		}
 
 		#[test]

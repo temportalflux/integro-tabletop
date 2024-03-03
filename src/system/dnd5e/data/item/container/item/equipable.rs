@@ -1,10 +1,10 @@
 use crate::kdl_ext::NodeContext;
-use crate::{
-	system::dnd5e::data::{
+use crate::system::{
+	dnd5e::data::{
 		character::Character,
 		item::{container::item::AsItem, Item, Kind},
 	},
-	utility::MutatorGroup,
+	mutator,
 };
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::path::Path;
@@ -47,7 +47,7 @@ impl AsItem for EquipableEntry {
 	}
 }
 
-impl MutatorGroup for EquipableEntry {
+impl mutator::Group for EquipableEntry {
 	type Target = Character;
 
 	fn set_data_path(&self, parent: &std::path::Path) {

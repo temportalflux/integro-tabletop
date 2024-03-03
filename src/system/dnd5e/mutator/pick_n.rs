@@ -4,7 +4,8 @@ use crate::{
 		data::{character::Character, description},
 		BoxedMutator,
 	},
-	utility::{selector, Mutator},
+	system::Mutator,
+	utility::selector,
 };
 use itertools::Itertools;
 use kdlize::OmitIfEmpty;
@@ -243,18 +244,18 @@ mod test {
 		use crate::{
 			kdl_ext::test_utils::*,
 			system::{
-				core::NodeRegistry,
 				dnd5e::{
 					data::bounded::BoundValue,
 					mutator::{test::test_utils, Speed},
 				},
+				generics,
 			},
 		};
 
 		test_utils!(PickN, node_reg());
 
-		fn node_reg() -> NodeRegistry {
-			let mut node_reg = NodeRegistry::default();
+		fn node_reg() -> generics::Registry {
+			let mut node_reg = generics::Registry::default();
 			node_reg.register_mutator::<PickN>();
 			node_reg.register_mutator::<Speed>();
 			node_reg

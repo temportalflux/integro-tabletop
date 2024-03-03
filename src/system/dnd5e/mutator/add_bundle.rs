@@ -1,8 +1,8 @@
 use crate::kdl_ext::NodeContext;
 use crate::{
 	database::Criteria,
+	system::Mutator,
 	system::{
-		core::SourceId,
 		dnd5e::{
 			data::{
 				character::{AdditionalObjectData, Character},
@@ -10,8 +10,9 @@ use crate::{
 			},
 			Value,
 		},
+		SourceId,
 	},
-	utility::{selector, Mutator},
+	utility::selector,
 	GeneralError,
 };
 use kdlize::{ext::ValueExt, AsKdl, FromKdl, NodeBuilder};

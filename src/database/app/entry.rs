@@ -1,4 +1,4 @@
-use crate::system::core::SourceId;
+use crate::system::{generics, SourceId};
 use database::Record;
 use serde::{Deserialize, Serialize};
 use std::{str::FromStr, sync::Arc};
@@ -68,7 +68,7 @@ impl Entry {
 
 	pub fn parse_kdl<T: kdlize::FromKdl<crate::kdl_ext::NodeContext>>(
 		&self,
-		node_reg: Arc<crate::system::core::NodeRegistry>,
+		node_reg: Arc<generics::Registry>,
 	) -> Option<T> {
 		// Parse the entry's kdl string:
 		// kdl string to document

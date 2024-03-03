@@ -1,10 +1,10 @@
 use crate::{
 	system::{
-		core::SourceId,
 		dnd5e::data::{
 			character::{Character, ObjectCacheProvider, Persistent},
 			spell::Spell,
 		},
+		SourceId,
 	},
 	utility::AddAssignMap,
 };
@@ -126,7 +126,7 @@ impl Spellcasting {
 		persistent: &Persistent,
 	) -> anyhow::Result<RitualSpellCache> {
 		use crate::database::Criteria;
-		use crate::system::{core::System, dnd5e::DnD5e};
+		use crate::system::{dnd5e::DnD5e, System};
 		use futures_util::StreamExt;
 		use kdlize::NodeId;
 

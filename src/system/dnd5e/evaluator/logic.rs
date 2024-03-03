@@ -1,7 +1,8 @@
 use crate::{
 	kdl_ext::{AsKdl, NodeBuilder},
 	system::dnd5e::{data::character::Character, BoxedEvaluator},
-	utility::{Dependencies, Evaluator},
+	system::Evaluator,
+	utility::Dependencies,
 };
 
 #[derive(Clone, PartialEq, Debug)]

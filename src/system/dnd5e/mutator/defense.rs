@@ -1,7 +1,8 @@
 use crate::kdl_ext::NodeContext;
 use crate::{
 	system::dnd5e::data::{character::Character, description, DamageType},
-	utility::{list_as_english, selector, InvalidEnumStr, Mutator},
+	system::Mutator,
+	utility::{list_as_english, selector, InvalidEnumStr},
 };
 use enum_map::Enum;
 use enumset::EnumSetType;

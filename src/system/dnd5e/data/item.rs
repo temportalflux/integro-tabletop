@@ -1,11 +1,8 @@
 use super::character::IndirectItem;
 use crate::kdl_ext::NodeContext;
 use crate::system::{
-	core::SourceId,
-	dnd5e::{
-		data::{character::Character, currency::Wallet, description, Rarity},
-		SystemBlock,
-	},
+	dnd5e::data::{character::Character, currency::Wallet, description, Rarity},
+	Block, SourceId,
 };
 use kdlize::OmitIfEmpty;
 use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
@@ -126,7 +123,7 @@ impl Item {
 	}
 }
 
-impl SystemBlock for Item {
+impl Block for Item {
 	fn to_metadata(self) -> serde_json::Value {
 		let mut contents: HashMap<&'static str, serde_json::Value> =
 			[("name", self.name.into()), ("tags", self.tags.into())].into();
@@ -253,7 +250,6 @@ mod test {
 		use crate::{
 			kdl_ext::{test_utils::*, NodeContext},
 			system::{
-				core::NodeRegistry,
 				dnd5e::{
 					data::{
 						currency,
@@ -263,6 +259,7 @@ mod test {
 					},
 					mutator::{AddModifier, ModifierKind},
 				},
+				generics,
 			},
 			utility::selector,
 		};
@@ -270,7 +267,7 @@ mod test {
 		static NODE_NAME: &str = "item";
 
 		fn node_ctx() -> NodeContext {
-			NodeContext::registry(NodeRegistry::default_with_mut::<AddModifier>())
+			NodeContext::registry(generics::Registry::default_with_mut::<AddModifier>())
 		}
 
 		#[test]

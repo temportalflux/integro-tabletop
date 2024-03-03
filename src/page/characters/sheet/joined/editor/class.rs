@@ -77,7 +77,7 @@ struct ClassBrowserProps {
 
 #[function_component]
 fn ClassBrowser(ClassBrowserProps { on_added }: &ClassBrowserProps) -> Html {
-	use crate::system::core::System;
+	use crate::system::System;
 
 	let state = use_context::<CharacterHandle>().unwrap();
 

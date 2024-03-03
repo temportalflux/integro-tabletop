@@ -3,7 +3,8 @@ use crate::{
 	system::dnd5e::data::{
 		character::Character, item::weapon, proficiency, Ability, ArmorExtended, Skill, WeaponProficiency,
 	},
-	utility::{Evaluator, NotInList},
+	system::Evaluator,
+	utility::NotInList,
 };
 use kdlize::{
 	ext::{EntryExt, ValueExt},

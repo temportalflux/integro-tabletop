@@ -6,7 +6,6 @@ use crate::{
 	database::Criteria,
 	page::characters::sheet::{joined::editor::CollapsableCard, CharacterHandle, MutatorImpact},
 	system::{
-		core::{SourceId, System},
 		dnd5e::{
 			components::{
 				panel::{AddItemButton, AddItemOperation, ItemInfo},
@@ -19,6 +18,7 @@ use crate::{
 			},
 			DnD5e,
 		},
+		SourceId, System,
 	},
 	utility::InputExt,
 };

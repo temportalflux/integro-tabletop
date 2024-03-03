@@ -1,9 +1,6 @@
 use crate::{
 	storage::autosync::{ModuleFile, ModuleFileUpdate},
-	system::{
-		self,
-		core::{ModuleId, SourceId},
-	},
+	system::{self, ModuleId, SourceId},
 };
 use anyhow::Context;
 use github::{repos, ChangedFileStatus, Error, GithubClient};
@@ -24,7 +21,7 @@ pub struct TooManyEntries(pub String);
 pub struct DownloadFileUpdates {
 	pub status: super::Status,
 	pub client: GithubClient,
-	pub system_depot: system::Depot,
+	pub system_depot: system::Registry,
 
 	pub module_id: ModuleId,
 	pub version: String,

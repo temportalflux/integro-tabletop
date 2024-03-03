@@ -1,12 +1,10 @@
-use crate::{
-	system::{
-		core::SourceId,
-		dnd5e::data::{
-			character::{Character, ObjectCacheProvider},
-			Bundle, Subclass,
-		},
+use crate::system::{
+	dnd5e::data::{
+		character::{Character, ObjectCacheProvider},
+		Bundle, Subclass,
 	},
-	utility::MutatorGroup,
+	mutator::Group,
+	SourceId,
 };
 use kdlize::NodeId;
 use std::{collections::HashMap, path::PathBuf};
@@ -51,7 +49,7 @@ impl AdditionalObjectCache {
 	pub async fn update_objects(&mut self, provider: &ObjectCacheProvider) -> anyhow::Result<()> {
 		// TODO: Because ObjectCacheProvider contains both the databaser and system depot,
 		// we should be able to generically deserialize objects into system components,
-		// and then store the generic data which is a MutatorGroup instead of the hard types.
+		// and then store the generic data which is a mutator::Group instead of the hard types.
 		// We can re-serialize them in the same manner perhaps.
 		for AdditionalObjectData {
 			ids, object_type_id, ..

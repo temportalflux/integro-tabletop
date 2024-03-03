@@ -2,9 +2,9 @@ use super::{armor::Armor, weapon::Weapon};
 use crate::kdl_ext::NodeContext;
 use crate::system::dnd5e::data::roll::Roll;
 use crate::system::dnd5e::data::Rest;
-use crate::{
-	system::dnd5e::{data::character::Character, BoxedCriteria, BoxedMutator},
-	utility::MutatorGroup,
+use crate::system::{
+	dnd5e::{data::character::Character, BoxedCriteria, BoxedMutator},
+	mutator,
 };
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::{collections::HashMap, path::Path};
@@ -38,7 +38,7 @@ pub struct ChargesReset {
 	pub rest: Rest,
 }
 
-impl MutatorGroup for Equipment {
+impl mutator::Group for Equipment {
 	type Target = Character;
 
 	fn set_data_path(&self, path_to_item: &std::path::Path) {
@@ -154,7 +154,6 @@ mod test {
 		use crate::{
 			kdl_ext::{test_utils::*, NodeContext},
 			system::{
-				core::NodeRegistry,
 				dnd5e::{
 					data::{
 						item::{armor, weapon},
@@ -163,6 +162,7 @@ mod test {
 					},
 					mutator::{AddModifier, ModifierKind},
 				},
+				generics,
 			},
 			utility::selector,
 		};
@@ -170,7 +170,7 @@ mod test {
 		static NODE_NAME: &str = "equipment";
 
 		fn node_ctx() -> NodeContext {
-			NodeContext::registry(NodeRegistry::default_with_mut::<AddModifier>())
+			NodeContext::registry(generics::Registry::default_with_mut::<AddModifier>())
 		}
 
 		#[test]

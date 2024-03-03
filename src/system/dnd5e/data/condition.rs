@@ -1,12 +1,6 @@
 use super::character::{Character, ObjectCacheProvider};
 use crate::kdl_ext::NodeContext;
-use crate::{
-	system::{
-		core::SourceId,
-		dnd5e::{BoxedMutator, SystemBlock},
-	},
-	utility::MutatorGroup,
-};
+use crate::system::{dnd5e::BoxedMutator, mutator, Block, SourceId};
 use async_recursion::async_recursion;
 use kdlize::OmitIfEmpty;
 use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
@@ -59,7 +53,7 @@ impl Condition {
 	}
 }
 
-impl MutatorGroup for Condition {
+impl mutator::Group for Condition {
 	type Target = Character;
 
 	fn set_data_path(&self, parent: &Path) {
@@ -87,7 +81,7 @@ impl MutatorGroup for Condition {
 	}
 }
 
-impl SystemBlock for Condition {
+impl Block for Condition {
 	fn to_metadata(self) -> serde_json::Value {
 		serde_json::json!({
 			"name": self.name.clone(),
@@ -140,8 +134,8 @@ mod test {
 		use crate::{
 			kdl_ext::{test_utils::*, NodeContext},
 			system::{
-				core::NodeRegistry,
 				dnd5e::{data::bounded::BoundValue, evaluator::HasArmorEquipped, mutator::Speed},
+				generics,
 			},
 		};
 
@@ -149,7 +143,7 @@ mod test {
 
 		fn node_ctx() -> NodeContext {
 			NodeContext::registry({
-				let mut reg = NodeRegistry::default();
+				let mut reg = generics::Registry::default();
 				reg.register_mutator::<Speed>();
 				reg.register_evaluator::<HasArmorEquipped>();
 				reg

@@ -1,6 +1,6 @@
 use crate::{
 	database::{Criteria, Database, Entry, FetchError, Module},
-	system::{self, core::SourceId, dnd5e::SystemBlock},
+	system::{self, Block, SourceId},
 };
 use std::{
 	collections::BTreeMap,
@@ -165,10 +165,10 @@ pub fn use_query_all(
 #[hook]
 pub fn use_query_all_typed<T>(auto_fetch: bool, initial_args: Option<QueryAllArgs<T>>) -> UseQueryAllHandle<T>
 where
-	T: SystemBlock + Unpin + Clone + 'static,
+	T: Block + Unpin + Clone + 'static,
 {
 	let database = use_context::<Database>().unwrap();
-	let system_depot = use_context::<system::Depot>().unwrap();
+	let system_depot = use_context::<system::Registry>().unwrap();
 	let options = UseAsyncOptions { auto: auto_fetch };
 	let args_handle = Rc::new(Mutex::new(initial_args));
 	let async_args = args_handle.clone();
@@ -309,10 +309,10 @@ type QueryTypedStatus<T> = QueryStatus<(Vec<SourceId>, BTreeMap<SourceId, T>), F
 #[hook]
 pub fn use_query_typed<T>() -> UseQueryDiscreteHandle<T, FetchError>
 where
-	T: SystemBlock + Unpin + Clone + 'static,
+	T: Block + Unpin + Clone + 'static,
 {
 	let database = use_context::<Database>().unwrap();
-	let system_depot = use_context::<system::Depot>().unwrap();
+	let system_depot = use_context::<system::Registry>().unwrap();
 	let status = use_state(|| QueryTypedStatus::<T>::Empty);
 	let run = Rc::new({
 		let status = status.clone();
@@ -380,11 +380,11 @@ where
 #[hook]
 pub fn use_typed_fetch_callback<EntryContent>(task_name: String, fn_item: Callback<EntryContent>) -> Callback<SourceId>
 where
-	EntryContent: 'static + SystemBlock + Unpin,
+	EntryContent: 'static + Block + Unpin,
 	Event: 'static,
 {
 	let database = use_context::<Database>().unwrap();
-	let system_depot = use_context::<system::Depot>().unwrap();
+	let system_depot = use_context::<system::Registry>().unwrap();
 	let task_dispatch = use_context::<crate::task::Dispatch>().unwrap();
 	Callback::from(move |source_id: SourceId| {
 		let database = database.clone();
@@ -410,12 +410,12 @@ pub fn use_typed_fetch_callback_tuple<Item, Arg>(
 	fn_item: Callback<(Item, Arg)>,
 ) -> Callback<(SourceId, Arg)>
 where
-	Item: 'static + SystemBlock + Unpin,
+	Item: 'static + Block + Unpin,
 	Event: 'static,
 	Arg: 'static,
 {
 	let database = use_context::<Database>().unwrap();
-	let system_depot = use_context::<system::Depot>().unwrap();
+	let system_depot = use_context::<system::Registry>().unwrap();
 	let task_dispatch = use_context::<crate::task::Dispatch>().unwrap();
 	Callback::from(move |(source_id, arg): (SourceId, Arg)| {
 		let database = database.clone();

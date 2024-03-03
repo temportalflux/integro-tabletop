@@ -1,7 +1,7 @@
 use crate::{
 	components::{database, mobile, Spinner, ViewScaler},
 	storage::autosync,
-	system::{core::SourceId, dnd5e::components::GeneralProp},
+	system::{dnd5e::components::GeneralProp, SourceId},
 };
 use yew::prelude::*;
 

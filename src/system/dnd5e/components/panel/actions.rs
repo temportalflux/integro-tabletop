@@ -8,7 +8,6 @@ use crate::{
 		CharacterHandle, MutatorImpact,
 	},
 	system::{
-		core::SourceId,
 		dnd5e::{
 			components::UsesCounter,
 			data::{
@@ -17,6 +16,7 @@ use crate::{
 				AreaOfEffect, Condition, DamageRoll, Feature, IndirectCondition,
 			},
 		},
+		SourceId,
 	},
 };
 use enum_map::{Enum, EnumMap};

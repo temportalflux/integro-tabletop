@@ -7,7 +7,8 @@ use crate::{
 		roll::EvaluatedRoll,
 		Ability, DamageType,
 	},
-	utility::{Dependencies, Mutator, NotInList},
+	system::Mutator,
+	utility::{Dependencies, NotInList},
 };
 use kdlize::{
 	ext::{DocumentExt, EntryExt, ValueExt},
@@ -215,20 +216,20 @@ mod test {
 		use crate::{
 			kdl_ext::test_utils::{assert_eq_askdl, assert_eq_fromkdl, from_doc, raw_doc},
 			system::{
-				core::NodeRegistry,
 				dnd5e::{
 					data::{action::AttackKind, roll::Die, Ability},
 					evaluator::GetLevelInt,
 					mutator::test::test_utils,
 					Value,
 				},
+				generics,
 			},
 		};
 
 		test_utils!(Bonus, node_reg());
 
-		fn node_reg() -> NodeRegistry {
-			let mut node_reg = NodeRegistry::default();
+		fn node_reg() -> generics::Registry {
+			let mut node_reg = generics::Registry::default();
 			node_reg.register_mutator::<Bonus>();
 			node_reg.register_evaluator::<GetLevelInt>();
 			node_reg

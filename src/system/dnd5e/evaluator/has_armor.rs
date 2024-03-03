@@ -31,7 +31,7 @@ impl HasArmorEquipped {
 }
 
 crate::impl_trait_eq!(HasArmorEquipped);
-impl crate::utility::Evaluator for HasArmorEquipped {
+impl crate::system::Evaluator for HasArmorEquipped {
 	type Context = Character;
 	type Item = Result<(), String>;
 
@@ -122,7 +122,7 @@ mod test {
 				Item,
 			},
 		},
-		utility::Evaluator,
+		system::Evaluator,
 	};
 
 	mod kdl {

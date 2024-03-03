@@ -6,7 +6,6 @@ use crate::{
 	page::characters::sheet::MutatorImpact,
 	system::{
 		self,
-		core::{ModuleId, SourceId},
 		dnd5e::{
 			components::{glyph::Glyph, panel::get_inventory_item_mut},
 			data::{
@@ -20,6 +19,7 @@ use crate::{
 			},
 			DnD5e,
 		},
+		ModuleId, SourceId,
 	},
 	utility::InputExt,
 };
@@ -1351,7 +1351,7 @@ pub fn AvailableSpellList(props: &AvailableSpellListProps) -> Html {
 	use yew_hooks::{use_async_with_options, UseAsyncOptions};
 	let state = use_context::<CharacterHandle>().unwrap();
 	let database = use_context::<Database>().unwrap();
-	let system_depot = use_context::<system::Depot>().unwrap();
+	let system_depot = use_context::<system::Registry>().unwrap();
 
 	let criteria_handle = use_state({
 		let criteria = props.criteria.clone();
@@ -1410,7 +1410,7 @@ pub fn AvailableSpellList(props: &AvailableSpellListProps) -> Html {
 
 				match source_kind {
 					SpellSource::Database => {
-						use crate::system::core::System;
+						use crate::system::System;
 						let criteria = (*criteria_handle).clone();
 						let stream_result = database
 							.query_typed::<Spell>(

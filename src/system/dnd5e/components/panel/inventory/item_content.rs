@@ -11,7 +11,6 @@ use crate::{
 		MutatorImpact,
 	},
 	system::{
-		core::SourceId,
 		dnd5e::{
 			components::{
 				panel::{spell_name_and_icons, spell_overview_info, AvailableSpellList, HeaderAddon},
@@ -25,8 +24,9 @@ use crate::{
 			},
 			evaluator::IsProficientWith,
 		},
+		Evaluator, SourceId,
 	},
-	utility::{Evaluator, InputExt},
+	utility::InputExt,
 };
 use any_range::AnyRange;
 use std::collections::HashSet;

@@ -3,7 +3,8 @@ use crate::{
 	system::dnd5e::data::{
 		character::Character, description, item::weapon, proficiency, Ability, ArmorExtended, Skill, WeaponProficiency,
 	},
-	utility::{selector, Mutator, NotInList},
+	system::Mutator,
+	utility::{selector, NotInList},
 };
 use enumset::EnumSet;
 use kdlize::{ext::ValueExt, AsKdl, FromKdl, NodeBuilder};

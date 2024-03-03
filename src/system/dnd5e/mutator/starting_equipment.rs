@@ -4,7 +4,7 @@ use crate::{
 		character::{Character, StartingEquipment},
 		description,
 	},
-	utility::Mutator,
+	system::Mutator,
 };
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
 
@@ -47,7 +47,6 @@ mod test {
 		use crate::{
 			kdl_ext::test_utils::*,
 			system::{
-				core::SourceId,
 				dnd5e::{
 					data::{
 						character::IndirectItem,
@@ -56,6 +55,7 @@ mod test {
 					},
 					mutator::test::test_utils,
 				},
+				SourceId,
 			},
 		};
 

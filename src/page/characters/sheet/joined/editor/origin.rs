@@ -8,17 +8,17 @@ use crate::{
 	database::Criteria,
 	page::characters::sheet::{CharacterHandle, MutatorImpact},
 	system::{
-		core::System,
 		dnd5e::{
 			components::GeneralProp,
 			data::{bundle::BundleRequirement, character::Persistent, description, Bundle, Feature},
 			DnD5e,
 		},
+		mutator, System,
 	},
 	utility::{
 		selector,
 		web_ext::{self, CallbackExt, CallbackOptExt},
-		GenericMutator, InputExt,
+		InputExt,
 	},
 };
 use convert_case::{Case, Casing};
@@ -467,7 +467,7 @@ pub fn description(info: &description::Info, prefer_short: bool, show_selectors:
 	}
 }
 
-pub fn mutator_list<T: 'static>(list: &Vec<GenericMutator<T>>, state: Option<&impl AsRef<T>>) -> Html {
+pub fn mutator_list<T: 'static>(list: &Vec<mutator::Generic<T>>, state: Option<&impl AsRef<T>>) -> Html {
 	let mutators = list
 		.iter()
 		.filter_map(|value| mutator(value, state))
@@ -475,7 +475,7 @@ pub fn mutator_list<T: 'static>(list: &Vec<GenericMutator<T>>, state: Option<&im
 	html! {<>{mutators}</>}
 }
 
-fn mutator<T: 'static>(value: &GenericMutator<T>, state: Option<&impl AsRef<T>>) -> Option<Html> {
+fn mutator<T: 'static>(value: &mutator::Generic<T>, state: Option<&impl AsRef<T>>) -> Option<Html> {
 	let target = state.map(|t| t.as_ref());
 	let section = value.description(target);
 	Some(html! { <DescriptionSection {section} show_selectors={state.is_some()} /> })

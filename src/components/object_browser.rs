@@ -156,8 +156,8 @@ fn BundleList(props: &BundleListProps) -> Html {
 		components::database::{use_query_all_typed, QueryAllArgs, QueryStatus},
 		page::characters::sheet::joined::editor::bundle_content,
 		system::{
-			core::System,
 			dnd5e::{data::Bundle, DnD5e},
+			System,
 		},
 	};
 
@@ -247,8 +247,8 @@ fn SubclassList(props: &SubclassListProps) -> Html {
 	use crate::{
 		components::database::{use_query_all_typed, QueryAllArgs, QueryStatus},
 		system::{
-			core::System,
 			dnd5e::{data::Subclass, DnD5e},
+			System,
 		},
 	};
 
@@ -307,7 +307,7 @@ pub fn ObjectSelectorList(props: &GeneralProp<std::path::PathBuf>) -> Html {
 	use crate::{
 		components::database::{use_query_entries, QueryStatus},
 		page::characters::sheet::CharacterHandle,
-		system::core::SourceId,
+		system::SourceId,
 	};
 
 	let state = use_context::<CharacterHandle>().unwrap();
@@ -349,7 +349,7 @@ pub fn ObjectSelectorList(props: &GeneralProp<std::path::PathBuf>) -> Html {
 #[derive(Clone, PartialEq, Properties)]
 struct ObjectSelectorEntryButtonProps {
 	data_path: std::path::PathBuf,
-	id: crate::system::core::SourceId,
+	id: crate::system::SourceId,
 	capacity: usize,
 }
 #[function_component]

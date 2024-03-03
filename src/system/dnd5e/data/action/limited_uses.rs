@@ -178,18 +178,18 @@ mod test {
 		use crate::{
 			kdl_ext::{test_utils::*, NodeContext},
 			system::{
-				core::NodeRegistry,
 				dnd5e::{
 					data::Rest,
 					evaluator::{GetLevelInt, GetLevelStr},
 				},
+				generics,
 			},
 		};
 
 		static NODE_NAME: &str = "limited_uses";
 
 		fn node_ctx() -> NodeContext {
-			let mut node_reg = NodeRegistry::default();
+			let mut node_reg = generics::Registry::default();
 			node_reg.register_evaluator::<GetLevelInt>();
 			node_reg.register_evaluator::<GetLevelStr>();
 			NodeContext::registry(node_reg)

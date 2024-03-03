@@ -1,5 +1,5 @@
 use super::{ArcGenerator, Generator};
-use crate::kdl_ext::NodeContext;
+use crate::{kdl_ext::NodeContext, system::Block};
 use kdlize::AsKdl;
 use std::sync::Arc;
 
@@ -7,6 +7,13 @@ use std::sync::Arc;
 pub struct Generic(ArcGenerator);
 
 kdlize::impl_kdl_node!(Generic, "generator");
+
+impl Block for Generic {
+	fn to_metadata(self) -> serde_json::Value {
+		// TODO: id (SourceId) and kind (<Generator as NodeId>::id) fields
+		serde_json::json!(null)
+	}
+}
 
 impl<M> From<M> for Generic
 where
