@@ -48,6 +48,13 @@ impl Entry {
 		id
 	}
 
+	pub fn generator_id(&self) -> Option<SourceId> {
+		match &self.generator_id {
+			None => None,
+			Some(id_str) => SourceId::from_str(id_str).ok(),
+		}
+	}
+
 	pub fn get_meta_str(&self, key: impl AsRef<str>) -> Option<&str> {
 		let Some(value) = self.metadata.get(key.as_ref()) else {
 			return None;

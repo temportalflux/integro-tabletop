@@ -3,7 +3,7 @@ use crate::kdl_ext::NodeContext;
 use crate::{
 	system::{
 		core::SourceId,
-		dnd5e::{BoxedMutator, SystemComponent},
+		dnd5e::{BoxedMutator, SystemBlock},
 	},
 	utility::MutatorGroup,
 };
@@ -87,7 +87,7 @@ impl MutatorGroup for Condition {
 	}
 }
 
-impl SystemComponent for Condition {
+impl SystemBlock for Condition {
 	fn to_metadata(self) -> serde_json::Value {
 		serde_json::json!({
 			"name": self.name.clone(),

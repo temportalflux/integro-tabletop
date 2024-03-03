@@ -1,7 +1,7 @@
 use crate::{
 	components::{database::use_typed_fetch_callback, Spinner},
 	kdl_ext::NodeContext,
-	system::dnd5e::{data::Indirect, SystemComponent},
+	system::dnd5e::{data::Indirect, SystemBlock},
 };
 use kdlize::{FromKdl, NodeId};
 use std::rc::Rc;
@@ -17,7 +17,7 @@ pub struct IndirectFetchProps<T: PartialEq> {
 #[function_component]
 pub fn IndirectFetch<T>(props: &IndirectFetchProps<T>) -> Html
 where
-	T: 'static + Clone + PartialEq + FromKdl<NodeContext> + NodeId + SystemComponent + Unpin,
+	T: 'static + Clone + PartialEq + SystemBlock + Unpin,
 {
 	let IndirectFetchProps { indirect, to_inner } = props;
 

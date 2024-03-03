@@ -1,7 +1,7 @@
 use crate::{
 	database::{Criteria, Database, Entry, FetchError, Module},
 	kdl_ext::NodeContext,
-	system::{self, core::SourceId, dnd5e::SystemComponent},
+	system::{self, core::SourceId, dnd5e::SystemBlock},
 };
 use kdlize::{FromKdl, NodeId};
 use std::{
@@ -167,7 +167,7 @@ pub fn use_query_all(
 #[hook]
 pub fn use_query_all_typed<T>(auto_fetch: bool, initial_args: Option<QueryAllArgs<T>>) -> UseQueryAllHandle<T>
 where
-	T: NodeId + FromKdl<NodeContext> + SystemComponent + Unpin + Clone + 'static,
+	T: SystemBlock + Unpin + Clone + 'static,
 {
 	let database = use_context::<Database>().unwrap();
 	let system_depot = use_context::<system::Depot>().unwrap();
@@ -311,7 +311,7 @@ type QueryTypedStatus<T> = QueryStatus<(Vec<SourceId>, BTreeMap<SourceId, T>), F
 #[hook]
 pub fn use_query_typed<T>() -> UseQueryDiscreteHandle<T, FetchError>
 where
-	T: NodeId + FromKdl<NodeContext> + SystemComponent + Unpin + Clone + 'static,
+	T: SystemBlock + Unpin + Clone + 'static,
 {
 	let database = use_context::<Database>().unwrap();
 	let system_depot = use_context::<system::Depot>().unwrap();
@@ -382,7 +382,7 @@ where
 #[hook]
 pub fn use_typed_fetch_callback<EntryContent>(task_name: String, fn_item: Callback<EntryContent>) -> Callback<SourceId>
 where
-	EntryContent: 'static + NodeId + FromKdl<NodeContext> + SystemComponent + Unpin,
+	EntryContent: 'static + SystemBlock + Unpin,
 	Event: 'static,
 {
 	let database = use_context::<Database>().unwrap();
@@ -412,7 +412,7 @@ pub fn use_typed_fetch_callback_tuple<Item, Arg>(
 	fn_item: Callback<(Item, Arg)>,
 ) -> Callback<(SourceId, Arg)>
 where
-	Item: 'static + NodeId + FromKdl<NodeContext> + SystemComponent + Unpin,
+	Item: 'static + SystemBlock + Unpin,
 	Event: 'static,
 	Arg: 'static,
 {

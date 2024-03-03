@@ -1,6 +1,6 @@
 use super::{description, AreaOfEffect};
 use crate::kdl_ext::NodeContext;
-use crate::system::{core::SourceId, dnd5e::SystemComponent};
+use crate::system::{core::SourceId, dnd5e::SystemBlock};
 use kdlize::OmitIfEmpty;
 use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
 
@@ -36,7 +36,7 @@ pub struct Spell {
 
 kdlize::impl_kdl_node!(Spell, "spell");
 
-impl SystemComponent for Spell {
+impl SystemBlock for Spell {
 	fn to_metadata(self) -> serde_json::Value {
 		serde_json::json!({
 			"id": self.id.unversioned().to_string(),

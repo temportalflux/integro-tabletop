@@ -79,10 +79,7 @@ impl Database {
 		criteria: Option<Criteria>,
 	) -> Result<Option<T>, FetchError>
 	where
-		T: kdlize::NodeId
-			+ kdlize::FromKdl<crate::kdl_ext::NodeContext>
-			+ crate::system::dnd5e::SystemComponent
-			+ Unpin,
+		T: crate::system::dnd5e::SystemBlock + Unpin,
 	{
 		use crate::system::core::System;
 		let Some(entry) = self.get::<Entry>(key.to_string()).await? else {
@@ -138,7 +135,7 @@ impl Database {
 		criteria: Option<Box<Criteria>>,
 	) -> Result<QueryDeserialize<Output>, Error>
 	where
-		Output: kdlize::NodeId + kdlize::FromKdl<NodeContext> + crate::system::dnd5e::SystemComponent + Unpin,
+		Output: crate::system::dnd5e::SystemBlock + Unpin,
 	{
 		let system = system.into();
 		let node_reg = {

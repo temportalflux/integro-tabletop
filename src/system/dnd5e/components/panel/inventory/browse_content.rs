@@ -4,11 +4,9 @@ use crate::{
 		Spinner,
 	},
 	database::Criteria,
-	page::characters::sheet::joined::editor::CollapsableCard,
-	page::characters::sheet::CharacterHandle,
-	page::characters::sheet::MutatorImpact,
+	page::characters::sheet::{joined::editor::CollapsableCard, CharacterHandle, MutatorImpact},
 	system::{
-		core::{ModuleId, SourceId, System},
+		core::{SourceId, System},
 		dnd5e::{
 			components::{
 				panel::{AddItemButton, AddItemOperation, ItemInfo},

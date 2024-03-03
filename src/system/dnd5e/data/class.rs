@@ -3,7 +3,7 @@ use crate::kdl_ext::NodeContext;
 use crate::{
 	system::{
 		core::SourceId,
-		dnd5e::{mutator::AddMaxHitPoints, BoxedMutator, SystemComponent, Value},
+		dnd5e::{mutator::AddMaxHitPoints, BoxedMutator, SystemBlock, Value},
 	},
 	utility::{selector, MutatorGroup},
 };
@@ -78,7 +78,7 @@ impl MutatorGroup for Class {
 	}
 }
 
-impl SystemComponent for Class {
+impl SystemBlock for Class {
 	fn to_metadata(self) -> serde_json::Value {
 		serde_json::json!({
 			"name": self.name.clone(),
@@ -250,7 +250,7 @@ pub struct Subclass {
 	pub levels: Vec<Level>,
 }
 
-impl SystemComponent for Subclass {
+impl SystemBlock for Subclass {
 	fn to_metadata(self) -> serde_json::Value {
 		serde_json::json!({
 			"name": &self.name,

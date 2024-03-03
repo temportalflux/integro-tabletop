@@ -7,9 +7,10 @@ use crate::{
 			BoxedMutator,
 		},
 	},
-	utility::NotInList,
+	utility::{NotInList, PinFuture, SystemObjectList},
 };
 
+use database::Transaction;
 use kdlize::{
 	ext::{DocumentExt, ValueExt},
 	AsKdl, FromKdl, NodeBuilder, OmitIfEmpty,
@@ -27,7 +28,15 @@ pub struct ItemGenerator {
 kdlize::impl_kdl_node!(ItemGenerator, "item");
 crate::impl_trait_eq!(ItemGenerator);
 
-impl crate::utility::Generator for ItemGenerator {}
+impl crate::utility::Generator for ItemGenerator {
+	fn source_id(&self) -> &SourceId { &self.id }
+	fn execute(&self, context: &NodeContext, transaction: &Transaction) -> PinFuture<anyhow::Result<SystemObjectList>> {
+		Box::pin(async move {
+			let mut output = SystemObjectList::default();
+			Ok(output) as anyhow::Result<SystemObjectList>
+		})
+	}
+}
 
 // NOTE: always exclude generated objects
 #[derive(Clone, PartialEq, Debug)]

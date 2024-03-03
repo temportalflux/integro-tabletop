@@ -3,7 +3,7 @@ use crate::kdl_ext::NodeContext;
 use crate::{
 	system::{
 		core::SourceId,
-		dnd5e::{BoxedMutator, SystemComponent},
+		dnd5e::{BoxedMutator, SystemBlock},
 	},
 	utility::MutatorGroup,
 };
@@ -19,7 +19,7 @@ pub struct DefaultsBlock {
 
 kdlize::impl_kdl_node!(DefaultsBlock, "defaults");
 
-impl SystemComponent for DefaultsBlock {
+impl SystemBlock for DefaultsBlock {
 	fn to_metadata(self) -> serde_json::Value {
 		serde_json::json!(null)
 	}

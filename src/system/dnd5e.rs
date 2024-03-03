@@ -22,14 +22,14 @@ type FnReserializeKdl =
 
 /// A factory which parses a block (root-level kdl node) into some concrete type, and exposes methods for calling
 /// specific functions on that type (converting it to database record metadata, or reserializing into text).
-pub struct ComponentFactory {
+pub struct BlockFactory {
 	metadata_from_kdl: FnMetadataFromKdl,
 	reserialize_kdl: FnReserializeKdl,
 }
-impl ComponentFactory {
+impl BlockFactory {
 	fn new<T>() -> Self
 	where
-		T: FromKdl<NodeContext> + AsKdl + SystemComponent + 'static + Send + Sync,
+		T: SystemBlock + 'static + Send + Sync,
 		anyhow::Error: From<T::Error>,
 	{
 		Self {
@@ -55,39 +55,39 @@ impl ComponentFactory {
 
 /// A registry of all of the root-level nodes (aka blocks) which could be parsed from kdl.
 #[derive(Default)]
-pub struct ComponentRegistry(HashMap<&'static str, Arc<ComponentFactory>>);
-impl ComponentRegistry {
+pub struct BlockRegistry(HashMap<&'static str, Arc<BlockFactory>>);
+impl BlockRegistry {
 	pub fn register<T>(&mut self)
 	where
-		T: FromKdl<NodeContext> + NodeId + AsKdl + SystemComponent + 'static + Send + Sync,
+		T: SystemBlock + 'static + Send + Sync,
 		anyhow::Error: From<T::Error>,
 	{
 		assert!(!self.0.contains_key(T::id()));
-		self.0.insert(T::id(), ComponentFactory::new::<T>().into());
+		self.0.insert(T::id(), BlockFactory::new::<T>().into());
 	}
 
-	pub fn get_factory(&self, id: &str) -> Option<&Arc<ComponentFactory>> {
+	pub fn get_factory(&self, id: &str) -> Option<&Arc<BlockFactory>> {
 		self.0.get(id)
 	}
 }
 
 /// A block (root-level kdl node) which exposes functionality for
 /// constructing metadata about the struct, for embedding in the database record.
-pub trait SystemComponent {
+pub trait SystemBlock: FromKdl<NodeContext> + NodeId + AsKdl {
 	fn to_metadata(self) -> serde_json::Value
 	where
 		Self: Sized;
 }
 
-impl SystemComponent for crate::utility::GenericGenerator {
+impl SystemBlock for crate::utility::GenericGenerator {
 	fn to_metadata(self) -> serde_json::Value {
 		// TODO: id (SourceId) and kind (<Generator as NodeId>::id) fields
 		serde_json::json!(null)
 	}
 }
 
-pub fn component_registry() -> ComponentRegistry {
-	let mut registry = ComponentRegistry::default();
+pub fn block_registry() -> BlockRegistry {
+	let mut registry = BlockRegistry::default();
 	registry.register::<data::character::DefaultsBlock>();
 	registry.register::<data::character::Persistent>();
 	registry.register::<data::Bundle>();

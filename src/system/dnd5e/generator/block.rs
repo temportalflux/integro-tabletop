@@ -1,4 +1,5 @@
-use crate::{kdl_ext::NodeContext, system::core::SourceId};
+use crate::{kdl_ext::NodeContext, system::core::SourceId, utility::{PinFuture, SystemObjectList}};
+use database::Transaction;
 use derivative::Derivative;
 use kdl::{KdlDocument, KdlValue};
 use kdlize::{AsKdl, FromKdl, NodeBuilder, OmitIfEmpty};
@@ -19,7 +20,15 @@ pub struct BlockGenerator {
 kdlize::impl_kdl_node!(BlockGenerator, "block");
 crate::impl_trait_eq!(BlockGenerator);
 
-impl crate::utility::Generator for BlockGenerator {}
+impl crate::utility::Generator for BlockGenerator {
+	fn source_id(&self) -> &SourceId { &self.id }
+	fn execute(&self, context: &NodeContext, transaction: &Transaction) -> PinFuture<anyhow::Result<SystemObjectList>> {
+		Box::pin(async move {
+			let mut output = SystemObjectList::default();
+			Ok(output) as anyhow::Result<SystemObjectList>
+		})
+	}
+}
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct VariantEntry(pub(super) BTreeMap<String, KdlValue>);

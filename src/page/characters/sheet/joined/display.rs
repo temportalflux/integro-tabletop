@@ -12,7 +12,7 @@ use crate::{
 				Inspiration, ProfBonus, Proficiencies, SpeedAndSenses,
 			},
 			data::{character::Persistent, Ability},
-			SystemComponent,
+			SystemBlock,
 		},
 	},
 };

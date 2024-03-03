@@ -101,7 +101,7 @@ async fn main() -> anyhow::Result<()> {
 
 	let _ = logging::console::init("tabletop-tools", &[]);
 
-	let comp_reg = dnd5e::component_registry();
+	let comp_reg = dnd5e::block_registry();
 	let node_reg = Arc::new(dnd5e::node_registry());
 
 	// Compile the list of local modules (path to module, the module id, and systems it supports)

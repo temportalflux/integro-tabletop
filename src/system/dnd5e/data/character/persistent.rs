@@ -5,7 +5,7 @@ use crate::{
 		core::SourceId,
 		dnd5e::{
 			data::{character::Character, item::container::Inventory, Ability, Bundle, Class, Condition, Rest, Spell},
-			SystemComponent,
+			SystemBlock,
 		},
 	},
 	utility::{MutatorGroup, NotInList},
@@ -187,7 +187,7 @@ pub struct PersistentMetadata {
 	pub classes: Vec<String>,
 	pub bundles: MultiMap<String, String>,
 }
-impl SystemComponent for Persistent {
+impl SystemBlock for Persistent {
 	fn to_metadata(self) -> serde_json::Value {
 		let mut level = 0;
 		let mut classes = Vec::with_capacity(self.classes.len());

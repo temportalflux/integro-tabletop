@@ -5,7 +5,7 @@ use crate::{
 		core::SourceId,
 		dnd5e::{
 			data::{character::Character, description, Ability},
-			BoxedMutator, SystemComponent,
+			BoxedMutator, SystemBlock,
 		},
 	},
 	utility::{MutatorGroup, NotInList},
@@ -77,7 +77,7 @@ impl MutatorGroup for Bundle {
 
 kdlize::impl_kdl_node!(Bundle, "bundle");
 
-impl SystemComponent for Bundle {
+impl SystemBlock for Bundle {
 	fn to_metadata(self) -> serde_json::Value {
 		let requirements = {
 			let mut requirements = HashMap::new();

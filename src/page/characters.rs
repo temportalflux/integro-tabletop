@@ -7,7 +7,7 @@ use crate::{
 		dnd5e::{
 			components::GeneralProp,
 			data::character::{Persistent, PersistentMetadata},
-			DnD5e, SystemComponent,
+			DnD5e, SystemBlock,
 		},
 	},
 	task::Signal,

@@ -4,7 +4,7 @@ use crate::system::{
 	core::SourceId,
 	dnd5e::{
 		data::{character::Character, currency::Wallet, description, Rarity},
-		SystemComponent,
+		SystemBlock,
 	},
 };
 use kdlize::OmitIfEmpty;
@@ -126,7 +126,7 @@ impl Item {
 	}
 }
 
-impl SystemComponent for Item {
+impl SystemBlock for Item {
 	fn to_metadata(self) -> serde_json::Value {
 		let mut contents: HashMap<&'static str, serde_json::Value> =
 			[("name", self.name.into()), ("tags", self.tags.into())].into();

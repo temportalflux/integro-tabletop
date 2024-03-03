@@ -13,7 +13,7 @@ impl PartialEq for Depot {
 	}
 }
 pub struct Registration {
-	pub component: self::dnd5e::ComponentRegistry,
+	pub component: self::dnd5e::BlockRegistry,
 	pub node: Arc<self::core::NodeRegistry>,
 }
 impl Depot {
@@ -23,7 +23,7 @@ impl Depot {
 		systems.insert(
 			dnd5e::DnD5e::id(),
 			Registration {
-				component: dnd5e::component_registry(),
+				component: dnd5e::block_registry(),
 				node: dnd5e::node_registry().into(),
 			},
 		);

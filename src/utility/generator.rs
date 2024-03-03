@@ -1,9 +1,22 @@
-use super::{AsTraitEq, TraitEq};
+use super::{AsTraitEq, PinFuture, TraitEq};
 use crate::kdl_ext::NodeContext;
+use database::Transaction;
 use kdlize::{AsKdl, NodeId};
 use std::{fmt::Debug, sync::Arc};
 
-pub trait Generator: Debug + TraitEq + AsTraitEq<dyn TraitEq> + NodeId + AsKdl {}
+#[derive(Default)]
+pub struct SystemObjectList {
+
+}
+
+impl SystemObjectList {
+	pub fn insert<T>(&mut self, object: T) where T: crate::system::dnd5e::SystemBlock + 'static + Send + Sync {}
+}
+
+pub trait Generator: Debug + TraitEq + AsTraitEq<dyn TraitEq> + NodeId + AsKdl {
+	fn source_id(&self) -> &crate::system::core::SourceId;
+	fn execute(&self, context: &NodeContext, transaction: &Transaction) -> PinFuture<anyhow::Result<SystemObjectList>>;
+}
 
 pub type ArcGenerator = Arc<dyn Generator + 'static + Send + Sync>;
 #[derive(Clone)]

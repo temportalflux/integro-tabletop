@@ -1,12 +1,9 @@
 use crate::{
-	database::{Database, Module},
-	storage::USER_HOMEBREW_REPO_NAME,
-	system::{
+	database::{Database, Module}, kdl_ext::NodeContext, storage::USER_HOMEBREW_REPO_NAME, system::{
 		self,
 		core::{ModuleId, NodeRegistry, SourceId, System},
-		dnd5e::generator,
-	},
-	utility::GenericGenerator,
+		dnd5e::generator::{self, VariantCache},
+	}, utility::GenericGenerator
 };
 use database::Transaction;
 use derivative::Derivative;
@@ -585,20 +582,32 @@ async fn process_request(
 		let transaction = database.read()?;
 
 		let mut queue = gather_generators(system, &transaction, system_reg.node()).await?;
+		let variant_cache = gather_variants(system, &transaction).await?;
 
-		// TODO: gather all variants into a cache (variants are objects marked as created by a generator, they have a uniquely formatted source id)
-		let variants = gather_variants(system, &transaction).await?;
+		// Process each generator in sequence, based on its priority in the queue.
+		while let Some(generator) = queue.dequeue() {
+			let context = NodeContext::new(generator.source_id().clone().into(), system_reg.node());
+			let object_list = match generator.execute(&context, &transaction).await {
+				Ok(out) => out,
+				Err(_err) => {
+					// TODO: emit/log error
+					continue;
+				}
+			};
+			
+			// TODO: for each output object,
+			// if generator, insert each into the generator queue
+			// if not generator, prepare it as a variant object
+			// - set its source id to have the variant-id field, as derived from the generator id and the name of the variant
+			// - construct an entry object for it, ensuring the entry is marked as a variant
+		}
 
-		// TODO:
-		// - process generators in priority queue; first kdls, then object/item generators.
-		//   When a generator runs, any generators it creates get inserted into the priority queue.
-		// - after a generator runs, all variants are gathered in a cache and compared again previously generated content.
+		// TODO: now that all generators have been processed,
+		// - compare generated objects (that arent generators) to those in the variant cache
 		//   variants in the old cache and missing in the new cache are deleted via the pending transaction
 		//   variants in the new cache and not the old are added to the pending transaction
 		//   variants in both caches (by id) with the same content are maintained (not changed or removed). this means just not updating it in the new transaction.
 		//   variants in both caches and not the same content are marked for update in the pending transaction.
-		// - object/item generators will need to query the database for all non-variant entries of a particular category (i.e. item)
-		// - Entry objects which are variants need a secondary SourceId field indicating their basis. Database entry records which have a `basis` property are considered variants.
 	}
 
 	Ok(())
@@ -638,11 +647,11 @@ async fn gather_generators(
 async fn gather_variants(
 	system: &str,
 	transaction: &Transaction,
-) -> Result<MultiMap<SourceId, SourceId>, StorageSyncError> {
+) -> Result<VariantCache, StorageSyncError> {
 	use crate::database::{entry::SystemVariants, Entry};
 	use database::{ObjectStoreExt, TransactionExt};
 
-	let mut variants_by_generator = MultiMap::new();
+	let mut cache = VariantCache::default();
 
 	let entry_store = transaction.object_store_of::<Entry>()?;
 	let idx_system_category = entry_store.index_of::<SystemVariants>();
@@ -653,15 +662,10 @@ async fn gather_variants(
 		.await;
 	let mut cursor = cursor.map_err(database::Error::from)?;
 	while let Some(entry) = cursor.next().await {
-		let Some(generator_id_str) = &entry.generator_id else {
-			continue;
-		};
-		let generator_id = SourceId::from_str(generator_id_str).unwrap();
-		let entry_id = entry.source_id(true);
-		variants_by_generator.insert(generator_id, entry_id);
+		cache.insert(entry);
 	}
 
-	Ok(variants_by_generator)
+	Ok(cache)
 }
 
 pub struct ModuleFile {
