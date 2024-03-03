@@ -2,12 +2,6 @@ use std::ops::AddAssign;
 
 mod error;
 pub use error::*;
-mod evaluator;
-pub use evaluator::*;
-mod generator;
-pub use generator::*;
-mod mutator;
-pub use mutator::*;
 pub mod selector;
 mod value;
 pub use value::*;
@@ -16,6 +10,28 @@ mod trait_object_eq;
 pub use trait_object_eq::*;
 pub mod web_ext;
 pub use web_ext::*;
+
+pub type BoxAny = Box<dyn std::any::Any + 'static + Send + Sync>;
+
+pub use crate::system::evaluator::Factory as EvaluatorFactory;
+pub use crate::system::evaluator::Generic as GenericEvaluator;
+pub use crate::system::generator::Factory as GeneratorFactory;
+pub use crate::system::generator::Generic as GenericGenerator;
+pub use crate::system::generator::SystemObjectList;
+pub use crate::system::mutator::Factory as MutatorFactory;
+pub use crate::system::mutator::Generic as GenericMutator;
+pub use crate::system::mutator::Group as MutatorGroup;
+pub use crate::system::Evaluator;
+pub use crate::system::Generator;
+pub use crate::system::Mutator;
+
+#[derive(thiserror::Error, Debug)]
+#[error(
+	"Incompatible {0} types: \
+	the evaluator specified by kdl {1} has the {0} type {2}, \
+	but the node is expecting an {0} type of {3}."
+)]
+pub struct IncompatibleTypes(pub &'static str, pub &'static str, pub &'static str, pub &'static str);
 
 pub type PinFuture<T> = PinFutureLifetime<'static, T>;
 pub type PinFutureLifetime<'l, T> = std::pin::Pin<Box<dyn std::future::Future<Output = T> + 'l + Send>>;

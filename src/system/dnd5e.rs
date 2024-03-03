@@ -1,8 +1,6 @@
 use self::data::character::Character;
-use crate::kdl_ext::NodeContext;
-use crate::system::core::NodeRegistry;
-use kdlize::{AsKdl, FromKdl, NodeId};
-use std::{collections::HashMap, sync::Arc};
+use super::{Block, BlockRegistry, NodeRegistry};
+use std::sync::Arc;
 
 pub mod components;
 pub mod data;
@@ -14,72 +12,9 @@ pub type BoxedCriteria = crate::utility::GenericEvaluator<Character, Result<(), 
 pub type BoxedEvaluator<V> = crate::utility::GenericEvaluator<Character, V>;
 pub type BoxedMutator = crate::utility::GenericMutator<Character>;
 pub type Value<T> = crate::utility::Value<Character, T>;
+pub use crate::system::Block as SystemBlock;
 
-type FnMetadataFromKdl =
-	Box<dyn Fn(crate::kdl_ext::NodeReader<'_>) -> anyhow::Result<serde_json::Value> + 'static + Send + Sync>;
-type FnReserializeKdl =
-	Box<dyn Fn(crate::kdl_ext::NodeReader<'_>) -> anyhow::Result<kdl::KdlNode> + 'static + Send + Sync>;
-
-/// A factory which parses a block (root-level kdl node) into some concrete type, and exposes methods for calling
-/// specific functions on that type (converting it to database record metadata, or reserializing into text).
-pub struct BlockFactory {
-	metadata_from_kdl: FnMetadataFromKdl,
-	reserialize_kdl: FnReserializeKdl,
-}
-impl BlockFactory {
-	fn new<T>() -> Self
-	where
-		T: SystemBlock + 'static + Send + Sync,
-		anyhow::Error: From<T::Error>,
-	{
-		Self {
-			metadata_from_kdl: Box::new(|mut node| {
-				let value = T::from_kdl(&mut node)?;
-				Ok(T::to_metadata(value))
-			}),
-			reserialize_kdl: Box::new(|mut node| {
-				let value = T::from_kdl(&mut node)?;
-				Ok(value.as_kdl().build(node.name().value()))
-			}),
-		}
-	}
-
-	pub fn metadata_from_kdl<'doc>(&self, node: crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<serde_json::Value> {
-		(*self.metadata_from_kdl)(node)
-	}
-
-	pub fn reserialize_kdl<'doc>(&self, node: crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<kdl::KdlNode> {
-		(*self.reserialize_kdl)(node)
-	}
-}
-
-/// A registry of all of the root-level nodes (aka blocks) which could be parsed from kdl.
-#[derive(Default)]
-pub struct BlockRegistry(HashMap<&'static str, Arc<BlockFactory>>);
-impl BlockRegistry {
-	pub fn register<T>(&mut self)
-	where
-		T: SystemBlock + 'static + Send + Sync,
-		anyhow::Error: From<T::Error>,
-	{
-		assert!(!self.0.contains_key(T::id()));
-		self.0.insert(T::id(), BlockFactory::new::<T>().into());
-	}
-
-	pub fn get_factory(&self, id: &str) -> Option<&Arc<BlockFactory>> {
-		self.0.get(id)
-	}
-}
-
-/// A block (root-level kdl node) which exposes functionality for
-/// constructing metadata about the struct, for embedding in the database record.
-pub trait SystemBlock: FromKdl<NodeContext> + NodeId + AsKdl {
-	fn to_metadata(self) -> serde_json::Value
-	where
-		Self: Sized;
-}
-
-impl SystemBlock for crate::utility::GenericGenerator {
+impl Block for crate::utility::GenericGenerator {
 	fn to_metadata(self) -> serde_json::Value {
 		// TODO: id (SourceId) and kind (<Generator as NodeId>::id) fields
 		serde_json::json!(null)
@@ -147,15 +82,34 @@ pub fn node_registry() -> NodeRegistry {
 	registry
 }
 
-#[derive(Clone, PartialEq, Default)]
-pub struct DnD5e;
+pub struct DnD5e {
+	blocks: BlockRegistry,
+	generics: Arc<NodeRegistry>,
+}
 
-impl super::core::System for DnD5e {
+impl DnD5e {
+	pub fn new() -> Self {
+		Self {
+			blocks: block_registry(),
+			generics: node_registry().into(),
+		}
+	}
+}
+
+impl super::System for DnD5e {
 	fn id() -> &'static str {
 		"dnd5e"
 	}
 
-	fn id_owned(&self) -> &'static str {
+	fn get_id(&self) -> &'static str {
 		Self::id()
+	}
+
+	fn blocks(&self) -> &BlockRegistry {
+		&self.blocks
+	}
+
+	fn generics(&self) -> &Arc<NodeRegistry> {
+		&self.generics
 	}
 }

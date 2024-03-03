@@ -29,7 +29,9 @@ kdlize::impl_kdl_node!(ItemGenerator, "item");
 crate::impl_trait_eq!(ItemGenerator);
 
 impl crate::utility::Generator for ItemGenerator {
-	fn source_id(&self) -> &SourceId { &self.id }
+	fn source_id(&self) -> &SourceId {
+		&self.id
+	}
 	fn execute(&self, context: &NodeContext, transaction: &Transaction) -> PinFuture<anyhow::Result<SystemObjectList>> {
 		Box::pin(async move {
 			let mut output = SystemObjectList::default();

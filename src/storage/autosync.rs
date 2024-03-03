@@ -1,19 +1,21 @@
 use crate::{
-	database::{Database, Module}, kdl_ext::NodeContext, storage::USER_HOMEBREW_REPO_NAME, system::{
+	database::{Database, Module},
+	kdl_ext::NodeContext,
+	storage::USER_HOMEBREW_REPO_NAME,
+	system::{
 		self,
 		core::{ModuleId, NodeRegistry, SourceId, System},
 		dnd5e::generator::{self, VariantCache},
-	}, utility::GenericGenerator
+	},
+	utility::GenericGenerator,
 };
 use database::Transaction;
 use derivative::Derivative;
 use futures::StreamExt;
-use multimap::MultiMap;
 use std::{
 	cell::RefCell,
 	collections::{BTreeMap, BTreeSet, HashMap},
 	rc::Rc,
-	str::FromStr,
 	sync::Arc,
 };
 use yew::{html::ChildrenProps, prelude::*};
@@ -594,7 +596,7 @@ async fn process_request(
 					continue;
 				}
 			};
-			
+
 			// TODO: for each output object,
 			// if generator, insert each into the generator queue
 			// if not generator, prepare it as a variant object
@@ -644,10 +646,7 @@ async fn gather_generators(
 	Ok(queue)
 }
 
-async fn gather_variants(
-	system: &str,
-	transaction: &Transaction,
-) -> Result<VariantCache, StorageSyncError> {
+async fn gather_variants(system: &str, transaction: &Transaction) -> Result<VariantCache, StorageSyncError> {
 	use crate::database::{entry::SystemVariants, Entry};
 	use database::{ObjectStoreExt, TransactionExt};
 
