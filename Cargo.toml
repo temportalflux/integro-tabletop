@@ -7,6 +7,9 @@ authors = ["Dustin Yost <dustin.yost.t@gmail.com>"]
 version = "0.0.1"
 edition = "2021"
 
+[build-dependencies]
+convert_case = "0.6"
+
 [dependencies]
 kdlize = { path = "crates/kdlize" }
 netlify-oauth = { path = "crates/netlify-oauth" }

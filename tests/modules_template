@@ -1,0 +1,22 @@
+use integro_tabletop::system::{SourceId, ModuleId};
+#[test]
+fn parse() -> anyhow::Result<()> {
+	let content = include_str!("{abs_path_to_kdl}");
+	let source_id = SourceId {
+		module: Some(ModuleId::Local {
+			name: "{module_id}".to_owned(),
+		}),
+		system: Some("{system_id}".to_owned()),
+		path: std::path::Path::new("{rel_path_to_kdl}").to_owned(),
+		..Default::default()
+	};
+	let registry = integro_tabletop::system::system_registry();
+	let document = content.parse::<kdl::KdlDocument>()?;
+	if document.nodes().len() > 1 {
+		println!("WARNING: multiple nodes in document {}", source_id);
+	}
+	let Some(node) = document.nodes().first() else { return Ok(()) };
+	let Some(system) = registry.get("{system_id}") else { return Ok(()) };
+	let _metadata = system.parse_metadata(node, &source_id)?;
+	Ok(())
+}

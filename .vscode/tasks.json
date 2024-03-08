@@ -47,21 +47,7 @@
 			"problemMatcher": []
 		},
 		{
-			"label": "7. [Binary] Build",
-			"command": "cargo",
-			"args": [ "build" ],
-			"group": "build",
-			"problemMatcher": []
-		},
-		{
-			"label": "8. [Binary] Execute",
-			"command": "cargo",
-			"args": [ "run" ],
-			"group": "build",
-			"problemMatcher": []
-		},
-		{
-			"label": "9. [Cargo] Clean",
+			"label": "7. [Cargo] Clean",
 			"command": "cargo",
 			"args": [ "clean" ],
 			"group": "build",

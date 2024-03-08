@@ -29,13 +29,15 @@ pub trait System {
 	fn generics(&self) -> &Arc<generics::Registry>;
 }
 
+pub fn system_registry() -> Registry {
+	let mut builder = crate::system::Registry::builder();
+	builder.insert(dnd5e::DnD5e::new());
+	builder.build()
+}
+
 #[function_component]
 pub fn Provider(props: &html::ChildrenProps) -> Html {
-	let depot = use_state(|| {
-		let mut builder = crate::system::Registry::builder();
-		builder.insert(dnd5e::DnD5e::new());
-		builder.build()
-	});
+	let depot = use_state(|| system_registry());
 	html! {
 		<ContextProvider<crate::system::Registry> context={(*depot).clone()}>
 			{props.children.clone()}

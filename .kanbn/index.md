@@ -61,6 +61,7 @@ columnSorting:
 
 ## Done
 
+- [generate-integration-tests-from-local-modules](tasks/generate-integration-tests-from-local-modules.md)
 - [auto-sync](tasks/auto-sync.md)
 - [conditions-imply-other-conditions](tasks/conditions-imply-other-conditions.md)
 - [bonus-damage-for-spells](tasks/bonus-damage-for-spells.md)
