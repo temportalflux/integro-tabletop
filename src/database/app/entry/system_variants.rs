@@ -4,14 +4,14 @@ use wasm_bindgen::JsValue;
 
 pub struct SystemVariants {
 	system: String,
-	generated: bool,
+	variants_only: bool,
 }
 
 impl SystemVariants {
-	pub fn new(system: impl Into<String>) -> Self {
+	pub fn new(system: impl Into<String>, variants_only: bool) -> Self {
 		Self {
 			system: system.into(),
-			generated: true,
+			variants_only,
 		}
 	}
 }
@@ -28,6 +28,12 @@ impl IndexType for SystemVariants {
 	}
 
 	fn as_query(&self) -> Result<idb::Query, idb::Error> {
-		idb::Query::from_items([JsValue::from_str(&self.system), JsValue::from_bool(self.generated)])
+		idb::Query::from_items([
+			JsValue::from_str(&self.system),
+			JsValue::from_f64(match self.variants_only {
+				true => 1f64,
+				false => 0f64,
+			}),
+		])
 	}
 }

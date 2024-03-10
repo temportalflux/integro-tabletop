@@ -34,8 +34,16 @@ impl SystemObjectList {
 		}
 	}
 
+	pub fn variant_id(&self, variant: impl Into<String>) -> VariantId {
+		VariantId {
+			module: self.generator_module.clone(),
+			generator: self.generator_short_id.clone(),
+			variant: variant.into(),
+		}
+	}
+
 	pub fn insert(&mut self, variant_name: impl Into<String>, mut entry: crate::database::Entry) {
-		entry.generated = true;
+		entry.generated = 1;
 
 		if entry.category == Generic::id() {
 			let generator = entry.parse_kdl::<Generic>(self.node_registry.clone());
@@ -45,11 +53,7 @@ impl SystemObjectList {
 
 		entry.id = {
 			let mut source_id = entry.source_id(true);
-			source_id.variant = Some(VariantId {
-				module: self.generator_module.clone(),
-				generator: self.generator_short_id.clone(),
-				variant: variant_name.into(),
-			});
+			source_id.variant = Some(self.variant_id(variant_name));
 			source_id.to_string()
 		};
 

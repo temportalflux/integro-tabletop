@@ -11,8 +11,8 @@ mod system;
 pub use system::*;
 mod system_category;
 pub use system_category::*;
-mod system_category_nonvariants;
-pub use system_category_nonvariants::*;
+mod system_category_variants;
+pub use system_category_variants::*;
 mod system_variants;
 pub use system_variants::*;
 
@@ -32,7 +32,7 @@ pub struct Entry {
 	// had no external basis (the generator creates object entries from scratch).
 	pub generator_id: Option<String>,
 	// marker for variants in order for idb to index (idb cannot check if `generator_id` is non-empty)
-	pub generated: bool,
+	pub generated: u8,
 }
 
 impl Record for Entry {

@@ -123,7 +123,7 @@ impl DownloadFileUpdates {
 			kdl: node.to_string(),
 			file_id: Some(file_id.clone()),
 			generator_id: None,
-			generated: false,
+			generated: 0,
 		};
 
 		Ok(Some(record))

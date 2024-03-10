@@ -42,9 +42,8 @@ impl Filter {
 			// That `equipment` property is an object that contains a property named `armor`.
 			// `armor` is an array, which contains any value that exactly matches the string representing an armor kinds provided.
 			let exact_matches = armor_kinds.iter().map(|kind| Criteria::exact(kind.to_string()));
-			let contains_match = exact_matches.map(|matcher| Criteria::contains_element(matcher));
-			let has_any_kind = Criteria::any(contains_match);
-			let has_armor = Criteria::contains_prop("armor", has_any_kind);
+			let has_kind = Criteria::contains_prop("kind", Criteria::any(exact_matches));
+			let has_armor = Criteria::contains_prop("armor", has_kind);
 			criteria.push(Criteria::contains_prop("equipment", has_armor))
 		}
 

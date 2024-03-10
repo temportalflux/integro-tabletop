@@ -181,7 +181,7 @@ pub fn Display(ViewProps { swap_view }: &ViewProps) -> Html {
 					kdl: Default::default(),
 					file_id: None,
 					generator_id: None,
-					generated: false,
+					generated: 0,
 				}),
 			};
 			let message = format!("Manually save character");

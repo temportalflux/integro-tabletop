@@ -161,7 +161,8 @@ impl Status {
 	}
 
 	pub fn progress_max(&self) -> Option<usize> {
-		let stage = self.r_external.stages.last()?;
+		let status = self.rw_internal.borrow();
+		let stage = status.stages.last()?;
 		let progress = stage.progress.as_ref()?;
 		Some(progress.max)
 	}
@@ -372,28 +373,37 @@ async fn process_request(
 		let module_store = transaction.object_store_of::<Module>()?;
 
 		for (module_id, repository) in remote_repositories {
-			let module = match modules.get_mut(&module_id) {
-				Some(module) => {
-					module.remote_version = repository.version.clone();
-					module
+			// if the module is already in memory, then update that entry and include in database update
+			if let Some(module) = modules.get_mut(&module_id) {
+				module.remote_version = repository.version.clone();
+				module_store.put_record(module).await?;
+				continue;
+			}
+			// if the module is not in memory, but could be in the database (not all requests fill the modules list),
+			// then we fetch from database, update the version, and copy the entry both back to database and to our in-memory listing.
+			if let Some(mut module) = module_store.get_record::<Module>(module_id.to_string()).await? {
+				module.remote_version = repository.version.clone();
+				if !module.installed {
+					module.version = module.remote_version.clone();
 				}
-				None => {
-					let module = Module {
-						id: module_id.clone(),
-						name: module_id.to_string(),
-						systems: repository.root_trees.iter().cloned().collect(),
-						version: repository.version.clone(),
-						remote_version: repository.version.clone(),
-						installed: false,
-					};
-					modules.insert(module_id.clone(), module);
-					modules.get(&module_id).unwrap()
-				}
+				module_store.put_record(&module).await?;
+				modules.insert(module_id.clone(), module);
+				continue;
+			}
+			// doesn't exist at all, so we need a new entry to be added to database.
+			let module = Module {
+				id: module_id.clone(),
+				name: module_id.to_string(),
+				systems: repository.root_trees.iter().cloned().collect(),
+				version: repository.version.clone(),
+				remote_version: repository.version.clone(),
+				installed: false,
 			};
-			module_store.put_record(module).await?;
+			module_store.put_record(&module).await?;
+			modules.insert(module_id.clone(), module);
 		}
 
-		transaction.commit().await.map_err(database::Error::from)?;
+		transaction.commit().await?;
 
 		status.pop_stage();
 	}
@@ -408,9 +418,13 @@ async fn process_request(
 		if let Some(module) = modules.get(&homebrew_id) {
 			if !module.installed {
 				modules_to_install.insert(homebrew_id);
+				//log::debug!(target: "autosync", "homebrew isn't installed and it should be");
 			}
 		}
 	}
+
+	//log::debug!(target: "autosync", "To Uninstall: {modules_to_uninstall:?}");
+	//log::debug!(target: "autosync", "To Install: {modules_to_install:?}");
 
 	// Uninstall undesired modules
 	// This deletes all content from those modules, including variants of content in the modules
@@ -567,10 +581,7 @@ async fn process_request(
 				entry_store.delete_record(entry_id).await?;
 			}
 
-			transaction
-				.commit()
-				.await
-				.map_err(|err| StorageSyncError::Database(err.into()))?;
+			transaction.commit().await?;
 
 			status.pop_stage(); // Installing owner/repo
 		}
@@ -589,17 +600,19 @@ async fn process_request(
 				"Missing system registry for {system}"
 			))))?;
 
-			let transaction = database.write()?;
-
 			status.push_stage(format!("Generating Variants for {system}"), Some(0));
 
+			let transaction = database.read()?;
 			let mut queue = gather_generators(system, &transaction, system_reg.node()).await?;
 			let mut variant_cache = gather_variants(system, &transaction).await?;
+			drop(transaction);
 
 			status.set_progress_max(queue.len());
 
 			// Process each generator in sequence, based on its priority in the queue.
+			log::debug!(target: "autosync", "processing generators");
 			while let Some(generator) = queue.dequeue() {
+				//log::debug!(target: "autosync", "processing generator {}", generator.source_id().unversioned());
 				let args = generator::Args {
 					system_registry: system_depot,
 					system: system_reg,
@@ -608,13 +621,14 @@ async fn process_request(
 				let mut object_list = match generator.execute(args).await {
 					Ok(out) => out,
 					Err(err) => {
-						log::error!(target: "generator", "Failed to execute generator {}: {err:?}", generator.source_id());
+						log::error!(target: "generator", "Failed to execute generator {}: {err:?}", generator.source_id().unversioned());
 						continue;
 					}
 				};
 
 				let mut count_added_to_queue = 0;
 				for generator in object_list.drain_generators() {
+					//log::debug!(target: "autosync", "enqueuing generator {}", generator.source_id().unversioned());
 					queue.enqueue(generator);
 					count_added_to_queue += 1;
 				}
@@ -626,6 +640,7 @@ async fn process_request(
 				}
 
 				for variant in object_list.drain_variants() {
+					//log::debug!(target: "autosync", "found variant {}", variant.source_id(false));
 					variant_cache.insert_update(variant);
 				}
 
@@ -636,10 +651,12 @@ async fn process_request(
 			// its safe to insert updates into the transaction AFTER all generators are done.
 			// Variants can include generator entries if the generator was a product of another generator.
 			{
+				log::debug!(target: "autosync", "submitting variant changes to database");
+				let transaction = database.write()?;
 				let entries = transaction.object_store_of::<Entry>()?;
 				// New entries get added to the database
 				for new_entry in variant_cache.drain_new() {
-					entries.add_record(&new_entry).await?;
+					entries.put_record(&new_entry).await?;
 				}
 				// Updated entries get put in the database
 				for updated_entry in variant_cache.drain_updated() {
@@ -649,9 +666,9 @@ async fn process_request(
 				for stale_entry in variant_cache.drain_stale() {
 					entries.delete_record(&stale_entry.id).await?;
 				}
+				transaction.commit().await?;
 			}
 
-			transaction.commit().await?;
 			status.pop_stage(); // Generating Variants for {system}
 
 			status.increment_progress(); // Generating Content Variants progress
@@ -684,7 +701,9 @@ async fn gather_generators(
 	let cursor = idx_system_category.open_cursor(Some(&query)).await;
 	let mut cursor = cursor.map_err(database::Error::from)?;
 	while let Some(entry) = cursor.next().await {
+		//log::debug!(target: "autosync", "generator entry found {}", entry.id);
 		let Some(value) = entry.parse_kdl::<generator::Generic>(node_reg.clone()) else {
+			//log::debug!(target: "autosync", "failed to parse generator from {}", entry.id);
 			continue;
 		};
 		queue.enqueue(value);
@@ -703,8 +722,9 @@ async fn gather_variants(system: &str, transaction: &Transaction) -> Result<gene
 	let idx_system_category = entry_store.index_of::<SystemVariants>();
 	let idx_system_category = idx_system_category.map_err(database::Error::from)?;
 
+	//log::debug!(target: "autosync", "gathering existing variants");
 	let cursor = idx_system_category
-		.open_cursor(Some(&SystemVariants::new(system)))
+		.open_cursor(Some(&SystemVariants::new(system, true)))
 		.await;
 	let mut cursor = cursor.map_err(database::Error::from)?;
 	while let Some(entry) = cursor.next().await {

@@ -41,7 +41,7 @@ impl Schema for SchemaVersion {
 				// Create entries table
 				{
 					use crate::database::entry::{
-						Entry, Module, ModuleSystem, System, SystemCategory, SystemCategoryNonvariants, SystemVariants,
+						Entry, Module, ModuleSystem, System, SystemCategory, SystemCategoryVariants, SystemVariants,
 					};
 					let mut params = idb::ObjectStoreParams::new();
 					params.auto_increment(true);
@@ -51,7 +51,7 @@ impl Schema for SchemaVersion {
 					store.create_index_of::<ModuleSystem>(None)?;
 					store.create_index_of::<System>(None)?;
 					store.create_index_of::<SystemCategory>(None)?;
-					store.create_index_of::<SystemCategoryNonvariants>(None)?;
+					store.create_index_of::<SystemCategoryVariants>(None)?;
 					store.create_index_of::<SystemVariants>(None)?;
 				}
 			}

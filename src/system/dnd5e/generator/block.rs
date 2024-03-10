@@ -43,9 +43,11 @@ impl crate::system::Generator for BlockGenerator {
 			for variant_args in &self.variants {
 				let mut variant_doc_str = self.base_str.clone();
 				for (key, value) in &variant_args.entries {
-					let value_str = value.to_string();
-					variant_doc_str = variant_doc_str.replace(&format!("{{{key}}}"), &value_str);
-					variant_doc_str = variant_doc_str.replace(&format!("\"{key}\""), &value_str);
+					let value_string = value.to_string();
+					// kdl wraps string values with double-quotes when formatting the value as a string.
+					let value_str = value_string.trim_matches('"');
+					variant_doc_str = variant_doc_str.replace(&format!("{{{key}}}"), value_str);
+					variant_doc_str = variant_doc_str.replace(&format!("\"{key}\""), value_str);
 				}
 				let mut document = variant_doc_str.parse::<kdl::KdlDocument>()?;
 				document.fmt();
@@ -54,18 +56,20 @@ impl crate::system::Generator for BlockGenerator {
 				}
 				let Some(node) = document.nodes().first() else { continue };
 
-				let metadata = args.system.parse_metadata(node, self.source_id())?;
+				let mut source_id = self.source_id().clone();
+				source_id.variant = Some(output.variant_id(variant_args.name.clone()));
+				let metadata = args.system.parse_metadata(node, &source_id)?;
 				let record = crate::database::Entry {
-					id: self.source_id().to_string(),
-					module: self.source_id().module.as_ref().unwrap().to_string(),
-					system: self.source_id().system.clone().unwrap(),
+					id: source_id.to_string(),
+					module: source_id.module.as_ref().unwrap().to_string(),
+					system: source_id.system.clone().unwrap(),
 					category: node.name().value().to_owned(),
-					version: self.source_id().version.clone(),
+					version: source_id.version.clone(),
 					metadata,
 					kdl: node.to_string(),
 					file_id: None,
 					generator_id: Some(self.source_id().to_string()),
-					generated: true,
+					generated: 1,
 				};
 				output.insert(variant_args.name.clone(), record);
 			}

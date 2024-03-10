@@ -48,9 +48,10 @@ impl crate::system::Generator for ItemGenerator {
 
 			// Finds all entries in the system under the Item category,
 			// skipping any that don't match the filter provided via criteria.
-			let index = entry::SystemCategoryNonvariants {
+			let index = entry::SystemCategoryVariants {
 				system: args.system.id().into(),
 				category: Item::id().into(),
+				variants_only: false,
 			};
 			let stream_result = args.database.clone().query_index_typed(
 				args.system.node(),
@@ -59,12 +60,14 @@ impl crate::system::Generator for ItemGenerator {
 			);
 			let mut stream: QueryDeserialize<Item> = stream_result.await?;
 			while let Some((entry, item)) = stream.next().await {
+				log::debug!(target: "item-gen", "creating variants of {}", item.id.unversioned());
 				// Each item needs each variant applied to it
 				for variant in &self.variants {
 					// applying a variant means:
 					// 1. cloning the original entry & item
 					let mut entry = entry.clone();
 					let mut item = item.clone();
+					item.id.variant = Some(output.variant_id(variant.name.clone()));
 					// 2. appling the extensions
 					variant.apply_to(&mut item)?;
 					// 3. reserializing into the entry (both content and metadata)
@@ -84,6 +87,7 @@ impl crate::system::Generator for ItemGenerator {
 					entry.generator_id = Some(self.source_id().to_string());
 					// 5. profit
 					output.insert(variant.name.clone(), entry);
+					log::debug!(target: "item-gen", "made variant {}", variant.name);
 				}
 			}
 

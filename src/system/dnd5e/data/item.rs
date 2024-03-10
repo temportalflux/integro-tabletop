@@ -216,10 +216,10 @@ impl AsKdl for Item {
 			node.push_entry(("weight", stack_weight));
 		}
 
-		node.push_child_t(("description", &self.description, OmitIfEmpty));
 		node.push_child_t(("worth", &self.worth, OmitIfEmpty));
-		node.push_child_t(("notes", &self.notes));
 		node.push_children_t(("tag", self.tags.iter()));
+		node.push_child_t(("description", &self.description, OmitIfEmpty));
+		node.push_child_t(("notes", &self.notes));
 
 		if self.kind != Kind::default() {
 			node.push_child_t(("kind", &self.kind));

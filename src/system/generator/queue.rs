@@ -23,6 +23,9 @@ impl Queue {
 	}
 
 	pub fn enqueue(&mut self, generator: generator::Generic) {
+		if !self.generators_by_kind.contains_key(generator.kind()) {
+			self.generators_by_kind.insert(generator.kind(), Default::default());
+		}
 		let Some(category) = self.generators_by_kind.get_mut(generator.kind()) else {
 			return;
 		};
