@@ -60,7 +60,7 @@ impl crate::system::Generator for ItemGenerator {
 			);
 			let mut stream: QueryDeserialize<Item> = stream_result.await?;
 			while let Some((entry, item)) = stream.next().await {
-				log::debug!(target: "item-gen", "creating variants of {}", item.id.unversioned());
+				//log::debug!(target: "item-gen", "creating variants of {}", item.id.unversioned());
 				// Each item needs each variant applied to it
 				for variant in &self.variants {
 					// applying a variant means:
@@ -87,7 +87,7 @@ impl crate::system::Generator for ItemGenerator {
 					entry.generator_id = Some(self.source_id().to_string());
 					// 5. profit
 					output.insert(variant.name.clone(), entry);
-					log::debug!(target: "item-gen", "made variant {}", variant.name);
+					//log::debug!(target: "item-gen", "made variant {}", variant.name);
 				}
 			}
 
