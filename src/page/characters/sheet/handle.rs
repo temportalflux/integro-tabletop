@@ -126,6 +126,7 @@ impl CharacterHandle {
 				let defaults_stream =
 					query_result.map_err(|err| CharacterInitializationError::DefaultsError(format!("{err:?}")))?;
 				let default_blocks = defaults_stream.all().await;
+				let default_blocks = default_blocks.into_iter().map(|(_, block)| block).collect();
 
 				let mut character = Character::new(persistent, default_blocks);
 				let provider = ObjectCacheProvider {

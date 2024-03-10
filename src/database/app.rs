@@ -1,5 +1,5 @@
 use crate::system::{Block, ModuleId};
-use database::{Error, Record, Transaction};
+use database::{Error, IndexType, Record, Transaction};
 use futures_util::future::LocalBoxFuture;
 use std::sync::Arc;
 
@@ -142,16 +142,29 @@ impl Database {
 			let system_reg = system_depot.get(&system).expect("Missing system {system:?} in depot");
 			system_reg.node()
 		};
-		let idx_by_sys_cate = self.read_index::<entry::SystemCategory>();
 		let index = entry::SystemCategory {
 			system,
 			category: Output::id().into(),
 		};
-		let cursor = idx_by_sys_cate?.open_cursor(Some(&index)).await?;
+		self.query_index_typed(node_reg, &index, criteria).await
+	}
+
+	pub async fn query_index_typed<Output, Index>(
+		self,
+		node_registry: Arc<crate::system::generics::Registry>,
+		index: &Index,
+		criteria: Option<Box<Criteria>>,
+	) -> Result<QueryDeserialize<Output>, Error>
+	where
+		Output: Block + Unpin,
+		Index: IndexType<Record = Entry>,
+	{
+		let idx_by_sys_cate = self.read_index::<Index>();
+		let cursor = idx_by_sys_cate?.open_cursor(Some(index)).await?;
 		let query_typed = QueryDeserialize::<Output> {
 			db: self,
 			query: Query { cursor, criteria },
-			node_reg,
+			node_reg: node_registry,
 			marker: Default::default(),
 		};
 		Ok(query_typed)

@@ -1,11 +1,10 @@
+use super::{ArcGenerator, Generator, Generic};
 use crate::{
 	kdl_ext::{NodeContext, NodeReader},
 	utility::BoxAny,
 };
 use kdlize::FromKdl;
 use std::sync::Arc;
-
-use super::{ArcGenerator, Generator, Generic};
 
 pub struct Factory {
 	fn_from_kdl: Box<dyn Fn(&mut NodeReader<'_>) -> anyhow::Result<BoxAny> + 'static + Send + Sync>,

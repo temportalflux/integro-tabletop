@@ -1,8 +1,7 @@
 use crate::{
-	database::{Database, Module},
-	kdl_ext::NodeContext,
+	database::{Database, Entry, Module},
 	storage::USER_HOMEBREW_REPO_NAME,
-	system::{self, generator, generics, ModuleId, SourceId, System},
+	system::{self, generator, generics, ModuleId, SourceId},
 };
 use database::Transaction;
 use derivative::Derivative;
@@ -160,6 +159,12 @@ impl Status {
 	pub fn stages(&self) -> &Vec<Stage> {
 		&self.r_external.stages
 	}
+
+	pub fn progress_max(&self) -> Option<usize> {
+		let stage = self.r_external.stages.last()?;
+		let progress = stage.progress.as_ref()?;
+		Some(progress.max)
+	}
 }
 
 #[derive(thiserror::Error, Debug, Clone)]
@@ -256,7 +261,8 @@ async fn process_request(
 	let mut modules_to_fetch = BTreeSet::new();
 	let mut modules_to_install = BTreeSet::new();
 	let mut modules_to_uninstall = BTreeSet::new();
-	let mut execute_generators = false;
+	// list of systems where content has been added to, updated, or removed from.
+	let mut systems_changed = BTreeSet::new();
 	match req {
 		Request::FetchLatestVersionAllModules => {
 			scan_storage_for_modules = true;
@@ -265,7 +271,6 @@ async fn process_request(
 			}
 		}
 		Request::InstallModules(new_installation_status) => {
-			execute_generators = true;
 			for (id, should_be_installed) in new_installation_status {
 				let module = database.get::<Module>(id.to_string()).await?;
 				let Some(module) = module else {
@@ -280,7 +285,6 @@ async fn process_request(
 			}
 		}
 		Request::UpdateModules(module_ids) => {
-			execute_generators = true;
 			for id in module_ids {
 				let module = database.get::<Module>(id.to_string()).await?;
 				let Some(module) = module else {
@@ -298,7 +302,6 @@ async fn process_request(
 					log::error!(target: "autosync", "Failed to find module {id:?}");
 					return Ok(());
 				};
-				execute_generators = true;
 				modules_to_fetch.insert(module.id.clone());
 				modules_to_install.insert(module.id.clone());
 				modules.insert(module.id.clone(), module);
@@ -415,7 +418,7 @@ async fn process_request(
 	if !modules_to_uninstall.is_empty() {
 		let transaction = database.write()?;
 		for module_id in &modules_to_uninstall {
-			use crate::database::{entry::ModuleSystem, Entry};
+			use crate::database::entry::ModuleSystem;
 			use database::{ObjectStoreExt, TransactionExt};
 
 			let Some(module) = modules.get_mut(module_id) else {
@@ -436,8 +439,13 @@ async fn process_request(
 				};
 				let cursor = idx_module_system.open_cursor(Some(&query)).await;
 				let mut cursor = cursor.map_err(database::Error::from)?;
+				let mut removed_any = false;
 				while let Some(entry) = cursor.next().await {
 					entry_store.delete_record(entry.id).await?;
+					removed_any = true;
+				}
+				if removed_any {
+					systems_changed.insert(system.clone());
 				}
 			}
 		}
@@ -510,7 +518,6 @@ async fn process_request(
 		// Iterate per module so updates can be committed to database as each is fetched.
 		status.push_stage("Downloading Modules", Some(module_updates.len()));
 		for ModuleUpdate { module_id, files } in module_updates {
-			use crate::database::Entry;
 			use database::{ObjectStoreExt, TransactionExt};
 
 			status.increment_progress();
@@ -538,6 +545,7 @@ async fn process_request(
 
 			let entry_store = transaction.object_store_of::<Entry>()?;
 			for record in entries {
+				systems_changed.insert(record.system.clone());
 				entry_store.put_record(&record).await?;
 			}
 			// Delete entries by module and file-id
@@ -549,12 +557,13 @@ async fn process_request(
 						continue;
 					};
 					if removed_file_ids.contains(file_id) {
-						entry_ids_to_remove.push(entry.id.clone());
+						entry_ids_to_remove.push((entry.id.clone(), entry.system.clone()));
 					}
 				}
 				entry_ids_to_remove
 			};
-			for entry_id in entry_ids_to_remove {
+			for (entry_id, system) in entry_ids_to_remove {
+				systems_changed.insert(system);
 				entry_store.delete_record(entry_id).await?;
 			}
 
@@ -569,42 +578,85 @@ async fn process_request(
 		status.pop_stage(); // Installing Modules
 	}
 
-	if execute_generators {
-		// TODO: process generators for every system which had content added, removed, or updated.
-		let system = crate::system::dnd5e::DnD5e::id();
-		let Some(system_reg) = system_depot.get(&system) else {
-			return Ok(());
-		};
+	// Run generators on each system which had content changed
+	if !systems_changed.is_empty() {
+		use database::{ObjectStoreExt, TransactionExt};
 
-		let transaction = database.read()?;
+		status.push_stage("Generating Content Variants", Some(systems_changed.len()));
+		for system in &systems_changed {
+			let system_reg = system_depot.get(&system);
+			let system_reg = system_reg.ok_or(StorageSyncError::Database(database::Error::Internal(format!(
+				"Missing system registry for {system}"
+			))))?;
 
-		let mut queue = gather_generators(system, &transaction, system_reg.node()).await?;
-		let variant_cache = gather_variants(system, &transaction).await?;
+			let transaction = database.write()?;
 
-		// Process each generator in sequence, based on its priority in the queue.
-		while let Some(generator) = queue.dequeue() {
-			let context = NodeContext::new(generator.source_id().clone().into(), system_reg.node());
-			let object_list = match generator.execute(&context, &transaction).await {
-				Ok(out) => out,
-				Err(_err) => {
-					// TODO: emit/log error
-					continue;
+			status.push_stage(format!("Generating Variants for {system}"), Some(0));
+
+			let mut queue = gather_generators(system, &transaction, system_reg.node()).await?;
+			let mut variant_cache = gather_variants(system, &transaction).await?;
+
+			status.set_progress_max(queue.len());
+
+			// Process each generator in sequence, based on its priority in the queue.
+			while let Some(generator) = queue.dequeue() {
+				let args = generator::Args {
+					system_registry: system_depot,
+					system: system_reg,
+					database,
+				};
+				let mut object_list = match generator.execute(args).await {
+					Ok(out) => out,
+					Err(err) => {
+						log::error!(target: "generator", "Failed to execute generator {}: {err:?}", generator.source_id());
+						continue;
+					}
+				};
+
+				let mut count_added_to_queue = 0;
+				for generator in object_list.drain_generators() {
+					queue.enqueue(generator);
+					count_added_to_queue += 1;
 				}
-			};
+				if count_added_to_queue > 0 {
+					let prev_progress_max = status.progress_max();
+					let prev_progress_max =
+						prev_progress_max.expect("stage cannot have none progress, it was initialized with some");
+					status.set_progress_max(prev_progress_max + count_added_to_queue);
+				}
 
-			// TODO: for each output object,
-			// if generator, insert each into the generator queue
-			// if not generator, prepare it as a variant object
-			// - set its source id to have the variant-id field, as derived from the generator id and the name of the variant
-			// - construct an entry object for it, ensuring the entry is marked as a variant
+				for variant in object_list.drain_variants() {
+					variant_cache.insert_update(variant);
+				}
+
+				status.increment_progress();
+			}
+
+			// Since variants are not valid sources for generators based on database entries,
+			// its safe to insert updates into the transaction AFTER all generators are done.
+			// Variants can include generator entries if the generator was a product of another generator.
+			{
+				let entries = transaction.object_store_of::<Entry>()?;
+				// New entries get added to the database
+				for new_entry in variant_cache.drain_new() {
+					entries.add_record(&new_entry).await?;
+				}
+				// Updated entries get put in the database
+				for updated_entry in variant_cache.drain_updated() {
+					entries.put_record(&updated_entry).await?;
+				}
+				// Stale entries are removed from the database
+				for stale_entry in variant_cache.drain_stale() {
+					entries.delete_record(&stale_entry.id).await?;
+				}
+			}
+
+			transaction.commit().await?;
+			status.pop_stage(); // Generating Variants for {system}
+
+			status.increment_progress(); // Generating Content Variants progress
 		}
-
-		// TODO: now that all generators have been processed,
-		// - compare generated objects (that arent generators) to those in the variant cache
-		//   variants in the old cache and missing in the new cache are deleted via the pending transaction
-		//   variants in the new cache and not the old are added to the pending transaction
-		//   variants in both caches (by id) with the same content are maintained (not changed or removed). this means just not updating it in the new transaction.
-		//   variants in both caches and not the same content are marked for update in the pending transaction.
+		status.pop_stage(); // Generating Content Variants
 	}
 
 	Ok(())
@@ -615,7 +667,7 @@ async fn gather_generators(
 	transaction: &Transaction,
 	node_reg: Arc<generics::Registry>,
 ) -> Result<generator::Queue, StorageSyncError> {
-	use crate::database::{entry::SystemCategory, Entry};
+	use crate::database::entry::SystemCategory;
 	use database::{ObjectStoreExt, TransactionExt};
 	use kdlize::NodeId;
 
@@ -642,7 +694,7 @@ async fn gather_generators(
 }
 
 async fn gather_variants(system: &str, transaction: &Transaction) -> Result<generator::VariantCache, StorageSyncError> {
-	use crate::database::{entry::SystemVariants, Entry};
+	use crate::database::entry::SystemVariants;
 	use database::{ObjectStoreExt, TransactionExt};
 
 	let mut cache = generator::VariantCache::default();
@@ -656,7 +708,7 @@ async fn gather_variants(system: &str, transaction: &Transaction) -> Result<gene
 		.await;
 	let mut cursor = cursor.map_err(database::Error::from)?;
 	while let Some(entry) = cursor.next().await {
-		cache.insert(entry);
+		cache.insert_original(entry);
 	}
 
 	Ok(cache)

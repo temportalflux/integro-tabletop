@@ -71,6 +71,9 @@ impl Equipment {
 		if let Some(weapon) = self.weapon {
 			contents.insert("weapon", weapon.to_metadata());
 		}
+		if let Some(armor) = self.armor {
+			contents.insert("armor", armor.to_metadata());
+		}
 		serde_json::json!(contents)
 	}
 
@@ -95,12 +98,7 @@ impl FromKdl<NodeContext> for Equipment {
 			Some(node) => Some(node.get_i64_req("bonus")? as i32),
 		};
 		let weapon = node.query_opt_t::<Weapon>("scope() > weapon")?;
-		let attunement = match node.query_opt("scope() > attunement")? {
-			None => None,
-			Some(mut _node) => {
-				None // TODO: Some(Attunement::from_kdl(node, &mut ctx.next_node())?)
-			}
-		};
+		let attunement = node.query_opt_t("scope() > attunement")?;
 
 		Ok(Self {
 			criteria,
@@ -118,6 +116,7 @@ impl AsKdl for Equipment {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 
+		node.push_child_t(("attunement", &self.attunement));
 		node.push_child_t(("armor", &self.armor));
 
 		node.push_child(self.shield.as_ref().map(|shield| {
@@ -127,13 +126,7 @@ impl AsKdl for Equipment {
 		}));
 
 		node.push_child_t(("weapon", &self.weapon));
-
-		if let Some(_attunement) = &self.attunement {
-			// TODO: Attunement node.push_child_t(("attunement", attunement));
-		}
-
 		node.push_child_t(("criteria", &self.criteria));
-
 		node.push_children_t(("mutator", self.mutators.iter()));
 
 		node
@@ -142,7 +135,30 @@ impl AsKdl for Equipment {
 
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct Attunement {
-	pub modifiers: Vec<BoxedMutator>,
+	pub required: bool,
+	pub mutators: Vec<BoxedMutator>,
+}
+
+impl FromKdl<NodeContext> for Attunement {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let required = node.get_bool_opt("required")?.unwrap_or_default();
+		let mutators = node.query_all_t("scope() > mutator")?;
+		Ok(Self { required, mutators })
+	}
+}
+
+impl AsKdl for Attunement {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+
+		if self.required {
+			node.push_entry(("required", true));
+		}
+		node.push_children_t(("mutator", self.mutators.iter()));
+
+		node
+	}
 }
 
 #[cfg(test)]

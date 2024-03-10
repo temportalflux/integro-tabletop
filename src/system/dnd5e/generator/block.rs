@@ -1,9 +1,8 @@
 use crate::{
 	kdl_ext::NodeContext,
 	system::{generator::SystemObjectList, SourceId},
-	utility::PinFuture,
+	utility::PinFutureLifetimeNoSend,
 };
-use database::Transaction;
 use derivative::Derivative;
 use kdl::{KdlDocument, KdlValue};
 use kdlize::{AsKdl, FromKdl, NodeBuilder, OmitIfEmpty};
@@ -15,6 +14,7 @@ use std::collections::BTreeMap;
 #[derivative(PartialEq, Debug)]
 pub struct BlockGenerator {
 	pub(super) id: SourceId,
+	pub(super) short_id: String,
 	#[derivative(PartialEq = "ignore", Debug = "ignore")]
 	pub(super) base_doc: KdlDocument,
 	pub(super) base_str: String,
@@ -28,16 +28,58 @@ impl crate::system::Generator for BlockGenerator {
 	fn source_id(&self) -> &SourceId {
 		&self.id
 	}
-	fn execute(&self, context: &NodeContext, transaction: &Transaction) -> PinFuture<anyhow::Result<SystemObjectList>> {
+
+	fn short_id(&self) -> &String {
+		&self.short_id
+	}
+
+	fn execute<'this>(
+		&'this self,
+		args: crate::system::generator::Args<'this>,
+	) -> PinFutureLifetimeNoSend<'this, anyhow::Result<SystemObjectList>> {
 		Box::pin(async move {
-			let mut output = SystemObjectList::default();
+			let mut output = SystemObjectList::new(self, args.system.node());
+
+			for variant_args in &self.variants {
+				let mut variant_doc_str = self.base_str.clone();
+				for (key, value) in &variant_args.entries {
+					let value_str = value.to_string();
+					variant_doc_str = variant_doc_str.replace(&format!("{{{key}}}"), &value_str);
+					variant_doc_str = variant_doc_str.replace(&format!("\"{key}\""), &value_str);
+				}
+				let mut document = variant_doc_str.parse::<kdl::KdlDocument>()?;
+				document.fmt();
+				if document.nodes().len() > 1 {
+					continue;
+				}
+				let Some(node) = document.nodes().first() else { continue };
+
+				let metadata = args.system.parse_metadata(node, self.source_id())?;
+				let record = crate::database::Entry {
+					id: self.source_id().to_string(),
+					module: self.source_id().module.as_ref().unwrap().to_string(),
+					system: self.source_id().system.clone().unwrap(),
+					category: node.name().value().to_owned(),
+					version: self.source_id().version.clone(),
+					metadata,
+					kdl: node.to_string(),
+					file_id: None,
+					generator_id: Some(self.source_id().to_string()),
+					generated: true,
+				};
+				output.insert(variant_args.name.clone(), record);
+			}
+
 			Ok(output) as anyhow::Result<SystemObjectList>
 		})
 	}
 }
 
 #[derive(Clone, PartialEq, Debug)]
-pub struct VariantEntry(pub(super) BTreeMap<String, KdlValue>);
+pub struct VariantEntry {
+	pub(super) name: String,
+	pub(super) entries: BTreeMap<String, KdlValue>,
+}
 
 impl BlockGenerator {
 	pub fn id(&self) -> &SourceId {
@@ -49,14 +91,16 @@ impl FromKdl<NodeContext> for BlockGenerator {
 	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let id = crate::kdl_ext::query_source_req(node)?;
+		let short_id = node.next_str_req()?.to_owned();
 		let mut base_doc = node.query_req("scope() > base")?.document_req()?.clone();
 		base_doc.clear_fmt_recursive();
 		let base_str = base_doc.to_string();
 		let mut variants = node.query_all_t("scope() > variant")?;
 		// prune out any variants with no entries
-		variants.retain(|variant: &VariantEntry| !variant.0.is_empty());
+		variants.retain(|variant: &VariantEntry| !variant.entries.is_empty());
 		Ok(Self {
 			id,
+			short_id,
 			base_doc,
 			base_str,
 			variants,
@@ -67,6 +111,7 @@ impl FromKdl<NodeContext> for BlockGenerator {
 impl AsKdl for BlockGenerator {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
+		node.push_entry(self.short_id.as_str());
 		node.push_child_t(("source", &self.id, OmitIfEmpty));
 		// pushing the base means cloning all of the nodes in the document,
 		// as children of a "base" node that we build
@@ -87,6 +132,7 @@ impl FromKdl<NodeContext> for VariantEntry {
 	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let mut entries = BTreeMap::default();
+		let name = node.next_str_req()?.to_owned();
 		for mut entry_node in node.query_all("scope() > entry")? {
 			let key = entry_node.next_str_req()?;
 			let value = entry_node.next_req()?.value().clone();
@@ -97,7 +143,7 @@ impl FromKdl<NodeContext> for VariantEntry {
 			let value = node.next_req()?.value().clone();
 			entries.insert(key.to_owned(), value);
 		}
-		Ok(Self(entries))
+		Ok(Self { name, entries })
 	}
 }
 
@@ -105,8 +151,10 @@ impl AsKdl for VariantEntry {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 
-		let single_entry = self.0.len() == 1;
-		let mut entry_iter = self.0.iter();
+		node.push_entry(self.name.as_str());
+
+		let single_entry = self.entries.len() == 1;
+		let mut entry_iter = self.entries.iter();
 		if single_entry {
 			let (key, value) = entry_iter.next().unwrap();
 			node.push_entry(key.clone());
@@ -158,26 +206,28 @@ mod test {
 				|item name=\"Belt of {TYPE} Strength\" {
 				|    rarity \"{RARITY}\"
 				|    tag \"Wonderous\"
-				|    kind \"Equipment\" requires_attunement=true {
+				|    kind \"Equipment\" {
+				|        attunement required=true
 				|        minimum \"SCORE\"
 				|    }
 				|}
 				|
 			";
 			let doc = "
-				|generator \"block\" {
+				|generator \"block\" \"test\" {
 				|    source \"local://homebrew@dnd5e/items/generator.kdl\"
 				|    base {
 				|        item name=\"Belt of {TYPE} Strength\" {
 				|            rarity \"{RARITY}\"
 				|            tag \"Wonderous\"
-				|            kind \"Equipment\" requires_attunement=true {
+				|            kind \"Equipment\" {
+				|                attunement required=true
 				|                minimum \"SCORE\"
 				|            }
 				|        }
 				|    }
-				|    variant \"TYPE\" \"Simple\"
-				|    variant {
+				|    variant \"1\" \"TYPE\" \"Simple\"
+				|    variant \"2\" {
 				|        entry \"RARITY\" \"Rare\"
 				|        entry \"SCORE\" 21
 				|        entry \"TYPE\" \"Huge\"
@@ -193,20 +243,25 @@ mod test {
 					path: "items/generator.kdl".into(),
 					..Default::default()
 				},
+				short_id: "test".to_owned(),
 				base_doc: raw_doc(base_str)
 					.parse::<KdlDocument>()
 					.expect("failed to parse base kdl doc"),
 				base_str: raw_doc(base_str),
 				variants: [
-					VariantEntry([("TYPE".into(), "Simple".into())].into()),
-					VariantEntry(
-						[
+					VariantEntry {
+						name: "1".into(),
+						entries: [("TYPE".into(), "Simple".into())].into(),
+					},
+					VariantEntry {
+						name: "2".into(),
+						entries: [
 							("TYPE".into(), "Huge".into()),
 							("RARITY".into(), "Rare".into()),
 							("SCORE".into(), 21.into()),
 						]
 						.into(),
-					),
+					},
 				]
 				.into(),
 			};

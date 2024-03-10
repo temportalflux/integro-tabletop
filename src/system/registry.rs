@@ -4,7 +4,7 @@ use std::{collections::HashMap, sync::Arc};
 mod builder;
 pub use builder::*;
 mod entry;
-pub(in super::registry) use entry::*;
+pub use entry::*;
 
 #[derive(Clone)]
 pub struct Registry(Arc<HashMap<&'static str, Entry>>);

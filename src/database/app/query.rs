@@ -21,6 +21,10 @@ pub enum Criteria {
 	/// 3. The value at the provided key passes the provided criteria
 	ContainsProperty(String, Box<Criteria>),
 	/// Passes if the value being evaluated:
+	/// 1. Is an object/map
+	/// 2. Does not have the provided key
+	MissingProperty(String),
+	/// Passes if the value being evaluated:
 	/// 1. Is an array
 	/// 2. The criteria matches against any of the contents
 	ContainsElement(Box<Criteria>),
@@ -49,6 +53,11 @@ impl Criteria {
 	/// Returns the `ContainsProperty` enum with the provided string key and the boxed value of `criteria`.
 	pub fn contains_prop(key: impl Into<String>, criteria: Self) -> Self {
 		Self::ContainsProperty(key.into(), criteria.into())
+	}
+
+	/// Returns the `MissingProperty` enum with the provided string key.
+	pub fn missing_prop(key: impl Into<String>) -> Self {
+		Self::MissingProperty(key.into())
 	}
 
 	/// Returns the `ContainsElement` enum with the boxed value of `criteria`.
@@ -84,6 +93,12 @@ impl Criteria {
 					return false;
 				};
 				criteria.is_relevant(value)
+			}
+			Self::MissingProperty(key) => {
+				let serde_json::Value::Object(map) = value else {
+					return false;
+				};
+				!map.contains_key(key)
 			}
 			Self::ContainsElement(criteria) => {
 				let serde_json::Value::Array(value_list) = value else {
@@ -155,7 +170,7 @@ impl<Output> futures_util::stream::Stream for QueryDeserialize<Output>
 where
 	Output: FromKdl<NodeContext> + Unpin,
 {
-	type Item = Output;
+	type Item = (Entry, Output);
 
 	fn poll_next(mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Option<Self::Item>> {
 		loop {
@@ -170,7 +185,7 @@ where
 				continue;
 			};
 			// we found a sucessful value! we can return it
-			return Poll::Ready(Some(value));
+			return Poll::Ready(Some((entry, value)));
 		}
 	}
 }
@@ -178,7 +193,7 @@ impl<Output> QueryDeserialize<Output>
 where
 	Output: FromKdl<NodeContext> + Unpin,
 {
-	pub async fn first_n(mut self, limit: Option<usize>) -> Vec<Output> {
+	pub async fn first_n(mut self, limit: Option<usize>) -> Vec<(Entry, Output)> {
 		let mut items = Vec::new();
 		while let Some(item) = self.next().await {
 			items.push(item);
@@ -191,7 +206,7 @@ where
 		items
 	}
 
-	pub async fn all(mut self) -> Vec<Output> {
+	pub async fn all(mut self) -> Vec<(Entry, Output)> {
 		let mut items = Vec::new();
 		while let Some(item) = self.next().await {
 			items.push(item);

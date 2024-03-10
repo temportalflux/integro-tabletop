@@ -190,7 +190,8 @@ where
 				return Ok(Vec::new());
 			}
 			let query = database.query_typed::<T>(system_id, system_depot, criteria);
-			let mut typed_entries = query.await?.first_n(max_limit).await;
+			let typed_entries = query.await?.first_n(max_limit).await;
+			let mut typed_entries = typed_entries.into_iter().map(|(_entry, out)| out).collect();
 			if let Some(adjust_listings) = &adjust_listings {
 				typed_entries = (adjust_listings)(typed_entries);
 			}

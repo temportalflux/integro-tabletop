@@ -1,6 +1,6 @@
+use integro_tabletop::*;
 use std::sync::Arc;
 use yew::prelude::*;
-use integro_tabletop::*;
 
 #[cfg(target_family = "wasm")]
 fn main() {

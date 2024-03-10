@@ -1,5 +1,6 @@
-
 fn main() {
+	println!("cargo:rerun-if-changed=build.rs");
+
 	let modules_root_src = std::path::Path::new("./modules").to_owned();
 	let modules_test_dst = std::path::Path::new("./tests/modules").to_owned();
 
@@ -15,7 +16,9 @@ fn main() {
 			let module_id = entry.file_name().to_str().unwrap().to_owned();
 
 			let mut system_ids = Vec::new();
-			let Ok(read_iter_sys) = std::fs::read_dir(entry.path()) else { continue };
+			let Ok(read_iter_sys) = std::fs::read_dir(entry.path()) else {
+				continue;
+			};
 			for entry in read_iter_sys {
 				let Ok(entry) = entry else { continue };
 				let Ok(metadata) = entry.metadata() else { continue };
@@ -44,16 +47,24 @@ fn main() {
 				if ext.to_str() != Some("kdl") {
 					continue;
 				}
-				
+
 				let item = item.display().to_string().replace("\\", "/");
 				let item = std::path::Path::new(item.as_str()).to_owned();
-				
-				let Ok(relative_path) = item.strip_prefix(&modules_root_src) else { continue };
+
+				let Ok(relative_path) = item.strip_prefix(&modules_root_src) else {
+					continue;
+				};
 				let relative_path = relative_path.with_extension("");
 
 				let absolute_path = item.canonicalize().unwrap();
-				let absolute_path = absolute_path.display().to_string().replace("\\", "/").replace("//?/", "");
+				let absolute_path = absolute_path
+					.display()
+					.to_string()
+					.replace("\\", "/")
+					.replace("//?/", "");
 				let absolute_path = std::path::Path::new(absolute_path.as_str()).to_owned();
+
+				println!("cargo:rerun-if-changed={}", absolute_path.display());
 
 				let entry = ModuleEntry {
 					abs_path: absolute_path,
@@ -168,8 +179,7 @@ impl Module {
 		if parts.is_empty() {
 			if let Some(submodule) = self.submodules.get_mut(name) {
 				submodule.entry = Some(entry);
-			}
-			else {
+			} else {
 				self.entries.insert(name.to_owned(), entry);
 			}
 			return;
@@ -182,8 +192,10 @@ impl Module {
 			}
 			self.submodules.insert(name.to_owned(), module);
 		}
-		
-		let Some(submodule) = self.submodules.get_mut(name) else { return };
+
+		let Some(submodule) = self.submodules.get_mut(name) else {
+			return;
+		};
 		submodule.insert_pathvec(parts, entry);
 	}
 
@@ -197,7 +209,7 @@ impl Module {
 			false => dir_path.join("mod.rs"),
 		};
 		let mut file = std::fs::File::create(module_path).unwrap();
-		
+
 		let mut lines = Vec::with_capacity(self.submodules.len() + self.entries.len());
 
 		for (name, submodule) in &self.submodules {

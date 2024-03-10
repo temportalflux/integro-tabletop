@@ -148,15 +148,6 @@ impl Log for WasmLogger {
 }
 
 /// Initialize the logger which the given config. If failed, it will log a message to the the browser console.
-///
-/// ## Examples
-/// ```rust
-/// wasm_logger::init(wasm_logger::Config::new(log::Level::Debug));
-/// ```
-/// or
-/// ```rust
-/// wasm_logger::init(wasm_logger::Config::with_prefix(log::Level::Debug, "some::module"));
-/// ```
 pub fn init(config: Config) {
 	let max_level = config.level;
 	let wl = WasmLogger {

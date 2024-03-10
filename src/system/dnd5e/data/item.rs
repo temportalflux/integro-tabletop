@@ -130,6 +130,9 @@ impl Block for Item {
 		if let Kind::Equipment(equipment) = self.kind {
 			contents.insert("equipment", equipment.to_metadata());
 		}
+		if let Some(rarity) = &self.rarity {
+			contents.insert("rarity", rarity.to_string().into());
+		}
 		serde_json::json!(contents)
 	}
 }

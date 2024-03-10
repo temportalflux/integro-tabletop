@@ -14,6 +14,10 @@ impl Entry {
 		Self(Arc::new(system))
 	}
 
+	pub fn id(&self) -> &'static str {
+		self.0.get_id()
+	}
+
 	pub fn node(&self) -> Arc<generics::Registry> {
 		self.0.generics().clone()
 	}

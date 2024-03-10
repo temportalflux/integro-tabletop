@@ -22,6 +22,14 @@ pub struct Armor {
 	pub min_strength_score: Option<u32>,
 }
 
+impl Armor {
+	pub fn to_metadata(self) -> serde_json::Value {
+		serde_json::json!({
+			"kind": self.kind.to_string(),
+		})
+	}
+}
+
 impl FromKdl<NodeContext> for Armor {
 	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {

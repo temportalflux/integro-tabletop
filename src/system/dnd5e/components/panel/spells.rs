@@ -1425,7 +1425,7 @@ pub fn AvailableSpellList(props: &AvailableSpellListProps) -> Html {
 								return Ok(spells);
 							}
 						};
-						while let Some(spell) = stream.next().await {
+						while let Some((_entry, spell)) = stream.next().await {
 							insert_spell(spell);
 						}
 					}

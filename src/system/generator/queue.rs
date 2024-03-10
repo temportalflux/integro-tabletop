@@ -18,6 +18,10 @@ impl Queue {
 		}
 	}
 
+	pub fn len(&self) -> usize {
+		self.generators_by_kind.iter().map(|(_kind, queue)| queue.len()).sum()
+	}
+
 	pub fn enqueue(&mut self, generator: generator::Generic) {
 		let Some(category) = self.generators_by_kind.get_mut(generator.kind()) else {
 			return;
