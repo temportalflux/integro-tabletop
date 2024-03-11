@@ -46,21 +46,21 @@ columnSorting:
 
 - [condition-degrees](tasks/condition-degrees.md)
 - [item-charges](tasks/item-charges.md)
-- [attunement](tasks/attunement.md)
 - [speed-based-on-existing-speed](tasks/speed-based-on-existing-speed.md)
+- [object-feature-backlog](tasks/object-feature-backlog.md)
 - [attack-row-overview-ui-rehaul](tasks/attack-row-overview-ui-rehaul.md)
 - [notes-for-features](tasks/notes-for-features.md)
 - [notes-for-items](tasks/notes-for-items.md)
 - [notes-for-spells](tasks/notes-for-spells.md)
 - [inventory-search-bar](tasks/inventory-search-bar.md)
 - [autosave](tasks/autosave.md)
+- [attunement](tasks/attunement.md)
 
 ## In Progress
 
-- [generator-module-components](tasks/generator-module-components.md)
-
 ## Done
 
+- [generator-module-components](tasks/generator-module-components.md)
 - [generate-integration-tests-from-local-modules](tasks/generate-integration-tests-from-local-modules.md)
 - [auto-sync](tasks/auto-sync.md)
 - [conditions-imply-other-conditions](tasks/conditions-imply-other-conditions.md)
