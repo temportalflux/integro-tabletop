@@ -182,7 +182,7 @@ impl FromKdl<NodeContext> for ResourceReset {
 			Some(rest_str) => Value::Fixed(rest_str.to_owned()),
 			None => node.query_req_t("scope() > rest")?,
 		};
-		let rate = node.query_req_t("scope() > rate")?;
+		let rate = node.query_opt_t("scope() > rate")?;
 		Ok(Self { rest, rate })
 	}
 }
