@@ -3,8 +3,10 @@ use super::{
 	character::Character,
 	description,
 };
-use crate::kdl_ext::NodeContext;
-use crate::system::{dnd5e::BoxedMutator, mutator};
+use crate::{
+	kdl_ext::NodeContext,
+	system::{dnd5e::BoxedMutator, mutator},
+};
 use derivative::Derivative;
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::{
@@ -74,18 +76,8 @@ impl mutator::Group for Feature {
 		let path_to_self = parent.join(&self.name);
 		if let Some(action) = &self.action {
 			if let Some(uses) = &action.limited_uses {
-				if let LimitedUses::Usage(data) = uses {
-					stats.features_mut().register_usage(data, &path_to_self);
-					if let Some(rest) = data.get_reset_rest(stats) {
-						if let Some(data_path) = data.get_data_path() {
-							let entry = super::character::RestEntry {
-								restore_amount: None,
-								data_paths: vec![data_path],
-								source: path_to_self.clone(),
-							};
-							stats.rest_resets_mut().add(rest, entry);
-						}
-					}
+				if let LimitedUses::Usage(resource) = uses {
+					resource.apply_to(stats, parent);
 				}
 			}
 		}

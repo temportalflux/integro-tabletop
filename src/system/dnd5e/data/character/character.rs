@@ -1,5 +1,5 @@
 use super::{
-	spellcasting, AttackBonuses, DefaultsBlock, Features, HitPoint, HitPoints, RestResets, Spellcasting,
+	spellcasting, AttackBonuses, DefaultsBlock, Features, HitPoint, HitPoints, ResourceDepot, RestResets, Spellcasting,
 	StartingEquipment,
 };
 use crate::{
@@ -486,6 +486,14 @@ impl Character {
 
 	pub fn rest_resets(&self) -> &RestResets {
 		&self.derived.rest_resets
+	}
+
+	pub fn resources(&self) -> &ResourceDepot {
+		&self.derived.resource_depot
+	}
+
+	pub fn resources_mut(&mut self) -> &mut ResourceDepot {
+		&mut self.derived.resource_depot
 	}
 }
 

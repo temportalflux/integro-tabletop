@@ -35,3 +35,5 @@ mod proficiencies;
 pub use proficiencies::*;
 pub mod spell;
 pub use spell::Spell;
+pub mod resource;
+pub use resource::*;

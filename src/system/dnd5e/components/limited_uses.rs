@@ -61,7 +61,7 @@ impl<'parent> UsesCounter<'parent> {
 						<span class="ms-2">{format!("Cost: {cost}")}</span>
 					</div>
 					<div class="d-flex align-items-center mt-1">
-						<span class="source-path-sm">{crate::data::as_feature_path_text(resource)}</span>
+						<span class="source-path-sm">{crate::data::as_feature_path_text(&resource)}</span>
 						<span class="ms-2" style="font-size: 10px;">
 							{format!("{} / {max_uses} uses remaining{reset_desc}", max_uses - consumed_uses)}
 						</span>

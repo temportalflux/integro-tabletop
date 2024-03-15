@@ -63,14 +63,13 @@ mod test {
 
 	mod kdl {
 		use super::*;
-		use crate::kdl_ext::test_utils::*;
 		use crate::{
-			kdl_ext::NodeContext,
+			kdl_ext::{test_utils::*, NodeContext},
 			system::{
 				dnd5e::{
 					data::{
 						roll::{Die, EvaluatedRoll},
-						Ability, Condition, DamageRoll, DamageType, Rest,
+						Ability, Condition, DamageRoll, DamageType, Resource, ResourceReset, Rest,
 					},
 					evaluator::GetLevelInt,
 					Value,
@@ -153,9 +152,12 @@ mod test {
 			let data = Action {
 				activation_kind: ActivationKind::Action,
 				attack: None,
-				limited_uses: Some(LimitedUses::Usage(UseCounterData {
-					max_uses: Value::Fixed(1),
-					reset_on: Some(Value::Fixed(Rest::Long.to_string())),
+				limited_uses: Some(LimitedUses::Usage(Resource {
+					capacity: Value::Fixed(1),
+					reset: Some(ResourceReset {
+						rest: Value::Fixed(Rest::Long.to_string()),
+						rate: None,
+					}),
 					..Default::default()
 				})),
 				conditions_to_apply: Vec::new(),
@@ -184,15 +186,18 @@ mod test {
 			let data = Action {
 				activation_kind: ActivationKind::Action,
 				attack: None,
-				limited_uses: Some(LimitedUses::Usage(UseCounterData {
-					max_uses: Value::Evaluated(
+				limited_uses: Some(LimitedUses::Usage(Resource {
+					capacity: Value::Evaluated(
 						GetLevelInt {
 							class_name: None,
 							order_map: [(2, 1), (5, 2), (10, 4), (14, 5), (20, -1)].into(),
 						}
 						.into(),
 					),
-					reset_on: Some(Value::Fixed(Rest::Long.to_string())),
+					reset: Some(ResourceReset {
+						rest: Value::Fixed(Rest::Long.to_string()),
+						rate: None,
+					}),
 					..Default::default()
 				})),
 				conditions_to_apply: Vec::new(),

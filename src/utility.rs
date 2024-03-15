@@ -65,3 +65,40 @@ where
 		}
 	}
 }
+
+trait PathExt {
+	fn normalize(&self) -> std::path::PathBuf;
+}
+impl PathExt for std::path::Path {
+	/// Normalize a path, removing things like `.` and `..`.
+	///
+	/// Adapted from cargo
+	/// https://github.com/rust-lang/cargo/blob/403fbe2b490d6cbb715ed768462bb7f977a6d514/crates/cargo-util/src/paths.rs#L84
+	fn normalize(&self) -> std::path::PathBuf {
+		use std::path::{Component, PathBuf};
+		let mut components = self.components().peekable();
+		let mut ret = if let Some(c @ Component::Prefix(..)) = components.peek().cloned() {
+			components.next();
+			PathBuf::from(c.as_os_str())
+		} else {
+			PathBuf::new()
+		};
+
+		for component in components {
+			match component {
+				Component::Prefix(..) => unreachable!(),
+				Component::RootDir => {
+					ret.push(component.as_os_str());
+				}
+				Component::CurDir => {}
+				Component::ParentDir => {
+					ret.pop();
+				}
+				Component::Normal(c) => {
+					ret.push(c);
+				}
+			}
+		}
+		ret
+	}
+}

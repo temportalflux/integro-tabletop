@@ -1,6 +1,5 @@
-use crate::kdl_ext::NodeContext;
 use crate::{
-	system::Mutator,
+	kdl_ext::NodeContext,
 	system::{
 		dnd5e::data::{
 			action::LimitedUses,
@@ -11,16 +10,15 @@ use crate::{
 				Character,
 			},
 			description,
-			roll::Roll,
+			roll::RollSet,
 			spell::{self, Spell},
 			Ability,
 		},
-		SourceId,
+		Mutator, SourceId,
 	},
 	utility::{selector, NotInList, Value},
 };
-use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
-use kdlize::{NodeId, OmitIfEmpty};
+use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder, NodeId, OmitIfEmpty};
 use std::{collections::BTreeMap, str::FromStr};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -160,7 +158,7 @@ impl Mutator for Spellcasting {
 							// (because restore amount is applied to all data paths in an entry).
 							let rank_data_path = stats.persistent().selected_spells.consumed_slots_path(*rank);
 							let entry = crate::system::dnd5e::data::character::RestEntry {
-								restore_amount: Some(Roll::from(*amount as u32)),
+								restore_amount: Some(RollSet::from(*amount as u32)),
 								data_paths: vec![rank_data_path],
 								source: parent.join(format!("{} Spellcasting Slots (Rank {})", caster.name(), *rank)),
 							};
@@ -181,18 +179,8 @@ impl Mutator for Spellcasting {
 				limited_uses,
 			} => {
 				if let Some(uses) = limited_uses.as_ref() {
-					if let LimitedUses::Usage(data) = uses {
-						stats.features_mut().register_usage(data, parent);
-						if let Some(rest) = data.get_reset_rest(stats) {
-							if let Some(data_path) = data.get_data_path() {
-								let entry = crate::system::dnd5e::data::character::RestEntry {
-									restore_amount: None,
-									data_paths: vec![data_path],
-									source: parent.join("Prepared Spellcasting"),
-								};
-								stats.rest_resets_mut().add(rest, entry);
-							}
-						}
+					if let LimitedUses::Usage(resource) = uses {
+						resource.apply_to(stats, &parent.join("Prepared Spellcasting"));
 					}
 				}
 				let mut all_spells = specific_spells

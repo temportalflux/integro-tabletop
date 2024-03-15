@@ -1,10 +1,13 @@
 use super::{armor::Armor, weapon::Weapon};
-use crate::kdl_ext::NodeContext;
-use crate::system::dnd5e::data::roll::Roll;
-use crate::system::dnd5e::data::Rest;
-use crate::system::{
-	dnd5e::{data::character::Character, BoxedCriteria, BoxedMutator},
-	mutator,
+use crate::{
+	kdl_ext::NodeContext,
+	system::{
+		dnd5e::{
+			data::{character::Character, Resource},
+			BoxedCriteria, BoxedMutator,
+		},
+		mutator,
+	},
 };
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::{collections::HashMap, path::Path};
@@ -23,30 +26,24 @@ pub struct Equipment {
 	pub weapon: Option<Weapon>,
 	/// If this weapon can be attuned, this is the attunement data.
 	pub attunement: Option<Attunement>,
-	pub charges: Option<Charges>,
-}
-
-#[derive(Clone, PartialEq, Debug)]
-pub struct Charges {
-	pub capacity: usize,
-	pub reset: Option<ChargesReset>,
-}
-#[derive(Clone, PartialEq, Debug)]
-pub struct ChargesReset {
-	pub roll: Roll,
-	pub base: usize,
-	pub rest: Rest,
+	pub charges: Option<Resource>,
 }
 
 impl mutator::Group for Equipment {
 	type Target = Character;
 
 	fn set_data_path(&self, path_to_item: &std::path::Path) {
+		// path_to_item could look something like:
+		// `Inventory/<uuid>/` for items in the character's main inventory
+		// `Inventory/<uuid>/<uuid>/` for items in a container
 		for mutator in &self.mutators {
 			mutator.set_data_path(path_to_item);
 		}
 		if let Some(armor) = &self.armor {
 			armor.set_data_path(path_to_item);
+		}
+		if let Some(charges) = &self.charges {
+			charges.set_data_path(path_to_item);
 		}
 	}
 
@@ -61,6 +58,9 @@ impl mutator::Group for Equipment {
 			stats
 				.armor_class_mut()
 				.push_bonus(*shield, None, path_to_item.to_owned());
+		}
+		if let Some(resource) = &self.charges {
+			resource.apply_to(stats, path_to_item);
 		}
 	}
 }
@@ -99,6 +99,7 @@ impl FromKdl<NodeContext> for Equipment {
 		};
 		let weapon = node.query_opt_t::<Weapon>("scope() > weapon")?;
 		let attunement = node.query_opt_t("scope() > attunement")?;
+		let charges = node.query_opt_t("scope() > charges")?;
 
 		Ok(Self {
 			criteria,
@@ -107,7 +108,7 @@ impl FromKdl<NodeContext> for Equipment {
 			shield,
 			weapon,
 			attunement,
-			charges: None,
+			charges,
 		})
 	}
 }
@@ -126,6 +127,7 @@ impl AsKdl for Equipment {
 		}));
 
 		node.push_child_t(("weapon", &self.weapon));
+		node.push_child_t(("charges", &self.charges));
 		node.push_child_t(("criteria", &self.criteria));
 		node.push_children_t(("mutator", self.mutators.iter()));
 

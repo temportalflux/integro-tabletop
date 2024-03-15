@@ -1,65 +1,48 @@
 use crate::{
 	kdl_ext::NodeContext,
 	system::dnd5e::{
-		data::{character::Character, Rest},
+		data::{character::Character, Resource, ResourceReset, Rest},
 		Value,
 	},
-	utility::selector,
+	utility::selector::IdPath,
 	GeneralError,
 };
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
-use std::{
-	path::{Path, PathBuf},
-	str::FromStr,
-};
+use std::path::PathBuf;
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum LimitedUses {
 	/// This is the most common format.
 	/// Usages define a max quantity and a rest that they reset on.
 	/// They can be referred to via `Consumer` by the path to the owner (often feature/action).
-	Usage(UseCounterData),
+	Usage(Resource),
 	Consumer {
 		/// The path to the `LimitedUses::Usage` which this usage consumes from.
-		resource: PathBuf,
+		resource: IdPath,
 		/// The amount of uses of `resource` that this usage consumes.
 		cost: u32,
 	},
 }
 
-#[derive(Clone, PartialEq, Debug)]
-pub struct UseCounterData {
-	/// The number of uses the feature has until it resets.
-	pub(crate) max_uses: Value<i32>,
-	/// Consumed uses resets when the user takes at least this rest
-	/// (a reset on a short rest will also reset on long rest).
-	pub(crate) reset_on: Option<Value<String>>,
-	pub(crate) uses_count: selector::Value<Character, u32>,
-}
-impl Default for UseCounterData {
-	fn default() -> Self {
-		Self {
-			max_uses: Value::Fixed(0),
-			reset_on: None,
-			uses_count: selector::Value::Options(selector::ValueOptions {
-				id: "uses_consumed".into(),
-				..Default::default()
-			}),
-		}
-	}
-}
-
 impl LimitedUses {
 	pub fn set_data_path(&self, parent: &std::path::Path) {
-		if let Self::Usage(data) = self {
-			data.uses_count.set_data_path(parent);
+		match self {
+			Self::Usage(resource) => {
+				resource.set_data_path(parent);
+			}
+			Self::Consumer { resource, .. } => {
+				resource.set_path(parent);
+			}
 		}
 	}
 
-	fn get_use_data<'a>(&'a self, character: &'a Character) -> Option<&'a UseCounterData> {
+	fn get_use_data<'a>(&'a self, character: &'a Character) -> Option<&'a Resource> {
 		match self {
 			Self::Usage(data) => Some(data),
-			Self::Consumer { resource, .. } => character.features().get_usage(resource),
+			Self::Consumer { resource, .. } => match resource.as_path() {
+				Some(path) => character.resources().get(path),
+				None => None,
+			},
 		}
 	}
 
@@ -67,7 +50,7 @@ impl LimitedUses {
 		let Some(data) = self.get_use_data(character) else {
 			return None;
 		};
-		data.get_data_path()
+		data.get_uses_path()
 	}
 
 	pub fn get_uses_consumed(&self, character: &Character) -> u32 {
@@ -81,7 +64,7 @@ impl LimitedUses {
 		let Some(data) = self.get_use_data(character) else {
 			return 0;
 		};
-		data.get_max_uses(character)
+		data.get_capacity(character)
 	}
 
 	pub fn get_reset_rest(&self, character: &Character) -> Option<Rest> {
@@ -91,53 +74,31 @@ impl LimitedUses {
 		data.get_reset_rest(character)
 	}
 
-	pub fn as_consumer(&self) -> Option<(u32, &Path)> {
-		match self {
-			Self::Usage { .. } => None,
-			Self::Consumer { cost, resource } => Some((*cost, resource.as_path())),
-		}
-	}
-}
-
-impl UseCounterData {
-	pub fn get_data_path(&self) -> Option<PathBuf> {
-		self.uses_count.get_data_path()
-	}
-
-	fn get_uses_consumed(&self, character: &Character) -> u32 {
-		character.get_selector_value(&self.uses_count).unwrap_or_default()
-	}
-
-	fn get_max_uses(&self, character: &Character) -> i32 {
-		self.max_uses.evaluate(character)
-	}
-
-	pub fn get_reset_rest(&self, character: &Character) -> Option<Rest> {
-		let Some(reset_eval) = &self.reset_on else {
+	pub fn as_consumer(&self) -> Option<(u32, PathBuf)> {
+		let Self::Consumer { cost, resource } = self else {
 			return None;
 		};
-		let rest_str = reset_eval.evaluate(character);
-		Rest::from_str(&rest_str).ok()
+		let Some(resource) = resource.as_path() else {
+			return None;
+		};
+		Some((*cost, resource))
 	}
 }
 
 impl FromKdl<NodeContext> for LimitedUses {
 	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
-		if let Some(max_uses) = node.query_opt_t::<Value<i32>>("scope() > max_uses")? {
+		if let Some(capacity) = node.query_opt_t::<Value<i32>>("scope() > max_uses")? {
 			let reset_on = node.query_opt_t::<Value<String>>("scope() > reset_on")?;
-			return Ok(Self::Usage(UseCounterData {
-				max_uses,
-				reset_on,
+			return Ok(Self::Usage(Resource {
+				capacity,
+				reset: reset_on.map(|rest| ResourceReset { rest, rate: None }),
 				..Default::default()
 			}));
 		}
 
 		if let Some(mut node_resource) = node.query_opt("scope() > resource")? {
-			let resource = {
-				let path_str = node_resource.next_str_req()?;
-				PathBuf::from(path_str)
-			};
+			let resource = IdPath::from(node_resource.next_str_req()?);
 			let cost = match node.query_opt("scope() > cost")? {
 				None => 1,
 				Some(mut node) => node.next_i64_req()? as u32,
@@ -154,12 +115,15 @@ impl AsKdl for LimitedUses {
 		let mut node = NodeBuilder::default();
 		match self {
 			Self::Usage(use_counter) => {
-				node.push_child_t(("max_uses", &use_counter.max_uses));
-				node.push_child_t(("reset_on", &use_counter.reset_on));
+				node.push_child_t(("max_uses", &use_counter.capacity));
+				if let Some(reset) = &use_counter.reset {
+					node.push_child_t(("reset_on", &reset.rest));
+				}
 				node
 			}
 			Self::Consumer { resource, cost } => {
-				node.push_child_entry("resource", resource.display().to_string());
+				let resource = resource.get_id().map(std::borrow::Cow::into_owned).unwrap_or_default();
+				node.push_child_entry("resource", resource);
 				if *cost > 1 {
 					node.push_child_t(("cost", cost));
 				}
@@ -202,8 +166,8 @@ mod test {
 				|    max_uses 2
 				|}
 			";
-			let data = LimitedUses::Usage(UseCounterData {
-				max_uses: Value::Fixed(2),
+			let data = LimitedUses::Usage(Resource {
+				capacity: Value::Fixed(2),
 				..Default::default()
 			});
 			assert_eq_fromkdl!(LimitedUses, doc, data);
@@ -219,9 +183,12 @@ mod test {
 				|    reset_on \"Short\"
 				|}
 			";
-			let data = LimitedUses::Usage(UseCounterData {
-				max_uses: Value::Fixed(2),
-				reset_on: Some(Value::Fixed(Rest::Short.to_string())),
+			let data = LimitedUses::Usage(Resource {
+				capacity: Value::Fixed(2),
+				reset: Some(ResourceReset {
+					rest: Value::Fixed(Rest::Short.to_string()),
+					rate: None,
+				}),
 				..Default::default()
 			});
 			assert_eq_fromkdl!(LimitedUses, doc, data);
@@ -246,21 +213,24 @@ mod test {
 				|    }
 				|}
 			";
-			let data = LimitedUses::Usage(UseCounterData {
-				max_uses: Value::Evaluated(
+			let data = LimitedUses::Usage(Resource {
+				capacity: Value::Evaluated(
 					GetLevelInt {
 						class_name: Some("SpecificClass".into()),
 						order_map: [(2, 1), (5, 2), (10, 4), (14, 5), (20, -1)].into(),
 					}
 					.into(),
 				),
-				reset_on: Some(Value::Evaluated(
-					GetLevelStr {
-						class_name: None,
-						order_map: [(1, Rest::Long.to_string()), (5, Rest::Short.to_string())].into(),
-					}
-					.into(),
-				)),
+				reset: Some(ResourceReset {
+					rest: Value::Evaluated(
+						GetLevelStr {
+							class_name: None,
+							order_map: [(1, Rest::Long.to_string()), (5, Rest::Short.to_string())].into(),
+						}
+						.into(),
+					),
+					rate: None,
+				}),
 				..Default::default()
 			});
 			assert_eq_fromkdl!(LimitedUses, doc, data);

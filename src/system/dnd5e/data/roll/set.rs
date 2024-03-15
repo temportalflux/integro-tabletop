@@ -4,6 +4,20 @@ use enum_map::{Enum, EnumMap};
 #[derive(Default, Clone, Copy, PartialEq, Debug)]
 pub struct RollSet(EnumMap<Die, u32>, u32);
 
+impl From<Roll> for RollSet {
+	fn from(value: Roll) -> Self {
+		let mut set = Self::default();
+		set.push(value);
+		set
+	}
+}
+
+impl From<u32> for RollSet {
+	fn from(value: u32) -> Self {
+		Self::from(Roll::from(value))
+	}
+}
+
 impl RollSet {
 	pub fn multiple(roll: &Roll, amount: u32) -> Self {
 		let mut set = Self::default();

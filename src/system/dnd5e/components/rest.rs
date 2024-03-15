@@ -417,7 +417,7 @@ fn ProjectedRestorations(GeneralProp { value }: &GeneralProp<Rest>) -> Html {
 		for entry in state.rest_resets().get(rest) {
 			let amt = match &entry.restore_amount {
 				None => "all".to_owned(),
-				Some(roll) => roll.to_string(),
+				Some(roll_set) => roll_set.as_nonzero_string().unwrap_or_default(),
 			};
 			let path_str = crate::data::as_feature_path_text(&entry.source).unwrap_or_default();
 			let description = format!("Restore {amt} uses of {path_str}.");

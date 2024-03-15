@@ -1,13 +1,17 @@
-use crate::kdl_ext::NodeContext;
 use crate::{
+	kdl_ext::NodeContext,
 	system::dnd5e::{
-		data::character::Character,
-		data::roll::{Die, Roll},
+		data::{
+			character::Character,
+			roll::{Die, Roll, RollSet},
+		},
 		Value,
 	},
 	utility::Dependencies,
 };
-use kdlize::{AsKdl, FromKdl, NodeBuilder};
+use itertools::Itertools;
+use kdlize::{ext::ValueExt, AsKdl, FromKdl, NodeBuilder};
+use std::str::FromStr;
 
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct EvaluatedRoll {
@@ -82,6 +86,72 @@ impl AsKdl for EvaluatedRoll {
 				node
 			}
 		}
+	}
+}
+
+#[derive(Clone, PartialEq, Default, Debug)]
+pub struct EvaluatedRollSet(pub Vec<EvaluatedRoll>);
+
+impl EvaluatedRollSet {
+	pub fn dependencies(&self) -> Dependencies {
+		self.0.iter().fold(Dependencies::default(), |deps, eval_roll| {
+			deps.join(eval_roll.dependencies())
+		})
+	}
+
+	pub fn evaluate(&self, character: &Character) -> RollSet {
+		self.0.iter().fold(RollSet::default(), |mut rolls, eval| {
+			rolls.push(eval.evaluate(character));
+			rolls
+		})
+	}
+}
+
+impl FromKdl<NodeContext> for EvaluatedRollSet {
+	type Error = anyhow::Error;
+	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let mut evaluated_rolls = node.query_all_t("scope() > roll")?;
+		if let Some(entry) = node.next_opt() {
+			let roll_set_str = entry.as_str_req()?;
+			for roll_str in roll_set_str.split("+") {
+				evaluated_rolls.push(EvaluatedRoll::from(Roll::from_str(roll_str)?));
+			}
+		}
+		Ok(Self(evaluated_rolls))
+	}
+}
+
+impl AsKdl for EvaluatedRollSet {
+	fn as_kdl(&self) -> NodeBuilder {
+		let mut node = NodeBuilder::default();
+		let mut fixed_roll_set = RollSet::default();
+		for evaluated_roll in &self.0 {
+			match evaluated_roll {
+				EvaluatedRoll {
+					amount: Value::Fixed(amount),
+					die: None,
+				} => {
+					fixed_roll_set.push(Roll::from(amount.unsigned_abs()));
+				}
+				EvaluatedRoll {
+					amount: Value::Fixed(amount),
+					die: Some(Value::Fixed(die)),
+				} => {
+					let die = Die::try_from(die.unsigned_abs()).expect("invalid die count");
+					fixed_roll_set.push(Roll::from((amount.unsigned_abs(), die)));
+				}
+				_ => {
+					node.push_child_t(("roll", evaluated_roll));
+				}
+			}
+		}
+		if !fixed_roll_set.is_empty() {
+			let rolls = fixed_roll_set.rolls().into_iter();
+			let mut rolls = rolls.map(|roll| roll.to_string());
+			let rolls = rolls.join("+");
+			node.push_entry(rolls);
+		}
+		node
 	}
 }
 

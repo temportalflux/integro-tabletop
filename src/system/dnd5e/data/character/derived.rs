@@ -3,7 +3,7 @@ use crate::system::dnd5e::{
 	data::{
 		action::AttackQuery,
 		proficiency,
-		roll::{Modifier, Roll},
+		roll::{Modifier, Roll, RollSet},
 		Ability, ArmorClass, DamageType, OtherProficiencies, Rest, Skill, Spell,
 	},
 	mutator::{Defense, Flag},
@@ -30,6 +30,8 @@ pub mod spellcasting;
 pub use spellcasting::Spellcasting;
 mod starting_equipment;
 pub use starting_equipment::*;
+mod resource_depot;
+pub use resource_depot::*;
 
 /// Data derived from the `Persistent`, such as bonuses to abilities/skills,
 /// proficiencies, and actions. This data all lives within `Persistent` in
@@ -55,6 +57,7 @@ pub struct Derived {
 	pub starting_equipment: Vec<(Vec<StartingEquipment>, PathBuf)>,
 	pub additional_objects: AdditionalObjectCache,
 	pub rest_resets: RestResets,
+	pub resource_depot: ResourceDepot,
 }
 
 impl Default for Derived {
@@ -80,6 +83,7 @@ impl Default for Derived {
 			starting_equipment: Default::default(),
 			additional_objects: Default::default(),
 			rest_resets: Default::default(),
+			resource_depot: Default::default(),
 		}
 	}
 }
@@ -432,7 +436,7 @@ pub struct RestResets {
 }
 #[derive(Clone, PartialEq, Debug)]
 pub struct RestEntry {
-	pub restore_amount: Option<Roll>,
+	pub restore_amount: Option<RollSet>,
 	pub data_paths: Vec<PathBuf>,
 	pub source: PathBuf,
 }

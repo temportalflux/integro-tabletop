@@ -1,3 +1,4 @@
+use crate::utility::PathExt;
 use derivative::Derivative;
 use std::{
 	borrow::Cow,
@@ -55,8 +56,9 @@ impl IdPath {
 		if let Some(id) = &self.id {
 			path.push(id);
 		}
+		let path = path.normalize();
 		let path = PathBuf::from(path.to_str().unwrap().replace("\\", "/"));
-		*self.absolute_path.write().unwrap() = path;
+		*self.absolute_path.write().unwrap() = path.into();
 	}
 
 	pub fn as_path(&self) -> Option<PathBuf> {
@@ -71,9 +73,63 @@ impl std::fmt::Debug for IdPath {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		write!(
 			f,
-			"IdPath(id={:?}, path={:?})",
+			"IdPath(id={:?}, abs={:?} path={:?})",
 			self.id,
+			self.is_absolute,
 			*self.absolute_path.read().unwrap()
 		)
+	}
+}
+
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	#[test]
+	fn empty() {
+		let path = IdPath::from(None::<String>);
+		path.set_path(std::path::Path::new(""));
+		assert_eq!(path.as_path(), None);
+		path.set_path(std::path::Path::new("some/parent/"));
+		assert_eq!(path.as_path(), Some(std::path::Path::new("some/parent/").to_owned()));
+	}
+
+	#[test]
+	fn absolute() {
+		let path = IdPath::from(Some("/Absolute/Path/to/Item"));
+		path.set_path(std::path::Path::new(""));
+		assert_eq!(
+			path.as_path(),
+			Some(std::path::Path::new("Absolute/Path/to/Item").to_owned())
+		);
+		path.set_path(std::path::Path::new("some/parent/"));
+		assert_eq!(
+			path.as_path(),
+			Some(std::path::Path::new("Absolute/Path/to/Item").to_owned())
+		);
+	}
+
+	#[test]
+	fn relative_to_parent() {
+		let path = IdPath::from(Some("Path/to/Child"));
+		path.set_path(std::path::Path::new(""));
+		assert_eq!(path.as_path(), Some(std::path::Path::new("Path/to/Child").to_owned()));
+		path.set_path(std::path::Path::new("some/parent/"));
+		assert_eq!(
+			path.as_path(),
+			Some(std::path::Path::new("some/parent/Path/to/Child").to_owned())
+		);
+	}
+
+	#[test]
+	fn relative_to_ancestor() {
+		let path = IdPath::from(Some("../ParentSibling"));
+		path.set_path(std::path::Path::new(""));
+		assert_eq!(path.as_path(), Some(std::path::Path::new("ParentSibling").to_owned()));
+		path.set_path(std::path::Path::new("/some/parent/"));
+		assert_eq!(
+			path.as_path(),
+			Some(std::path::Path::new("/some/ParentSibling").to_owned())
+		);
 	}
 }
