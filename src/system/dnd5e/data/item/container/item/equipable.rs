@@ -1,4 +1,5 @@
 use crate::kdl_ext::NodeContext;
+use crate::system::mutator::ReferencePath;
 use crate::system::{
 	dnd5e::data::{
 		character::Character,
@@ -7,13 +8,20 @@ use crate::system::{
 	mutator,
 };
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
-use std::path::Path;
+use std::path::PathBuf;
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct EquipableEntry {
 	pub id_path: Vec<uuid::Uuid>,
 	pub item: Item,
 	pub is_equipped: bool,
+}
+
+impl EquipableEntry {
+	fn id_as_path(&self) -> PathBuf {
+		let iter = self.id_path.iter();
+		iter.fold(PathBuf::new(), |path, id| path.join(id.to_string()))
+	}
 }
 
 impl AsItem for EquipableEntry {
@@ -50,16 +58,15 @@ impl AsItem for EquipableEntry {
 impl mutator::Group for EquipableEntry {
 	type Target = Character;
 
-	fn set_data_path(&self, parent: &std::path::Path) {
-		let path_to_item = self.id_path.iter().fold(parent.to_owned(), |path, id| {
-			path.join(id.to_string())
-		});
+	fn set_data_path(&self, parent: &ReferencePath) {
+		let item_name = PathBuf::from(&self.item.name);
+		let path_to_item = parent.join(self.id_as_path(), Some(item_name));
 		if let Kind::Equipment(equipment) = &self.item.kind {
 			equipment.set_data_path(&path_to_item);
 		}
 	}
 
-	fn apply_mutators(&self, stats: &mut Character, parent: &Path) {
+	fn apply_mutators(&self, stats: &mut Character, parent: &ReferencePath) {
 		let Kind::Equipment(equipment) = &self.item.kind else {
 			return;
 		};
@@ -67,7 +74,8 @@ impl mutator::Group for EquipableEntry {
 			return;
 		}
 
-		let path_to_item = parent.join(&self.item.name);
+		let item_name = PathBuf::from(&self.item.name);
+		let path_to_item = parent.join(self.id_as_path(), Some(item_name));
 		stats.apply_from(equipment, &path_to_item);
 		if let Some(weapon) = &equipment.weapon {
 			stats.add_feature(weapon.attack_action(self), &path_to_item);

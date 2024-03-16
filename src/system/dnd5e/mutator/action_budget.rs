@@ -1,4 +1,5 @@
 use crate::kdl_ext::NodeContext;
+use crate::system::mutator::ReferencePath;
 use crate::{
 	system::dnd5e::{
 		data::{
@@ -50,13 +51,13 @@ impl Mutator for AddToActionBudget {
 		}
 	}
 
-	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
+	fn apply(&self, stats: &mut Character, parent: &ReferencePath) {
 		let amount = self.amount.evaluate(stats);
 		if amount >= 0 {
 			stats
 				.features_mut()
 				.action_budget
-				.push(self.action_kind, amount as u32, parent.into());
+				.push(self.action_kind, amount as u32, parent.display.clone());
 		}
 	}
 }

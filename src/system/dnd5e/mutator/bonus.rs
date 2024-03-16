@@ -1,4 +1,5 @@
 use crate::kdl_ext::NodeContext;
+use crate::system::mutator::ReferencePath;
 use crate::{
 	system::dnd5e::data::{
 		action::AttackQuery,
@@ -72,12 +73,12 @@ impl Mutator for Bonus {
 		deps
 	}
 
-	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
+	fn apply(&self, stats: &mut Character, parent: &ReferencePath) {
 		match self {
 			Self::AttackRoll { bonus, query } => {
 				stats
 					.attack_bonuses_mut()
-					.add_to_weapon_attacks(*bonus, query.clone(), parent.to_owned());
+					.add_to_weapon_attacks(*bonus, query.clone(), parent);
 			}
 			Self::AttackDamage {
 				damage,
@@ -85,28 +86,23 @@ impl Mutator for Bonus {
 				query,
 			} => {
 				let bonus = damage.evaluate(stats);
-				stats.attack_bonuses_mut().add_to_weapon_damage(
-					bonus,
-					damage_type.clone(),
-					query.clone(),
-					parent.to_owned(),
-				);
+				stats
+					.attack_bonuses_mut()
+					.add_to_weapon_damage(bonus, damage_type.clone(), query.clone(), parent);
 			}
 			Self::AttackAbilityModifier { ability, query } => {
 				stats
 					.attack_bonuses_mut()
-					.add_ability_modifier(*ability, query.clone(), parent.to_owned());
+					.add_ability_modifier(*ability, query.clone(), parent);
 			}
 			Self::SpellDamage { damage, query } => {
 				let bonus = damage.evaluate(stats);
 				stats
 					.attack_bonuses_mut()
-					.add_to_spell_damage(bonus, query.clone(), parent.to_owned());
+					.add_to_spell_damage(bonus, query.clone(), parent);
 			}
 			Self::ArmorClass { bonus, context } => {
-				stats
-					.armor_class_mut()
-					.push_bonus(*bonus, context.clone(), parent.to_owned());
+				stats.armor_class_mut().push_bonus(*bonus, context.clone(), parent);
 			}
 		}
 	}

@@ -1,8 +1,11 @@
 use crate::{
 	kdl_ext::NodeContext,
-	system::dnd5e::{
-		data::{character::Character, Resource, ResourceReset, Rest},
-		Value,
+	system::{
+		dnd5e::{
+			data::{character::Character, Resource, ResourceReset, Rest},
+			Value,
+		},
+		mutator::ReferencePath,
 	},
 	utility::selector::IdPath,
 	GeneralError,
@@ -25,7 +28,7 @@ pub enum LimitedUses {
 }
 
 impl LimitedUses {
-	pub fn set_data_path(&self, parent: &std::path::Path) {
+	pub fn set_data_path(&self, parent: &ReferencePath) {
 		match self {
 			Self::Usage(resource) => {
 				resource.set_data_path(parent);
@@ -39,7 +42,7 @@ impl LimitedUses {
 	fn get_use_data<'a>(&'a self, character: &'a Character) -> Option<&'a Resource> {
 		match self {
 			Self::Usage(data) => Some(data),
-			Self::Consumer { resource, .. } => match resource.as_path() {
+			Self::Consumer { resource, .. } => match resource.data() {
 				Some(path) => character.resources().get(path),
 				None => None,
 			},
@@ -62,6 +65,7 @@ impl LimitedUses {
 
 	pub fn get_max_uses(&self, character: &Character) -> i32 {
 		let Some(data) = self.get_use_data(character) else {
+			log::debug!("no resource found {self:?}");
 			return 0;
 		};
 		data.get_capacity(character)
@@ -74,14 +78,19 @@ impl LimitedUses {
 		data.get_reset_rest(character)
 	}
 
-	pub fn as_consumer(&self) -> Option<(u32, PathBuf)> {
+	pub fn as_consumer(&self, character: &Character) -> Option<(u32, PathBuf)> {
 		let Self::Consumer { cost, resource } = self else {
 			return None;
 		};
-		let Some(resource) = resource.as_path() else {
+		let Some(resource) = resource.data() else {
 			return None;
 		};
-		Some((*cost, resource))
+		// convert the internal path name to the path displayed to users
+		// e.g. replacing inventory item ids with the name of the item
+		let Some(resource) = character.resources().get(resource) else {
+			return None;
+		};
+		Some((*cost, resource.get_display_path()))
 	}
 }
 

@@ -1,17 +1,20 @@
-use crate::system::dnd5e::data::bounded::{BoundValue, BoundedValue};
-use std::{collections::BTreeMap, path::PathBuf};
+use crate::system::{
+	dnd5e::data::bounded::{BoundValue, BoundedValue},
+	mutator::ReferencePath,
+};
+use std::collections::BTreeMap;
 
 #[derive(Clone, Default, PartialEq, Debug)]
 pub struct Senses(BTreeMap<String, BoundedValue>);
 impl Senses {
-	pub fn insert(&mut self, kind: String, bound: BoundValue, source: PathBuf) {
+	pub fn insert(&mut self, kind: String, bound: BoundValue, source: &ReferencePath) {
 		match self.0.get_mut(&kind) {
 			Some(value) => {
-				value.insert(bound, source);
+				value.insert(bound, source.display.clone());
 			}
 			None => {
 				let mut value = BoundedValue::default();
-				value.insert(bound, source);
+				value.insert(bound, source.display.clone());
 				self.0.insert(kind, value);
 			}
 		}

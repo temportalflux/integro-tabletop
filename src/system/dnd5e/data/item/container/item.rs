@@ -7,12 +7,13 @@ use crate::{
 			item::{Item, Restriction},
 			Indirect, Spell,
 		},
-		mutator, SourceId,
+		mutator::{self, ReferencePath},
+		SourceId,
 	},
 };
 use async_recursion::async_recursion;
 use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder, OmitIfEmpty};
-use std::{collections::HashMap, path::Path};
+use std::collections::HashMap;
 use uuid::Uuid;
 
 mod as_item;
@@ -375,16 +376,17 @@ impl Inventory {
 impl mutator::Group for Inventory {
 	type Target = Character;
 
-	fn set_data_path(&self, parent: &std::path::Path) {
-		let path_to_self = parent.join("Inventory");
+	fn set_data_path(&self, parent: &ReferencePath) {
+		let path_to_self = parent.join("Inventory", None);
 		for (_, entry) in self.iter_by_name() {
 			entry.set_data_path(&path_to_self);
 		}
 	}
 
-	fn apply_mutators(&self, stats: &mut Character, parent: &Path) {
+	fn apply_mutators(&self, stats: &mut Character, parent: &ReferencePath) {
+		let path_to_self = parent.join("Inventory", None);
 		for (_id, entry) in self.iter_by_name() {
-			stats.apply_from(entry, parent);
+			stats.apply_from(entry, &path_to_self);
 		}
 	}
 }

@@ -1,4 +1,7 @@
-use crate::system::dnd5e::data::item::{armor, weapon};
+use crate::system::{
+	dnd5e::data::item::{armor, weapon},
+	mutator::ReferencePath,
+};
 use std::{
 	collections::{BTreeMap, BTreeSet},
 	path::PathBuf,
@@ -78,16 +81,16 @@ impl<T> From<BTreeMap<T, BTreeSet<PathBuf>>> for AttributedValueMap<T> {
 	}
 }
 impl<T> AttributedValueMap<T> {
-	pub fn insert(&mut self, value: T, source: PathBuf)
+	pub fn insert(&mut self, value: T, source: &ReferencePath)
 	where
 		T: Ord,
 	{
 		match self.0.get_mut(&value) {
 			Some(sources) => {
-				sources.insert(source);
+				sources.insert(source.display.clone());
 			}
 			None => {
-				self.0.insert(value, BTreeSet::from([source]));
+				self.0.insert(value, BTreeSet::from([source.display.clone()]));
 			}
 		}
 	}

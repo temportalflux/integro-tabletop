@@ -14,6 +14,7 @@ use crate::{
 			spell::{self, Spell},
 			Ability,
 		},
+		mutator::ReferencePath,
 		Mutator, SourceId,
 	},
 	utility::{selector, NotInList, Value},
@@ -116,7 +117,7 @@ impl Mutator for Spellcasting {
 		}
 	}
 
-	fn set_data_path(&self, parent: &std::path::Path) {
+	fn set_data_path(&self, parent: &ReferencePath) {
 		match &self.0 {
 			Operation::AddPrepared {
 				selectable_spells,
@@ -134,7 +135,7 @@ impl Mutator for Spellcasting {
 		}
 	}
 
-	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
+	fn apply(&self, stats: &mut Character, parent: &ReferencePath) {
 		match &self.0 {
 			Operation::Caster(caster) => {
 				// The reset entry for standard spell slots is taken care of by `Persistent::SelectedSpells`
@@ -160,7 +161,11 @@ impl Mutator for Spellcasting {
 							let entry = crate::system::dnd5e::data::character::RestEntry {
 								restore_amount: Some(RollSet::from(*amount as u32)),
 								data_paths: vec![rank_data_path],
-								source: parent.join(format!("{} Spellcasting Slots (Rank {})", caster.name(), *rank)),
+								source: parent.display.join(format!(
+									"{} Spellcasting Slots (Rank {})",
+									caster.name(),
+									*rank
+								)),
 							};
 							stats.rest_resets_mut().add(*reset_on, entry);
 						}
@@ -180,7 +185,7 @@ impl Mutator for Spellcasting {
 			} => {
 				if let Some(uses) = limited_uses.as_ref() {
 					if let LimitedUses::Usage(resource) = uses {
-						resource.apply_to(stats, &parent.join("Prepared Spellcasting"));
+						resource.apply_to(stats, &parent.join("Prepared Spellcasting", None));
 					}
 				}
 				let mut all_spells = specific_spells
@@ -198,7 +203,7 @@ impl Mutator for Spellcasting {
 				}
 				for (id, prepared_info) in all_spells {
 					let entry = SpellEntry {
-						source: parent.to_owned(),
+						source: parent.display.clone(),
 						classified_as: classified_as.clone(),
 						// TODO: At will casting is not explicit for users. Change kdl format to use an enum of Uses, Slot/Ritual, or AtWill
 						method: match (

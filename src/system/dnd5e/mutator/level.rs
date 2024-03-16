@@ -1,9 +1,9 @@
 use crate::{
 	kdl_ext::NodeContext,
-	system::Mutator,
 	system::{
 		dnd5e::data::{character::Character, description},
-		mutator,
+		mutator::{self, ReferencePath},
+		Mutator,
 	},
 };
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
@@ -22,7 +22,7 @@ kdlize::impl_kdl_node!(GrantByLevel, "by_level");
 impl Mutator for GrantByLevel {
 	type Target = Character;
 
-	fn set_data_path(&self, parent: &std::path::Path) {
+	fn set_data_path(&self, parent: &ReferencePath) {
 		for (_level, batch) in &self.levels {
 			for mutator in batch {
 				mutator.set_data_path(parent);
@@ -62,7 +62,7 @@ impl Mutator for GrantByLevel {
 
 	// This needs to be run before the cached mutators are applied, otherwise
 	// the mutators inserted during this function are never truely applied.
-	fn on_insert(&self, stats: &mut Character, parent: &std::path::Path) {
+	fn on_insert(&self, stats: &mut Character, parent: &ReferencePath) {
 		let current_level = stats.level(self.class_name.as_ref().map(String::as_str));
 		for (level, batch) in &self.levels {
 			if *level > current_level {

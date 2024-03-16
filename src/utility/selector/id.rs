@@ -1,8 +1,8 @@
-use crate::utility::PathExt;
+use crate::system::mutator::ReferencePath;
 use derivative::Derivative;
 use std::{
 	borrow::Cow,
-	path::{Path, PathBuf},
+	path::PathBuf,
 	sync::{Arc, RwLock},
 };
 
@@ -12,7 +12,7 @@ pub struct IdPath {
 	id: Option<String>,
 	is_absolute: bool,
 	#[derivative(PartialEq = "ignore")]
-	absolute_path: Arc<RwLock<PathBuf>>,
+	absolute_path: Arc<RwLock<ReferencePath>>,
 }
 impl<T: Into<String>> From<Option<T>> for IdPath {
 	fn from(value: Option<T>) -> Self {
@@ -30,7 +30,7 @@ impl<T: Into<String>> From<Option<T>> for IdPath {
 		Self {
 			id,
 			is_absolute,
-			absolute_path: Arc::new(RwLock::new(PathBuf::new())),
+			absolute_path: Arc::new(RwLock::new(ReferencePath::new())),
 		}
 	}
 }
@@ -48,21 +48,27 @@ impl IdPath {
 		}
 	}
 
-	pub fn set_path(&self, path: &Path) {
+	pub fn set_path(&self, path: &ReferencePath) {
 		let mut path = match self.is_absolute {
-			false => path.to_owned(),
-			true => PathBuf::new(),
+			false => path.clone(),
+			true => ReferencePath::new(),
 		};
 		if let Some(id) = &self.id {
-			path.push(id);
+			path = path.join(id, None);
 		}
-		let path = path.normalize();
-		let path = PathBuf::from(path.to_str().unwrap().replace("\\", "/"));
-		*self.absolute_path.write().unwrap() = path.into();
+		*self.absolute_path.write().unwrap() = path.normalized();
 	}
 
-	pub fn as_path(&self) -> Option<PathBuf> {
-		let path = self.absolute_path.read().unwrap().clone();
+	pub fn data(&self) -> Option<PathBuf> {
+		let path = self.absolute_path.read().unwrap().data.clone();
+		if path.to_str() == Some("") {
+			return None;
+		}
+		Some(path)
+	}
+
+	pub fn display(&self) -> Option<PathBuf> {
+		let path = self.absolute_path.read().unwrap().display.clone();
 		if path.to_str() == Some("") {
 			return None;
 		}
@@ -88,48 +94,54 @@ mod test {
 	#[test]
 	fn empty() {
 		let path = IdPath::from(None::<String>);
-		path.set_path(std::path::Path::new(""));
-		assert_eq!(path.as_path(), None);
-		path.set_path(std::path::Path::new("some/parent/"));
-		assert_eq!(path.as_path(), Some(std::path::Path::new("some/parent/").to_owned()));
+		path.set_path(&ReferencePath::default());
+		assert_eq!(path.data(), None);
+		assert_eq!(path.data(), path.display());
+		path.set_path(&ReferencePath::default().join("some/parent/", None));
+		assert_eq!(path.data(), Some(std::path::Path::new("some/parent/").to_owned()));
+		assert_eq!(path.data(), path.display());
 	}
 
 	#[test]
 	fn absolute() {
 		let path = IdPath::from(Some("/Absolute/Path/to/Item"));
-		path.set_path(std::path::Path::new(""));
+		path.set_path(&ReferencePath::default());
 		assert_eq!(
-			path.as_path(),
+			path.data(),
 			Some(std::path::Path::new("Absolute/Path/to/Item").to_owned())
 		);
-		path.set_path(std::path::Path::new("some/parent/"));
+		assert_eq!(path.data(), path.display());
+		path.set_path(&ReferencePath::default().join("some/parent/", None));
 		assert_eq!(
-			path.as_path(),
+			path.data(),
 			Some(std::path::Path::new("Absolute/Path/to/Item").to_owned())
 		);
+		assert_eq!(path.data(), path.display());
 	}
 
 	#[test]
 	fn relative_to_parent() {
 		let path = IdPath::from(Some("Path/to/Child"));
-		path.set_path(std::path::Path::new(""));
-		assert_eq!(path.as_path(), Some(std::path::Path::new("Path/to/Child").to_owned()));
-		path.set_path(std::path::Path::new("some/parent/"));
+		path.set_path(&ReferencePath::default());
+		assert_eq!(path.data(), Some(std::path::Path::new("Path/to/Child").to_owned()));
+		path.set_path(&ReferencePath::default().join("some/parent/", None));
 		assert_eq!(
-			path.as_path(),
+			path.data(),
 			Some(std::path::Path::new("some/parent/Path/to/Child").to_owned())
 		);
+		assert_eq!(path.data(), path.display());
 	}
 
 	#[test]
 	fn relative_to_ancestor() {
 		let path = IdPath::from(Some("../ParentSibling"));
-		path.set_path(std::path::Path::new(""));
-		assert_eq!(path.as_path(), Some(std::path::Path::new("ParentSibling").to_owned()));
-		path.set_path(std::path::Path::new("/some/parent/"));
+		path.set_path(&ReferencePath::default());
+		assert_eq!(path.data(), Some(std::path::Path::new("ParentSibling").to_owned()));
+		path.set_path(&ReferencePath::default().join("some/parent/", None));
 		assert_eq!(
-			path.as_path(),
-			Some(std::path::Path::new("/some/ParentSibling").to_owned())
+			path.data(),
+			Some(std::path::Path::new("some/ParentSibling").to_owned())
 		);
+		assert_eq!(path.data(), path.display());
 	}
 }

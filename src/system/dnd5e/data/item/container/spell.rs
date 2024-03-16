@@ -1,18 +1,21 @@
-use crate::kdl_ext::NodeContext;
-use crate::system::{
-	dnd5e::data::{
-		character::{
-			spellcasting::{AbilityOrStat, CastingMethod, SpellEntry},
-			Character,
+use crate::{
+	kdl_ext::NodeContext,
+	system::{
+		dnd5e::data::{
+			character::{
+				spellcasting::{AbilityOrStat, CastingMethod, SpellEntry},
+				Character,
+			},
+			spell::CastingDuration,
+			Indirect, Spell,
 		},
-		spell::CastingDuration,
-		Indirect, Spell,
+		mutator::ReferencePath,
+		SourceId,
 	},
-	SourceId,
 };
 use kdlize::OmitIfEmpty;
 use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 #[derive(Clone, PartialEq, Debug, Default)]
 pub struct SpellContainer {
@@ -118,12 +121,12 @@ impl SpellContainer {
 		})
 	}
 
-	pub fn add_spellcasting(&self, stats: &mut Character, item_id: &Vec<uuid::Uuid>, parent: &Path) {
+	pub fn add_spellcasting(&self, stats: &mut Character, item_id: &Vec<uuid::Uuid>, parent: &ReferencePath) {
 		for contained in &self.spells {
 			let Some(mut entry) = self.get_spell_entry(contained, None) else {
 				continue;
 			};
-			entry.source = parent.to_owned();
+			entry.source = parent.display.clone();
 			if let CastingMethod::FromContainer { item_id: id_path, .. } = &mut entry.method {
 				*id_path = item_id.clone();
 			}

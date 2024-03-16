@@ -1,4 +1,5 @@
 use crate::kdl_ext::NodeContext;
+use crate::system::mutator::ReferencePath;
 use crate::{
 	system::dnd5e::{
 		data::{character::Character, description},
@@ -43,13 +44,13 @@ impl Mutator for AddMaxHitPoints {
 		}
 	}
 
-	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
+	fn apply(&self, stats: &mut Character, parent: &ReferencePath) {
 		let value = self.value.evaluate(stats);
 		let source = match &self.id {
-			Some(id) => parent.join(id),
+			Some(id) => parent.join(id, None),
 			None => parent.to_owned(),
 		};
-		stats.max_hit_points_mut().push(value, source);
+		stats.max_hit_points_mut().push(value, &source);
 	}
 }
 

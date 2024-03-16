@@ -37,7 +37,7 @@ pub fn use_character(id: SourceId) -> CharacterHandle {
 				handle.set_recompiling(true);
 				handle.load_with(id);
 			}
-		}
+		},
 	);
 
 	handle

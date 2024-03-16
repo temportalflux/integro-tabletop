@@ -66,7 +66,7 @@ where
 	}
 }
 
-trait PathExt {
+pub trait PathExt {
 	fn normalize(&self) -> std::path::PathBuf;
 }
 impl PathExt for std::path::Path {

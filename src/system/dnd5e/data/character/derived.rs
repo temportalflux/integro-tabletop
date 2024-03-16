@@ -1,12 +1,15 @@
 use super::{AttributedValue, PersonalityKind};
-use crate::system::dnd5e::{
-	data::{
-		action::AttackQuery,
-		proficiency,
-		roll::{Modifier, Roll, RollSet},
-		Ability, ArmorClass, DamageType, OtherProficiencies, Rest, Skill, Spell,
+use crate::system::{
+	dnd5e::{
+		data::{
+			action::AttackQuery,
+			proficiency,
+			roll::{Modifier, Roll, RollSet},
+			Ability, ArmorClass, DamageType, OtherProficiencies, Rest, Skill, Spell,
+		},
+		mutator::{Defense, Flag},
 	},
-	mutator::{Defense, Flag},
+	mutator::ReferencePath,
 };
 use enum_map::{enum_map, EnumMap};
 use std::{
@@ -94,10 +97,10 @@ pub struct SavingThrows {
 	general_modifiers: ModifierMap,
 }
 impl SavingThrows {
-	pub fn add_proficiency(&mut self, ability: Ability, source: PathBuf) {
+	pub fn add_proficiency(&mut self, ability: Ability, source: &ReferencePath) {
 		self.by_ability[ability]
 			.proficiency
-			.push(proficiency::Level::Full, source);
+			.push(proficiency::Level::Full, source.display.clone());
 	}
 
 	pub fn add_modifier(
@@ -105,13 +108,13 @@ impl SavingThrows {
 		ability: Option<Ability>,
 		modifier: Modifier,
 		target: Option<String>,
-		source: PathBuf,
+		source: &ReferencePath,
 	) {
 		match ability {
 			Some(ability) => &mut self.by_ability[ability].modifiers,
 			None => &mut self.general_modifiers,
 		}
-		.insert(modifier, (target, source).into());
+		.insert(modifier, (target, source.display.clone()).into());
 	}
 
 	pub fn get_prof(&self, ability: Ability) -> &AttributedValue<proficiency::Level> {
@@ -206,8 +209,8 @@ pub struct Skills {
 	skills: EnumMap<Skill, ProficiencyModifiers>,
 }
 impl Skills {
-	pub fn add_proficiency(&mut self, skill: Skill, level: proficiency::Level, source: PathBuf) {
-		self.skills[skill].proficiency.push(level, source);
+	pub fn add_proficiency(&mut self, skill: Skill, level: proficiency::Level, source: &ReferencePath) {
+		self.skills[skill].proficiency.push(level, source.display.clone());
 	}
 
 	pub fn add_ability_modifier(
@@ -215,13 +218,21 @@ impl Skills {
 		ability: Ability,
 		modifier: Modifier,
 		context: Option<String>,
-		source: PathBuf,
+		source: &ReferencePath,
 	) {
-		self.ability_modifiers[ability].insert(modifier, (context, source).into());
+		self.ability_modifiers[ability].insert(modifier, (context, source.display.clone()).into());
 	}
 
-	pub fn add_skill_modifier(&mut self, skill: Skill, modifier: Modifier, context: Option<String>, source: PathBuf) {
-		self.skills[skill].modifiers.insert(modifier, (context, source).into());
+	pub fn add_skill_modifier(
+		&mut self,
+		skill: Skill,
+		modifier: Modifier,
+		context: Option<String>,
+		source: &ReferencePath,
+	) {
+		self.skills[skill]
+			.modifiers
+			.insert(modifier, (context, source.display.clone()).into());
 	}
 
 	pub fn proficiency(&self, skill: Skill) -> &AttributedValue<proficiency::Level> {
@@ -256,11 +267,17 @@ pub struct DefenseEntry {
 	pub source: PathBuf,
 }
 impl Defenses {
-	pub fn push(&mut self, kind: Defense, damage_type: Option<DamageType>, context: Option<String>, source: PathBuf) {
+	pub fn push(
+		&mut self,
+		kind: Defense,
+		damage_type: Option<DamageType>,
+		context: Option<String>,
+		source: &ReferencePath,
+	) {
 		self.0[kind].push(DefenseEntry {
 			damage_type,
 			context,
-			source,
+			source: source.display.clone(),
 		});
 	}
 }
@@ -282,9 +299,9 @@ pub struct DerivedDescription {
 #[derive(Clone, Default, PartialEq, Debug)]
 pub struct MaxHitPoints(i32, BTreeMap<PathBuf, i32>);
 impl MaxHitPoints {
-	pub fn push(&mut self, bonus: i32, source: PathBuf) {
+	pub fn push(&mut self, bonus: i32, source: &ReferencePath) {
 		self.0 = self.0.saturating_add(bonus);
-		self.1.insert(source, bonus);
+		self.1.insert(source.display.clone(), bonus);
 	}
 
 	pub fn value(&self) -> u32 {
@@ -329,8 +346,12 @@ struct AttackAbility {
 	source: PathBuf,
 }
 impl AttackBonuses {
-	pub fn add_to_weapon_attacks(&mut self, bonus: i32, queries: Vec<AttackQuery>, source: PathBuf) {
-		self.attack_roll.push(AttackRollBonus { bonus, queries, source });
+	pub fn add_to_weapon_attacks(&mut self, bonus: i32, queries: Vec<AttackQuery>, source: &ReferencePath) {
+		self.attack_roll.push(AttackRollBonus {
+			bonus,
+			queries,
+			source: source.display.clone(),
+		});
 	}
 
 	pub fn add_to_weapon_damage(
@@ -338,29 +359,29 @@ impl AttackBonuses {
 		amount: Roll,
 		damage_type: Option<DamageType>,
 		queries: Vec<AttackQuery>,
-		source: PathBuf,
+		source: &ReferencePath,
 	) {
 		self.attack_damage.push(AttackDamageBonus {
 			amount,
 			damage_type,
 			queries,
-			source,
+			source: source.display.clone(),
 		});
 	}
 
-	pub fn add_ability_modifier(&mut self, ability: Ability, queries: Vec<AttackQuery>, source: PathBuf) {
+	pub fn add_ability_modifier(&mut self, ability: Ability, queries: Vec<AttackQuery>, source: &ReferencePath) {
 		self.attack_ability.push(AttackAbility {
 			ability,
 			queries,
-			source,
+			source: source.display.clone(),
 		});
 	}
 
-	pub fn add_to_spell_damage(&mut self, amount: Roll, queries: Vec<spellcasting::Filter>, source: PathBuf) {
+	pub fn add_to_spell_damage(&mut self, amount: Roll, queries: Vec<spellcasting::Filter>, source: &ReferencePath) {
 		self.spell_damage.push(SpellDamageBonus {
 			amount,
 			queries,
-			source,
+			source: source.display.clone(),
 		});
 	}
 

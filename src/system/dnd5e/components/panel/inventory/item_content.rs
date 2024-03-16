@@ -5,16 +5,15 @@ use crate::{
 		progress_bar,
 	},
 	database::{Criteria, FetchError},
-	page::characters::sheet::CharacterHandle,
 	page::characters::sheet::{
 		joined::editor::{description, mutator_list},
-		MutatorImpact,
+		CharacterHandle, MutatorImpact,
 	},
 	system::{
 		dnd5e::{
 			components::{
 				panel::{spell_name_and_icons, spell_overview_info, AvailableSpellList, HeaderAddon},
-				validate_uint_only, FormulaInline, GeneralProp, WalletInline,
+				validate_uint_only, FormulaInline, GeneralProp, UseCounterDelta, WalletInline,
 			},
 			data::{
 				character::{Persistent, MAX_SPELL_RANK},
@@ -357,24 +356,30 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 				// warning if attuned and not currently equipped
 			}
 			if let Some(resource) = &equipment.charges {
-				if matches!(&props.location, Some(ItemLocation::Inventory {..})) {
+				if matches!(&props.location, Some(ItemLocation::Inventory { .. })) {
 					let max_uses = resource.get_capacity(&*state) as u32;
-					let uses_consumed = resource.get_uses_consumed(&*state);
-					let uses_remaining = max_uses.saturating_sub(uses_consumed);
-					let on_changed = state.new_dispatch({
+					let consumed_uses = resource.get_uses_consumed(&*state);
+					let on_apply = state.new_dispatch({
 						let data_path = resource.get_uses_path();
-						move |new_uses_remaining: u32, persistent| {
-							let Some(data_path) = &data_path else { return MutatorImpact::None };
-							let new_uses_consumed = max_uses.saturating_sub(new_uses_remaining);
-							let new_value = (new_uses_consumed > 0).then(|| new_uses_consumed.to_string());
+						move |delta: i32, persistent| {
+							let Some(data_path) = &data_path else {
+								return MutatorImpact::None;
+							};
+							let prev_value = persistent.get_first_selection_at::<u32>(data_path);
+							let consumed_uses = prev_value.map(Result::ok).flatten().unwrap_or_default();
+							let new_value = consumed_uses.saturating_add_signed(-delta);
+							log::debug!(target: "uses", "prev={consumed_uses} new={new_value}");
+							let new_value = (new_value > 0).then(|| new_value.to_string());
+							log::debug!(target: "uses", "{} = {:?}", data_path.display(), new_value);
 							persistent.set_selected(data_path, new_value);
 							MutatorImpact::None
 						}
 					});
+					// <UIntField class={"num-field-inline"} value={uses_remaining} {on_changed} />
 					equip_sections.push(html! {
 						<div class="property">
 							<strong>{"Charges:"}</strong>
-							<UIntField class={"num-field-inline"} value={uses_remaining} {on_changed} />
+							<UseCounterDelta {max_uses} {consumed_uses} {on_apply} />
 						</div>
 					});
 				}
@@ -621,7 +626,13 @@ struct UIntFieldProps {
 	on_changed: Callback<u32>,
 }
 #[function_component]
-fn UIntField(UIntFieldProps { class, value, on_changed }: &UIntFieldProps) -> Html {
+fn UIntField(
+	UIntFieldProps {
+		class,
+		value,
+		on_changed,
+	}: &UIntFieldProps,
+) -> Html {
 	let count = *value;
 	let increment = Callback::from({
 		let on_changed = on_changed.clone();

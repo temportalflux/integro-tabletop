@@ -2,7 +2,7 @@ use crate::{
 	kdl_ext::NodeContext,
 	system::{
 		dnd5e::data::{character::Character, description, Feature},
-		mutator::Group,
+		mutator::{Group, ReferencePath},
 		Mutator,
 	},
 };
@@ -30,11 +30,11 @@ impl Mutator for AddFeature {
 		section
 	}
 
-	fn set_data_path(&self, parent: &std::path::Path) {
+	fn set_data_path(&self, parent: &ReferencePath) {
 		self.0.set_data_path(parent);
 	}
 
-	fn on_insert(&self, stats: &mut Character, parent: &std::path::Path) {
+	fn on_insert(&self, stats: &mut Character, parent: &ReferencePath) {
 		stats.add_feature(self.0.clone(), parent);
 	}
 }

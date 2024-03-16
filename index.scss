@@ -210,19 +210,32 @@ option:disabled {
 	margin-bottom: 0.25rem;
 }
 
-button.add:before, button.sub:before {
-	background-image: url(https://www.dndbeyond.com/Content/Skins/Waterdeep/images/sprites/plus_minus-white.svg);
-	background-position: 0 0;
-	background-repeat: no-repeat;
-	background-size: cover;
-	content: "";
-	display: block;
-}
-button.add:before {
-	background-position: 0 0;
-}
-button.sub:before {
-	background-position: -17px 0;
+.deltaform {
+	button.add, button.sub {
+		padding: 0.3rem!important;
+	}
+	button.add:before, button.sub:before {
+		background-image: url(assets/plus_minus.svg);
+		background-position: 0 0;
+		background-repeat: no-repeat;
+		background-size: cover;
+		content: "";
+		display: block;
+		height: 10px;
+		width: 10px;
+	}
+	button.add:before {
+		background-position: 0 0;
+	}
+	button.sub:before {
+		background-position-x: -10px;
+	}
+	*:not(:last-child) {
+		margin-right: 5px;
+	}
+	.delta {
+		margin-left: 10px;
+	}
 }
 
 .details.hit-points button.hp-action {
@@ -596,24 +609,6 @@ button.collapse_trigger.arrow_right.collapsed::after {
 
 	> button {
 		padding: 0.1rem 0.2rem;
-	}
-}
-
-.uses:not(.consumer) {
-	button.add, button.sub {
-		padding: 0.3rem!important;
-	}
-	button.add:before, button.sub:before {
-		height: 12px;
-		width: 12px;
-	}
-	.deltaform {
-		*:not(:last-child) {
-			margin-right: 5px;
-		}
-	}
-	.delta {
-		margin-left: 10px;
 	}
 }
 

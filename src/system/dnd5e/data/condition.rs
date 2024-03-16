@@ -1,10 +1,14 @@
 use super::character::{Character, ObjectCacheProvider};
-use crate::kdl_ext::NodeContext;
-use crate::system::{dnd5e::BoxedMutator, mutator, Block, SourceId};
+use crate::{
+	kdl_ext::NodeContext,
+	system::{
+		dnd5e::BoxedMutator,
+		mutator::{self, ReferencePath},
+		Block, SourceId,
+	},
+};
 use async_recursion::async_recursion;
-use kdlize::OmitIfEmpty;
-use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
-use std::path::Path;
+use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder, OmitIfEmpty};
 
 mod indirect;
 pub use indirect::*;
@@ -56,8 +60,8 @@ impl Condition {
 impl mutator::Group for Condition {
 	type Target = Character;
 
-	fn set_data_path(&self, parent: &Path) {
-		let path_to_self = parent.join(&self.name);
+	fn set_data_path(&self, parent: &ReferencePath) {
+		let path_to_self = parent.join(&self.name, None);
 		for mutator in &self.mutators {
 			mutator.set_data_path(&path_to_self);
 		}
@@ -68,8 +72,8 @@ impl mutator::Group for Condition {
 		}
 	}
 
-	fn apply_mutators(&self, stats: &mut Character, parent: &Path) {
-		let path_to_self = parent.join(&self.name);
+	fn apply_mutators(&self, stats: &mut Character, parent: &ReferencePath) {
+		let path_to_self = parent.join(&self.name, None);
 		for mutator in &self.mutators {
 			stats.apply(mutator, &path_to_self);
 		}

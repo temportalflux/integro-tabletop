@@ -4,6 +4,7 @@ use crate::{
 			character::{Character, ObjectCacheProvider, Persistent},
 			spell::Spell,
 		},
+		mutator::ReferencePath,
 		SourceId,
 	},
 	utility::AddAssignMap,
@@ -70,14 +71,14 @@ impl Spellcasting {
 		self.casters.insert(caster.name().clone(), caster);
 	}
 
-	pub fn add_spell_access(&mut self, caster_name: &String, spell_ids: &Vec<SourceId>, source: &std::path::Path) {
+	pub fn add_spell_access(&mut self, caster_name: &String, spell_ids: &Vec<SourceId>, source: &ReferencePath) {
 		for spell_id in spell_ids {
 			self.additional_caster_spells
 				.by_caster
 				.insert(caster_name.clone(), spell_id.clone());
 			self.additional_caster_spells
 				.sources
-				.insert(spell_id.clone(), source.to_owned());
+				.insert(spell_id.clone(), source.display.clone());
 		}
 	}
 

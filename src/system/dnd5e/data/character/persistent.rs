@@ -1,4 +1,5 @@
 use crate::kdl_ext::NodeContext;
+use crate::system::mutator::ReferencePath;
 use crate::{
 	path_map::PathMap,
 	system::{
@@ -15,6 +16,7 @@ use kdlize::OmitIfEmpty;
 use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
 use multimap::MultiMap;
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 use std::{
 	collections::{BTreeMap, HashMap},
 	path::Path,
@@ -49,7 +51,7 @@ pub struct Persistent {
 impl mutator::Group for Persistent {
 	type Target = Character;
 
-	fn set_data_path(&self, parent: &std::path::Path) {
+	fn set_data_path(&self, parent: &ReferencePath) {
 		for bundle in &self.bundles {
 			bundle.set_data_path(parent);
 		}
@@ -60,7 +62,7 @@ impl mutator::Group for Persistent {
 		self.conditions.set_data_path(parent);
 	}
 
-	fn apply_mutators(&self, stats: &mut Character, parent: &Path) {
+	fn apply_mutators(&self, stats: &mut Character, parent: &ReferencePath) {
 		for (ability, score) in &self.ability_scores {
 			stats
 				.ability_scores_mut()
@@ -464,13 +466,13 @@ impl Conditions {
 impl mutator::Group for Conditions {
 	type Target = Character;
 
-	fn set_data_path(&self, parent: &Path) {
+	fn set_data_path(&self, parent: &ReferencePath) {
 		for condition in self.iter() {
 			condition.set_data_path(parent);
 		}
 	}
 
-	fn apply_mutators(&self, target: &mut Self::Target, parent: &Path) {
+	fn apply_mutators(&self, target: &mut Self::Target, parent: &ReferencePath) {
 		for condition in self.iter() {
 			target.apply_from(condition, parent);
 		}
@@ -621,7 +623,7 @@ impl SelectedSpells {
 		let entry = RestEntry {
 			restore_amount: None,
 			data_paths,
-			source: Path::new("Standard Spellcasting Slots").to_owned(),
+			source: PathBuf::from("Standard Spellcasting Slots"),
 		};
 		(Rest::Long, entry)
 	}

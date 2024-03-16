@@ -1,4 +1,5 @@
 use crate::kdl_ext::NodeContext;
+use crate::system::mutator::ReferencePath;
 use crate::{
 	system::dnd5e::{
 		data::{character::Character, description},
@@ -126,17 +127,17 @@ impl Mutator for PickN {
 		}
 	}
 
-	fn set_data_path(&self, parent: &std::path::Path) {
+	fn set_data_path(&self, parent: &ReferencePath) {
 		self.selector.set_data_path(parent);
 		for (name, option) in &self.options {
-			let path_to_option = parent.join(&self.id).join(name);
+			let path_to_option = parent.join(&self.id, None).join(name, None);
 			for mutator in &option.mutators {
 				mutator.set_data_path(&path_to_option);
 			}
 		}
 	}
 
-	fn on_insert(&self, stats: &mut Self::Target, parent: &std::path::Path) {
+	fn on_insert(&self, stats: &mut Self::Target, parent: &ReferencePath) {
 		let Some(data_path) = self.selector.get_data_path() else {
 			return;
 		};

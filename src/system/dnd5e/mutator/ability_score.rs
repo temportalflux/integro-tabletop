@@ -1,4 +1,5 @@
 use crate::kdl_ext::NodeContext;
+use crate::system::mutator::ReferencePath;
 use crate::{
 	system::dnd5e::data::{
 		character::{AbilityScoreBonus, Character},
@@ -67,11 +68,11 @@ impl Mutator for AbilityScoreChange {
 		}
 	}
 
-	fn set_data_path(&self, parent: &std::path::Path) {
+	fn set_data_path(&self, parent: &ReferencePath) {
 		self.ability.set_data_path(parent);
 	}
 
-	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
+	fn apply(&self, stats: &mut Character, parent: &ReferencePath) {
 		if let Some(ability) = stats.resolve_selector(&self.ability) {
 			for operation in &self.operations {
 				match operation {
@@ -82,13 +83,13 @@ impl Mutator for AbilityScoreChange {
 								value: *value,
 								max_total: *max_total_score,
 							},
-							parent.to_owned(),
+							parent.display.clone(),
 						);
 					}
 					AbilityScoreOp::IncreaseMax { value } => {
 						stats
 							.ability_scores_mut()
-							.increase_maximum(ability, *value, parent.to_owned());
+							.increase_maximum(ability, *value, parent.display.clone());
 					}
 				}
 			}

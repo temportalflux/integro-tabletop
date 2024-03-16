@@ -1,4 +1,7 @@
-use crate::system::dnd5e::data::{character::Character, description, Ability, Score};
+use crate::system::{
+	dnd5e::data::{character::Character, description, Ability, Score},
+	mutator::ReferencePath,
+};
 use enum_map::EnumMap;
 use itertools::{Either, Itertools};
 use std::{collections::HashSet, path::PathBuf};
@@ -40,7 +43,7 @@ impl crate::system::Mutator for FinalizeAbilityScores {
 		description::Section::default()
 	}
 
-	fn apply(&self, stats: &mut Self::Target, _parent: &std::path::Path) {
+	fn apply(&self, stats: &mut Self::Target, _parent: &ReferencePath) {
 		stats.ability_scores_mut().finalize();
 	}
 }

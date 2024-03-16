@@ -1,4 +1,5 @@
 use crate::kdl_ext::NodeContext;
+use crate::system::mutator::ReferencePath;
 use crate::{
 	system::dnd5e::data::{
 		character::{Character, PersonalityKind},
@@ -30,7 +31,7 @@ impl Mutator for SuggestedPersonality {
 		}
 	}
 
-	fn apply(&self, stats: &mut Character, _parent: &std::path::Path) {
+	fn apply(&self, stats: &mut Character, _parent: &ReferencePath) {
 		let suggestions = &mut stats.derived_description_mut().personality_suggestions;
 		suggestions[self.kind].extend(self.options.clone().into_iter());
 	}

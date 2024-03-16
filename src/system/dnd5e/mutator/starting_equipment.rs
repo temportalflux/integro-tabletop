@@ -1,4 +1,5 @@
 use crate::kdl_ext::NodeContext;
+use crate::system::mutator::ReferencePath;
 use crate::{
 	system::dnd5e::data::{
 		character::{Character, StartingEquipment},
@@ -21,7 +22,7 @@ impl Mutator for AddStartingEquipment {
 		description::Section { ..Default::default() }
 	}
 
-	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
+	fn apply(&self, stats: &mut Character, parent: &ReferencePath) {
 		stats.add_starting_equipment(&self.0, parent);
 	}
 }

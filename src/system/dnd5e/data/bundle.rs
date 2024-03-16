@@ -6,15 +6,13 @@ use crate::{
 			data::{character::Character, description, Ability},
 			BoxedMutator,
 		},
-		mutator, Block, SourceId,
+		mutator::{self, ReferencePath},
+		Block, SourceId,
 	},
 	utility::NotInList,
 };
 use kdlize::{AsKdl, FromKdl, NodeBuilder, OmitIfEmpty};
-use std::{
-	collections::HashMap,
-	path::{Path, PathBuf},
-};
+use std::collections::HashMap;
 
 #[derive(Default, Clone, PartialEq, Debug)]
 pub struct Bundle {
@@ -42,32 +40,32 @@ pub enum BundleRequirement {
 
 #[derive(Clone, PartialEq, Debug, Default)]
 pub struct FeatureConfig {
-	pub parent_path: Option<PathBuf>,
+	pub parent_path: Option<ReferencePath>,
 }
 
 impl mutator::Group for Bundle {
 	type Target = Character;
 
-	fn set_data_path(&self, parent: &std::path::Path) {
-		let path_to_self = parent.join(&self.name);
+	fn set_data_path(&self, parent: &ReferencePath) {
+		let path_to_self = parent.join(&self.name, None);
 		for mutator in &self.mutators {
 			mutator.set_data_path(&path_to_self);
 		}
 	}
 
-	fn apply_mutators(&self, stats: &mut Character, parent: &Path) {
+	fn apply_mutators(&self, stats: &mut Character, parent: &ReferencePath) {
 		// TODO: Check requirements before applying
 		if let Some(config) = &self.feature_config {
 			let feature = Feature {
 				name: self.name.clone(),
 				description: self.description.clone(),
 				mutators: self.mutators.clone(),
-				parent: config.parent_path.clone(),
+				parent: config.parent_path.as_ref().map(|path| path.display.clone()),
 				..Default::default()
 			};
 			stats.add_feature(feature, parent);
 		} else {
-			let path_to_self = parent.join(&self.name);
+			let path_to_self = parent.join(&self.name, None);
 			for mutator in &self.mutators {
 				stats.apply(mutator, &path_to_self);
 			}

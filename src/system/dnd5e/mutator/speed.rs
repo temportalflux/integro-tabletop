@@ -1,4 +1,5 @@
 use crate::kdl_ext::NodeContext;
+use crate::system::mutator::ReferencePath;
 use crate::{
 	system::dnd5e::data::{bounded::BoundValue, character::Character, description},
 	system::Mutator,
@@ -34,10 +35,10 @@ impl Mutator for Speed {
 		}
 	}
 
-	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
+	fn apply(&self, stats: &mut Character, parent: &ReferencePath) {
 		stats
 			.speeds_mut()
-			.insert(self.name.clone(), self.argument.clone(), parent.to_owned());
+			.insert(self.name.clone(), self.argument.clone(), parent);
 	}
 }
 

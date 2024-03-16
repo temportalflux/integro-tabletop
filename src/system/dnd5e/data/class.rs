@@ -1,5 +1,6 @@
 use super::{character::Character, roll::Die};
 use crate::kdl_ext::NodeContext;
+use crate::system::mutator::ReferencePath;
 use crate::{
 	system::{
 		dnd5e::{mutator::AddMaxHitPoints, BoxedMutator, Value},
@@ -9,7 +10,7 @@ use crate::{
 };
 use kdlize::OmitIfEmpty;
 use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
-use std::{path::Path, str::FromStr};
+use std::str::FromStr;
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Class {
@@ -56,8 +57,8 @@ impl Class {
 impl mutator::Group for Class {
 	type Target = Character;
 
-	fn set_data_path(&self, parent: &std::path::Path) {
-		let path_to_self = parent.join(&self.name);
+	fn set_data_path(&self, parent: &ReferencePath) {
+		let path_to_self = parent.join(&self.name, None);
 		self.hit_die_selector.set_data_path(&path_to_self);
 		for mutator in &self.mutators {
 			mutator.set_data_path(&path_to_self);
@@ -67,8 +68,8 @@ impl mutator::Group for Class {
 		}
 	}
 
-	fn apply_mutators(&self, stats: &mut Character, parent: &Path) {
-		let path_to_self = parent.join(&self.name);
+	fn apply_mutators(&self, stats: &mut Character, parent: &ReferencePath) {
+		let path_to_self = parent.join(&self.name, None);
 		for mutator in &self.mutators {
 			stats.apply(mutator, &path_to_self);
 		}
@@ -217,16 +218,16 @@ impl<'a> LevelWithIndex<'a> {
 impl<'a> mutator::Group for LevelWithIndex<'a> {
 	type Target = Character;
 
-	fn set_data_path(&self, parent: &Path) {
-		let path_to_self = parent.join(self.level_name());
+	fn set_data_path(&self, parent: &ReferencePath) {
+		let path_to_self = parent.join(self.level_name(), None);
 		self.1.hit_points.set_data_path(&path_to_self);
 		for mutator in &self.1.mutators {
 			mutator.set_data_path(&path_to_self);
 		}
 	}
 
-	fn apply_mutators(&self, stats: &mut Character, parent: &Path) {
-		let path_to_self = parent.join(self.level_name());
+	fn apply_mutators(&self, stats: &mut Character, parent: &ReferencePath) {
+		let path_to_self = parent.join(self.level_name(), None);
 		if let Some(hit_points) = stats.resolve_selector(&self.1.hit_points) {
 			let mutator = AddMaxHitPoints {
 				id: None,
@@ -273,8 +274,8 @@ impl Subclass {
 impl mutator::Group for Subclass {
 	type Target = Character;
 
-	fn set_data_path(&self, parent: &Path) {
-		let path_to_self = parent.join(&self.name);
+	fn set_data_path(&self, parent: &ReferencePath) {
+		let path_to_self = parent.join(&self.name, None);
 		for mutator in &self.mutators {
 			mutator.set_data_path(&path_to_self);
 		}
@@ -283,8 +284,8 @@ impl mutator::Group for Subclass {
 		}
 	}
 
-	fn apply_mutators(&self, stats: &mut Character, parent: &Path) {
-		let path_to_self = parent.join(&self.name);
+	fn apply_mutators(&self, stats: &mut Character, parent: &ReferencePath) {
+		let path_to_self = parent.join(&self.name, None);
 		for mutator in &self.mutators {
 			stats.apply(mutator, &path_to_self);
 		}

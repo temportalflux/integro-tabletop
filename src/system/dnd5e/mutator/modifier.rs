@@ -1,11 +1,13 @@
-use crate::kdl_ext::NodeContext;
 use crate::{
-	system::dnd5e::data::{character::Character, description, roll, Ability, Skill},
-	system::Mutator,
+	kdl_ext::NodeContext,
+	system::{
+		dnd5e::data::{character::Character, description, roll, Ability, Skill},
+		mutator::ReferencePath,
+		Mutator,
+	},
 	utility::{selector, NotInList},
 };
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
-use std::path::Path;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AddModifier {
@@ -102,7 +104,7 @@ impl Mutator for AddModifier {
 		}
 	}
 
-	fn set_data_path(&self, parent: &std::path::Path) {
+	fn set_data_path(&self, parent: &ReferencePath) {
 		match &self.kind {
 			ModifierKind::Ability(selector) => selector.set_data_path(parent),
 			ModifierKind::SavingThrow(Some(selector)) => selector.set_data_path(parent),
@@ -112,18 +114,15 @@ impl Mutator for AddModifier {
 		}
 	}
 
-	fn apply(&self, stats: &mut Character, parent: &Path) {
+	fn apply(&self, stats: &mut Character, parent: &ReferencePath) {
 		match &self.kind {
 			ModifierKind::Ability(ability) => {
 				let Some(ability) = stats.resolve_selector(ability) else {
 					return;
 				};
-				stats.skills_mut().add_ability_modifier(
-					ability,
-					self.modifier,
-					self.context.clone(),
-					parent.to_owned(),
-				);
+				stats
+					.skills_mut()
+					.add_ability_modifier(ability, self.modifier, self.context.clone(), parent);
 			}
 			ModifierKind::SavingThrow(ability) => {
 				let ability = match ability {
@@ -132,7 +131,7 @@ impl Mutator for AddModifier {
 				};
 				stats
 					.saving_throws_mut()
-					.add_modifier(ability, self.modifier, self.context.clone(), parent.to_owned());
+					.add_modifier(ability, self.modifier, self.context.clone(), parent);
 			}
 			ModifierKind::Skill(skill) => {
 				let Some(skill) = stats.resolve_selector(skill) else {
@@ -140,7 +139,7 @@ impl Mutator for AddModifier {
 				};
 				stats
 					.skills_mut()
-					.add_skill_modifier(skill, self.modifier, self.context.clone(), parent.to_owned());
+					.add_skill_modifier(skill, self.modifier, self.context.clone(), parent);
 			}
 			ModifierKind::Initiative => {
 				// TODO: apply advantage or disadvantage to initiative

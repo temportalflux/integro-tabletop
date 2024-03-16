@@ -1,17 +1,17 @@
-use crate::kdl_ext::NodeContext;
 use crate::{
+	kdl_ext::NodeContext,
 	system::{
 		dnd5e::{
 			data::{character::Character, ArmorClassFormula},
 			mutator::ArmorStrengthRequirement,
 		},
-		mutator,
+		mutator::{self, ReferencePath},
 	},
 	utility::InvalidEnumStr,
 };
 use enumset::EnumSetType;
 use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
-use std::{path::Path, str::FromStr};
+use std::str::FromStr;
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Armor {
@@ -81,12 +81,10 @@ impl FromStr for Kind {
 impl mutator::Group for Armor {
 	type Target = Character;
 
-	fn set_data_path(&self, _path_to_item: &std::path::Path) {}
+	fn set_data_path(&self, _path_to_item: &ReferencePath) {}
 
-	fn apply_mutators(&self, stats: &mut Character, path_to_item: &Path) {
-		stats
-			.armor_class_mut()
-			.push_formula(self.formula.clone(), path_to_item.to_owned());
+	fn apply_mutators(&self, stats: &mut Character, path_to_item: &ReferencePath) {
+		stats.armor_class_mut().push_formula(self.formula.clone(), path_to_item);
 
 		if let Some(min_strength_score) = &self.min_strength_score {
 			let mutator = ArmorStrengthRequirement {

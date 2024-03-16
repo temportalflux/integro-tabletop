@@ -17,7 +17,7 @@ use crate::{
 			mutator::Flag,
 			BoxedCriteria, BoxedMutator,
 		},
-		mutator::{self, Group},
+		mutator::{self, Group, ReferencePath},
 		SourceId,
 	},
 	utility::{selector, Dependencies},
@@ -46,7 +46,7 @@ pub struct Character {
 #[derive(Clone, PartialEq, Debug)]
 struct MutatorEntry {
 	node_id: &'static str,
-	parent_path: PathBuf,
+	parent_path: ReferencePath,
 	dependencies: Dependencies,
 	mutator: BoxedMutator,
 }
@@ -86,15 +86,15 @@ impl Character {
 	}
 
 	fn initiaize_recompile(&mut self) {
-		self.character.set_data_path(&PathBuf::new());
+		self.character.set_data_path(&ReferencePath::new());
 		self.clear_derived();
 	}
 
 	fn insert_mutators(&mut self) {
 		for defaults in self.default_blocks.clone() {
-			self.apply_from(&defaults, &PathBuf::new());
+			self.apply_from(&defaults, &ReferencePath::new());
 		}
-		self.apply_from(&self.character.clone(), &PathBuf::new());
+		self.apply_from(&self.character.clone(), &ReferencePath::new());
 	}
 
 	// TODO: Decouple database+system_depot from dnd data - there can be an abstraction/trait
@@ -133,14 +133,14 @@ impl Character {
 		Ok(())
 	}
 
-	pub fn apply_from(&mut self, container: &impl mutator::Group<Target = Self>, parent: &Path) {
+	pub fn apply_from(&mut self, container: &impl mutator::Group<Target = Self>, parent: &ReferencePath) {
 		container.apply_mutators(self, parent);
 	}
 
-	pub fn apply(&mut self, mutator: &BoxedMutator, parent: &Path) {
+	pub fn apply(&mut self, mutator: &BoxedMutator, parent: &ReferencePath) {
 		self.insert_mutator(MutatorEntry {
 			node_id: mutator.get_id(),
-			parent_path: parent.to_owned(),
+			parent_path: parent.clone(),
 			dependencies: mutator.dependencies(),
 			mutator: mutator.clone(),
 		});
@@ -427,11 +427,11 @@ impl Character {
 		self.derived.additional_objects.insert(object_data);
 	}
 
-	pub fn add_feature(&mut self, feature: Feature, parent_path: &Path) {
+	pub fn add_feature(&mut self, feature: Feature, parent_path: &ReferencePath) {
 		self.apply_from(&feature, parent_path);
 		self.features_mut()
 			.path_map
-			.insert(parent_path.join(&feature.name), feature);
+			.insert(parent_path.join(&feature.name, None).display, feature);
 	}
 
 	pub fn features(&self) -> &Features {
@@ -474,10 +474,10 @@ impl Character {
 		&self.derived.starting_equipment
 	}
 
-	pub fn add_starting_equipment(&mut self, entries: &Vec<StartingEquipment>, source: &Path) {
+	pub fn add_starting_equipment(&mut self, entries: &Vec<StartingEquipment>, source: &ReferencePath) {
 		self.derived
 			.starting_equipment
-			.push((entries.clone(), source.to_owned()));
+			.push((entries.clone(), source.display.clone()));
 	}
 
 	pub fn rest_resets_mut(&mut self) -> &mut RestResets {

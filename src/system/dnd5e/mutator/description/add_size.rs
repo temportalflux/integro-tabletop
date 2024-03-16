@@ -1,4 +1,5 @@
 use crate::kdl_ext::NodeContext;
+use crate::system::mutator::ReferencePath;
 use crate::{
 	system::dnd5e::data::{character::Character, description, roll::Roll},
 	system::Mutator,
@@ -50,7 +51,7 @@ impl Mutator for AddSize {
 		}
 	}
 
-	fn apply(&self, stats: &mut Character, _parent: &std::path::Path) {
+	fn apply(&self, stats: &mut Character, _parent: &ReferencePath) {
 		let size_formula = &mut stats.derived_description_mut().size_formula;
 		for comp in &self.height {
 			match comp {

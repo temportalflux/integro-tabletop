@@ -1,4 +1,5 @@
 use crate::kdl_ext::NodeContext;
+use crate::system::mutator::ReferencePath;
 use crate::{
 	system::dnd5e::{
 		data::{character::Character, description},
@@ -82,13 +83,13 @@ impl Mutator for ApplyIf {
 		}
 	}
 
-	fn set_data_path(&self, parent: &std::path::Path) {
+	fn set_data_path(&self, parent: &ReferencePath) {
 		for mutator in &self.mutators {
 			mutator.set_data_path(parent);
 		}
 	}
 
-	fn on_insert(&self, state: &mut Self::Target, parent: &std::path::Path) {
+	fn on_insert(&self, state: &mut Self::Target, parent: &ReferencePath) {
 		if self.evaluate(state) {
 			for mutator in &self.mutators {
 				state.apply(mutator, parent);

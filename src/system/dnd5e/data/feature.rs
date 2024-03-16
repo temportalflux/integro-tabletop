@@ -5,13 +5,16 @@ use super::{
 };
 use crate::{
 	kdl_ext::NodeContext,
-	system::{dnd5e::BoxedMutator, mutator},
+	system::{
+		dnd5e::BoxedMutator,
+		mutator::{self, ReferencePath},
+	},
 };
 use derivative::Derivative;
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::{
 	collections::HashMap,
-	path::{Path, PathBuf},
+	path::PathBuf,
 	sync::{Arc, RwLock},
 };
 
@@ -58,12 +61,12 @@ impl Feature {
 impl mutator::Group for Feature {
 	type Target = Character;
 
-	fn set_data_path(&self, parent: &Path) {
-		let path_to_self = parent.join(&self.name);
+	fn set_data_path(&self, parent: &ReferencePath) {
+		let path_to_self = parent.join(&self.name, None);
 
 		if let Some(action) = &self.action {
 			if let Some(uses) = &action.limited_uses {
-				uses.set_data_path(parent);
+				uses.set_data_path(&path_to_self);
 			}
 		}
 
@@ -72,8 +75,8 @@ impl mutator::Group for Feature {
 		}
 	}
 
-	fn apply_mutators(&self, stats: &mut Character, parent: &Path) {
-		let path_to_self = parent.join(&self.name);
+	fn apply_mutators(&self, stats: &mut Character, parent: &ReferencePath) {
+		let path_to_self = parent.join(&self.name, None);
 		if let Some(action) = &self.action {
 			if let Some(uses) = &action.limited_uses {
 				if let LimitedUses::Usage(resource) = uses {
@@ -84,7 +87,7 @@ impl mutator::Group for Feature {
 		for mutator in &self.mutators {
 			stats.apply(mutator, &path_to_self);
 		}
-		*self.absolute_path.write().unwrap() = path_to_self;
+		*self.absolute_path.write().unwrap() = path_to_self.display.clone();
 	}
 }
 

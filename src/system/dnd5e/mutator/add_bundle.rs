@@ -1,4 +1,5 @@
 use crate::kdl_ext::NodeContext;
+use crate::system::mutator::ReferencePath;
 use crate::{
 	database::Criteria,
 	system::Mutator,
@@ -50,11 +51,11 @@ impl Mutator for AddBundle {
 		}
 	}
 
-	fn set_data_path(&self, parent: &std::path::Path) {
+	fn set_data_path(&self, parent: &ReferencePath) {
 		self.selector.set_data_path(parent);
 	}
 
-	fn on_insert(&self, stats: &mut Character, parent: &std::path::Path) {
+	fn on_insert(&self, stats: &mut Character, parent: &ReferencePath) {
 		let Some(data_path) = self.selector.get_data_path() else {
 			return;
 		};
@@ -65,7 +66,7 @@ impl Mutator for AddBundle {
 		stats.add_bundles(AdditionalObjectData {
 			ids: ids.collect(),
 			object_type_id: self.selector.object_category.clone(),
-			source: parent.to_owned(),
+			source: parent.clone(),
 			propagate_source_as_parent_feature: self.propogate_parent,
 		});
 	}

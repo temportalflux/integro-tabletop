@@ -1,4 +1,5 @@
 use crate::kdl_ext::NodeContext;
+use crate::system::mutator::ReferencePath;
 use crate::{
 	system::dnd5e::data::{
 		character::Character, description, item::weapon, proficiency, Ability, ArmorExtended, Skill, WeaponProficiency,
@@ -149,7 +150,7 @@ impl Mutator for AddProficiency {
 		}
 	}
 
-	fn set_data_path(&self, parent: &std::path::Path) {
+	fn set_data_path(&self, parent: &ReferencePath) {
 		match self {
 			Self::Ability(selector, _) => selector.set_data_path(parent),
 			Self::Skill { skill, .. } => skill.set_data_path(parent),
@@ -159,7 +160,7 @@ impl Mutator for AddProficiency {
 		}
 	}
 
-	fn on_insert(&self, stats: &mut Character, parent: &std::path::Path) {
+	fn on_insert(&self, stats: &mut Character, parent: &ReferencePath) {
 		match &self {
 			Self::Ability(ability, level) => {
 				if let Some(ability) = stats.resolve_selector(ability) {
@@ -167,13 +168,13 @@ impl Mutator for AddProficiency {
 					let derived_skills = stats.skills_mut();
 					for skill in EnumSet::<Skill>::all() {
 						if skill.ability() == ability {
-							derived_skills.add_proficiency(skill, *level, parent.to_owned());
+							derived_skills.add_proficiency(skill, *level, parent);
 						}
 					}
 				}
 			}
 			Self::SavingThrow(ability) => {
-				stats.saving_throws_mut().add_proficiency(*ability, parent.to_owned());
+				stats.saving_throws_mut().add_proficiency(*ability, parent);
 			}
 			Self::Skill {
 				skill,
@@ -183,32 +184,26 @@ impl Mutator for AddProficiency {
 				let Some(skill) = stats.resolve_selector(skill) else {
 					return;
 				};
-				stats.skills_mut().add_proficiency(skill, *level, parent.to_owned());
+				stats.skills_mut().add_proficiency(skill, *level, parent);
 			}
 			Self::Language(value) => {
 				if let Some(value) = stats.resolve_selector(value) {
-					stats
-						.other_proficiencies_mut()
-						.languages
-						.insert(value, parent.to_owned());
+					stats.other_proficiencies_mut().languages.insert(value, parent);
 				}
 			}
 			Self::Armor(value, context) => {
 				stats
 					.other_proficiencies_mut()
 					.armor
-					.insert((value.clone(), context.clone()), parent.to_owned());
+					.insert((value.clone(), context.clone()), parent);
 			}
 			Self::Weapon(value) => {
-				stats
-					.other_proficiencies_mut()
-					.weapons
-					.insert(value.clone(), parent.to_owned());
+				stats.other_proficiencies_mut().weapons.insert(value.clone(), parent);
 			}
 			Self::Tool { tool, level: _ } => {
 				// TODO: Actually grant the tool's proficiency level (there is no place to put that data yet)
 				if let Some(value) = stats.resolve_selector(tool) {
-					stats.other_proficiencies_mut().tools.insert(value, parent.to_owned());
+					stats.other_proficiencies_mut().tools.insert(value, parent);
 				}
 			}
 		}

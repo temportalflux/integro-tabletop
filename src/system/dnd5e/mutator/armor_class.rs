@@ -1,4 +1,5 @@
 use crate::kdl_ext::NodeContext;
+use crate::system::mutator::ReferencePath;
 use crate::{
 	system::dnd5e::data::{character::Character, description, ArmorClassFormula},
 	system::Mutator,
@@ -35,8 +36,8 @@ impl Mutator for AddArmorClassFormula {
 		}
 	}
 
-	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
-		stats.armor_class_mut().push_formula(self.0.clone(), parent.to_owned());
+	fn apply(&self, stats: &mut Character, parent: &ReferencePath) {
+		stats.armor_class_mut().push_formula(self.0.clone(), parent);
 	}
 }
 

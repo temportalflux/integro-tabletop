@@ -1,4 +1,5 @@
 use crate::kdl_ext::NodeContext;
+use crate::system::mutator::ReferencePath;
 use crate::{
 	system::dnd5e::data::{character::Character, description, DamageType},
 	system::Mutator,
@@ -58,7 +59,7 @@ kdlize::impl_kdl_node!(AddDefense, "add_defense");
 impl Mutator for AddDefense {
 	type Target = Character;
 
-	fn set_data_path(&self, parent: &std::path::Path) {
+	fn set_data_path(&self, parent: &ReferencePath) {
 		if let Some(selector) = &self.damage_type {
 			selector.set_data_path(parent);
 		}
@@ -98,14 +99,14 @@ impl Mutator for AddDefense {
 		}
 	}
 
-	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
+	fn apply(&self, stats: &mut Character, parent: &ReferencePath) {
 		let damage_type = match &self.damage_type {
 			None => None,
 			Some(selector) => stats.resolve_selector(selector),
 		};
 		stats
 			.defenses_mut()
-			.push(self.defense, damage_type, self.context.clone(), parent.to_owned());
+			.push(self.defense, damage_type, self.context.clone(), parent);
 	}
 }
 

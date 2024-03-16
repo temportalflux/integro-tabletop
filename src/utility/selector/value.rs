@@ -1,17 +1,12 @@
 use super::id::IdPath;
-use crate::{kdl_ext::NodeContext, utility::NotInList};
+use crate::{kdl_ext::NodeContext, system::mutator::ReferencePath, utility::NotInList};
 use anyhow::Context;
 use enumset::{EnumSet, EnumSetType};
 use kdlize::{
 	ext::{DocumentExt, ValueExt},
 	AsKdl, FromKdl, NodeBuilder,
 };
-use std::{
-	collections::BTreeSet,
-	path::{Path, PathBuf},
-	str::FromStr,
-	sync::Arc,
-};
+use std::{collections::BTreeSet, path::PathBuf, str::FromStr, sync::Arc};
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum Value<Context: 'static, T> {
@@ -75,19 +70,19 @@ where
 		}
 	}
 
-	pub fn set_data_path(&self, parent: &Path) {
+	pub fn set_data_path(&self, parent: &ReferencePath) {
 		if let Some(id_path) = self.id_path() {
-			id_path.set_path(parent);
+			id_path.set_path(&parent);
 		}
 		if let Self::Options(ValueOptions { cannot_match, .. }) = self {
 			for id_path in cannot_match {
-				id_path.set_path(parent);
+				id_path.set_path(&parent);
 			}
 		}
 	}
 
 	pub fn get_data_path(&self) -> Option<PathBuf> {
-		self.id_path().map(|id_path| id_path.as_path()).flatten()
+		self.id_path().map(|id_path| id_path.data()).flatten()
 	}
 
 	pub fn add_default_options(&mut self)
@@ -230,7 +225,7 @@ where
 		else {
 			return Ok(None);
 		};
-		let Some(data_path) = id.as_path() else {
+		let Some(data_path) = id.data() else {
 			return Err(super::InvalidDataPath);
 		};
 		let mut blocked_options = BTreeSet::new();
@@ -241,7 +236,7 @@ where
 				}
 			}
 		}
-		let cannot_match = cannot_match.iter().filter_map(super::IdPath::as_path).collect();
+		let cannot_match = cannot_match.iter().filter_map(super::IdPath::data).collect();
 		Ok(Some(super::DataOption {
 			data_path,
 			name: name.into(),

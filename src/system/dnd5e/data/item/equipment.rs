@@ -6,11 +6,11 @@ use crate::{
 			data::{character::Character, Resource},
 			BoxedCriteria, BoxedMutator,
 		},
-		mutator,
+		mutator::{self, ReferencePath},
 	},
 };
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
-use std::{collections::HashMap, path::Path};
+use std::collections::HashMap;
 
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct Equipment {
@@ -32,7 +32,7 @@ pub struct Equipment {
 impl mutator::Group for Equipment {
 	type Target = Character;
 
-	fn set_data_path(&self, path_to_item: &std::path::Path) {
+	fn set_data_path(&self, path_to_item: &ReferencePath) {
 		// path_to_item could look something like:
 		// `Inventory/<uuid>/` for items in the character's main inventory
 		// `Inventory/<uuid>/<uuid>/` for items in a container
@@ -47,7 +47,7 @@ impl mutator::Group for Equipment {
 		}
 	}
 
-	fn apply_mutators(&self, stats: &mut Character, path_to_item: &Path) {
+	fn apply_mutators(&self, stats: &mut Character, path_to_item: &ReferencePath) {
 		for modifier in &self.mutators {
 			stats.apply(modifier, path_to_item);
 		}
@@ -55,9 +55,7 @@ impl mutator::Group for Equipment {
 			stats.apply_from(armor, path_to_item);
 		}
 		if let Some(shield) = &self.shield {
-			stats
-				.armor_class_mut()
-				.push_bonus(*shield, None, path_to_item.to_owned());
+			stats.armor_class_mut().push_bonus(*shield, None, path_to_item);
 		}
 		if let Some(resource) = &self.charges {
 			resource.apply_to(stats, path_to_item);

@@ -11,7 +11,7 @@ pub struct ResourceDepot {
 
 impl ResourceDepot {
 	pub fn register(&mut self, resource: &Resource) {
-		let Some(path) = resource.get_capacity_path() else {
+		let Some(path) = resource.get_uses_path() else {
 			return;
 		};
 		self.uses.insert(path, resource.clone());

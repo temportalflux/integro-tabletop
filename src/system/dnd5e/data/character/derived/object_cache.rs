@@ -3,11 +3,11 @@ use crate::system::{
 		character::{Character, ObjectCacheProvider},
 		Bundle, Subclass,
 	},
-	mutator::Group,
+	mutator::{Group, ReferencePath},
 	SourceId,
 };
 use kdlize::NodeId;
-use std::{collections::HashMap, path::PathBuf};
+use std::collections::HashMap;
 
 /// Holds the list of all objects (mainly bundles) added via mutators, and fetched from the object provider.
 #[derive(Clone, PartialEq, Debug, Default)]
@@ -32,7 +32,7 @@ enum CachedObject {
 pub struct AdditionalObjectData {
 	pub ids: Vec<SourceId>,
 	pub object_type_id: String,
-	pub source: PathBuf,
+	pub source: ReferencePath,
 	pub propagate_source_as_parent_feature: bool,
 }
 
@@ -105,7 +105,7 @@ impl AdditionalObjectCache {
 						// ensure that the bundle, if configured to show as a feature, has the proper parent
 						if let Some(feature_config) = &mut bundle.feature_config {
 							if object_data.propagate_source_as_parent_feature {
-								feature_config.parent_path = Some(object_data.source.to_owned());
+								feature_config.parent_path = Some(object_data.source.clone());
 							}
 						}
 						// apply the bundle to the character

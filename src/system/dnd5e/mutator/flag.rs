@@ -1,4 +1,5 @@
 use crate::kdl_ext::NodeContext;
+use crate::system::mutator::ReferencePath;
 use crate::{
 	system::dnd5e::data::{bounded::BoundValue, character::Character, description, Ability},
 	system::Mutator,
@@ -53,7 +54,7 @@ impl Mutator for SetFlag {
 		description::Section::default()
 	}
 
-	fn apply(&self, stats: &mut Character, _parent: &std::path::Path) {
+	fn apply(&self, stats: &mut Character, _parent: &ReferencePath) {
 		stats.flags_mut()[self.flag] = self.value;
 	}
 }
@@ -95,7 +96,7 @@ impl Mutator for ArmorStrengthRequirement {
 		description::Section::default()
 	}
 
-	fn apply(&self, stats: &mut Character, parent: &std::path::Path) {
+	fn apply(&self, stats: &mut Character, parent: &ReferencePath) {
 		if !stats.flags()[Flag::ArmorStrengthRequirement] {
 			return;
 		}
@@ -106,9 +107,7 @@ impl Mutator for ArmorStrengthRequirement {
 		// then ensure that all movement speeds are decreased by 10.
 		let speed_names = stats.speeds().iter().map(|(name, _)| name).cloned().collect::<Vec<_>>();
 		for speed in speed_names {
-			stats
-				.speeds_mut()
-				.insert(speed, BoundValue::Subtract(10), parent.to_owned());
+			stats.speeds_mut().insert(speed, BoundValue::Subtract(10), parent);
 		}
 	}
 }

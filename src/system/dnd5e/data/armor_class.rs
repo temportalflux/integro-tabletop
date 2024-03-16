@@ -1,4 +1,7 @@
-use crate::system::dnd5e::data::{character::Character, Ability};
+use crate::system::{
+	dnd5e::data::{character::Character, Ability},
+	mutator::ReferencePath,
+};
 use std::path::PathBuf;
 
 mod formula;
@@ -18,12 +21,12 @@ impl Default for ArmorClass {
 	}
 }
 impl ArmorClass {
-	pub fn push_formula(&mut self, formula: ArmorClassFormula, source: PathBuf) {
-		self.formulas.push((formula, source));
+	pub fn push_formula(&mut self, formula: ArmorClassFormula, source: &ReferencePath) {
+		self.formulas.push((formula, source.display.clone()));
 	}
 
-	pub fn push_bonus(&mut self, bonus: i32, context: Option<String>, source: PathBuf) {
-		self.bonuses.push((bonus, context, source));
+	pub fn push_bonus(&mut self, bonus: i32, context: Option<String>, source: &ReferencePath) {
+		self.bonuses.push((bonus, context, source.display.clone()));
 	}
 
 	pub fn evaluate(&self, state: &Character) -> i32 {

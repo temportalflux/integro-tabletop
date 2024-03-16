@@ -1,8 +1,13 @@
 use super::Character;
-use crate::kdl_ext::NodeContext;
-use crate::system::{dnd5e::BoxedMutator, mutator, Block, SourceId};
+use crate::{
+	kdl_ext::NodeContext,
+	system::{
+		dnd5e::BoxedMutator,
+		mutator::{self, ReferencePath},
+		Block, SourceId,
+	},
+};
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
-use std::path::Path;
 
 /// Contains mutators and features which are applied to every character using the module it is present in.
 #[derive(Clone, PartialEq, Debug)]
@@ -22,13 +27,13 @@ impl Block for DefaultsBlock {
 impl mutator::Group for DefaultsBlock {
 	type Target = Character;
 
-	fn set_data_path(&self, parent: &Path) {
+	fn set_data_path(&self, parent: &ReferencePath) {
 		for mutator in &self.mutators {
 			mutator.set_data_path(parent);
 		}
 	}
 
-	fn apply_mutators(&self, stats: &mut Character, parent: &Path) {
+	fn apply_mutators(&self, stats: &mut Character, parent: &ReferencePath) {
 		for mutator in &self.mutators {
 			stats.apply(mutator, parent);
 		}

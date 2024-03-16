@@ -1,4 +1,5 @@
 use crate::kdl_ext::NodeContext;
+use crate::system::mutator::ReferencePath;
 use crate::{
 	system::dnd5e::data::{character::Character, description},
 	system::Mutator,
@@ -21,7 +22,7 @@ impl Mutator for AddLifeExpectancy {
 		}
 	}
 
-	fn apply(&self, stats: &mut Character, _parent: &std::path::Path) {
+	fn apply(&self, stats: &mut Character, _parent: &ReferencePath) {
 		stats.derived_description_mut().life_expectancy += self.0;
 	}
 }

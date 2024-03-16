@@ -1,5 +1,3 @@
-use kdlize::{AsKdl, FromKdl, NodeBuilder};
-
 use super::{
 	character::{Character, RestEntry},
 	roll::{EvaluatedRollSet, RollSet},
@@ -7,13 +5,11 @@ use super::{
 };
 use crate::{
 	kdl_ext::NodeContext,
-	system::dnd5e::Value,
+	system::{dnd5e::Value, mutator::ReferencePath},
 	utility::selector::{self, IdPath, ValueOptions},
 };
-use std::{
-	path::{Path, PathBuf},
-	str::FromStr,
-};
+use kdlize::{AsKdl, FromKdl, NodeBuilder};
+use std::{path::PathBuf, str::FromStr};
 
 /* Use cases:
 - use x times then destroyed
@@ -54,7 +50,7 @@ resources with an absolute path would be unaffected, but relative paths would be
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Resource {
-	pub id: IdPath,
+	pub display_path: IdPath,
 	pub capacity: Value<i32>,
 	pub reset: Option<ResourceReset>,
 	pub uses_count: selector::Value<Character, u32>,
@@ -63,11 +59,11 @@ pub struct Resource {
 impl Default for Resource {
 	fn default() -> Self {
 		Self {
-			id: IdPath::from("charges"),
+			display_path: IdPath::default(),
 			capacity: Value::Fixed(0),
 			reset: None,
 			uses_count: selector::Value::Options(ValueOptions {
-				id: "uses_consumed".into(),
+				id: "uses".into(),
 				..Default::default()
 			}),
 		}
@@ -81,7 +77,7 @@ pub struct ResourceReset {
 }
 
 impl Resource {
-	pub fn apply_to(&self, stats: &mut Character, path_to_parent: &Path) {
+	pub fn apply_to(&self, stats: &mut Character, path_to_parent: &ReferencePath) {
 		stats.resources_mut().register(self);
 
 		let Some(uses_path) = self.get_uses_path() else {
@@ -95,18 +91,18 @@ impl Resource {
 			RestEntry {
 				restore_amount,
 				data_paths: vec![uses_path],
-				source: path_to_parent.to_owned(),
+				source: path_to_parent.display.clone(),
 			},
 		);
 	}
 
-	pub fn set_data_path(&self, path_to_parent: &std::path::Path) {
-		self.id.set_path(path_to_parent);
+	pub fn set_data_path(&self, path_to_parent: &ReferencePath) {
+		self.display_path.set_path(&path_to_parent);
 		self.uses_count.set_data_path(path_to_parent);
 	}
 
-	pub fn get_capacity_path(&self) -> Option<PathBuf> {
-		self.id.as_path()
+	pub fn get_display_path(&self) -> PathBuf {
+		self.display_path.display().unwrap_or_default()
 	}
 
 	pub fn get_capacity(&self, character: &Character) -> i32 {

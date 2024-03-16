@@ -43,7 +43,7 @@ impl<'parent> UsesCounter<'parent> {
 			.map(|rest| format!(" (reset on {:?} Rest)", rest))
 			.unwrap_or_default();
 
-		if let Some((cost, resource)) = self.limited_uses.as_consumer() {
+		if let Some((cost, resource)) = self.limited_uses.as_consumer(&self.state) {
 			// LimitedUses which are Consumers render differently.
 			// Instead of showing the counter, we show a button which tells the user how many uses are consumed.
 			let can_use = consumed_uses < max_uses;
@@ -173,12 +173,12 @@ pub fn UseCounterDelta(
 		0 => Html::default(),
 		_ => html! {<>
 			<span class="delta">{*delta_state}</span>
-			<button type="button" class="btn btn-xs btn-theme" onclick={apply_delta}>{"Apply"}</button>
-			<button type="button" class="btn btn-xs btn-theme" onclick={clear_delta}>{"Clear"}</button>
+			<button type="button" class="btn btn-xs btn-theme apply" onclick={apply_delta}>{"Apply"}</button>
+			<button type="button" class="btn btn-xs btn-theme clear" onclick={clear_delta}>{"Clear"}</button>
 		</>},
 	};
 
-	let uses_remaining = max_uses - consumed_uses;
+	let uses_remaining = max_uses.saturating_sub(*consumed_uses);
 	let new_uses_remaining = (uses_remaining as i32).saturating_add(*delta_state).max(0) as u32;
 	html! {<span class="deltaform d-flex align-items-center" onclick={stop_propagation()}>
 		<button type="button" class="btn btn-theme sub" onclick={onclick_sub} disabled={new_uses_remaining == 0} />

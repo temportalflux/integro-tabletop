@@ -108,7 +108,7 @@ fn Modal(GeneralProp { value }: &GeneralProp<Rest>) -> Html {
 					let new_value = match &uses_to_remove {
 						None => None,
 						Some(gained_uses) => {
-							// Remove the amt of gained uses from the "uses_consumed" resource
+							// Remove the amt of gained uses from the "uses" resource
 							let prev_value = persistent.get_first_selection_at::<u32>(data_path);
 							let prev_value = prev_value.map(Result::ok).flatten().unwrap_or(0);
 							let new_value = prev_value.saturating_sub(*gained_uses);

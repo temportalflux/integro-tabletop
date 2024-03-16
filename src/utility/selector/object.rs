@@ -1,6 +1,6 @@
 use super::id::IdPath;
-use crate::{database::Criteria, utility::Value};
-use std::path::{Path, PathBuf};
+use crate::{database::Criteria, system::mutator::ReferencePath, utility::Value};
+use std::path::PathBuf;
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Object<Context: 'static> {
@@ -11,12 +11,12 @@ pub struct Object<Context: 'static> {
 }
 
 impl<Context> Object<Context> {
-	pub fn set_data_path(&self, parent: &Path) {
+	pub fn set_data_path(&self, parent: &ReferencePath) {
 		self.id.set_path(parent);
 	}
 
 	pub fn get_data_path(&self) -> Option<PathBuf> {
-		self.id.as_path()
+		self.id.data()
 	}
 
 	pub fn set_criteria(&mut self, criteria: Criteria) {
@@ -37,7 +37,7 @@ where
 		name: impl Into<String>,
 		context: &Context,
 	) -> Result<super::DataOption, super::InvalidDataPath> {
-		let Some(data_path) = self.id.as_path() else {
+		let Some(data_path) = self.id.data() else {
 			return Err(super::InvalidDataPath);
 		};
 		Ok(super::DataOption {
