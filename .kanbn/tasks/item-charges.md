@@ -1,10 +1,11 @@
 ---
 created: 2023-09-20T13:29:39.035Z
-updated: 2023-09-21T15:28:54.840Z
+updated: 2024-03-16T14:06:47.797Z
 assigned: ""
 progress: 0
 tags:
   - MVP
+started: 2024-03-16T14:06:47.797Z
 ---
 
 # Item Charges

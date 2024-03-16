@@ -177,7 +177,10 @@ fn BrowsedItemCard(props: &GeneralProp<ItemLocation>) -> Html {
 		state.new_dispatch(Box::new({
 			move |(item, container_id), persistent: &mut Persistent| {
 				persistent.inventory.insert_to(item, &container_id);
-				MutatorImpact::None
+				// need items to have their data paths set up
+				// (normally this isn't needed until an item is equipped,
+				// but equipment with charges can be viewed without being actively equipped)
+				MutatorImpact::Recompile
 			}
 		})),
 	);
@@ -248,7 +251,10 @@ fn AddItemActions(AddItemActionsProps { id, batch_size, worth }: &AddItemActions
 				for item in items {
 					persistent.inventory.insert_to(item, &container_id);
 				}
-				MutatorImpact::None
+				// need items to have their data paths set up
+				// (normally this isn't needed until an item is equipped,
+				// but equipment with charges can be viewed without being actively equipped)
+				MutatorImpact::Recompile
 			}
 		})),
 	);

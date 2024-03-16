@@ -51,8 +51,9 @@ impl mutator::Group for EquipableEntry {
 	type Target = Character;
 
 	fn set_data_path(&self, parent: &std::path::Path) {
-		// TODO: item name is not stable, probably need to use the unique id
-		let path_to_item = parent.join(&self.item.name);
+		let path_to_item = self.id_path.iter().fold(parent.to_owned(), |path, id| {
+			path.join(id.to_string())
+		});
 		if let Kind::Equipment(equipment) = &self.item.kind {
 			equipment.set_data_path(&path_to_item);
 		}

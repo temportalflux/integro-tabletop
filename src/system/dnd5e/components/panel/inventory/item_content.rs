@@ -150,41 +150,7 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 			let inner = match (&props.on_quantity_changed, item.can_stack()) {
 				(None, _) | (Some(_), false) => html! { <span>{count}</span> },
 				(Some(on_changed), true) => {
-					let count = *count;
-					let increment = Callback::from({
-						let on_changed = on_changed.clone();
-						move |_| {
-							on_changed.emit(count.saturating_add(1));
-						}
-					});
-					let decrement = Callback::from({
-						let on_changed = on_changed.clone();
-						move |_| {
-							on_changed.emit(count.saturating_sub(1));
-						}
-					});
-					let onchange = Callback::from({
-						let on_changed = on_changed.clone();
-						move |evt: web_sys::Event| {
-							let Some(value) = evt.input_value_t::<u32>() else {
-								return;
-							};
-							on_changed.emit(value);
-						}
-					});
-					html! {
-						<div class="input-group item-quantity-inline">
-							<button type="button" class="btn btn-theme" onclick={decrement}><i class="bi bi-dash" /></button>
-							<input
-								class="form-control text-center"
-								type="number"
-								min="0" value={count.to_string()}
-								onkeydown={validate_uint_only()}
-								onchange={onchange}
-							/>
-							<button type="button" class="btn btn-theme" onclick={increment}><i class="bi bi-plus" /></button>
-						</div>
-					}
+					html!(<UIntField class={"num-field-inline"} value={*count} {on_changed} />)
 				}
 			};
 			sections.push(html! {
@@ -389,6 +355,29 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 				// (if mutable) (un)attune button: disabled when all slots filled and not currently attuned
 				// mutators & criteria applied when attuned
 				// warning if attuned and not currently equipped
+			}
+			if let Some(resource) = &equipment.charges {
+				if matches!(&props.location, Some(ItemLocation::Inventory {..})) {
+					let max_uses = resource.get_capacity(&*state) as u32;
+					let uses_consumed = resource.get_uses_consumed(&*state);
+					let uses_remaining = max_uses.saturating_sub(uses_consumed);
+					let on_changed = state.new_dispatch({
+						let data_path = resource.get_uses_path();
+						move |new_uses_remaining: u32, persistent| {
+							let Some(data_path) = &data_path else { return MutatorImpact::None };
+							let new_uses_consumed = max_uses.saturating_sub(new_uses_remaining);
+							let new_value = (new_uses_consumed > 0).then(|| new_uses_consumed.to_string());
+							persistent.set_selected(data_path, new_value);
+							MutatorImpact::None
+						}
+					});
+					equip_sections.push(html! {
+						<div class="property">
+							<strong>{"Charges:"}</strong>
+							<UIntField class={"num-field-inline"} value={uses_remaining} {on_changed} />
+						</div>
+					});
+				}
 			}
 			sections.push(html! {
 				<div>
@@ -622,6 +611,52 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 	html! {<>
 		{sections}
 	</>}
+}
+
+#[derive(Clone, PartialEq, Properties)]
+struct UIntFieldProps {
+	#[prop_or_default]
+	class: Classes,
+	value: u32,
+	on_changed: Callback<u32>,
+}
+#[function_component]
+fn UIntField(UIntFieldProps { class, value, on_changed }: &UIntFieldProps) -> Html {
+	let count = *value;
+	let increment = Callback::from({
+		let on_changed = on_changed.clone();
+		move |_| {
+			on_changed.emit(count.saturating_add(1));
+		}
+	});
+	let decrement = Callback::from({
+		let on_changed = on_changed.clone();
+		move |_| {
+			on_changed.emit(count.saturating_sub(1));
+		}
+	});
+	let onchange = Callback::from({
+		let on_changed = on_changed.clone();
+		move |evt: web_sys::Event| {
+			let Some(value) = evt.input_value_t::<u32>() else {
+				return;
+			};
+			on_changed.emit(value);
+		}
+	});
+	html! {
+		<div class={classes!(class.clone(), "input-group")}>
+			<button type="button" class="btn btn-theme" onclick={decrement}><i class="bi bi-dash" /></button>
+			<input
+				class="form-control text-center"
+				type="number"
+				min="0" value={count.to_string()}
+				onkeydown={validate_uint_only()}
+				onchange={onchange}
+			/>
+			<button type="button" class="btn btn-theme" onclick={increment}><i class="bi bi-plus" /></button>
+		</div>
+	}
 }
 
 #[function_component]

@@ -30,10 +30,15 @@ pub fn use_character(id: SourceId) -> CharacterHandle {
 	};
 
 	// Character Initialization
-	if !handle.is_loaded() && !handle.is_recompiling() {
-		handle.set_recompiling(true);
-		handle.load_with(id);
-	}
+	use_effect_with(
+		(handle.clone(), handle.is_loaded(), handle.is_recompiling()),
+		|(handle, is_loaded, is_recompiling)| {
+			if !is_recompiling && !is_loaded {
+				handle.set_recompiling(true);
+				handle.load_with(id);
+			}
+		}
+	);
 
 	handle
 }

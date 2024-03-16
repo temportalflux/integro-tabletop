@@ -84,7 +84,7 @@ impl Resource {
 	pub fn apply_to(&self, stats: &mut Character, path_to_parent: &Path) {
 		stats.resources_mut().register(self);
 
-		let Some(capacity_path) = self.get_capacity_path() else {
+		let Some(uses_path) = self.get_uses_path() else {
 			return;
 		};
 		let Some(reset) = &self.reset else { return };
@@ -94,7 +94,7 @@ impl Resource {
 			rest,
 			RestEntry {
 				restore_amount,
-				data_paths: vec![capacity_path],
+				data_paths: vec![uses_path],
 				source: path_to_parent.to_owned(),
 			},
 		);

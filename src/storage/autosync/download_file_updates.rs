@@ -50,6 +50,10 @@ impl DownloadFileUpdates {
 
 			self.status.increment_progress();
 
+			if !path_in_repo.ends_with(".kdl") {
+				continue;
+			}
+
 			let args = repos::contents::get::Args {
 				owner: user_org.as_str(),
 				repo: repository.as_str(),

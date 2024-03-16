@@ -45,18 +45,20 @@ columnSorting:
 ## Pending
 
 - [condition-degrees](tasks/condition-degrees.md)
-- [item-charges](tasks/item-charges.md)
 - [speed-based-on-existing-speed](tasks/speed-based-on-existing-speed.md)
 - [object-feature-backlog](tasks/object-feature-backlog.md)
 - [attack-row-overview-ui-rehaul](tasks/attack-row-overview-ui-rehaul.md)
+- [expanded-item-modal-editor](tasks/expanded-item-modal-editor.md)
 - [notes-for-features](tasks/notes-for-features.md)
 - [notes-for-items](tasks/notes-for-items.md)
 - [notes-for-spells](tasks/notes-for-spells.md)
+- [attunement](tasks/attunement.md)
 - [inventory-search-bar](tasks/inventory-search-bar.md)
 - [autosave](tasks/autosave.md)
-- [attunement](tasks/attunement.md)
 
 ## In Progress
+
+- [item-charges](tasks/item-charges.md)
 
 ## Done
 

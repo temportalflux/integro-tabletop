@@ -65,14 +65,6 @@ pub fn ItemModal(InventoryItemProps { id_path }: &InventoryItemProps) -> Html {
 	let Some(item) = item else {
 		return Html::default();
 	};
-	// TODO: edit capability for properties:
-	// name, notes, quantity(✔)
-	// dndbeyond also supports worth and weight overrides, idk if I want that or not
-	// TODO: buttons for:
-	// (un)equip(✔), sell(?), (un)attune, move (between containers)
-	// TODO: button to convert into custom item, which enables full control over all properties.
-	// 		Or maybe this just uses some `inheiret` property and allows user to
-	// 		override any property after copying from some source id.
 
 	let on_delete = state.new_dispatch({
 		let id_path = id_path.clone();
