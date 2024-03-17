@@ -2,10 +2,22 @@ use crate::database::Entry;
 use database::{IndexType, QueryExt};
 use wasm_bindgen::JsValue;
 
+pub type EntryVariantInSystemWithType = SystemCategoryVariants;
+
 pub struct SystemCategoryVariants {
 	pub system: String,
 	pub category: String,
 	pub variants_only: bool,
+}
+
+impl SystemCategoryVariants {
+	pub fn new<T: crate::system::Block>(system: impl Into<String>, variants: bool) -> Self {
+		Self {
+			system: system.into(),
+			category: T::id().into(),
+			variants_only: variants,
+		}
+	}
 }
 
 impl IndexType for SystemCategoryVariants {

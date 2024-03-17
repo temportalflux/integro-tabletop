@@ -1,7 +1,19 @@
 use crate::{
-	database::Criteria,
-	system::dnd5e::{components::GeneralProp, data::character::spellcasting::AbilityOrStat},
+	components::database::{use_query, QueryStatus},
+	database::{entry::EntryInSystemWithType, Criteria, Query},
+	page::characters::sheet::joined::editor::bundle_content,
+	system::{
+		self,
+		dnd5e::{
+			components::GeneralProp,
+			data::{character::spellcasting::AbilityOrStat, Bundle},
+			DnD5e,
+		},
+		System,
+	},
 };
+use futures_util::FutureExt;
+use kdlize::NodeId;
 use std::{
 	collections::{BTreeMap, HashMap},
 	path::PathBuf,
@@ -77,7 +89,6 @@ pub fn Modal(props: &ModalProps) -> Html {
 struct SpellBrowser;
 impl ObjectBrowser for SpellBrowser {
 	fn id() -> &'static str {
-		use kdlize::NodeId;
 		crate::system::dnd5e::data::Spell::id()
 	}
 
@@ -133,7 +144,6 @@ impl ObjectBrowser for SpellBrowser {
 struct BundleBrowser;
 impl ObjectBrowser for BundleBrowser {
 	fn id() -> &'static str {
-		use kdlize::NodeId;
 		crate::system::dnd5e::data::Bundle::id()
 	}
 
@@ -158,27 +168,21 @@ struct BundleListProps {
 }
 #[function_component]
 fn BundleList(props: &BundleListProps) -> Html {
-	use crate::{
-		components::database::{use_query_all_typed, QueryAllArgs, QueryStatus},
-		page::characters::sheet::joined::editor::bundle_content,
-		system::{
-			dnd5e::{data::Bundle, DnD5e},
-			System,
-		},
-	};
-
-	let fetch_bundles = use_query_all_typed::<Bundle>(
-		true,
-		Some(QueryAllArgs::<Bundle> {
-			system: DnD5e::id().into(),
-			criteria: props.criteria.clone().map(Box::new),
-			adjust_listings: Some(Arc::new(|mut bundles| {
-				bundles.sort_by(|a, b| a.name.cmp(&b.name));
-				bundles
-			})),
-			max_limit: None,
-		}),
-	);
+	let system_depot = use_context::<system::Registry>().unwrap();
+	let fetch_bundles = use_query(Some(props.criteria.clone()), move |database, criteria| {
+		let system_depot = system_depot.clone();
+		async move {
+			let index = EntryInSystemWithType::new::<Bundle>(DnD5e::id());
+			let query = Query::subset(&database, Some(index)).await?;
+			let query = query.apply_opt(criteria, Query::filter_by);
+			let query = query.parse_as::<Bundle>(&system_depot);
+			let query = query.map(|(_entry, bundle)| bundle);
+			let mut bundles = query.collect::<Vec<_>>().await;
+			bundles.sort_by(|a, b| a.name.cmp(&b.name));
+			Ok(bundles) as Result<Vec<Bundle>, database::Error>
+		}
+		.boxed_local()
+	});
 	match fetch_bundles.status() {
 		QueryStatus::Pending => html!(<crate::components::Spinner />),
 		QueryStatus::Empty | QueryStatus::Failed(_) => html!("No bundles available"),
@@ -221,7 +225,6 @@ fn BundleList(props: &BundleListProps) -> Html {
 struct SubclassBrowser;
 impl ObjectBrowser for SubclassBrowser {
 	fn id() -> &'static str {
-		use kdlize::NodeId;
 		crate::system::dnd5e::data::Subclass::id()
 	}
 

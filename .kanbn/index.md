@@ -19,7 +19,6 @@ columnSorting:
 - [expanded-object-cache](tasks/expanded-object-cache.md)
 - [item-browser-filters](tasks/item-browser-filters.md)
 - [spell-browser-filters](tasks/spell-browser-filters.md)
-- [add-restore-uses-mutator](tasks/add-restore-uses-mutator.md)
 - [character-modules](tasks/character-modules.md)
 - [dodge-action-applies-a-condition](tasks/dodge-action-applies-a-condition.md)
 - [details-drawer-layouts-evaluations](tasks/details-drawer-layouts-evaluations.md)
@@ -46,6 +45,7 @@ columnSorting:
 
 - [condition-degrees](tasks/condition-degrees.md)
 - [speed-based-on-existing-speed](tasks/speed-based-on-existing-speed.md)
+- [add-restore-uses-mutator](tasks/add-restore-uses-mutator.md)
 - [object-feature-backlog](tasks/object-feature-backlog.md)
 - [attack-row-overview-ui-rehaul](tasks/attack-row-overview-ui-rehaul.md)
 - [expanded-item-modal-editor](tasks/expanded-item-modal-editor.md)
@@ -58,10 +58,9 @@ columnSorting:
 
 ## In Progress
 
-- [item-charges](tasks/item-charges.md)
-
 ## Done
 
+- [item-charges](tasks/item-charges.md)
 - [generator-module-components](tasks/generator-module-components.md)
 - [generate-integration-tests-from-local-modules](tasks/generate-integration-tests-from-local-modules.md)
 - [auto-sync](tasks/auto-sync.md)

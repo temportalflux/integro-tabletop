@@ -1,12 +1,15 @@
 use crate::{
-	database::{DatabaseEntryStreamExt, QuerySource, QuerySubset},
+	database::{entry::EntryInSystemWithType, Criteria, Query},
 	system::{
-		dnd5e::data::{
-			character::{Character, ObjectCacheProvider, Persistent},
-			spell::Spell,
+		dnd5e::{
+			data::{
+				character::{Character, ObjectCacheProvider, Persistent},
+				spell::Spell,
+			},
+			DnD5e,
 		},
 		mutator::ReferencePath,
-		SourceId,
+		SourceId, System,
 	},
 	utility::AddAssignMap,
 };
@@ -127,11 +130,6 @@ impl Spellcasting {
 		provider: &ObjectCacheProvider,
 		persistent: &Persistent,
 	) -> anyhow::Result<RitualSpellCache> {
-		use crate::database::Criteria;
-		use crate::system::{dnd5e::DnD5e, System};
-		use futures_util::StreamExt;
-		use kdlize::NodeId;
-
 		let mut caster_query_criteria = Vec::new();
 		let mut caster_filters = HashMap::new();
 		let mut casters_which_prepare_from_item = HashSet::new();
@@ -159,26 +157,14 @@ impl Spellcasting {
 		}
 		let criteria = Criteria::Any(caster_query_criteria);
 
-		let db = provider.database.clone();
-		let node_reg = {
-			let system_reg = provider
-				.system_depot
-				.get(&DnD5e::id())
-				.expect("Missing system dnd5e in depot");
-			system_reg.node()
-		};
-
-		let query = QuerySubset::from(Some(crate::database::entry::SystemCategory {
-			system: DnD5e::id().into(),
-			category: Spell::id().into(),
-		}));
-		let cursor = query.execute(&db).await?;
-		let cursor = cursor.filter(criteria.into_predicate());
-		let mut query_stream = cursor.parse_as::<Spell>(node_reg.clone());
+		let index = EntryInSystemWithType::new::<Spell>(DnD5e::id());
+		let query = Query::subset(&provider.database, Some(index)).await?;
+		let query = query.filter_by(criteria);
+		let mut query = query.parse_as::<Spell>(&provider.system_depot);
 
 		let mut ritual_spell_cache = HashMap::new();
 		let mut caster_ritual_list_cache = MultiMap::new();
-		while let Some((entry, spell)) = query_stream.next().await {
+		while let Some((entry, spell)) = query.next().await {
 			for (caster_id, criteria) in &caster_filters {
 				if criteria.is_relevant(&entry.metadata) {
 					caster_ritual_list_cache.insert((*caster_id).clone(), spell.id.unversioned());

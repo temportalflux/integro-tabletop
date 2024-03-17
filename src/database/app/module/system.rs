@@ -1,9 +1,17 @@
 use crate::database::Module;
 use database::{IndexType, QueryExt};
 
+pub type ModuleInSystem = System;
+
 #[derive(Default)]
 pub struct System {
 	pub system: String,
+}
+
+impl System {
+	pub fn new(system: impl Into<String>) -> Self {
+		Self { system: system.into() }
+	}
 }
 
 impl IndexType for System {

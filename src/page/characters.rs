@@ -1,7 +1,10 @@
 use super::app;
 use crate::{
-	components::{modal, Spinner},
-	database::Database,
+	components::{
+		database::{use_query, QueryStatus},
+		modal, Spinner,
+	},
+	database::{entry::EntryInSystemWithType, Database, Entry, Query},
 	system::{
 		dnd5e::{
 			components::GeneralProp,
@@ -15,6 +18,7 @@ use crate::{
 	GeneralError,
 };
 use database::{ObjectStoreExt, TransactionExt};
+use futures_util::FutureExt;
 use itertools::Itertools;
 use kdlize::NodeId;
 use std::{path::Path, rc::Rc};
@@ -206,23 +210,18 @@ pub fn CharacterLanding() -> Html {
 
 #[function_component]
 fn CharacterList(GeneralProp { value: on_delete }: &GeneralProp<Callback<ModalDeleteProps>>) -> Html {
-	use crate::{
-		components::database::{use_query_all, QueryAllArgs, QueryStatus},
-		system::{
-			dnd5e::{data::character::Persistent, DnD5e},
-			System,
-		},
-	};
-	use kdlize::NodeId;
-	let query_args = QueryAllArgs {
-		system: DnD5e::id().to_owned(),
-		..Default::default()
-	};
-	let character_entries = use_query_all(Persistent::id(), true, Some(query_args.clone()));
+	let character_entries = use_query(Some(()), |database, _| {
+		async move {
+			let index = EntryInSystemWithType::new::<Persistent>(DnD5e::id());
+			let query = Query::subset(&database, Some(index)).await?;
+			Ok(query.collect::<Vec<_>>().await) as Result<Vec<Entry>, database::Error>
+		}
+		.boxed_local()
+	});
 	let on_delete_clicked = Callback::from({
 		let character_entries = character_entries.clone();
 		move |_| {
-			character_entries.run(query_args.clone());
+			character_entries.run(());
 		}
 	});
 

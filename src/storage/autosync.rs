@@ -1,5 +1,5 @@
 use crate::{
-	database::{Database, Entry, Module, QuerySource},
+	database::{Database, Entry, Module, Query},
 	storage::USER_HOMEBREW_REPO_NAME,
 	system::{self, generator, generics, ModuleId, SourceId},
 };
@@ -267,10 +267,8 @@ async fn process_request(
 	match req {
 		Request::FetchLatestVersionAllModules => {
 			scan_storage_for_modules = true;
-
-			let query = crate::database::QueryAll::<Module>::default();
-			let mut cursor = query.execute(database).await?;
-			while let Some(module) = cursor.next().await {
+			let mut query = Query::<Module>::all(&database).await?;
+			while let Some(module) = query.next().await {
 				modules.insert(module.id.clone(), module);
 			}
 		}

@@ -1,8 +1,6 @@
-use crate::system::{Block, System};
-use database::{Error, IndexType, Record, Transaction};
-use futures::StreamExt;
+use crate::system::Block;
+use database::{Error, Record, Transaction};
 use futures_util::future::LocalBoxFuture;
-use std::sync::Arc;
 
 pub mod entry;
 pub use entry::Entry;
@@ -73,23 +71,12 @@ impl Database {
 		criteria: Option<Criteria>,
 	) -> Result<Option<T>, FetchError>
 	where
-		T: Block + Unpin,
+		T: Block + Unpin + 'static,
 	{
-		let query = QuerySingle::<Entry>::from(key.to_string());
-		let Some(entry) = query.execute(&self).await? else {
-			return Ok(None);
-		};
-		if let Some(criteria) = criteria {
-			if !criteria.is_relevant(&entry.metadata) {
-				return Ok(None);
-			}
-		}
-		let Some(typed) = entry.parse_kdl::<T>({
-			let system_reg = system_depot
-				.get(crate::system::dnd5e::DnD5e::id())
-				.expect("Missing system {system:?} in depot");
-			system_reg.node()
-		}) else {
+		let query = Query::<Entry>::single(&self, &key).await?;
+		let query = query.apply_opt(criteria, Query::filter_by);
+		let mut query = query.parse_as::<T>(&system_depot);
+		let Some((_entry, typed)) = query.next().await else {
 			return Ok(None);
 		};
 		Ok(Some(typed))
@@ -104,36 +91,11 @@ impl Database {
 	where
 		Output: Block + Unpin + 'static,
 	{
-		let system = system.into();
-		let node_reg = {
-			let system_reg = system_depot.get(&system).expect("Missing system {system:?} in depot");
-			system_reg.node()
-		};
-		let index = entry::SystemCategory {
-			system,
-			category: Output::id().into(),
-		};
-		self.query_index_typed(node_reg, index, criteria).await
-	}
-
-	pub async fn query_index_typed<Output, Index>(
-		self,
-		node_registry: Arc<crate::system::generics::Registry>,
-		index: Index,
-		criteria: Option<Box<Criteria>>,
-	) -> Result<futures::stream::LocalBoxStream<'static, (Entry, Output)>, Error>
-	where
-		Output: Block + Unpin + 'static,
-		Index: IndexType<Record = Entry>,
-	{
-		let query = QuerySubset::from(Some(index));
-		let cursor = query.execute(&self).await?;
-		let cursor = match criteria {
-			None => cursor.boxed_local(),
-			Some(criteria) => cursor.filter(criteria.into_predicate()).boxed_local(),
-		};
-		let cursor = cursor.parse_as::<Output>(node_registry);
-		Ok(cursor)
+		let index = entry::EntryInSystemWithType::new::<Output>(system);
+		let query = Query::<Entry>::subset(&self, Some(index)).await?;
+		let query = query.apply_opt(criteria.map(|c| *c), Query::filter_by);
+		let query = query.parse_as::<Output>(&system_depot);
+		Ok(query.into_inner())
 	}
 
 	pub async fn mutate<F>(&self, fn_transaction: F) -> Result<(), Error>

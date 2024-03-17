@@ -1,11 +1,10 @@
 use crate::{
-	database::entry,
+	database::{entry::EntryVariantInSystemWithType, Query},
 	kdl_ext::NodeContext,
 	system::{dnd5e::data::item::Item, generator::SystemObjectList, Block, SourceId},
 	utility::PinFutureLifetimeNoSend,
 };
-use futures::StreamExt;
-use kdlize::{AsKdl, FromKdl, NodeBuilder, NodeId, OmitIfEmpty};
+use kdlize::{AsKdl, FromKdl, NodeBuilder, OmitIfEmpty};
 
 mod filter;
 pub use filter::Filter;
@@ -48,21 +47,11 @@ impl crate::system::Generator for ItemGenerator {
 
 			// Finds all entries in the system under the Item category,
 			// skipping any that don't match the filter provided via criteria.
-			let index = entry::SystemCategoryVariants {
-				system: args.system.id().into(),
-				category: Item::id().into(),
-				variants_only: false,
-			};
-			let stream_result = args
-				.database
-				.clone()
-				.query_index_typed::<Item, entry::SystemCategoryVariants>(
-					args.system.node(),
-					index,
-					Some(self.filter.as_criteria().into()),
-				);
-			let mut stream = stream_result.await?;
-			while let Some((entry, item)) = stream.next().await {
+			let index = EntryVariantInSystemWithType::new::<Item>(args.system.id(), false);
+			let query = Query::<crate::database::Entry>::subset(args.database, Some(index)).await?;
+			let query = query.filter_by(self.filter.as_criteria());
+			let mut query = query.parse_as::<Item>(args.system_registry);
+			while let Some((entry, item)) = query.next().await {
 				//log::debug!(target: "item-gen", "creating variants of {}", item.id.unversioned());
 				// Each item needs each variant applied to it
 				for variant in &self.variants {

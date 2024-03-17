@@ -1,7 +1,8 @@
 use crate::{
-	database::{Criteria, Database, Entry, Module},
+	database::{entry::EntryInSystemWithType, module::ModuleInSystem, Criteria, Database, Entry, Module, Query},
 	system::{self, Block, SourceId},
 };
+use futures_util::FutureExt;
 use std::{
 	collections::BTreeMap,
 	rc::Rc,
@@ -153,55 +154,6 @@ where
 pub type UseQueryAllHandle<T> = UseQueryHandle<QueryAllArgs<T>, Vec<T>, database::Error>;
 
 #[hook]
-pub fn use_query_all(
-	category: impl Into<String>,
-	_auto_fetch: bool,
-	initial_args: Option<QueryAllArgs<Entry>>,
-) -> UseQueryHandle<QueryAllArgs<Entry>, Vec<Entry>, database::Error> {
-	use crate::database::{entry, QuerySource, QuerySubset};
-	use futures_util::{FutureExt, StreamExt};
-	let category = category.into();
-	use_query(initial_args, move |database, input| {
-		let category = category.clone();
-		async move {
-			let QueryAllArgs {
-				system,
-				criteria,
-				adjust_listings,
-				max_limit,
-			} = input;
-			if system.is_empty() {
-				return Ok(Vec::new());
-			}
-			let query = QuerySubset::from(Some(entry::SystemCategory {
-				system: system.clone(),
-				category: category.clone(),
-			}));
-			let cursor = query.execute(&database).await?.boxed_local();
-			let cursor = match &criteria {
-				None => cursor,
-				Some(criteria) => cursor.filter(criteria.as_predicate()).boxed_local(),
-			};
-			let cursor = match max_limit {
-				None => cursor,
-				Some(limit) => cursor.take(limit).boxed_local(),
-			};
-			let cursor = match &adjust_listings {
-				None => cursor,
-				Some(adjust_listings) => cursor
-					.map({
-						let adjust_listings = adjust_listings.clone();
-						move |entry| (*adjust_listings)(vec![entry]).remove(0)
-					})
-					.boxed_local(),
-			};
-			Ok(cursor.collect::<Vec<_>>().await)
-		}
-		.boxed_local()
-	})
-}
-
-#[hook]
 pub fn use_query_all_typed<T>(
 	_auto_fetch: bool,
 	initial_args: Option<QueryAllArgs<T>>,
@@ -209,8 +161,6 @@ pub fn use_query_all_typed<T>(
 where
 	T: Block + Unpin + Clone + 'static,
 {
-	use crate::database::{entry, DatabaseEntryStreamExt, QuerySource, QuerySubset};
-	use futures_util::{FutureExt, StreamExt};
 	let system_depot = use_context::<system::Registry>().unwrap();
 	use_query(initial_args, move |database, input| {
 		let system_depot = system_depot.clone();
@@ -225,34 +175,17 @@ where
 				return Ok(Vec::new());
 			}
 
-			let query = QuerySubset::from(Some(entry::SystemCategory {
-				system: system.clone(),
-				category: T::id().into(),
-			}));
-			let cursor = query.execute(&database).await?;
-			let cursor = match criteria {
-				None => cursor.boxed_local(),
-				Some(criteria) => cursor.filter(criteria.into_predicate()).boxed_local(),
-			};
-			let cursor = cursor.parse_as::<T>({
-				let system_reg = system_depot.get(&system).expect("Missing system {system:?} in depot");
-				system_reg.node()
-			});
-			let cursor = cursor.map(|(_entry, item)| item);
-			let cursor = match max_limit {
-				None => cursor.boxed_local(),
-				Some(limit) => cursor.take(limit).boxed_local(),
-			};
-			let cursor = match &adjust_listings {
-				None => cursor.boxed_local(),
-				Some(adjust_listings) => cursor
-					.map({
-						let adjust_listings = adjust_listings.clone();
-						move |entry| (*adjust_listings)(vec![entry]).remove(0)
-					})
-					.boxed_local(),
-			};
-			Ok(cursor.collect::<Vec<_>>().await)
+			let index = Some(EntryInSystemWithType::new::<T>(system));
+			let query = Query::subset(&database, index).await?;
+			let query = query.apply_opt(criteria.map(|c| *c), Query::filter_by);
+			let query = query.parse_as::<T>(&system_depot);
+			let query = query.map(|(_entry, item)| item);
+			let query = query.apply_opt(max_limit, Query::take);
+			let mut entries = query.collect::<Vec<_>>().await;
+			if let Some(adjust_listings) = &adjust_listings {
+				entries = (*adjust_listings)(entries);
+			}
+			Ok(entries)
 		}
 		.boxed_local()
 	})
@@ -262,13 +195,11 @@ pub type UseQueryModulesHandle = UseQueryHandle<Option<&'static str>, Vec<Module
 
 #[hook]
 pub fn use_query_modules(system: Option<&'static str>) -> UseQueryModulesHandle {
-	use crate::database::{module::System, QuerySource, QuerySubset};
-	use futures_util::{FutureExt, StreamExt};
 	use_query(Some(system), |database, system| {
 		async move {
-			let query = QuerySubset::from(system.map(|system| System { system: system.into() }));
-			let cursor = query.execute(&database).await?;
-			Ok(cursor.collect::<Vec<_>>().await)
+			let index = system.map(ModuleInSystem::new);
+			let query = Query::subset(&database, index).await?;
+			Ok(query.collect::<Vec<_>>().await)
 		}
 		.boxed_local()
 	})
@@ -277,15 +208,13 @@ pub fn use_query_modules(system: Option<&'static str>) -> UseQueryModulesHandle 
 #[hook]
 pub fn use_query_entries() -> UseQueryHandle<Vec<SourceId>, (Vec<SourceId>, BTreeMap<SourceId, Entry>), database::Error>
 {
-	use crate::database::{QueryMultiple, QuerySource};
-	use futures_util::FutureExt;
 	use_query(None, |database, args: Vec<SourceId>| {
 		async move {
 			if args.is_empty() {
 				return Ok((args, BTreeMap::new()));
 			}
-			let query = QueryMultiple::<Entry>::from(args.iter());
-			let entries = query.execute(&database).await?;
+			let query = Query::<Entry>::multiple(&database, &args).await?;
+			let entries = query.collect::<Vec<_>>().await;
 			let iter = entries.into_iter().map(|entry| (entry.source_id(false), entry));
 			let entries = iter.collect::<BTreeMap<_, _>>();
 			Ok((args, entries))
@@ -302,8 +231,6 @@ pub fn use_query_typed<T>() -> UseQueryHandle<Vec<SourceId>, (Vec<SourceId>, BTr
 where
 	T: Block + Unpin + Clone + 'static,
 {
-	use crate::database::{DatabaseEntryStreamExt, QueryMultiple, QuerySource};
-	use futures_util::{FutureExt, StreamExt};
 	let system_depot = use_context::<system::Registry>().unwrap();
 	use_query(None, move |database, args: Vec<SourceId>| {
 		let system_depot = system_depot.clone();
@@ -311,16 +238,9 @@ where
 			if args.is_empty() {
 				return Ok((args, BTreeMap::new()));
 			}
-			let query = QueryMultiple::<Entry>::from(args.iter());
-			let entries = query.execute(&database).await?;
-			let cursor = futures::stream::iter(entries);
-			let cursor = cursor.parse_as::<T>({
-				let system_reg = system_depot
-					.get(<crate::system::dnd5e::DnD5e as system::System>::id())
-					.expect("Missing system {system:?} in depot");
-				system_reg.node()
-			});
-			let iter = cursor.map(|(entry, typed)| (entry.source_id(false), typed));
+			let query = Query::<Entry>::multiple(&database, &args).await?;
+			let query = query.parse_as::<T>(&system_depot);
+			let iter = query.map(|(entry, typed)| (entry.source_id(false), typed));
 			let entries = iter.collect::<BTreeMap<_, _>>().await;
 			Ok((args, entries))
 		}
@@ -346,28 +266,15 @@ where
 	Output: 'static + Block + Unpin,
 	Arg: 'static,
 {
-	use crate::database::{QuerySingle, QuerySource};
-	use futures_util::FutureExt;
 	let system_depot = use_context::<system::Registry>().unwrap();
 	use_query_callback(
 		move |database, input: SourceId| {
 			let system_depot = system_depot.clone();
 			async move {
-				let query = QuerySingle::<Entry>::from(input.to_string());
-				let Some(entry) = query.execute(&database).await? else {
+				let query = Query::<Entry>::single(&database, &input).await?;
+				let mut query = query.parse_as::<Output>(&system_depot);
+				let Some((_entry, output)) = query.next().await else {
 					return Err(crate::GeneralError(format!("Missing record for id {input}")).into());
-				};
-				let Some(output) = entry.parse_kdl::<Output>({
-					let system_reg = system_depot
-						.get(<crate::system::dnd5e::DnD5e as system::System>::id())
-						.expect("Missing system {system:?} in depot");
-					system_reg.node()
-				}) else {
-					return Err(crate::GeneralError(format!(
-						"Entry at {input} failed to parse into a {:?}",
-						Output::id()
-					))
-					.into());
 				};
 				Ok(output) as Result<_, anyhow::Error>
 			}
