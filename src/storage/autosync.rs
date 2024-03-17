@@ -1,5 +1,5 @@
 use crate::{
-	database::{Database, Entry, Module},
+	database::{Database, Entry, Module, QuerySource},
 	storage::USER_HOMEBREW_REPO_NAME,
 	system::{self, generator, generics, ModuleId, SourceId},
 };
@@ -267,7 +267,10 @@ async fn process_request(
 	match req {
 		Request::FetchLatestVersionAllModules => {
 			scan_storage_for_modules = true;
-			for module in database.clone().query_modules(None).await? {
+
+			let query = crate::database::QueryAll::<Module>::default();
+			let mut cursor = query.execute(database).await?;
+			while let Some(module) = cursor.next().await {
 				modules.insert(module.id.clone(), module);
 			}
 		}
@@ -564,7 +567,13 @@ async fn process_request(
 			}
 			// Delete entries by module and file-id
 			let entry_ids_to_remove = {
-				let mut cursor = Database::query_entries_in(&entry_store, &module.id).await?;
+				let idx_module = entry_store.index_of::<crate::database::entry::Module>();
+				let idx_module = idx_module.map_err(database::Error::from)?;
+				let index = crate::database::entry::Module {
+					module: module.id.to_string(),
+				};
+				let cursor = idx_module.open_cursor(Some(&index)).await;
+				let mut cursor = cursor.map_err(database::Error::from)?;
 				let mut entry_ids_to_remove = Vec::with_capacity(removed_file_ids.len());
 				while let Some(entry) = cursor.next().await {
 					let Some(file_id) = &entry.file_id else {

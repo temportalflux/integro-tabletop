@@ -7,6 +7,7 @@ use crate::{
 	},
 	task,
 };
+use futures::StreamExt;
 use std::{
 	rc::Rc,
 	sync::{atomic::AtomicBool, Mutex},
@@ -130,7 +131,7 @@ impl CharacterHandle {
 				let query_result = query_defaults.await;
 				let defaults_stream =
 					query_result.map_err(|err| CharacterInitializationError::DefaultsError(format!("{err:?}")))?;
-				let default_blocks = defaults_stream.all().await;
+				let default_blocks = defaults_stream.collect::<Vec<_>>().await;
 				let default_blocks = default_blocks.into_iter().map(|(_, block)| block).collect();
 
 				let mut character = Character::new(persistent, default_blocks);

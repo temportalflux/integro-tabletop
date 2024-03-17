@@ -1,5 +1,5 @@
 use crate::{
-	database::{Criteria, Database, Entry, FetchError, Module},
+	database::{Criteria, Database, Entry, Module},
 	system::{self, Block, SourceId},
 };
 use std::{
@@ -7,7 +7,6 @@ use std::{
 	rc::Rc,
 	sync::{Arc, Mutex},
 };
-use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
 use yew_hooks::{use_async_with_options, UseAsyncHandle, UseAsyncOptions};
 
@@ -30,14 +29,44 @@ impl<T> Default for QueryAllArgs<T> {
 }
 
 #[derive(Clone)]
-pub struct UseQueryAllHandle<T> {
-	async_handle: UseAsyncHandle<Vec<T>, database::Error>,
-	run: Rc<dyn Fn(Option<QueryAllArgs<T>>)>,
+pub struct UseQueryHandle<Input, Output, E> {
+	async_handle: UseAsyncHandle<Output, E>,
+	run: Rc<dyn Fn(Input)>,
 }
 
-impl<T: PartialEq> PartialEq for UseQueryAllHandle<T> {
+impl<Input, Output, E> PartialEq for UseQueryHandle<Input, Output, E>
+where
+	Output: PartialEq,
+	E: PartialEq,
+{
 	fn eq(&self, other: &Self) -> bool {
 		self.async_handle == other.async_handle
+	}
+}
+
+impl<Input, Output, E> UseQueryHandle<Input, Output, E>
+where
+	E: Clone,
+{
+	pub fn status(&self) -> QueryStatus<&Output, E> {
+		if self.async_handle.loading {
+			return QueryStatus::Pending;
+		}
+		if let Some(error) = &self.async_handle.error {
+			return QueryStatus::Failed(error.clone());
+		}
+		if let Some(data) = &self.async_handle.data {
+			return QueryStatus::Success(data);
+		}
+		QueryStatus::Empty
+	}
+
+	pub fn update(&self, output: Output) {
+		self.async_handle.update(output);
+	}
+
+	pub fn run(&self, input: Input) {
+		(self.run)(input);
 	}
 }
 
@@ -49,389 +78,302 @@ pub enum QueryStatus<T, E> {
 	Failed(E),
 }
 
-impl<T> UseQueryAllHandle<T> {
-	pub fn status(&self) -> QueryStatus<&Vec<T>, database::Error> {
-		if self.async_handle.loading {
-			return QueryStatus::Pending;
-		}
-		if let Some(error) = &self.async_handle.error {
-			return QueryStatus::Failed(error.clone());
-		}
-		if let Some(data) = &self.async_handle.data {
-			return QueryStatus::Success(data);
-		}
-		QueryStatus::Empty
-	}
+#[hook]
+pub fn use_query<QueryBuilder, Input, Output, E>(
+	input: Option<Input>,
+	query_builder: QueryBuilder,
+) -> UseQueryHandle<Input, Output, E>
+where
+	Input: 'static + Clone,
+	QueryBuilder: 'static + Fn(Database, Input) -> futures::future::LocalBoxFuture<'hook, Result<Output, E>>,
+	Output: 'static + Clone,
+	E: 'static + std::error::Error + Clone,
+{
+	let database = use_context::<Database>().unwrap();
+	let query_builder = Rc::new(query_builder);
+	let options = UseAsyncOptions { auto: input.is_some() };
 
-	pub fn get(&self, idx: usize) -> Option<&T> {
-		let Some(data) = &self.async_handle.data else {
-			return None;
-		};
-		data.get(idx)
-	}
+	let args_handle = Rc::new(Mutex::new(input));
+	let async_args = args_handle.clone();
 
-	pub fn run(&self, args: Option<QueryAllArgs<T>>) {
-		(self.run)(args);
-	}
+	let async_handle = use_async_with_options(
+		async move {
+			let guard = async_args.lock().unwrap();
+			let opt_input = (*guard).as_ref();
+			let input = opt_input.expect("missing query input");
+			Ok((*query_builder)(database.clone(), input.clone()).await?) as Result<Output, E>
+		},
+		options,
+	);
+
+	let run = Rc::new({
+		let handle = async_handle.clone();
+		move |input: Input| {
+			*args_handle.lock().unwrap() = Some(input);
+			handle.run();
+		}
+	});
+
+	UseQueryHandle { async_handle, run }
 }
 
-#[derive(Clone)]
-pub struct UseQueryModulesHandle {
-	async_handle: UseAsyncHandle<Vec<Module>, database::Error>,
-	run: Rc<dyn Fn()>,
+#[hook]
+pub fn use_query_callback<QueryBuilder, Input, Output, Arg, E>(
+	query_builder: QueryBuilder,
+	callback: Callback<(Arg, Output)>,
+) -> Callback<(Arg, Input)>
+where
+	Arg: 'static,
+	Input: 'static,
+	QueryBuilder: 'static + Fn(Database, Input) -> futures::future::LocalBoxFuture<'hook, Result<Output, E>>,
+	Output: 'static,
+	E: 'static + std::fmt::Debug,
+{
+	let database = use_context::<Database>().unwrap();
+	let query_builder = Rc::new(query_builder);
+	Callback::from(move |(arg, input): (Arg, Input)| {
+		let database = database.clone();
+		let query_builder = query_builder.clone();
+		let callback = callback.clone();
+		wasm_bindgen_futures::spawn_local({
+			let pending = async move {
+				let output = (*query_builder)(database.clone(), input).await?;
+				callback.emit((arg, output));
+				Ok(()) as Result<(), E>
+			};
+			async move {
+				if let Err(err) = pending.await {
+					log::error!(target: "database", "query-callback failed: {err:?}");
+				}
+			}
+		});
+	})
 }
 
-impl PartialEq for UseQueryModulesHandle {
-	fn eq(&self, other: &Self) -> bool {
-		self.async_handle == other.async_handle
-	}
-}
-
-impl UseQueryModulesHandle {
-	pub fn status(&self) -> QueryStatus<&Vec<Module>, database::Error> {
-		if self.async_handle.loading {
-			return QueryStatus::Pending;
-		}
-		if let Some(error) = &self.async_handle.error {
-			return QueryStatus::Failed(error.clone());
-		}
-		if let Some(data) = &self.async_handle.data {
-			return QueryStatus::Success(data);
-		}
-		QueryStatus::Empty
-	}
-
-	pub fn run(&self) {
-		(self.run)();
-	}
-}
+pub type UseQueryAllHandle<T> = UseQueryHandle<QueryAllArgs<T>, Vec<T>, database::Error>;
 
 #[hook]
 pub fn use_query_all(
 	category: impl Into<String>,
-	auto_fetch: bool,
+	_auto_fetch: bool,
 	initial_args: Option<QueryAllArgs<Entry>>,
-) -> UseQueryAllHandle<Entry> {
-	let database = use_context::<Database>().unwrap();
-	let options = UseAsyncOptions { auto: auto_fetch };
-	let args_handle = Rc::new(Mutex::new(initial_args));
-	let async_args = args_handle.clone();
+) -> UseQueryHandle<QueryAllArgs<Entry>, Vec<Entry>, database::Error> {
+	use crate::database::{entry, QuerySource, QuerySubset};
+	use futures_util::{FutureExt, StreamExt};
 	let category = category.into();
-	let async_handle = use_async_with_options(
+	use_query(initial_args, move |database, input| {
+		let category = category.clone();
 		async move {
-			use futures_util::stream::StreamExt;
 			let QueryAllArgs {
-				system: system_id,
+				system,
 				criteria,
 				adjust_listings,
 				max_limit,
-			} = {
-				let guard = async_args.lock().unwrap();
-				let Some(args) = &*guard else {
-					return Ok(Vec::new());
-				};
-				args.clone()
-			};
-			if system_id.is_empty() {
+			} = input;
+			if system.is_empty() {
 				return Ok(Vec::new());
 			}
-			let mut query = database.query_entries(system_id, category, criteria).await?;
-			let mut items = Vec::new();
-			while let Some(item) = query.next().await {
-				items.push(item);
-				if let Some(limit) = &max_limit {
-					if items.len() >= *limit {
-						break;
-					}
-				}
-			}
-			if let Some(adjust_listings) = &adjust_listings {
-				items = (adjust_listings)(items);
-			}
-			Ok(items)
-		},
-		options,
-	);
-	let run = Rc::new({
-		let handle = async_handle.clone();
-		move |args: Option<QueryAllArgs<Entry>>| {
-			*args_handle.lock().unwrap() = args;
-			handle.run();
+			let query = QuerySubset::from(Some(entry::SystemCategory {
+				system: system.clone(),
+				category: category.clone(),
+			}));
+			let cursor = query.execute(&database).await?.boxed_local();
+			let cursor = match &criteria {
+				None => cursor,
+				Some(criteria) => cursor.filter(criteria.as_predicate()).boxed_local(),
+			};
+			let cursor = match max_limit {
+				None => cursor,
+				Some(limit) => cursor.take(limit).boxed_local(),
+			};
+			let cursor = match &adjust_listings {
+				None => cursor,
+				Some(adjust_listings) => cursor
+					.map({
+						let adjust_listings = adjust_listings.clone();
+						move |entry| (*adjust_listings)(vec![entry]).remove(0)
+					})
+					.boxed_local(),
+			};
+			Ok(cursor.collect::<Vec<_>>().await)
 		}
-	});
-	UseQueryAllHandle { async_handle, run }
+		.boxed_local()
+	})
 }
 
 #[hook]
-pub fn use_query_all_typed<T>(auto_fetch: bool, initial_args: Option<QueryAllArgs<T>>) -> UseQueryAllHandle<T>
+pub fn use_query_all_typed<T>(
+	_auto_fetch: bool,
+	initial_args: Option<QueryAllArgs<T>>,
+) -> UseQueryHandle<QueryAllArgs<T>, Vec<T>, database::Error>
 where
 	T: Block + Unpin + Clone + 'static,
 {
-	let database = use_context::<Database>().unwrap();
+	use crate::database::{entry, DatabaseEntryStreamExt, QuerySource, QuerySubset};
+	use futures_util::{FutureExt, StreamExt};
 	let system_depot = use_context::<system::Registry>().unwrap();
-	let options = UseAsyncOptions { auto: auto_fetch };
-	let args_handle = Rc::new(Mutex::new(initial_args));
-	let async_args = args_handle.clone();
-	let async_handle = use_async_with_options(
+	use_query(initial_args, move |database, input| {
+		let system_depot = system_depot.clone();
 		async move {
 			let QueryAllArgs {
-				system: system_id,
+				system,
 				criteria,
 				adjust_listings,
 				max_limit,
-			} = {
-				let guard = async_args.lock().unwrap();
-				let Some(args) = &*guard else {
-					return Ok(Vec::new());
-				};
-				args.clone()
-			};
-			if system_id.is_empty() {
+			} = input;
+			if system.is_empty() {
 				return Ok(Vec::new());
 			}
-			let query = database.query_typed::<T>(system_id, system_depot, criteria);
-			let typed_entries = query.await?.first_n(max_limit).await;
-			let mut typed_entries = typed_entries.into_iter().map(|(_entry, out)| out).collect();
-			if let Some(adjust_listings) = &adjust_listings {
-				typed_entries = (adjust_listings)(typed_entries);
-			}
-			Ok(typed_entries)
-		},
-		options,
-	);
-	let run = Rc::new({
-		let handle = async_handle.clone();
-		move |args: Option<QueryAllArgs<T>>| {
-			if let Some(args) = args {
-				*args_handle.lock().unwrap() = Some(args);
-			}
-			handle.run();
+
+			let query = QuerySubset::from(Some(entry::SystemCategory {
+				system: system.clone(),
+				category: T::id().into(),
+			}));
+			let cursor = query.execute(&database).await?;
+			let cursor = match criteria {
+				None => cursor.boxed_local(),
+				Some(criteria) => cursor.filter(criteria.into_predicate()).boxed_local(),
+			};
+			let cursor = cursor.parse_as::<T>({
+				let system_reg = system_depot.get(&system).expect("Missing system {system:?} in depot");
+				system_reg.node()
+			});
+			let cursor = cursor.map(|(_entry, item)| item);
+			let cursor = match max_limit {
+				None => cursor.boxed_local(),
+				Some(limit) => cursor.take(limit).boxed_local(),
+			};
+			let cursor = match &adjust_listings {
+				None => cursor.boxed_local(),
+				Some(adjust_listings) => cursor
+					.map({
+						let adjust_listings = adjust_listings.clone();
+						move |entry| (*adjust_listings)(vec![entry]).remove(0)
+					})
+					.boxed_local(),
+			};
+			Ok(cursor.collect::<Vec<_>>().await)
 		}
-	});
-	UseQueryAllHandle { async_handle, run }
+		.boxed_local()
+	})
 }
+
+pub type UseQueryModulesHandle = UseQueryHandle<Option<&'static str>, Vec<Module>, database::Error>;
 
 #[hook]
 pub fn use_query_modules(system: Option<&'static str>) -> UseQueryModulesHandle {
-	let database = use_context::<Database>().unwrap();
-	let options = UseAsyncOptions { auto: true };
-	let system = system.map(|s| std::borrow::Cow::Borrowed(s));
-	let async_handle = use_async_with_options(
+	use crate::database::{module::System, QuerySource, QuerySubset};
+	use futures_util::{FutureExt, StreamExt};
+	use_query(Some(system), |database, system| {
 		async move {
-			let items = database.query_modules(system).await?;
-			Ok(items)
-		},
-		options,
-	);
-	let run = Rc::new({
-		let handle = async_handle.clone();
-		move || {
-			handle.run();
+			let query = QuerySubset::from(system.map(|system| System { system: system.into() }));
+			let cursor = query.execute(&database).await?;
+			Ok(cursor.collect::<Vec<_>>().await)
 		}
-	});
-	UseQueryModulesHandle { async_handle, run }
+		.boxed_local()
+	})
 }
 
-#[derive(Clone)]
-pub struct UseQueryDiscreteHandle<T, E> {
-	state: UseStateHandle<QueryStatus<(Vec<SourceId>, BTreeMap<SourceId, T>), E>>,
-	run: Rc<dyn Fn(Vec<SourceId>)>,
-}
-impl<T, E> PartialEq for UseQueryDiscreteHandle<T, E>
-where
-	T: PartialEq,
-	E: PartialEq,
+#[hook]
+pub fn use_query_entries() -> UseQueryHandle<Vec<SourceId>, (Vec<SourceId>, BTreeMap<SourceId, Entry>), database::Error>
 {
-	fn eq(&self, other: &Self) -> bool {
-		*self.state == *other.state
-	}
-}
-
-impl<T, E> UseQueryDiscreteHandle<T, E> {
-	pub fn status(&self) -> &QueryStatus<(Vec<SourceId>, BTreeMap<SourceId, T>), E> {
-		&*self.state
-	}
-
-	pub fn clear(&self) {
-		self.state.set(QueryStatus::Empty);
-	}
-
-	pub fn run(&self, args: Vec<SourceId>) {
-		(self.run)(args);
-	}
-}
-
-type QueryEntriesStatus = QueryStatus<(Vec<SourceId>, BTreeMap<SourceId, Entry>), database::Error>;
-#[hook]
-pub fn use_query_entries() -> UseQueryDiscreteHandle<Entry, database::Error> {
-	let database = use_context::<Database>().unwrap();
-	let status = use_state(|| QueryEntriesStatus::Empty);
-	let run = Rc::new({
-		let status = status.clone();
-		move |args: Vec<SourceId>| {
+	use crate::database::{QueryMultiple, QuerySource};
+	use futures_util::FutureExt;
+	use_query(None, |database, args: Vec<SourceId>| {
+		async move {
 			if args.is_empty() {
-				status.set(QueryStatus::Empty);
-				return;
+				return Ok((args, BTreeMap::new()));
 			}
-
-			status.set(QueryStatus::Pending);
-
-			let database = database.clone();
-			let perform_query = async move {
-				let mut items = BTreeMap::new();
-				for id in &args {
-					let Some(item) = database.get::<Entry>(id.to_string()).await? else {
-						continue;
-					};
-					items.insert(id.clone(), item);
-				}
-				Ok((args, items))
-			};
-
-			let status = status.clone();
-			spawn_local(async move {
-				status.set(match perform_query.await {
-					Err(err) => QueryStatus::Failed(err),
-					Ok((ids, data)) => {
-						if data.is_empty() {
-							QueryStatus::Empty
-						} else {
-							QueryStatus::Success((ids, data))
-						}
-					}
-				});
-			});
+			let query = QueryMultiple::<Entry>::from(args.iter());
+			let entries = query.execute(&database).await?;
+			let iter = entries.into_iter().map(|entry| (entry.source_id(false), entry));
+			let entries = iter.collect::<BTreeMap<_, _>>();
+			Ok((args, entries))
 		}
-	});
-	UseQueryDiscreteHandle { run, state: status }
+		.boxed_local()
+	})
 }
 
-type QueryTypedStatus<T> = QueryStatus<(Vec<SourceId>, BTreeMap<SourceId, T>), FetchError>;
+pub type UseQueryDiscreteTypedHandle<T> =
+	UseQueryHandle<Vec<SourceId>, (Vec<SourceId>, BTreeMap<SourceId, T>), database::Error>;
+
 #[hook]
-pub fn use_query_typed<T>() -> UseQueryDiscreteHandle<T, FetchError>
+pub fn use_query_typed<T>() -> UseQueryHandle<Vec<SourceId>, (Vec<SourceId>, BTreeMap<SourceId, T>), database::Error>
 where
 	T: Block + Unpin + Clone + 'static,
 {
-	let database = use_context::<Database>().unwrap();
+	use crate::database::{DatabaseEntryStreamExt, QueryMultiple, QuerySource};
+	use futures_util::{FutureExt, StreamExt};
 	let system_depot = use_context::<system::Registry>().unwrap();
-	let status = use_state(|| QueryTypedStatus::<T>::Empty);
-	let run = Rc::new({
-		let status = status.clone();
-		move |new_ids: Vec<SourceId>| {
-			if matches!(*status, QueryStatus::Pending) {
-				return;
+	use_query(None, move |database, args: Vec<SourceId>| {
+		let system_depot = system_depot.clone();
+		async move {
+			if args.is_empty() {
+				return Ok((args, BTreeMap::new()));
 			}
-			if new_ids.is_empty() {
-				status.set(QueryStatus::Empty);
-				return;
-			}
-			if let QueryStatus::Success((prev_ids, prev_items)) = &*status {
-				if new_ids == *prev_ids {
-					let mut contains_all_ids = true;
-					for id in &new_ids {
-						if !prev_items.contains_key(id) {
-							contains_all_ids = false;
-							break;
-						}
-					}
-					if contains_all_ids {
-						return;
-					}
-				}
-			}
-
-			status.set(QueryStatus::Pending);
-
-			let perform_query = {
-				let database = database.clone();
-				let system_depot = system_depot.clone();
-				async move {
-					let mut items = BTreeMap::new();
-					for id in &new_ids {
-						let Some(item) = database
-							.get_typed_entry::<T>(id.clone(), system_depot.clone(), None)
-							.await?
-						else {
-							continue;
-						};
-						items.insert(id.clone(), item);
-					}
-					Ok((new_ids, items))
-				}
-			};
-
-			let status = status.clone();
-			spawn_local(async move {
-				status.set(match perform_query.await {
-					Err(err) => QueryStatus::Failed(err),
-					Ok((ids, items)) => {
-						if items.is_empty() {
-							QueryStatus::Empty
-						} else {
-							QueryStatus::Success((ids, items))
-						}
-					}
-				});
+			let query = QueryMultiple::<Entry>::from(args.iter());
+			let entries = query.execute(&database).await?;
+			let cursor = futures::stream::iter(entries);
+			let cursor = cursor.parse_as::<T>({
+				let system_reg = system_depot
+					.get(<crate::system::dnd5e::DnD5e as system::System>::id())
+					.expect("Missing system {system:?} in depot");
+				system_reg.node()
 			});
+			let iter = cursor.map(|(entry, typed)| (entry.source_id(false), typed));
+			let entries = iter.collect::<BTreeMap<_, _>>().await;
+			Ok((args, entries))
 		}
-	});
-	UseQueryDiscreteHandle { run, state: status }
+		.boxed_local()
+	})
 }
 
 #[hook]
-pub fn use_typed_fetch_callback<EntryContent>(task_name: String, fn_item: Callback<EntryContent>) -> Callback<SourceId>
+pub fn use_typed_fetch_callback<EntryContent>(_task_name: String, fn_item: Callback<EntryContent>) -> Callback<SourceId>
 where
 	EntryContent: 'static + Block + Unpin,
 	Event: 'static,
 {
-	let database = use_context::<Database>().unwrap();
-	let system_depot = use_context::<system::Registry>().unwrap();
-	let task_dispatch = use_context::<crate::task::Dispatch>().unwrap();
-	Callback::from(move |source_id: SourceId| {
-		let database = database.clone();
-		let system_depot = system_depot.clone();
-		let fn_item = fn_item.clone();
-		task_dispatch.spawn(task_name.clone(), None, async move {
-			let Some(item) = database
-				.get_typed_entry::<EntryContent>(source_id.clone(), system_depot, None)
-				.await?
-			else {
-				log::error!(target: "database", "Failed to find entry for {:?}", source_id.to_string());
-				return Ok(());
-			};
-			fn_item.emit(item);
-			Ok(()) as Result<(), FetchError>
-		});
-	})
+	use_typed_fetch_callback_tuple(_task_name, fn_item.reform(|(output, _)| output)).reform(|id| (id, ()))
 }
 
 #[hook]
-pub fn use_typed_fetch_callback_tuple<Item, Arg>(
-	task_name: String,
-	fn_item: Callback<(Item, Arg)>,
+pub fn use_typed_fetch_callback_tuple<Output, Arg>(
+	_task_name: String,
+	fn_item: Callback<(Output, Arg)>,
 ) -> Callback<(SourceId, Arg)>
 where
-	Item: 'static + Block + Unpin,
-	Event: 'static,
+	Output: 'static + Block + Unpin,
 	Arg: 'static,
 {
-	let database = use_context::<Database>().unwrap();
+	use crate::database::{QuerySingle, QuerySource};
+	use futures_util::FutureExt;
 	let system_depot = use_context::<system::Registry>().unwrap();
-	let task_dispatch = use_context::<crate::task::Dispatch>().unwrap();
-	Callback::from(move |(source_id, arg): (SourceId, Arg)| {
-		let database = database.clone();
-		let system_depot = system_depot.clone();
-		let fn_item = fn_item.clone();
-		task_dispatch.spawn(task_name.clone(), None, async move {
-			let Some(item) = database
-				.get_typed_entry::<Item>(source_id.clone(), system_depot, None)
-				.await?
-			else {
-				log::error!("No such database entry {:?}", source_id.to_string());
-				return Ok(());
-			};
-			fn_item.emit((item, arg));
-			Ok(()) as Result<(), FetchError>
-		});
-	})
+	use_query_callback(
+		move |database, input: SourceId| {
+			let system_depot = system_depot.clone();
+			async move {
+				let query = QuerySingle::<Entry>::from(input.to_string());
+				let Some(entry) = query.execute(&database).await? else {
+					return Err(crate::GeneralError(format!("Missing record for id {input}")).into());
+				};
+				let Some(output) = entry.parse_kdl::<Output>({
+					let system_reg = system_depot
+						.get(<crate::system::dnd5e::DnD5e as system::System>::id())
+						.expect("Missing system {system:?} in depot");
+					system_reg.node()
+				}) else {
+					return Err(crate::GeneralError(format!(
+						"Entry at {input} failed to parse into a {:?}",
+						Output::id()
+					))
+					.into());
+				};
+				Ok(output) as Result<_, anyhow::Error>
+			}
+			.boxed_local()
+		},
+		fn_item.reform(|(arg, output)| (output, arg)),
+	)
+	.reform(|(id, arg)| (arg, id))
 }

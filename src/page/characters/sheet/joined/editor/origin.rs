@@ -117,7 +117,7 @@ fn CategoryBrowser(CategoryBrowserProps { use_lineages: _ }: &CategoryBrowserPro
 					})),
 					..Default::default()
 				};
-				query_bundles.run(Some(query_args));
+				query_bundles.run(query_args);
 			}
 		}
 	});

@@ -1,5 +1,5 @@
 use crate::{
-	database::{entry, QueryDeserialize},
+	database::entry,
 	kdl_ext::NodeContext,
 	system::{dnd5e::data::item::Item, generator::SystemObjectList, Block, SourceId},
 	utility::PinFutureLifetimeNoSend,
@@ -53,12 +53,15 @@ impl crate::system::Generator for ItemGenerator {
 				category: Item::id().into(),
 				variants_only: false,
 			};
-			let stream_result = args.database.clone().query_index_typed(
-				args.system.node(),
-				&index,
-				Some(self.filter.as_criteria().into()),
-			);
-			let mut stream: QueryDeserialize<Item> = stream_result.await?;
+			let stream_result = args
+				.database
+				.clone()
+				.query_index_typed::<Item, entry::SystemCategoryVariants>(
+					args.system.node(),
+					index,
+					Some(self.filter.as_criteria().into()),
+				);
+			let mut stream = stream_result.await?;
 			while let Some((entry, item)) = stream.next().await {
 				//log::debug!(target: "item-gen", "creating variants of {}", item.id.unversioned());
 				// Each item needs each variant applied to it

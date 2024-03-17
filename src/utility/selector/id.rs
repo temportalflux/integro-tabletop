@@ -138,10 +138,7 @@ mod test {
 		path.set_path(&ReferencePath::default());
 		assert_eq!(path.data(), Some(std::path::Path::new("ParentSibling").to_owned()));
 		path.set_path(&ReferencePath::default().join("some/parent/", None));
-		assert_eq!(
-			path.data(),
-			Some(std::path::Path::new("some/ParentSibling").to_owned())
-		);
+		assert_eq!(path.data(), Some(std::path::Path::new("some/ParentSibling").to_owned()));
 		assert_eq!(path.data(), path.display());
 	}
 }

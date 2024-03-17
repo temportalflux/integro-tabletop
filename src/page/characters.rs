@@ -214,11 +214,11 @@ fn CharacterList(GeneralProp { value: on_delete }: &GeneralProp<Callback<ModalDe
 		},
 	};
 	use kdlize::NodeId;
-	let query_args = Some(QueryAllArgs {
+	let query_args = QueryAllArgs {
 		system: DnD5e::id().to_owned(),
 		..Default::default()
-	});
-	let character_entries = use_query_all(Persistent::id(), true, query_args.clone());
+	};
+	let character_entries = use_query_all(Persistent::id(), true, Some(query_args.clone()));
 	let on_delete_clicked = Callback::from({
 		let character_entries = character_entries.clone();
 		move |_| {

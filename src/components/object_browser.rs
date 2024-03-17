@@ -2,7 +2,13 @@ use crate::{
 	database::Criteria,
 	system::dnd5e::{components::GeneralProp, data::character::spellcasting::AbilityOrStat},
 };
-use std::{collections::HashMap, path::PathBuf, rc::Rc, str::FromStr, sync::Arc};
+use std::{
+	collections::{BTreeMap, HashMap},
+	path::PathBuf,
+	rc::Rc,
+	str::FromStr,
+	sync::Arc,
+};
 use yew::prelude::*;
 
 #[function_component]
@@ -317,7 +323,7 @@ pub fn ObjectSelectorList(props: &GeneralProp<std::path::PathBuf>) -> Html {
 		let fetched_entries = fetched_entries.clone();
 		move |state: &CharacterHandle| {
 			let Some(values) = state.get_selections_at(&data_path) else {
-				fetched_entries.clear();
+				fetched_entries.update((Vec::new(), BTreeMap::new()));
 				return;
 			};
 			let mut ids = Vec::with_capacity(values.len());

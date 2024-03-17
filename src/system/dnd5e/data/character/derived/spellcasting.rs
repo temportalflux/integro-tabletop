@@ -1,4 +1,5 @@
 use crate::{
+	database::{DatabaseEntryStreamExt, QuerySource, QuerySubset},
 	system::{
 		dnd5e::data::{
 			character::{Character, ObjectCacheProvider, Persistent},
@@ -166,16 +167,18 @@ impl Spellcasting {
 				.expect("Missing system dnd5e in depot");
 			system_reg.node()
 		};
-		let query_async = db.query_entries(DnD5e::id(), Spell::id(), Some(criteria.into()));
-		let query_stream_res = query_async.await;
-		let mut query_stream = query_stream_res.map_err(database::Error::from)?;
+
+		let query = QuerySubset::from(Some(crate::database::entry::SystemCategory {
+			system: DnD5e::id().into(),
+			category: Spell::id().into(),
+		}));
+		let cursor = query.execute(&db).await?;
+		let cursor = cursor.filter(criteria.into_predicate());
+		let mut query_stream = cursor.parse_as::<Spell>(node_reg.clone());
 
 		let mut ritual_spell_cache = HashMap::new();
 		let mut caster_ritual_list_cache = MultiMap::new();
-		while let Some(entry) = query_stream.next().await {
-			let Some(spell) = entry.parse_kdl::<Spell>(node_reg.clone()) else {
-				continue;
-			};
+		while let Some((entry, spell)) = query_stream.next().await {
 			for (caster_id, criteria) in &caster_filters {
 				if criteria.is_relevant(&entry.metadata) {
 					caster_ritual_list_cache.insert((*caster_id).clone(), spell.id.unversioned());

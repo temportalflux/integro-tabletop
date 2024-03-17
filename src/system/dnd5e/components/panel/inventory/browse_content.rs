@@ -48,7 +48,7 @@ pub fn BrowseModal() -> Html {
 				max_limit: **limit,
 				..Default::default()
 			};
-			query_handle.run(Some(args));
+			query_handle.run(args);
 		}
 	});
 

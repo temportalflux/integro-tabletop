@@ -1,10 +1,10 @@
 use crate::{
 	components::{
 		context_menu,
-		database::{use_query_typed, QueryStatus, UseQueryAllHandle, UseQueryDiscreteHandle},
+		database::{use_query_typed, QueryStatus, UseQueryAllHandle, UseQueryDiscreteTypedHandle},
 		progress_bar,
 	},
-	database::{Criteria, FetchError},
+	database::Criteria,
 	page::characters::sheet::{
 		joined::editor::{description, mutator_list},
 		CharacterHandle, MutatorImpact,
@@ -78,7 +78,10 @@ pub enum ItemLocation {
 impl ItemLocation {
 	pub fn resolve<'c>(&'c self, state: &'c CharacterHandle) -> Option<&'c Item> {
 		match self {
-			Self::Database { query, index } => query.get(*index),
+			Self::Database { query, index } => match query.status() {
+				QueryStatus::Success(data) => data.get(*index),
+				_ => None,
+			},
 			Self::Inventory { id_path } => get_inventory_item(state, id_path),
 		}
 	}
@@ -761,7 +764,7 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 #[derive(Clone, PartialEq, Properties)]
 struct ContainedSpellsSectionProps {
 	id_path: Vec<uuid::Uuid>,
-	fetch_indirect_spells: UseQueryDiscreteHandle<Spell, FetchError>,
+	fetch_indirect_spells: UseQueryDiscreteTypedHandle<Spell>,
 	remaining_total_rank: Option<usize>,
 }
 #[function_component]
@@ -1060,7 +1063,7 @@ fn ContainedSpellsSection(props: &ContainedSpellsSectionProps) -> Html {
 #[derive(Clone, PartialEq, Properties)]
 struct ModalSpellContainerAvailableListProps {
 	id_path: Vec<uuid::Uuid>,
-	fetch_indirect_spells: UseQueryDiscreteHandle<Spell, FetchError>,
+	fetch_indirect_spells: UseQueryDiscreteTypedHandle<Spell>,
 }
 #[function_component]
 fn ModalSpellContainerAvailableList(props: &ModalSpellContainerAvailableListProps) -> Html {

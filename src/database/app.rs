@@ -1,5 +1,6 @@
-use crate::system::{Block, ModuleId};
+use crate::system::{Block, System};
 use database::{Error, IndexType, Record, Transaction};
+use futures::StreamExt;
 use futures_util::future::LocalBoxFuture;
 use std::sync::Arc;
 
@@ -58,13 +59,6 @@ impl Database {
 		Ok(())
 	}
 
-	fn read_index<I: database::IndexType>(&self) -> Result<database::Index<I>, Error> {
-		use database::{ObjectStoreExt, TransactionExt};
-		let transaction = self.read_entries()?;
-		let entries_store = transaction.object_store_of::<I::Record>()?;
-		Ok(entries_store.index_of::<I>()?)
-	}
-
 	pub async fn get<T>(&self, key: impl Into<wasm_bindgen::JsValue>) -> Result<Option<T>, Error>
 	where
 		T: Record + serde::de::DeserializeOwned,
@@ -81,8 +75,8 @@ impl Database {
 	where
 		T: Block + Unpin,
 	{
-		use crate::system::System;
-		let Some(entry) = self.get::<Entry>(key.to_string()).await? else {
+		let query = QuerySingle::<Entry>::from(key.to_string());
+		let Some(entry) = query.execute(&self).await? else {
 			return Ok(None);
 		};
 		if let Some(criteria) = criteria {
@@ -90,42 +84,15 @@ impl Database {
 				return Ok(None);
 			}
 		}
-		// Parse the entry's kdl string:
-		// kdl string to document
-		let document = entry.kdl.parse::<kdl::KdlDocument>()?;
-		// document to node
-		let node = match document.nodes().len() {
-			1 => &document.nodes()[0],
-			0 => return Err(FetchError::EmptyDocument),
-			_ => return Err(FetchError::TooManyDocNodes(entry.kdl.clone())),
-		};
-		// node to value based on the expected type
-		let node_reg = {
+		let Some(typed) = entry.parse_kdl::<T>({
 			let system_reg = system_depot
 				.get(crate::system::dnd5e::DnD5e::id())
 				.expect("Missing system {system:?} in depot");
 			system_reg.node()
+		}) else {
+			return Ok(None);
 		};
-		let ctx = crate::kdl_ext::NodeContext::new(Arc::new(entry.source_id(true)), node_reg);
-		let Ok(value) = T::from_kdl(&mut crate::kdl_ext::NodeReader::new_root(node, ctx)) else {
-			return Err(FetchError::FailedToParse(node.to_string(), T::id()));
-		};
-		Ok(Some(value))
-	}
-
-	pub async fn query_entries(
-		&self,
-		system: impl Into<String>,
-		category: impl Into<String>,
-		criteria: Option<Box<Criteria>>,
-	) -> Result<Query, Error> {
-		let idx_by_sys_cate = self.read_index::<entry::SystemCategory>();
-		let index = entry::SystemCategory {
-			system: system.into(),
-			category: category.into(),
-		};
-		let cursor = idx_by_sys_cate?.open_cursor(Some(&index)).await?;
-		Ok(Query { cursor, criteria })
+		Ok(Some(typed))
 	}
 
 	pub async fn query_typed<Output>(
@@ -133,9 +100,9 @@ impl Database {
 		system: impl Into<String>,
 		system_depot: crate::system::Registry,
 		criteria: Option<Box<Criteria>>,
-	) -> Result<QueryDeserialize<Output>, Error>
+	) -> Result<futures::stream::LocalBoxStream<'static, (Entry, Output)>, Error>
 	where
-		Output: Block + Unpin,
+		Output: Block + Unpin + 'static,
 	{
 		let system = system.into();
 		let node_reg = {
@@ -146,58 +113,27 @@ impl Database {
 			system,
 			category: Output::id().into(),
 		};
-		self.query_index_typed(node_reg, &index, criteria).await
+		self.query_index_typed(node_reg, index, criteria).await
 	}
 
 	pub async fn query_index_typed<Output, Index>(
 		self,
 		node_registry: Arc<crate::system::generics::Registry>,
-		index: &Index,
+		index: Index,
 		criteria: Option<Box<Criteria>>,
-	) -> Result<QueryDeserialize<Output>, Error>
+	) -> Result<futures::stream::LocalBoxStream<'static, (Entry, Output)>, Error>
 	where
-		Output: Block + Unpin,
+		Output: Block + Unpin + 'static,
 		Index: IndexType<Record = Entry>,
 	{
-		let idx_by_sys_cate = self.read_index::<Index>();
-		let cursor = idx_by_sys_cate?.open_cursor(Some(index)).await?;
-		let query_typed = QueryDeserialize::<Output> {
-			db: self,
-			query: Query { cursor, criteria },
-			node_reg: node_registry,
-			marker: Default::default(),
+		let query = QuerySubset::from(Some(index));
+		let cursor = query.execute(&self).await?;
+		let cursor = match criteria {
+			None => cursor.boxed_local(),
+			Some(criteria) => cursor.filter(criteria.into_predicate()).boxed_local(),
 		};
-		Ok(query_typed)
-	}
-
-	pub async fn query_modules(self, system: Option<std::borrow::Cow<'_, str>>) -> Result<Vec<Module>, Error> {
-		use database::{ObjectStoreExt, TransactionExt};
-		use futures_util::StreamExt;
-		let transaction = self.read_modules()?;
-		let entries_store = transaction.object_store_of::<Module>()?;
-		let idx_system = entries_store.index_of::<module::System>()?;
-		let index = system.map(|system_id| module::System {
-			system: system_id.into_owned(),
-		});
-		let mut cursor = idx_system.open_cursor(index.as_ref()).await?;
-		let mut items = Vec::new();
-		while let Some(item) = cursor.next().await {
-			items.push(item);
-		}
-		Ok(items)
-	}
-
-	pub async fn query_entries_in(
-		entry_store: &idb::ObjectStore,
-		module_id: &ModuleId,
-	) -> Result<database::Cursor<Entry>, Error> {
-		use database::ObjectStoreExt;
-		let idx_module = entry_store.index_of::<entry::Module>()?;
-		Ok(idx_module
-			.open_cursor(Some(&entry::Module {
-				module: module_id.to_string(),
-			}))
-			.await?)
+		let cursor = cursor.parse_as::<Output>(node_registry);
+		Ok(cursor)
 	}
 
 	pub async fn mutate<F>(&self, fn_transaction: F) -> Result<(), Error>
