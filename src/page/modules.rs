@@ -1,14 +1,15 @@
 use crate::{
 	components::{
-		database::{use_query_modules, QueryStatus, UseQueryModulesHandle},
+		database::{use_query, QueryStatus, UseQueryHandle},
 		stop_propagation, Spinner,
 	},
-	database::{Database, Module},
+	database::{Database, Module, Query},
 	storage::autosync,
 	system::ModuleId,
 	task,
 	utility::InputExt,
 };
+use futures_util::FutureExt;
 use std::collections::{BTreeMap, HashMap};
 use yew::prelude::*;
 
@@ -18,7 +19,13 @@ pub fn ModulesLanding() -> Html {
 	let database = use_context::<Database>().unwrap();
 	let task_dispatch = use_context::<task::Dispatch>().unwrap();
 	let autosync_channel = use_context::<autosync::Channel>().unwrap();
-	let modules_query = use_query_modules(None);
+	let modules_query = use_query(None, |database, _: ()| {
+		async move {
+			let query = Query::<Module>::all(&database).await?;
+			Ok(query.collect::<Vec<_>>().await)
+		}
+		.boxed_local()
+	});
 
 	let pending_module_installations = use_state_eq(|| HashMap::<ModuleId, bool>::new());
 
@@ -111,7 +118,7 @@ pub fn TaskListView() -> Html {
 
 #[derive(Clone, PartialEq, Properties)]
 struct ModuleListProps {
-	modules_query: UseQueryModulesHandle,
+	modules_query: UseQueryHandle<(), Vec<Module>, database::Error>,
 	pending_module_installations: UseStateHandle<HashMap<ModuleId, bool>>,
 }
 

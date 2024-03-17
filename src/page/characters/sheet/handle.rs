@@ -1,5 +1,5 @@
 use crate::{
-	database::{Database, FetchError},
+	database::{entry::EntryInSystemWithType, Database, FetchError, Query},
 	system::{
 		self,
 		dnd5e::data::character::{Character, DefaultsBlock, ObjectCacheProvider, Persistent},
@@ -7,7 +7,6 @@ use crate::{
 	},
 	task,
 };
-use futures::StreamExt;
 use std::{
 	rc::Rc,
 	sync::{atomic::AtomicBool, Mutex},
@@ -123,16 +122,12 @@ impl CharacterHandle {
 					}
 				};
 
-				let query_defaults = handle.database.clone().query_typed::<DefaultsBlock>(
-					system.as_str(),
-					handle.system_depot.clone(),
-					None,
-				);
-				let query_result = query_defaults.await;
-				let defaults_stream =
-					query_result.map_err(|err| CharacterInitializationError::DefaultsError(format!("{err:?}")))?;
-				let default_blocks = defaults_stream.collect::<Vec<_>>().await;
-				let default_blocks = default_blocks.into_iter().map(|(_, block)| block).collect();
+				let index = EntryInSystemWithType::new::<DefaultsBlock>(system);
+				let query = Query::<crate::database::Entry>::subset(&handle.database, Some(index)).await;
+				let query = query.map_err(|err| CharacterInitializationError::DefaultsError(format!("{err:?}")))?;
+				let query = query.parse_as::<DefaultsBlock>(&handle.system_depot);
+				let query = query.map(|(_, block)| block);
+				let default_blocks = query.collect::<Vec<_>>().await;
 
 				let mut character = Character::new(persistent, default_blocks);
 				let provider = ObjectCacheProvider {

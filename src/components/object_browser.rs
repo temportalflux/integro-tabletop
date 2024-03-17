@@ -1,6 +1,6 @@
 use crate::{
 	components::database::{use_query, QueryStatus},
-	database::{entry::EntryInSystemWithType, Criteria, Query},
+	database::{entry::EntryInSystemWithType, Criteria, Entry, Query},
 	page::characters::sheet::joined::editor::bundle_content,
 	system::{
 		self,
@@ -314,13 +314,25 @@ fn SubclassList(props: &SubclassListProps) -> Html {
 #[function_component]
 pub fn ObjectSelectorList(props: &GeneralProp<std::path::PathBuf>) -> Html {
 	use crate::{
-		components::database::{use_query_entries, QueryStatus},
+		components::database::{use_query, QueryStatus},
 		page::characters::sheet::CharacterHandle,
 		system::SourceId,
 	};
 
 	let state = use_context::<CharacterHandle>().unwrap();
-	let fetched_entries = use_query_entries();
+	let fetched_entries = use_query(None, |database, args: Vec<SourceId>| {
+		async move {
+			if args.is_empty() {
+				return Ok((args, BTreeMap::<SourceId, Entry>::new()));
+			}
+			let query = Query::<Entry>::multiple(&database, &args).await?;
+			let entries = query.collect::<Vec<_>>().await;
+			let iter = entries.into_iter().map(|entry| (entry.source_id(false), entry));
+			let entries = iter.collect::<BTreeMap<_, _>>();
+			Ok((args, entries)) as Result<_, database::Error>
+		}
+		.boxed_local()
+	});
 	use_effect_with(state.clone(), {
 		let data_path = props.value.clone();
 		let fetched_entries = fetched_entries.clone();

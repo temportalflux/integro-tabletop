@@ -1,5 +1,5 @@
 use crate::{
-	database::{entry::EntryInSystemWithType, module::ModuleInSystem, Criteria, Database, Entry, Module, Query},
+	database::{entry::EntryInSystemWithType, Criteria, Database, Entry, Query},
 	system::{self, Block, SourceId},
 };
 use futures_util::FutureExt;
@@ -186,38 +186,6 @@ where
 				entries = (*adjust_listings)(entries);
 			}
 			Ok(entries)
-		}
-		.boxed_local()
-	})
-}
-
-pub type UseQueryModulesHandle = UseQueryHandle<Option<&'static str>, Vec<Module>, database::Error>;
-
-#[hook]
-pub fn use_query_modules(system: Option<&'static str>) -> UseQueryModulesHandle {
-	use_query(Some(system), |database, system| {
-		async move {
-			let index = system.map(ModuleInSystem::new);
-			let query = Query::subset(&database, index).await?;
-			Ok(query.collect::<Vec<_>>().await)
-		}
-		.boxed_local()
-	})
-}
-
-#[hook]
-pub fn use_query_entries() -> UseQueryHandle<Vec<SourceId>, (Vec<SourceId>, BTreeMap<SourceId, Entry>), database::Error>
-{
-	use_query(None, |database, args: Vec<SourceId>| {
-		async move {
-			if args.is_empty() {
-				return Ok((args, BTreeMap::new()));
-			}
-			let query = Query::<Entry>::multiple(&database, &args).await?;
-			let entries = query.collect::<Vec<_>>().await;
-			let iter = entries.into_iter().map(|entry| (entry.source_id(false), entry));
-			let entries = iter.collect::<BTreeMap<_, _>>();
-			Ok((args, entries))
 		}
 		.boxed_local()
 	})

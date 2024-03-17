@@ -82,22 +82,6 @@ impl Database {
 		Ok(Some(typed))
 	}
 
-	pub async fn query_typed<Output>(
-		self,
-		system: impl Into<String>,
-		system_depot: crate::system::Registry,
-		criteria: Option<Box<Criteria>>,
-	) -> Result<futures::stream::LocalBoxStream<'static, (Entry, Output)>, Error>
-	where
-		Output: Block + Unpin + 'static,
-	{
-		let index = entry::EntryInSystemWithType::new::<Output>(system);
-		let query = Query::<Entry>::subset(&self, Some(index)).await?;
-		let query = query.apply_opt(criteria.map(|c| *c), Query::filter_by);
-		let query = query.parse_as::<Output>(&system_depot);
-		Ok(query.into_inner())
-	}
-
 	pub async fn mutate<F>(&self, fn_transaction: F) -> Result<(), Error>
 	where
 		F: FnOnce(&database::Transaction) -> LocalBoxFuture<'_, Result<(), Error>>,

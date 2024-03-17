@@ -1,7 +1,14 @@
 use crate::{
-	components::{database, mobile, Spinner, ViewScaler},
+	components::{
+		database::{self, use_query},
+		mobile, Spinner, ViewScaler,
+	},
+	database::{module::ModuleInSystem, Module, Query},
 	storage::autosync,
-	system::{dnd5e::components::GeneralProp, SourceId},
+	system::{
+		dnd5e::{components::GeneralProp, DnD5e},
+		SourceId,
+	},
 };
 use yew::prelude::*;
 
@@ -23,9 +30,17 @@ pub struct ViewProps {
 
 #[hook]
 fn use_update_character_modules(character: &CharacterHandle) {
+	use crate::system::System;
+	use futures_util::FutureExt;
 	let is_first_mount_after_load = use_mut_ref(|| true);
 	let autosync_channel = use_context::<autosync::Channel>().unwrap();
-	let modules_query = database::use_query_modules(None);
+	let modules_query = use_query(Some(DnD5e::id()), |database, system| {
+		async move {
+			let query = Query::subset(&database, Some(ModuleInSystem::new(system))).await?;
+			Ok(query.collect::<Vec<_>>().await) as Result<Vec<Module>, ::database::Error>
+		}
+		.boxed_local()
+	});
 	let modules_query_complete = matches!(modules_query.status(), database::QueryStatus::Success(_));
 	if character.is_loaded() && modules_query_complete && *is_first_mount_after_load.borrow_mut() {
 		*is_first_mount_after_load.borrow_mut() = false;

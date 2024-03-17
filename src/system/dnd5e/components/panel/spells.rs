@@ -1,9 +1,10 @@
 use crate::{
 	components::{context_menu, database::use_typed_fetch_callback, stop_propagation, Spinner},
-	database::{Criteria, Database},
-	page::characters::sheet::joined::editor::{CollapsableCard, DescriptionSection},
-	page::characters::sheet::CharacterHandle,
-	page::characters::sheet::MutatorImpact,
+	database::{entry::EntryInSystemWithType, Criteria, Database, Entry, Query},
+	page::characters::sheet::{
+		joined::editor::{CollapsableCard, DescriptionSection},
+		CharacterHandle, MutatorImpact,
+	},
 	system::{
 		self,
 		dnd5e::{
@@ -24,7 +25,6 @@ use crate::{
 	utility::InputExt,
 };
 use convert_case::{Case, Casing};
-use futures_util::StreamExt;
 use itertools::Itertools;
 use std::{collections::BTreeMap, path::Path};
 use yew::prelude::*;
@@ -1412,20 +1412,12 @@ pub fn AvailableSpellList(props: &AvailableSpellListProps) -> Html {
 					SpellSource::Database => {
 						use crate::system::System;
 						let criteria = (*criteria_handle).clone();
-						let stream_result = database
-							.query_typed::<Spell>(
-								DnD5e::id(),
-								system_depot.clone(),
-								criteria.map(|criteria| criteria.into()),
-							)
-							.await;
-						let mut stream = match stream_result {
-							Ok(stream) => stream,
-							Err(_err) => {
-								return Ok(spells);
-							}
-						};
-						while let Some((_entry, spell)) = stream.next().await {
+						let index = EntryInSystemWithType::new::<Spell>(DnD5e::id());
+						let query = Query::<Entry>::subset(&database, Some(index)).await;
+						let Ok(query) = query else { return Ok(spells) };
+						let query = query.apply_opt(criteria, Query::filter_by);
+						let mut query = query.parse_as::<Spell>(&system_depot);
+						while let Some((_entry, spell)) = query.next().await {
 							insert_spell(spell);
 						}
 					}
