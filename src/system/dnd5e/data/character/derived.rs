@@ -172,6 +172,18 @@ impl ProficiencyModifiers {
 pub struct ModifierMap {
 	modifiers: EnumMap<Modifier, Vec<ModifierMapItem>>,
 }
+impl<'a> FromIterator<(Modifier, &'a Vec<ModifierMapItem>)> for ModifierMap {
+	fn from_iter<T: IntoIterator<Item = (Modifier, &'a Vec<ModifierMapItem>)>>(iter: T) -> Self {
+		let modifiers = iter.into_iter().fold(
+			EnumMap::<Modifier, Vec<ModifierMapItem>>::default(),
+			|mut modifiers, (modifier, items)| {
+				modifiers[modifier].extend(items.clone());
+				modifiers
+			},
+		);
+		Self { modifiers }
+	}
+}
 impl ModifierMap {
 	pub fn insert(&mut self, modifier: Modifier, item: ModifierMapItem) {
 		self.modifiers[modifier].push(item);
@@ -205,7 +217,8 @@ impl From<(Option<String>, PathBuf)> for ModifierMapItem {
 
 #[derive(Clone, Default, PartialEq, Debug)]
 pub struct Skills {
-	ability_modifiers: EnumMap<Ability, ModifierMap>,
+	specific_ability_modifiers: EnumMap<Ability, ModifierMap>,
+	general_ability_modifiers: ModifierMap,
 	skills: EnumMap<Skill, ProficiencyModifiers>,
 }
 impl Skills {
@@ -215,12 +228,16 @@ impl Skills {
 
 	pub fn add_ability_modifier(
 		&mut self,
-		ability: Ability,
+		ability: Option<Ability>,
 		modifier: Modifier,
 		context: Option<String>,
 		source: &ReferencePath,
 	) {
-		self.ability_modifiers[ability].insert(modifier, (context, source.display.clone()).into());
+		let modifier_map = match ability {
+			None => &mut self.general_ability_modifiers,
+			Some(ability) => &mut self.specific_ability_modifiers[ability],
+		};
+		modifier_map.insert(modifier, (context, source.display.clone()).into());
 	}
 
 	pub fn add_skill_modifier(
@@ -239,22 +256,19 @@ impl Skills {
 		self.skills[skill].proficiency()
 	}
 
-	pub fn ability_modifiers(&self, ability: Ability) -> &ModifierMap {
-		&self.ability_modifiers[ability]
-	}
-
 	pub fn skill_modifiers(&self, skill: Skill) -> &ModifierMap {
 		&self.skills[skill].modifiers
 	}
 
 	pub fn iter_ability_modifiers(&self, ability: Ability) -> impl Iterator<Item = (Modifier, &Vec<ModifierMapItem>)> {
-		self.ability_modifiers[ability].iter()
+		let iter = self.specific_ability_modifiers[ability].iter();
+		let iter = iter.chain(self.general_ability_modifiers.iter());
+		iter
 	}
 
 	pub fn iter_skill_modifiers(&self, skill: Skill) -> impl Iterator<Item = (Modifier, &Vec<ModifierMapItem>)> {
-		self.ability_modifiers[skill.ability()]
-			.iter()
-			.chain(self.skills[skill].modifiers().iter())
+		let iter = self.iter_ability_modifiers(skill.ability());
+		iter.chain(self.skills[skill].modifiers().iter())
 	}
 }
 
@@ -323,6 +337,7 @@ pub struct AttackBonuses {
 #[derive(Clone, PartialEq, Debug)]
 struct AttackRollBonus {
 	bonus: i32,
+	modifier: Option<Modifier>,
 	queries: Vec<AttackQuery>,
 	source: PathBuf,
 }
@@ -349,6 +364,16 @@ impl AttackBonuses {
 	pub fn add_to_weapon_attacks(&mut self, bonus: i32, queries: Vec<AttackQuery>, source: &ReferencePath) {
 		self.attack_roll.push(AttackRollBonus {
 			bonus,
+			modifier: None,
+			queries,
+			source: source.display.clone(),
+		});
+	}
+
+	pub fn modify_weapon_attacks(&mut self, modifier: Modifier, queries: Vec<AttackQuery>, source: &ReferencePath) {
+		self.attack_roll.push(AttackRollBonus {
+			bonus: 0,
+			modifier: Some(modifier),
 			queries,
 			source: source.display.clone(),
 		});
@@ -385,7 +410,11 @@ impl AttackBonuses {
 		});
 	}
 
-	pub fn get_weapon_attack(&self, action: &crate::system::dnd5e::data::action::Action) -> Vec<(i32, &Path)> {
+	// TODO: This isn't used yet, and should be driving the attacks section of the ui
+	pub fn get_weapon_attack(
+		&self,
+		action: &crate::system::dnd5e::data::action::Action,
+	) -> Vec<(i32, Option<Modifier>, &Path)> {
 		let mut bonuses = Vec::new();
 		let Some(attack) = &action.attack else {
 			return bonuses;
@@ -394,7 +423,7 @@ impl AttackBonuses {
 			// Filter out any bonuses which do not meet the restriction
 			'iter_query: for query in &bonus.queries {
 				if query.is_attack_valid(attack) {
-					bonuses.push((bonus.bonus, bonus.source.as_path()));
+					bonuses.push((bonus.bonus, bonus.modifier, bonus.source.as_path()));
 					break 'iter_query;
 				}
 			}

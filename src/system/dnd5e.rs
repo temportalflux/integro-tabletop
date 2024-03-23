@@ -41,7 +41,6 @@ pub fn node_registry() -> generics::Registry {
 	registry.register_mutator::<AddSize>();
 	registry.register_mutator::<SuggestedPersonality>();
 	registry.register_mutator::<AddMaxHitPoints>();
-	registry.register_mutator::<AddModifier>();
 	registry.register_mutator::<AddProficiency>();
 	registry.register_mutator::<Sense>();
 	registry.register_mutator::<Speed>();
@@ -52,7 +51,7 @@ pub fn node_registry() -> generics::Registry {
 	registry.register_mutator::<AddFeature>();
 	registry.register_mutator::<AddStartingEquipment>();
 	registry.register_mutator::<AddBundle>();
-	registry.register_mutator::<Bonus>();
+	registry.register_mutator::<Modify>();
 	registry.register_mutator::<ApplyIf>();
 
 	registry.register_evaluator::<GetAbilityModifier>();

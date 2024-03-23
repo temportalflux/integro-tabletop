@@ -43,11 +43,11 @@ columnSorting:
 
 ## Pending
 
-- [condition-degrees](tasks/condition-degrees.md)
+- [initiative-modifier-needs-to-be-implemented](tasks/initiative-modifier-needs-to-be-implemented.md)
+- [spellcasting-filter-queries-can-specify-specific-spell-ids](tasks/spellcasting-filter-queries-can-specify-specific-spell-ids.md)
 - [speed-based-on-existing-speed](tasks/speed-based-on-existing-speed.md)
 - [add-restore-uses-mutator](tasks/add-restore-uses-mutator.md)
 - [object-feature-backlog](tasks/object-feature-backlog.md)
-- [attack-row-overview-ui-rehaul](tasks/attack-row-overview-ui-rehaul.md)
 - [expanded-item-modal-editor](tasks/expanded-item-modal-editor.md)
 - [notes-for-features](tasks/notes-for-features.md)
 - [notes-for-items](tasks/notes-for-items.md)
@@ -55,11 +55,14 @@ columnSorting:
 - [attunement](tasks/attunement.md)
 - [inventory-search-bar](tasks/inventory-search-bar.md)
 - [autosave](tasks/autosave.md)
+- [attack-row-overview-ui-rehaul](tasks/attack-row-overview-ui-rehaul.md)
 
 ## In Progress
 
 ## Done
 
+- [join-bonus-and-modifier-mutators](tasks/join-bonus-and-modifier-mutators.md)
+- [condition-degrees](tasks/condition-degrees.md)
 - [item-charges](tasks/item-charges.md)
 - [generator-module-components](tasks/generator-module-components.md)
 - [generate-integration-tests-from-local-modules](tasks/generate-integration-tests-from-local-modules.md)

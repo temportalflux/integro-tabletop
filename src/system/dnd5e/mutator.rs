@@ -13,9 +13,6 @@ pub use apply_if::*;
 mod armor_class;
 pub use armor_class::*;
 
-mod bonus;
-pub use bonus::*;
-
 mod description;
 pub use description::*;
 
@@ -34,8 +31,8 @@ pub use hit_points::*;
 mod level;
 pub use level::*;
 
-mod modifier;
-pub use modifier::*;
+mod modify;
+pub use modify::*;
 
 mod proficient;
 pub use proficient::*;

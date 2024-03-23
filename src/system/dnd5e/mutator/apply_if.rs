@@ -163,7 +163,7 @@ mod test {
 			system::{
 				dnd5e::{
 					evaluator::HasArmorEquipped,
-					mutator::{test::test_utils, Bonus},
+					mutator::{test::test_utils, Modify},
 				},
 				generics,
 			},
@@ -175,7 +175,7 @@ mod test {
 			let mut node_reg = generics::Registry::default();
 			node_reg.register_mutator::<ApplyIf>();
 			node_reg.register_evaluator::<HasArmorEquipped>();
-			node_reg.register_mutator::<Bonus>();
+			node_reg.register_mutator::<Modify>();
 			node_reg
 		}
 
@@ -258,12 +258,12 @@ mod test {
 			let doc = "
 				|mutator \"apply_if\" {
 				|    criteria (Evaluator)\"has_armor_equipped\"
-				|    mutator \"bonus\" \"ArmorClass\" 2
+				|    mutator \"modify\" \"ArmorClass\" 2
 				|}
 			";
 			let data = ApplyIf {
 				criteria: vec![HasArmorEquipped::default().into()],
-				mutators: vec![Bonus::ArmorClass {
+				mutators: vec![Modify::ArmorClass {
 					bonus: 2,
 					context: None,
 				}

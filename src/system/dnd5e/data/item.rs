@@ -260,7 +260,7 @@ mod test {
 						roll::Modifier,
 						ArmorClassFormula, Skill,
 					},
-					mutator::{AddModifier, ModifierKind},
+					mutator::Modify,
 				},
 				generics,
 			},
@@ -270,7 +270,7 @@ mod test {
 		static NODE_NAME: &str = "item";
 
 		fn node_ctx() -> NodeContext {
-			NodeContext::registry(generics::Registry::default_with_mut::<AddModifier>())
+			NodeContext::registry(generics::Registry::default_with_mut::<Modify>())
 		}
 
 		#[test]
@@ -303,7 +303,7 @@ mod test {
 				|            formula base=18
 				|            min-strength 15
 				|        }
-				|        mutator \"add_modifier\" \"Disadvantage\" (Skill)\"Specific\" \"Stealth\"
+				|        mutator \"modify\" (Skill)\"Specific\" \"Stealth\" \"Disadvantage\"
 				|    }
 				|}
 			";
@@ -312,10 +312,10 @@ mod test {
 				weight: 65.0,
 				worth: Wallet::from([(1500, currency::Kind::Gold)]),
 				kind: Kind::Equipment(Equipment {
-					mutators: vec![AddModifier {
+					mutators: vec![Modify::Skill {
 						modifier: Modifier::Disadvantage,
 						context: None,
-						kind: ModifierKind::Skill(selector::Value::Specific(Skill::Stealth)),
+						skill: selector::Value::Specific(Skill::Stealth),
 					}
 					.into()],
 					armor: Some(Armor {

@@ -176,7 +176,7 @@ mod test {
 						roll::{Die, Modifier, Roll},
 						ArmorClassFormula, DamageType, Skill,
 					},
-					mutator::{AddModifier, ModifierKind},
+					mutator::Modify,
 				},
 				generics,
 			},
@@ -186,7 +186,7 @@ mod test {
 		static NODE_NAME: &str = "equipment";
 
 		fn node_ctx() -> NodeContext {
-			NodeContext::registry(generics::Registry::default_with_mut::<AddModifier>())
+			NodeContext::registry(generics::Registry::default_with_mut::<Modify>())
 		}
 
 		#[test]
@@ -197,15 +197,15 @@ mod test {
 				|        formula base=18
 				|        min-strength 15
 				|    }
-				|    mutator \"add_modifier\" \"Disadvantage\" (Skill)\"Specific\" \"Stealth\"
+				|    mutator \"modify\" (Skill)\"Specific\" \"Stealth\" \"Disadvantage\"
 				|}
 			";
 			let data = Equipment {
 				criteria: None,
-				mutators: vec![AddModifier {
+				mutators: vec![Modify::Skill {
 					modifier: Modifier::Disadvantage,
 					context: None,
-					kind: ModifierKind::Skill(selector::Value::Specific(Skill::Stealth)),
+					skill: selector::Value::Specific(Skill::Stealth),
 				}
 				.into()],
 				armor: Some(Armor {

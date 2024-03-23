@@ -1,6 +1,6 @@
 ---
 created: 2023-09-20T13:54:26.325Z
-updated: 2023-09-20T13:54:40.654Z
+updated: 2024-03-23T12:44:32.427Z
 assigned: ""
 progress: 0
 tags:
@@ -10,7 +10,7 @@ tags:
 
 # Standalone App
 
-- maybe run wasm in a winit window via https://docs.wasmtime.dev/
-- Perhaps with Tauri?
-	https://tauri.app/v1/guides/getting-started/setup/integrate
-	https://dev.to/stevepryde/create-a-desktop-app-in-rust-using-tauri-and-yew-2bhe
+Add tauri backend app for launching as a native windows exe. The frontend largely wont change b/c tauri allows yew/wasm for frontend rendering. Known unknowns include:
+- how to read local files instead of fetching from github
+- "downloading" local files for actual use via the indexed-db from the local file system; seems like tauri would be "fine" with that, but its unclear if the database would need to be constructed from scratch every time, or if its state maintains between launches.
+- downloading modules from the web and putting in the local file system
