@@ -128,20 +128,20 @@ impl AsKdl for Feature {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 
-		node.push_entry(("name", self.name.clone()));
+		node.entry(("name", self.name.clone()));
 		if self.description != description::Info::default() {
-			node.push_child_t(("description", &self.description));
+			node.child(("description", &self.description));
 		}
 
 		if self.collapsed {
-			node.push_entry(("collapsed", true));
+			node.entry(("collapsed", true));
 		}
 		if let Some(parent) = &self.parent {
-			node.push_entry(("parent", parent.display().to_string()));
+			node.entry(("parent", parent.display().to_string()));
 		}
 
-		node.push_children_t(("mutator", self.mutators.iter()));
-		node.push_child_t(("action", &self.action));
+		node.children(("mutator", self.mutators.iter()));
+		node.child(("action", &self.action));
 
 		node
 	}

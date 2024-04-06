@@ -475,16 +475,14 @@ impl AsKdl for Modify {
 			} => {
 				match ability {
 					None => {
-						node.push_entry_typed("All", "Ability");
+						node.entry_typed("Ability", "All");
 					}
 					Some(ability) => {
-						node.append_typed("Ability", ability.as_kdl());
+						node += ("Ability", ability.as_kdl());
 					}
 				}
-				node.push_entry(modifier.to_string());
-				if let Some(context) = context {
-					node.push_entry(("context", context.clone()));
-				}
+				node.entry(modifier.to_string());
+				node.entry(("context", context.clone()));
 			}
 			Self::SavingThrow {
 				ability,
@@ -493,34 +491,28 @@ impl AsKdl for Modify {
 			} => {
 				match ability {
 					None => {
-						node.push_entry_typed("All", "SavingThrow");
+						node.entry_typed("SavingThrow", "All");
 					}
 					Some(ability) => {
-						node.append_typed("SavingThrow", ability.as_kdl());
+						node += ("SavingThrow", ability.as_kdl());
 					}
 				}
-				node.push_entry(modifier.to_string());
-				if let Some(context) = context {
-					node.push_entry(("context", context.clone()));
-				}
+				node.entry(modifier.to_string());
+				node.entry(("context", context.clone()));
 			}
 			Self::Skill {
 				skill,
 				modifier,
 				context,
 			} => {
-				node.append_typed("Skill", skill.as_kdl());
-				node.push_entry(modifier.to_string());
-				if let Some(context) = context {
-					node.push_entry(("context", context.clone()));
-				}
+				node += ("Skill", skill.as_kdl());
+				node.entry(modifier.to_string());
+				node.entry(("context", context.clone()));
 			}
 			Self::Initiative { modifier, context } => {
-				node.push_entry("Initiative");
-				node.push_entry(modifier.to_string());
-				if let Some(context) = context {
-					node.push_entry(("context", context.clone()));
-				}
+				node.entry("Initiative");
+				node.entry(modifier.to_string());
+				node.entry(("context", context.clone()));
 			}
 			Self::AttackRoll {
 				bonus,
@@ -528,34 +520,34 @@ impl AsKdl for Modify {
 				ability,
 				query,
 			} => {
-				node.push_entry_typed("Roll", "Attack");
+				node.entry_typed("Attack", "Roll");
 				if *bonus != 0 {
-					node.push_child_entry("bonus", *bonus as i64);
+					node.child(("bonus", *bonus as i64));
 				}
-				node.push_child_t(("ability", ability));
-				node.push_child_t(("modifier", modifier.as_ref().map(ToString::to_string).as_ref()));
-				node.push_children_t(("query", query.iter()));
+				node.child(("ability", ability));
+				node.child(("modifier", modifier.as_ref().map(ToString::to_string).as_ref()));
+				node.children(("query", query));
 			}
 			Self::AttackDamage {
 				damage,
 				damage_type,
 				query,
 			} => {
-				node.push_entry_typed("Damage", "Attack");
-				node.push_child_t(("damage", damage));
-				node.push_child_t(("damage_type", &damage_type.as_ref().map(DamageType::to_string)));
-				node.push_children_t(("query", query.iter()));
+				node.entry_typed("Attack", "Damage");
+				node.child(("damage", damage));
+				node.child(("damage_type", &damage_type.as_ref().map(DamageType::to_string)));
+				node.children(("query", query.iter()));
 			}
 			Self::SpellDamage { damage, query } => {
-				node.push_entry_typed("Damage", "Spell");
-				node.push_child_t(("damage", damage));
-				node.push_children_t(("query", query.iter()));
+				node.entry_typed("Spell", "Damage");
+				node.child(("damage", damage));
+				node.children(("query", query.iter()));
 			}
 			Self::ArmorClass { bonus, context } => {
-				node.push_entry("ArmorClass");
-				node.push_entry(*bonus as i64);
+				node.entry("ArmorClass");
+				node.entry(*bonus as i64);
 				if let Some(context) = context {
-					node.push_entry(("context", context.clone()));
+					node.entry(("context", context.clone()));
 				}
 			}
 		}

@@ -29,10 +29,10 @@ impl AsKdl for DamageRoll {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 		if self.base_bonus != 0 {
-			node.push_entry(("base", self.base_bonus as i64));
+			node.entry(("base", self.base_bonus as i64));
 		}
-		node.push_child_t(("roll", &self.roll));
-		node.push_child_entry("damage_type", self.damage_type.to_string());
+		node.child(("roll", &self.roll));
+		node.child(("damage_type", self.damage_type.to_string()));
 		node
 	}
 }

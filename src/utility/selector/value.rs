@@ -173,9 +173,13 @@ where
 	crate::utility::Value<Context, i32>: AsKdl,
 {
 	fn as_kdl(&self) -> NodeBuilder {
-		let node = NodeBuilder::default();
 		match self {
-			Self::Specific(value) => node.with_entry("Specific").with_extension(value.as_kdl()),
+			Self::Specific(value) => {
+				let mut node = NodeBuilder::default();
+				node.entry("Specific");
+				node += value.as_kdl();
+				node
+			}
 			Self::Options(ValueOptions {
 				id,
 				amount,
@@ -183,22 +187,21 @@ where
 				cannot_match,
 				..
 			}) => {
-				let mut node = node.with_entry("Any");
+				let mut node = NodeBuilder::default();
+				node.entry("Any");
 				if let Some(id) = id.get_id() {
-					node.push_entry(("id", id.into_owned()));
+					node.entry(("id", id.into_owned()));
 				}
 				if amount != &crate::utility::Value::Fixed(1) {
-					node.push_child_t(("amount", amount));
+					node.child(("amount", amount));
 				}
 				for id_path in cannot_match {
 					let Some(id_str) = id_path.get_id() else {
 						continue;
 					};
-					node.push_child_entry("cannot_match", id_str.into_owned());
+					node.child(("cannot_match", id_str.into_owned()));
 				}
-				for option in options {
-					node.push_child_t(("option", option));
-				}
+				node.children(("option", options));
 				node
 			}
 		}

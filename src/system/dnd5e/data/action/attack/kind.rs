@@ -70,7 +70,7 @@ impl AsKdl for AttackKindValue {
 			Self::Melee { reach } => {
 				let mut node = node.with_entry("Melee");
 				if *reach != 5 {
-					node.push_entry(("reach", *reach as i64));
+					node.entry(("reach", *reach as i64));
 				}
 				node
 			}

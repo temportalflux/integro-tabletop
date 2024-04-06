@@ -43,9 +43,9 @@ impl AsKdl for Range {
 			Self::Sight => node.with_entry("Sight"),
 			Self::Unlimited => node.with_entry("Unlimited"),
 			Self::Unit { distance, unit } => {
-				node.push_entry(*distance as i64);
+				node.entry(*distance as i64);
 				if unit != "Feet" {
-					node.push_entry(unit.clone());
+					node.entry(unit.clone());
 				}
 				node
 			}

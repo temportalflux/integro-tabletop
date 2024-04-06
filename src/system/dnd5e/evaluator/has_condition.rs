@@ -79,9 +79,9 @@ impl AsKdl for HasCondition {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 		if self.inverted {
-			node.push_entry(("inverted", true));
+			node.entry(("inverted", true));
 		}
-		node.push_children_t(("filter", self.filters.iter()));
+		node.children(("filter", self.filters.iter()));
 		node
 	}
 }
@@ -115,14 +115,14 @@ impl FromKdl<NodeContext> for ConditionFilter {
 impl AsKdl for ConditionFilter {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
-		node.push_entry(("name", self.name.clone()));
+		node.entry(("name", self.name.clone()));
 		for property in &self.properties {
 			match property {
 				ConditionProperty::Id(id) => {
-					node.push_child_t(("id", id));
+					node.child(("id", id));
 				}
 				ConditionProperty::Name(name) => {
-					node.push_child_t(("name", name));
+					node.child(("name", name));
 				}
 			}
 		}

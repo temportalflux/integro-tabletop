@@ -81,27 +81,27 @@ impl AsKdl for Math {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 		match &self.operation {
-			MathOp::Add => node.push_entry("Add"),
-			MathOp::Subtract => node.push_entry("Subtract"),
-			MathOp::Multiply => node.push_entry("Multiply"),
+			MathOp::Add => node.entry("Add"),
+			MathOp::Subtract => node.entry("Subtract"),
+			MathOp::Multiply => node.entry("Multiply"),
 			MathOp::Divide { round } => {
-				node.push_entry("Divide");
+				node.entry("Divide");
 				match round {
 					Rounding::HalfUp => {
 						assert_eq!(Rounding::default(), Rounding::HalfUp);
 					}
-					Rounding::Ceiling => node.push_entry(("round", "ceil")),
-					Rounding::Floor => node.push_entry(("round", "floor")),
+					Rounding::Ceiling => node.entry(("round", "ceil")),
+					Rounding::Floor => node.entry(("round", "floor")),
 				}
 			}
 		}
 		if let Some(min) = &self.minimum {
-			node.push_entry(("min", *min as i64));
+			node.entry(("min", *min as i64));
 		}
 		if let Some(max) = &self.maximum {
-			node.push_entry(("max", *max as i64));
+			node.entry(("max", *max as i64));
 		}
-		node.push_children_t(("value", self.values.iter()));
+		node.children(("value", self.values.iter()));
 		node
 	}
 }

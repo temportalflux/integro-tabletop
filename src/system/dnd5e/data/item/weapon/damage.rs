@@ -30,12 +30,12 @@ impl FromKdl<NodeContext> for WeaponDamage {
 impl AsKdl for WeaponDamage {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
-		node.push_entry(self.damage_type.to_string());
+		node.entry(self.damage_type.to_string());
 		if let Some(roll) = &self.roll {
-			node.push_entry(("roll", roll.to_string()));
+			node.entry(("roll", roll.to_string()));
 		}
 		if self.bonus != 0 {
-			node.push_entry(("base", self.bonus as i64));
+			node.entry(("base", self.bonus as i64));
 		}
 		node
 	}

@@ -67,7 +67,7 @@ impl AsKdl for AddMaxHitPoints {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 		if let Some(id) = &self.id {
-			node.push_entry(("id", id.clone()));
+			node.entry(("id", id.clone()));
 		}
 		node += self.value.as_kdl();
 		node

@@ -29,7 +29,7 @@ impl AsKdl for CastingTime {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = self.duration.as_kdl();
 		if self.ritual {
-			node.push_entry(("ritual", true));
+			node.entry(("ritual", true));
 		}
 		node
 	}
@@ -56,7 +56,7 @@ impl AsKdl for CastingDuration {
 			Self::Reaction(ctx) => {
 				let mut node = node.with_entry("Reaction");
 				if let Some(ctx) = ctx {
-					node.push_entry(ctx.clone());
+					node.entry(ctx.clone());
 				}
 				node
 			}

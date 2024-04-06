@@ -99,9 +99,9 @@ impl FromKdl<NodeContext> for Variant {
 impl AsKdl for Variant {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
-		node.push_entry(self.name.as_str());
+		node.entry(self.name.as_str());
 		for extension in &self.extensions {
-			node.push_child_t(("extend", extension));
+			node.child(("extend", extension));
 		}
 		node
 	}
@@ -137,19 +137,19 @@ impl AsKdl for Extension {
 		let mut node = NodeBuilder::default();
 		match self {
 			Self::Name(name) => {
-				node.push_entry("name");
-				node.push_entry(name.clone());
+				node.entry("name");
+				node.entry(name.clone());
 				node
 			}
 			Self::Rarity(rarity) => {
-				node.push_entry("rarity");
-				node.push_entry(rarity.as_ref().map(Rarity::to_string).unwrap_or("None".to_owned()));
+				node.entry("rarity");
+				node.entry(rarity.as_ref().map(Rarity::to_string).unwrap_or("None".to_owned()));
 				node
 			}
 			Self::Description(sections) => {
-				node.push_entry("description");
+				node.entry("description");
 				for section in sections {
-					node.push_child_t(("section", section));
+					node.child(("section", section));
 				}
 				node
 			}
@@ -158,10 +158,10 @@ impl AsKdl for Extension {
 				armor,
 				mutators,
 			} => {
-				node.push_entry("equipment");
-				node.push_child_t(("attunement", attunement));
-				node.push_child_t(("armor", armor));
-				node.push_children_t(("mutator", mutators.iter()));
+				node.entry("equipment");
+				node.child(("attunement", attunement));
+				node.child(("armor", armor));
+				node.children(("mutator", mutators.iter()));
 				node
 			}
 		}

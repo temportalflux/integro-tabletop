@@ -213,7 +213,7 @@ impl AsKdl for Wallet {
 		} else {
 			let mut node = NodeBuilder::default();
 			for row in rows {
-				node.push_child(row.build("item"));
+				node.child(row.build("item"));
 			}
 			node
 		}

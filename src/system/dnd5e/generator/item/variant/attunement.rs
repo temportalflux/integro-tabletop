@@ -29,7 +29,7 @@ impl AsKdl for AttunementExtension {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 		if let Some(required) = &self.required {
-			node.push_entry(("required", *required));
+			node.entry(("required", *required));
 		}
 		node
 	}

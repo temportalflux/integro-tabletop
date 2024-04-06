@@ -312,19 +312,19 @@ impl<T: AsKdl> AsKdl for ItemContainer<T> {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 
-		node.push_child_t(("wallet", &self.wallet, OmitIfEmpty));
+		node.child(("wallet", &self.wallet, OmitIfEmpty));
 
-		node.push_child((
+		node.child((
 			{
 				let mut node = NodeBuilder::default();
 				if let Some(count) = &self.capacity.count {
-					node.push_entry(("count", *count as i64));
+					node.entry(("count", *count as i64));
 				}
 				if let Some(weight) = &self.capacity.weight {
-					node.push_entry(("weight", *weight));
+					node.entry(("weight", *weight));
 				}
 				if let Some(volume) = &self.capacity.volume {
-					node.push_entry(("volume", *volume));
+					node.entry(("volume", *volume));
 				}
 				node.build("capacity")
 			},
@@ -333,23 +333,23 @@ impl<T: AsKdl> AsKdl for ItemContainer<T> {
 
 		if let Some(restriction) = &self.restriction {
 			let mut restriction_node = NodeBuilder::default();
-			restriction_node.push_children_t(("tag", restriction.tags.iter()));
-			node.push_child((restriction_node.build("restriction"), OmitIfEmpty));
+			restriction_node.children(("tag", restriction.tags.iter()));
+			node.child((restriction_node.build("restriction"), OmitIfEmpty));
 		}
 
 		for (id, count) in &self.item_templates {
 			let mut item_node = NodeBuilder::default();
 			item_node += id.as_kdl();
 			if *count > 1 {
-				item_node.push_entry(("count", *count as i64));
+				item_node.entry(("count", *count as i64));
 			}
-			node.push_child(item_node.build("item_id"));
+			node.child(item_node.build("item_id"));
 		}
 		for id in &self.itemids_by_name {
 			let Some(entry) = self.items_by_id.get(id) else {
 				continue;
 			};
-			node.push_child(entry.as_kdl().build("item"));
+			node.child(entry.as_kdl().build("item"));
 		}
 
 		node

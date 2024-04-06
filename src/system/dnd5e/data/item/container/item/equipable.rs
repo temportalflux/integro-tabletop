@@ -103,7 +103,7 @@ impl AsKdl for EquipableEntry {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = self.item.as_kdl();
 		if self.is_equipped {
-			node.push_entry(("equipped", true));
+			node.entry(("equipped", true));
 		}
 		node
 	}

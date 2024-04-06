@@ -115,19 +115,19 @@ impl FromKdl<NodeContext> for BlockGenerator {
 impl AsKdl for BlockGenerator {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
-		node.push_entry(self.short_id.as_str());
-		node.push_child_t(("source", &self.id, OmitIfEmpty));
+		node.entry(self.short_id.as_str());
+		node.child(("source", &self.id, OmitIfEmpty));
 		// pushing the base means cloning all of the nodes in the document,
 		// as children of a "base" node that we build
-		node.push_child({
+		node.child({
 			let mut node = NodeBuilder::default();
 			for child in self.base_doc.nodes() {
-				node.push_child(child.clone());
+				node.child(child.clone());
 			}
 			node.build("base")
 		});
 		// pushing variants by delegating to the variant struct
-		node.push_children_t(("variant", self.variants.iter(), OmitIfEmpty));
+		node.children(("variant", self.variants.iter(), OmitIfEmpty));
 		node
 	}
 }
@@ -155,23 +155,23 @@ impl AsKdl for VariantEntry {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 
-		node.push_entry(self.name.as_str());
+		node.entry(self.name.as_str());
 
 		let single_entry = self.entries.len() == 1;
 		let mut entry_iter = self.entries.iter();
 		if single_entry {
 			let (key, value) = entry_iter.next().unwrap();
-			node.push_entry(key.clone());
-			node.push_entry(value.clone());
+			node.entry(key.clone());
+			node.entry(value.clone());
 			return node;
 		}
 
 		for (key, value) in entry_iter {
-			node.push_child(
+			node.child(
 				{
 					let mut node = NodeBuilder::default();
-					node.push_entry(key.clone());
-					node.push_entry(value.clone());
+					node.entry(key.clone());
+					node.entry(value.clone());
 					node
 				}
 				.build("entry"),

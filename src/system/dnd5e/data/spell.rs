@@ -106,20 +106,20 @@ impl AsKdl for Spell {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 
-		node.push_entry(("name", self.name.clone()));
-		node.push_child_t(("source", &self.id, OmitIfEmpty));
+		node.entry(("name", self.name.clone()));
+		node.child(("source", &self.id, OmitIfEmpty));
 
-		node.push_child_t(("school", &self.school_tag, OmitIfEmpty));
-		node.push_children_t(("tag", self.tags.iter(), OmitIfEmpty));
-		node.push_child_t(("rank", &self.rank));
-		node.push_child_t(("casting-time", &self.casting_time));
-		node.push_child_t(("range", &self.range));
-		node.push_child_t(("area_of_effect", &self.area_of_effect));
+		node.child(("school", &self.school_tag, OmitIfEmpty));
+		node.children(("tag", self.tags.iter(), OmitIfEmpty));
+		node.child(("rank", &self.rank));
+		node.child(("casting-time", &self.casting_time));
+		node.child(("range", &self.range));
+		node.child(("area_of_effect", &self.area_of_effect));
 		node += self.components.as_kdl();
-		node.push_child_t(("duration", &self.duration));
-		node.push_child_t(("check", &self.check));
-		node.push_child_t(("damage", &self.damage));
-		node.push_child_t(("description", &self.description, OmitIfEmpty));
+		node.child(("duration", &self.duration));
+		node.child(("check", &self.check));
+		node.child(("damage", &self.damage));
+		node.child(("description", &self.description, OmitIfEmpty));
 
 		node
 	}

@@ -165,13 +165,13 @@ impl AsKdl for Bundle {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 
-		node.push_entry(("category", self.category.clone()));
-		node.push_entry(("name", self.name.clone()));
+		node.entry(("category", self.category.clone()));
+		node.entry(("name", self.name.clone()));
 		if let Some(_config) = &self.feature_config {
-			node.push_entry(("display_as_feature", true));
+			node.entry(("display_as_feature", true));
 		}
 
-		node.push_child_t(("source", &self.id, OmitIfEmpty));
+		node.child(("source", &self.id, OmitIfEmpty));
 
 		for requirement in &self.requirements {
 			let kdl = match requirement {
@@ -184,17 +184,17 @@ impl AsKdl for Bundle {
 					.with_entry(ability.long_name())
 					.with_entry(*score as i64),
 			};
-			node.push_child(kdl.build("requirement"));
+			node.child(kdl.build("requirement"));
 		}
 
 		if self.description != description::Info::default() {
-			node.push_child_t(("description", &self.description));
+			node.child(("description", &self.description));
 		}
 		if self.limit > 1 {
-			node.push_entry(("limit", self.limit as i64));
+			node.entry(("limit", self.limit as i64));
 		}
 
-		node.push_children_t(("mutator", self.mutators.iter()));
+		node.children(("mutator", self.mutators.iter()));
 
 		node
 	}

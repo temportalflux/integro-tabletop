@@ -275,7 +275,7 @@ impl AsKdl for SourceId {
 		if *self != Self::default() {
 			let as_str = self.to_string();
 			if !as_str.is_empty() {
-				node.push_entry(as_str);
+				node.entry(as_str);
 			}
 		}
 		node

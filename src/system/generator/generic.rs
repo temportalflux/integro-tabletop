@@ -76,8 +76,9 @@ impl kdlize::FromKdl<NodeContext> for Generic {
 
 impl AsKdl for Generic {
 	fn as_kdl(&self) -> crate::kdl_ext::NodeBuilder {
-		crate::kdl_ext::NodeBuilder::default()
-			.with_entry(self.0.get_id())
-			.with_extension(self.0.as_kdl())
+		let mut node = crate::kdl_ext::NodeBuilder::default();
+		node.entry(self.0.get_id());
+		node += self.0.as_kdl();
+		node
 	}
 }

@@ -64,12 +64,12 @@ impl AsKdl for AttackCheckKind {
 		let mut node = NodeBuilder::default();
 		match self {
 			Self::AttackRoll { ability, proficient } => {
-				node.push_entry("AttackRoll");
-				node.push_entry_typed(ability.long_name(), "Ability");
+				node.entry("AttackRoll");
+				node.entry_typed("Ability", ability.long_name());
 				match proficient {
 					Value::Fixed(false) => {}
-					Value::Fixed(true) => node.push_entry(("proficient", true)),
-					value => node.push_child_t(("proficient", value)),
+					Value::Fixed(true) => node.entry(("proficient", true)),
+					value => node.child(("proficient", value)),
 				}
 				node
 			}
@@ -79,19 +79,19 @@ impl AsKdl for AttackCheckKind {
 				proficient,
 				save_ability,
 			} => {
-				node.push_entry("SavingThrow");
-				node.push_child({
+				node.entry("SavingThrow");
+				node.child(("difficulty_class", {
 					let mut node = NodeBuilder::default();
-					node.push_entry(*base as i64);
+					node.entry(*base as i64);
 					if let Some(ability) = dc_ability {
-						node.push_child_entry("ability_bonus", ability.long_name());
+						node.child(("ability_bonus", ability.long_name()));
 					}
 					if *proficient {
-						node.push_child_entry("proficiency_bonus", true);
+						node.child(("proficiency_bonus", true));
 					}
-					node.build("difficulty_class")
-				});
-				node.push_child_entry_typed("save_ability", "Ability", save_ability.long_name());
+					node
+				}));
+				node.child(("save_ability", save_ability.long_name().as_kdl().with_type("Ability")));
 				node
 			}
 		}

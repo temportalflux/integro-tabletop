@@ -56,13 +56,13 @@ impl FromKdl<NodeContext> for SuggestedPersonality {
 impl AsKdl for SuggestedPersonality {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
-		node.push_entry(match &self.kind {
+		node.entry(match &self.kind {
 			PersonalityKind::Trait => "Trait",
 			PersonalityKind::Ideal => "Ideal",
 			PersonalityKind::Bond => "Bond",
 			PersonalityKind::Flaw => "Flaw",
 		});
-		node.push_children_t(("option", self.options.iter(), OmitIfEmpty));
+		node.children(("option", self.options.iter(), OmitIfEmpty));
 		node
 	}
 }

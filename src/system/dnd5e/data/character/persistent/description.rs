@@ -102,30 +102,30 @@ impl FromKdl<NodeContext> for Description {
 impl AsKdl for Description {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
-		node.push_child_t(("name", &self.name, OmitIfEmpty));
-		node.push_children_t(("pronoun", self.pronouns.iter().sorted()));
-		node.push_child_t(("pronoun", &self.custom_pronouns, OmitIfEmpty));
+		node.child(("name", &self.name, OmitIfEmpty));
+		node.children(("pronoun", self.pronouns.iter().sorted()));
+		node.child(("pronoun", &self.custom_pronouns, OmitIfEmpty));
 		if self.age != 0 {
-			node.push_child_t(("age", &self.age));
+			node.child(("age", &self.age));
 		}
 		if self.height != 0 {
-			node.push_child_t(("height", &self.height));
+			node.child(("height", &self.height));
 		}
 		if self.weight != 0 {
-			node.push_child_t(("weight", &self.weight));
+			node.child(("weight", &self.weight));
 		}
-		node.push_child((
+		node.child((
 			{
 				let mut node = NodeBuilder::default();
 				for (kind, items) in &self.personality {
-					node.push_children_t((kind.node_id(), items.iter()));
+					node.children((kind.node_id(), items.iter()));
 				}
 				node.build("personality")
 			},
 			OmitIfEmpty,
 		));
 		if !self.appearance.is_empty() {
-			node.push_child_t(("appearance", &self.appearance));
+			node.child(("appearance", &self.appearance));
 		}
 		node
 	}

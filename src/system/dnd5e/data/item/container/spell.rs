@@ -164,15 +164,15 @@ impl AsKdl for SpellContainer {
 		let mut node = NodeBuilder::default();
 
 		if self.can_transcribe_from {
-			node.push_entry(("transcribe", true));
+			node.entry(("transcribe", true));
 		}
 		if self.can_prepare_from {
-			node.push_entry(("prepare_from", true));
+			node.entry(("prepare_from", true));
 		}
 
-		node.push_child_t(("capacity", &self.capacity, OmitIfEmpty));
-		node.push_child_t(("casting", &self.casting));
-		node.push_children_t(("spell", self.spells.iter()));
+		node.child(("capacity", &self.capacity, OmitIfEmpty));
+		node.child(("casting", &self.casting));
+		node.children(("spell", self.spells.iter()));
 
 		node
 	}
@@ -198,20 +198,20 @@ impl AsKdl for Capacity {
 		let mut node = NodeBuilder::default();
 
 		if let Some(num) = &self.max_count {
-			node.push_entry(*num as i64);
+			node.entry(*num as i64);
 		}
 
-		node.push_child((
+		node.child((
 			{
 				let mut node = NodeBuilder::default();
 				if let Some(num) = &self.rank_min {
-					node.push_entry(("min", *num as i64));
+					node.entry(("min", *num as i64));
 				}
 				if let Some(num) = &self.rank_max {
-					node.push_entry(("max", *num as i64));
+					node.entry(("max", *num as i64));
 				}
 				if let Some(num) = &self.rank_total {
-					node.push_entry(("total", *num as i64));
+					node.entry(("total", *num as i64));
 				}
 				node.build("rank")
 			},
@@ -251,14 +251,14 @@ impl AsKdl for Casting {
 		}
 
 		if self.consume_item {
-			node.push_child_entry("consume_item", true);
+			node.child(("consume_item", true));
 		}
 		if self.consume_spell {
-			node.push_child_entry("consume_spell", true);
+			node.child(("consume_spell", true));
 		}
 
-		node.push_child_t(("save_dc", &self.save_dc));
-		node.push_child_t(("atk_bonus", &self.attack_bonus));
+		node.child(("save_dc", &self.save_dc));
+		node.child(("atk_bonus", &self.attack_bonus));
 
 		node
 	}
@@ -295,14 +295,14 @@ impl AsKdl for ContainerSpell {
 		let mut node = self.spell.as_kdl();
 
 		if let Some(num) = &self.rank {
-			node.push_entry(("rank", *num as i64));
+			node.entry(("rank", *num as i64));
 		}
 
 		if let Some(num) = &self.save_dc {
-			node.push_entry(("save_dc", *num as i64));
+			node.entry(("save_dc", *num as i64));
 		}
 		if let Some(num) = &self.attack_bonus {
-			node.push_entry(("atk_bonus", *num as i64));
+			node.entry(("atk_bonus", *num as i64));
 		}
 
 		node

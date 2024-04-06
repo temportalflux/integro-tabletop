@@ -285,9 +285,9 @@ impl AsKdl for AddProficiency {
 		let mut node = NodeBuilder::default();
 		match self {
 			Self::Ability(ability, level) => {
-				node.append_typed("Ability", ability.as_kdl());
+				node += ("Ability", ability.as_kdl());
 				if *level != proficiency::Level::Full {
-					node.push_entry(("level", level.to_string()));
+					node.entry(("level", level.to_string()));
 				}
 				node
 			}
@@ -297,31 +297,31 @@ impl AsKdl for AddProficiency {
 				level,
 				minimum_level,
 			} => {
-				node.append_typed("Skill", skill.as_kdl());
+				node += ("Skill", skill.as_kdl());
 				if *level != proficiency::Level::Full {
-					node.push_entry(("level", level.to_string()));
+					node.entry(("level", level.to_string()));
 				}
 				if *minimum_level != proficiency::Level::None {
-					node.push_entry(("min", minimum_level.to_string()));
+					node.entry(("min", minimum_level.to_string()));
 				}
 				node
 			}
 			Self::Language(lang_name) => {
-				node.append_typed("Language", lang_name.as_kdl());
+				node += ("Language", lang_name.as_kdl());
 				node
 			}
 			Self::Armor(armor_ext, context) => {
-				node.push_entry_typed(armor_ext.to_string(), "Armor");
+				node.entry_typed("Armor", armor_ext.to_string());
 				if let Some(context) = context {
-					node.push_entry(context.clone());
+					node.entry(context.clone());
 				}
 				node
 			}
 			Self::Weapon(weapon_prof) => node.with_entry_typed(weapon_prof.to_string(), "Weapon"),
 			Self::Tool { tool, level } => {
-				node.append_typed("Tool", tool.as_kdl());
+				node += ("Tool", tool.as_kdl());
 				if *level != proficiency::Level::Full {
-					node.push_entry(("level", level.to_string()));
+					node.entry(("level", level.to_string()));
 				}
 				node
 			}

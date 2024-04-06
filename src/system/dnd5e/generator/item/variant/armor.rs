@@ -47,7 +47,7 @@ impl AsKdl for ArmorExtension {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 		if let Some(formula) = &self.formula {
-			node.push_child_t(("formula", formula));
+			node.child(("formula", formula));
 		}
 		node
 	}
@@ -65,7 +65,7 @@ impl AsKdl for ArmorFormulaExtension {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 		if let Some(base_bonus) = &self.base_bonus {
-			node.push_entry(("base_bonus", *base_bonus as i64));
+			node.entry(("base_bonus", *base_bonus as i64));
 		}
 		node
 	}

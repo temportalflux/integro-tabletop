@@ -203,12 +203,12 @@ impl AsKdl for PickN {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 
-		node.push_entry(self.max_selections() as i64);
+		node.entry(self.max_selections() as i64);
 
-		node.push_entry(("name", self.name.clone()));
+		node.entry(("name", self.name.clone()));
 		if let Some(id) = self.id() {
 			if *id != self.name {
-				node.push_entry(("id", id.into_owned()));
+				node.entry(("id", id.into_owned()));
 			}
 		}
 
@@ -217,7 +217,7 @@ impl AsKdl for PickN {
 				let Some(id_str) = id_path.get_id() else {
 					continue;
 				};
-				node.push_child_entry("cannot_match", id_str.into_owned());
+				node.child(("cannot_match", id_str.into_owned()));
 			}
 		}
 
@@ -226,10 +226,10 @@ impl AsKdl for PickN {
 				continue;
 			};
 			let mut node_option = NodeBuilder::default();
-			node_option.push_entry(name.clone());
-			node_option.push_child_t(("description", &option.description, OmitIfEmpty));
-			node_option.push_children_t(("mutator", option.mutators.iter()));
-			node.push_child(node_option.build("option"));
+			node_option.entry(name.clone());
+			node_option.child(("description", &option.description, OmitIfEmpty));
+			node_option.children(("mutator", option.mutators.iter()));
+			node.child(node_option.build("option"));
 		}
 
 		node

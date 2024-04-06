@@ -163,10 +163,10 @@ impl AsKdl for Resource {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 		match &self.capacity {
-			Value::Fixed(capacity) => node.push_entry(*capacity as i64),
-			capacity => node.push_child_t(("capacity", capacity)),
+			Value::Fixed(capacity) => node.entry(*capacity as i64),
+			capacity => node.child(("capacity", capacity)),
 		}
-		node.push_child_t(("reset", &self.reset));
+		node.child(("reset", &self.reset));
 		node
 	}
 }
@@ -188,13 +188,13 @@ impl AsKdl for ResourceReset {
 		let mut node = NodeBuilder::default();
 		match &self.rest {
 			Value::Fixed(rest_str) if self.rate.is_none() => {
-				node.push_entry(rest_str.as_str());
+				node.entry(rest_str.as_str());
 			}
 			rest_eval => {
-				node.push_child_t(("rest", rest_eval));
+				node.child(("rest", rest_eval));
 			}
 		}
-		node.push_child_t(("rate", &self.rate));
+		node.child(("rate", &self.rate));
 		node
 	}
 }

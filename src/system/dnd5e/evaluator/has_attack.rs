@@ -78,10 +78,10 @@ impl AsKdl for HasAttack {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 		if self.min > 1 {
-			node.push_entry(("min", self.min as i64));
+			node.entry(("min", self.min as i64));
 		}
 		if let Some(max) = &self.max {
-			node.push_entry(("max", *max as i64));
+			node.entry(("max", *max as i64));
 		}
 		node += self.restriction.as_kdl();
 		node

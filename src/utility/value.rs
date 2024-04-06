@@ -139,12 +139,8 @@ where
 impl<V: 'static + AsKdl> AsKdl for Value<Character, V> {
 	fn as_kdl(&self) -> NodeBuilder {
 		match self {
-			Self::Fixed(value) => value.as_kdl(),
-			Self::Evaluated(eval) => {
-				let mut node = eval.as_kdl();
-				node.set_first_entry_ty("Evaluator");
-				node
-			}
+			Self::Fixed(value) => value.as_kdl().without_type(),
+			Self::Evaluated(eval) => eval.as_kdl().with_type("Evaluator"),
 		}
 	}
 }

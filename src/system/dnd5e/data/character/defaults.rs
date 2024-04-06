@@ -54,7 +54,7 @@ impl FromKdl<NodeContext> for DefaultsBlock {
 impl AsKdl for DefaultsBlock {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
-		node.push_children_t(("mutator", self.mutators.iter()));
+		node.children(("mutator", self.mutators.iter()));
 		node
 	}
 }

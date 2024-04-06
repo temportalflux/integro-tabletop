@@ -95,12 +95,12 @@ impl AsKdl for GrantByLevel {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 		if let Some(class_name) = &self.class_name {
-			node.push_entry(("class", class_name.clone()));
+			node.entry(("class", class_name.clone()));
 		}
 		for (level, mutators) in &self.levels {
-			node.push_child({
+			node.child({
 				let mut node = NodeBuilder::default().with_entry(*level as i64);
-				node.push_children_t(("mutator", mutators.iter()));
+				node.children(("mutator", mutators.iter()));
 				node.build("level")
 			})
 		}

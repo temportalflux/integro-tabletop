@@ -278,11 +278,11 @@ impl AsKdl for Persistent {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 
-		node.push_child_t(("description", &self.description));
+		node.child(("description", &self.description));
 		self.settings.export_as_kdl(&mut node);
 
 		for (ability, score) in self.ability_scores {
-			node.push_child(
+			node.child(
 				NodeBuilder::default()
 					.with_entry(ability.long_name())
 					.with_entry(score as i64)
@@ -290,20 +290,20 @@ impl AsKdl for Persistent {
 			);
 		}
 
-		node.push_child_t(("hit_points", &self.hit_points));
-		node.push_child_t(("inspiration", &self.inspiration));
+		node.child(("hit_points", &self.hit_points));
+		node.child(("inspiration", &self.inspiration));
 
-		node.push_child_t(("inventory", &self.inventory, OmitIfEmpty));
-		node.push_child_t(("spells", &self.selected_spells, OmitIfEmpty));
+		node.child(("inventory", &self.inventory, OmitIfEmpty));
+		node.child(("spells", &self.selected_spells, OmitIfEmpty));
 
-		node.push_children_t(("bundle", self.bundles.iter(), OmitIfEmpty));
-		node.push_children_t(("class", self.classes.iter(), OmitIfEmpty));
+		node.children(("bundle", self.bundles.iter(), OmitIfEmpty));
+		node.children(("class", self.classes.iter(), OmitIfEmpty));
 
-		node.push_child((
+		node.child((
 			{
 				let mut node = NodeBuilder::default();
 				for (path, value) in self.selected_values.as_vec() {
-					node.push_child(
+					node.child(
 						NodeBuilder::default()
 							.with_entry({
 								let path_str = path.display().to_string();
@@ -347,10 +347,10 @@ impl FromKdl<NodeContext> for HitPoints {
 impl AsKdl for HitPoints {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
-		node.push_child_t(("current", &self.current));
-		node.push_child_t(("temp", &self.temp));
-		node.push_child_t(("failure_saves", &self.failure_saves));
-		node.push_child_t(("success_saves", &self.success_saves));
+		node.child(("current", &self.current));
+		node.child(("temp", &self.temp));
+		node.child(("failure_saves", &self.failure_saves));
+		node.child(("success_saves", &self.success_saves));
 		node
 	}
 }
@@ -498,7 +498,7 @@ impl Settings {
 	}
 
 	fn export_as_kdl(&self, nodes: &mut NodeBuilder) {
-		nodes.push_child(
+		nodes.child(
 			NodeBuilder::default()
 				.with_entry("currency_auto_exchange")
 				.with_entry(self.currency_auto_exchange)
@@ -548,13 +548,13 @@ impl AsKdl for SelectedSpells {
 			}
 			let mut node_caster = NodeBuilder::default();
 
-			node_caster.push_entry(caster_name.clone());
+			node_caster.entry(caster_name.clone());
 
 			let iter_spells = selected_spells.selections.values();
 			let iter_spells = iter_spells.sorted_by(|a, b| a.rank.cmp(&b.rank).then(a.name.cmp(&b.name)));
-			node_caster.push_children_t(("spell", iter_spells));
+			node_caster.children(("spell", iter_spells));
 
-			node.push_child(node_caster.build("caster"));
+			node.child(node_caster.build("caster"));
 		}
 		node
 	}

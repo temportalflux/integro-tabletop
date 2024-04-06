@@ -56,15 +56,15 @@ impl FromKdl<NodeContext> for ArmorClassFormula {
 impl AsKdl for ArmorClassFormula {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
-		node.push_entry(("base", self.base as i64));
+		node.entry(("base", self.base as i64));
 		for bonus in &self.bonuses {
-			node.push_child({
+			node.child({
 				let mut node = NodeBuilder::default().with_entry_typed(bonus.ability.long_name(), "Ability");
 				if let Some(min) = &bonus.min {
-					node.push_entry(("min", *min as i64));
+					node.entry(("min", *min as i64));
 				}
 				if let Some(max) = &bonus.max {
-					node.push_entry(("max", *max as i64));
+					node.entry(("max", *max as i64));
 				}
 				node.build("bonus")
 			});

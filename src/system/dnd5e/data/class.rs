@@ -129,27 +129,27 @@ impl AsKdl for Class {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 
-		node.push_entry(("name", self.name.clone()));
+		node.entry(("name", self.name.clone()));
 		if self.current_level != 0 {
-			node.push_entry(("level", self.current_level as i64));
+			node.entry(("level", self.current_level as i64));
 		}
 
-		node.push_child_t(("source", &self.id, OmitIfEmpty));
-		node.push_child_t(("description", &self.description, OmitIfEmpty));
-		node.push_child_t(("hit-die", &self.hit_die.to_string()));
-		node.push_children_t(("mutator", self.mutators.iter()));
+		node.child(("source", &self.id, OmitIfEmpty));
+		node.child(("description", &self.description, OmitIfEmpty));
+		node.child(("hit-die", &self.hit_die.to_string()));
+		node.children(("mutator", &self.mutators));
 
 		for (idx, level) in self.levels.iter().enumerate() {
 			let level_node = level.as_kdl();
 			if level_node.is_empty() {
 				continue;
 			}
-			node.push_child(
-				NodeBuilder::default()
-					.with_entry((idx + 1) as i64)
-					.with_extension(level_node)
-					.build("level"),
-			);
+			node.child(("level", {
+				let mut node = NodeBuilder::default();
+				node.entry((idx + 1) as i64);
+				node += level_node;
+				node
+			}));
 		}
 
 		node
@@ -196,7 +196,7 @@ impl FromKdl<NodeContext> for Level {
 impl AsKdl for Level {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
-		node.push_children_t(("mutator", self.mutators.iter()));
+		node.children(("mutator", self.mutators.iter()));
 		node
 	}
 }
@@ -329,23 +329,23 @@ impl AsKdl for Subclass {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 
-		node.push_entry(("class", self.class_name.clone()));
-		node.push_entry(("name", self.name.clone()));
-		node.push_child_t(("source", &self.id, OmitIfEmpty));
-		node.push_child_t(("description", &self.description, OmitIfEmpty));
-		node.push_children_t(("mutator", self.mutators.iter()));
+		node.entry(("class", self.class_name.clone()));
+		node.entry(("name", self.name.clone()));
+		node.child(("source", &self.id, OmitIfEmpty));
+		node.child(("description", &self.description, OmitIfEmpty));
+		node.children(("mutator", &self.mutators));
 
 		for (idx, level) in self.levels.iter().enumerate() {
 			let level_node = level.as_kdl();
 			if level_node.is_empty() {
 				continue;
 			}
-			node.push_child(
-				NodeBuilder::default()
-					.with_entry((idx + 1) as i64)
-					.with_extension(level_node)
-					.build("level"),
-			);
+			node.child(("level", {
+				let mut node = NodeBuilder::default();
+				node.entry((idx + 1) as i64);
+				node += level_node;
+				node
+			}));
 		}
 
 		node

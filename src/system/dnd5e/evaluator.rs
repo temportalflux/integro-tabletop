@@ -47,9 +47,10 @@ pub(crate) mod test {
 			}
 
 			fn as_kdl<E: crate::system::Evaluator>(data: &E) -> crate::kdl_ext::NodeBuilder {
-				crate::kdl_ext::NodeBuilder::default()
-					.with_entry(data.get_id())
-					.with_extension(data.as_kdl())
+				let mut node = crate::kdl_ext::NodeBuilder::default();
+				node.entry(data.get_id());
+				node += data.as_kdl();
+				node
 			}
 		};
 	}

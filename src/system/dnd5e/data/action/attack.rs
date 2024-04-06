@@ -50,12 +50,12 @@ impl AsKdl for Attack {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 		if let Some(classification) = &self.classification {
-			node.push_entry(("class", classification.clone()));
+			node.entry(("class", classification.clone()));
 		}
-		node.push_child_t(("kind", &self.kind));
-		node.push_child_t(("check", &self.check));
-		node.push_child_t(("area_of_effect", &self.area_of_effect));
-		node.push_child_t(("damage", &self.damage));
+		node.child(("kind", &self.kind));
+		node.child(("check", &self.check));
+		node.child(("area_of_effect", &self.area_of_effect));
+		node.child(("damage", &self.damage));
 		node
 	}
 }

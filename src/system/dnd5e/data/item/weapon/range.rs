@@ -28,13 +28,13 @@ impl FromKdl<NodeContext> for Range {
 impl AsKdl for Range {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
-		node.push_entry(self.short_range as i64);
-		node.push_entry(self.long_range as i64);
+		node.entry(self.short_range as i64);
+		node.entry(self.long_range as i64);
 		if self.requires_ammunition {
-			node.push_child(NodeBuilder::default().build("ammunition"));
+			node.child(NodeBuilder::default().build("ammunition"));
 		}
 		if self.requires_loading {
-			node.push_child(NodeBuilder::default().build("loading"));
+			node.child(NodeBuilder::default().build("loading"));
 		}
 		node
 	}

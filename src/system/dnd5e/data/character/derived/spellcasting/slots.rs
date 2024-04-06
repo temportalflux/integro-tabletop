@@ -138,25 +138,25 @@ impl AsKdl for Slots {
 				multiclass_half_caster,
 				slots_capacity,
 			} => {
-				node.push_entry("Standard");
+				node.entry("Standard");
 				if *multiclass_half_caster {
-					node.push_entry(("multiclass", "Half"));
+					node.entry(("multiclass", "Half"));
 				}
 				for (rank, capacity) in Self::transpose_reduce_capacity(slots_capacity) {
 					let mut node_rank = NodeBuilder::default();
-					node_rank.push_entry(rank as i64);
+					node_rank.entry(rank as i64);
 					for (level, amount) in capacity {
 						if amount == 0 {
 							continue;
 						}
-						node_rank.push_child(
+						node_rank.child(
 							NodeBuilder::default()
 								.with_entry(level as i64)
 								.with_entry(amount as i64)
 								.build("level"),
 						);
 					}
-					node.push_child(node_rank.build("rank"));
+					node.child(node_rank.build("rank"));
 				}
 				node
 			}
@@ -164,9 +164,9 @@ impl AsKdl for Slots {
 				reset_on,
 				slots_capacity,
 			} => {
-				node.push_entry("Bonus");
+				node.entry("Bonus");
 				if *reset_on != Rest::Long {
-					node.push_entry(("reset_on", reset_on.to_string()));
+					node.entry(("reset_on", reset_on.to_string()));
 				}
 				for (level, ranks) in slots_capacity {
 					// Ignore reserializing any levels whose ranks match the prev level
@@ -175,19 +175,19 @@ impl AsKdl for Slots {
 					}
 
 					let mut node_level = NodeBuilder::default();
-					node_level.push_entry(*level as i64);
+					node_level.entry(*level as i64);
 					for (rank, amount) in ranks {
 						if *amount == 0 {
 							continue;
 						}
-						node_level.push_child(
+						node_level.child(
 							NodeBuilder::default()
 								.with_entry(*rank as i64)
 								.with_entry(*amount as i64)
 								.build("rank"),
 						);
 					}
-					node.push_child(node_level.build("level"));
+					node.child(node_level.build("level"));
 				}
 				node
 			}

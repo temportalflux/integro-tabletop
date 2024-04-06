@@ -54,7 +54,7 @@ impl FromKdl<NodeContext> for Speed {
 impl AsKdl for Speed {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
-		node.push_entry(self.name.clone());
+		node.entry(self.name.clone());
 		node += self.argument.as_kdl();
 		node
 	}

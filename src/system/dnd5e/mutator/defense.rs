@@ -130,13 +130,11 @@ impl FromKdl<NodeContext> for AddDefense {
 impl AsKdl for AddDefense {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
-		node.push_entry(self.defense.to_string());
+		node.entry(self.defense.to_string());
 		if let Some(damage_type) = &self.damage_type {
-			node.append_typed("DamageType", damage_type.as_kdl());
+			node += ("DamageType", damage_type.as_kdl());
 		}
-		if let Some(context) = &self.context {
-			node.push_entry(("context", context.clone()));
-		}
+		node.entry(("context", self.context.clone()));
 		node
 	}
 }

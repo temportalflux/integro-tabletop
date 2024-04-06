@@ -138,16 +138,12 @@ impl AsKdl for ApplyIf {
 		// - are evaluating only 1 criteria
 		// - require all n-criteria
 		if self.op != LogicOp::All || self.criteria.len() > 1 {
-			node.push_entry(self.op.to_string());
+			node.entry(self.op.to_string());
 		}
 		for criteria in &self.criteria {
-			node.push_child({
-				let mut node = criteria.as_kdl();
-				node.set_first_entry_ty("Evaluator");
-				node.build("criteria")
-			});
+			node.child(("criteria", criteria.as_kdl().with_type("Evaluator")));
 		}
-		node.push_children_t(("mutator", self.mutators.iter()));
+		node.children(("mutator", &self.mutators));
 		node
 	}
 }

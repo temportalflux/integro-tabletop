@@ -193,40 +193,40 @@ impl crate::kdl_ext::AsKdl for AttackQuery {
 
 		if !self.weapon_kind.is_empty() {
 			let kinds = self.weapon_kind.iter().sorted();
-			node.push_child({
+			node.child({
 				let mut node = NodeBuilder::default();
 				for kind in kinds {
-					node.push_entry(kind.to_string());
+					node.entry(kind.to_string());
 				}
 				node.build("weapon")
 			});
 		}
 		if !self.attack_kind.is_empty() {
 			let kinds = self.attack_kind.iter().sorted();
-			node.push_child({
+			node.child({
 				let mut node = NodeBuilder::default();
 				for kind in kinds {
-					node.push_entry(kind.to_string());
+					node.entry(kind.to_string());
 				}
 				node.build("attack")
 			});
 		}
 		if !self.ability.is_empty() {
 			let abilities = self.ability.iter().sorted();
-			node.push_child({
+			node.child({
 				let mut node = NodeBuilder::default();
 				for ability in abilities {
-					node.push_entry(ability.to_string());
+					node.entry(ability.to_string());
 				}
 				node.build("ability")
 			});
 		}
 
 		for (property, required) in &self.properties {
-			node.push_child(property.as_kdl().with_entry(*required).build("property"));
+			node.child(property.as_kdl().with_entry(*required).build("property"));
 		}
 
-		node.push_children_t(("class", self.classification.iter().sorted()));
+		node.children(("class", self.classification.iter().sorted()));
 
 		node
 	}

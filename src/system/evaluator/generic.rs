@@ -65,8 +65,9 @@ where
 
 impl<C, V> AsKdl for Generic<C, V> {
 	fn as_kdl(&self) -> NodeBuilder {
-		NodeBuilder::default()
-			.with_entry(self.0.get_id())
-			.with_extension(self.0.as_kdl())
+		let mut node = NodeBuilder::default();
+		node.entry(self.0.get_id());
+		node += self.0.as_kdl();
+		node
 	}
 }

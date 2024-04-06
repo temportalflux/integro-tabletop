@@ -74,7 +74,7 @@ impl FromKdl<NodeContext> for AddToActionBudget {
 impl AsKdl for AddToActionBudget {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
-		node.push_entry(self.action_kind.to_string());
+		node.entry(self.action_kind.to_string());
 		node += self.amount.as_kdl();
 		node
 	}

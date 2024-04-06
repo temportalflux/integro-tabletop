@@ -30,8 +30,8 @@ impl FromKdl<NodeContext> for Restriction {
 impl AsKdl for Restriction {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
-		node.push_children_t(("tag", self.tags.iter()));
-		node.push_child_t(("weapon", &self.weapon));
+		node.children(("tag", self.tags.iter()));
+		node.child(("weapon", &self.weapon));
 		node
 	}
 }
@@ -51,10 +51,10 @@ impl AsKdl for Weapon {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 		if let Some(kind) = &self.kind {
-			node.push_entry(("kind", kind.to_string()));
+			node.entry(("kind", kind.to_string()));
 		}
 		if let Some(has_melee) = &self.has_melee {
-			node.push_entry(("has_melee", *has_melee));
+			node.entry(("has_melee", *has_melee));
 		}
 		node
 	}

@@ -118,21 +118,21 @@ impl FromKdl<NodeContext> for AbilityScoreChange {
 impl AsKdl for AbilityScoreChange {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
-		node.push_child_t(("ability", &self.ability));
+		node.child(("ability", &self.ability));
 		for operation in &self.operations {
 			match operation {
 				AbilityScoreOp::Bonus { value, max_total_score } => {
-					node.push_child({
+					node.child({
 						let mut node = NodeBuilder::default();
-						node.push_entry(*value as i64);
+						node.entry(*value as i64);
 						if let Some(score) = max_total_score {
-							node.push_entry(("max-total", *score as i64));
+							node.entry(("max-total", *score as i64));
 						}
 						node.build("bonus")
 					});
 				}
 				AbilityScoreOp::IncreaseMax { value } => {
-					node.push_child(NodeBuilder::default().with_entry(*value as i64).build("increase-max"));
+					node.child(NodeBuilder::default().with_entry(*value as i64).build("increase-max"));
 				}
 			}
 		}

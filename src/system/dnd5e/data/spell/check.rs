@@ -36,13 +36,13 @@ impl AsKdl for Check {
 			}),
 			Self::SavingThrow(ability, dc) => {
 				let mut node = NodeBuilder::default().with_entry("SavingThrow");
-				node.push_entry({
+				node.entry({
 					let mut entry = kdl::KdlEntry::new(ability.long_name());
 					entry.set_ty("Ability");
 					entry
 				});
 				if let Some(dc) = dc {
-					node.push_entry(("dc", *dc as i64));
+					node.entry(("dc", *dc as i64));
 				}
 				node
 			}

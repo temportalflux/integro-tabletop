@@ -37,13 +37,13 @@ impl AsKdl for Kind {
 		let mut node = NodeBuilder::default();
 		match self {
 			Self::Simple { count } => {
-				node.push_entry("Simple");
+				node.entry("Simple");
 				if *count > 1 {
-					node.push_entry(("count", *count as i64));
+					node.entry(("count", *count as i64));
 				}
 			}
 			Self::Equipment(equipment) => {
-				node.push_entry("Equipment");
+				node.entry("Equipment");
 				node += equipment.as_kdl();
 			}
 		}

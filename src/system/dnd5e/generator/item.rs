@@ -107,10 +107,10 @@ impl FromKdl<NodeContext> for ItemGenerator {
 impl AsKdl for ItemGenerator {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
-		node.push_entry(self.short_id.as_str());
-		node.push_child_t(("source", &self.id, OmitIfEmpty));
-		node.push_child_t(("filter", &self.filter));
-		node.push_children_t(("variant", self.variants.iter(), OmitIfEmpty));
+		node.entry(self.short_id.as_str());
+		node.child(("source", &self.id, OmitIfEmpty));
+		node.child(("filter", &self.filter));
+		node.children(("variant", self.variants.iter(), OmitIfEmpty));
 		node
 	}
 }

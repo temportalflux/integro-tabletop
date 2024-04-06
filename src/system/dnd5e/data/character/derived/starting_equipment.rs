@@ -44,7 +44,7 @@ impl StartingEquipment {
 	pub fn to_kdl_vec(entries: &Vec<Self>) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 		for entry in entries {
-			node.push_child_t((entry.node_name(), entry));
+			node.child((entry.node_name(), entry));
 		}
 		node
 	}
@@ -77,14 +77,15 @@ impl AsKdl for StartingEquipment {
 		match self {
 			Self::Currency(wallet) => wallet.as_kdl(),
 			Self::IndirectItem(indirect) => indirect.as_kdl(),
-			Self::SelectItem(filter) => NodeBuilder::default()
-				.with_entry("Select")
-				.with_extension(filter.as_kdl()),
+			Self::SelectItem(filter) => {
+				let mut node = NodeBuilder::default();
+				node.entry("Select");
+				node += filter.as_kdl();
+				node
+			},
 			Self::Group { entries, pick } => {
 				let mut node = StartingEquipment::to_kdl_vec(entries);
-				if let Some(amt) = pick {
-					node.push_entry(("pick", *amt as i64));
-				}
+				node.entry(("pick", pick.as_ref().map(|i| *i as i64)));
 				node
 			}
 		}
@@ -121,13 +122,16 @@ impl AsKdl for IndirectItem {
 					node += kdl;
 				}
 				if *count > 1 {
-					node.push_entry(*count as i64);
+					node.entry(*count as i64);
 				}
 				node
 			}
-			Self::Custom(item) => NodeBuilder::default()
-				.with_entry("Custom")
-				.with_extension(item.as_kdl()),
+			Self::Custom(item) => {
+				let mut node = NodeBuilder::default();
+				node.entry("Custom");
+				node += item.as_kdl();
+				node
+			},
 		}
 	}
 }

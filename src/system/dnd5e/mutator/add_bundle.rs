@@ -189,15 +189,15 @@ impl AsKdl for AddBundle {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 		if self.propogate_parent {
-			node.push_entry(("propogate_parent", true));
+			node.entry(("propogate_parent", true));
 		}
 		if self.selector.object_category != Bundle::id() {
-			node.push_entry(("object", self.selector.object_category.as_str()));
+			node.entry(("object", self.selector.object_category.as_str()));
 		}
 		if self.selector.amount != Value::Fixed(1) {
-			node.push_child_t(("amount", &self.selector.amount));
+			node.child(("amount", &self.selector.amount));
 		}
-		node.push_child_t(("filter", &self.filter, OmitIfEmpty));
+		node.child(("filter", &self.filter, OmitIfEmpty));
 		node
 	}
 }
@@ -207,13 +207,13 @@ impl AsKdl for MetadataObject {
 		for (key, entry) in &self.0 {
 			match entry {
 				MetadataEntry::Object(object) => {
-					node.push_child_t((key.as_str(), object));
+					node.child((key.as_str(), object));
 				}
 				MetadataEntry::Filter(values) => {
 					if values.len() == 1 {
-						node.push_entry((key.as_str(), values[0].as_str()));
+						node.entry((key.as_str(), values[0].as_str()));
 					} else {
-						node.push_children_t((key.as_str(), values.iter()));
+						node.children((key.as_str(), values.iter()));
 					}
 				}
 			}

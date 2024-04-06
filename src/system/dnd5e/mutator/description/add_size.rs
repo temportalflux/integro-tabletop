@@ -109,16 +109,16 @@ impl FromKdl<NodeContext> for AddSize {
 impl AsKdl for AddSize {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
-		node.push_child((
+		node.child((
 			{
 				let mut node = NodeBuilder::default();
 				for formula in &self.height {
 					match formula {
 						FormulaComponent::Base(value) => {
-							node.push_entry(("base", *value as i64));
+							node.entry(("base", *value as i64));
 						}
 						FormulaComponent::Bonus(roll) => {
-							node.push_entry(("bonus", roll.to_string()));
+							node.entry(("bonus", roll.to_string()));
 						}
 						FormulaComponent::WeightMultiplier(_) => {}
 					}
@@ -127,19 +127,19 @@ impl AsKdl for AddSize {
 			},
 			OmitIfEmpty,
 		));
-		node.push_child((
+		node.child((
 			{
 				let mut node = NodeBuilder::default();
 				for formula in &self.weight {
 					match formula {
 						FormulaComponent::Base(value) => {
-							node.push_entry(("base", *value as i64));
+							node.entry(("base", *value as i64));
 						}
 						FormulaComponent::Bonus(roll) => {
-							node.push_entry(("bonus", roll.to_string()));
+							node.entry(("bonus", roll.to_string()));
 						}
 						FormulaComponent::WeightMultiplier(roll) => {
-							node.push_entry(("multiplier", roll.to_string()));
+							node.entry(("multiplier", roll.to_string()));
 						}
 					}
 				}

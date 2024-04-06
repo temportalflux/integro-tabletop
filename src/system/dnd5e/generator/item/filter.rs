@@ -105,30 +105,30 @@ impl AsKdl for Filter {
 		let mut node = NodeBuilder::default();
 
 		for tag in &self.tags {
-			node.push_child_t(("tag", tag));
+			node.child(("tag", tag));
 		}
 
 		if let Some(armor_kinds) = &self.armor {
 			let mut node_armor = NodeBuilder::default();
 			if armor_kinds.is_empty() {
-				node_armor.push_entry("Any");
+				node_armor.entry("Any");
 			} else {
 				for kind in armor_kinds {
-					node_armor.push_entry(kind.to_string());
+					node_armor.entry(kind.to_string());
 				}
 			}
-			node.push_child(node_armor.build("armor"));
+			node.child(node_armor.build("armor"));
 		}
 
 		if !self.rarity.is_empty() {
 			let mut node_rarity = NodeBuilder::default();
 			for rarity in &self.rarity {
-				node_rarity.push_entry(match rarity {
+				node_rarity.entry(match rarity {
 					None => "None".to_owned(),
 					Some(rarity) => rarity.to_string(),
 				});
 			}
-			node.push_child(node_rarity.build("rarity"));
+			node.child(node_rarity.build("rarity"));
 		}
 
 		node

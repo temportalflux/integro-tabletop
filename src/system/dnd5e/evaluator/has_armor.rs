@@ -101,10 +101,10 @@ impl AsKdl for HasArmorEquipped {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 		if self.inverted {
-			node.push_entry(("inverted", true));
+			node.entry(("inverted", true));
 		}
 		for armor_ext in &self.kinds {
-			node.push_child_entry("kind", armor_ext.to_string());
+			node.child(("kind", armor_ext.to_string()));
 		}
 		node
 	}

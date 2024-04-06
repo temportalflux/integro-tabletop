@@ -61,15 +61,15 @@ impl FromKdl<NodeContext> for Damage {
 impl AsKdl for Damage {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = self.amount.as_kdl();
-		node.push_entry_typed(self.damage_type.display_name(), "DamageType");
+		node.entry_typed("DamageType", self.damage_type.display_name());
 		if self.base != 0 {
-			node.push_entry(("base", self.base as i64));
+			node.entry(("base", self.base as i64));
 		}
 		if self.include_ability_modifier {
-			node.push_entry(("ability", true));
+			node.entry(("ability", true));
 		}
 		if let Some(upcast) = &self.upcast {
-			node.push_entry(("upcast", upcast.to_string()));
+			node.entry(("upcast", upcast.to_string()));
 		}
 		node
 	}

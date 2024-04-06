@@ -69,15 +69,15 @@ where
 		match self {
 			Self::Level { class_name, level_map } => {
 				let mut node = NodeBuilder::default();
-				node.push_entry("Level");
+				node.entry("Level");
 				if let Some(class_name) = class_name {
-					node.push_entry(("class", class_name.clone()));
+					node.entry(("class", class_name.clone()));
 				}
 				if !level_map.is_empty() {
 					for (threshold, value) in level_map {
-						node.push_child({
+						node.child({
 							let mut node = NodeBuilder::default();
-							node.push_entry(*threshold as i64);
+							node.entry(*threshold as i64);
 							if let Some(value) = value {
 								node += value.as_kdl();
 							}

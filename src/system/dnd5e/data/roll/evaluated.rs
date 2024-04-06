@@ -81,8 +81,8 @@ impl AsKdl for EvaluatedRoll {
 			} => node.with_entry_typed(format!("{amt}d{die}"), "Roll"),
 			// While this one puts the amount and die into child nodes for evaluator serialization
 			Self { amount, die } => {
-				node.push_child_t(("amount", amount));
-				node.push_child_t(("die", die));
+				node.child(("amount", amount));
+				node.child(("die", die));
 				node
 			}
 		}
@@ -141,7 +141,7 @@ impl AsKdl for EvaluatedRollSet {
 					fixed_roll_set.push(Roll::from((amount.unsigned_abs(), die)));
 				}
 				_ => {
-					node.push_child_t(("roll", evaluated_roll));
+					node.child(("roll", evaluated_roll));
 				}
 			}
 		}
@@ -149,7 +149,7 @@ impl AsKdl for EvaluatedRollSet {
 			let rolls = fixed_roll_set.rolls().into_iter();
 			let mut rolls = rolls.map(|roll| roll.to_string());
 			let rolls = rolls.join("+");
-			node.push_entry(rolls);
+			node.entry(rolls);
 		}
 		node
 	}

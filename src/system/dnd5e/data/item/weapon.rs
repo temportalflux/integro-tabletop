@@ -165,11 +165,11 @@ impl FromKdl<NodeContext> for Weapon {
 impl AsKdl for Weapon {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
-		node.push_entry(self.kind.to_string());
-		node.push_entry(("class", self.classification.clone()));
-		node.push_child_t(("damage", &self.damage));
-		node.push_children_t(("property", self.properties.iter()));
-		node.push_child_t(("range", &self.range));
+		node.entry(self.kind.to_string());
+		node.entry(("class", self.classification.clone()));
+		node.child(("damage", &self.damage));
+		node.children(("property", self.properties.iter()));
+		node.child(("range", &self.range));
 		node
 	}
 }

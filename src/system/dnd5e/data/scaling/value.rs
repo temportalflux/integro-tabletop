@@ -53,11 +53,7 @@ where
 	fn as_kdl(&self) -> NodeBuilder {
 		match self {
 			Self::Fixed(v) => v.as_kdl().without_type(),
-			Self::Scaled(basis) => {
-				let mut node = basis.as_kdl();
-				node.set_first_entry_ty("Scaled");
-				node
-			}
+			Self::Scaled(basis) => basis.as_kdl().with_type("Scaled"),
 		}
 	}
 }

@@ -203,9 +203,9 @@ impl AsKdl for Item {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 
-		node.push_entry(("name", self.name.clone()));
-		node.push_child_t(("source", &self.id, OmitIfEmpty));
-		node.push_child_t(("rarity", &self.rarity.as_ref().map(Rarity::to_string)));
+		node.entry(("name", self.name.clone()));
+		node.child(("source", &self.id, OmitIfEmpty));
+		node.child(("rarity", &self.rarity.as_ref().map(Rarity::to_string)));
 
 		if self.weight > 0.0 {
 			let mut stack_weight = self.weight as f64;
@@ -213,32 +213,32 @@ impl AsKdl for Item {
 				stack_weight *= *count as f64;
 			}
 			let stack_weight = (stack_weight * 1000.0).round() / 1000.0;
-			node.push_entry(("weight", stack_weight));
+			node.entry(("weight", stack_weight));
 		}
 
-		node.push_child_t(("worth", &self.worth, OmitIfEmpty));
-		node.push_children_t(("tag", self.tags.iter()));
-		node.push_child_t(("description", &self.description, OmitIfEmpty));
-		node.push_child_t(("notes", &self.notes));
+		node.child(("worth", &self.worth, OmitIfEmpty));
+		node.children(("tag", self.tags.iter()));
+		node.child(("description", &self.description, OmitIfEmpty));
+		node.child(("notes", &self.notes));
 
 		if self.kind != Kind::default() {
-			node.push_child_t(("kind", &self.kind));
+			node.child(("kind", &self.kind));
 		}
 
 		if let Some(items) = &self.items {
 			let templates = {
 				let mut node = NodeBuilder::default();
-				node.push_children_t(("item", self.item_refs.iter()));
+				node.children(("item", self.item_refs.iter()));
 				node.build("templates")
 			};
-			node.push_child({
+			node.child({
 				let mut node = items.as_kdl();
-				node.push_child((templates, OmitIfEmpty));
+				node.child((templates, OmitIfEmpty));
 				node.build("items")
 			});
 		}
 
-		node.push_child_t(("spells", &self.spells));
+		node.child(("spells", &self.spells));
 
 		node
 	}

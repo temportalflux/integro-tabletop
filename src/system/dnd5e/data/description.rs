@@ -120,8 +120,8 @@ impl AsKdl for Info {
 		}
 
 		let mut node = NodeBuilder::default();
-		node.push_child_t(("short", &self.short));
-		node.push_children_t(("section", self.sections.iter()));
+		node.child(("short", &self.short));
+		node.children(("section", self.sections.iter()));
 		node += self.format_args.as_kdl();
 		node
 	}
@@ -235,11 +235,11 @@ impl AsKdl for Section {
 		if let Some(title) = &self.title {
 			let mut entry = kdl::KdlEntry::new(title.clone());
 			entry.set_ty("Title");
-			node.push_entry(entry);
+			node.entry(entry);
 		}
 
 		node += self.content.as_kdl();
-		node.push_children_t(("section", self.children.iter(), OmitIfEmpty));
+		node.children(("section", self.children.iter(), OmitIfEmpty));
 		node += self.format_args.as_kdl();
 		node
 	}
@@ -317,27 +317,27 @@ impl AsKdl for SectionContent {
 		let mut node = NodeBuilder::default();
 		match self {
 			Self::Body(content) => {
-				node.push_entry(content.clone());
+				node.entry(content.clone());
 			}
 			Self::Table {
 				column_count: _,
 				headers,
 				rows,
 			} => {
-				node.push_entry(("table", true));
-				node.push_child(headers.as_ref().map(|headers| {
+				node.entry(("table", true));
+				node.child(headers.as_ref().map(|headers| {
 					let mut node = NodeBuilder::default();
 					for name in headers {
-						node.push_entry(name.clone());
+						node.entry(name.clone());
 					}
 					node.build("headers")
 				}));
 				for row in rows {
 					let mut row_node = NodeBuilder::default();
 					for col in row {
-						row_node.push_entry(col.clone());
+						row_node.entry(col.clone());
 					}
-					node.push_child(row_node.build("row"));
+					node.child(row_node.build("row"));
 				}
 			}
 			Self::Selectors(_) => {}
@@ -447,20 +447,22 @@ impl AsKdl for FormatArgs {
 			let mut arg_node = NodeBuilder::default().with_entry(key.clone());
 			let eval_kdl = match arg {
 				Arg::Number(eval, signed) => {
-					let mut entry = kdl::KdlEntry::new("int");
-					if *signed {
-						entry.set_ty("Signed");
-					}
-					arg_node.push_entry(entry);
+					arg_node.entry({
+						let mut entry = kdl::KdlEntry::new("int");
+						if *signed {
+							entry.set_ty("Signed");
+						}
+						entry
+					});
 					eval.as_kdl()
 				}
 				Arg::String(eval) => {
-					arg_node.push_entry("str");
+					arg_node.entry("str");
 					eval.as_kdl()
 				}
 			};
-			arg_node.append_typed("Evaluator", eval_kdl);
-			node.push_child(arg_node.build("format-arg"));
+			arg_node += ("Evaluator", eval_kdl);
+			node.child(("format-arg", arg_node));
 		}
 
 		node

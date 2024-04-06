@@ -28,7 +28,7 @@ impl AsKdl for Duration {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = self.kind.as_kdl();
 		if self.concentration {
-			node.push_entry(("concentration", true));
+			node.entry(("concentration", true));
 		}
 		node
 	}

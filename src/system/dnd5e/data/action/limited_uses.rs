@@ -124,17 +124,17 @@ impl AsKdl for LimitedUses {
 		let mut node = NodeBuilder::default();
 		match self {
 			Self::Usage(use_counter) => {
-				node.push_child_t(("max_uses", &use_counter.capacity));
+				node.child(("max_uses", &use_counter.capacity));
 				if let Some(reset) = &use_counter.reset {
-					node.push_child_t(("reset_on", &reset.rest));
+					node.child(("reset_on", &reset.rest));
 				}
 				node
 			}
 			Self::Consumer { resource, cost } => {
 				let resource = resource.get_id().map(std::borrow::Cow::into_owned).unwrap_or_default();
-				node.push_child_entry("resource", resource);
+				node.child(("resource", resource));
 				if *cost > 1 {
-					node.push_child_t(("cost", cost));
+					node.child(("cost", cost));
 				}
 				node
 			}
