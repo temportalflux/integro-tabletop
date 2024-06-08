@@ -17,6 +17,7 @@ use kdlize::{
 	ext::{DocumentExt, EntryExt},
 	AsKdl, FromKdl, NodeBuilder,
 };
+use num_traits::Signed;
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum Modify {
@@ -36,7 +37,8 @@ pub enum Modify {
 		context: Option<String>,
 	},
 	Initiative {
-		modifier: Modifier,
+		modifier: Option<Modifier>,
+		bonus: Option<i64>,
 		context: Option<String>,
 	},
 	ArmorClass {
@@ -186,8 +188,15 @@ impl Mutator for Modify {
 					..Default::default()
 				}
 			}
-			Self::Initiative { modifier, context } => {
-				let mut desc = format!("You have {} on initiative checks", modifier.display_name());
+			Self::Initiative { modifier, bonus, context } => {
+				let mut mods = Vec::with_capacity(2);
+				if let Some(modifier) = modifier {
+					mods.push(modifier.display_name().to_owned());
+				}
+				if let Some(bonus) = bonus {
+					mods.push(format!("{}{}", if *bonus >= 0 { "+" } else { "-" }, bonus.abs()));
+				}
+				let mut desc = format!("You have {} on initiative checks", mods.join(" & "));
 				if let Some(ctx) = &context {
 					desc.push_str(" ");
 					desc.push_str(ctx.as_str());
@@ -431,9 +440,10 @@ impl FromKdl<NodeContext> for Modify {
 			},
 			None => match node.next_str_req()? {
 				"Initiative" => {
-					let modifier = node.next_str_req_t()?;
+					let modifier = node.get_str_opt_t::<Modifier>("modifier")?;
+					let bonus = node.get_i64_opt("bonus")?;
 					let context = node.get_str_opt("context")?.map(str::to_owned);
-					Ok(Self::Initiative { modifier, context })
+					Ok(Self::Initiative { modifier, bonus, context })
 				}
 				"ArmorClass" => {
 					let bonus = node.next_i64_req()? as i32;
@@ -509,9 +519,10 @@ impl AsKdl for Modify {
 				node.entry(modifier.to_string());
 				node.entry(("context", context.clone()));
 			}
-			Self::Initiative { modifier, context } => {
+			Self::Initiative { modifier, bonus, context } => {
 				node.entry("Initiative");
-				node.entry(modifier.to_string());
+				node.entry(("modifier", modifier.as_ref().map(Modifier::to_string)));
+				node.entry(("bonus", *bonus));
 				node.entry(("context", context.clone()));
 			}
 			Self::AttackRoll {
@@ -795,9 +806,10 @@ mod test {
 
 			#[test]
 			fn noctx() -> anyhow::Result<()> {
-				let doc = "mutator \"modify\" \"Initiative\" \"Advantage\"";
+				let doc = "mutator \"modify\" \"Initiative\" modifier=\"Advantage\"";
 				let data = Modify::Initiative {
-					modifier: Modifier::Advantage,
+					modifier: Some(Modifier::Advantage),
+					bonus: None,
 					context: None,
 				};
 				assert_eq_askdl!(&data, doc);
@@ -807,9 +819,10 @@ mod test {
 
 			#[test]
 			fn with_context() -> anyhow::Result<()> {
-				let doc = "mutator \"modify\" \"Initiative\" \"Advantage\" context=\"when surprised\"";
+				let doc = "mutator \"modify\" \"Initiative\" modifier=\"Advantage\" context=\"when surprised\"";
 				let data = Modify::Initiative {
-					modifier: Modifier::Advantage,
+					modifier: Some(Modifier::Advantage),
+					bonus: None,
 					context: Some("when surprised".into()),
 				};
 				assert_eq_askdl!(&data, doc);

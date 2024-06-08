@@ -43,7 +43,6 @@ columnSorting:
 
 ## Pending
 
-- [initiative-modifier-needs-to-be-implemented](tasks/initiative-modifier-needs-to-be-implemented.md)
 - [spellcasting-filter-queries-can-specify-specific-spell-ids](tasks/spellcasting-filter-queries-can-specify-specific-spell-ids.md)
 - [speed-based-on-existing-speed](tasks/speed-based-on-existing-speed.md)
 - [add-restore-uses-mutator](tasks/add-restore-uses-mutator.md)
@@ -61,6 +60,7 @@ columnSorting:
 
 ## Done
 
+- [initiative-modifier-needs-to-be-implemented](tasks/initiative-modifier-needs-to-be-implemented.md)
 - [join-bonus-and-modifier-mutators](tasks/join-bonus-and-modifier-mutators.md)
 - [condition-degrees](tasks/condition-degrees.md)
 - [item-charges](tasks/item-charges.md)
