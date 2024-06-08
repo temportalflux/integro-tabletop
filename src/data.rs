@@ -30,19 +30,18 @@ pub fn as_feature_paths_html_custom<'i, I, T, U, FSplit, FRender>(
 	item_as_html: FRender,
 ) -> Option<String>
 where
-	T: 'static,
-	U: 'static,
+	T: 'i,
+	U: 'i,
 	I: Iterator<Item = &'i T>,
-	FSplit: Fn(&'i T) -> (U, &std::path::Path) + 'static,
-	FRender: Fn(U, String) -> String + 'static,
+	FSplit: 'i + Fn(&'i T) -> (U, &'i std::path::Path),
+	FRender: 'i + Fn(U, String) -> String,
 {
-	let data = iter
-		.filter_map(|item| {
-			let (item, path) = split_item(item);
-			crate::data::as_feature_path_text(path).map(|path| (item, path))
-		})
-		.map(|(item, src)| item_as_html(item, src))
-		.collect::<Vec<_>>();
+	let items = iter.filter_map(move |item| {
+		let (item, path) = split_item(item);
+		crate::data::as_feature_path_text(path).map(move |path| (item, path))
+	});
+	let items = items.map(move |(item, src)| item_as_html(item, src));
+	let data = items.collect::<Vec<_>>();
 	match data.is_empty() {
 		true => None,
 		false => Some(data.join("\n")),

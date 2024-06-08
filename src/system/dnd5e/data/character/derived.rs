@@ -114,7 +114,21 @@ impl SavingThrows {
 			Some(ability) => &mut self.by_ability[ability].modifiers,
 			None => &mut self.general_modifiers,
 		}
-		.insert(modifier, (target, source.display.clone()).into());
+		.insert_modifier(modifier, (target, source.display.clone()).into());
+	}
+
+	pub fn add_bonus(
+		&mut self,
+		ability: Option<Ability>,
+		bonus: i64,
+		target: Option<String>,
+		source: &ReferencePath,
+	) {
+		match ability {
+			Some(ability) => &mut self.by_ability[ability].modifiers,
+			None => &mut self.general_modifiers,
+		}
+		.insert_bonus(bonus, target, source.display.clone());
 	}
 
 	pub fn get_prof(&self, ability: Ability) -> &AttributedValue<proficiency::Level> {
@@ -135,14 +149,31 @@ impl SavingThrows {
 			.map(|(ability, saving_throw)| {
 				saving_throw
 					.modifiers
-					.iter_all()
+					.iter_modifiers()
 					.map(move |(modifier, item)| (Some(ability), modifier, item))
 			})
 			.flatten()
 			.chain(
 				self.general_modifiers
-					.iter_all()
+					.iter_modifiers()
 					.map(|(modifier, item)| (None, modifier, item)),
+			)
+	}
+
+	pub fn iter_bonuses(&self) -> impl Iterator<Item = (Option<Ability>, i64, &Option<String>, &PathBuf)> {
+		self.by_ability
+			.iter()
+			.map(|(ability, saving_throw)| {
+				saving_throw
+					.modifiers
+					.iter_bonuses()
+					.map(move |(bonus, context, source)| (Some(ability), *bonus, context, source))
+			})
+			.flatten()
+			.chain(
+				self.general_modifiers
+					.iter_bonuses()
+					.map(|(bonus, context, source)| (None, *bonus, context, source)),
 			)
 	}
 }
@@ -171,37 +202,43 @@ impl ProficiencyModifiers {
 #[derive(Clone, Default, PartialEq, Debug)]
 pub struct ModifierMap {
 	modifiers: EnumMap<Modifier, Vec<ModifierMapItem>>,
+	// TODO: not displayed/used for calculations
+	bonuses: Vec<(i64, Option<String>, PathBuf)>,
 }
-impl<'a> FromIterator<(Modifier, &'a Vec<ModifierMapItem>)> for ModifierMap {
-	fn from_iter<T: IntoIterator<Item = (Modifier, &'a Vec<ModifierMapItem>)>>(iter: T) -> Self {
+impl<'a> FromIterator<(Modifier, &'a ModifierMapItem)> for ModifierMap {
+	fn from_iter<T: IntoIterator<Item = (Modifier, &'a ModifierMapItem)>>(iter: T) -> Self {
 		let modifiers = iter.into_iter().fold(
 			EnumMap::<Modifier, Vec<ModifierMapItem>>::default(),
-			|mut modifiers, (modifier, items)| {
-				modifiers[modifier].extend(items.clone());
+			|mut modifiers, (modifier, item)| {
+				modifiers[modifier].push(item.clone());
 				modifiers
 			},
 		);
-		Self { modifiers }
+		Self { modifiers, bonuses: Vec::new() }
 	}
 }
 impl ModifierMap {
-	pub fn insert(&mut self, modifier: Modifier, item: ModifierMapItem) {
+	pub fn insert_modifier(&mut self, modifier: Modifier, item: ModifierMapItem) {
 		self.modifiers[modifier].push(item);
 	}
-
-	pub fn iter(&self) -> impl Iterator<Item = (Modifier, &Vec<ModifierMapItem>)> {
-		self.modifiers.iter()
+	
+	pub fn insert_bonus(&mut self, value: i64, context: Option<String>, source: PathBuf) {
+		self.bonuses.push((value, context, source));
 	}
 
 	pub fn get(&self, modifier: Modifier) -> &Vec<ModifierMapItem> {
 		&self.modifiers[modifier]
 	}
 
-	pub fn iter_all(&self) -> impl Iterator<Item = (Modifier, &ModifierMapItem)> {
+	pub fn iter_modifiers(&self) -> impl Iterator<Item = (Modifier, &ModifierMapItem)> {
 		self.modifiers
 			.iter()
 			.map(|(modifier, items)| items.iter().map(move |item| (modifier, item)))
 			.flatten()
+	}
+
+	pub fn iter_bonuses(&self) -> impl Iterator<Item = &(i64, Option<String>, PathBuf)> {
+		self.bonuses.iter()
 	}
 }
 #[derive(Clone, Default, PartialEq, Debug)]
@@ -237,7 +274,7 @@ impl Skills {
 			None => &mut self.general_ability_modifiers,
 			Some(ability) => &mut self.specific_ability_modifiers[ability],
 		};
-		modifier_map.insert(modifier, (context, source.display.clone()).into());
+		modifier_map.insert_modifier(modifier, (context, source.display.clone()).into());
 	}
 
 	pub fn add_skill_modifier(
@@ -249,7 +286,19 @@ impl Skills {
 	) {
 		self.skills[skill]
 			.modifiers
-			.insert(modifier, (context, source.display.clone()).into());
+			.insert_modifier(modifier, (context, source.display.clone()).into());
+	}
+
+	pub fn add_skill_bonus(
+		&mut self,
+		skill: Skill,
+		bonus: i64,
+		context: Option<String>,
+		source: &ReferencePath,
+	) {
+		self.skills[skill]
+			.modifiers
+			.insert_bonus(bonus, context, source.display.clone());
 	}
 
 	pub fn proficiency(&self, skill: Skill) -> &AttributedValue<proficiency::Level> {
@@ -260,15 +309,19 @@ impl Skills {
 		&self.skills[skill].modifiers
 	}
 
-	pub fn iter_ability_modifiers(&self, ability: Ability) -> impl Iterator<Item = (Modifier, &Vec<ModifierMapItem>)> {
-		let iter = self.specific_ability_modifiers[ability].iter();
-		let iter = iter.chain(self.general_ability_modifiers.iter());
+	pub fn iter_ability_modifiers(&self, ability: Ability) -> impl Iterator<Item = (Modifier, &ModifierMapItem)> {
+		let iter = self.specific_ability_modifiers[ability].iter_modifiers();
+		let iter = iter.chain(self.general_ability_modifiers.iter_modifiers());
 		iter
 	}
 
-	pub fn iter_skill_modifiers(&self, skill: Skill) -> impl Iterator<Item = (Modifier, &Vec<ModifierMapItem>)> {
+	pub fn iter_skill_modifiers(&self, skill: Skill) -> impl Iterator<Item = (Modifier, &ModifierMapItem)> {
 		let iter = self.iter_ability_modifiers(skill.ability());
-		iter.chain(self.skills[skill].modifiers().iter())
+		iter.chain(self.skills[skill].modifiers().iter_modifiers())
+	}
+
+	pub fn iter_skill_bonuses(&self, skill: Skill) -> impl Iterator<Item = &(i64, Option<String>, PathBuf)> {
+		self.skills[skill].modifiers.iter_bonuses()
 	}
 }
 

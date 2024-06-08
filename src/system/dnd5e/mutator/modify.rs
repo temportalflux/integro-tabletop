@@ -28,7 +28,8 @@ pub enum Modify {
 	},
 	SavingThrow {
 		ability: Option<selector::Value<Character, Ability>>,
-		modifier: Modifier,
+		modifier: Option<Modifier>,
+		bonus: Option<i64>,
 		context: Option<String>,
 	},
 	Skill {
@@ -113,9 +114,18 @@ impl Mutator for Modify {
 			Self::SavingThrow {
 				ability,
 				modifier,
+				bonus,
 				context,
 			} => {
-				let mut desc = format!("You have {} on ", modifier.display_name());
+				let mut mods = Vec::with_capacity(2);
+				if let Some(modifier) = modifier {
+					mods.push(modifier.display_name().to_owned());
+				}
+				if let Some(bonus) = bonus {
+					mods.push(format!("{}{}", if *bonus >= 0 { "+" } else { "-" }, bonus.abs()));
+				}
+
+				let mut desc = format!("You have {} on ", mods.join(" & "));
 				desc.push_str(&match ability {
 					None => format!("saving throws"),
 					Some(selector::Value::Specific(ability)) => format!("{} saving throws", ability.long_name()),
@@ -292,15 +302,23 @@ impl Mutator for Modify {
 			Self::SavingThrow {
 				ability,
 				modifier,
+				bonus,
 				context,
 			} => {
 				let ability = match ability {
 					None => None,
 					Some(ability) => stats.resolve_selector(ability),
 				};
-				stats
-					.saving_throws_mut()
-					.add_modifier(ability, *modifier, context.clone(), parent);
+				if let Some(modifier) = modifier {
+					stats
+						.saving_throws_mut()
+						.add_modifier(ability, *modifier, context.clone(), parent);
+				}
+				if let Some(bonus) = bonus {
+					stats
+						.saving_throws_mut()
+						.add_bonus(ability, *bonus, context.clone(), parent);
+				}
 			}
 			Self::Skill {
 				skill,
@@ -314,7 +332,7 @@ impl Mutator for Modify {
 					.skills_mut()
 					.add_skill_modifier(skill, *modifier, context.clone(), parent);
 			}
-			Self::Initiative { .. } => {
+			Self::Initiative { modifier, bonus, context } => {
 				// TODO: apply advantage or disadvantage to initiative
 			}
 			Self::ArmorClass { bonus, context } => {
@@ -385,11 +403,13 @@ impl FromKdl<NodeContext> for Modify {
 					}
 					_ => Some(selector::Value::from_kdl(node)?),
 				};
-				let modifier = node.next_str_req_t()?;
+				let modifier = node.get_str_opt_t::<Modifier>("modifier")?;
+				let bonus = node.get_i64_opt("bonus")?;
 				let context = node.get_str_opt("context")?.map(str::to_owned);
 				Ok(Self::SavingThrow {
 					ability,
 					modifier,
+					bonus,
 					context,
 				})
 			}
@@ -497,6 +517,7 @@ impl AsKdl for Modify {
 			Self::SavingThrow {
 				ability,
 				modifier,
+				bonus,
 				context,
 			} => {
 				match ability {
@@ -507,7 +528,8 @@ impl AsKdl for Modify {
 						node += ("SavingThrow", ability.as_kdl());
 					}
 				}
-				node.entry(modifier.to_string());
+				node.entry(("modifier", modifier.as_ref().map(Modifier::to_string)));
+				node.entry(("bonus", *bonus));
 				node.entry(("context", context.clone()));
 			}
 			Self::Skill {
@@ -698,10 +720,11 @@ mod test {
 
 			#[test]
 			fn all() -> anyhow::Result<()> {
-				let doc = "mutator \"modify\" (SavingThrow)\"All\" \"Advantage\" context=\"Magic\"";
+				let doc = "mutator \"modify\" (SavingThrow)\"All\" modifier=\"Advantage\" context=\"Magic\"";
 				let data = Modify::SavingThrow {
 					ability: None,
-					modifier: Modifier::Advantage,
+					modifier: Some(Modifier::Advantage),
+					bonus: None,
 					context: Some("Magic".into()),
 				};
 				assert_eq_askdl!(&data, doc);
@@ -711,10 +734,11 @@ mod test {
 
 			#[test]
 			fn any_selected() -> anyhow::Result<()> {
-				let doc = "mutator \"modify\" (SavingThrow)\"Any\" \"Advantage\"";
+				let doc = "mutator \"modify\" (SavingThrow)\"Any\" modifier=\"Advantage\"";
 				let data = Modify::SavingThrow {
 					ability: Some(selector::Value::Options(selector::ValueOptions::default())),
-					modifier: Modifier::Advantage,
+					modifier: Some(Modifier::Advantage),
+					bonus: None,
 					context: None,
 				};
 				assert_eq_askdl!(&data, doc);
@@ -730,7 +754,8 @@ mod test {
 			fn all() {
 				let character = character(vec![Modify::SavingThrow {
 					ability: None,
-					modifier: Modifier::Advantage,
+					modifier: Some(Modifier::Advantage),
+					bonus: None,
 					context: Some("Poison".into()),
 				}]);
 				let modifiers = character.saving_throws().general_modifiers().get(Modifier::Advantage);
@@ -744,7 +769,8 @@ mod test {
 			fn specific() {
 				let character = character(vec![Modify::SavingThrow {
 					ability: Some(selector::Value::Specific(Ability::Constitution)),
-					modifier: Modifier::Advantage,
+					modifier: Some(Modifier::Advantage),
+					bonus: None,
 					context: Some("Poison".into()),
 				}]);
 				let modifiers = character

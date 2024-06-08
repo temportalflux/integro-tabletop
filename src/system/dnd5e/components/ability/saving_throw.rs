@@ -44,11 +44,20 @@ pub struct SavingThrowProps {
 pub fn SavingThrow(SavingThrowProps { ability, abbreviated }: &SavingThrowProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let proficiency = state.saving_throws().get_prof(*ability);
-	let modifier = state.ability_modifier(*ability, Some(*proficiency.value()));
-	let mod_sign = match modifier >= 0 {
-		true => "+",
-		false => "-",
-	};
+	let mut modifier = state.ability_modifier(*ability, Some(*proficiency.value()));
+	let mut contextless_bonuses = Vec::with_capacity(10);
+	let mut context_bonuses = Vec::with_capacity(10);
+	for (target_ability, value, context, source) in state.saving_throws().iter_bonuses() {
+		if target_ability.is_none() || target_ability == Some(*ability) {
+			if let Some(context) = context {
+				context_bonuses.push((value, context, source));
+			}
+			else {
+				modifier += value as i32;
+				contextless_bonuses.push((value, source));
+			}
+		}
+	}
 	html! {<tr>
 		<Tooltip tag={"td"} classes={"text-center"} use_html={true} content={abbreviated.then(|| {
 			crate::data::as_feature_paths_html(proficiency.sources().iter().map(|(path, _)| path))
@@ -59,15 +68,24 @@ pub fn SavingThrow(SavingThrowProps { ability, abbreviated }: &SavingThrowProps)
 			true => ability.abbreviated_name().to_uppercase(),
 			false => ability.long_name().to_owned(),
 		}}</td>
-		<td class="text-center">
+		<Tooltip tag={"td"} classes={"text-center"} use_html={true} content={
+			crate::data::as_feature_paths_html(contextless_bonuses.iter().map(|(_, source)| *source))
+		}>
 			<span style="font-weight: 700; color: var(--theme-roll-modifier);">
-				{mod_sign}{modifier.abs()}
+				{if modifier >= 0 { "+" } else { "-" }}{modifier.abs()}
 			</span>
-		</td>
+		</Tooltip>
 		{(!abbreviated).then(|| html! {<td>
 			{proficiency.sources().iter().filter_map(|(path, _)| {
 				crate::data::as_feature_path_text(path)
 			}).map(|text| html! {<div>{text}</div>}).collect::<Vec<_>>()}
+			{context_bonuses.iter().filter_map(|(value, context, source)| {
+				let Some(source) = crate::data::as_feature_path_text(source) else { return None };
+				let sign = if *value >= 0 { "+" } else { "-" };
+				Some(html!(<div>
+					{sign}{value.abs()}{"when "}{context}{" ("}{source}{")"}
+				</div>))
+			}).collect::<Vec<_>>()}
 		</td>}).unwrap_or_default()}
 	</tr>}
 }

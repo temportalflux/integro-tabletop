@@ -20,9 +20,6 @@ pub fn Score(ScoreProps { ability }: &ScoreProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let screen_size = mobile::use_mobile_kind();
 
-	// TODO: Display roll modifiers for ability checks.
-	// Data is stored in `state.skills().iter_ability_modifiers()`
-
 	let ability_score = state.ability_scores().get(*ability);
 
 	let onclick = context_menu::use_control_action({
@@ -50,6 +47,27 @@ pub fn Score(ScoreProps { ability }: &ScoreProps) -> Html {
 			show_sign={true}
 		/>
 	};
+
+	let mut roll_modifiers = multimap::MultiMap::new();
+	for (modifier, item) in state.skills().iter_ability_modifiers(*ability) {
+		roll_modifiers.insert(modifier, item);
+	}
+	let roll_modifiers = roll_modifiers.into_iter().map(|(modifier, items)| {
+		let tooltip = crate::data::as_feature_paths_html_custom(
+			items.into_iter(),
+			|item| (item.context.clone(), item.source.as_path()),
+			|criteria, path_str| match criteria {
+				Some(criteria) => format!("<div>{} ({})</div>", criteria, path_str),
+				None => format!("<div>{}</div>", path_str),
+			},
+		);
+		html!(<Tooltip tag={"div"} content={tooltip} use_html={true}>
+			<span aria-label={format!("{modifier:?}")}>
+				<glyph::RollModifier value={modifier} />
+			</span>
+		</Tooltip>)
+	}).collect::<Vec<_>>();
+
 	match screen_size {
 		mobile::Kind::Desktop => html! {
 			<div class="card ability-card m-1" style="border-color: var(--theme-frame-color-muted);">
@@ -57,6 +75,7 @@ pub fn Score(ScoreProps { ability }: &ScoreProps) -> Html {
 					<h6 class="card-title">{ability.long_name()}</h6>
 					<div class="primary-stat">
 						{score_modifier}
+						{roll_modifiers}
 					</div>
 					<Tooltip classes={"secondary-stat"} content={tooltip} use_html={true}>
 						{*ability_score.score()}
@@ -124,18 +143,16 @@ pub fn AbilityModifiers() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let mut modifiers = Vec::new();
 	for ability in EnumSet::<Ability>::all() {
-		for (modifier, items) in state.skills().iter_ability_modifiers(ability) {
-			for item in items {
-				modifiers.push(html! {<div>
-					<span class="d-inline-flex" aria-label="Advantage" {style}>
-						<glyph::RollModifier value={modifier} />
-					</span>
-					<span>{"on "}{ability.abbreviated_name().to_uppercase()}{" checks"}</span>
-					<span>
-						{item.context.as_ref().map(|target| format!(" when {target}")).unwrap_or_default()}
-					</span>
-				</div>});
-			}
+		for (modifier, item) in state.skills().iter_ability_modifiers(ability) {
+			modifiers.push(html! {<div>
+				<span class="d-inline-flex" aria-label="Advantage" {style}>
+					<glyph::RollModifier value={modifier} />
+				</span>
+				<span>{"on "}{ability.abbreviated_name().to_uppercase()}{" checks"}</span>
+				<span>
+					{item.context.as_ref().map(|target| format!(" when {target}")).unwrap_or_default()}
+				</span>
+			</div>});
 		}
 	}
 	let content = match modifiers.is_empty() {

@@ -158,7 +158,25 @@ fn Row(
 
 	let proficiency = state.skills().proficiency(*skill);
 
-	let modifier = state.ability_modifier(skill.ability(), Some(*proficiency.value()));
+	let mut modifier = state.ability_modifier(skill.ability(), Some(*proficiency.value()));
+
+	let mut bonuses = Vec::with_capacity(10);
+	for (value, context, source) in state.skills().iter_skill_bonuses(*skill) {
+		bonuses.push((*value, context.clone(), source.clone()));
+		if context.is_none() {
+			modifier += *value as i32;
+		}
+	}
+	let modifier_tooltip = crate::data::as_feature_paths_html_custom(
+		bonuses.iter(),
+		|(value, context, source)| ((*value, context.as_ref()), source.as_path()),
+		|(value, context), path_str| {
+			let sign = if value >= 0 { "+" } else { "-" };
+			let context = context.map(|context| format!(" when {context}")).unwrap_or_else(|| " - included".to_owned());
+			format!("<div>{sign}{}{context} ({})</div>", value.abs(), path_str)
+		},
+	);
+	
 	let passive = 10 + modifier;
 
 	let prof_tooltip = crate::data::as_feature_paths_html_custom(
@@ -172,14 +190,10 @@ fn Row(
 			roll::Modifier,
 			character::ModifierMapItem,
 		};
-		let mut entries = enum_map::EnumMap::<Modifier, Vec<&ModifierMapItem>>::default();
-		for (modifier, items) in state.skills().iter_skill_modifiers(*skill) {
-			if !items.is_empty() {
-				entries[modifier].extend(items.iter());
-			}
+		let mut entries = multimap::MultiMap::<Modifier, &ModifierMapItem>::new();
+		for (modifier, item) in state.skills().iter_skill_modifiers(*skill) {
+			entries.insert(modifier, item);
 		}
-		let mut entries = entries.into_iter().filter(|(_, items)| !items.is_empty()).collect::<Vec<_>>();
-		entries.sort_by_key(|(modifier, _)| *modifier);
 		entries
 	}.into_iter().map(|(modifier, items)| {
 		let tooltip = crate::data::as_feature_paths_html_custom(
@@ -211,7 +225,11 @@ fn Row(
 				{roll_modifiers}
 			</div>
 		</td> },
-		html! { <td class="text-center">{if modifier >= 0 { "+" } else { "-" }}{modifier.abs()}</td> },
+		html! {
+			<Tooltip tag={"td"} classes={"text-center"} content={modifier_tooltip} use_html={true}>
+				{if modifier >= 0 { "+" } else { "-" }}{modifier.abs()}
+			</Tooltip>
+		},
 		html! { <td class="text-center">{passive}</td> },
 	];
 	if let Some(idx) = ability_name_col {
@@ -282,8 +300,6 @@ fn SkillModal(SkillModalProps { skill }: &SkillModalProps) -> Html {
 		let mut entries = state
 			.skills()
 			.iter_skill_modifiers(*skill)
-			.map(|(modifier, items)| items.iter().map(move |item| (modifier, item)))
-			.flatten()
 			.collect::<Vec<_>>();
 		entries.sort_by_key(|(modifier, _)| *modifier);
 		entries

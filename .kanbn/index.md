@@ -58,9 +58,10 @@ columnSorting:
 
 ## In Progress
 
+- [initiative-modifier-needs-to-be-implemented](tasks/initiative-modifier-needs-to-be-implemented.md)
+
 ## Done
 
-- [initiative-modifier-needs-to-be-implemented](tasks/initiative-modifier-needs-to-be-implemented.md)
 - [join-bonus-and-modifier-mutators](tasks/join-bonus-and-modifier-mutators.md)
 - [condition-degrees](tasks/condition-degrees.md)
 - [item-charges](tasks/item-charges.md)

@@ -3,7 +3,7 @@ use enum_map::Enum;
 use enumset::EnumSetType;
 use std::str::FromStr;
 
-#[derive(Debug, Enum, EnumSetType, PartialOrd, Ord)]
+#[derive(Debug, Enum, EnumSetType, PartialOrd, Ord, Hash)]
 pub enum Modifier {
 	Advantage,
 	Disadvantage,
