@@ -19,7 +19,7 @@ pub fn ModulesLanding() -> Html {
 	let database = use_context::<Database>().unwrap();
 	let task_dispatch = use_context::<task::Dispatch>().unwrap();
 	let autosync_channel = use_context::<autosync::Channel>().unwrap();
-	let modules_query = use_query(None, |database, _: ()| {
+	let modules_query = use_query(Some(()), |database, _: ()| {
 		async move {
 			let query = Query::<Module>::all(&database).await?;
 			Ok(query.collect::<Vec<_>>().await)

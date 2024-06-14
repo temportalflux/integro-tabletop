@@ -1,9 +1,11 @@
-use crate::kdl_ext::NodeContext;
 use crate::{
-	system::dnd5e::data::{
-		character::Character, item::weapon, proficiency, Ability, ArmorExtended, Skill, WeaponProficiency,
+	kdl_ext::NodeContext,
+	system::{
+		dnd5e::data::{
+			character::Character, item::weapon, proficiency, Ability, ArmorExtended, Skill, WeaponProficiency,
+		},
+		Evaluator,
 	},
-	system::Evaluator,
 	utility::NotInList,
 };
 use kdlize::{
@@ -33,8 +35,10 @@ impl Evaluator for IsProficientWith {
 
 	fn evaluate(&self, state: &Self::Context) -> Self::Item {
 		match self {
-			Self::SavingThrow(ability) => *state.saving_throws().get_prof(*ability).value() != proficiency::Level::None,
-			Self::Skill(skill) => *state.skills().proficiency(*skill).value() != proficiency::Level::None,
+			Self::SavingThrow(ability) => {
+				state.saving_throws()[*ability].proficiencies().value() != proficiency::Level::None
+			}
+			Self::Skill(skill) => state.skills()[*skill].proficiencies().value() != proficiency::Level::None,
 			Self::Language(language) => state.other_proficiencies().languages.contains_key(language),
 			Self::Armor(kind) => {
 				state

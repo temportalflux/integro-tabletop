@@ -98,7 +98,7 @@ impl AttackQuery {
 				return false;
 			}
 		}
-		
+
 		// the attack must have one of the provided attack kinds
 		if !self.attack_kind.is_empty() {
 			let Some(atk_kind) = &attack.kind else {
@@ -135,7 +135,9 @@ impl AttackQuery {
 
 		// If the query provides a set of classifications, the attack must define a classification and be in the list in order to be applicable
 		if !self.classification.is_empty() {
-			let Some(classification) = &attack.classification else { return false };
+			let Some(classification) = &attack.classification else {
+				return false;
+			};
 			if !self.classification.contains(classification) {
 				return false;
 			}

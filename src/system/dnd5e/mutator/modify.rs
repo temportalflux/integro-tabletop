@@ -198,7 +198,11 @@ impl Mutator for Modify {
 					..Default::default()
 				}
 			}
-			Self::Initiative { modifier, bonus, context } => {
+			Self::Initiative {
+				modifier,
+				bonus,
+				context,
+			} => {
 				let mut mods = Vec::with_capacity(2);
 				if let Some(modifier) = modifier {
 					mods.push(modifier.display_name().to_owned());
@@ -295,9 +299,11 @@ impl Mutator for Modify {
 					None => None,
 					Some(ability) => stats.resolve_selector(ability),
 				};
-				stats
-					.skills_mut()
-					.add_ability_modifier(ability, *modifier, context.clone(), parent);
+				for (_ability, entry) in stats.skills_mut().iter_ability_mut(ability) {
+					entry
+						.modifiers_mut()
+						.push(*modifier, context.clone(), parent.display.clone());
+				}
 			}
 			Self::SavingThrow {
 				ability,
@@ -328,12 +334,21 @@ impl Mutator for Modify {
 				let Some(skill) = stats.resolve_selector(skill) else {
 					return;
 				};
-				stats
-					.skills_mut()
-					.add_skill_modifier(skill, *modifier, context.clone(), parent);
+				stats.skills_mut()[skill]
+					.modifiers_mut()
+					.push(*modifier, context.clone(), parent.display.clone());
 			}
-			Self::Initiative { modifier, bonus, context } => {
-				// TODO: apply advantage or disadvantage to initiative
+			Self::Initiative {
+				modifier,
+				bonus,
+				context,
+			} => {
+				if let Some(modifier) = modifier {
+					stats.initiative_mut().modifiers_mut().push(*modifier, context.clone(), parent.display.clone());
+				}
+				if let Some(bonus) = bonus {
+					stats.initiative_mut().bonuses_mut().push(*bonus, context.clone(), parent.display.clone());
+				}
 			}
 			Self::ArmorClass { bonus, context } => {
 				stats.armor_class_mut().push_bonus(*bonus, context.clone(), parent);
@@ -463,7 +478,11 @@ impl FromKdl<NodeContext> for Modify {
 					let modifier = node.get_str_opt_t::<Modifier>("modifier")?;
 					let bonus = node.get_i64_opt("bonus")?;
 					let context = node.get_str_opt("context")?.map(str::to_owned);
-					Ok(Self::Initiative { modifier, bonus, context })
+					Ok(Self::Initiative {
+						modifier,
+						bonus,
+						context,
+					})
 				}
 				"ArmorClass" => {
 					let bonus = node.next_i64_req()? as i32;
@@ -541,7 +560,11 @@ impl AsKdl for Modify {
 				node.entry(modifier.to_string());
 				node.entry(("context", context.clone()));
 			}
-			Self::Initiative { modifier, bonus, context } => {
+			Self::Initiative {
+				modifier,
+				bonus,
+				context,
+			} => {
 				node.entry("Initiative");
 				node.entry(("modifier", modifier.as_ref().map(Modifier::to_string)));
 				node.entry(("bonus", *bonus));
@@ -685,14 +708,12 @@ mod test {
 						context: Some("when climbing".into()),
 					},
 				]);
-				let modifiers = character.skills().iter_ability_modifiers(Ability::Dexterity);
-				let modifiers = modifiers.collect::<crate::system::dnd5e::data::character::ModifierMap>();
-				let adv_modifiers = modifiers.get(Modifier::Advantage);
+				let modifiers = &character.skills()[Ability::Dexterity].modifiers()[Modifier::Advantage];
 				assert_eq!(
-					*adv_modifiers,
+					*modifiers,
 					vec![
-						(None, PathBuf::from("TestMutator")).into(),
 						(Some("when climbing".into()), PathBuf::from("TestMutator")).into(),
+						(None, PathBuf::from("TestMutator")).into(),
 					]
 				);
 			}
@@ -704,10 +725,8 @@ mod test {
 					modifier: Modifier::Advantage,
 					context: None,
 				}]);
-				let modifiers = character.skills().iter_ability_modifiers(Ability::Dexterity);
-				let modifiers = modifiers.collect::<crate::system::dnd5e::data::character::ModifierMap>();
-				let adv_modifiers = modifiers.get(Modifier::Advantage);
-				assert_eq!(*adv_modifiers, vec![(None, PathBuf::from("TestMutator")).into()]);
+				let modifiers = &character.skills()[Ability::Dexterity].modifiers()[Modifier::Advantage];
+				assert_eq!(*modifiers, vec![(None, PathBuf::from("TestMutator")).into()]);
 			}
 		}
 	}
@@ -758,11 +777,11 @@ mod test {
 					bonus: None,
 					context: Some("Poison".into()),
 				}]);
-				let modifiers = character.saving_throws().general_modifiers().get(Modifier::Advantage);
-				assert_eq!(
-					*modifiers,
-					vec![(Some("Poison".into()), PathBuf::from("TestMutator")).into()]
-				);
+				let expected = vec![(Some("Poison".into()), PathBuf::from("TestMutator")).into()];
+				for ability in enumset::EnumSet::<Ability>::all() {
+					let modifiers = &character.saving_throws()[ability].modifiers()[Modifier::Advantage];
+					assert_eq!(*modifiers, expected);
+				}
 			}
 
 			#[test]
@@ -773,10 +792,7 @@ mod test {
 					bonus: None,
 					context: Some("Poison".into()),
 				}]);
-				let modifiers = character
-					.saving_throws()
-					.ability_modifiers(Ability::Constitution)
-					.get(Modifier::Advantage);
+				let modifiers = &character.saving_throws()[Ability::Constitution].modifiers()[Modifier::Advantage];
 				assert_eq!(
 					*modifiers,
 					vec![(Some("Poison".into()), PathBuf::from("TestMutator")).into()]
@@ -815,10 +831,7 @@ mod test {
 					modifier: Modifier::Disadvantage,
 					context: None,
 				}]);
-				let modifiers = character
-					.skills()
-					.skill_modifiers(Skill::Deception)
-					.get(Modifier::Disadvantage);
+				let modifiers = &character.skills()[Skill::Deception].modifiers()[Modifier::Disadvantage];
 				assert_eq!(*modifiers, vec![(None, PathBuf::from("TestMutator")).into()]);
 			}
 		}

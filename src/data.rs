@@ -32,8 +32,8 @@ pub fn as_feature_paths_html_custom<'i, I, T, U, FSplit, FRender>(
 where
 	T: 'i,
 	U: 'i,
-	I: Iterator<Item = &'i T>,
-	FSplit: 'i + Fn(&'i T) -> (U, &'i std::path::Path),
+	I: Iterator<Item = T>,
+	FSplit: 'i + Fn(T) -> (U, &'i std::path::Path),
 	FRender: 'i + Fn(U, String) -> String,
 {
 	let items = iter.filter_map(move |item| {

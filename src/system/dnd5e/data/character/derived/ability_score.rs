@@ -24,7 +24,13 @@ impl AbilityScores {
 	}
 
 	pub fn get(&self, ability: Ability) -> &AbilityScore {
-		&self.0[ability]
+		&self[ability]
+	}
+}
+impl std::ops::Index<Ability> for AbilityScores {
+	type Output = AbilityScore;
+	fn index(&self, index: Ability) -> &Self::Output {
+		&self.0[index]
 	}
 }
 

@@ -82,7 +82,7 @@ impl AsKdl for StartingEquipment {
 				node.entry("Select");
 				node += filter.as_kdl();
 				node
-			},
+			}
 			Self::Group { entries, pick } => {
 				let mut node = StartingEquipment::to_kdl_vec(entries);
 				node.entry(("pick", pick.as_ref().map(|i| *i as i64)));
@@ -131,7 +131,7 @@ impl AsKdl for IndirectItem {
 				node.entry("Custom");
 				node += item.as_kdl();
 				node
-			},
+			}
 		}
 	}
 }

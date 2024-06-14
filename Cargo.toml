@@ -10,6 +10,10 @@ edition = "2021"
 [build-dependencies]
 convert_case = "0.6"
 
+# yew hooks always fail doctests due to 'hook lifetime
+[lib]
+doctest = false
+
 [dependencies]
 kdlize = { path = "crates/kdlize" }
 netlify-oauth = { path = "crates/netlify-oauth" }

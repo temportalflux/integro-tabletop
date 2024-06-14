@@ -48,25 +48,25 @@ pub fn Score(ScoreProps { ability }: &ScoreProps) -> Html {
 		/>
 	};
 
-	let mut roll_modifiers = multimap::MultiMap::new();
-	for (modifier, item) in state.skills().iter_ability_modifiers(*ability) {
-		roll_modifiers.insert(modifier, item);
-	}
-	let roll_modifiers = roll_modifiers.into_iter().map(|(modifier, items)| {
-		let tooltip = crate::data::as_feature_paths_html_custom(
-			items.into_iter(),
-			|item| (item.context.clone(), item.source.as_path()),
-			|criteria, path_str| match criteria {
-				Some(criteria) => format!("<div>{} ({})</div>", criteria, path_str),
-				None => format!("<div>{}</div>", path_str),
-			},
-		);
-		html!(<Tooltip tag={"div"} content={tooltip} use_html={true}>
+	let roll_modifiers = state.skills()[*ability]
+		.modifiers()
+		.iter()
+		.map(|(modifier, items)| {
+			let tooltip = crate::data::as_feature_paths_html_custom(
+				items.into_iter(),
+				|(context, source)| (context.clone(), source.as_path()),
+				|criteria, path_str| match criteria {
+					Some(criteria) => format!("<div>{} ({})</div>", criteria, path_str),
+					None => format!("<div>{}</div>", path_str),
+				},
+			);
+			html!(<Tooltip tag={"div"} content={tooltip} use_html={true}>
 			<span aria-label={format!("{modifier:?}")}>
 				<glyph::RollModifier value={modifier} />
 			</span>
 		</Tooltip>)
-	}).collect::<Vec<_>>();
+		})
+		.collect::<Vec<_>>();
 
 	match screen_size {
 		mobile::Kind::Desktop => html! {
@@ -84,8 +84,9 @@ pub fn Score(ScoreProps { ability }: &ScoreProps) -> Html {
 			</div>
 		},
 		mobile::Kind::Mobile => {
-			let saving_throw_prof = state.saving_throws().get_prof(*ability);
-			let saving_throw_modifier = state.ability_modifier(*ability, Some(*saving_throw_prof.value()));
+			let saving_throw_prof = state.saving_throws()[*ability].proficiencies();
+			let mut saving_throw_modifier = state.ability_scores()[*ability].score().modifier();
+			saving_throw_modifier += saving_throw_prof.value() * state.proficiency_bonus();
 
 			html! {
 				<div class="p-1 text-center" {onclick}>
@@ -113,7 +114,7 @@ pub fn Score(ScoreProps { ability }: &ScoreProps) -> Html {
 					</div>
 					<div class="row align-items-center" style="--bs-gutter-x: 0;">
 						<div class="col-auto" style="font-size: 0.75rem;">
-							<glyph::ProficiencyLevel value={*saving_throw_prof.value()} />
+							<glyph::ProficiencyLevel value={saving_throw_prof.value()} />
 						</div>
 						<div class="col">
 							<div style="font-size: 0.75rem;">{"Saving Throw"}</div>
@@ -143,14 +144,14 @@ pub fn AbilityModifiers() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let mut modifiers = Vec::new();
 	for ability in EnumSet::<Ability>::all() {
-		for (modifier, item) in state.skills().iter_ability_modifiers(ability) {
+		for (modifier, context, _source) in state.skills()[ability].modifiers().iter_all() {
 			modifiers.push(html! {<div>
 				<span class="d-inline-flex" aria-label="Advantage" {style}>
 					<glyph::RollModifier value={modifier} />
 				</span>
 				<span>{"on "}{ability.abbreviated_name().to_uppercase()}{" checks"}</span>
 				<span>
-					{item.context.as_ref().map(|target| format!(" when {target}")).unwrap_or_default()}
+					{context.as_ref().map(|target| format!(" when {target}")).unwrap_or_default()}
 				</span>
 			</div>});
 		}

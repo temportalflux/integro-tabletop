@@ -1,7 +1,7 @@
 use crate::GeneralError;
-use enum_map::Enum;
+use enum_map::{Enum, EnumMap};
 use enumset::EnumSetType;
-use std::str::FromStr;
+use std::{path::PathBuf, str::FromStr};
 
 #[derive(Debug, Enum, EnumSetType, PartialOrd, Ord, Hash)]
 pub enum Modifier {
@@ -32,5 +32,31 @@ impl FromStr for Modifier {
 				"Invalid roll modifier value {s:?}, expected Advantage or Disadvantage."
 			))),
 		}
+	}
+}
+
+#[derive(Clone, Default, PartialEq, Debug)]
+pub struct ModifierList(EnumMap<Modifier, Vec<(Option<String>, PathBuf)>>);
+
+impl std::ops::Index<Modifier> for ModifierList {
+	type Output = Vec<(Option<String>, PathBuf)>;
+	fn index(&self, index: Modifier) -> &Self::Output {
+		&self.0[index]
+	}
+}
+
+impl ModifierList {
+	pub fn push(&mut self, modifier: Modifier, context: Option<String>, source: PathBuf) {
+		self.0[modifier].push((context, source));
+	}
+
+	pub fn iter(&self) -> impl Iterator<Item = (Modifier, &Vec<(Option<String>, PathBuf)>)> {
+		self.0.iter()
+	}
+
+	pub fn iter_all(&self) -> impl Iterator<Item = (Modifier, &Option<String>, &PathBuf)> {
+		let iter = self.0.iter();
+		let iter = iter.map(|(modifier, items)| items.iter().map(move |(context, source)| (modifier, context, source)));
+		iter.flatten()
 	}
 }

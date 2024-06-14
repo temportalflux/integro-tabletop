@@ -3,6 +3,8 @@ use crate::GeneralError;
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::str::FromStr;
 
+mod bonus_list;
+pub use bonus_list::*;
 mod die;
 pub use die::*;
 mod evaluated;

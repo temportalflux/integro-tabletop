@@ -1,15 +1,12 @@
-use super::{
-	spellcasting, AttackBonuses, DefaultsBlock, Features, HitPoint, HitPoints, ResourceDepot, RestResets, Spellcasting,
-	StartingEquipment,
-};
 use crate::{
 	path_map::PathMap,
 	system::{
 		dnd5e::{
 			data::{
 				character::{
-					AbilityScores, Defenses, Derived, DerivedDescription, MaxHitPoints, Persistent, SavingThrows,
-					Senses, Skills, Speeds,
+					spellcasting, AbilityScores, AttackBonuses, DefaultsBlock, Defenses, Derived, DerivedDescription,
+					Features, HitPoint, HitPoints, Initiative, MaxHitPoints, Persistent, ResourceDepot, RestResets,
+					SavingThrows, Senses, Skills, Speeds, Spellcasting, StartingEquipment,
 				},
 				item::container::Inventory,
 				proficiency, Ability, ArmorClass, Feature, OtherProficiencies,
@@ -367,10 +364,6 @@ impl Character {
 		proficiency::proficiency_bonus(self.character.level(None))
 	}
 
-	pub fn initiative_bonus(&self) -> i32 {
-		self.ability_modifier(Ability::Dexterity, None)
-	}
-
 	pub fn inspiration(&self) -> bool {
 		self.character.inspiration
 	}
@@ -397,6 +390,14 @@ impl Character {
 
 	pub fn hit_points_mut(&mut self) -> &mut HitPoints {
 		self.character.hit_points_mut()
+	}
+
+	pub fn initiative(&self) -> &Initiative {
+		&self.derived.initiative
+	}
+
+	pub fn initiative_mut(&mut self) -> &mut Initiative {
+		&mut self.derived.initiative
 	}
 
 	pub fn attack_bonuses(&self) -> &AttackBonuses {

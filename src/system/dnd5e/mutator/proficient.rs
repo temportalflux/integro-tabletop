@@ -1,13 +1,17 @@
-use crate::kdl_ext::NodeContext;
-use crate::system::mutator::ReferencePath;
 use crate::{
-	system::dnd5e::data::{
-		character::Character, description, item::weapon, proficiency, Ability, ArmorExtended, Skill, WeaponProficiency,
+	kdl_ext::NodeContext,
+	system::{
+		dnd5e::data::{
+			character::{AbilitySkillEntry, Character},
+			description,
+			item::weapon,
+			proficiency, Ability, ArmorExtended, Skill, WeaponProficiency,
+		},
+		mutator::ReferencePath,
+		Mutator,
 	},
-	system::Mutator,
 	utility::{selector, NotInList},
 };
-use enumset::EnumSet;
 use kdlize::{ext::ValueExt, AsKdl, FromKdl, NodeBuilder};
 use std::str::FromStr;
 
@@ -164,17 +168,13 @@ impl Mutator for AddProficiency {
 		match &self {
 			Self::Ability(ability, level) => {
 				if let Some(ability) = stats.resolve_selector(ability) {
-					// TODO: Grant proficiency for an ability (in addition to the skills which use that ability)
-					let derived_skills = stats.skills_mut();
-					for skill in EnumSet::<Skill>::all() {
-						if skill.ability() == ability {
-							derived_skills.add_proficiency(skill, *level, parent);
-						}
-					}
+					stats.skills_mut()[ability]
+						.proficiencies_mut()
+						.push(*level, parent.display.clone());
 				}
 			}
 			Self::SavingThrow(ability) => {
-				stats.saving_throws_mut().add_proficiency(*ability, parent);
+				stats.saving_throws_mut().add_proficiency(Some(*ability), parent);
 			}
 			Self::Skill {
 				skill,
@@ -184,7 +184,9 @@ impl Mutator for AddProficiency {
 				let Some(skill) = stats.resolve_selector(skill) else {
 					return;
 				};
-				stats.skills_mut().add_proficiency(skill, *level, parent);
+				stats.skills_mut()[skill]
+					.proficiencies_mut()
+					.push(*level, parent.display.clone());
 			}
 			Self::Language(value) => {
 				if let Some(value) = stats.resolve_selector(value) {
@@ -235,7 +237,8 @@ impl FromKdl<NodeContext> for AddProficiency {
 					None => proficiency::Level::None,
 				};
 				skill.set_is_applicable(move |skill, character| {
-					let active_level = *character.skills().proficiency(*skill).value();
+					let entry: &AbilitySkillEntry = &character.skills()[*skill];
+					let active_level = entry.proficiencies().value();
 					if active_level < minimum_level {
 						return false;
 					}
@@ -644,7 +647,7 @@ mod test {
 		use crate::{
 			path_map::PathMap,
 			system::dnd5e::data::{
-				character::{AttributedValue, Character, Persistent},
+				character::{Character, Persistent},
 				Bundle,
 			},
 		};
@@ -672,25 +675,19 @@ mod test {
 				),
 				None,
 			);
-			let exepected_prof: AttributedValue<proficiency::Level> = (
-				proficiency::Level::Full,
-				vec![("AddProficiency".into(), proficiency::Level::Full)],
-			)
-				.into();
-			for skill in EnumSet::<Skill>::all() {
-				if skill.ability() != Ability::Intelligence {
-					continue;
-				}
-				let prof = character.skills().proficiency(skill);
-				assert_eq!(*prof, exepected_prof);
-			}
+			assert_eq!(
+				*character.skills()[Ability::Intelligence].proficiencies(),
+				[(proficiency::Level::Full, vec![("AddProficiency".into())])]
+					.into_iter()
+					.collect()
+			);
 		}
 
 		#[test]
 		fn saving_throw() {
 			let character = character(AddProficiency::SavingThrow(Ability::Dexterity), None);
 			assert_eq!(
-				*character.saving_throws().get_prof(Ability::Dexterity).value(),
+				character.saving_throws()[Ability::Dexterity].proficiencies().value(),
 				proficiency::Level::Full,
 			);
 		}
@@ -706,12 +703,10 @@ mod test {
 				None,
 			);
 			assert_eq!(
-				*character.skills().proficiency(Skill::Arcana),
-				(
-					proficiency::Level::Double,
-					vec![("AddProficiency".into(), proficiency::Level::Double)]
-				)
-					.into(),
+				*character.skills()[Skill::Arcana].proficiencies(),
+				[(proficiency::Level::Double, vec![("AddProficiency".into())])]
+					.into_iter()
+					.collect()
 			);
 		}
 

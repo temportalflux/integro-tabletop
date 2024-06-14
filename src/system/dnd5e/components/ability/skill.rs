@@ -156,12 +156,13 @@ fn Row(
 ) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 
-	let proficiency = state.skills().proficiency(*skill);
+	let proficiency = state.skills()[*skill].proficiencies();
 
-	let mut modifier = state.ability_modifier(skill.ability(), Some(*proficiency.value()));
+	let mut modifier = state.ability_scores()[skill.ability()].score().modifier();
+	modifier += proficiency.value() * state.proficiency_bonus();
 
 	let mut bonuses = Vec::with_capacity(10);
-	for (value, context, source) in state.skills().iter_skill_bonuses(*skill) {
+	for (value, context, source) in state.skills()[*skill].bonuses().iter() {
 		bonuses.push((*value, context.clone(), source.clone()));
 		if context.is_none() {
 			modifier += *value as i32;
@@ -172,33 +173,25 @@ fn Row(
 		|(value, context, source)| ((*value, context.as_ref()), source.as_path()),
 		|(value, context), path_str| {
 			let sign = if value >= 0 { "+" } else { "-" };
-			let context = context.map(|context| format!(" when {context}")).unwrap_or_else(|| " - included".to_owned());
+			let context = context
+				.map(|context| format!(" when {context}"))
+				.unwrap_or_else(|| " - included".to_owned());
 			format!("<div>{sign}{}{context} ({})</div>", value.abs(), path_str)
 		},
 	);
-	
+
 	let passive = 10 + modifier;
 
 	let prof_tooltip = crate::data::as_feature_paths_html_custom(
-		proficiency.sources().iter(),
-		|(path, prof)| (*prof, path.as_path()),
+		proficiency.iter(),
+		|(level, source)| (level, source.as_path()),
 		|prof, path_str| format!("<div>{} ({})</div>", prof.as_display_name(), path_str),
 	);
 
-	let roll_modifiers = {
-		use crate::system::dnd5e::data::{
-			roll::Modifier,
-			character::ModifierMapItem,
-		};
-		let mut entries = multimap::MultiMap::<Modifier, &ModifierMapItem>::new();
-		for (modifier, item) in state.skills().iter_skill_modifiers(*skill) {
-			entries.insert(modifier, item);
-		}
-		entries
-	}.into_iter().map(|(modifier, items)| {
+	let roll_modifiers = state.skills()[*skill].modifiers().iter().map(|(modifier, items)| {
 		let tooltip = crate::data::as_feature_paths_html_custom(
-			items.into_iter(),
-			|item| (item.context.clone(), item.source.as_path()),
+			items.iter(),
+			|(context, source)| (context.clone(), source.as_path()),
 			|criteria, path_str| match criteria {
 				Some(criteria) => format!("<div>{} ({})</div>", criteria, path_str),
 				None => format!("<div>{}</div>", path_str),
@@ -216,7 +209,7 @@ fn Row(
 	let mut table_data = vec![
 		html! {
 			<Tooltip tag={"td"} classes={"text-center"} content={prof_tooltip} use_html={true}>
-				<glyph::ProficiencyLevel value={*proficiency.value()} />
+				<glyph::ProficiencyLevel value={proficiency.value()} />
 			</Tooltip>
 		},
 		html! { <td>
@@ -265,49 +258,59 @@ struct SkillModalProps {
 fn SkillModal(SkillModalProps { skill }: &SkillModalProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 
-	let proficiency = state.skills().proficiency(*skill);
-	let bonus = state.ability_modifier(skill.ability(), Some(*proficiency.value()));
+	let proficiency = state.skills()[*skill].proficiencies();
+	let mut bonus = state.ability_scores()[skill.ability()].score().modifier();
+	bonus += proficiency.value() * state.proficiency_bonus();
 
-	let prof_table = match proficiency.sources().is_empty() {
-		true => html! {},
-		false => html! {<div style="margin-bottom: 10px;">
-		<table class="table table-compact table-striped m-0">
-			<thead>
-				<tr class="text-center" style="color: var(--bs-heading-color);">
-					<th scope="col" style="width: 180px;">{"Proficiency"}</th>
-					<th scope="col">{"Sources"}</th>
+	let proficiency_rows = proficiency
+		.iter()
+		.map(|(level, source)| {
+			let source_text = crate::data::as_feature_path_text(source).unwrap_or_default();
+			html! {
+				<tr>
+					<td class="d-flex align-items-center">
+						<glyph::ProficiencyLevel value={level} />
+						<span class="flex-grow-1 text-center" style="margin-left: 5px;">{level.as_display_name()}</span>
+					</td>
+					<td>{source_text}</td>
 				</tr>
-			</thead>
-			<tbody>
-				{proficiency.sources().iter().map(|(path, value)| {
-					let source_text = crate::data::as_feature_path_text(&path).unwrap_or_default();
-					html! {
-						<tr>
-							<td class="d-flex align-items-center">
-								<glyph::ProficiencyLevel value={*value} />
-								<span class="flex-grow-1 text-center" style="margin-left: 5px;">{value.as_display_name()}</span>
-							</td>
-							<td>{source_text}</td>
-						</tr>
-					}
-				}).collect::<Vec<_>>()}
-			</tbody>
-		</table>
-		</div>},
+			}
+		})
+		.collect::<Vec<_>>();
+
+	let prof_table = match proficiency_rows.is_empty() {
+		true => html!(),
+		false => html!(<div style="margin-bottom: 10px;">
+			<table class="table table-compact table-striped m-0">
+				<thead>
+					<tr class="text-center" style="color: var(--bs-heading-color);">
+						<th scope="col" style="width: 180px;">{"Proficiency"}</th>
+						<th scope="col">{"Sources"}</th>
+					</tr>
+				</thead>
+				<tbody>
+					{proficiency_rows}
+				</tbody>
+			</table>
+		</div>),
 	};
 
-	let roll_modifiers = {
-		let mut entries = state
-			.skills()
-			.iter_skill_modifiers(*skill)
-			.collect::<Vec<_>>();
-		entries.sort_by_key(|(modifier, _)| *modifier);
-		entries
-	};
+	let modifier_rows = state.skills()[*skill].modifiers().iter_all().map(|(modifier, context, source)| html! {
+		<tr>
+			<td class="d-flex">
+				<span aria-label={format!("{modifier:?}")} style="margin-left: 2px; display: block; height: 16px; width: 16px; vertical-align: middle; margin-top: -2px;">
+					<glyph::RollModifier value={modifier} />
+				</span>
+				<span class="flex-grow-1 text-center" style="margin-left: 5px;">{modifier.display_name()}</span>
+			</td>
+			<td class="text-center">{context.clone().unwrap_or_else(|| "--".into())}</td>
+			<td>{crate::data::as_feature_path_text(source).unwrap_or_default()}</td>
+		</tr>
+	}).collect::<Vec<_>>();
 
-	let roll_modifiers_table = match roll_modifiers.is_empty() {
-		true => html! {},
-		false => html! {<div style="margin-bottom: 10px;">
+	let roll_modifiers_table = match modifier_rows.is_empty() {
+		true => html!(),
+		false => html!(<div style="margin-bottom: 10px;">
 			<table class="table table-compact table-striped m-0">
 				<thead>
 					<tr class="text-center" style="color: var(--bs-heading-color);">
@@ -317,21 +320,10 @@ fn SkillModal(SkillModalProps { skill }: &SkillModalProps) -> Html {
 					</tr>
 				</thead>
 				<tbody>
-					{roll_modifiers.into_iter().map(|(modifier, item)| html! {
-						<tr>
-							<td class="d-flex">
-								<span aria-label={format!("{modifier:?}")} style="margin-left: 2px; display: block; height: 16px; width: 16px; vertical-align: middle; margin-top: -2px;">
-									<glyph::RollModifier value={modifier} />
-								</span>
-								<span class="flex-grow-1 text-center" style="margin-left: 5px;">{modifier.display_name()}</span>
-							</td>
-							<td class="text-center">{item.context.clone().unwrap_or_else(|| "--".into())}</td>
-							<td>{crate::data::as_feature_path_text(&item.source).unwrap_or_default()}</td>
-						</tr>
-					}).collect::<Vec<_>>()}
+					{modifier_rows}
 				</tbody>
 			</table>
-		</div>},
+		</div>),
 	};
 
 	html! {<>

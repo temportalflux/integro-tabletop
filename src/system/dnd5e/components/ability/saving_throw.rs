@@ -4,7 +4,7 @@ use crate::{
 	page::characters::sheet::CharacterHandle,
 	system::dnd5e::{
 		components::glyph,
-		data::{character::ModifierMapItem, roll::Modifier, Ability},
+		data::{roll::Modifier, Ability},
 	},
 };
 use enumset::EnumSet;
@@ -43,26 +43,27 @@ pub struct SavingThrowProps {
 #[function_component]
 pub fn SavingThrow(SavingThrowProps { ability, abbreviated }: &SavingThrowProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let proficiency = state.saving_throws().get_prof(*ability);
-	let mut modifier = state.ability_modifier(*ability, Some(*proficiency.value()));
+
+	let mut modifier = state.ability_scores()[*ability].score().modifier();
+	let proficiency = state.saving_throws()[*ability].proficiencies();
+	modifier += proficiency.value() * state.proficiency_bonus();
+
 	let mut contextless_bonuses = Vec::with_capacity(10);
 	let mut context_bonuses = Vec::with_capacity(10);
-	for (target_ability, value, context, source) in state.saving_throws().iter_bonuses() {
-		if target_ability.is_none() || target_ability == Some(*ability) {
-			if let Some(context) = context {
-				context_bonuses.push((value, context, source));
-			}
-			else {
-				modifier += value as i32;
-				contextless_bonuses.push((value, source));
-			}
+	for (bonus, context, source) in state.saving_throws()[*ability].bonuses().iter() {
+		if let Some(context) = context {
+			context_bonuses.push((*bonus, context, source));
+		} else {
+			modifier += *bonus as i32;
+			contextless_bonuses.push((*bonus, source));
 		}
 	}
+
 	html! {<tr>
 		<Tooltip tag={"td"} classes={"text-center"} use_html={true} content={abbreviated.then(|| {
-			crate::data::as_feature_paths_html(proficiency.sources().iter().map(|(path, _)| path))
+			crate::data::as_feature_paths_html(proficiency.iter().map(|(_level, path)| path))
 		}).flatten()}>
-			<glyph::ProficiencyLevel value={*proficiency.value()} />
+			<glyph::ProficiencyLevel value={proficiency.value()} />
 		</Tooltip>
 		<td class={"text-center"}>{match *abbreviated {
 			true => ability.abbreviated_name().to_uppercase(),
@@ -76,7 +77,7 @@ pub fn SavingThrow(SavingThrowProps { ability, abbreviated }: &SavingThrowProps)
 			</span>
 		</Tooltip>
 		{(!abbreviated).then(|| html! {<td>
-			{proficiency.sources().iter().filter_map(|(path, _)| {
+			{proficiency.iter().filter_map(|(_level, path)| {
 				crate::data::as_feature_path_text(path)
 			}).map(|text| html! {<div>{text}</div>}).collect::<Vec<_>>()}
 			{context_bonuses.iter().filter_map(|(value, context, source)| {
@@ -143,16 +144,24 @@ pub fn SavingThrowModifiers(
 	}: &ModifiersProps,
 ) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let modifiers = state
-		.saving_throws()
-		.iter_modifiers()
-		.map(|(ability, modifier, item)| {
-			let entry = saving_throw_modifier(ability, modifier, item);
+
+	let iter = state.saving_throws().iter();
+	let iter = iter
+		.map(|(ability, saving_throw)| {
+			saving_throw
+				.modifiers()
+				.iter_all()
+				.map(move |(modifier, context, source)| (ability, modifier, context, source))
+		})
+		.flatten();
+	let modifiers = iter
+		.map(|(ability, modifier, context, source)| {
+			let entry = saving_throw_modifier(ability, modifier, context);
 			if !*show_tooltip {
 				return html!(<div>{entry}</div>);
 			}
 			html! {
-				<Tooltip content={crate::data::as_feature_path_text(&item.source)}>
+				<Tooltip content={crate::data::as_feature_path_text(source)}>
 					{entry}
 				</Tooltip>
 			}
@@ -170,17 +179,15 @@ pub fn SavingThrowModifiers(
 	}
 }
 
-pub fn saving_throw_modifier(ability: Option<Ability>, modifier: Modifier, item: &ModifierMapItem) -> Html {
+pub fn saving_throw_modifier(ability: Ability, modifier: Modifier, context: &Option<String>) -> Html {
 	let style = "height: 14px; margin-right: 2px; margin-top: -2px; width: 14px; vertical-align: middle;";
 	html! {<>
 		<span class="d-inline-flex" aria-label="Advantage" {style}>
 			<glyph::RollModifier value={modifier} />
 		</span>
-		{ability.map(|ability| html! {
-			<span>{"on "}{ability.abbreviated_name().to_uppercase()}</span>
-		}).unwrap_or_default()}
+		<span>{"on "}{ability.abbreviated_name().to_uppercase()}</span>
 		<span>
-			{item.context.as_ref().map(|target| format!(" against {target}")).unwrap_or_default()}
+			{context.as_ref().map(|target| format!(" against {target}")).unwrap_or_default()}
 		</span>
 	</>}
 }
@@ -194,10 +201,17 @@ fn Modal() -> Html {
 		all
 	};
 	let modifiers_section = {
-		let modifier_rows = state
-			.saving_throws()
-			.iter_modifiers()
-			.map(|(ability, modifier, item)| {
+		let iter = state.saving_throws().iter();
+		let iter = iter
+			.map(|(ability, saving_throw)| {
+				saving_throw
+					.modifiers()
+					.iter_all()
+					.map(move |(modifier, context, source)| (ability, modifier, context, source))
+			})
+			.flatten();
+		let modifier_rows = iter
+			.map(|(ability, modifier, context, source)| {
 				let style = "height: 14px; margin-right: 2px; margin-top: -2px; width: 14px; vertical-align: middle;";
 				html! {
 					<tr>
@@ -206,9 +220,9 @@ fn Modal() -> Html {
 								<glyph::RollModifier value={modifier} />
 							</span>
 						</td>
-						<td class="text-center">{ability.map(|ability| ability.long_name()).unwrap_or_default()}</td>
-						<td class="text-center">{item.context.clone().unwrap_or_default()}</td>
-						<td>{crate::data::as_feature_path_text(&item.source)}</td>
+						<td class="text-center">{ability.long_name()}</td>
+						<td class="text-center">{context.clone().unwrap_or_default()}</td>
+						<td>{crate::data::as_feature_path_text(source)}</td>
 					</tr>
 				}
 			})
