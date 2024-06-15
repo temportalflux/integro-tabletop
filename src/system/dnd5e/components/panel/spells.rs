@@ -27,7 +27,9 @@ use crate::{
 use convert_case::{Case, Casing};
 use itertools::Itertools;
 use std::{collections::BTreeMap, path::Path};
+use std::sync::Arc;
 use yew::prelude::*;
+use crate::system::dnd5e::components::panel::NotesField;
 
 fn rank_suffix(rank: u8) -> &'static str {
 	match rank {
@@ -684,6 +686,10 @@ pub fn spell_overview_info(
 		.flatten()
 		.map(|ability| state.ability_modifier(ability, Some(proficiency::Level::Full)))
 		.unwrap_or_default();
+
+	let notes = state.persistent().notes.get_first(&spell.id.path);
+	let notes = notes.map(|content| html!(<div class="attribute">{content}</div>));
+
 	html! {
 		<div class="attributes">
 			<div class="attribute-row">
@@ -798,6 +804,7 @@ pub fn spell_overview_info(
 					}
 				}}
 			</div>
+			{notes}
 		</div>
 	}
 }
@@ -1309,12 +1316,15 @@ fn spell_content(spell: &Spell, entry: Option<&SpellEntry>, state: &CharacterHan
 			.collect::<Vec<_>>()
 	};
 
+	let notes = html!(<NotesField path={Arc::new(spell.id.path.clone())} />);
+
 	// TODO: Show evaluated attack/save dc + damage + damage type + damage bonuses (and sources)
 
 	html! {<>
 		{sections}
 		<div class="hr my-2" />
 		{desc}
+		{notes}
 	</>}
 }
 

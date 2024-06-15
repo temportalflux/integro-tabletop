@@ -1,5 +1,8 @@
 use crate::{
-	bootstrap::components::Tooltip, components::{context_menu, AnnotatedNumber, AnnotatedNumberCard}, page::characters::sheet::CharacterHandle, system::dnd5e::data::Ability
+	bootstrap::components::Tooltip,
+	components::{context_menu, AnnotatedNumber, AnnotatedNumberCard},
+	page::characters::sheet::CharacterHandle,
+	system::dnd5e::data::Ability,
 };
 use yew::prelude::*;
 

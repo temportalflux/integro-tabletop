@@ -33,7 +33,9 @@ fn use_update_character_modules(character: &CharacterHandle) {
 	use crate::system::System;
 	use futures_util::FutureExt;
 	let is_first_mount_after_load = use_mut_ref(|| true);
+	// message channel for initiating module syncing from persistent storage to local data
 	let autosync_channel = use_context::<autosync::Channel>().unwrap();
+	// (auto) Query for all dnd5e modules that the local user has access to
 	let modules_query = use_query(Some(DnD5e::id()), |database, system| {
 		async move {
 			let query = Query::subset(&database, Some(ModuleInSystem::new(system))).await?;
@@ -41,16 +43,30 @@ fn use_update_character_modules(character: &CharacterHandle) {
 		}
 		.boxed_local()
 	});
+
+	// When character is loaded, initial module query is received, and this is the first load after mounting,
+	// then initiate an autosync request to load the character's data.
 	let modules_query_complete = matches!(modules_query.status(), database::QueryStatus::Success(_));
 	if character.is_loaded() && modules_query_complete && *is_first_mount_after_load.borrow_mut() {
 		*is_first_mount_after_load.borrow_mut() = false;
 
-		let module_ids = match modules_query.status() {
-			database::QueryStatus::Success(data) => data.iter().map(|module| module.id.clone()).collect::<Vec<_>>(),
-			_ => Vec::new(),
-		};
+		if let database::QueryStatus::Success(modules) = modules_query.status() {
+			let mut modules_to_sync = Vec::with_capacity(modules.len());
 
-		autosync_channel.try_send_req(autosync::Request::UpdateModules(module_ids));
+			if let Some(character_module_id) = &character.persistent().id.module {
+				let found_module = modules.iter().filter(|module| &module.id == character_module_id).count() > 0;
+				if found_module {
+					modules_to_sync.push(character_module_id.clone());
+				}
+			}
+		
+			if !modules_to_sync.is_empty() {
+				log::info!(target: "character", "Initiating module update request for: {:?}",
+					modules_to_sync.iter().map(ToString::to_string).collect::<Vec<_>>()
+				);
+				autosync_channel.try_send_req(autosync::Request::UpdateModules(modules_to_sync));
+			}
+		}
 	}
 }
 

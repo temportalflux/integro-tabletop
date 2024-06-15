@@ -1,33 +1,33 @@
-use crate::kdl_ext::NodeContext;
-use crate::system::mutator::ReferencePath;
 use crate::{
+	kdl_ext::NodeContext,
 	path_map::PathMap,
 	system::{
 		dnd5e::data::{
-			character::Character, item::container::Inventory, Ability, Bundle, Class, Condition, Rest, Spell,
+			character::{Character, ObjectCacheProvider, RestEntry},
+			item::container::Inventory,
+			Ability, Bundle, Class, Condition, Rest, Spell,
 		},
-		mutator, Block, SourceId,
+		mutator::{self, ReferencePath},
+		Block, SourceId,
 	},
 	utility::NotInList,
 };
 use enum_map::EnumMap;
 use itertools::Itertools;
-use kdlize::OmitIfEmpty;
-use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
+use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder, OmitIfEmpty};
 use multimap::MultiMap;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
 use std::{
 	collections::{BTreeMap, HashMap},
-	path::Path,
+	path::{Path, PathBuf},
 	str::FromStr,
 	sync::Arc,
 };
 
 mod description;
 pub use description::*;
-
-use super::{ObjectCacheProvider, RestEntry};
+mod notes;
+pub use notes::*;
 
 pub static MAX_SPELL_RANK: u8 = 9;
 
@@ -47,6 +47,7 @@ pub struct Persistent {
 	pub hit_points: HitPoints,
 	pub inspiration: bool,
 	pub settings: Settings,
+	pub notes: Notes,
 }
 impl mutator::Group for Persistent {
 	type Target = Character;
@@ -258,6 +259,8 @@ impl FromKdl<NodeContext> for Persistent {
 			}
 		}
 
+		let notes = node.query_opt_t("scope() > notes")?.unwrap_or_default();
+
 		Ok(Self {
 			id,
 			description,
@@ -271,6 +274,7 @@ impl FromKdl<NodeContext> for Persistent {
 			bundles,
 			classes,
 			selected_values,
+			notes,
 		})
 	}
 }
@@ -317,6 +321,8 @@ impl AsKdl for Persistent {
 			},
 			OmitIfEmpty,
 		));
+
+		node.child(("notes", &self.notes, OmitIfEmpty));
 
 		node
 	}

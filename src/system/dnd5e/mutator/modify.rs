@@ -344,10 +344,16 @@ impl Mutator for Modify {
 				context,
 			} => {
 				if let Some(modifier) = modifier {
-					stats.initiative_mut().modifiers_mut().push(*modifier, context.clone(), parent.display.clone());
+					stats
+						.initiative_mut()
+						.modifiers_mut()
+						.push(*modifier, context.clone(), parent.display.clone());
 				}
 				if let Some(bonus) = bonus {
-					stats.initiative_mut().bonuses_mut().push(*bonus, context.clone(), parent.display.clone());
+					stats
+						.initiative_mut()
+						.bonuses_mut()
+						.push(*bonus, context.clone(), parent.display.clone());
 				}
 			}
 			Self::ArmorClass { bonus, context } => {

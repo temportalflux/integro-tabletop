@@ -48,9 +48,6 @@ columnSorting:
 - [add-restore-uses-mutator](tasks/add-restore-uses-mutator.md)
 - [object-feature-backlog](tasks/object-feature-backlog.md)
 - [expanded-item-modal-editor](tasks/expanded-item-modal-editor.md)
-- [notes-for-features](tasks/notes-for-features.md)
-- [notes-for-items](tasks/notes-for-items.md)
-- [notes-for-spells](tasks/notes-for-spells.md)
 - [attunement](tasks/attunement.md)
 - [inventory-search-bar](tasks/inventory-search-bar.md)
 - [autosave](tasks/autosave.md)
@@ -58,10 +55,12 @@ columnSorting:
 
 ## In Progress
 
-- [initiative-modifier-needs-to-be-implemented](tasks/initiative-modifier-needs-to-be-implemented.md)
-
 ## Done
 
+- [notes-for-spells](tasks/notes-for-spells.md)
+- [notes-for-items](tasks/notes-for-items.md)
+- [notes-for-features](tasks/notes-for-features.md)
+- [initiative-modifier-needs-to-be-implemented](tasks/initiative-modifier-needs-to-be-implemented.md)
 - [join-bonus-and-modifier-mutators](tasks/join-bonus-and-modifier-mutators.md)
 - [condition-degrees](tasks/condition-degrees.md)
 - [item-charges](tasks/item-charges.md)

@@ -24,7 +24,9 @@ use enumset::{EnumSet, EnumSetType};
 use itertools::{Itertools, Position};
 use multimap::MultiMap;
 use std::{collections::HashMap, path::PathBuf};
+use std::sync::Arc;
 use yew::prelude::*;
+use crate::utility::InputExt;
 
 #[derive(EnumSetType, Enum)]
 pub enum ActionTag {
@@ -77,7 +79,7 @@ pub fn Actions() -> Html {
 			};
 			context_menu.dispatch(context_menu::Action::open_root(
 				feature.name.clone(),
-				html!(<Modal path={feature_path} />),
+				html!(<Modal path={Arc::new(feature_path)} />),
 			));
 		}
 	});
@@ -417,7 +419,7 @@ struct ActionProps {
 #[function_component]
 fn CollapsedFeature(ActionProps { entry }: &ActionProps) -> Html {
 	let onclick = context_menu::use_control_action({
-		let feature_path: PathBuf = entry.feature_path.clone();
+		let feature_path = Arc::new(entry.feature_path.clone());
 		let feature_name = AttrValue::from(entry.feature.name.clone());
 		move |_, _context| {
 			context_menu::Action::open_root(feature_name.clone(), html!(<Modal path={feature_path.clone()} />))
@@ -433,7 +435,7 @@ fn ActionOverview(ActionProps { entry }: &ActionProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 
 	let onclick = context_menu::use_control_action({
-		let feature_path: PathBuf = entry.feature_path.clone();
+		let feature_path = Arc::new(entry.feature_path.clone());
 		let feature_name = AttrValue::from(entry.feature.name.clone());
 		move |_, _context| {
 			context_menu::Action::open_root(feature_name.clone(), html!(<Modal path={feature_path.clone()} />))
@@ -538,6 +540,10 @@ fn ActionOverview(ActionProps { entry }: &ActionProps) -> Html {
 		},
 	};
 	let desc = entry.feature.description.clone().evaluate(&state);
+
+	let notes_entry = state.persistent().notes.get_first(&entry.feature_path);
+	let notes = notes_entry.map(|content| html!(<div>{content}</div>));
+
 	html! {
 		<div class="feature short pb-1" {onclick}>
 			{(!same_name_as_display_parent).then(|| html! {
@@ -558,6 +564,7 @@ fn ActionOverview(ActionProps { entry }: &ActionProps) -> Html {
 				}}
 			</span>
 			{description(&desc, true, false)}
+			{notes.unwrap_or_default()}
 			{action_block}
 			{match entry.children.is_empty() {
 				true => html! {},
@@ -576,7 +583,7 @@ fn ActionOverview(ActionProps { entry }: &ActionProps) -> Html {
 #[derive(Clone, PartialEq, Properties)]
 struct ModalProps {
 	// The path to the feature in `state.features().path_map`.
-	pub path: PathBuf,
+	pub path: Arc<PathBuf>,
 }
 #[function_component]
 fn Modal(ModalProps { path }: &ModalProps) -> Html {
@@ -590,10 +597,10 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 		}
 	});
 
-	let Some(feature) = state.features().path_map.get_first(&path) else {
+	let Some(feature) = state.features().path_map.get_first(path.as_path()) else {
 		return html! {<>
 			{"Missing Feature: "}
-			{crate::data::as_feature_path_text(&path)}
+			{crate::data::as_feature_path_text(path.as_path())}
 		</>};
 	};
 
@@ -872,9 +879,45 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 		});
 	}
 
+	sections.push(html!(<NotesField {path} />));
+
 	html! {<>
 		<div class="details feature">
 			{sections}
 		</div>
 	</>}
+}
+
+#[derive(Clone, PartialEq, Properties)]
+pub struct NotesFieldProps {
+	// The path to the feature in `state.features().path_map`.
+	pub path: Arc<PathBuf>,
+}
+#[function_component]
+pub fn NotesField(NotesFieldProps { path }: &NotesFieldProps) -> Html {
+	let state = use_context::<CharacterHandle>().unwrap();
+	let onchange = state.new_dispatch({
+		let path = path.clone();
+		move |evt: web_sys::Event, persistent: &mut Persistent| {
+			let Some(mut value) = evt.input_value() else {
+				return MutatorImpact::None;
+			};
+			persistent.notes.remove(&*path);
+			value = value.trim().to_string();
+			if !value.is_empty() {
+				persistent.notes.set(&*path, value);
+			}
+			MutatorImpact::None
+		}
+	});
+
+	let content = state.persistent().notes.get_first(&**path);
+	let value = content.cloned().unwrap_or_default();
+	html!(<div class="form-floating">
+		<textarea
+			class="form-control" id="notes"
+			{onchange} {value}
+		/>
+		<label for="notes">{"Notes"}</label>
+	</div>)
 }

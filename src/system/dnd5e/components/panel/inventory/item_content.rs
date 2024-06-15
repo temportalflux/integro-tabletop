@@ -29,7 +29,11 @@ use crate::{
 };
 use any_range::AnyRange;
 use std::collections::HashSet;
+use std::path::Path;
+use std::sync::Arc;
+use itertools::Itertools;
 use yew::prelude::*;
+use crate::system::dnd5e::components::panel::NotesField;
 
 pub fn get_inventory_item<'c>(state: &'c CharacterHandle, id_path: &Vec<uuid::Uuid>) -> Option<&'c Item> {
 	let mut iter = id_path.iter();
@@ -616,6 +620,15 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 			</div>
 		});
 	}
+
+	if let Some(ItemLocation::Inventory { id_path }) = &props.location {
+		// TODO: update the notes for an item when it is moved between inventory containers
+		//       (wont be done at this location, this is just where the thought came to mind)
+		// TODO: update inventory panel to show notes in each row
+		let path = Arc::new(Path::new(&id_path.iter().join("/")).to_owned());
+		sections.push(html!(<NotesField {path} />));
+	}
+
 	html! {<>
 		{sections}
 	</>}
