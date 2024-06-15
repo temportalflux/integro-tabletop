@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="VcsDirectoryMappings">
+    <mapping directory="" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/crates/database" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/crates/github" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/crates/kdlize" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/crates/netlify-oauth" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/modules/basic-rules" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/modules/elf-and-orc" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/modules/homebrew" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/modules/wotc-oota" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/modules/wotc-phb" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/modules/wotc-toa" vcs="Git" />
+  </component>
+</project>
