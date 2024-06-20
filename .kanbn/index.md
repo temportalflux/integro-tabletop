@@ -32,7 +32,6 @@ columnSorting:
 - [name-generator](tasks/name-generator.md)
 - [active-tasks-toast](tasks/active-tasks-toast.md)
 - [character-changelog](tasks/character-changelog.md)
-- [parcels-mailbox](tasks/parcels-mailbox.md)
 - [spell-components-foci](tasks/spell-components-foci.md)
 - [evaluator-output-types](tasks/evaluator-output-types.md)
 - [user-docs](tasks/user-docs.md)
@@ -52,6 +51,7 @@ columnSorting:
 - [inventory-search-bar](tasks/inventory-search-bar.md)
 - [autosave](tasks/autosave.md)
 - [attack-row-overview-ui-rehaul](tasks/attack-row-overview-ui-rehaul.md)
+- [parcels-mailbox](tasks/parcels-mailbox.md)
 
 ## In Progress
 
