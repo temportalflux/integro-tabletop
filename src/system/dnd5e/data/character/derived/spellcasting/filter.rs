@@ -3,6 +3,7 @@ use crate::system::{dnd5e::data::Spell, SourceId};
 use itertools::Itertools;
 use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
 use std::collections::HashSet;
+use std::str::FromStr;
 
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct Filter {
@@ -29,10 +30,17 @@ impl FromKdl<NodeContext> for Filter {
 		let tags = node.query_str_all("scope() > tag", 0)?;
 		let tags = tags.into_iter().map(str::to_owned).collect::<HashSet<_>>();
 		let school_tag = node.query_str_opt("scope() > school", 0)?.map(str::to_owned);
+
+		let mut additional_ids = HashSet::default();
+		for str in node.query_str_all("scope() > spell", 0)? {
+			additional_ids.insert(SourceId::from_str(str)?);
+		}
+
 		Ok(Filter {
 			ranks,
 			tags,
 			school_tag,
+			additional_ids,
 			..Default::default()
 		})
 	}
@@ -43,6 +51,7 @@ impl AsKdl for Filter {
 		node.children(("rank", self.ranks.iter().sorted()));
 		node.child(("school", &self.school_tag));
 		node.children(("tag", self.tags.iter().sorted()));
+		node.children(("spell", self.additional_ids.iter().sorted()));
 		node
 	}
 }
