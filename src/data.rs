@@ -1,5 +1,8 @@
 use std::path::Path;
 
+mod user;
+pub use user::*;
+
 pub fn as_feature_path_text(path: &Path) -> Option<String> {
 	use convert_case::{Case, Casing};
 	if path.components().count() == 0 {
