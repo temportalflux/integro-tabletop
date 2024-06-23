@@ -1,16 +1,21 @@
-use crate::kdl_ext::NodeContext;
-use crate::system::mutator::ReferencePath;
 use crate::{
-	system::dnd5e::data::{bounded::BoundValue, character::Character, description},
-	system::Mutator,
+	kdl_ext::NodeContext,
+	system::{
+		dnd5e::{
+			data::{
+				character::{Character, StatOperation},
+				description,
+			},
+			mutator::StatMutator,
+		},
+		mutator::ReferencePath,
+		Mutator,
+	},
 };
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Sense {
-	pub name: String,
-	pub argument: BoundValue,
-}
+pub struct Sense(pub StatMutator);
 
 crate::impl_trait_eq!(Sense);
 kdlize::impl_kdl_node!(Sense, "sense");
@@ -19,19 +24,28 @@ impl Mutator for Sense {
 	type Target = Character;
 
 	fn description(&self, _state: Option<&Character>) -> description::Section {
-		let name = &self.name;
-		description::Section {
-			content: match &self.argument {
-				BoundValue::Minimum(value) => format!("You have {name} for at least {value} feet."),
-				BoundValue::Base(value) => format!("You have {name} for at least {value} feet."),
-				BoundValue::Additive(value) => {
-					format!("If you have {name} from another source, your {name} increases by {value} feet.")
-				}
-				BoundValue::Subtract(value) => {
-					format!("If you have {name}, it decreases by {value} feet.")
-				}
+		let name = &self.0.stat_name;
+		let content = match &self.0.operation {
+			StatOperation::MinimumValue(value) => format!("You have {name} for at least {value} feet."),
+			StatOperation::MinimumStat(stat_name) => {
+				format!("You have {name} for at least a distance equal to your {stat_name}")
 			}
-			.into(),
+			StatOperation::Base(value) => format!("You have {name} for at least {value} feet."),
+			StatOperation::AddSubtract(value) if *value >= 0 => {
+				format!("If you have {name} from another source, your {name} increases by {value} feet.")
+			}
+			StatOperation::AddSubtract(value) => {
+				format!("If you have {name}, it decreases by {} feet.", value.abs())
+			}
+			StatOperation::MultiplyDivide(value) if *value >= 0 => {
+				format!("If you have {name} from another source, your {name} is multiplied by {value}.")
+			}
+			StatOperation::MultiplyDivide(value) => {
+				format!("If you have {name} from another source, your {name} is divided by {value}.")
+			}
+		};
+		description::Section {
+			content: content.into(),
 			..Default::default()
 		}
 	}
@@ -39,25 +53,20 @@ impl Mutator for Sense {
 	fn apply(&self, stats: &mut Character, parent: &ReferencePath) {
 		stats
 			.senses_mut()
-			.insert(self.name.clone(), self.argument.clone(), parent);
+			.insert(self.0.stat_name.clone(), self.0.operation.clone(), parent);
 	}
 }
 
 impl FromKdl<NodeContext> for Sense {
 	type Error = anyhow::Error;
-	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
-		let name = node.next_str_req()?.to_owned();
-		let argument = BoundValue::from_kdl(node)?;
-		Ok(Self { name, argument })
+	fn from_kdl(node: &mut crate::kdl_ext::NodeReader) -> anyhow::Result<Self> {
+		Ok(Self(StatMutator::from_kdl(node)?))
 	}
 }
 
 impl AsKdl for Sense {
 	fn as_kdl(&self) -> NodeBuilder {
-		let mut node = NodeBuilder::default();
-		node.entry(self.name.clone());
-		node += self.argument.as_kdl();
-		node
+		self.0.as_kdl()
 	}
 }
 
@@ -74,10 +83,10 @@ mod test {
 		#[test]
 		fn minimum() -> anyhow::Result<()> {
 			let doc = "mutator \"sense\" \"Darkvision\" (Minimum)60";
-			let data = Sense {
-				name: "Darkvision".into(),
-				argument: BoundValue::Minimum(60),
-			};
+			let data = Sense(StatMutator {
+				stat_name: "Darkvision".into(),
+				operation: StatOperation::MinimumValue(60),
+			});
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -85,11 +94,11 @@ mod test {
 
 		#[test]
 		fn additive() -> anyhow::Result<()> {
-			let doc = "mutator \"sense\" \"Darkvision\" (Additive)60";
-			let data = Sense {
-				name: "Darkvision".into(),
-				argument: BoundValue::Additive(60),
-			};
+			let doc = "mutator \"sense\" \"Darkvision\" (Add)60";
+			let data = Sense(StatMutator {
+				stat_name: "Darkvision".into(),
+				operation: StatOperation::AddSubtract(60),
+			});
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -97,9 +106,9 @@ mod test {
 	}
 
 	mod mutate {
+		use std::path::PathBuf;
 		use super::*;
 		use crate::system::dnd5e::data::{
-			bounded::BoundKind,
 			character::{Character, Persistent},
 			Bundle,
 		};
@@ -125,15 +134,14 @@ mod test {
 		fn minimum_single() {
 			let character = character(vec![(
 				"TestFeature",
-				Sense {
-					name: "Darkvision".into(),
-					argument: BoundValue::Minimum(60),
-				},
+				Sense(StatMutator {
+					stat_name: "Darkvision".into(),
+					operation: StatOperation::MinimumValue(60),
+				}),
 			)]);
-			let sense = character.senses().get("Darkvision").unwrap();
-			let expected = [(BoundKind::Minimum, [("TestFeature".into(), 60)].into())].into();
-			assert_eq!(sense, &expected);
-			assert_eq!(sense.value(), 60);
+			let sense = character.senses().get("Darkvision").cloned().collect::<Vec<_>>();
+			let expected: Vec<(_, PathBuf)> = vec![(StatOperation::MinimumValue(60), "TestFeature".into())];
+			assert_eq!(sense, expected);
 		}
 
 		#[test]
@@ -141,42 +149,39 @@ mod test {
 			let character = character(vec![
 				(
 					"SenseB",
-					Sense {
-						name: "Darkvision".into(),
-						argument: BoundValue::Minimum(60),
-					},
+					Sense(StatMutator {
+						stat_name: "Darkvision".into(),
+						operation: StatOperation::MinimumValue(60),
+					}),
 				),
 				(
 					"SenseA",
-					Sense {
-						name: "Darkvision".into(),
-						argument: BoundValue::Minimum(40),
-					},
+					Sense(StatMutator {
+						stat_name: "Darkvision".into(),
+						operation: StatOperation::MinimumValue(40),
+					}),
 				),
 			]);
-			let sense = character.senses().get("Darkvision").unwrap();
-			let expected = [(
-				BoundKind::Minimum,
-				[("SenseA".into(), 40), ("SenseB".into(), 60)].into(),
-			)]
-			.into();
-			assert_eq!(sense, &expected);
-			assert_eq!(sense.value(), 60);
+			let sense = character.senses().get("Darkvision").cloned().collect::<Vec<_>>();
+			let expected: Vec<(_, PathBuf)> = vec![
+				(StatOperation::MinimumValue(40), "SenseA".into()),
+				(StatOperation::MinimumValue(60), "SenseB".into()),
+			];
+			assert_eq!(sense, expected);
 		}
 
 		#[test]
 		fn single_additive() {
 			let character = character(vec![(
 				"TestFeature",
-				Sense {
-					name: "Darkvision".into(),
-					argument: BoundValue::Additive(20),
-				},
+				Sense(StatMutator {
+					stat_name: "Darkvision".into(),
+					operation: StatOperation::AddSubtract(60),
+				}),
 			)]);
-			let sense = character.senses().get("Darkvision").unwrap();
-			let expected = [(BoundKind::Additive, [("TestFeature".into(), 20)].into())].into();
-			assert_eq!(sense, &expected);
-			assert_eq!(sense.value(), 20);
+			let sense = character.senses().get("Darkvision").cloned().collect::<Vec<_>>();
+			let expected: Vec<(_, PathBuf)> = vec![(StatOperation::AddSubtract(60), "TestFeature".into())];
+			assert_eq!(sense, expected);
 		}
 
 		#[test]
@@ -184,27 +189,25 @@ mod test {
 			let character = character(vec![
 				(
 					"A",
-					Sense {
-						name: "Darkvision".into(),
-						argument: BoundValue::Minimum(60),
-					},
+					Sense(StatMutator {
+						stat_name: "Darkvision".into(),
+						operation: StatOperation::MinimumValue(60),
+					}),
 				),
 				(
 					"B",
-					Sense {
-						name: "Darkvision".into(),
-						argument: BoundValue::Additive(40),
-					},
+					Sense(StatMutator {
+						stat_name: "Darkvision".into(),
+						operation: StatOperation::AddSubtract(40),
+					}),
 				),
 			]);
-			let sense = character.senses().get("Darkvision").unwrap();
-			let expected = [
-				(BoundKind::Minimum, [("A".into(), 60)].into()),
-				(BoundKind::Additive, [("B".into(), 40)].into()),
-			]
-			.into();
-			assert_eq!(sense, &expected);
-			assert_eq!(sense.value(), 60);
+			let sense = character.senses().get("Darkvision").cloned().collect::<Vec<_>>();
+			let expected: Vec<(_, PathBuf)> = vec![
+				(StatOperation::AddSubtract(40), "B".into()),
+				(StatOperation::MinimumValue(60), "A".into()),
+			];
+			assert_eq!(sense, expected);
 		}
 
 		#[test]
@@ -212,34 +215,33 @@ mod test {
 			let character = character(vec![
 				(
 					"A",
-					Sense {
-						name: "Darkvision".into(),
-						argument: BoundValue::Minimum(60),
-					},
+					Sense(StatMutator {
+						stat_name: "Darkvision".into(),
+						operation: StatOperation::MinimumValue(60),
+					}),
 				),
 				(
 					"B",
-					Sense {
-						name: "Darkvision".into(),
-						argument: BoundValue::Additive(40),
-					},
+					Sense(StatMutator {
+						stat_name: "Darkvision".into(),
+						operation: StatOperation::AddSubtract(40),
+					}),
 				),
 				(
 					"C",
-					Sense {
-						name: "Darkvision".into(),
-						argument: BoundValue::Additive(30),
-					},
+					Sense(StatMutator {
+						stat_name: "Darkvision".into(),
+						operation: StatOperation::AddSubtract(30),
+					}),
 				),
 			]);
-			let sense = character.senses().get("Darkvision").unwrap();
-			let expected = [
-				(BoundKind::Minimum, [("A".into(), 60)].into()),
-				(BoundKind::Additive, [("B".into(), 40), ("C".into(), 30)].into()),
-			]
-			.into();
-			assert_eq!(sense, &expected);
-			assert_eq!(sense.value(), 70);
+			let sense = character.senses().get("Darkvision").cloned().collect::<Vec<_>>();
+			let expected: Vec<(_, PathBuf)> = vec![
+				(StatOperation::AddSubtract(40), "B".into()),
+				(StatOperation::AddSubtract(30), "C".into()),
+				(StatOperation::MinimumValue(60), "A".into()),
+			];
+			assert_eq!(sense, expected);
 		}
 	}
 }

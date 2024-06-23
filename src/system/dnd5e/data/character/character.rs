@@ -6,7 +6,7 @@ use crate::{
 				character::{
 					spellcasting, AbilityScores, AttackBonuses, DefaultsBlock, Defenses, Derived, DerivedDescription,
 					Features, HitPoint, HitPoints, Initiative, MaxHitPoints, Persistent, ResourceDepot, RestResets,
-					SavingThrows, Senses, Skills, Speeds, Spellcasting, StartingEquipment,
+					SavingThrows, Skills, Spellcasting, StartingEquipment, Stat,
 				},
 				item::container::Inventory,
 				proficiency, Ability, ArmorClass, Feature, OtherProficiencies,
@@ -14,7 +14,7 @@ use crate::{
 			mutator::Flag,
 			BoxedCriteria, BoxedMutator,
 		},
-		mutator::{self, Group, ReferencePath},
+		mutator::{Group, ReferencePath},
 		SourceId,
 	},
 	utility::{selector, Dependencies},
@@ -31,7 +31,7 @@ pub enum ActionEffect {
 	Recompile,
 }
 
-/// The pairing of `Character` and `Derived` to form a singlular reference
+/// The pairing of `Character` and `Derived` to form a singular reference
 /// structure for all character data.
 #[derive(Clone, PartialEq, Debug)]
 pub struct Character {
@@ -130,7 +130,7 @@ impl Character {
 		Ok(())
 	}
 
-	pub fn apply_from(&mut self, container: &impl mutator::Group<Target = Self>, parent: &ReferencePath) {
+	pub fn apply_from(&mut self, container: &impl Group<Target = Self>, parent: &ReferencePath) {
 		container.apply_mutators(self, parent);
 	}
 
@@ -172,10 +172,7 @@ impl Character {
 				}
 			}
 		});
-		let idx = match idx {
-			Ok(idx) => idx,
-			Err(idx) => idx,
-		};
+		let idx = idx.unwrap_or_else(|idx| idx);
 		self.mutators.insert(idx, incoming);
 	}
 
@@ -340,19 +337,19 @@ impl Character {
 		&mut self.derived.armor_class
 	}
 
-	pub fn speeds(&self) -> &Speeds {
+	pub fn speeds(&self) -> &Stat {
 		&self.derived.speeds
 	}
 
-	pub fn speeds_mut(&mut self) -> &mut Speeds {
+	pub fn speeds_mut(&mut self) -> &mut Stat {
 		&mut self.derived.speeds
 	}
 
-	pub fn senses(&self) -> &Senses {
+	pub fn senses(&self) -> &Stat {
 		&self.derived.senses
 	}
 
-	pub fn senses_mut(&mut self) -> &mut Senses {
+	pub fn senses_mut(&mut self) -> &mut Stat {
 		&mut self.derived.senses
 	}
 

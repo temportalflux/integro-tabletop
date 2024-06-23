@@ -1,3 +1,4 @@
+use crate::system::dnd5e::components::panel::NotesField;
 use crate::{
 	components::{
 		context_menu,
@@ -28,12 +29,11 @@ use crate::{
 	utility::InputExt,
 };
 use any_range::AnyRange;
+use itertools::Itertools;
 use std::collections::HashSet;
 use std::path::Path;
 use std::sync::Arc;
-use itertools::Itertools;
 use yew::prelude::*;
-use crate::system::dnd5e::components::panel::NotesField;
 
 pub fn get_inventory_item<'c>(state: &'c CharacterHandle, id_path: &Vec<uuid::Uuid>) -> Option<&'c Item> {
 	let mut iter = id_path.iter();

@@ -28,18 +28,16 @@ mod resource_depot;
 pub use resource_depot::*;
 mod saving_throw;
 pub use saving_throw::*;
-mod sense;
-pub use sense::*;
 mod size;
 pub use size::*;
 mod skill;
 pub use skill::*;
-mod speed;
-pub use speed::*;
 pub mod spellcasting;
 pub use spellcasting::Spellcasting;
 mod starting_equipment;
 pub use starting_equipment::*;
+mod stat;
+pub use stat::*;
 
 /// Data derived from the `Persistent`, such as bonuses to abilities/skills,
 /// proficiencies, and actions. This data all lives within `Persistent` in
@@ -52,8 +50,8 @@ pub struct Derived {
 	pub saving_throws: SavingThrows,
 	pub skills: Skills,
 	pub other_proficiencies: OtherProficiencies,
-	pub speeds: Speeds,
-	pub senses: Senses,
+	pub speeds: Stat,
+	pub senses: Stat,
 	pub defenses: Defenses,
 	pub max_hit_points: MaxHitPoints,
 	pub initiative: Initiative,

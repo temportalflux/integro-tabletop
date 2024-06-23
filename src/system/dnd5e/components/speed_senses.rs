@@ -1,16 +1,14 @@
 use crate::{
-	components::context_menu,
-	page::characters::sheet::CharacterHandle,
-	system::dnd5e::data::bounded::{BoundKind, BoundedValue},
+	components::context_menu, page::characters::sheet::CharacterHandle, system::dnd5e::data::character::StatOperation,
 };
-use enumset::EnumSet;
-use std::{collections::BTreeMap, path::PathBuf};
+use itertools::Itertools;
+use std::{path::PathBuf, sync::Arc};
 use yew::prelude::*;
 
 #[derive(Clone, PartialEq, Properties)]
 struct SingleValueProps {
 	title: AttrValue,
-	amount: i32,
+	amount: u32,
 }
 
 #[function_component]
@@ -37,23 +35,24 @@ pub fn SpeedAndSenses() -> Html {
 			}
 		})
 		.unwrap_or_else(|| html! {});
+
 	let speed = match state.speeds().len() {
 		0 => html! {},
 		1 => {
-			let (title, bounded) = state.speeds().iter().next().unwrap();
+			let (title, value) = state.speeds().iter_compiled().next().unwrap();
 			html! {<div class="col">
-				<SingleValue title={format!("{title} Speed")} amount={bounded.value()} />
+				<SingleValue title={format!("{title} Speed")} amount={value} />
 			</div>}
 		}
 		// TODO: Walking speed should always be the first entry
 		_ => html! {<div class="col">
 			<h6 class="text-center" style="font-size: 0.8rem; color: var(--bs-card-title-color);">{"Speeds"}</h6>
 			<div style="margin-left: 5px; margin-right: 5px;">
-				{state.speeds().iter().map(|(title, bounded)| {
+				{state.speeds().iter_compiled().map(|(title, value)| {
 					html! {
 						<span class="d-flex" style="border-style: solid; border-color: var(--bs-border-color); border-width: 0; border-bottom-width: var(--bs-border-width);">
 							<span class="flex-grow-1">{title}</span>
-							<span class="ps-2">{bounded.value()}{"ft."}</span>
+							<span class="ps-2">{value}{"ft."}</span>
 						</span>
 					}
 				}).collect::<Vec<_>>()}
@@ -63,19 +62,19 @@ pub fn SpeedAndSenses() -> Html {
 	let senses_html = match state.senses().len() {
 		0 => html! {},
 		1 => {
-			let (title, bounded) = state.senses().iter().next().unwrap();
+			let (title, value) = state.senses().iter_compiled().next().unwrap();
 			html! {<div class="col">
-				<SingleValue title={title.clone()} amount={bounded.value()} />
+				<SingleValue title={title.to_owned()} amount={value} />
 			</div>}
 		}
 		_ => html! {<div class="col">
 			<h6 class="text-center" style="font-size: 0.8rem; color: var(--bs-card-title-color);">{"Senses"}</h6>
 			<div style="margin-left: 5px; margin-right: 5px;">
-				{state.senses().iter().map(|(title, bounded)| {
+				{state.senses().iter_compiled().map(|(title, value)| {
 					html! {
 						<span class="d-flex" style="border-style: solid; border-color: var(--bs-border-color); border-width: 0; border-bottom-width: var(--bs-border-width);">
 							<span class="flex-grow-1">{title}</span>
-							<span class="ps-2">{bounded.value()}{"ft."}</span>
+							<span class="ps-2">{value}{"ft."}</span>
 						</span>
 					}
 				}).collect::<Vec<_>>()}
@@ -137,12 +136,28 @@ static SENSE_DESC: [(&'static str, &'static str); 3] = [
 #[function_component]
 fn Modal() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
+
+	let speed_stats = state
+		.speeds()
+		.iter_compiled()
+		.map(|(name, value)| (Arc::new(name.to_owned()), value))
+		.collect::<Vec<_>>();
+	let sense_stats = state
+		.senses()
+		.iter_compiled()
+		.map(|(name, value)| (Arc::new(name.to_owned()), value))
+		.collect::<Vec<_>>();
+
 	html! {<>
-		{state.speeds().iter().map(|(name, bounded)| {
-			bounded_value("Speed", &name, bounded)
+		{speed_stats.into_iter().map(|(name, value)| {
+			let operations = state.speeds().get(name.as_str());
+			let operations = operations.cloned().sorted().collect::<Vec<_>>();
+			html!(<Stat kind="Speed" {name} {value} {operations} />)
 		}).collect::<Vec<_>>()}
-		{state.senses().iter().map(|(name, bounded)| {
-			bounded_value("Sense", &name, bounded)
+		{sense_stats.into_iter().map(|(name, value)| {
+			let operations = state.senses().get(name.as_str());
+			let operations = operations.cloned().sorted().collect::<Vec<_>>();
+			html!(<Stat kind="Sense" {name} {value} {operations} />)
 		}).collect::<Vec<_>>()}
 
 		<div>
@@ -159,50 +174,42 @@ fn Modal() -> Html {
 	</>}
 }
 
-fn bounded_value(kind: &str, name: &str, bounded: &BoundedValue) -> Html {
-	let bound_kinds = {
-		let mut kinds = EnumSet::<BoundKind>::all().into_iter().collect::<Vec<_>>();
-		kinds.sort();
-		kinds
-	};
-	let bound_sources = bound_kinds
-		.into_iter()
-		.filter_map(|kind| {
-			let sources = bounded.argument(kind);
-			(!sources.is_empty()).then_some((kind, sources))
-		})
-		.collect::<Vec<_>>();
-	html! {
-		html! {<div class="mb-2">
-			<h4>{name}{" ("}{kind}{")"}</h4>
-			{bound_sources.into_iter().map(|(kind, sources)| bound_section(kind, sources)).collect::<Vec<_>>()}
-		</div>}
-	}
+#[derive(Clone, PartialEq, Properties)]
+struct StatProps {
+	kind: &'static str,
+	name: Arc<String>,
+	value: u32,
+	operations: Vec<(StatOperation, PathBuf)>,
 }
 
-fn bound_section(kind: BoundKind, sources: &BTreeMap<PathBuf, i32>) -> Html {
-	html! {<div class="mx-2 mb-1">
-		<span>
-			<strong>{kind.display_name()}{". "}</strong>
-			<span style="font-size: 14px;">
-				{kind.description()}
-			</span>
-		</span>
-		<table class="table table-compact table-striped mx-auto" style="width: 90%;">
-			<thead>
-				<tr class="text-center" style="color: var(--bs-heading-color);">
-					<th scope="col" style="width: 50px;">{"Value"}</th>
-					<th scope="col">{"Source"}</th>
-				</tr>
-			</thead>
-			<tbody>
-				{sources.iter().map(|(path, value)| html! {
-					<tr>
-						<td class="text-center">{value.to_string()}</td>
-						<td>{crate::data::as_feature_path_text(path)}</td>
-					</tr>
-				}).collect::<Vec<_>>()}
-			</tbody>
-		</table>
-	</div>}
+#[function_component]
+fn Stat(
+	StatProps {
+		kind,
+		name,
+		value,
+		operations,
+	}: &StatProps,
+) -> Html {
+	html!(<div class="mb-2">
+		<h4>{name}{" ("}{kind}{") = "}{*value}</h4>
+		{operations.into_iter().map(|(operation, source)| {
+			let (name, value) = match operation {
+				StatOperation::MinimumValue(value) => (html!("Minimum"), html!(*value)),
+				StatOperation::MinimumStat(value) => (html!("Minimum"), html!(format!("equal to {value}"))),
+				StatOperation::Base(value) => (html!("Base"), html!(*value)),
+				StatOperation::MultiplyDivide(value) if *value >= 0 => (html!("Multiply"), html!(value.abs())),
+				StatOperation::MultiplyDivide(value) => (html!("Divide"), html!(value.abs())),
+				StatOperation::AddSubtract(value) if *value >= 0 => (html!("Add"), html!(value.abs())),
+				StatOperation::AddSubtract(value) => (html!("Subtract"), html!(value.abs())),
+			};
+			html! {
+				<div class="mx-2 mb-1">
+					<strong>{name}</strong>
+					<span class="ms-2">{value}</span>
+					<span class="ms-2">{crate::data::as_feature_path_text(source)}</span>
+				</div>
+			}
+		}).collect::<Vec<_>>()}
+	</div>)
 }

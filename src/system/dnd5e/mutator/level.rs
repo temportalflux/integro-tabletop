@@ -114,13 +114,12 @@ mod test {
 
 	mod kdl {
 		use super::*;
+		use crate::system::dnd5e::data::character::StatOperation;
+		use crate::system::dnd5e::mutator::StatMutator;
 		use crate::{
 			kdl_ext::test_utils::*,
 			system::{
-				dnd5e::{
-					data::bounded::BoundValue,
-					mutator::{test::test_utils, Speed},
-				},
+				dnd5e::mutator::{test::test_utils, Speed},
 				generics,
 			},
 		};
@@ -154,7 +153,7 @@ mod test {
 				|        mutator \"speed\" \"Climbing\" (Base)30
 				|    }
 				|    level 5 {
-				|        mutator \"speed\" \"Climbing\" (Additive)10
+				|        mutator \"speed\" \"Climbing\" (Add)10
 				|    }
 				|}
 			";
@@ -163,18 +162,18 @@ mod test {
 				levels: [
 					(
 						3,
-						vec![Speed {
-							name: "Climbing".into(),
-							argument: BoundValue::Base(30),
-						}
+						vec![Speed(StatMutator {
+							stat_name: "Climbing".into(),
+							operation: StatOperation::Base(30),
+						})
 						.into()],
 					),
 					(
 						5,
-						vec![Speed {
-							name: "Climbing".into(),
-							argument: BoundValue::Additive(10),
-						}
+						vec![Speed(StatMutator {
+							stat_name: "Climbing".into(),
+							operation: StatOperation::AddSubtract(10),
+						})
 						.into()],
 					),
 				]
@@ -193,7 +192,7 @@ mod test {
 				|        mutator \"speed\" \"Climbing\" (Base)30
 				|    }
 				|    level 5 {
-				|        mutator \"speed\" \"Climbing\" (Additive)10
+				|        mutator \"speed\" \"Climbing\" (Add)10
 				|    }
 				|}
 			";
@@ -202,18 +201,18 @@ mod test {
 				levels: [
 					(
 						3,
-						vec![Speed {
-							name: "Climbing".into(),
-							argument: BoundValue::Base(30),
-						}
+						vec![Speed(StatMutator {
+							stat_name: "Climbing".into(),
+							operation: StatOperation::Base(30),
+						})
 						.into()],
 					),
 					(
 						5,
-						vec![Speed {
-							name: "Climbing".into(),
-							argument: BoundValue::Additive(10),
-						}
+						vec![Speed(StatMutator {
+							stat_name: "Climbing".into(),
+							operation: StatOperation::AddSubtract(10),
+						})
 						.into()],
 					),
 				]

@@ -1,8 +1,13 @@
-use crate::kdl_ext::NodeContext;
-use crate::system::mutator::ReferencePath;
 use crate::{
-	system::dnd5e::data::{bounded::BoundValue, character::Character, description, Ability},
-	system::Mutator,
+	kdl_ext::NodeContext,
+	system::{
+		dnd5e::data::{
+			character::{Character, StatOperation},
+			description, Ability,
+		},
+		mutator::ReferencePath,
+		Mutator,
+	},
 	utility::InvalidEnumStr,
 };
 use enum_map::Enum;
@@ -105,9 +110,10 @@ impl Mutator for ArmorStrengthRequirement {
 		}
 		// If the rule is on and the ability score is not met,
 		// then ensure that all movement speeds are decreased by 10.
-		let speed_names = stats.speeds().iter().map(|(name, _)| name).cloned().collect::<Vec<_>>();
-		for speed in speed_names {
-			stats.speeds_mut().insert(speed, BoundValue::Subtract(10), parent);
+		let speed_stats = stats.speeds().names().cloned().collect::<Vec<_>>();
+		for speed in speed_stats {
+			let speeds = stats.speeds_mut();
+			speeds.insert(speed, StatOperation::AddSubtract(-10), parent);
 		}
 	}
 }

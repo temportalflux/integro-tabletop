@@ -50,7 +50,11 @@ mod spellcasting;
 pub use spellcasting::*;
 
 mod starting_equipment;
+
 pub use starting_equipment::*;
+
+mod stat;
+pub use stat::*;
 
 #[cfg(test)]
 pub(crate) mod test {

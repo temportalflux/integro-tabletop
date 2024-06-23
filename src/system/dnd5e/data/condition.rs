@@ -135,10 +135,12 @@ mod test {
 
 	mod kdl {
 		use super::*;
+		use crate::system::dnd5e::data::character::StatOperation;
+		use crate::system::dnd5e::mutator::StatMutator;
 		use crate::{
 			kdl_ext::{test_utils::*, NodeContext},
 			system::{
-				dnd5e::{data::bounded::BoundValue, evaluator::HasArmorEquipped, mutator::Speed},
+				dnd5e::{evaluator::HasArmorEquipped, mutator::Speed},
 				generics,
 			},
 		};
@@ -176,16 +178,16 @@ mod test {
 			let doc = "
 				|condition name=\"Expedient\" {
 				|    description \"You are particularly quick.\"
-				|    mutator \"speed\" \"Walking\" (Additive)15
+				|    mutator \"speed\" \"Walking\" (Add)15
 				|}
 			";
 			let data = Condition {
 				name: "Expedient".into(),
 				description: "You are particularly quick.".into(),
-				mutators: vec![Speed {
-					name: "Walking".into(),
-					argument: BoundValue::Additive(15),
-				}
+				mutators: vec![Speed(StatMutator {
+					stat_name: "Walking".into(),
+					operation: StatOperation::AddSubtract(15),
+				})
 				.into()],
 				..Default::default()
 			};

@@ -1,3 +1,4 @@
+use crate::system::dnd5e::components::panel::NotesField;
 use crate::{
 	components::{context_menu, database::use_typed_fetch_callback, stop_propagation, Spinner},
 	database::{entry::EntryInSystemWithType, Criteria, Database, Entry, Query},
@@ -26,10 +27,9 @@ use crate::{
 };
 use convert_case::{Case, Casing};
 use itertools::Itertools;
-use std::{collections::BTreeMap, path::Path};
 use std::sync::Arc;
+use std::{collections::BTreeMap, path::Path};
 use yew::prelude::*;
-use crate::system::dnd5e::components::panel::NotesField;
 
 fn rank_suffix(rank: u8) -> &'static str {
 	match rank {

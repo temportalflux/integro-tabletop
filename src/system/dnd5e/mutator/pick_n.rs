@@ -242,13 +242,12 @@ mod test {
 
 	mod kdl {
 		use super::*;
+		use crate::system::dnd5e::data::character::StatOperation;
+		use crate::system::dnd5e::mutator::StatMutator;
 		use crate::{
 			kdl_ext::test_utils::*,
 			system::{
-				dnd5e::{
-					data::bounded::BoundValue,
-					mutator::{test::test_utils, Speed},
-				},
+				dnd5e::mutator::{test::test_utils, Speed},
 				generics,
 			},
 		};
@@ -268,10 +267,10 @@ mod test {
 					"Climbing".into(),
 					PickOption {
 						description: None,
-						mutators: vec![Speed {
-							name: "Climbing".into(),
-							argument: BoundValue::Base(15),
-						}
+						mutators: vec![Speed(StatMutator {
+							stat_name: "Climbing".into(),
+							operation: StatOperation::Base(15),
+						})
 						.into()],
 					},
 				),
@@ -282,10 +281,10 @@ mod test {
 							content: description::SectionContent::Body("You have a swimming speed of 15".into()),
 							..Default::default()
 						}),
-						mutators: vec![Speed {
-							name: "Swimming".into(),
-							argument: BoundValue::Base(15),
-						}
+						mutators: vec![Speed(StatMutator {
+							stat_name: "Swimming".into(),
+							operation: StatOperation::Base(15),
+						})
 						.into()],
 					},
 				),

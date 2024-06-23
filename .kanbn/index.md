@@ -42,8 +42,6 @@ columnSorting:
 
 ## Pending
 
-- [spellcasting-filter-queries-can-specify-specific-spell-ids](tasks/spellcasting-filter-queries-can-specify-specific-spell-ids.md)
-- [speed-based-on-existing-speed](tasks/speed-based-on-existing-speed.md)
 - [add-restore-uses-mutator](tasks/add-restore-uses-mutator.md)
 - [object-feature-backlog](tasks/object-feature-backlog.md)
 - [expanded-item-modal-editor](tasks/expanded-item-modal-editor.md)
@@ -55,8 +53,11 @@ columnSorting:
 
 ## In Progress
 
+- [speed-based-on-existing-speed](tasks/speed-based-on-existing-speed.md)
+
 ## Done
 
+- [spellcasting-filter-queries-can-specify-specific-spell-ids](tasks/spellcasting-filter-queries-can-specify-specific-spell-ids.md)
 - [notes-for-spells](tasks/notes-for-spells.md)
 - [notes-for-items](tasks/notes-for-items.md)
 - [notes-for-features](tasks/notes-for-features.md)

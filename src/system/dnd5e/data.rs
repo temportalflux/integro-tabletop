@@ -24,7 +24,6 @@ pub mod scaling;
 mod skill;
 pub use skill::*;
 mod armor_class;
-pub mod bounded;
 pub use armor_class::*;
 mod class;
 pub use class::*;

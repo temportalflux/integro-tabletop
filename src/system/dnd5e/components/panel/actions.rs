@@ -1,3 +1,4 @@
+use crate::utility::InputExt;
 use crate::{
 	components::{
 		database::{use_query_typed, QueryStatus},
@@ -23,10 +24,9 @@ use enum_map::{Enum, EnumMap};
 use enumset::{EnumSet, EnumSetType};
 use itertools::{Itertools, Position};
 use multimap::MultiMap;
-use std::{collections::HashMap, path::PathBuf};
 use std::sync::Arc;
+use std::{collections::HashMap, path::PathBuf};
 use yew::prelude::*;
-use crate::utility::InputExt;
 
 #[derive(EnumSetType, Enum)]
 pub enum ActionTag {
