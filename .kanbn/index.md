@@ -42,21 +42,20 @@ columnSorting:
 
 ## Pending
 
+- [attack-row-overview-ui-rehaul](tasks/attack-row-overview-ui-rehaul.md)
+- [parcels-mailbox](tasks/parcels-mailbox.md)
+- [attunement](tasks/attunement.md)
+- [inventory-search-bar](tasks/inventory-search-bar.md)
 - [add-restore-uses-mutator](tasks/add-restore-uses-mutator.md)
 - [object-feature-backlog](tasks/object-feature-backlog.md)
 - [expanded-item-modal-editor](tasks/expanded-item-modal-editor.md)
-- [attunement](tasks/attunement.md)
-- [inventory-search-bar](tasks/inventory-search-bar.md)
 - [autosave](tasks/autosave.md)
-- [attack-row-overview-ui-rehaul](tasks/attack-row-overview-ui-rehaul.md)
-- [parcels-mailbox](tasks/parcels-mailbox.md)
 
 ## In Progress
 
-- [speed-based-on-existing-speed](tasks/speed-based-on-existing-speed.md)
-
 ## Done
 
+- [speed-based-on-existing-speed](tasks/speed-based-on-existing-speed.md)
 - [spellcasting-filter-queries-can-specify-specific-spell-ids](tasks/spellcasting-filter-queries-can-specify-specific-spell-ids.md)
 - [notes-for-spells](tasks/notes-for-spells.md)
 - [notes-for-items](tasks/notes-for-items.md)
