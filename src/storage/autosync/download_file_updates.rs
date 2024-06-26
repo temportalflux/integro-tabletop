@@ -111,6 +111,8 @@ impl DownloadFileUpdates {
 			return Ok(None);
 		};
 
+		// TODO: Differentiating entries vs settings
+
 		let category = node.name().value().to_owned();
 		let metadata = system_reg.parse_metadata(node, &source_id)?;
 		let record = crate::database::Entry {

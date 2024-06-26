@@ -10,6 +10,8 @@ mod query;
 pub use query::*;
 mod schema;
 pub use schema::*;
+mod settings;
+pub use settings::*;
 
 #[derive(Clone, PartialEq)]
 pub struct Database(database::Client);

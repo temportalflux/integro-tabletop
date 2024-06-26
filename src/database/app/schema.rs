@@ -1,4 +1,5 @@
 use database::{Client, Error, MissingVersion, ObjectStoreExt, Record, Schema};
+use crate::database::Entry;
 
 /// The schema for the `tabletop-tools` client database.
 /// Use with `Client::open`.
@@ -53,6 +54,14 @@ impl Schema for SchemaVersion {
 					store.create_index_of::<SystemCategory>(None)?;
 					store.create_index_of::<SystemCategoryVariants>(None)?;
 					store.create_index_of::<SystemVariants>(None)?;
+				}
+				// Create user settings
+				{
+					use crate::database::Settings;
+					let mut params = idb::ObjectStoreParams::new();
+					params.auto_increment(true);
+					params.key_path(Some(idb::KeyPath::new_single("id")));
+					let _store = database.create_object_store(Settings::store_id(), params)?;
 				}
 			}
 		}

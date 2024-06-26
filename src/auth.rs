@@ -1,10 +1,12 @@
 use crate::utility::NotInList;
 use std::str::FromStr;
+use serde::{Deserialize, Serialize};
 
 static SITE_ID: &str = "f48e4964-d583-424b-bace-bd51a12f72a2";
 pub use netlify_oauth::*;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize)]
 pub enum OAuthProvider {
 	Github,
 }
