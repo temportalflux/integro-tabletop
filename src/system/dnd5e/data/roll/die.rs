@@ -59,9 +59,7 @@ impl FromStr for Die {
 			"d10" => Ok(Self::D10),
 			"d12" => Ok(Self::D12),
 			"d20" => Ok(Self::D20),
-			_ => Err(GeneralError(format!(
-				"Invalid die type {s:?}, expected d4, d6, d8, d10, d12, or d20"
-			))),
+			_ => Err(GeneralError(format!("Invalid die type {s:?}, expected d4, d6, d8, d10, d12, or d20"))),
 		}
 	}
 }

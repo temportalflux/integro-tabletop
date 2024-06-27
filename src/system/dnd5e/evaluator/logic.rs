@@ -1,7 +1,9 @@
 use crate::{
 	kdl_ext::{AsKdl, NodeBuilder},
-	system::dnd5e::{data::character::Character, BoxedEvaluator},
-	system::Evaluator,
+	system::{
+		dnd5e::{data::character::Character, BoxedEvaluator},
+		Evaluator,
+	},
 	utility::Dependencies,
 };
 
@@ -19,9 +21,7 @@ impl Evaluator for Any {
 	}
 
 	fn dependencies(&self) -> Dependencies {
-		self.0
-			.iter()
-			.fold(Dependencies::default(), |deps, eval| deps.join(eval.dependencies()))
+		self.0.iter().fold(Dependencies::default(), |deps, eval| deps.join(eval.dependencies()))
 	}
 
 	fn evaluate(&self, state: &Self::Context) -> Self::Item {

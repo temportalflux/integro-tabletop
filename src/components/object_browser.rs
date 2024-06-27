@@ -95,8 +95,7 @@ impl ObjectBrowser for SpellBrowser {
 	fn modal(&self, props: &ModalProps) -> Html {
 		use crate::system::dnd5e::{
 			components::panel::{AvailableSpellList, HeaderAddon},
-			data::character::spellcasting,
-			data::Spell,
+			data::{character::spellcasting, Spell},
 		};
 
 		let header_addon = HeaderAddon::from({
@@ -117,10 +116,7 @@ impl ObjectBrowser for SpellBrowser {
 		let spell_entry = spellcasting::SpellEntry {
 			source: std::path::PathBuf::new(),
 			classified_as: None,
-			method: spellcasting::CastingMethod::Cast {
-				can_use_slots: true,
-				can_use_ritual: true,
-			},
+			method: spellcasting::CastingMethod::Cast { can_use_slots: true, can_use_ritual: true },
 			attack_bonus: AbilityOrStat::Ability(crate::system::dnd5e::data::Ability::Charisma),
 			save_dc: AbilityOrStat::Ability(crate::system::dnd5e::data::Ability::Charisma),
 			damage_ability: Some(crate::system::dnd5e::data::Ability::Charisma),

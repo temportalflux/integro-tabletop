@@ -60,9 +60,7 @@ impl FromStr for Level {
 			"HalfUp" => Ok(Self::HalfUp),
 			"Full" => Ok(Self::Full),
 			"Double" => Ok(Self::Double),
-			_ => Err(GeneralError(format!(
-				"Invalid proficiency level {s:?}, expected None, Half, Full, or Double"
-			))),
+			_ => Err(GeneralError(format!("Invalid proficiency level {s:?}, expected None, Half, Full, or Double"))),
 		}
 	}
 }
@@ -82,13 +80,8 @@ impl std::ops::Mul<i32> for Level {
 }
 
 pub fn level_map() -> &'static [(usize, Option<usize>, i32)] {
-	static MAP: [(usize, Option<usize>, i32); 5] = [
-		(1, Some(4), 2),
-		(5, Some(8), 3),
-		(9, Some(12), 4),
-		(13, Some(16), 5),
-		(17, None, 6),
-	];
+	static MAP: [(usize, Option<usize>, i32); 5] =
+		[(1, Some(4), 2), (5, Some(8), 3), (9, Some(12), 4), (13, Some(16), 5), (17, None, 6)];
 	&MAP
 }
 

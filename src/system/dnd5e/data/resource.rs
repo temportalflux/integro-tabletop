@@ -62,10 +62,7 @@ impl Default for Resource {
 			display_path: IdPath::default(),
 			capacity: Value::Fixed(0),
 			reset: None,
-			uses_count: selector::Value::Options(ValueOptions {
-				id: "uses".into(),
-				..Default::default()
-			}),
+			uses_count: selector::Value::Options(ValueOptions { id: "uses".into(), ..Default::default() }),
 		}
 	}
 }
@@ -86,14 +83,11 @@ impl Resource {
 		let Some(reset) = &self.reset else { return };
 		let Some(rest) = reset.get_rest(stats) else { return };
 		let restore_amount = reset.get_rate(stats);
-		stats.rest_resets_mut().add(
-			rest,
-			RestEntry {
-				restore_amount,
-				data_paths: vec![uses_path],
-				source: path_to_parent.display.clone(),
-			},
-		);
+		stats.rest_resets_mut().add(rest, RestEntry {
+			restore_amount,
+			data_paths: vec![uses_path],
+			source: path_to_parent.display.clone(),
+		});
 	}
 
 	pub fn set_data_path(&self, path_to_parent: &ReferencePath) {
@@ -151,11 +145,7 @@ impl FromKdl<NodeContext> for Resource {
 		};
 		let reset = node.query_opt_t("scope() > reset")?;
 
-		Ok(Self {
-			capacity,
-			reset,
-			..Default::default()
-		})
+		Ok(Self { capacity, reset, ..Default::default() })
 	}
 }
 

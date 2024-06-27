@@ -1,6 +1,5 @@
 use super::roll::EvaluatedRoll;
-use crate::kdl_ext::NodeContext;
-use crate::utility::InvalidEnumStr;
+use crate::{kdl_ext::NodeContext, utility::InvalidEnumStr};
 use enumset::EnumSetType;
 use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
 use std::str::FromStr;
@@ -18,11 +17,7 @@ impl FromKdl<NodeContext> for DamageRoll {
 		let roll = node.query_opt_t::<EvaluatedRoll>("scope() > roll")?;
 		let base_bonus = node.get_i64_opt("base")?.unwrap_or(0) as i32;
 		let damage_type = DamageType::from_str(node.query_str_req("scope() > damage_type", 0)?)?;
-		Ok(Self {
-			roll,
-			base_bonus,
-			damage_type,
-		})
+		Ok(Self { roll, base_bonus, damage_type })
 	}
 }
 impl AsKdl for DamageRoll {
@@ -167,11 +162,7 @@ mod test {
 				|    damage_type \"Force\"
 				|}
 			";
-			let data = DamageRoll {
-				roll: None,
-				base_bonus: 0,
-				damage_type: DamageType::Force,
-			};
+			let data = DamageRoll { roll: None, base_bonus: 0, damage_type: DamageType::Force };
 			assert_eq_fromkdl!(DamageRoll, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())
@@ -184,11 +175,7 @@ mod test {
 				|    damage_type \"Force\"
 				|}
 			";
-			let data = DamageRoll {
-				roll: None,
-				base_bonus: 5,
-				damage_type: DamageType::Force,
-			};
+			let data = DamageRoll { roll: None, base_bonus: 5, damage_type: DamageType::Force };
 			assert_eq_fromkdl!(DamageRoll, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())

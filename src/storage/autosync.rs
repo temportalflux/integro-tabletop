@@ -1,8 +1,10 @@
 use crate::{
-	database::{Database, Entry, Module, Query},
-	storage::USER_HOMEBREW_REPO_NAME,
+	auth::OAuthProvider,
+	components::auth::LocalUser,
+	database::{Database, Entry, Module, Query, UserSettingsRecord},
 	system::{self, generator, generics, ModuleId, SourceId},
 };
+use anyhow::{Context, Error};
 use database::Transaction;
 use derivative::Derivative;
 use futures::StreamExt;
@@ -23,6 +25,8 @@ mod find_modules;
 use find_modules::*;
 mod generate_homebrew;
 use generate_homebrew::*;
+mod parse_content;
+use parse_content::*;
 mod query_module_owners;
 use query_module_owners::*;
 mod scan_for_modules;
@@ -78,10 +82,7 @@ pub struct Status {
 }
 impl std::fmt::Debug for Status {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		f.debug_struct("Status")
-			.field("State", &self.rw_internal)
-			.field("Display", &self.r_external)
-			.finish()
+		f.debug_struct("Status").field("State", &self.rw_internal).field("Display", &self.r_external).finish()
 	}
 }
 
@@ -111,10 +112,9 @@ impl Status {
 
 	pub fn push_stage(&self, title: impl Into<AttrValue>, max_progress: Option<usize>) {
 		self.mutate(move |state| {
-			state.stages.push(Stage {
-				title: title.into(),
-				progress: max_progress.map(|max| Progress { max, progress: 0 }),
-			});
+			state
+				.stages
+				.push(Stage { title: title.into(), progress: max_progress.map(|max| Progress { max, progress: 0 }) });
 		});
 	}
 
@@ -174,6 +174,13 @@ enum StorageSyncError {
 	Database(#[from] database::Error),
 	#[error(transparent)]
 	StorageError(#[from] github::Error),
+	#[error("{0}")]
+	Generic(String),
+}
+impl From<anyhow::Error> for StorageSyncError {
+	fn from(value: Error) -> Self {
+		Self::Generic(format!("{value:?}"))
+	}
 }
 
 #[function_component]
@@ -212,7 +219,7 @@ pub fn Provider(props: &ChildrenProps) -> Html {
 			..Default::default()
 		}),
 	};
-	use_async_with_options(
+	use_async_with_options::<_, _, StorageSyncError>(
 		{
 			let database = database.clone();
 			let system_depot = system_depot.clone();
@@ -224,7 +231,7 @@ pub fn Provider(props: &ChildrenProps) -> Html {
 						log::error!(target: "autosync", "{err:?}");
 					}
 				}
-				Ok(()) as Result<(), StorageSyncError>
+				Ok(())
 			}
 		},
 		UseAsyncOptions::enable_auto(),
@@ -253,6 +260,11 @@ async fn process_request(
 	};
 	#[cfg(target_family = "windows")]
 	let storage = github::GithubClient::new("INVALID", crate::storage::APP_USER_AGENT).unwrap();
+
+	#[cfg(target_family = "wasm")]
+	let user_id = yewdux::Dispatch::<LocalUser>::global();
+	#[cfg(target_family = "windows")]
+	let user_id = yewdux::Dispatch::<LocalUser>::new(&Default::default());
 
 	let mut scan_storage_for_modules = false;
 	let mut modules = BTreeMap::new();
@@ -310,22 +322,15 @@ async fn process_request(
 
 	status.push_stage("Checking authentiation", None);
 	let (viewer, repo_owners) = {
-		let mut query_module_owners = QueryModuleOwners {
-			status: status.clone(),
-			client: storage.clone(),
-			user: None,
-			found_homebrew: false,
-		};
+		let mut query_module_owners =
+			QueryModuleOwners { status: status.clone(), client: storage.clone(), user: None, found_homebrew: false };
 		let owners = query_module_owners.run().await?;
 
 		// If the homebrew repo was not found when querying who the user is,
 		// then we need to generate one, since this is where their user data is stored
 		// and is the default location for any creations.
 		if !query_module_owners.found_homebrew {
-			let generate_homebrew = GenerateHomebrew {
-				status: status.clone(),
-				client: storage.clone(),
-			};
+			let generate_homebrew = GenerateHomebrew { status: status.clone(), client: storage.clone() };
 			generate_homebrew.run().await?;
 		}
 
@@ -333,15 +338,19 @@ async fn process_request(
 	};
 	status.pop_stage();
 
+	user_id.set(match &viewer {
+		None => LocalUser::default(),
+		Some(viewer) => {
+			let user_id = crate::data::UserId { provider: OAuthProvider::Github, id: viewer.clone() };
+			LocalUser::from(user_id)
+		}
+	});
+
 	// Scan storage or check for updates
 	let mut remote_repositories = BTreeMap::new();
 	if scan_storage_for_modules {
 		status.push_stage("Scanning Storage", None);
-		let scan_for_modules = ScanForModules {
-			status: status.clone(),
-			client: storage.clone(),
-			owners: repo_owners,
-		};
+		let scan_for_modules = ScanForModules { status: status.clone(), client: storage.clone(), owners: repo_owners };
 		let repositories = scan_for_modules.run().await?;
 		for repository in repositories {
 			remote_repositories.insert((&repository).into(), repository);
@@ -350,11 +359,7 @@ async fn process_request(
 	} else {
 		status.push_stage("Checking for module updates", None);
 		let module_names = modules_to_fetch.iter().map(ModuleId::to_string).collect();
-		let mut find_modules = FindModules {
-			status: status.clone(),
-			client: storage.clone(),
-			names: module_names,
-		};
+		let mut find_modules = FindModules { status: status.clone(), client: storage.clone(), names: module_names };
 		let repositories = find_modules.run().await?;
 		for repository in repositories {
 			remote_repositories.insert((&repository).into(), repository);
@@ -407,11 +412,7 @@ async fn process_request(
 	}
 
 	// Install homebrew
-	if let Some(viewer) = &viewer {
-		let homebrew_id = ModuleId::Github {
-			user_org: viewer.clone(),
-			repository: USER_HOMEBREW_REPO_NAME.to_owned(),
-		};
+	if let Some(homebrew_id) = user_id.get().homebrew_module_id() {
 		modules_to_uninstall.remove(&homebrew_id);
 		if let Some(module) = modules.get(&homebrew_id) {
 			if !module.installed {
@@ -445,10 +446,7 @@ async fn process_request(
 			let idx_module_system = entry_store.index_of::<ModuleSystem>();
 			let idx_module_system = idx_module_system.map_err(database::Error::from)?;
 			for system in &module.systems {
-				let query = ModuleSystem {
-					module: module.id.to_string(),
-					system: system.clone(),
-				};
+				let query = ModuleSystem { module: module.id.to_string(), system: system.clone() };
 				let cursor = idx_module_system.open_cursor(Some(&query)).await;
 				let mut cursor = cursor.map_err(database::Error::from)?;
 				let mut removed_any = false;
@@ -500,10 +498,7 @@ async fn process_request(
 				let files = scan.run().await?;
 				let files = files
 					.into_iter()
-					.map(|file| ModuleFileUpdate {
-						file,
-						status: github::ChangedFileStatus::Added,
-					})
+					.map(|file| ModuleFileUpdate { file, status: github::ChangedFileStatus::Added })
 					.collect();
 
 				module_updates.push(ModuleUpdate { module_id, files });
@@ -538,6 +533,7 @@ async fn process_request(
 				continue;
 			};
 
+			// Download all changed files (additions, changes, removals, etc)
 			let download = DownloadFileUpdates {
 				status: status.clone(),
 				client: storage.clone(),
@@ -546,47 +542,67 @@ async fn process_request(
 				version: module.remote_version.clone(),
 				files,
 			};
-			let (entries, removed_file_ids) = download.run().await?;
+			let (files_to_parse, removed_file_ids) = download.run().await?;
+
+			// Parse downloaded content into records
+			let parse_files = ParseFiles {
+				status: status.clone(),
+				system_depot: system_depot.clone(),
+				module_id: module.id.clone(),
+				version: module.remote_version.clone(),
+				files: files_to_parse,
+			};
+			let RecordsToUpdate { entries, user_settings } = parse_files.run().await?;
 
 			status.push_stage(format!("Installing {}", module.id.to_string()), None);
+			{
+				let transaction = database.write()?;
 
-			let transaction = database.write()?;
+				// Update module data
+				let module_store = transaction.object_store_of::<Module>()?;
+				module_store.put_record(module).await?;
 
-			let module_store = transaction.object_store_of::<Module>()?;
-			module_store.put_record(module).await?;
-
-			let entry_store = transaction.object_store_of::<Entry>()?;
-			for record in entries {
-				systems_changed.insert(record.system.clone());
-				entry_store.put_record(&record).await?;
-			}
-			// Delete entries by module and file-id
-			let entry_ids_to_remove = {
-				let idx_module = entry_store.index_of::<crate::database::entry::Module>();
-				let idx_module = idx_module.map_err(database::Error::from)?;
-				let index = crate::database::entry::Module {
-					module: module.id.to_string(),
-				};
-				let cursor = idx_module.open_cursor(Some(&index)).await;
-				let mut cursor = cursor.map_err(database::Error::from)?;
-				let mut entry_ids_to_remove = Vec::with_capacity(removed_file_ids.len());
-				while let Some(entry) = cursor.next().await {
-					let Some(file_id) = &entry.file_id else {
-						continue;
-					};
-					if removed_file_ids.contains(file_id) {
-						entry_ids_to_remove.push((entry.id.clone(), entry.system.clone()));
-					}
+				// Update new or changed records
+				let user_settings_store = transaction.object_store_of::<UserSettingsRecord>();
+				let user_settings_store = user_settings_store.context("UserSettingsRecord store")?;
+				for record in user_settings {
+					user_settings_store.put_record(&record).await?;
 				}
-				entry_ids_to_remove
-			};
-			for (entry_id, system) in entry_ids_to_remove {
-				systems_changed.insert(system);
-				entry_store.delete_record(entry_id).await?;
+
+				let entry_store = transaction.object_store_of::<Entry>();
+				let entry_store = entry_store.context("Entry store")?;
+				for record in entries {
+					systems_changed.insert(record.system.clone());
+					entry_store.put_record(&record).await?;
+				}
+
+				// Delete entries by module and file-id
+				let entry_ids_to_remove = {
+					// Convert removed_file_ids (a list of storage file ids) to the list of database ids
+					let idx_module = entry_store.index_of::<crate::database::entry::Module>();
+					let idx_module = idx_module.map_err(database::Error::from)?;
+					let index = crate::database::entry::Module { module: module.id.to_string() };
+					let cursor = idx_module.open_cursor(Some(&index)).await;
+					let mut cursor = cursor.map_err(database::Error::from)?;
+					let mut entry_ids_to_remove = Vec::with_capacity(removed_file_ids.len());
+					// Find the database id of any entry with a storage file id matching any entry in removed_file_ids
+					while let Some(entry) = cursor.next().await {
+						let Some(file_id) = &entry.file_id else {
+							continue;
+						};
+						if removed_file_ids.contains(file_id) {
+							entry_ids_to_remove.push((entry.id.clone(), entry.system.clone()));
+						}
+					}
+					entry_ids_to_remove
+				};
+				for (entry_id, system) in entry_ids_to_remove {
+					systems_changed.insert(system);
+					entry_store.delete_record(entry_id).await?;
+				}
+
+				transaction.commit().await?;
 			}
-
-			transaction.commit().await?;
-
 			status.pop_stage(); // Installing owner/repo
 		}
 		status.pop_stage(); // Downloading Files
@@ -617,11 +633,7 @@ async fn process_request(
 			log::debug!(target: "autosync", "processing generators");
 			while let Some(generator) = queue.dequeue() {
 				//log::debug!(target: "autosync", "processing generator {}", generator.source_id().unversioned());
-				let args = generator::Args {
-					system_registry: system_depot,
-					system: system_reg,
-					database,
-				};
+				let args = generator::Args { system_registry: system_depot, system: system_reg, database };
 				let mut object_list = match generator.execute(args).await {
 					Ok(out) => out,
 					Err(err) => {
@@ -696,10 +708,7 @@ async fn gather_generators(
 	let idx_system_category = entry_store.index_of::<SystemCategory>();
 	let idx_system_category = idx_system_category.map_err(database::Error::from)?;
 
-	let query = SystemCategory {
-		system: system.into(),
-		category: generator::Generic::id().into(),
-	};
+	let query = SystemCategory { system: system.into(), category: generator::Generic::id().into() };
 	let cursor = idx_system_category.open_cursor(Some(&query)).await;
 	let mut cursor = cursor.map_err(database::Error::from)?;
 	while let Some(entry) = cursor.next().await {
@@ -725,9 +734,7 @@ async fn gather_variants(system: &str, transaction: &Transaction) -> Result<gene
 	let idx_system_category = idx_system_category.map_err(database::Error::from)?;
 
 	//log::debug!(target: "autosync", "gathering existing variants");
-	let cursor = idx_system_category
-		.open_cursor(Some(&SystemVariants::new(system, true)))
-		.await;
+	let cursor = idx_system_category.open_cursor(Some(&SystemVariants::new(system, true))).await;
 	let mut cursor = cursor.map_err(database::Error::from)?;
 	while let Some(entry) = cursor.next().await {
 		cache.insert_original(entry);
@@ -737,8 +744,6 @@ async fn gather_variants(system: &str, transaction: &Transaction) -> Result<gene
 }
 
 pub struct ModuleFile {
-	// The game system the file is in.
-	pub system: String,
 	// The path within the module of the file (including game system root).
 	pub path_in_repo: String,
 	// The file-id sha in the github repo.

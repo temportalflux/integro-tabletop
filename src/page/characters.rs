@@ -42,18 +42,9 @@ enum Route {
 	#[at("/characters")]
 	Landing,
 	#[at("/characters/:storage/:module/:system")]
-	EmptySheet {
-		storage: String,
-		module: String,
-		system: String,
-	},
+	EmptySheet { storage: String, module: String, system: String },
 	#[at("/characters/:storage/:module/:system/*path")]
-	Sheet {
-		storage: String,
-		module: String,
-		system: String,
-		path: String,
-	},
+	Sheet { storage: String, module: String, system: String, path: String },
 	#[not_found]
 	#[at("/characters/404")]
 	NotFound,
@@ -73,12 +64,7 @@ impl Route {
 			ModuleId::Local { name } => ("local", name.clone()),
 			ModuleId::Github { user_org, repository } => ("github", format!("{user_org}:{repository}")),
 		};
-		Self::Sheet {
-			storage: storage.to_owned(),
-			module,
-			system: system.clone(),
-			path: id.path.display().to_string(),
-		}
+		Self::Sheet { storage: storage.to_owned(), module, system: system.clone(), path: id.path.display().to_string() }
 	}
 
 	fn sheet_id(storage: String, module: String, system: String, path: Option<String>) -> Option<SourceId> {
@@ -92,10 +78,7 @@ impl Route {
 				let Some(repo) = parts.next() else {
 					return None;
 				};
-				ModuleId::Github {
-					user_org: user_org.to_owned(),
-					repository: repo.to_owned(),
-				}
+				ModuleId::Github { user_org: user_org.to_owned(), repository: repo.to_owned() }
 			}
 			_ => return None,
 		};
@@ -115,23 +98,16 @@ impl Route {
 		match self {
 			Self::Landing => html!(<CharacterLanding />),
 			Self::NotFound => app::Route::not_found(),
-			Self::EmptySheet {
-				storage,
-				module,
-				system,
-			} => match Self::sheet_id(storage, module, system, None) {
+			Self::EmptySheet { storage, module, system } => match Self::sheet_id(storage, module, system, None) {
 				None => app::Route::not_found(),
 				Some(id) => html!(<Sheet value={id} />),
 			},
-			Self::Sheet {
-				storage,
-				module,
-				system,
-				path,
-			} => match Self::sheet_id(storage, module, system, Some(path)) {
-				None => app::Route::not_found(),
-				Some(id) => html!(<Sheet value={id} />),
-			},
+			Self::Sheet { storage, module, system, path } => {
+				match Self::sheet_id(storage, module, system, Some(path)) {
+					None => app::Route::not_found(),
+					Some(id) => html!(<Sheet value={id} />),
+				}
+			}
 		}
 	}
 }
@@ -168,11 +144,8 @@ pub fn CharacterLanding() -> Html {
 				let module_id = (&homebrew_repo).into();
 
 				let system = DnD5e::id();
-				let source_id_unversioned = SourceId {
-					module: Some(module_id),
-					system: Some(system.to_string()),
-					..Default::default()
-				};
+				let source_id_unversioned =
+					SourceId { module: Some(module_id), system: Some(system.to_string()), ..Default::default() };
 
 				let route = Route::sheet(&source_id_unversioned);
 				navigator.push(&route);
@@ -272,14 +245,7 @@ struct CharacterCardProps {
 	on_delete: Callback<()>,
 }
 #[function_component]
-fn CharacterCard(
-	CharacterCardProps {
-		id: _,
-		route,
-		metadata,
-		on_delete,
-	}: &CharacterCardProps,
-) -> Html {
+fn CharacterCard(CharacterCardProps { id: _, route, metadata, on_delete }: &CharacterCardProps) -> Html {
 	html! {
 		<div class="card m-1" style="min-width: 300px;">
 			<div class="card-header d-flex align-items-center">
@@ -537,11 +503,7 @@ fn ModalDelete(ModalDeleteProps { id, file_id, on_click }: &ModalDeleteProps) ->
 				return;
 			}
 
-			let Some(ModuleId::Github {
-				user_org: repo_org,
-				repository: repo_name,
-			}) = id.module.clone()
-			else {
+			let Some(ModuleId::Github { user_org: repo_org, repository: repo_name }) = id.module.clone() else {
 				return;
 			};
 			let Some(system) = &id.system else {

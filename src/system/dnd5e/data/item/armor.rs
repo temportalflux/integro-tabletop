@@ -36,11 +36,7 @@ impl FromKdl<NodeContext> for Armor {
 		let kind = node.next_str_req_t::<Kind>()?;
 		let formula = node.query_req_t::<ArmorClassFormula>("scope() > formula")?;
 		let min_strength_score = node.query_i64_opt("scope() > min-strength", 0)?.map(|v| v as u32);
-		Ok(Self {
-			kind,
-			formula,
-			min_strength_score,
-		})
+		Ok(Self { kind, formula, min_strength_score })
 	}
 }
 
@@ -87,9 +83,7 @@ impl mutator::Group for Armor {
 		stats.armor_class_mut().push_formula(self.formula.clone(), path_to_item);
 
 		if let Some(min_strength_score) = &self.min_strength_score {
-			let mutator = ArmorStrengthRequirement {
-				score: *min_strength_score,
-			};
+			let mutator = ArmorStrengthRequirement { score: *min_strength_score };
 			stats.apply(&mutator.into(), path_to_item);
 		}
 	}
@@ -121,11 +115,7 @@ mod test {
 				kind: Kind::Light,
 				formula: ArmorClassFormula {
 					base: 11,
-					bonuses: vec![BoundedAbility {
-						ability: Ability::Dexterity,
-						min: None,
-						max: None,
-					}],
+					bonuses: vec![BoundedAbility { ability: Ability::Dexterity, min: None, max: None }],
 				},
 				min_strength_score: None,
 			};
@@ -147,11 +137,7 @@ mod test {
 				kind: Kind::Medium,
 				formula: ArmorClassFormula {
 					base: 13,
-					bonuses: vec![BoundedAbility {
-						ability: Ability::Dexterity,
-						min: None,
-						max: Some(2),
-					}],
+					bonuses: vec![BoundedAbility { ability: Ability::Dexterity, min: None, max: Some(2) }],
 				},
 				min_strength_score: None,
 			};
@@ -170,10 +156,7 @@ mod test {
 		";
 			let data = Armor {
 				kind: Kind::Heavy,
-				formula: ArmorClassFormula {
-					base: 18,
-					bonuses: vec![],
-				},
+				formula: ArmorClassFormula { base: 18, bonuses: vec![] },
 				min_strength_score: Some(15),
 			};
 			assert_eq_fromkdl!(Armor, doc, data);

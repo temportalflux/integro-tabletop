@@ -25,10 +25,7 @@ where
 {
 	fn from(value: T) -> Self {
 		let roll = Roll::from(value);
-		Self {
-			amount: Value::Fixed(roll.amount as i32),
-			die: roll.die.map(|die| Value::Fixed(die.value() as i32)),
-		}
+		Self { amount: Value::Fixed(roll.amount as i32), die: roll.die.map(|die| Value::Fixed(die.value() as i32)) }
 	}
 }
 
@@ -71,14 +68,10 @@ impl AsKdl for EvaluatedRoll {
 		let mut node = NodeBuilder::default();
 		match self {
 			// These first two are when the EvaluatedRoll is a fixed Roll, and thus can be serialized as such
-			Self {
-				amount: Value::Fixed(amt),
-				die: None,
-			} => node.with_entry(*amt as i64),
-			Self {
-				amount: Value::Fixed(amt),
-				die: Some(Value::Fixed(die)),
-			} => node.with_entry_typed(format!("{amt}d{die}"), "Roll"),
+			Self { amount: Value::Fixed(amt), die: None } => node.with_entry(*amt as i64),
+			Self { amount: Value::Fixed(amt), die: Some(Value::Fixed(die)) } => {
+				node.with_entry_typed(format!("{amt}d{die}"), "Roll")
+			}
 			// While this one puts the amount and die into child nodes for evaluator serialization
 			Self { amount, die } => {
 				node.child(("amount", amount));
@@ -94,9 +87,7 @@ pub struct EvaluatedRollSet(pub Vec<EvaluatedRoll>);
 
 impl EvaluatedRollSet {
 	pub fn dependencies(&self) -> Dependencies {
-		self.0.iter().fold(Dependencies::default(), |deps, eval_roll| {
-			deps.join(eval_roll.dependencies())
-		})
+		self.0.iter().fold(Dependencies::default(), |deps, eval_roll| deps.join(eval_roll.dependencies()))
 	}
 
 	pub fn evaluate(&self, character: &Character) -> RollSet {
@@ -127,16 +118,10 @@ impl AsKdl for EvaluatedRollSet {
 		let mut fixed_roll_set = RollSet::default();
 		for evaluated_roll in &self.0 {
 			match evaluated_roll {
-				EvaluatedRoll {
-					amount: Value::Fixed(amount),
-					die: None,
-				} => {
+				EvaluatedRoll { amount: Value::Fixed(amount), die: None } => {
 					fixed_roll_set.push(Roll::from(amount.unsigned_abs()));
 				}
-				EvaluatedRoll {
-					amount: Value::Fixed(amount),
-					die: Some(Value::Fixed(die)),
-				} => {
+				EvaluatedRoll { amount: Value::Fixed(amount), die: Some(Value::Fixed(die)) } => {
 					let die = Die::try_from(die.unsigned_abs()).expect("invalid die count");
 					fixed_roll_set.push(Roll::from((amount.unsigned_abs(), die)));
 				}
@@ -175,10 +160,7 @@ mod test {
 		#[test]
 		fn basic_fixed() -> anyhow::Result<()> {
 			let doc = "roll 1";
-			let data = EvaluatedRoll {
-				amount: Value::Fixed(1),
-				die: None,
-			};
+			let data = EvaluatedRoll { amount: Value::Fixed(1), die: None };
 			assert_eq_fromkdl!(EvaluatedRoll, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())
@@ -187,10 +169,7 @@ mod test {
 		#[test]
 		fn basic_die() -> anyhow::Result<()> {
 			let doc = "roll (Roll)\"3d4\"";
-			let data = EvaluatedRoll {
-				amount: Value::Fixed(3),
-				die: Some(Value::Fixed(4)),
-			};
+			let data = EvaluatedRoll { amount: Value::Fixed(3), die: Some(Value::Fixed(4)) };
 			assert_eq_fromkdl!(EvaluatedRoll, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())
@@ -203,10 +182,7 @@ mod test {
 				|    amount (Evaluator)\"get_proficiency_bonus\"
 				|}
 			";
-			let data = EvaluatedRoll {
-				amount: Value::Evaluated(GetProficiencyBonus.into()),
-				die: None,
-			};
+			let data = EvaluatedRoll { amount: Value::Evaluated(GetProficiencyBonus.into()), die: None };
 			assert_eq_fromkdl!(EvaluatedRoll, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())
@@ -220,10 +196,8 @@ mod test {
 				|    die (Evaluator)\"get_proficiency_bonus\"
 				|}
 			";
-			let data = EvaluatedRoll {
-				amount: Value::Fixed(5),
-				die: Some(Value::Evaluated(GetProficiencyBonus.into())),
-			};
+			let data =
+				EvaluatedRoll { amount: Value::Fixed(5), die: Some(Value::Evaluated(GetProficiencyBonus.into())) };
 			assert_eq_fromkdl!(EvaluatedRoll, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())

@@ -14,18 +14,12 @@ pub struct NodeContext {
 
 impl NodeContext {
 	pub fn new(id: Arc<SourceId>, registry: Arc<generics::Registry>) -> Self {
-		Self {
-			root_id: id,
-			node_registry: registry,
-		}
+		Self { root_id: id, node_registry: registry }
 	}
 
 	#[cfg(test)]
 	pub fn registry(registry: generics::Registry) -> Self {
-		Self {
-			node_registry: Arc::new(registry),
-			..Default::default()
-		}
+		Self { node_registry: Arc::new(registry), ..Default::default() }
 	}
 
 	pub fn id(&self) -> &SourceId {
@@ -39,9 +33,7 @@ impl NodeContext {
 
 pub fn query_source_opt<'doc>(reader: &NodeReader<'doc, NodeContext>) -> anyhow::Result<Option<SourceId>> {
 	match reader.query_str_opt("scope() > source", 0)? {
-		Some(id_str) => Ok(Some(
-			SourceId::from_str(id_str)?.with_relative_basis(reader.context().id(), true),
-		)),
+		Some(id_str) => Ok(Some(SourceId::from_str(id_str)?.with_relative_basis(reader.context().id(), true))),
 		None if reader.is_root() => {
 			let id = reader.context().id();
 			let id = id.clone().with_relative_basis(reader.context().id(), true);

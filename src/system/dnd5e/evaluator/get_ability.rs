@@ -1,7 +1,9 @@
-use crate::kdl_ext::NodeContext;
 use crate::{
-	system::dnd5e::data::{character::Character, Ability},
-	system::Evaluator,
+	kdl_ext::NodeContext,
+	system::{
+		dnd5e::data::{character::Character, Ability},
+		Evaluator,
+	},
 	utility::Dependencies,
 };
 use kdlize::{AsKdl, FromKdl, NodeBuilder};

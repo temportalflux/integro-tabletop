@@ -57,11 +57,7 @@ fn main() {
 				let relative_path = relative_path.with_extension("");
 
 				let absolute_path = item.canonicalize().unwrap();
-				let absolute_path = absolute_path
-					.display()
-					.to_string()
-					.replace("\\", "/")
-					.replace("//?/", "");
+				let absolute_path = absolute_path.display().to_string().replace("\\", "/").replace("//?/", "");
 				let absolute_path = std::path::Path::new(absolute_path.as_str()).to_owned();
 
 				println!("cargo:rerun-if-changed={}", absolute_path.display());
@@ -90,10 +86,7 @@ struct WalkDir {
 
 impl WalkDir {
 	fn new(path: impl AsRef<std::path::Path>) -> Self {
-		Self {
-			iter: std::fs::read_dir(path).ok(),
-			stack: Vec::new(),
-		}
+		Self { iter: std::fs::read_dir(path).ok(), stack: Vec::new() }
 	}
 }
 

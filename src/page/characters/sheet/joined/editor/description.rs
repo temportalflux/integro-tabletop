@@ -33,25 +33,14 @@ fn SizeForm() -> Html {
 	let height_formula_str = format!(
 		"{}{}",
 		formula.height.base,
-		h_bonus_str
-			.as_ref()
-			.map(|s| format!(" + {s} (modifier)"))
-			.unwrap_or_default()
+		h_bonus_str.as_ref().map(|s| format!(" + {s} (modifier)")).unwrap_or_default()
 	);
 	let weight_range_str = format!("{} - {} lbs", formula.min_weight(), formula.max_weight());
 	let weight_formula_str = format!(
 		"{}{}{}",
 		formula.weight.base,
-		h_bonus_str
-			.zip(w_mod_str)
-			.map(|(h, w)| format!(" + (height modifier ({h}) * {w})"))
-			.unwrap_or_default(),
-		formula
-			.weight
-			.bonus
-			.as_nonzero_string()
-			.map(|s| format!(" + {s}"))
-			.unwrap_or_default()
+		h_bonus_str.zip(w_mod_str).map(|(h, w)| format!(" + (height modifier ({h}) * {w})")).unwrap_or_default(),
+		formula.weight.bonus.as_nonzero_string().map(|s| format!(" + {s}")).unwrap_or_default()
 	);
 	let height_label = format!(
 		"{ft}ft {ins}in ({cm}cm)",

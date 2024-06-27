@@ -1,8 +1,10 @@
-use crate::kdl_ext::NodeContext;
-use crate::system::dnd5e::data::{
-	character::Character,
-	roll::{Roll, RollSet},
-	scaling, DamageType,
+use crate::{
+	kdl_ext::NodeContext,
+	system::dnd5e::data::{
+		character::Character,
+		roll::{Roll, RollSet},
+		scaling, DamageType,
+	},
 };
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::str::FromStr;
@@ -48,13 +50,7 @@ impl FromKdl<NodeContext> for Damage {
 			None => None,
 			Some(str) => Some(Roll::from_str(str)?),
 		};
-		Ok(Self {
-			amount,
-			base,
-			include_ability_modifier: ability,
-			damage_type,
-			upcast,
-		})
+		Ok(Self { amount, base, include_ability_modifier: ability, damage_type, upcast })
 	}
 }
 
@@ -104,10 +100,7 @@ mod test {
 		fn varying_roll() -> anyhow::Result<()> {
 			let doc = "damage (Scaled)\"Level\" (DamageType)\"Force\"";
 			let data = Damage {
-				amount: scaling::Value::Scaled(scaling::Basis::Level {
-					class_name: None,
-					level_map: [].into(),
-				}),
+				amount: scaling::Value::Scaled(scaling::Basis::Level { class_name: None, level_map: [].into() }),
 				damage_type: DamageType::Force,
 				base: 0,
 				include_ability_modifier: false,

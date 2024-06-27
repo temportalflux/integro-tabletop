@@ -60,10 +60,7 @@ pub use stat::*;
 pub(crate) mod test {
 	macro_rules! test_utils {
 		($mut_ty:ty) => {
-			test_utils!(
-				$mut_ty,
-				crate::system::generics::Registry::default_with_mut::<$mut_ty>()
-			);
+			test_utils!($mut_ty, crate::system::generics::Registry::default_with_mut::<$mut_ty>());
 		};
 		($mut_ty:ty, $node_reg:expr) => {
 			static NODE_NAME: &str = "mutator";

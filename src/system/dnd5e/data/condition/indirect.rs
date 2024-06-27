@@ -1,6 +1,5 @@
 use super::Condition;
-use crate::kdl_ext::NodeContext;
-use crate::system::SourceId;
+use crate::{kdl_ext::NodeContext, system::SourceId};
 use anyhow::Context;
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::str::FromStr;
@@ -28,7 +27,9 @@ where
 			}
 			source_id_str => {
 				let mut source_id = SourceId::from_str(source_id_str).with_context(|| {
-					format!("Expected {source_id_str:?} to either be the value \"Custom\"/\"Specific\" or a valid SourceId.")
+					format!(
+						"Expected {source_id_str:?} to either be the value \"Custom\"/\"Specific\" or a valid SourceId."
+					)
 				})?;
 				source_id.set_relative_basis(node.context().id(), false);
 				Ok(Self::Id(source_id))
@@ -64,10 +65,7 @@ mod test {
 		#[test]
 		fn id() -> anyhow::Result<()> {
 			let doc = "condition \"condition/invisible.kdl\"";
-			let data = IndirectCondition::Id(SourceId {
-				path: "condition/invisible.kdl".into(),
-				..Default::default()
-			});
+			let data = IndirectCondition::Id(SourceId { path: "condition/invisible.kdl".into(), ..Default::default() });
 			assert_eq_fromkdl!(IndirectCondition, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())
@@ -76,10 +74,7 @@ mod test {
 		#[test]
 		fn custom() -> anyhow::Result<()> {
 			let doc = "condition \"Specific\" name=\"Slippery\"";
-			let data = IndirectCondition::Custom(Condition {
-				name: "Slippery".into(),
-				..Default::default()
-			});
+			let data = IndirectCondition::Custom(Condition { name: "Slippery".into(), ..Default::default() });
 			assert_eq_fromkdl!(IndirectCondition, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())

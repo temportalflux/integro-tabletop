@@ -108,11 +108,7 @@ impl RollSet {
 	}
 
 	pub fn as_nonzero_string(&self) -> Option<String> {
-		let mut roll_strs = self
-			.rolls()
-			.iter()
-			.filter_map(Roll::as_nonzero_string)
-			.collect::<Vec<_>>();
+		let mut roll_strs = self.rolls().iter().filter_map(Roll::as_nonzero_string).collect::<Vec<_>>();
 		if self.1 > 0 {
 			roll_strs.push(self.1.to_string());
 		}

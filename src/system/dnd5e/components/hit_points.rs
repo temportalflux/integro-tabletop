@@ -1,7 +1,6 @@
 use crate::{
 	components::{context_menu, stop_propagation},
-	page::characters::sheet::CharacterHandle,
-	page::characters::sheet::MutatorImpact,
+	page::characters::sheet::{CharacterHandle, MutatorImpact},
 	system::dnd5e::{
 		components::UseCounterDelta,
 		data::character::{HitPoint, Persistent},
@@ -548,19 +547,15 @@ fn ModalSectionHitDice() -> Html {
 #[function_component]
 fn MaxHitPointsTable() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
-	let rows = state
-		.max_hit_points()
-		.sources()
-		.iter()
-		.fold(Vec::new(), |mut html, (source, bonus)| {
-			html.push(html! {
-				<tr>
-					<td class="text-center">{*bonus}</td>
-					<td>{crate::data::as_feature_path_text(source).unwrap_or_default()}</td>
-				</tr>
-			});
-			html
+	let rows = state.max_hit_points().sources().iter().fold(Vec::new(), |mut html, (source, bonus)| {
+		html.push(html! {
+			<tr>
+				<td class="text-center">{*bonus}</td>
+				<td>{crate::data::as_feature_path_text(source).unwrap_or_default()}</td>
+			</tr>
 		});
+		html
+	});
 	html! {
 		<table class="table table-compact table-striped m-0">
 			<thead>

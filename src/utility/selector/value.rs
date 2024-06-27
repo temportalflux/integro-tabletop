@@ -128,9 +128,7 @@ where
 	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let entry = node.next_req()?;
-		let key = entry
-			.as_str_req()
-			.context("Selector keys must be a string with the selector name")?;
+		let key = entry.as_str_req().context("Selector keys must be a string with the selector name")?;
 		match key {
 			"Specific" => {
 				let entry = node.next_req()?;
@@ -139,10 +137,8 @@ where
 			"Any" | "AnyOf" => {
 				let id = node.get_str_opt("id")?.into();
 
-				let amount = match node.query_opt_t("scope() > amount")? {
-					None => crate::utility::Value::Fixed(1),
-					Some(eval) => eval,
-				};
+				let amount = node.query_opt_t("scope() > amount")?;
+				let amount = amount.unwrap_or_else(|| crate::utility::Value::Fixed(1));
 
 				let mut cannot_match = Vec::new();
 				for str in node.query_str_all("scope() > cannot_match", 0)? {
@@ -154,13 +150,7 @@ where
 					options.insert(T::from_str(str)?);
 				}
 
-				Ok(Self::Options(ValueOptions {
-					id,
-					amount,
-					options,
-					cannot_match,
-					is_applicable: None,
-				}))
+				Ok(Self::Options(ValueOptions { id, amount, options, cannot_match, is_applicable: None }))
 			}
 			name => Err(NotInList(name.into(), vec!["Specific", "Any", "AnyOf"]).into()),
 		}
@@ -180,13 +170,7 @@ where
 				node += value.as_kdl();
 				node
 			}
-			Self::Options(ValueOptions {
-				id,
-				amount,
-				options,
-				cannot_match,
-				..
-			}) => {
+			Self::Options(ValueOptions { id, amount, options, cannot_match, .. }) => {
 				let mut node = NodeBuilder::default();
 				node.entry("Any");
 				if let Some(id) = id.get_id() {
@@ -216,14 +200,7 @@ where
 	pub fn as_data(
 		&self, name: impl Into<String>, context: &Context,
 	) -> Result<Option<super::DataOption>, super::InvalidDataPath> {
-		let Self::Options(ValueOptions {
-			id,
-			amount,
-			options,
-			cannot_match,
-			is_applicable,
-		}) = self
-		else {
+		let Self::Options(ValueOptions { id, amount, options, cannot_match, is_applicable }) = self else {
 			return Ok(None);
 		};
 		let Some(data_path) = id.data() else {

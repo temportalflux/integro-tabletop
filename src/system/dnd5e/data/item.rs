@@ -1,11 +1,12 @@
 use super::character::IndirectItem;
-use crate::kdl_ext::NodeContext;
-use crate::system::{
-	dnd5e::data::{character::Character, currency::Wallet, description, Rarity},
-	Block, SourceId,
+use crate::{
+	kdl_ext::NodeContext,
+	system::{
+		dnd5e::data::{character::Character, currency::Wallet, description, Rarity},
+		Block, SourceId,
+	},
 };
-use kdlize::OmitIfEmpty;
-use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
+use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder, OmitIfEmpty};
 use std::{collections::HashMap, str::FromStr};
 
 mod kind;
@@ -183,20 +184,7 @@ impl FromKdl<NodeContext> for Item {
 			}
 		}
 
-		Ok(Self {
-			id,
-			name,
-			description,
-			rarity,
-			weight,
-			worth,
-			notes,
-			kind,
-			tags,
-			items,
-			item_refs,
-			spells,
-		})
+		Ok(Self { id, name, description, rarity, weight, worth, notes, kind, tags, items, item_refs, spells })
 	}
 }
 impl AsKdl for Item {
@@ -312,18 +300,17 @@ mod test {
 				weight: 65.0,
 				worth: Wallet::from([(1500, currency::Kind::Gold)]),
 				kind: Kind::Equipment(Equipment {
-					mutators: vec![Modify::Skill {
-						modifier: Modifier::Disadvantage,
-						context: None,
-						skill: selector::Value::Specific(Skill::Stealth),
-					}
-					.into()],
+					mutators: vec![
+						Modify::Skill {
+							modifier: Modifier::Disadvantage,
+							context: None,
+							skill: selector::Value::Specific(Skill::Stealth),
+						}
+						.into(),
+					],
 					armor: Some(Armor {
 						kind: armor::Kind::Heavy,
-						formula: ArmorClassFormula {
-							base: 18,
-							bonuses: vec![],
-						},
+						formula: ArmorClassFormula { base: 18, bonuses: vec![] },
 						min_strength_score: Some(15),
 					}),
 					..Default::default()

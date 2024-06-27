@@ -148,12 +148,7 @@ struct RowProps {
 	pub ability_name_col: Option<usize>,
 }
 #[function_component]
-fn Row(
-	RowProps {
-		skill,
-		ability_name_col,
-	}: &RowProps,
-) -> Html {
+fn Row(RowProps { skill, ability_name_col }: &RowProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 
 	let proficiency = state.skills()[*skill].proficiencies();
@@ -173,9 +168,7 @@ fn Row(
 		|(value, context, source)| ((*value, context.as_ref()), source.as_path()),
 		|(value, context), path_str| {
 			let sign = if value >= 0 { "+" } else { "-" };
-			let context = context
-				.map(|context| format!(" when {context}"))
-				.unwrap_or_else(|| " - included".to_owned());
+			let context = context.map(|context| format!(" when {context}")).unwrap_or_else(|| " - included".to_owned());
 			format!("<div>{sign}{}{context} ({})</div>", value.abs(), path_str)
 		},
 	);
@@ -188,23 +181,27 @@ fn Row(
 		|prof, path_str| format!("<div>{} ({})</div>", prof.as_display_name(), path_str),
 	);
 
-	let roll_modifiers = state.skills()[*skill].modifiers().iter().map(|(modifier, items)| {
-		let tooltip = crate::data::as_feature_paths_html_custom(
-			items.iter(),
-			|(context, source)| (context.clone(), source.as_path()),
-			|criteria, path_str| match criteria {
-				Some(criteria) => format!("<div>{} ({})</div>", criteria, path_str),
-				None => format!("<div>{}</div>", path_str),
-			},
-		);
-		html! {
-			<Tooltip tag={"span"} content={tooltip} use_html={true}>
-				<span aria-label={format!("{modifier:?}")} style="margin-left: 2px; display: block; height: 16px; width: 16px; vertical-align: middle; margin-top: -2px;">
-					<glyph::RollModifier value={modifier} />
-				</span>
-			</Tooltip>
-		}
-	}).collect::<Vec<_>>();
+	let roll_modifiers = state.skills()[*skill]
+		.modifiers()
+		.iter()
+		.map(|(modifier, items)| {
+			let tooltip = crate::data::as_feature_paths_html_custom(
+				items.iter(),
+				|(context, source)| (context.clone(), source.as_path()),
+				|criteria, path_str| match criteria {
+					Some(criteria) => format!("<div>{} ({})</div>", criteria, path_str),
+					None => format!("<div>{}</div>", path_str),
+				},
+			);
+			html! {
+				<Tooltip tag={"span"} content={tooltip} use_html={true}>
+					<span aria-label={format!("{modifier:?}")} style="margin-left: 2px; display: block; height: 16px; width: 16px; vertical-align: middle; margin-top: -2px;">
+						<glyph::RollModifier value={modifier} />
+					</span>
+				</Tooltip>
+			}
+		})
+		.collect::<Vec<_>>();
 
 	let mut table_data = vec![
 		html! {
@@ -226,14 +223,11 @@ fn Row(
 		html! { <td class="text-center">{passive}</td> },
 	];
 	if let Some(idx) = ability_name_col {
-		table_data.insert(
-			*idx,
-			html! {
-				<td class="text-center" style="font-size: 12px; vertical-align: middle;">
-					{skill.ability().abbreviated_name().to_uppercase()}
-				</td>
-			},
-		);
+		table_data.insert(*idx, html! {
+			<td class="text-center" style="font-size: 12px; vertical-align: middle;">
+				{skill.ability().abbreviated_name().to_uppercase()}
+			</td>
+		});
 	}
 
 	let onclick = context_menu::use_control_action({
@@ -295,18 +289,24 @@ fn SkillModal(SkillModalProps { skill }: &SkillModalProps) -> Html {
 		</div>),
 	};
 
-	let modifier_rows = state.skills()[*skill].modifiers().iter_all().map(|(modifier, context, source)| html! {
-		<tr>
-			<td class="d-flex">
-				<span aria-label={format!("{modifier:?}")} style="margin-left: 2px; display: block; height: 16px; width: 16px; vertical-align: middle; margin-top: -2px;">
-					<glyph::RollModifier value={modifier} />
-				</span>
-				<span class="flex-grow-1 text-center" style="margin-left: 5px;">{modifier.display_name()}</span>
-			</td>
-			<td class="text-center">{context.clone().unwrap_or_else(|| "--".into())}</td>
-			<td>{crate::data::as_feature_path_text(source).unwrap_or_default()}</td>
-		</tr>
-	}).collect::<Vec<_>>();
+	let modifier_rows = state.skills()[*skill]
+		.modifiers()
+		.iter_all()
+		.map(|(modifier, context, source)| {
+			html! {
+				<tr>
+					<td class="d-flex">
+						<span aria-label={format!("{modifier:?}")} style="margin-left: 2px; display: block; height: 16px; width: 16px; vertical-align: middle; margin-top: -2px;">
+							<glyph::RollModifier value={modifier} />
+						</span>
+						<span class="flex-grow-1 text-center" style="margin-left: 5px;">{modifier.display_name()}</span>
+					</td>
+					<td class="text-center">{context.clone().unwrap_or_else(|| "--".into())}</td>
+					<td>{crate::data::as_feature_path_text(source).unwrap_or_default()}</td>
+				</tr>
+			}
+		})
+		.collect::<Vec<_>>();
 
 	let roll_modifiers_table = match modifier_rows.is_empty() {
 		true => html!(),

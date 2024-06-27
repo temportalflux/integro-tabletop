@@ -124,9 +124,7 @@ impl FromKdl<NodeContext> for Bundle {
 			_ => None,
 		};
 
-		let description = node
-			.query_opt_t::<description::Info>("scope() > description")?
-			.unwrap_or_default();
+		let description = node.query_opt_t::<description::Info>("scope() > description")?.unwrap_or_default();
 		let limit = node.get_i64_opt("limit")?.unwrap_or(1) as usize;
 
 		let mut requirements = Vec::new();
@@ -148,16 +146,7 @@ impl FromKdl<NodeContext> for Bundle {
 
 		let mutators = node.query_all_t("scope() > mutator")?;
 
-		Ok(Self {
-			id,
-			name,
-			category,
-			description,
-			requirements,
-			limit,
-			mutators,
-			feature_config,
-		})
+		Ok(Self { id, name, category, description, requirements, limit, mutators, feature_config })
 	}
 }
 // TODO AsKdl: from/as tests for Bundle
@@ -175,10 +164,9 @@ impl AsKdl for Bundle {
 
 		for requirement in &self.requirements {
 			let kdl = match requirement {
-				BundleRequirement::Bundle { category, name } => NodeBuilder::default()
-					.with_entry("Bundle")
-					.with_entry(category.clone())
-					.with_entry(name.clone()),
+				BundleRequirement::Bundle { category, name } => {
+					NodeBuilder::default().with_entry("Bundle").with_entry(category.clone()).with_entry(name.clone())
+				}
 				BundleRequirement::Ability(ability, score) => NodeBuilder::default()
 					.with_entry("Ability")
 					.with_entry(ability.long_name())

@@ -1,5 +1,7 @@
-use crate::kdl_ext::NodeContext;
-use crate::system::dnd5e::data::{roll::Roll, DamageType};
+use crate::{
+	kdl_ext::NodeContext,
+	system::dnd5e::data::{roll::Roll, DamageType},
+};
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::str::FromStr;
 
@@ -19,11 +21,7 @@ impl FromKdl<NodeContext> for WeaponDamage {
 		};
 		let base = node.get_i64_opt("base")?.unwrap_or(0) as i32;
 		let damage_type = node.next_str_req_t::<DamageType>()?;
-		Ok(Self {
-			roll,
-			bonus: base,
-			damage_type,
-		})
+		Ok(Self { roll, bonus: base, damage_type })
 	}
 }
 
@@ -54,11 +52,7 @@ mod test {
 		#[test]
 		fn empty() -> anyhow::Result<()> {
 			let doc = "damage \"Slashing\"";
-			let data = WeaponDamage {
-				roll: None,
-				bonus: 0,
-				damage_type: DamageType::Slashing,
-			};
+			let data = WeaponDamage { roll: None, bonus: 0, damage_type: DamageType::Slashing };
 			assert_eq_fromkdl!(WeaponDamage, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())
@@ -67,11 +61,7 @@ mod test {
 		#[test]
 		fn fixed() -> anyhow::Result<()> {
 			let doc = "damage \"Slashing\" base=5";
-			let data = WeaponDamage {
-				roll: None,
-				bonus: 5,
-				damage_type: DamageType::Slashing,
-			};
+			let data = WeaponDamage { roll: None, bonus: 5, damage_type: DamageType::Slashing };
 			assert_eq_fromkdl!(WeaponDamage, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())
@@ -80,11 +70,8 @@ mod test {
 		#[test]
 		fn roll() -> anyhow::Result<()> {
 			let doc = "damage \"Slashing\" roll=\"2d4\"";
-			let data = WeaponDamage {
-				roll: Some(Roll::from((2, Die::D4))),
-				bonus: 0,
-				damage_type: DamageType::Slashing,
-			};
+			let data =
+				WeaponDamage { roll: Some(Roll::from((2, Die::D4))), bonus: 0, damage_type: DamageType::Slashing };
 			assert_eq_fromkdl!(WeaponDamage, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())
@@ -93,11 +80,8 @@ mod test {
 		#[test]
 		fn combined() -> anyhow::Result<()> {
 			let doc = "damage \"Slashing\" roll=\"1d6\" base=2";
-			let data = WeaponDamage {
-				roll: Some(Roll::from((1, Die::D6))),
-				bonus: 2,
-				damage_type: DamageType::Slashing,
-			};
+			let data =
+				WeaponDamage { roll: Some(Roll::from((1, Die::D6))), bonus: 2, damage_type: DamageType::Slashing };
 			assert_eq_fromkdl!(WeaponDamage, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())

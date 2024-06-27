@@ -20,11 +20,7 @@ pub fn as_feature_paths_html<'i, I>(iter: I) -> Option<String>
 where
 	I: Iterator<Item = &'i std::path::PathBuf>,
 {
-	as_feature_paths_html_custom(
-		iter,
-		|path| ((), path.as_path()),
-		|_, path_str| format!("<div>{path_str}</div>"),
-	)
+	as_feature_paths_html_custom(iter, |path| ((), path.as_path()), |_, path_str| format!("<div>{path_str}</div>"))
 }
 
 pub fn as_feature_paths_html_custom<'i, I, T, U, FSplit, FRender>(

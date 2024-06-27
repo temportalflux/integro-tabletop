@@ -71,11 +71,7 @@ impl Mutator for Modify {
 
 	fn description(&self, state: Option<&Character>) -> description::Section {
 		match self {
-			Self::Ability {
-				ability,
-				modifier,
-				context,
-			} => {
+			Self::Ability { ability, modifier, context } => {
 				let mut desc = format!("You have {} on ", modifier.display_name());
 				desc.push_str(&match ability {
 					None => format!("ability checks"),
@@ -105,18 +101,9 @@ impl Mutator for Modify {
 					Some(selector) => selector::DataList::default().with_enum("Ability", selector, state),
 				};
 
-				description::Section {
-					content: desc.into(),
-					children: vec![selectors.into()],
-					..Default::default()
-				}
+				description::Section { content: desc.into(), children: vec![selectors.into()], ..Default::default() }
 			}
-			Self::SavingThrow {
-				ability,
-				modifier,
-				bonus,
-				context,
-			} => {
+			Self::SavingThrow { ability, modifier, bonus, context } => {
 				let mut mods = Vec::with_capacity(2);
 				if let Some(modifier) = modifier {
 					mods.push(modifier.display_name().to_owned());
@@ -154,17 +141,9 @@ impl Mutator for Modify {
 					Some(selector) => selector::DataList::default().with_enum("Ability", selector, state),
 				};
 
-				description::Section {
-					content: desc.into(),
-					children: vec![selectors.into()],
-					..Default::default()
-				}
+				description::Section { content: desc.into(), children: vec![selectors.into()], ..Default::default() }
 			}
-			Self::Skill {
-				skill,
-				modifier,
-				context,
-			} => {
+			Self::Skill { skill, modifier, context } => {
 				let mut desc = format!("You have {} on ", modifier.display_name());
 				desc.push_str(&match skill {
 					selector::Value::Specific(skill) => {
@@ -192,17 +171,9 @@ impl Mutator for Modify {
 
 				let selectors = selector::DataList::default().with_enum("Skill", skill, state);
 
-				description::Section {
-					content: desc.into(),
-					children: vec![selectors.into()],
-					..Default::default()
-				}
+				description::Section { content: desc.into(), children: vec![selectors.into()], ..Default::default() }
 			}
-			Self::Initiative {
-				modifier,
-				bonus,
-				context,
-			} => {
+			Self::Initiative { modifier, bonus, context } => {
 				let mut mods = Vec::with_capacity(2);
 				if let Some(modifier) = modifier {
 					mods.push(modifier.display_name().to_owned());
@@ -217,27 +188,20 @@ impl Mutator for Modify {
 				}
 				desc.push('.');
 
-				description::Section {
-					content: desc.into(),
-					..Default::default()
-				}
+				description::Section { content: desc.into(), ..Default::default() }
 			}
-			Self::ArmorClass { .. } => description::Section {
-				content: format!("TODO: modified armor class").into(),
-				..Default::default()
-			},
-			Self::AttackRoll { .. } => description::Section {
-				content: format!("TODO: modified attack check").into(),
-				..Default::default()
-			},
-			Self::AttackDamage { .. } => description::Section {
-				content: format!("TODO: modified attack damage").into(),
-				..Default::default()
-			},
-			Self::SpellDamage { .. } => description::Section {
-				content: format!("TODO: modified spell damage").into(),
-				..Default::default()
-			},
+			Self::ArmorClass { .. } => {
+				description::Section { content: format!("TODO: modified armor class").into(), ..Default::default() }
+			}
+			Self::AttackRoll { .. } => {
+				description::Section { content: format!("TODO: modified attack check").into(), ..Default::default() }
+			}
+			Self::AttackDamage { .. } => {
+				description::Section { content: format!("TODO: modified attack damage").into(), ..Default::default() }
+			}
+			Self::SpellDamage { .. } => {
+				description::Section { content: format!("TODO: modified spell damage").into(), ..Default::default() }
+			}
 		}
 	}
 
@@ -263,16 +227,10 @@ impl Mutator for Modify {
 
 	fn set_data_path(&self, parent: &ReferencePath) {
 		match self {
-			Self::Ability {
-				ability: Some(selector),
-				..
-			} => {
+			Self::Ability { ability: Some(selector), .. } => {
 				selector.set_data_path(parent);
 			}
-			Self::SavingThrow {
-				ability: Some(selector),
-				..
-			} => {
+			Self::SavingThrow { ability: Some(selector), .. } => {
 				selector.set_data_path(parent);
 			}
 			Self::Skill { skill: selector, .. } => {
@@ -290,106 +248,58 @@ impl Mutator for Modify {
 
 	fn apply(&self, stats: &mut Character, parent: &ReferencePath) {
 		match self {
-			Self::Ability {
-				ability,
-				modifier,
-				context,
-			} => {
+			Self::Ability { ability, modifier, context } => {
 				let ability = match ability {
 					None => None,
 					Some(ability) => stats.resolve_selector(ability),
 				};
 				for (_ability, entry) in stats.skills_mut().iter_ability_mut(ability) {
-					entry
-						.modifiers_mut()
-						.push(*modifier, context.clone(), parent.display.clone());
+					entry.modifiers_mut().push(*modifier, context.clone(), parent.display.clone());
 				}
 			}
-			Self::SavingThrow {
-				ability,
-				modifier,
-				bonus,
-				context,
-			} => {
+			Self::SavingThrow { ability, modifier, bonus, context } => {
 				let ability = match ability {
 					None => None,
 					Some(ability) => stats.resolve_selector(ability),
 				};
 				if let Some(modifier) = modifier {
-					stats
-						.saving_throws_mut()
-						.add_modifier(ability, *modifier, context.clone(), parent);
+					stats.saving_throws_mut().add_modifier(ability, *modifier, context.clone(), parent);
 				}
 				if let Some(bonus) = bonus {
-					stats
-						.saving_throws_mut()
-						.add_bonus(ability, *bonus, context.clone(), parent);
+					stats.saving_throws_mut().add_bonus(ability, *bonus, context.clone(), parent);
 				}
 			}
-			Self::Skill {
-				skill,
-				modifier,
-				context,
-			} => {
+			Self::Skill { skill, modifier, context } => {
 				let Some(skill) = stats.resolve_selector(skill) else {
 					return;
 				};
-				stats.skills_mut()[skill]
-					.modifiers_mut()
-					.push(*modifier, context.clone(), parent.display.clone());
+				stats.skills_mut()[skill].modifiers_mut().push(*modifier, context.clone(), parent.display.clone());
 			}
-			Self::Initiative {
-				modifier,
-				bonus,
-				context,
-			} => {
+			Self::Initiative { modifier, bonus, context } => {
 				if let Some(modifier) = modifier {
-					stats
-						.initiative_mut()
-						.modifiers_mut()
-						.push(*modifier, context.clone(), parent.display.clone());
+					stats.initiative_mut().modifiers_mut().push(*modifier, context.clone(), parent.display.clone());
 				}
 				if let Some(bonus) = bonus {
-					stats
-						.initiative_mut()
-						.bonuses_mut()
-						.push(*bonus, context.clone(), parent.display.clone());
+					stats.initiative_mut().bonuses_mut().push(*bonus, context.clone(), parent.display.clone());
 				}
 			}
 			Self::ArmorClass { bonus, context } => {
 				stats.armor_class_mut().push_bonus(*bonus, context.clone(), parent);
 			}
-			Self::AttackRoll {
-				bonus,
-				modifier: _,
-				ability,
-				query,
-			} => {
+			Self::AttackRoll { bonus, modifier: _, ability, query } => {
 				// TODO: propagate modifier
-				stats
-					.attack_bonuses_mut()
-					.add_to_weapon_attacks(*bonus, query.clone(), parent);
+				stats.attack_bonuses_mut().add_to_weapon_attacks(*bonus, query.clone(), parent);
 				if let Some(ability) = ability {
-					stats
-						.attack_bonuses_mut()
-						.add_ability_modifier(*ability, query.clone(), parent);
+					stats.attack_bonuses_mut().add_ability_modifier(*ability, query.clone(), parent);
 				}
 			}
-			Self::AttackDamage {
-				damage,
-				damage_type,
-				query,
-			} => {
+			Self::AttackDamage { damage, damage_type, query } => {
 				let bonus = damage.evaluate(stats);
-				stats
-					.attack_bonuses_mut()
-					.add_to_weapon_damage(bonus, damage_type.clone(), query.clone(), parent);
+				stats.attack_bonuses_mut().add_to_weapon_damage(bonus, damage_type.clone(), query.clone(), parent);
 			}
 			Self::SpellDamage { damage, query } => {
 				let bonus = damage.evaluate(stats);
-				stats
-					.attack_bonuses_mut()
-					.add_to_spell_damage(bonus, query.clone(), parent);
+				stats.attack_bonuses_mut().add_to_spell_damage(bonus, query.clone(), parent);
 			}
 		}
 	}
@@ -410,11 +320,7 @@ impl FromKdl<NodeContext> for Modify {
 				};
 				let modifier = node.next_str_req_t()?;
 				let context = node.get_str_opt("context")?.map(str::to_owned);
-				Ok(Self::Ability {
-					ability,
-					modifier,
-					context,
-				})
+				Ok(Self::Ability { ability, modifier, context })
 			}
 			Some("SavingThrow") => {
 				let ability = match node.peak_str_req()? {
@@ -427,22 +333,13 @@ impl FromKdl<NodeContext> for Modify {
 				let modifier = node.get_str_opt_t::<Modifier>("modifier")?;
 				let bonus = node.get_i64_opt("bonus")?;
 				let context = node.get_str_opt("context")?.map(str::to_owned);
-				Ok(Self::SavingThrow {
-					ability,
-					modifier,
-					bonus,
-					context,
-				})
+				Ok(Self::SavingThrow { ability, modifier, bonus, context })
 			}
 			Some("Skill") => {
 				let skill = selector::Value::from_kdl(node)?;
 				let modifier = node.next_str_req_t()?;
 				let context = node.get_str_opt("context")?.map(str::to_owned);
-				Ok(Self::Skill {
-					skill,
-					modifier,
-					context,
-				})
+				Ok(Self::Skill { skill, modifier, context })
 			}
 			Some("Attack") => match node.next_str_req()? {
 				"Roll" => {
@@ -452,22 +349,13 @@ impl FromKdl<NodeContext> for Modify {
 					// NOTE: This modifier will probably need an optional context
 					let modifier = node.query_str_opt_t("scope() > modifier", 0)?;
 					let query = node.query_all_t("scope() > query")?;
-					Ok(Self::AttackRoll {
-						bonus,
-						ability,
-						modifier,
-						query,
-					})
+					Ok(Self::AttackRoll { bonus, ability, modifier, query })
 				}
 				"Damage" => {
 					let damage = node.query_req_t("scope() > damage")?;
 					let damage_type = node.query_str_opt_t("scope() > damage_type", 0)?;
 					let query = node.query_all_t("scope() > query")?;
-					Ok(Self::AttackDamage {
-						damage,
-						damage_type,
-						query,
-					})
+					Ok(Self::AttackDamage { damage, damage_type, query })
 				}
 				s => Err(NotInList(s.into(), vec!["Roll", "Damage"]).into()),
 			},
@@ -484,11 +372,7 @@ impl FromKdl<NodeContext> for Modify {
 					let modifier = node.get_str_opt_t::<Modifier>("modifier")?;
 					let bonus = node.get_i64_opt("bonus")?;
 					let context = node.get_str_opt("context")?.map(str::to_owned);
-					Ok(Self::Initiative {
-						modifier,
-						bonus,
-						context,
-					})
+					Ok(Self::Initiative { modifier, bonus, context })
 				}
 				"ArmorClass" => {
 					let bonus = node.next_i64_req()? as i32;
@@ -498,11 +382,7 @@ impl FromKdl<NodeContext> for Modify {
 				s => Err(NotInList(s.into(), vec!["Initiative", "ArmorClass"]).into()),
 			},
 			type_id => Err(NotInList(
-				format!(
-					"{}{}",
-					type_id.map(|id| format!("({id})")).unwrap_or_default(),
-					node.peak_str_req()?
-				),
+				format!("{}{}", type_id.map(|id| format!("({id})")).unwrap_or_default(), node.peak_str_req()?),
 				vec![
 					"(Ability)*",
 					"(SavingThrow)*",
@@ -523,11 +403,7 @@ impl AsKdl for Modify {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 		match self {
-			Self::Ability {
-				ability,
-				modifier,
-				context,
-			} => {
+			Self::Ability { ability, modifier, context } => {
 				match ability {
 					None => {
 						node.entry_typed("Ability", "All");
@@ -539,12 +415,7 @@ impl AsKdl for Modify {
 				node.entry(modifier.to_string());
 				node.entry(("context", context.clone()));
 			}
-			Self::SavingThrow {
-				ability,
-				modifier,
-				bonus,
-				context,
-			} => {
+			Self::SavingThrow { ability, modifier, bonus, context } => {
 				match ability {
 					None => {
 						node.entry_typed("SavingThrow", "All");
@@ -557,31 +428,18 @@ impl AsKdl for Modify {
 				node.entry(("bonus", *bonus));
 				node.entry(("context", context.clone()));
 			}
-			Self::Skill {
-				skill,
-				modifier,
-				context,
-			} => {
+			Self::Skill { skill, modifier, context } => {
 				node += ("Skill", skill.as_kdl());
 				node.entry(modifier.to_string());
 				node.entry(("context", context.clone()));
 			}
-			Self::Initiative {
-				modifier,
-				bonus,
-				context,
-			} => {
+			Self::Initiative { modifier, bonus, context } => {
 				node.entry("Initiative");
 				node.entry(("modifier", modifier.as_ref().map(Modifier::to_string)));
 				node.entry(("bonus", *bonus));
 				node.entry(("context", context.clone()));
 			}
-			Self::AttackRoll {
-				bonus,
-				modifier,
-				ability,
-				query,
-			} => {
+			Self::AttackRoll { bonus, modifier, ability, query } => {
 				node.entry_typed("Attack", "Roll");
 				if *bonus != 0 {
 					node.child(("bonus", *bonus as i64));
@@ -590,11 +448,7 @@ impl AsKdl for Modify {
 				node.child(("modifier", modifier.as_ref().map(ToString::to_string).as_ref()));
 				node.children(("query", query));
 			}
-			Self::AttackDamage {
-				damage,
-				damage_type,
-				query,
-			} => {
+			Self::AttackDamage { damage, damage_type, query } => {
 				node.entry_typed("Attack", "Damage");
 				node.child(("damage", damage));
 				node.child(("damage_type", &damage_type.as_ref().map(DamageType::to_string)));
@@ -646,12 +500,14 @@ mod test {
 
 	fn character(mutators: Vec<Modify>) -> Character {
 		Character::from(Persistent {
-			bundles: vec![Bundle {
-				name: "TestMutator".into(),
-				mutators: mutators.into_iter().map(|mutator| mutator.into()).collect(),
-				..Default::default()
-			}
-			.into()],
+			bundles: vec![
+				Bundle {
+					name: "TestMutator".into(),
+					mutators: mutators.into_iter().map(|mutator| mutator.into()).collect(),
+					..Default::default()
+				}
+				.into(),
+			],
 			..Default::default()
 		})
 	}
@@ -715,13 +571,10 @@ mod test {
 					},
 				]);
 				let modifiers = &character.skills()[Ability::Dexterity].modifiers()[Modifier::Advantage];
-				assert_eq!(
-					*modifiers,
-					vec![
-						(Some("when climbing".into()), PathBuf::from("TestMutator")).into(),
-						(None, PathBuf::from("TestMutator")).into(),
-					]
-				);
+				assert_eq!(*modifiers, vec![
+					(Some("when climbing".into()), PathBuf::from("TestMutator")).into(),
+					(None, PathBuf::from("TestMutator")).into(),
+				]);
 			}
 
 			#[test]
@@ -799,10 +652,7 @@ mod test {
 					context: Some("Poison".into()),
 				}]);
 				let modifiers = &character.saving_throws()[Ability::Constitution].modifiers()[Modifier::Advantage];
-				assert_eq!(
-					*modifiers,
-					vec![(Some("Poison".into()), PathBuf::from("TestMutator")).into()]
-				);
+				assert_eq!(*modifiers, vec![(Some("Poison".into()), PathBuf::from("TestMutator")).into()]);
 			}
 		}
 	}
@@ -852,11 +702,7 @@ mod test {
 			#[test]
 			fn noctx() -> anyhow::Result<()> {
 				let doc = "mutator \"modify\" \"Initiative\" modifier=\"Advantage\"";
-				let data = Modify::Initiative {
-					modifier: Some(Modifier::Advantage),
-					bonus: None,
-					context: None,
-				};
+				let data = Modify::Initiative { modifier: Some(Modifier::Advantage), bonus: None, context: None };
 				assert_eq_askdl!(&data, doc);
 				assert_eq_fromkdl!(Target, doc, data.into());
 				Ok(())
@@ -886,10 +732,7 @@ mod test {
 			#[test]
 			fn no_context() -> anyhow::Result<()> {
 				let doc = "mutator \"modify\" \"ArmorClass\" 1";
-				let data = Modify::ArmorClass {
-					bonus: 1,
-					context: None,
-				};
+				let data = Modify::ArmorClass { bonus: 1, context: None };
 				assert_eq_askdl!(&data, doc);
 				assert_eq_fromkdl!(Target, doc, data.into());
 				Ok(())
@@ -898,10 +741,7 @@ mod test {
 			#[test]
 			fn with_context() -> anyhow::Result<()> {
 				let doc = "mutator \"modify\" \"ArmorClass\" 2 context=\"against ranged attacks\"";
-				let data = Modify::ArmorClass {
-					bonus: 2,
-					context: Some("against ranged attacks".into()),
-				};
+				let data = Modify::ArmorClass { bonus: 2, context: Some("against ranged attacks".into()) };
 				assert_eq_askdl!(&data, doc);
 				assert_eq_fromkdl!(Target, doc, data.into());
 				Ok(())
@@ -925,12 +765,7 @@ mod test {
 						|    bonus 2
 						|}
 					";
-					let data = Modify::AttackRoll {
-						bonus: 2,
-						ability: None,
-						modifier: None,
-						query: vec![],
-					};
+					let data = Modify::AttackRoll { bonus: 2, ability: None, modifier: None, query: vec![] };
 					assert_eq_askdl!(&data, doc);
 					assert_eq_fromkdl!(Target, doc, data.into());
 					Ok(())
@@ -950,10 +785,7 @@ mod test {
 						bonus: 5,
 						ability: None,
 						modifier: None,
-						query: vec![AttackQuery {
-							attack_kind: AttackKind::Ranged.into(),
-							..Default::default()
-						}],
+						query: vec![AttackQuery { attack_kind: AttackKind::Ranged.into(), ..Default::default() }],
 					};
 					assert_eq_askdl!(&data, doc);
 					assert_eq_fromkdl!(Target, doc, data.into());
@@ -974,10 +806,7 @@ mod test {
 						bonus: 0,
 						ability: Some(Ability::Constitution),
 						modifier: None,
-						query: vec![AttackQuery {
-							classification: ["Shortsword".into()].into(),
-							..Default::default()
-						}],
+						query: vec![AttackQuery { classification: ["Shortsword".into()].into(), ..Default::default() }],
 					};
 					assert_eq_askdl!(&data, doc);
 					assert_eq_fromkdl!(Target, doc, data.into());
@@ -999,11 +828,8 @@ mod test {
 						|    damage 2
 						|}
 					";
-					let data = Modify::AttackDamage {
-						damage: EvaluatedRoll::from(2),
-						damage_type: None,
-						query: vec![],
-					};
+					let data =
+						Modify::AttackDamage { damage: EvaluatedRoll::from(2), damage_type: None, query: vec![] };
 					assert_eq_askdl!(&data, doc);
 					assert_eq_fromkdl!(Target, doc, data.into());
 					Ok(())
@@ -1066,10 +892,7 @@ mod test {
 						|}
 					";
 					let data = Modify::AttackDamage {
-						damage: EvaluatedRoll {
-							amount: Value::Evaluated(GetLevelInt::default().into()),
-							die: None,
-						},
+						damage: EvaluatedRoll { amount: Value::Evaluated(GetLevelInt::default().into()), die: None },
 						damage_type: None,
 						query: vec![],
 					};

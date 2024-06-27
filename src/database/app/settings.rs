@@ -1,18 +1,16 @@
+use crate::data::UserSettings;
 use database::Record;
 use serde::{Deserialize, Serialize};
-use std::{str::FromStr};
-use crate::data::UserSettings;
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct Settings {
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
+pub struct UserSettingsRecord {
 	pub id: String,
 	pub version: String,
-	pub remote_version: String,
 	pub user_settings: UserSettings,
 }
 
-impl Record for Settings {
+impl Record for UserSettingsRecord {
 	fn store_id() -> &'static str {
-		"settings"
+		"user_settings"
 	}
 }

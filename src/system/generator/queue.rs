@@ -12,10 +12,7 @@ pub struct Queue {
 
 impl Queue {
 	pub fn new(node_reg: Arc<generics::Registry>) -> Self {
-		Self {
-			node_reg,
-			generators_by_kind: BTreeMap::default(),
-		}
+		Self { node_reg, generators_by_kind: BTreeMap::default() }
 	}
 
 	pub fn len(&self) -> usize {

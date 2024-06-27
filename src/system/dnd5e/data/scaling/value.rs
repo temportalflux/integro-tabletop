@@ -1,6 +1,5 @@
 use super::{Basis, DefaultLevelMap};
-use crate::kdl_ext::NodeContext;
-use crate::{system::dnd5e::data::character::Character, GeneralError};
+use crate::{kdl_ext::NodeContext, system::dnd5e::data::character::Character, GeneralError};
 use kdlize::{ext::EntryExt, AsKdl, FromKdl, NodeBuilder};
 
 #[derive(Clone, PartialEq, Debug)]

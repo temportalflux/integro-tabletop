@@ -1,4 +1,3 @@
-use crate::system::dnd5e::components::panel::NotesField;
 use crate::{
 	components::{context_menu, database::use_typed_fetch_callback, stop_propagation, Spinner},
 	database::{entry::EntryInSystemWithType, Criteria, Database, Entry, Query},
@@ -9,7 +8,10 @@ use crate::{
 	system::{
 		self,
 		dnd5e::{
-			components::{glyph::Glyph, panel::get_inventory_item_mut},
+			components::{
+				glyph::Glyph,
+				panel::{get_inventory_item_mut, NotesField},
+			},
 			data::{
 				character::{
 					spellcasting::{AbilityOrStat, CasterKind, CastingMethod, RitualCapability, SpellEntry},
@@ -27,8 +29,7 @@ use crate::{
 };
 use convert_case::{Case, Casing};
 use itertools::Itertools;
-use std::sync::Arc;
-use std::{collections::BTreeMap, path::Path};
+use std::{collections::BTreeMap, path::Path, sync::Arc};
 use yew::prelude::*;
 
 fn rank_suffix(rank: u8) -> &'static str {
@@ -160,9 +161,7 @@ struct SpellSections<'c> {
 impl<'c> Default for SpellSections<'c> {
 	fn default() -> Self {
 		Self {
-			sections: (0..=MAX_SPELL_RANK)
-				.map(|slot: u8| (slot, SectionProps::default()))
-				.collect::<BTreeMap<_, _>>(),
+			sections: (0..=MAX_SPELL_RANK).map(|slot: u8| (slot, SectionProps::default())).collect::<BTreeMap<_, _>>(),
 		}
 	}
 }
@@ -184,12 +183,7 @@ impl<'c> SpellSections<'c> {
 
 	fn insert_spell(&mut self, spell: &'c Spell, entry: &'c SpellEntry, location: SpellLocation) {
 		let ranks = match (entry.rank, &entry.method) {
-			(
-				None,
-				CastingMethod::Cast {
-					can_use_slots: true, ..
-				},
-			) => {
+			(None, CastingMethod::Cast { can_use_slots: true, .. }) => {
 				let max_rank = match spell.rank {
 					0 => 0,
 					_ => MAX_SPELL_RANK,
@@ -223,14 +217,10 @@ impl<'c> SpellSections<'c> {
 				continue;
 			};
 			for spell in iter_spells {
-				self.insert_spell(
-					spell,
-					&caster.spell_entry,
-					SpellLocation::Selected {
-						caster_id: caster_id.clone(),
-						spell_id: spell.id.unversioned(),
-					},
-				);
+				self.insert_spell(spell, &caster.spell_entry, SpellLocation::Selected {
+					caster_id: caster_id.clone(),
+					spell_id: spell.id.unversioned(),
+				});
 			}
 		}
 	}
@@ -241,14 +231,10 @@ impl<'c> SpellSections<'c> {
 				continue;
 			};
 			for (source, entry) in &spell_entry.entries {
-				self.insert_spell(
-					spell,
-					entry,
-					SpellLocation::AlwaysPrepared {
-						spell_id: spell.id.unversioned(),
-						source: source.clone(),
-					},
-				);
+				self.insert_spell(spell, entry, SpellLocation::AlwaysPrepared {
+					spell_id: spell.id.unversioned(),
+					source: source.clone(),
+				});
 				self.insert_as_ritual(spell, entry, RitualSpellSource::AlwaysPrepared(source.clone()));
 			}
 		}
@@ -298,9 +284,7 @@ impl<'c> SpellSections<'c> {
 	fn insert_as_ritual(&mut self, spell: &'c Spell, spell_entry: &'c SpellEntry, source: RitualSpellSource) {
 		match &spell_entry.method {
 			// ritual casting is allowed
-			CastingMethod::Cast {
-				can_use_ritual: true, ..
-			} => {}
+			CastingMethod::Cast { can_use_ritual: true, .. } => {}
 			// other casting, or any other method is not considered a ritual
 			_ => return,
 		}
@@ -308,14 +292,10 @@ impl<'c> SpellSections<'c> {
 		let Some(section) = self.sections.get_mut(&spell.rank) else {
 			return;
 		};
-		section.insert_spell(
-			spell,
-			spell_entry,
-			SpellLocation::AvailableAsRitual {
-				spell_id: spell.id.unversioned(),
-				source,
-			},
-		);
+		section.insert_spell(spell, spell_entry, SpellLocation::AvailableAsRitual {
+			spell_id: spell.id.unversioned(),
+			source,
+		});
 	}
 }
 
@@ -331,18 +311,9 @@ struct SectionSpell<'c> {
 }
 #[derive(Clone, PartialEq, Debug)]
 enum SpellLocation {
-	Selected {
-		spell_id: SourceId,
-		caster_id: String,
-	},
-	AlwaysPrepared {
-		spell_id: SourceId,
-		source: std::path::PathBuf,
-	},
-	AvailableAsRitual {
-		spell_id: SourceId,
-		source: RitualSpellSource,
-	},
+	Selected { spell_id: SourceId, caster_id: String },
+	AlwaysPrepared { spell_id: SourceId, source: std::path::PathBuf },
+	AvailableAsRitual { spell_id: SourceId, source: RitualSpellSource },
 }
 #[derive(Clone, PartialEq, Debug)]
 enum RitualSpellSource {
@@ -373,10 +344,7 @@ impl SpellLocation {
 				};
 				Some((spell, entry))
 			}
-			SpellLocation::AvailableAsRitual {
-				spell_id,
-				source: RitualSpellSource::Caster(caster_id),
-			} => {
+			SpellLocation::AvailableAsRitual { spell_id, source: RitualSpellSource::Caster(caster_id) } => {
 				let Some(caster) = state.spellcasting().get_caster(caster_id) else {
 					return None;
 				};
@@ -385,10 +353,7 @@ impl SpellLocation {
 				};
 				Some((spell, &caster.spell_entry))
 			}
-			SpellLocation::AvailableAsRitual {
-				spell_id,
-				source: RitualSpellSource::AlwaysPrepared(source),
-			} => {
+			SpellLocation::AvailableAsRitual { spell_id, source: RitualSpellSource::AlwaysPrepared(source) } => {
 				let Some(spell_entry) = state.spellcasting().prepared_spells().get(spell_id) else {
 					return None;
 				};
@@ -496,28 +461,15 @@ struct SpellRowProps<'c> {
 	section_spell: SectionSpell<'c>,
 }
 fn spell_row<'c>(props: SpellRowProps<'c>) -> Html {
-	let SpellRowProps {
-		state,
-		section_rank,
-		slots,
-		section_spell: SectionSpell { spell, entry, location },
-	} = props;
+	let SpellRowProps { state, section_rank, slots, section_spell: SectionSpell { spell, entry, location } } = props;
 
 	let (use_kind, src_text_suffix) = match &location {
 		SpellLocation::AvailableAsRitual { .. } => (UseSpell::RitualOnly, None),
 		_ => match &entry.method {
 			CastingMethod::AtWill => (UseSpell::AtWill, None),
-			CastingMethod::Cast {
-				can_use_slots: true, ..
-			} if spell.rank == 0 => (UseSpell::AtWill, None),
-			CastingMethod::Cast {
-				can_use_slots: true, ..
-			} => {
-				let slot = UseSpell::Slot {
-					spell_rank: spell.rank,
-					slot_rank: section_rank,
-					slots: slots.clone(),
-				};
+			CastingMethod::Cast { can_use_slots: true, .. } if spell.rank == 0 => (UseSpell::AtWill, None),
+			CastingMethod::Cast { can_use_slots: true, .. } => {
+				let slot = UseSpell::Slot { spell_rank: spell.rank, slot_rank: section_rank, slots: slots.clone() };
 				(slot, None)
 			}
 			CastingMethod::LimitedUses(limited_uses) => {
@@ -559,11 +511,7 @@ fn spell_row<'c>(props: SpellRowProps<'c>) -> Html {
 				};
 				(kind, Some(text))
 			}
-			CastingMethod::FromContainer {
-				item_id,
-				consume_spell,
-				consume_item,
-			} => {
+			CastingMethod::FromContainer { item_id, consume_spell, consume_item } => {
 				let use_spell = match *consume_spell {
 					false => UseSpell::AtWill,
 					true => UseSpell::Usage(Callback::from({
@@ -602,9 +550,7 @@ fn spell_row<'c>(props: SpellRowProps<'c>) -> Html {
 				};
 				(use_spell, None)
 			}
-			CastingMethod::Cast {
-				can_use_slots: false, ..
-			} => return Html::default(),
+			CastingMethod::Cast { can_use_slots: false, .. } => return Html::default(),
 		},
 	};
 
@@ -664,14 +610,9 @@ pub fn spell_source_and_uses(source: &Path, uses_suffix: Option<Html>) -> Html {
 pub fn spell_overview_info(
 	state: &CharacterHandle, spell: &Spell, entry: Option<&SpellEntry>, override_rank: Option<u8>,
 ) -> Html {
-	let casting_duration = entry
-		.map(|entry| entry.casting_duration.as_ref())
-		.flatten()
-		.unwrap_or(&spell.casting_time.duration);
-	let range = entry
-		.map(|entry| entry.range.as_ref())
-		.flatten()
-		.unwrap_or(&spell.range);
+	let casting_duration =
+		entry.map(|entry| entry.casting_duration.as_ref()).flatten().unwrap_or(&spell.casting_time.duration);
+	let range = entry.map(|entry| entry.range.as_ref()).flatten().unwrap_or(&spell.range);
 	let attack_bonus = entry.map(|entry| entry.attack_bonus).unwrap_or(AbilityOrStat::Stat(0));
 	let save_dc = entry.map(|entry| entry.save_dc).unwrap_or(AbilityOrStat::Stat(0));
 	let cast_at_rank = override_rank.or(entry.map(|entry| entry.rank).flatten());
@@ -816,10 +757,8 @@ fn SpellModalRowRoot(SpellModalProps { location, children }: &SpellModalProps) -
 				return;
 			};
 			let location = location.clone();
-			context_menu.dispatch(context_menu::Action::open_root(
-				spell.name.clone(),
-				html!(<SpellModal {location} />),
-			));
+			context_menu
+				.dispatch(context_menu::Action::open_root(spell.name.clone(), html!(<SpellModal {location} />)));
 		}
 	});
 	html! {
@@ -871,10 +810,7 @@ fn ManageCasterModal(CasterNameProps { caster_id }: &CasterNameProps) -> Html {
 
 	let max_cantrips = caster.cantrip_capacity(state.persistent());
 	let max_spells = caster.spell_capacity(&state);
-	let filter = state
-		.spellcasting()
-		.get_filter(caster.name(), state.persistent())
-		.unwrap_or_default();
+	let filter = state.spellcasting().get_filter(caster.name(), state.persistent()).unwrap_or_default();
 
 	let mut num_cantrips = 0;
 	let mut num_spells = 0;
@@ -890,20 +826,13 @@ fn ManageCasterModal(CasterNameProps { caster_id }: &CasterNameProps) -> Html {
 			// Insertion sort by rank & name
 			let order_idx = selected_spells
 				.binary_search_by(|existing_spell: &&Spell| {
-					existing_spell
-						.rank
-						.cmp(&spell.rank)
-						.then(existing_spell.name.cmp(&spell.name))
+					existing_spell.rank.cmp(&spell.rank).then(existing_spell.name.cmp(&spell.name))
 				})
 				.unwrap_or_else(|err_idx| err_idx);
 			selected_spells.insert(order_idx, spell);
 		}
 	}
-	let caster_info = ActionCasterInfo {
-		id: caster_id.clone(),
-		max_cantrips,
-		max_spells,
-	};
+	let caster_info = ActionCasterInfo { id: caster_id.clone(), max_cantrips, max_spells };
 
 	// TODO: Display modifier/atk bonus/save dc and how they are calculated for this caster.
 	// TODO: Display restriction info for the caster's spell list.
@@ -1000,14 +929,7 @@ enum SpellListSection {
 	Available,
 }
 #[function_component]
-fn SpellListAction(
-	SpellListActionProps {
-		caster: info,
-		section,
-		spell_id,
-		rank,
-	}: &SpellListActionProps,
-) -> Html {
+fn SpellListAction(SpellListActionProps { caster: info, section, spell_id, rank }: &SpellListActionProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let Some(caster) = state.spellcasting().get_caster(info.id.as_str()) else {
 		return Html::default();
@@ -1102,10 +1024,7 @@ fn spell_list_item(
 		let ritual_casting = caster.map(|caster| caster.ritual_capability.as_ref()).flatten();
 		match ritual_casting {
 			None => false,
-			Some(RitualCapability {
-				selected_spells,
-				available_spells,
-			}) => *available_spells || *selected_spells,
+			Some(RitualCapability { selected_spells, available_spells }) => *available_spells || *selected_spells,
 		}
 	};
 	// TODO: Tooltips for ritual & concentration icons
@@ -1485,11 +1404,7 @@ struct UseSpellButtonProps {
 enum UseSpell {
 	AtWill,
 	RitualOnly,
-	Slot {
-		spell_rank: u8,
-		slot_rank: u8,
-		slots: Option<(usize, usize)>,
-	},
+	Slot { spell_rank: u8, slot_rank: u8, slots: Option<(usize, usize)> },
 	Usage(Callback<CharacterHandle, Html>),
 }
 #[function_component]
@@ -1506,11 +1421,7 @@ fn UseSpellButton(UseSpellButtonProps { kind }: &UseSpellButtonProps) -> Html {
 				{"RITUAL"}<br />{"ONLY"}
 			</div>
 		},
-		UseSpell::Slot {
-			spell_rank,
-			slot_rank,
-			slots,
-		} => {
+		UseSpell::Slot { spell_rank, slot_rank, slots } => {
 			let can_cast = slots.as_ref().map(|(consumed, max)| consumed < max).unwrap_or(false);
 			let onclick = state.new_dispatch({
 				let consumed_slots = slots.as_ref().map(|(consumed, _max)| *consumed).unwrap_or(0);

@@ -48,10 +48,7 @@ pub struct ReferencePath {
 }
 impl ReferencePath {
 	pub fn new() -> Self {
-		Self {
-			data: PathBuf::new(),
-			display: PathBuf::new(),
-		}
+		Self { data: PathBuf::new(), display: PathBuf::new() }
 	}
 
 	pub fn join<Subpath>(&self, data: Subpath, display: Option<Subpath>) -> Self

@@ -26,9 +26,7 @@ impl Factory {
 
 	pub fn from_kdl<'doc>(&self, node: &mut NodeReader<'doc>) -> anyhow::Result<Generic> {
 		let any = (self.fn_from_kdl)(node)?;
-		let eval = any
-			.downcast::<ArcGenerator>()
-			.expect("failed to unpack boxed arc-generator");
+		let eval = any.downcast::<ArcGenerator>().expect("failed to unpack boxed arc-generator");
 		Ok(Generic::new(*eval))
 	}
 }

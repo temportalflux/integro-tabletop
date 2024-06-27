@@ -1,4 +1,7 @@
-use crate::{kdl_ext::NodeContext, system::dnd5e::data::character::Character, system::Evaluator};
+use crate::{
+	kdl_ext::NodeContext,
+	system::{dnd5e::data::character::Character, Evaluator},
+};
 use kdlize::{ext::ValueExt, AsKdl, FromKdl, NodeBuilder};
 use std::{collections::BTreeMap, fmt::Debug};
 
@@ -17,10 +20,7 @@ where
 	S: ToString,
 {
 	fn from(value: Option<S>) -> Self {
-		Self {
-			class_name: value.map(|s| s.to_string()),
-			order_map: BTreeMap::default(),
-		}
+		Self { class_name: value.map(|s| s.to_string()), order_map: BTreeMap::default() }
 	}
 }
 
@@ -72,13 +72,10 @@ where
 	type Item = T;
 
 	fn description(&self) -> Option<String> {
-		Some(format!(
-			"your {} level",
-			match &self.class_name {
-				None => "character",
-				Some(class_name) => class_name.as_str(),
-			}
-		))
+		Some(format!("your {} level", match &self.class_name {
+			None => "character",
+			Some(class_name) => class_name.as_str(),
+		}))
 	}
 
 	fn evaluate(&self, state: &Self::Context) -> Self::Item {
@@ -117,12 +114,7 @@ impl<T: GetLevelTy> AsKdl for GetLevel<T> {
 			node.entry(("class", class_name.clone()));
 		}
 		for (level, value) in &self.order_map {
-			node.child(
-				NodeBuilder::default()
-					.with_entry(*level as i64)
-					.with_entry(value.to_kdl())
-					.build("level"),
-			);
+			node.child(NodeBuilder::default().with_entry(*level as i64).with_entry(value.to_kdl()).build("level"));
 		}
 		node
 	}

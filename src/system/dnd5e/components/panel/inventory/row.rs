@@ -1,8 +1,7 @@
 use super::InventoryItemProps;
 use crate::{
 	components::context_menu,
-	page::characters::sheet::CharacterHandle,
-	page::characters::sheet::MutatorImpact,
+	page::characters::sheet::{CharacterHandle, MutatorImpact},
 	system::dnd5e::{
 		components::panel::{
 			get_inventory_item, inventory::equip_toggle::ItemRowEquipBox, AddItemButton, AddItemOperation,
@@ -23,13 +22,7 @@ pub struct ItemRowProps {
 }
 
 #[function_component]
-pub fn ItemRow(
-	ItemRowProps {
-		id_path,
-		item,
-		is_equipped,
-	}: &ItemRowProps,
-) -> Html {
+pub fn ItemRow(ItemRowProps { id_path, item, is_equipped }: &ItemRowProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let open_modal = context_menu::use_control_action({
 		let id_path = id_path.clone();
@@ -79,12 +72,8 @@ pub fn ItemModal(InventoryItemProps { id_path }: &InventoryItemProps) -> Html {
 			}
 		}
 	});
-	let mut item_props = ItemBodyProps {
-		location: Some(ItemLocation::Inventory {
-			id_path: id_path.clone(),
-		}),
-		..Default::default()
-	};
+	let mut item_props =
+		ItemBodyProps { location: Some(ItemLocation::Inventory { id_path: id_path.clone() }), ..Default::default() };
 	match &item.kind {
 		item::Kind::Simple { .. } => {
 			item_props.on_quantity_changed = Some(state.new_dispatch({

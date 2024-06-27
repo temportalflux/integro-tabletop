@@ -20,12 +20,7 @@ pub struct QueryAllArgs<T> {
 }
 impl<T> Default for QueryAllArgs<T> {
 	fn default() -> Self {
-		Self {
-			system: Default::default(),
-			criteria: None,
-			adjust_listings: None,
-			max_limit: None,
-		}
+		Self { system: Default::default(), criteria: None, adjust_listings: None, max_limit: None }
 	}
 }
 
@@ -162,12 +157,7 @@ where
 	use_query(initial_args, move |database, input| {
 		let system_depot = system_depot.clone();
 		async move {
-			let QueryAllArgs {
-				system,
-				criteria,
-				adjust_listings,
-				max_limit,
-			} = input;
+			let QueryAllArgs { system, criteria, adjust_listings, max_limit } = input;
 			if system.is_empty() {
 				return Ok(Vec::new());
 			}

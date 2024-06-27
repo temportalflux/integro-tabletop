@@ -35,12 +35,10 @@ the parents and community your character comes from.";
 pub fn OriginTab() -> Html {
 	let use_lineages = use_state_eq(|| true);
 
-	let toggle_lineages = web_ext::callback()
-		.map(|evt: web_sys::Event| evt.input_checked())
-		.on_some({
-			let use_lineages = use_lineages.clone();
-			move |checked| use_lineages.set(checked)
-		});
+	let toggle_lineages = web_ext::callback().map(|evt: web_sys::Event| evt.input_checked()).on_some({
+		let use_lineages = use_lineages.clone();
+		move |checked| use_lineages.set(checked)
+	});
 	let lineages_switch = html! {
 		<div class="form-check form-switch m-2">
 			<label for="useLineages" class="form-check-label">{"Use Lineages & Upbringings"}</label>
@@ -153,13 +151,7 @@ struct CategoryPickerProps {
 	on_change: Callback<Option<AttrValue>>,
 }
 #[function_component]
-fn CategoryPicker(
-	CategoryPickerProps {
-		options,
-		value,
-		on_change,
-	}: &CategoryPickerProps,
-) -> Html {
+fn CategoryPicker(CategoryPickerProps { options, value, on_change }: &CategoryPickerProps) -> Html {
 	let on_selection_changed = Callback::from({
 		let on_change = on_change.clone();
 		move |evt: web_sys::Event| {
@@ -206,12 +198,9 @@ fn selected_bundle(
 ) -> Html {
 	let dependents = match all_dependents.get_vec(&(&bundle.category, &bundle.name)) {
 		None => None,
-		Some(reqs) => Some(
-			reqs.iter()
-				.map(|(category, name)| format!("{category}: {name}"))
-				.collect::<Vec<_>>()
-				.join(", "),
-		),
+		Some(reqs) => {
+			Some(reqs.iter().map(|(category, name)| format!("{category}: {name}")).collect::<Vec<_>>().join(", "))
+		}
 	};
 
 	let reqs_desc = {
@@ -227,9 +216,7 @@ fn selected_bundle(
 			.collect::<Vec<_>>();
 		(!reqs.is_empty()).then(|| format!(" (requires: [{}])", reqs.join(", ")))
 	};
-	let title = reqs_desc
-		.map(|desc| format!("{}{desc}", bundle.name))
-		.unwrap_or_else(|| bundle.name.clone());
+	let title = reqs_desc.map(|desc| format!("{}{desc}", bundle.name)).unwrap_or_else(|| bundle.name.clone());
 	let bundle_id = bundle.name.to_case(Case::Kebab).replace("(", "").replace(")", "");
 	html! {
 		<ContentItem
@@ -263,12 +250,7 @@ fn AvailableBundle(GeneralProp { value: bundle }: &GeneralProp<Bundle>) -> Html 
 		}),
 	);
 
-	let amount_selected = state
-		.persistent()
-		.bundles
-		.iter()
-		.filter(|selected| selected.id == bundle.id)
-		.count();
+	let amount_selected = state.persistent().bundles.iter().filter(|selected| selected.id == bundle.id).count();
 	let mut title = bundle.name.clone();
 	let mut requirements_met = true;
 	if !bundle.requirements.is_empty() {
@@ -346,26 +328,11 @@ struct ContentItemProps {
 }
 #[derive(Clone, PartialEq)]
 enum ContentItemKind {
-	Add {
-		amount_selected: usize,
-		selection_limit: usize,
-		disable_selection: Option<AttrValue>,
-	},
-	Remove {
-		disable_selection: Option<AttrValue>,
-	},
+	Add { amount_selected: usize, selection_limit: usize, disable_selection: Option<AttrValue> },
+	Remove { disable_selection: Option<AttrValue> },
 }
 #[function_component]
-fn ContentItem(
-	ContentItemProps {
-		parent_collapse,
-		id,
-		name,
-		kind,
-		children,
-		on_click,
-	}: &ContentItemProps,
-) -> Html {
+fn ContentItem(ContentItemProps { parent_collapse, id, name, kind, children, on_click }: &ContentItemProps) -> Html {
 	let disabled_btn = |text: Html| {
 		html! {
 			<button type="button" class="btn btn-outline-secondary my-1 w-100" disabled={true}>
@@ -374,11 +341,7 @@ fn ContentItem(
 		}
 	};
 	let slot_buttons = match kind {
-		ContentItemKind::Add {
-			amount_selected,
-			selection_limit,
-			disable_selection,
-		} => {
+		ContentItemKind::Add { amount_selected, selection_limit, disable_selection } => {
 			let select_btn = |text: Html| {
 				html! {
 					<button type="button" class="btn btn-outline-success my-1 w-100" onclick={on_click.reform(|_| ())}>
@@ -466,10 +429,7 @@ pub fn description(info: &description::Info, prefer_short: bool, show_selectors:
 }
 
 pub fn mutator_list<T: 'static>(list: &Vec<mutator::Generic<T>>, state: Option<&impl AsRef<T>>) -> Html {
-	let mutators = list
-		.iter()
-		.filter_map(|value| mutator(value, state))
-		.collect::<Vec<_>>();
+	let mutators = list.iter().filter_map(|value| mutator(value, state)).collect::<Vec<_>>();
 	html! {<>{mutators}</>}
 }
 
@@ -485,12 +445,7 @@ pub struct SectionProps {
 	pub show_selectors: bool,
 }
 #[function_component]
-pub fn DescriptionSection(
-	SectionProps {
-		section,
-		show_selectors,
-	}: &SectionProps,
-) -> Html {
+pub fn DescriptionSection(SectionProps { section, show_selectors }: &SectionProps) -> Html {
 	let name = match &section.title {
 		None => None,
 		Some(title) => Some(html! {<strong>{title.clone()}{". "}</strong>}),
@@ -520,11 +475,7 @@ pub fn DescriptionSection(
 				}
 			})
 			.unwrap_or_default(),
-		description::SectionContent::Table {
-			column_count: _,
-			headers,
-			rows,
-		} => {
+		description::SectionContent::Table { column_count: _, headers, rows } => {
 			html! {
 				<table class="table table-compact table-striped m-0">
 					<thead>
@@ -578,9 +529,7 @@ struct SelectorFieldProps {
 }
 #[function_component]
 fn SelectorField(
-	SelectorFieldProps {
-		data: selector::DataOption { name, data_path, kind },
-	}: &SelectorFieldProps,
+	SelectorFieldProps { data: selector::DataOption { name, data_path, kind } }: &SelectorFieldProps,
 ) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let context_menu = use_context::<context_menu::Control>().unwrap();
@@ -610,19 +559,11 @@ fn SelectorField(
 	let missing_value = value.is_none().then(|| classes!("missing-value")).unwrap_or_default();
 	let inner = match kind {
 		// TODO: Display a different UI if amount > 1
-		selector::Kind::StringEntry {
-			amount: _,
-			options,
-			blocked_options,
-			cannot_match,
-		} => {
+		selector::Kind::StringEntry { amount: _, options, blocked_options, cannot_match } => {
 			// Gather the list of all blocked options (both provided directly by the kind and via those that the picker is not allowed to match).
 			let mut blocked_options = blocked_options.clone();
-			blocked_options.extend(
-				cannot_match
-					.iter()
-					.filter_map(|data_path| state.get_first_selection(data_path).cloned()),
-			);
+			blocked_options
+				.extend(cannot_match.iter().filter_map(|data_path| state.get_first_selection(data_path).cloned()));
 
 			// No options means text field
 			if options.is_empty() {
@@ -673,11 +614,7 @@ fn SelectorField(
 				}
 			}
 		}
-		selector::Kind::Object {
-			amount,
-			object_category,
-			criteria,
-		} => {
+		selector::Kind::Object { amount, object_category, criteria } => {
 			let browse = Callback::from({
 				let context_menu = context_menu.clone();
 				let props = object_browser::ModalProps {
@@ -697,10 +634,7 @@ fn SelectorField(
 				}
 			});
 			let btn_classes = classes!("btn", "btn-outline-theme", "btn-xs", missing_value);
-			let selection_count = state
-				.get_selections_at(data_path)
-				.map(|list| list.len())
-				.unwrap_or_default();
+			let selection_count = state.get_selections_at(data_path).map(|list| list.len()).unwrap_or_default();
 			return html! {
 				<div class={classes}>
 					<h6>{name.clone()}</h6>

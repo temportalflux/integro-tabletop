@@ -11,12 +11,7 @@ pub struct ProgressHandle {
 }
 impl ProgressHandle {
 	fn dispatch(&self) {
-		self.handle.dispatch(Action::UpdateProgress {
-			id: self.id,
-			value: self.value,
-			max: self.max,
-			new_name: None,
-		});
+		self.handle.dispatch(Action::UpdateProgress { id: self.id, value: self.value, max: self.max, new_name: None });
 	}
 
 	pub fn inc(&mut self, amt: u32) {

@@ -16,12 +16,7 @@ impl FromKdl<NodeContext> for Range {
 		let long_range = node.next_i64_req()? as u32;
 		let requires_ammunition = node.query_opt("scope() > ammunition")?.is_some();
 		let requires_loading = node.query_opt("scope() > loading")?.is_some();
-		Ok(Self {
-			short_range,
-			long_range,
-			requires_ammunition,
-			requires_loading,
-		})
+		Ok(Self { short_range, long_range, requires_ammunition, requires_loading })
 	}
 }
 
@@ -53,12 +48,7 @@ mod test {
 		#[test]
 		fn base() -> anyhow::Result<()> {
 			let doc = "range 20 60";
-			let data = Range {
-				short_range: 20,
-				long_range: 60,
-				requires_ammunition: false,
-				requires_loading: false,
-			};
+			let data = Range { short_range: 20, long_range: 60, requires_ammunition: false, requires_loading: false };
 			assert_eq_fromkdl!(Range, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())
@@ -71,12 +61,7 @@ mod test {
 				|    ammunition
 				|}
 			";
-			let data = Range {
-				short_range: 25,
-				long_range: 100,
-				requires_ammunition: true,
-				requires_loading: false,
-			};
+			let data = Range { short_range: 25, long_range: 100, requires_ammunition: true, requires_loading: false };
 			assert_eq_fromkdl!(Range, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())
@@ -89,12 +74,7 @@ mod test {
 				|    loading
 				|}
 			";
-			let data = Range {
-				short_range: 25,
-				long_range: 100,
-				requires_ammunition: false,
-				requires_loading: true,
-			};
+			let data = Range { short_range: 25, long_range: 100, requires_ammunition: false, requires_loading: true };
 			assert_eq_fromkdl!(Range, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())

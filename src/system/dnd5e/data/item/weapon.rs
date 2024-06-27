@@ -1,13 +1,15 @@
-use crate::kdl_ext::NodeContext;
-use crate::system::dnd5e::{
-	data::{
-		action::{Action, ActivationKind, Attack, AttackCheckKind, AttackKind, AttackKindValue},
-		item::container::item::EquipableEntry,
-		roll::EvaluatedRoll,
-		Ability, DamageRoll, Feature, WeaponProficiency,
+use crate::{
+	kdl_ext::NodeContext,
+	system::dnd5e::{
+		data::{
+			action::{Action, ActivationKind, Attack, AttackCheckKind, AttackKind, AttackKindValue},
+			item::container::item::EquipableEntry,
+			roll::EvaluatedRoll,
+			Ability, DamageRoll, Feature, WeaponProficiency,
+		},
+		evaluator::{self, IsProficientWith},
+		Value,
 	},
-	evaluator::{self, IsProficientWith},
-	Value,
 };
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::collections::HashMap;
@@ -65,11 +67,7 @@ impl Weapon {
 					_ => None,
 				})
 			}
-			Some(Range {
-				short_range,
-				long_range,
-				..
-			}) => Some((*short_range, *long_range)),
+			Some(Range { short_range, long_range, .. }) => Some((*short_range, *long_range)),
 		}
 	}
 
@@ -89,17 +87,10 @@ impl Weapon {
 
 	pub fn attack_action(&self, entry: &EquipableEntry) -> Feature {
 		let attack_kind = match self.range {
-			None => AttackKindValue::Melee {
-				reach: self.melee_reach().unwrap(),
-			},
-			Some(Range {
-				short_range,
-				long_range,
-				..
-			}) => AttackKindValue::Ranged {
-				short_dist: short_range,
-				long_dist: long_range,
-			},
+			None => AttackKindValue::Melee { reach: self.melee_reach().unwrap() },
+			Some(Range { short_range, long_range, .. }) => {
+				AttackKindValue::Ranged { short_dist: short_range, long_dist: long_range }
+			}
 		};
 		Feature {
 			name: entry.item.name.clone(),
@@ -152,13 +143,7 @@ impl FromKdl<NodeContext> for Weapon {
 			props
 		};
 		let range = node.query_opt_t::<Range>("scope() > range")?;
-		Ok(Self {
-			kind,
-			classification,
-			damage,
-			properties,
-			range,
-		})
+		Ok(Self { kind, classification, damage, properties, range })
 	}
 }
 

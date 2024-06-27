@@ -44,10 +44,7 @@ impl FromKdl<NodeContext> for DefaultsBlock {
 	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let mutators = node.query_all_t("scope() > mutator")?;
-		Ok(Self {
-			source_id: None,
-			mutators,
-		})
+		Ok(Self { source_id: None, mutators })
 	}
 }
 

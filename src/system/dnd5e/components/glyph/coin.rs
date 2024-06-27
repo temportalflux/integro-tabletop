@@ -13,14 +13,7 @@ pub struct CoinProps {
 }
 
 #[function_component]
-pub fn Coin(
-	CoinProps {
-		kind,
-		tag,
-		classes,
-		large,
-	}: &CoinProps,
-) -> Html {
+pub fn Coin(CoinProps { kind, tag, classes, large }: &CoinProps) -> Html {
 	let mut classes = classes!("currency", classes.clone());
 	if *large {
 		classes.push("lg");

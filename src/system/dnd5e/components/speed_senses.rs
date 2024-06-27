@@ -137,16 +137,10 @@ static SENSE_DESC: [(&'static str, &'static str); 3] = [
 fn Modal() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 
-	let speed_stats = state
-		.speeds()
-		.iter_compiled()
-		.map(|(name, value)| (Arc::new(name.to_owned()), value))
-		.collect::<Vec<_>>();
-	let sense_stats = state
-		.senses()
-		.iter_compiled()
-		.map(|(name, value)| (Arc::new(name.to_owned()), value))
-		.collect::<Vec<_>>();
+	let speed_stats =
+		state.speeds().iter_compiled().map(|(name, value)| (Arc::new(name.to_owned()), value)).collect::<Vec<_>>();
+	let sense_stats =
+		state.senses().iter_compiled().map(|(name, value)| (Arc::new(name.to_owned()), value)).collect::<Vec<_>>();
 
 	html! {<>
 		{speed_stats.into_iter().map(|(name, value)| {
@@ -183,14 +177,7 @@ struct StatProps {
 }
 
 #[function_component]
-fn Stat(
-	StatProps {
-		kind,
-		name,
-		value,
-		operations,
-	}: &StatProps,
-) -> Html {
+fn Stat(StatProps { kind, name, value, operations }: &StatProps) -> Html {
 	html!(<div class="mb-2">
 		<h4>{name}{" ("}{kind}{") = "}{*value}</h4>
 		{operations.into_iter().map(|(operation, source)| {

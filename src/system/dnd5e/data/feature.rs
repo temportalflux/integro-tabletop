@@ -95,9 +95,7 @@ impl FromKdl<NodeContext> for Feature {
 	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let name = node.get_str_req("name")?.to_owned();
-		let description = node
-			.query_opt_t::<description::Info>("scope() > description")?
-			.unwrap_or_default();
+		let description = node.query_opt_t::<description::Info>("scope() > description")?.unwrap_or_default();
 		let collapsed = node.get_bool_opt("collapsed")?.unwrap_or_default();
 		let parent = node.get_str_opt("parent")?.map(PathBuf::from);
 
@@ -178,10 +176,7 @@ mod test {
 		#[test]
 		fn name_only() -> anyhow::Result<()> {
 			let doc = "feature name=\"Test Feature\"";
-			let data = Feature {
-				name: "Test Feature".into(),
-				..Default::default()
-			};
+			let data = Feature { name: "Test Feature".into(), ..Default::default() };
 			assert_eq_fromkdl!(Feature, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())
@@ -217,11 +212,7 @@ mod test {
 		#[test]
 		fn collapsed() -> anyhow::Result<()> {
 			let doc = "feature name=\"Test Feature\" collapsed=true";
-			let data = Feature {
-				name: "Test Feature".into(),
-				collapsed: true,
-				..Default::default()
-			};
+			let data = Feature { name: "Test Feature".into(), collapsed: true, ..Default::default() };
 			assert_eq_fromkdl!(Feature, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())
@@ -249,11 +240,9 @@ mod test {
 			";
 			let data = Feature {
 				name: "Test Feature".into(),
-				mutators: vec![AddToActionBudget {
-					action_kind: ActionBudgetKind::Action,
-					amount: Value::Fixed(1),
-				}
-				.into()],
+				mutators: vec![
+					AddToActionBudget { action_kind: ActionBudgetKind::Action, amount: Value::Fixed(1) }.into(),
+				],
 				..Default::default()
 			};
 			assert_eq_fromkdl!(Feature, doc, data);
@@ -270,10 +259,7 @@ mod test {
 			";
 			let data = Feature {
 				name: "Test Feature".into(),
-				action: Some(Action {
-					activation_kind: ActivationKind::Action,
-					..Default::default()
-				}),
+				action: Some(Action { activation_kind: ActivationKind::Action, ..Default::default() }),
 				..Default::default()
 			};
 			assert_eq_fromkdl!(Feature, doc, data);

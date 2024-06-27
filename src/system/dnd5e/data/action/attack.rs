@@ -34,15 +34,7 @@ impl FromKdl<NodeContext> for Attack {
 		let area_of_effect = node.query_opt_t::<AreaOfEffect>("scope() > area_of_effect")?;
 		let damage = node.query_opt_t::<DamageRoll>("scope() > damage")?;
 		let classification = node.get_str_opt("class")?.map(str::to_owned);
-		Ok(Self {
-			kind,
-			check,
-			area_of_effect,
-			damage,
-			weapon_kind: None,
-			classification,
-			properties: Vec::new(),
-		})
+		Ok(Self { kind, check, area_of_effect, damage, weapon_kind: None, classification, properties: Vec::new() })
 	}
 }
 
@@ -84,20 +76,12 @@ impl Attack {
 		match &self.check {
 			AttackCheckKind::AttackRoll { ability, proficient } => {
 				let (ability, modifier) = self.best_ability_modifier(*ability, state);
-				let prof_bonus = proficient
-					.evaluate(state)
-					.then_some(state.proficiency_bonus())
-					.unwrap_or_default();
+				let prof_bonus = proficient.evaluate(state).then_some(state.proficiency_bonus()).unwrap_or_default();
 				let atk_bonus = modifier + prof_bonus;
 				let dmg_bonus = modifier;
 				(Some(ability), atk_bonus, dmg_bonus)
 			}
-			AttackCheckKind::SavingThrow {
-				base,
-				dc_ability,
-				proficient,
-				save_ability: _,
-			} => {
+			AttackCheckKind::SavingThrow { base, dc_ability, proficient, save_ability: _ } => {
 				let ability_bonus = dc_ability
 					.as_ref()
 					.map(|ability| state.ability_scores().get(*ability).score().modifier())
@@ -177,10 +161,7 @@ mod test {
 				|}
 			";
 			let data = Attack {
-				kind: Some(AttackKindValue::Ranged {
-					short_dist: 20,
-					long_dist: 60,
-				}),
+				kind: Some(AttackKindValue::Ranged { short_dist: 20, long_dist: 60 }),
 				check: AttackCheckKind::SavingThrow {
 					base: 8,
 					dc_ability: None,

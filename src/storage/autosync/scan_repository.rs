@@ -26,7 +26,7 @@ impl ScanRepository {
 				let (_, repositories) = self.client.search_repositories(search_params).await;
 
 				let Some(metadata) = repositories.into_iter().next() else {
-					return Err(Error::InvalidResponse(format!("Empty repository metadata").into()));
+					return Err(Error::InvalidResponse("Empty repository metadata".to_string().into()));
 				};
 				metadata.tree_id
 			}
@@ -35,11 +35,8 @@ impl ScanRepository {
 		let mut tree_ids = VecDeque::from([(PathBuf::new(), tree_id)]);
 		let mut files = Vec::new();
 		while let Some((tree_path, tree_id)) = tree_ids.pop_front() {
-			let args = repos::tree::Args {
-				owner: self.owner.as_str(),
-				repo: self.name.as_str(),
-				tree_id: tree_id.as_str(),
-			};
+			let args =
+				repos::tree::Args { owner: self.owner.as_str(), repo: self.name.as_str(), tree_id: tree_id.as_str() };
 			self.status.increment_progress();
 			for entry in self.client.get_tree(args).await? {
 				let full_path = tree_path.join(&entry.path);
@@ -60,13 +57,8 @@ impl ScanRepository {
 						Some(path) if path == std::path::Path::new("") => continue,
 						_ => {}
 					}
-					let system = ModuleFile::get_system_in_file_path(&full_path).unwrap();
 					let path_in_repo = full_path.display().to_string().replace("\\", "/");
-					files.push(ModuleFile {
-						system,
-						path_in_repo,
-						file_id: entry.id,
-					});
+					files.push(ModuleFile { path_in_repo, file_id: entry.id });
 				}
 			}
 		}

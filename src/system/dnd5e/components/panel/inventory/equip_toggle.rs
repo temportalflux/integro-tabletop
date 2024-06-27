@@ -1,6 +1,9 @@
 use crate::{
-	bootstrap::components::Tooltip, components::stop_propagation, page::characters::sheet::CharacterHandle,
-	page::characters::sheet::MutatorImpact, system::dnd5e::data::character::Persistent, utility::InputExt,
+	bootstrap::components::Tooltip,
+	components::stop_propagation,
+	page::characters::sheet::{CharacterHandle, MutatorImpact},
+	system::dnd5e::data::character::Persistent,
+	utility::InputExt,
 };
 use uuid::Uuid;
 use yew::prelude::*;
@@ -14,14 +17,7 @@ pub struct EquipBoxProps {
 }
 
 #[function_component]
-pub fn ItemRowEquipBox(
-	EquipBoxProps {
-		id,
-		is_equipable,
-		can_be_equipped,
-		is_equipped,
-	}: &EquipBoxProps,
-) -> Html {
+pub fn ItemRowEquipBox(EquipBoxProps { id, is_equipable, can_be_equipped, is_equipped }: &EquipBoxProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	if !*is_equipable {
 		return html! { {"--"} };

@@ -1,11 +1,13 @@
-use crate::kdl_ext::NodeContext;
-use crate::system::mutator::ReferencePath;
 use crate::{
-	system::dnd5e::data::{
-		character::{Character, StartingEquipment},
-		description,
+	kdl_ext::NodeContext,
+	system::{
+		dnd5e::data::{
+			character::{Character, StartingEquipment},
+			description,
+		},
+		mutator::ReferencePath,
+		Mutator,
 	},
-	system::Mutator,
 };
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
 
@@ -70,10 +72,7 @@ mod test {
 				|}
 			";
 			let data = AddStartingEquipment(vec![StartingEquipment::IndirectItem(IndirectItem::Specific(
-				SourceId {
-					path: "items/weapons/rapier.kdl".into(),
-					..Default::default()
-				},
+				SourceId { path: "items/weapons/rapier.kdl".into(), ..Default::default() },
 				1,
 			))]);
 			assert_eq_askdl!(&data, doc);
@@ -134,10 +133,7 @@ mod test {
 				|}
 			";
 			let data = AddStartingEquipment(vec![StartingEquipment::SelectItem(Restriction {
-				weapon: Some(restriction::Weapon {
-					kind: Some(weapon::Kind::Simple),
-					..Default::default()
-				}),
+				weapon: Some(restriction::Weapon { kind: Some(weapon::Kind::Simple), ..Default::default() }),
 				..Default::default()
 			})]);
 			assert_eq_askdl!(&data, doc);
@@ -174,10 +170,8 @@ mod test {
 				|    currency 15 (Currency)\"Gold\"
 				|}
 			";
-			let data = AddStartingEquipment(vec![StartingEquipment::Currency(Wallet::from([(
-				15,
-				currency::Kind::Gold,
-			)]))]);
+			let data =
+				AddStartingEquipment(vec![StartingEquipment::Currency(Wallet::from([(15, currency::Kind::Gold)]))]);
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -196,17 +190,11 @@ mod test {
 			let data = AddStartingEquipment(vec![StartingEquipment::Group {
 				entries: vec![
 					StartingEquipment::IndirectItem(IndirectItem::Specific(
-						SourceId {
-							path: "items/weapons/rapier.kdl".into(),
-							..Default::default()
-						},
+						SourceId { path: "items/weapons/rapier.kdl".into(), ..Default::default() },
 						1,
 					)),
 					StartingEquipment::IndirectItem(IndirectItem::Specific(
-						SourceId {
-							path: "items/weapons/longsword.kdl".into(),
-							..Default::default()
-						},
+						SourceId { path: "items/weapons/longsword.kdl".into(), ..Default::default() },
 						1,
 					)),
 				],
@@ -231,24 +219,15 @@ mod test {
 			let data = AddStartingEquipment(vec![StartingEquipment::Group {
 				entries: vec![
 					StartingEquipment::IndirectItem(IndirectItem::Specific(
-						SourceId {
-							path: "items/weapons/shortsword.kdl".into(),
-							..Default::default()
-						},
+						SourceId { path: "items/weapons/shortsword.kdl".into(), ..Default::default() },
 						1,
 					)),
 					StartingEquipment::IndirectItem(IndirectItem::Specific(
-						SourceId {
-							path: "items/weapons/shortsword.kdl".into(),
-							..Default::default()
-						},
+						SourceId { path: "items/weapons/shortsword.kdl".into(), ..Default::default() },
 						1,
 					)),
 					StartingEquipment::IndirectItem(IndirectItem::Specific(
-						SourceId {
-							path: "items/weapons/longbow.kdl".into(),
-							..Default::default()
-						},
+						SourceId { path: "items/weapons/longbow.kdl".into(), ..Default::default() },
 						1,
 					)),
 				],

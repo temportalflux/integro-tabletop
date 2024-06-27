@@ -80,10 +80,7 @@ pub struct DnD5e {
 
 impl DnD5e {
 	pub fn new() -> Self {
-		Self {
-			blocks: block_registry(),
-			generics: node_registry().into(),
-		}
+		Self { blocks: block_registry(), generics: node_registry().into() }
 	}
 }
 

@@ -27,11 +27,7 @@ impl<T: Into<String>> From<Option<T>> for IdPath {
 				}
 			},
 		};
-		Self {
-			id,
-			is_absolute,
-			absolute_path: Arc::new(RwLock::new(ReferencePath::new())),
-		}
+		Self { id, is_absolute, absolute_path: Arc::new(RwLock::new(ReferencePath::new())) }
 	}
 }
 impl From<&str> for IdPath {
@@ -77,13 +73,7 @@ impl IdPath {
 }
 impl std::fmt::Debug for IdPath {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(
-			f,
-			"IdPath(id={:?}, abs={:?} path={:?})",
-			self.id,
-			self.is_absolute,
-			*self.absolute_path.read().unwrap()
-		)
+		write!(f, "IdPath(id={:?}, abs={:?} path={:?})", self.id, self.is_absolute, *self.absolute_path.read().unwrap())
 	}
 }
 
@@ -106,16 +96,10 @@ mod test {
 	fn absolute() {
 		let path = IdPath::from(Some("/Absolute/Path/to/Item"));
 		path.set_path(&ReferencePath::default());
-		assert_eq!(
-			path.data(),
-			Some(std::path::Path::new("Absolute/Path/to/Item").to_owned())
-		);
+		assert_eq!(path.data(), Some(std::path::Path::new("Absolute/Path/to/Item").to_owned()));
 		assert_eq!(path.data(), path.display());
 		path.set_path(&ReferencePath::default().join("some/parent/", None));
-		assert_eq!(
-			path.data(),
-			Some(std::path::Path::new("Absolute/Path/to/Item").to_owned())
-		);
+		assert_eq!(path.data(), Some(std::path::Path::new("Absolute/Path/to/Item").to_owned()));
 		assert_eq!(path.data(), path.display());
 	}
 
@@ -125,10 +109,7 @@ mod test {
 		path.set_path(&ReferencePath::default());
 		assert_eq!(path.data(), Some(std::path::Path::new("Path/to/Child").to_owned()));
 		path.set_path(&ReferencePath::default().join("some/parent/", None));
-		assert_eq!(
-			path.data(),
-			Some(std::path::Path::new("some/parent/Path/to/Child").to_owned())
-		);
+		assert_eq!(path.data(), Some(std::path::Path::new("some/parent/Path/to/Child").to_owned()));
 		assert_eq!(path.data(), path.display());
 	}
 

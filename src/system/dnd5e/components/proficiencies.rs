@@ -14,17 +14,14 @@ pub fn Proficiencies() -> Html {
 		let state = state.clone();
 		move |_, _context| {
 			let proficiencies = state.other_proficiencies();
-			context_menu::Action::open_root(
-				"General Proficiencies",
-				html! {<>
-					{make_proficiencies_section_long("Languages", &proficiencies.languages, String::to_string)}
-					{make_proficiencies_section_long("Armor", &proficiencies.armor, |(value, context)| {
-						format!("{}{}", value.to_string(), context.as_ref().map(|s| format!(" ({s})")).unwrap_or_default())
-					})}
-					{make_proficiencies_section_long("Weapons", &proficiencies.weapons, WeaponProficiency::display_name)}
-					{make_proficiencies_section_long("Tools", &proficiencies.tools, String::to_string)}
-				</>},
-			)
+			context_menu::Action::open_root("General Proficiencies", html! {<>
+				{make_proficiencies_section_long("Languages", &proficiencies.languages, String::to_string)}
+				{make_proficiencies_section_long("Armor", &proficiencies.armor, |(value, context)| {
+					format!("{}{}", value.to_string(), context.as_ref().map(|s| format!(" ({s})")).unwrap_or_default())
+				})}
+				{make_proficiencies_section_long("Weapons", &proficiencies.weapons, WeaponProficiency::display_name)}
+				{make_proficiencies_section_long("Tools", &proficiencies.tools, String::to_string)}
+			</>})
 		}
 	});
 	html! {
@@ -100,9 +97,8 @@ where
 	if !has_content {
 		section_classes.push("text-center");
 	}
-	let title_header = (!has_content)
-		.then(|| html! { <h5 style="font-size: 1.1rem;">{title}</h5> })
-		.unwrap_or_default();
+	let title_header =
+		(!has_content).then(|| html! { <h5 style="font-size: 1.1rem;">{title}</h5> }).unwrap_or_default();
 	let content = html! {
 		<table class="table table-compact table-striped m-0">
 			<thead>

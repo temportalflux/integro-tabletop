@@ -1,5 +1,7 @@
-use crate::kdl_ext::NodeContext;
-use crate::system::dnd5e::data::{character::Character, item, ArmorExtended};
+use crate::{
+	kdl_ext::NodeContext,
+	system::dnd5e::data::{character::Character, item, ArmorExtended},
+};
 use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
 use std::{collections::HashSet, str::FromStr};
 
@@ -71,13 +73,10 @@ impl crate::system::Evaluator for HasArmorEquipped {
 			}
 		}
 		match self.inverted {
-			false => Err(format!(
-				"No {}armor equipped",
-				match self.kind_list("or") {
-					None => String::new(),
-					Some(kind_list) => format!("{kind_list} "),
-				}
-			)),
+			false => Err(format!("No {}armor equipped", match self.kind_list("or") {
+				None => String::new(),
+				Some(kind_list) => format!("{kind_list} "),
+			})),
 			true => Ok(()),
 		}
 	}
@@ -113,8 +112,8 @@ impl AsKdl for HasArmorEquipped {
 #[cfg(test)]
 mod test {
 	use super::*;
-	use crate::{
-		system::dnd5e::data::{
+	use crate::system::{
+		dnd5e::data::{
 			character::Persistent,
 			item::{
 				armor::{self, Armor},
@@ -122,7 +121,7 @@ mod test {
 				Item,
 			},
 		},
-		system::Evaluator,
+		Evaluator,
 	};
 
 	mod kdl {
@@ -143,10 +142,7 @@ mod test {
 		#[test]
 		fn inverted() -> anyhow::Result<()> {
 			let doc = "evaluator \"has_armor_equipped\" inverted=true";
-			let data = HasArmorEquipped {
-				inverted: true,
-				..Default::default()
-			};
+			let data = HasArmorEquipped { inverted: true, ..Default::default() };
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -159,10 +155,8 @@ mod test {
 				|    kind \"Light\"
 				|}
 			";
-			let data = HasArmorEquipped {
-				kinds: [ArmorExtended::Kind(armor::Kind::Light)].into(),
-				..Default::default()
-			};
+			let data =
+				HasArmorEquipped { kinds: [ArmorExtended::Kind(armor::Kind::Light)].into(), ..Default::default() };
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -192,10 +186,7 @@ mod test {
 				|    kind \"Shield\"
 				|}
 			";
-			let data = HasArmorEquipped {
-				kinds: [ArmorExtended::Shield].into(),
-				..Default::default()
-			};
+			let data = HasArmorEquipped { kinds: [ArmorExtended::Shield].into(), ..Default::default() };
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -213,11 +204,8 @@ mod test {
 		#[test]
 		fn to_kindlist_1() {
 			assert_eq!(
-				HasArmorEquipped {
-					kinds: [ArmorExtended::Kind(armor::Kind::Medium)].into(),
-					..Default::default()
-				}
-				.kind_list("and"),
+				HasArmorEquipped { kinds: [ArmorExtended::Kind(armor::Kind::Medium)].into(), ..Default::default() }
+					.kind_list("and"),
 				Some("medium".into())
 			);
 		}
@@ -226,11 +214,7 @@ mod test {
 		fn to_kindlist_2() {
 			assert_eq!(
 				HasArmorEquipped {
-					kinds: [
-						ArmorExtended::Kind(armor::Kind::Light),
-						ArmorExtended::Kind(armor::Kind::Medium)
-					]
-					.into(),
+					kinds: [ArmorExtended::Kind(armor::Kind::Light), ArmorExtended::Kind(armor::Kind::Medium)].into(),
 					..Default::default()
 				}
 				.kind_list("and"),
@@ -266,11 +250,7 @@ mod test {
 				let id = persistent.inventory.insert(Item {
 					name: format!("Armor{}", kind.to_string()),
 					kind: item::Kind::Equipment(Equipment {
-						armor: Some(Armor {
-							kind: *kind,
-							formula: Default::default(),
-							min_strength_score: None,
-						}),
+						armor: Some(Armor { kind: *kind, formula: Default::default(), min_strength_score: None }),
 						..Default::default()
 					}),
 					..Default::default()
@@ -280,10 +260,7 @@ mod test {
 			if let Some(equipped) = shield {
 				let id = persistent.inventory.insert(Item {
 					name: format!("Shield"),
-					kind: item::Kind::Equipment(Equipment {
-						shield: Some(2),
-						..Default::default()
-					}),
+					kind: item::Kind::Equipment(Equipment { shield: Some(2), ..Default::default() }),
 					..Default::default()
 				});
 				persistent.inventory.set_equipped(&id, equipped);
@@ -329,40 +306,32 @@ mod test {
 
 			#[test]
 			fn no_equipment() {
-				let evaluator = HasArmorEquipped {
-					kinds: [ArmorExtended::Kind(armor::Kind::Light)].into(),
-					..Default::default()
-				};
+				let evaluator =
+					HasArmorEquipped { kinds: [ArmorExtended::Kind(armor::Kind::Light)].into(), ..Default::default() };
 				let with_light = character_with_armor(&[]);
 				assert_eq!(evaluator.evaluate(&with_light), Err("No light armor equipped".into()));
 			}
 
 			#[test]
 			fn unequipped() {
-				let evaluator = HasArmorEquipped {
-					kinds: [ArmorExtended::Kind(armor::Kind::Light)].into(),
-					..Default::default()
-				};
+				let evaluator =
+					HasArmorEquipped { kinds: [ArmorExtended::Kind(armor::Kind::Light)].into(), ..Default::default() };
 				let with_light = character_with_armor(&[(armor::Kind::Light, false)]);
 				assert_eq!(evaluator.evaluate(&with_light), Err("No light armor equipped".into()));
 			}
 
 			#[test]
 			fn wrong() {
-				let evaluator = HasArmorEquipped {
-					kinds: [ArmorExtended::Kind(armor::Kind::Light)].into(),
-					..Default::default()
-				};
+				let evaluator =
+					HasArmorEquipped { kinds: [ArmorExtended::Kind(armor::Kind::Light)].into(), ..Default::default() };
 				let with_light = character_with_armor(&[(armor::Kind::Heavy, true)]);
 				assert_eq!(evaluator.evaluate(&with_light), Err("No light armor equipped".into()));
 			}
 
 			#[test]
 			fn equipped() {
-				let evaluator = HasArmorEquipped {
-					kinds: [ArmorExtended::Kind(armor::Kind::Light)].into(),
-					..Default::default()
-				};
+				let evaluator =
+					HasArmorEquipped { kinds: [ArmorExtended::Kind(armor::Kind::Light)].into(), ..Default::default() };
 				let with_light = character_with_armor(&[(armor::Kind::Light, true)]);
 				assert_eq!(evaluator.evaluate(&with_light), Ok(()));
 			}
@@ -374,62 +343,37 @@ mod test {
 			#[test]
 			fn no_equipment() {
 				let evaluator = HasArmorEquipped {
-					kinds: [
-						ArmorExtended::Kind(armor::Kind::Light),
-						ArmorExtended::Kind(armor::Kind::Medium),
-					]
-					.into(),
+					kinds: [ArmorExtended::Kind(armor::Kind::Light), ArmorExtended::Kind(armor::Kind::Medium)].into(),
 					..Default::default()
 				};
 				let with_light = character_with_armor(&[]);
-				assert_eq!(
-					evaluator.evaluate(&with_light),
-					Err("No light or medium armor equipped".into())
-				);
+				assert_eq!(evaluator.evaluate(&with_light), Err("No light or medium armor equipped".into()));
 			}
 
 			#[test]
 			fn unequipped() {
 				let evaluator = HasArmorEquipped {
-					kinds: [
-						ArmorExtended::Kind(armor::Kind::Light),
-						ArmorExtended::Kind(armor::Kind::Medium),
-					]
-					.into(),
+					kinds: [ArmorExtended::Kind(armor::Kind::Light), ArmorExtended::Kind(armor::Kind::Medium)].into(),
 					..Default::default()
 				};
 				let with_light = character_with_armor(&[(armor::Kind::Medium, false)]);
-				assert_eq!(
-					evaluator.evaluate(&with_light),
-					Err("No light or medium armor equipped".into())
-				);
+				assert_eq!(evaluator.evaluate(&with_light), Err("No light or medium armor equipped".into()));
 			}
 
 			#[test]
 			fn wrong() {
 				let evaluator = HasArmorEquipped {
-					kinds: [
-						ArmorExtended::Kind(armor::Kind::Light),
-						ArmorExtended::Kind(armor::Kind::Medium),
-					]
-					.into(),
+					kinds: [ArmorExtended::Kind(armor::Kind::Light), ArmorExtended::Kind(armor::Kind::Medium)].into(),
 					..Default::default()
 				};
 				let with_light = character_with_armor(&[(armor::Kind::Heavy, true)]);
-				assert_eq!(
-					evaluator.evaluate(&with_light),
-					Err("No light or medium armor equipped".into())
-				);
+				assert_eq!(evaluator.evaluate(&with_light), Err("No light or medium armor equipped".into()));
 			}
 
 			#[test]
 			fn equipped() {
 				let evaluator = HasArmorEquipped {
-					kinds: [
-						ArmorExtended::Kind(armor::Kind::Light),
-						ArmorExtended::Kind(armor::Kind::Medium),
-					]
-					.into(),
+					kinds: [ArmorExtended::Kind(armor::Kind::Light), ArmorExtended::Kind(armor::Kind::Medium)].into(),
 					..Default::default()
 				};
 				let with_light = character_with_armor(&[(armor::Kind::Medium, true)]);
@@ -442,53 +386,35 @@ mod test {
 
 			#[test]
 			fn no_equipment() {
-				let evaluator = HasArmorEquipped {
-					inverted: true,
-					..Default::default()
-				};
+				let evaluator = HasArmorEquipped { inverted: true, ..Default::default() };
 				let character = character_with_armor(&[]);
 				assert_eq!(evaluator.evaluate(&character), Ok(()));
 			}
 
 			#[test]
 			fn unequipped() {
-				let evaluator = HasArmorEquipped {
-					inverted: true,
-					..Default::default()
-				};
+				let evaluator = HasArmorEquipped { inverted: true, ..Default::default() };
 				let character = character_with_armor(&[(armor::Kind::Heavy, false)]);
 				assert_eq!(evaluator.evaluate(&character), Ok(()));
 			}
 
 			#[test]
 			fn equipped() {
-				let evaluator = HasArmorEquipped {
-					inverted: true,
-					..Default::default()
-				};
+				let evaluator = HasArmorEquipped { inverted: true, ..Default::default() };
 				let character = character_with_armor(&[(armor::Kind::Heavy, true)]);
-				assert_eq!(
-					evaluator.evaluate(&character),
-					Err("\"ArmorHeavy\" is equipped.".into())
-				);
+				assert_eq!(evaluator.evaluate(&character), Err("\"ArmorHeavy\" is equipped.".into()));
 			}
 
 			#[test]
 			fn shield_equipped() {
-				let evaluator = HasArmorEquipped {
-					inverted: true,
-					..Default::default()
-				};
+				let evaluator = HasArmorEquipped { inverted: true, ..Default::default() };
 				let character = character(&[], Some(true));
 				assert_eq!(evaluator.evaluate(&character), Err("\"Shield\" is equipped.".into()));
 			}
 
 			#[test]
 			fn weapon_equipped() {
-				let evaluator = HasArmorEquipped {
-					inverted: true,
-					..Default::default()
-				};
+				let evaluator = HasArmorEquipped { inverted: true, ..Default::default() };
 				let mut character = character(&[], None);
 				let id = character.persistent_mut().inventory.insert(Item {
 					name: format!("Staff"),
@@ -542,10 +468,7 @@ mod test {
 					..Default::default()
 				};
 				let character = character_with_armor(&[(armor::Kind::Heavy, true)]);
-				assert_eq!(
-					evaluator.evaluate(&character),
-					Err("\"ArmorHeavy\" is equipped.".into())
-				);
+				assert_eq!(evaluator.evaluate(&character), Err("\"ArmorHeavy\" is equipped.".into()));
 			}
 
 			#[test]
@@ -567,11 +490,7 @@ mod test {
 			fn no_equipment() {
 				let evaluator = HasArmorEquipped {
 					inverted: true,
-					kinds: [
-						ArmorExtended::Kind(armor::Kind::Medium),
-						ArmorExtended::Kind(armor::Kind::Heavy),
-					]
-					.into(),
+					kinds: [ArmorExtended::Kind(armor::Kind::Medium), ArmorExtended::Kind(armor::Kind::Heavy)].into(),
 					..Default::default()
 				};
 				let character = character_with_armor(&[]);
@@ -582,11 +501,7 @@ mod test {
 			fn unequipped() {
 				let evaluator = HasArmorEquipped {
 					inverted: true,
-					kinds: [
-						ArmorExtended::Kind(armor::Kind::Medium),
-						ArmorExtended::Kind(armor::Kind::Heavy),
-					]
-					.into(),
+					kinds: [ArmorExtended::Kind(armor::Kind::Medium), ArmorExtended::Kind(armor::Kind::Heavy)].into(),
 					..Default::default()
 				};
 				let character = character_with_armor(&[(armor::Kind::Heavy, false), (armor::Kind::Medium, false)]);
@@ -597,29 +512,18 @@ mod test {
 			fn equipped() {
 				let evaluator = HasArmorEquipped {
 					inverted: true,
-					kinds: [
-						ArmorExtended::Kind(armor::Kind::Medium),
-						ArmorExtended::Kind(armor::Kind::Heavy),
-					]
-					.into(),
+					kinds: [ArmorExtended::Kind(armor::Kind::Medium), ArmorExtended::Kind(armor::Kind::Heavy)].into(),
 					..Default::default()
 				};
 				let character = character_with_armor(&[(armor::Kind::Medium, true)]);
-				assert_eq!(
-					evaluator.evaluate(&character),
-					Err("\"ArmorMedium\" is equipped.".into())
-				);
+				assert_eq!(evaluator.evaluate(&character), Err("\"ArmorMedium\" is equipped.".into()));
 			}
 
 			#[test]
 			fn otherequipped() {
 				let evaluator = HasArmorEquipped {
 					inverted: true,
-					kinds: [
-						ArmorExtended::Kind(armor::Kind::Medium),
-						ArmorExtended::Kind(armor::Kind::Heavy),
-					]
-					.into(),
+					kinds: [ArmorExtended::Kind(armor::Kind::Medium), ArmorExtended::Kind(armor::Kind::Heavy)].into(),
 					..Default::default()
 				};
 				let character = character_with_armor(&[(armor::Kind::Light, true)]);

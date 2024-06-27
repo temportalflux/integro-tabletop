@@ -65,10 +65,7 @@ mod test {
 		#[test]
 		fn base_only() -> anyhow::Result<()> {
 			let doc = "mutator \"feature\" name=\"Mutator Feature\"";
-			let data = AddFeature(Feature {
-				name: "Mutator Feature".into(),
-				..Default::default()
-			});
+			let data = AddFeature(Feature { name: "Mutator Feature".into(), ..Default::default() });
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())

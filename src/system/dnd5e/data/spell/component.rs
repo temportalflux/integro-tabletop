@@ -1,5 +1,4 @@
-use crate::kdl_ext::NodeContext;
-use crate::utility::NotInList;
+use crate::{kdl_ext::NodeContext, utility::NotInList};
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
 
 // Components:
@@ -47,9 +46,7 @@ impl AsKdl for Components {
 		}
 		for (material, consumed) in &self.materials {
 			node.child(("component", {
-				let mut node = NodeBuilder::default()
-					.with_entry("Material")
-					.with_entry(material.clone());
+				let mut node = NodeBuilder::default().with_entry("Material").with_entry(material.clone());
 				if *consumed {
 					node.entry(("consumes", true));
 				}
@@ -77,11 +74,7 @@ mod test {
 				|    component \"Verbal\"
 				|}
 			";
-			let data = Components {
-				verbal: true,
-				somatic: false,
-				materials: vec![],
-			};
+			let data = Components { verbal: true, somatic: false, materials: vec![] };
 			assert_eq_fromkdl!(Components, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())
@@ -94,11 +87,7 @@ mod test {
 				|    component \"Somatic\"
 				|}
 			";
-			let data = Components {
-				verbal: false,
-				somatic: true,
-				materials: vec![],
-			};
+			let data = Components { verbal: false, somatic: true, materials: vec![] };
 			assert_eq_fromkdl!(Components, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())
@@ -111,11 +100,8 @@ mod test {
 				|    component \"Material\" \"a swatch of wool\"
 				|}
 			";
-			let data = Components {
-				verbal: false,
-				somatic: false,
-				materials: vec![("a swatch of wool".into(), false)],
-			};
+			let data =
+				Components { verbal: false, somatic: false, materials: vec![("a swatch of wool".into(), false)] };
 			assert_eq_fromkdl!(Components, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())
@@ -128,11 +114,7 @@ mod test {
 				|    component \"Material\" \"a swatch of wool\" consumes=true
 				|}
 			";
-			let data = Components {
-				verbal: false,
-				somatic: false,
-				materials: vec![("a swatch of wool".into(), true)],
-			};
+			let data = Components { verbal: false, somatic: false, materials: vec![("a swatch of wool".into(), true)] };
 			assert_eq_fromkdl!(Components, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())

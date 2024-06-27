@@ -1,11 +1,13 @@
-use crate::kdl_ext::NodeContext;
-use crate::system::mutator::ReferencePath;
 use crate::{
-	system::dnd5e::{
-		data::{character::Character, description},
-		Value,
+	kdl_ext::NodeContext,
+	system::{
+		dnd5e::{
+			data::{character::Character, description},
+			Value,
+		},
+		mutator::ReferencePath,
+		Mutator,
 	},
-	system::Mutator,
 	utility::Dependencies,
 };
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
@@ -31,13 +33,10 @@ impl Mutator for AddMaxHitPoints {
 		description::Section {
 			content: match &self.value {
 				Value::Fixed(amount) => format!("{PREFIX} {amount}."),
-				Value::Evaluated(evaluator) => format!(
-					"{PREFIX} {}.",
-					match evaluator.description() {
-						Some(desc) => desc,
-						None => "some amount".into(),
-					}
-				),
+				Value::Evaluated(evaluator) => format!("{PREFIX} {}.", match evaluator.description() {
+					Some(desc) => desc,
+					None => "some amount".into(),
+				}),
 			}
 			.into(),
 			..Default::default()
@@ -106,10 +105,7 @@ mod test {
 		#[test]
 		fn value() -> anyhow::Result<()> {
 			let doc = "mutator \"add_max_hit_points\" 5";
-			let data = AddMaxHitPoints {
-				id: None,
-				value: Value::Fixed(5),
-			};
+			let data = AddMaxHitPoints { id: None, value: Value::Fixed(5) };
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -119,10 +115,8 @@ mod test {
 		fn evaluator() -> anyhow::Result<()> {
 			let doc = "mutator \"add_max_hit_points\" \
 			(Evaluator)\"get_ability_modifier\" (Ability)\"Constitution\"";
-			let data = AddMaxHitPoints {
-				id: None,
-				value: Value::Evaluated(GetAbilityModifier(Ability::Constitution).into()),
-			};
+			let data =
+				AddMaxHitPoints { id: None, value: Value::Evaluated(GetAbilityModifier(Ability::Constitution).into()) };
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -167,12 +161,7 @@ mod test {
 		fn character(mutator: AddMaxHitPoints) -> Character {
 			let mut persistent = Persistent::default();
 			persistent.bundles.push(
-				Bundle {
-					name: "TestMutator".into(),
-					mutators: vec![mutator.into()],
-					..Default::default()
-				}
-				.into(),
+				Bundle { name: "TestMutator".into(), mutators: vec![mutator.into()], ..Default::default() }.into(),
 			);
 			persistent.ability_scores[Ability::Constitution] = 14;
 			Character::from(persistent)
@@ -180,14 +169,8 @@ mod test {
 
 		#[test]
 		fn fixed() {
-			let character = character(AddMaxHitPoints {
-				id: None,
-				value: Value::Fixed(10),
-			});
-			assert_eq!(
-				character.max_hit_points().sources(),
-				&[("TestMutator".into(), 10),].into()
-			);
+			let character = character(AddMaxHitPoints { id: None, value: Value::Fixed(10) });
+			assert_eq!(character.max_hit_points().sources(), &[("TestMutator".into(), 10),].into());
 			assert_eq!(character.max_hit_points().value(), 10);
 		}
 
@@ -197,10 +180,7 @@ mod test {
 				id: None,
 				value: Value::Evaluated(GetAbilityModifier(Ability::Constitution).into()),
 			});
-			assert_eq!(
-				character.max_hit_points().sources(),
-				&[("TestMutator".into(), 2),].into()
-			);
+			assert_eq!(character.max_hit_points().sources(), &[("TestMutator".into(), 2),].into());
 			assert_eq!(character.max_hit_points().value(), 2);
 		}
 	}

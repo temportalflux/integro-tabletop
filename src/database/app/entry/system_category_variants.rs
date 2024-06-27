@@ -12,11 +12,7 @@ pub struct SystemCategoryVariants {
 
 impl SystemCategoryVariants {
 	pub fn new<T: crate::system::Block>(system: impl Into<String>, variants: bool) -> Self {
-		Self {
-			system: system.into(),
-			category: T::id().into(),
-			variants_only: variants,
-		}
+		Self { system: system.into(), category: T::id().into(), variants_only: variants }
 	}
 }
 

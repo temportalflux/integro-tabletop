@@ -1,8 +1,6 @@
-use crate::kdl_ext::NodeContext;
-use crate::system::mutator::ReferencePath;
 use crate::{
 	database::Criteria,
-	system::Mutator,
+	kdl_ext::NodeContext,
 	system::{
 		dnd5e::{
 			data::{
@@ -11,13 +9,13 @@ use crate::{
 			},
 			Value,
 		},
-		SourceId,
+		mutator::ReferencePath,
+		Mutator, SourceId,
 	},
 	utility::selector,
 	GeneralError,
 };
-use kdlize::{ext::ValueExt, AsKdl, FromKdl, NodeBuilder};
-use kdlize::{NodeId, OmitIfEmpty};
+use kdlize::{ext::ValueExt, AsKdl, FromKdl, NodeBuilder, NodeId, OmitIfEmpty};
 use std::{collections::BTreeMap, str::FromStr};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -44,9 +42,7 @@ impl Mutator for AddBundle {
 	fn description(&self, state: Option<&Character>) -> description::Section {
 		description::Section {
 			content: "You have the following bundles:".to_owned().into(),
-			children: vec![selector::DataList::default()
-				.with_object("Bundle", &self.selector, state)
-				.into()],
+			children: vec![selector::DataList::default().with_object("Bundle", &self.selector, state).into()],
 			..Default::default()
 		}
 	}
@@ -80,9 +76,7 @@ impl FromKdl<NodeContext> for AddBundle {
 			Some(kind) => kind.to_owned(),
 		};
 		let propogate_parent = node.get_bool_opt("propogate_parent")?.unwrap_or_default();
-		let amount = node
-			.query_opt_t::<Value<i32>>("scope() > amount")?
-			.unwrap_or(Value::Fixed(1));
+		let amount = node.query_opt_t::<Value<i32>>("scope() > amount")?.unwrap_or(Value::Fixed(1));
 		let filter = node.query_req_t::<MetadataObject>("scope() > filter")?;
 
 		let selector = selector::Object {
@@ -91,11 +85,7 @@ impl FromKdl<NodeContext> for AddBundle {
 			amount,
 			criteria: Some(filter.as_criteria()),
 		};
-		Ok(Self {
-			selector,
-			filter,
-			propogate_parent,
-		})
+		Ok(Self { selector, filter, propogate_parent })
 	}
 }
 impl FromKdl<NodeContext> for MetadataObject {
@@ -156,11 +146,10 @@ impl MetadataEntry {
 				}
 				Ok(())
 			}
-			(a, b) => Err(GeneralError(format!(
-				"Cannot merge an entry of values with an entry object: {:?} & {:?}",
-				*a, b
-			))
-			.into()),
+			(a, b) => {
+				Err(GeneralError(format!("Cannot merge an entry of values with an entry object: {:?} & {:?}", *a, b))
+					.into())
+			}
 		}
 	}
 }

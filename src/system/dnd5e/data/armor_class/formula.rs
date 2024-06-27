@@ -1,6 +1,8 @@
 use super::BoundedAbility;
-use crate::kdl_ext::NodeContext;
-use crate::system::dnd5e::data::{character::Character, Ability};
+use crate::{
+	kdl_ext::NodeContext,
+	system::dnd5e::data::{character::Character, Ability},
+};
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
 
 #[derive(Clone, PartialEq, Debug)]
@@ -11,23 +13,13 @@ pub struct ArmorClassFormula {
 
 impl Default for ArmorClassFormula {
 	fn default() -> Self {
-		Self {
-			base: 10,
-			bonuses: vec![BoundedAbility {
-				ability: Ability::Dexterity,
-				min: None,
-				max: None,
-			}],
-		}
+		Self { base: 10, bonuses: vec![BoundedAbility { ability: Ability::Dexterity, min: None, max: None }] }
 	}
 }
 
 impl From<u32> for ArmorClassFormula {
 	fn from(base: u32) -> Self {
-		Self {
-			base,
-			bonuses: Vec::new(),
-		}
+		Self { base, bonuses: Vec::new() }
 	}
 }
 
@@ -79,17 +71,10 @@ mod test {
 
 	#[test]
 	fn default() {
-		assert_eq!(
-			ArmorClassFormula::default(),
-			ArmorClassFormula {
-				base: 10,
-				bonuses: vec![BoundedAbility {
-					ability: Ability::Dexterity,
-					min: None,
-					max: None,
-				}],
-			}
-		);
+		assert_eq!(ArmorClassFormula::default(), ArmorClassFormula {
+			base: 10,
+			bonuses: vec![BoundedAbility { ability: Ability::Dexterity, min: None, max: None }],
+		});
 	}
 
 	mod kdl {
@@ -101,10 +86,7 @@ mod test {
 		#[test]
 		fn base_only() -> anyhow::Result<()> {
 			let doc = "formula base=12";
-			let data = ArmorClassFormula {
-				base: 12,
-				bonuses: vec![],
-			};
+			let data = ArmorClassFormula { base: 12, bonuses: vec![] };
 			assert_eq_fromkdl!(ArmorClassFormula, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())
@@ -119,11 +101,7 @@ mod test {
 			";
 			let data = ArmorClassFormula {
 				base: 12,
-				bonuses: vec![BoundedAbility {
-					ability: Ability::Dexterity,
-					min: None,
-					max: None,
-				}],
+				bonuses: vec![BoundedAbility { ability: Ability::Dexterity, min: None, max: None }],
 			};
 			assert_eq_fromkdl!(ArmorClassFormula, doc, data);
 			assert_eq_askdl!(&data, doc);
@@ -139,11 +117,7 @@ mod test {
 			";
 			let data = ArmorClassFormula {
 				base: 15,
-				bonuses: vec![BoundedAbility {
-					ability: Ability::Dexterity,
-					min: None,
-					max: Some(2),
-				}],
+				bonuses: vec![BoundedAbility { ability: Ability::Dexterity, min: None, max: Some(2) }],
 			};
 			assert_eq_fromkdl!(ArmorClassFormula, doc, data);
 			assert_eq_askdl!(&data, doc);
@@ -160,18 +134,11 @@ mod test {
 			";
 			let data = ArmorClassFormula {
 				base: 10,
-				bonuses: vec![
-					BoundedAbility {
-						ability: Ability::Dexterity,
-						min: None,
-						max: None,
-					},
-					BoundedAbility {
-						ability: Ability::Wisdom,
-						min: None,
-						max: None,
-					},
-				],
+				bonuses: vec![BoundedAbility { ability: Ability::Dexterity, min: None, max: None }, BoundedAbility {
+					ability: Ability::Wisdom,
+					min: None,
+					max: None,
+				}],
 			};
 			assert_eq_fromkdl!(ArmorClassFormula, doc, data);
 			assert_eq_askdl!(&data, doc);
@@ -193,10 +160,7 @@ mod test {
 
 		#[test]
 		fn no_bonuses() {
-			let formula = ArmorClassFormula {
-				base: 10,
-				bonuses: vec![],
-			};
+			let formula = ArmorClassFormula { base: 10, bonuses: vec![] };
 			let character = character(&[(Ability::Dexterity, 20)]);
 			assert_eq!(formula.evaluate(&character), 10);
 		}
@@ -205,11 +169,7 @@ mod test {
 		fn one_bonus() {
 			let formula = ArmorClassFormula {
 				base: 10,
-				bonuses: vec![BoundedAbility {
-					ability: Ability::Dexterity,
-					min: None,
-					max: None,
-				}],
+				bonuses: vec![BoundedAbility { ability: Ability::Dexterity, min: None, max: None }],
 			};
 			let character = character(&[(Ability::Dexterity, 8)]);
 			assert_eq!(formula.evaluate(&character), 9);
@@ -219,18 +179,11 @@ mod test {
 		fn multiple_bonus() {
 			let formula = ArmorClassFormula {
 				base: 10,
-				bonuses: vec![
-					BoundedAbility {
-						ability: Ability::Dexterity,
-						min: None,
-						max: None,
-					},
-					BoundedAbility {
-						ability: Ability::Constitution,
-						min: None,
-						max: None,
-					},
-				],
+				bonuses: vec![BoundedAbility { ability: Ability::Dexterity, min: None, max: None }, BoundedAbility {
+					ability: Ability::Constitution,
+					min: None,
+					max: None,
+				}],
 			};
 			let character = character(&[(Ability::Dexterity, 14), (Ability::Constitution, 12)]);
 			assert_eq!(formula.evaluate(&character), 13);
@@ -240,11 +193,7 @@ mod test {
 		fn ability_max() {
 			let formula = ArmorClassFormula {
 				base: 15,
-				bonuses: vec![BoundedAbility {
-					ability: Ability::Dexterity,
-					min: None,
-					max: Some(2),
-				}],
+				bonuses: vec![BoundedAbility { ability: Ability::Dexterity, min: None, max: Some(2) }],
 			};
 			let character = character(&[(Ability::Dexterity, 18)]);
 			assert_eq!(formula.evaluate(&character), 17);
@@ -254,11 +203,7 @@ mod test {
 		fn ability_min() {
 			let formula = ArmorClassFormula {
 				base: 10,
-				bonuses: vec![BoundedAbility {
-					ability: Ability::Dexterity,
-					min: Some(3),
-					max: None,
-				}],
+				bonuses: vec![BoundedAbility { ability: Ability::Dexterity, min: Some(3), max: None }],
 			};
 			let character = character(&[(Ability::Dexterity, 10)]);
 			assert_eq!(formula.evaluate(&character), 13);

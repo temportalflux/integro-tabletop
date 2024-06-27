@@ -201,41 +201,27 @@ struct SelectedEquipment {
 impl SelectedEquipment {
 	fn find_selections(element: &StartingEquipment, path: &Path, persistent: &Persistent) -> Self {
 		match element {
-			StartingEquipment::Currency(wallet) => Self {
-				wallet: *wallet,
-				..Default::default()
-			},
-			StartingEquipment::IndirectItem(IndirectItem::Specific(item_id, quantity)) => Self {
-				item_ids: vec![item_id.clone(); *quantity],
-				..Default::default()
-			},
-			StartingEquipment::IndirectItem(IndirectItem::Custom(item)) => Self {
-				items: vec![item.clone()],
-				..Default::default()
-			},
+			StartingEquipment::Currency(wallet) => Self { wallet: *wallet, ..Default::default() },
+			StartingEquipment::IndirectItem(IndirectItem::Specific(item_id, quantity)) => {
+				Self { item_ids: vec![item_id.clone(); *quantity], ..Default::default() }
+			}
+			StartingEquipment::IndirectItem(IndirectItem::Custom(item)) => {
+				Self { items: vec![item.clone()], ..Default::default() }
+			}
 			StartingEquipment::SelectItem(_filter) => {
 				let Some(id_str) = persistent.get_first_selection(&path) else {
-					return Self {
-						missing_selections: vec![path.to_owned()],
-						..Default::default()
-					};
+					return Self { missing_selections: vec![path.to_owned()], ..Default::default() };
 				};
 				let Ok(id) = SourceId::from_str(id_str) else {
 					return Self::default();
 				};
-				Self {
-					item_ids: vec![id],
-					..Default::default()
-				}
+				Self { item_ids: vec![id], ..Default::default() }
 			}
 			StartingEquipment::Group { entries, .. } => {
 				let idx_strs = match persistent.get_selections_at(&path) {
 					Some(idx_strs) if !idx_strs.is_empty() => idx_strs,
 					_ => {
-						return Self {
-							missing_selections: vec![path.to_owned()],
-							..Default::default()
-						}
+						return Self { missing_selections: vec![path.to_owned()], ..Default::default() };
 					}
 				};
 				let mut selected = Self::default();
@@ -282,11 +268,7 @@ fn BrowseStartingEquipment() -> Html {
 		let mut subsections = Vec::with_capacity(options.len());
 		for (idx, element) in options.iter().enumerate() {
 			let selection_path = selection_path.join(idx.to_string());
-			selected_equipment.extend(SelectedEquipment::find_selections(
-				element,
-				&selection_path,
-				state.persistent(),
-			));
+			selected_equipment.extend(SelectedEquipment::find_selections(element, &selection_path, state.persistent()));
 			subsections.push(html!(<Section kind={element.clone()} {selection_path} />));
 		}
 		sections.push(html! {
@@ -338,9 +320,8 @@ fn BrowseStartingEquipment() -> Html {
 						}
 						// fetch yet-unfetched items from database
 						None => {
-							let Some(item) = database
-								.get_typed_entry::<Item>(item_id.clone(), system_depot.clone(), None)
-								.await?
+							let Some(item) =
+								database.get_typed_entry::<Item>(item_id.clone(), system_depot.clone(), None).await?
 							else {
 								return Ok(());
 							};
@@ -396,14 +377,7 @@ struct SectionProps {
 }
 
 #[function_component]
-fn Section(
-	SectionProps {
-		selection_path,
-		kind,
-		prefix,
-		disabled,
-	}: &SectionProps,
-) -> Html {
+fn Section(SectionProps { selection_path, kind, prefix, disabled }: &SectionProps) -> Html {
 	let content = match kind {
 		StartingEquipment::Currency(wallet) => html! {<>
 			<div class="label">
@@ -457,23 +431,12 @@ struct GroupProps {
 }
 #[function_component]
 fn Group(props: &GroupProps) -> Html {
-	let GroupProps {
-		entries,
-		pick_max,
-		selection_path,
-		prefix,
-		disabled,
-	} = props;
+	let GroupProps { entries, pick_max, selection_path, prefix, disabled } = props;
 	let state = use_context::<CharacterHandle>().unwrap();
 
 	fn get_selected_indices(values: Option<&Vec<String>>) -> Vec<usize> {
 		values
-			.map(|values| {
-				values
-					.iter()
-					.filter_map(|s| s.parse::<usize>().ok())
-					.collect::<Vec<_>>()
-			})
+			.map(|values| values.iter().filter_map(|s| s.parse::<usize>().ok()).collect::<Vec<_>>())
 			.unwrap_or_default()
 	}
 	let values = get_selected_indices(state.get_selections_at(&selection_path));
@@ -597,14 +560,7 @@ struct ItemByIdProps {
 	disabled: bool,
 }
 #[function_component]
-fn ItemById(
-	ItemByIdProps {
-		id,
-		quantity,
-		prefix,
-		disabled,
-	}: &ItemByIdProps,
-) -> Html {
+fn ItemById(ItemByIdProps { id, quantity, prefix, disabled }: &ItemByIdProps) -> Html {
 	html!(<IndirectFetch<Item>
 		indirect={Indirect::Id(id.clone())}
 		to_inner={Callback::from({
@@ -628,14 +584,7 @@ struct SpecificItemProps {
 	disabled: bool,
 }
 #[function_component]
-fn SpecificItem(
-	SpecificItemProps {
-		item,
-		quantity,
-		prefix,
-		disabled,
-	}: &SpecificItemProps,
-) -> Html {
+fn SpecificItem(SpecificItemProps { item, quantity, prefix, disabled }: &SpecificItemProps) -> Html {
 	let onclick = context_menu::use_control_action({
 		let item = item.clone();
 		move |_, context| {
@@ -670,14 +619,7 @@ struct SelectItemProps {
 	disabled: bool,
 }
 #[function_component]
-fn SelectItem(
-	SelectItemProps {
-		filter,
-		selection_path,
-		prefix,
-		disabled,
-	}: &SelectItemProps,
-) -> Html {
+fn SelectItem(SelectItemProps { filter, selection_path, prefix, disabled }: &SelectItemProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let selected = state.get_first_selection(&selection_path).cloned();
 
@@ -746,11 +688,7 @@ fn SelectItem(
 	}
 	let onclick_selected = context_menu::use_control_action({
 		move |rc_item: Rc<Item>, context| {
-			context_menu::Action::open(
-				&context,
-				rc_item.name.clone(),
-				html!(<ItemInfo item={rc_item.clone()} />),
-			)
+			context_menu::Action::open(&context, rc_item.name.clone(), html!(<ItemInfo item={rc_item.clone()} />))
 		}
 	});
 	html! {<>

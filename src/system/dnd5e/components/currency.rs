@@ -1,8 +1,6 @@
 use crate::{
 	components::context_menu,
-	page::characters::sheet::joined::editor::AutoExchangeSwitch,
-	page::characters::sheet::CharacterHandle,
-	page::characters::sheet::MutatorImpact,
+	page::characters::sheet::{joined::editor::AutoExchangeSwitch, CharacterHandle, MutatorImpact},
 	system::dnd5e::{
 		components::{glyph, validate_uint_only},
 		data::{

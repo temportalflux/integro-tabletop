@@ -255,10 +255,7 @@ fn PointBuy(GeneratorMethodProps { ability_scores }: &GeneratorMethodProps) -> H
 			}
 		}
 	});
-	let used_points = ability_scores
-		.iter()
-		.map(|(_, score)| get_pt_buy_cost(*score))
-		.sum::<u32>();
+	let used_points = ability_scores.iter().map(|(_, score)| get_pt_buy_cost(*score)).sum::<u32>();
 	let points_remaining = PT_BUY_BUDGET - used_points;
 	html! {<>
 		<div class="text-center">

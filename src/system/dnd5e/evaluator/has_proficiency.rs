@@ -41,12 +41,7 @@ impl Evaluator for IsProficientWith {
 			Self::Skill(skill) => state.skills()[*skill].proficiencies().value() != proficiency::Level::None,
 			Self::Language(language) => state.other_proficiencies().languages.contains_key(language),
 			Self::Armor(kind) => {
-				state
-					.other_proficiencies()
-					.armor
-					.iter()
-					.filter(|((armor, _), _)| armor == kind)
-					.count() > 0
+				state.other_proficiencies().armor.iter().filter(|((armor, _), _)| armor == kind).count() > 0
 			}
 			Self::Weapon(proficiency) => state.other_proficiencies().weapons.contains_key(proficiency),
 			Self::Tool(tool) => state.other_proficiencies().tools.contains_key(tool),
@@ -70,11 +65,9 @@ impl FromKdl<NodeContext> for IsProficientWith {
 				classification => WeaponProficiency::Classification(classification.to_owned()),
 			})),
 			"Tool" => Ok(Self::Tool(entry.as_str_req()?.to_owned())),
-			name => Err(NotInList(
-				name.into(),
-				vec!["SavingThrow", "Skill", "Language", "Armor", "Weapon", "Tool"],
-			)
-			.into()),
+			name => {
+				Err(NotInList(name.into(), vec!["SavingThrow", "Skill", "Language", "Armor", "Weapon", "Tool"]).into())
+			}
 		}
 	}
 }
@@ -237,9 +230,8 @@ mod test {
 		#[test]
 		fn language() {
 			let empty = Character::from(Persistent::default());
-			let with_prof = character_with_profs(vec![AddProficiency::Language(selector::Value::Specific(
-				"Gibberish".into(),
-			))]);
+			let with_prof =
+				character_with_profs(vec![AddProficiency::Language(selector::Value::Specific("Gibberish".into()))]);
 			let eval = IsProficientWith::Language("Gibberish".into());
 			assert_eq!(eval.evaluate(&empty), false);
 			assert_eq!(eval.evaluate(&with_prof), true);
@@ -248,10 +240,8 @@ mod test {
 		#[test]
 		fn armor_kind() {
 			let empty = Character::from(Persistent::default());
-			let with_prof = character_with_profs(vec![AddProficiency::Armor(
-				ArmorExtended::Kind(armor::Kind::Light),
-				None,
-			)]);
+			let with_prof =
+				character_with_profs(vec![AddProficiency::Armor(ArmorExtended::Kind(armor::Kind::Light), None)]);
 			let with_prof_ctx = character_with_profs(vec![AddProficiency::Armor(
 				ArmorExtended::Kind(armor::Kind::Light),
 				Some("nonmetal".into()),
@@ -274,9 +264,8 @@ mod test {
 		#[test]
 		fn weapon_kind() {
 			let empty = Character::from(Persistent::default());
-			let with_prof = character_with_profs(vec![AddProficiency::Weapon(WeaponProficiency::Kind(
-				weapon::Kind::Simple,
-			))]);
+			let with_prof =
+				character_with_profs(vec![AddProficiency::Weapon(WeaponProficiency::Kind(weapon::Kind::Simple))]);
 			let eval = IsProficientWith::Weapon(WeaponProficiency::Kind(weapon::Kind::Simple));
 			assert_eq!(eval.evaluate(&empty), false);
 			assert_eq!(eval.evaluate(&with_prof), true);

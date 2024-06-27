@@ -1,4 +1,3 @@
-use crate::system::dnd5e::components::panel::NotesField;
 use crate::{
 	components::{
 		context_menu,
@@ -13,7 +12,7 @@ use crate::{
 	system::{
 		dnd5e::{
 			components::{
-				panel::{spell_name_and_icons, spell_overview_info, AvailableSpellList, HeaderAddon},
+				panel::{spell_name_and_icons, spell_overview_info, AvailableSpellList, HeaderAddon, NotesField},
 				validate_uint_only, FormulaInline, GeneralProp, UseCounterDelta, WalletInline,
 			},
 			data::{
@@ -30,9 +29,7 @@ use crate::{
 };
 use any_range::AnyRange;
 use itertools::Itertools;
-use std::collections::HashSet;
-use std::path::Path;
-use std::sync::Arc;
+use std::{collections::HashSet, path::Path, sync::Arc};
 use yew::prelude::*;
 
 pub fn get_inventory_item<'c>(state: &'c CharacterHandle, id_path: &Vec<uuid::Uuid>) -> Option<&'c Item> {
@@ -71,13 +68,8 @@ pub fn get_inventory_item_mut<'c>(persistent: &'c mut Persistent, id_path: &Vec<
 
 #[derive(Clone, PartialEq)]
 pub enum ItemLocation {
-	Database {
-		query: UseQueryAllHandle<Item>,
-		index: usize,
-	},
-	Inventory {
-		id_path: Vec<uuid::Uuid>,
-	},
+	Database { query: UseQueryAllHandle<Item>, index: usize },
+	Inventory { id_path: Vec<uuid::Uuid> },
 }
 impl ItemLocation {
 	pub fn resolve<'c>(&'c self, state: &'c CharacterHandle) -> Option<&'c Item> {
@@ -642,13 +634,7 @@ struct UIntFieldProps {
 	on_changed: Callback<u32>,
 }
 #[function_component]
-fn UIntField(
-	UIntFieldProps {
-		class,
-		value,
-		on_changed,
-	}: &UIntFieldProps,
-) -> Html {
+fn UIntField(UIntFieldProps { class, value, on_changed }: &UIntFieldProps) -> Html {
 	let count = *value;
 	let increment = Callback::from({
 		let on_changed = on_changed.clone();
@@ -735,10 +721,7 @@ fn ModalSpellContainerBrowser(GeneralProp { value }: &GeneralProp<Vec<uuid::Uuid
 			}
 		})
 		.sum();
-	let remaining_total_rank = spell_container
-		.capacity
-		.rank_total
-		.map(|total| total.saturating_sub(consumed_rank_sum));
+	let remaining_total_rank = spell_container.capacity.rank_total.map(|total| total.saturating_sub(consumed_rank_sum));
 
 	let open_browser = {
 		let onclick = Callback::from({
@@ -782,11 +765,7 @@ struct ContainedSpellsSectionProps {
 }
 #[function_component]
 fn ContainedSpellsSection(props: &ContainedSpellsSectionProps) -> Html {
-	let ContainedSpellsSectionProps {
-		id_path,
-		fetch_indirect_spells,
-		remaining_total_rank,
-	} = props;
+	let ContainedSpellsSectionProps { id_path, fetch_indirect_spells, remaining_total_rank } = props;
 	let state = use_context::<CharacterHandle>().unwrap();
 
 	let Some(item) = get_inventory_item(&state, id_path) else {
@@ -891,12 +870,7 @@ fn ContainedSpellsSection(props: &ContainedSpellsSectionProps) -> Html {
 				let Some(contained) = spell_container.spells.get(contained_idx) else {
 					continue;
 				};
-				let ContainerSpell {
-					spell,
-					rank,
-					save_dc,
-					attack_bonus,
-				} = contained;
+				let ContainerSpell { spell, rank, save_dc, attack_bonus } = contained;
 				let spell = match spell {
 					Indirect::Id(id) => match spells_by_id.get(&*id.minimal()) {
 						Some(spell) => spell,
@@ -1114,24 +1088,15 @@ fn ModalSpellContainerAvailableList(props: &ModalSpellContainerAvailableListProp
 			}
 		})
 		.sum();
-	let remaining_total_rank = spell_container
-		.capacity
-		.rank_total
-		.map(|total| total.saturating_sub(consumed_rank_sum));
+	let remaining_total_rank = spell_container.capacity.rank_total.map(|total| total.saturating_sub(consumed_rank_sum));
 	let num_spells = spell_container.spells.len();
-	let remaining_total_spells = spell_container
-		.capacity
-		.max_count
-		.map(|total| total.saturating_sub(num_spells));
+	let remaining_total_spells = spell_container.capacity.max_count.map(|total| total.saturating_sub(num_spells));
 
 	let mut criteria_filter_btns = Vec::new();
 	if spell_container.can_prepare_from {
 		// casters which prepare from items
-		let valid_casters = state
-			.spellcasting()
-			.iter_casters()
-			.filter(|caster| caster.prepare_from_item)
-			.collect::<Vec<_>>();
+		let valid_casters =
+			state.spellcasting().iter_casters().filter(|caster| caster.prepare_from_item).collect::<Vec<_>>();
 		if !valid_casters.is_empty() {
 			let set_filter_default = Callback::from({
 				let default_criteria = container_capacity_criteria.clone();
@@ -1151,10 +1116,7 @@ fn ModalSpellContainerAvailableList(props: &ModalSpellContainerAvailableListProp
 			// In the future, the filter system should abide by both item and caster criterias.
 			for caster in valid_casters {
 				let current_level = state.persistent().level(Some(caster.name()));
-				let filter = state
-					.spellcasting()
-					.get_filter(caster.name(), state.persistent())
-					.unwrap_or_default();
+				let filter = state.spellcasting().get_filter(caster.name(), state.persistent()).unwrap_or_default();
 				let set_filter = Callback::from({
 					let criteria = criteria.clone();
 					move |_| {

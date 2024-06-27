@@ -62,12 +62,7 @@ impl From<Persistent> for Character {
 }
 impl Character {
 	pub fn new(persistent: Persistent, default_blocks: Vec<DefaultsBlock>) -> Self {
-		Self {
-			default_blocks,
-			character: persistent,
-			derived: Derived::default(),
-			mutators: Vec::new(),
-		}
+		Self { default_blocks, character: persistent, derived: Derived::default(), mutators: Vec::new() }
 	}
 
 	pub fn clear_derived(&mut self) {
@@ -122,10 +117,7 @@ impl Character {
 
 		self.inventory_mut().resolve_indirection(&provider).await?;
 		self.persistent_mut().conditions.resolve_indirection(&provider).await?;
-		self.derived
-			.spellcasting
-			.fetch_spell_objects(&provider, &self.character)
-			.await?;
+		self.derived.spellcasting.fetch_spell_objects(&provider, &self.character).await?;
 
 		Ok(())
 	}
@@ -221,12 +213,8 @@ impl Character {
 		if let selector::Value::Specific(value) = selector {
 			return Some(value.clone());
 		}
-		let path_to_data = selector
-			.get_data_path()
-			.expect("non-specific selectors must have a data path");
-		self.get_first_selection_at::<T>(&path_to_data)
-			.map(|res| res.ok())
-			.flatten()
+		let path_to_data = selector.get_data_path().expect("non-specific selectors must have a data path");
+		self.get_first_selection_at::<T>(&path_to_data).map(|res| res.ok()).flatten()
 	}
 
 	pub fn resolve_selector<T>(&mut self, selector: &selector::Value<Self, T>) -> Option<T>
@@ -236,9 +224,7 @@ impl Character {
 		if let selector::Value::Specific(value) = selector {
 			return Some(value.clone());
 		}
-		let path_to_data = selector
-			.get_data_path()
-			.expect("non-specific selectors must have a data path");
+		let path_to_data = selector.get_data_path().expect("non-specific selectors must have a data path");
 		let value = match self.get_first_selection_at::<T>(&path_to_data) {
 			Some(Ok(value)) => Some(value),
 			Some(Err(_)) => None,
@@ -265,11 +251,7 @@ impl Character {
 	}
 
 	pub fn missing_selections_in(&self, parent: impl AsRef<Path>) -> Vec<&Path> {
-		self.derived
-			.missing_selections
-			.iter()
-			.filter_map(|path| path.strip_prefix(&parent).ok())
-			.collect::<Vec<_>>()
+		self.derived.missing_selections.iter().filter_map(|path| path.strip_prefix(&parent).ok()).collect::<Vec<_>>()
 	}
 
 	pub fn default_blocks(&self) -> &Vec<DefaultsBlock> {
@@ -427,9 +409,7 @@ impl Character {
 
 	pub fn add_feature(&mut self, feature: Feature, parent_path: &ReferencePath) {
 		self.apply_from(&feature, parent_path);
-		self.features_mut()
-			.path_map
-			.insert(parent_path.join(&feature.name, None).display, feature);
+		self.features_mut().path_map.insert(parent_path.join(&feature.name, None).display, feature);
 	}
 
 	pub fn features(&self) -> &Features {
@@ -473,9 +453,7 @@ impl Character {
 	}
 
 	pub fn add_starting_equipment(&mut self, entries: &Vec<StartingEquipment>, source: &ReferencePath) {
-		self.derived
-			.starting_equipment
-			.push((entries.clone(), source.display.clone()));
+		self.derived.starting_equipment.push((entries.clone(), source.display.clone()));
 	}
 
 	pub fn rest_resets_mut(&mut self) -> &mut RestResets {

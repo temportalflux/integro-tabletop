@@ -23,14 +23,8 @@ impl FindFileUpdates {
 		let changed_file_paths = self.client.get_files_changed(args).await?;
 		let mut files = Vec::with_capacity(changed_file_paths.len());
 		for changed_file in changed_file_paths {
-			let path_in_repo = std::path::Path::new(&changed_file.path);
-			let system = ModuleFile::get_system_in_file_path(path_in_repo).unwrap();
 			files.push(ModuleFileUpdate {
-				file: ModuleFile {
-					system,
-					path_in_repo: changed_file.path,
-					file_id: changed_file.file_id,
-				},
+				file: ModuleFile { path_in_repo: changed_file.path, file_id: changed_file.file_id },
 				status: changed_file.status,
 			});
 		}

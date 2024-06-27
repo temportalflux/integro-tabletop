@@ -133,11 +133,7 @@ impl Reducible for State {
 					};
 					if !props_stack.is_empty() {
 						// Modal was manually closed, we should re-open with the next item in the stack
-						Rc::new(Self {
-							should_show: Some(true),
-							props_stack,
-							next_pending: None,
-						})
+						Rc::new(Self { should_show: Some(true), props_stack, next_pending: None })
 					} else {
 						Rc::new(Self::default())
 					}

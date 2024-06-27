@@ -82,10 +82,7 @@ mod test {
 		#[test]
 		fn instant() -> anyhow::Result<()> {
 			let doc = "duration \"Instantaneous\"";
-			let data = Duration {
-				kind: DurationKind::Instantaneous,
-				concentration: false,
-			};
+			let data = Duration { kind: DurationKind::Instantaneous, concentration: false };
 			assert_eq_fromkdl!(Duration, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())
@@ -94,10 +91,7 @@ mod test {
 		#[test]
 		fn instant_concentration() -> anyhow::Result<()> {
 			let doc = "duration \"Instantaneous\" concentration=true";
-			let data = Duration {
-				kind: DurationKind::Instantaneous,
-				concentration: true,
-			};
+			let data = Duration { kind: DurationKind::Instantaneous, concentration: true };
 			assert_eq_fromkdl!(Duration, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())
@@ -106,10 +100,7 @@ mod test {
 		#[test]
 		fn special() -> anyhow::Result<()> {
 			let doc = "duration \"Special\"";
-			let data = Duration {
-				kind: DurationKind::Special,
-				concentration: false,
-			};
+			let data = Duration { kind: DurationKind::Special, concentration: false };
 			assert_eq_fromkdl!(Duration, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())
@@ -118,10 +109,7 @@ mod test {
 		#[test]
 		fn unit() -> anyhow::Result<()> {
 			let doc = "duration \"Minute\" 10";
-			let data = Duration {
-				kind: DurationKind::Unit(10, "Minute".into()),
-				concentration: false,
-			};
+			let data = Duration { kind: DurationKind::Unit(10, "Minute".into()), concentration: false };
 			assert_eq_fromkdl!(Duration, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())

@@ -32,15 +32,8 @@ pub enum TickDisplay {
 
 #[function_component]
 pub fn Ticked(props: &TickedProps) -> Html {
-	let TickedProps {
-		classes,
-		style,
-		show_labels,
-		ticked_bar_range,
-		ticked_value_range,
-		bar_range,
-		value_range,
-	} = props;
+	let TickedProps { classes, style, show_labels, ticked_bar_range, ticked_value_range, bar_range, value_range } =
+		props;
 	let bar_min = *bar_range.start();
 	let bar_max = *bar_range.end();
 	let tick_count = bar_max - bar_min;

@@ -65,9 +65,7 @@ impl mutator::Group for Persistent {
 
 	fn apply_mutators(&self, stats: &mut Character, parent: &ReferencePath) {
 		for (ability, score) in &self.ability_scores {
-			stats
-				.ability_scores_mut()
-				.push_bonus(ability, (*score).into(), "Base Score".into());
+			stats.ability_scores_mut().push_bonus(ability, (*score).into(), "Base Score".into());
 		}
 		stats.apply(&super::FinalizeAbilityScores.into(), parent);
 		{
@@ -129,10 +127,7 @@ impl Persistent {
 		T: Clone + 'static + FromStr,
 	{
 		let selections = self.get_selections_at(data_path);
-		selections
-			.map(|all| all.first())
-			.flatten()
-			.map(|selected| T::from_str(&selected))
+		selections.map(|all| all.first()).flatten().map(|selected| T::from_str(&selected))
 	}
 
 	pub fn set_selected_value(&mut self, key: impl AsRef<Path>, value: impl Into<String>) {
@@ -158,11 +153,7 @@ impl Persistent {
 		let Some(values) = self.selected_values.get_mut(key) else {
 			return None;
 		};
-		if index < values.len() {
-			Some(values.remove(index))
-		} else {
-			None
-		}
+		if index < values.len() { Some(values.remove(index)) } else { None }
 	}
 
 	pub fn remove_selected_value(&mut self, key: impl AsRef<Path>, value: impl Into<String>) {
@@ -202,11 +193,7 @@ impl Block for Persistent {
 			pronouns: self.description.iter_pronouns().cloned().collect(),
 			level,
 			classes,
-			bundles: self
-				.bundles
-				.iter()
-				.map(|bundle| (bundle.category.clone(), bundle.name.clone()))
-				.collect(),
+			bundles: self.bundles.iter().map(|bundle| (bundle.category.clone(), bundle.name.clone())).collect(),
 		};
 		serde_json::json!(metadata)
 	}
@@ -239,13 +226,9 @@ impl FromKdl<NodeContext> for Persistent {
 			conditions.insert(condition);
 		}
 
-		let inventory = node
-			.query_opt_t::<Inventory>("scope() > inventory")?
-			.unwrap_or_default();
+		let inventory = node.query_opt_t::<Inventory>("scope() > inventory")?.unwrap_or_default();
 
-		let selected_spells = node
-			.query_opt_t::<SelectedSpells>("scope() > spells")?
-			.unwrap_or_default();
+		let selected_spells = node.query_opt_t::<SelectedSpells>("scope() > spells")?.unwrap_or_default();
 
 		let bundles = node.query_all_t::<Bundle>("scope() > bundle")?;
 		let classes = node.query_all_t::<Class>("scope() > class")?;
@@ -287,10 +270,7 @@ impl AsKdl for Persistent {
 
 		for (ability, score) in self.ability_scores {
 			node.child(
-				NodeBuilder::default()
-					.with_entry(ability.long_name())
-					.with_entry(score as i64)
-					.build("ability"),
+				NodeBuilder::default().with_entry(ability.long_name()).with_entry(score as i64).build("ability"),
 			);
 		}
 
@@ -342,12 +322,7 @@ impl FromKdl<NodeContext> for HitPoints {
 		let temp = node.query_i64_req("scope() > temp", 0)? as u32;
 		let failure_saves = node.query_i64_req("scope() > failure_saves", 0)? as u8;
 		let success_saves = node.query_i64_req("scope() > success_saves", 0)? as u8;
-		Ok(Self {
-			current,
-			temp,
-			failure_saves,
-			success_saves,
-		})
+		Ok(Self { current, temp, failure_saves, success_saves })
 	}
 }
 impl AsKdl for HitPoints {
@@ -453,15 +428,8 @@ impl Conditions {
 	}
 
 	pub fn iter_keyed(&self) -> impl Iterator<Item = (IdOrIndex, &Condition)> {
-		let ids = self
-			.by_id
-			.iter()
-			.map(|(id, value)| (IdOrIndex::Id(Arc::new(id.clone())), value));
-		let indices = self
-			.custom
-			.iter()
-			.enumerate()
-			.map(|(idx, value)| (IdOrIndex::Index(idx), value));
+		let ids = self.by_id.iter().map(|(id, value)| (IdOrIndex::Id(Arc::new(id.clone())), value));
+		let indices = self.custom.iter().enumerate().map(|(idx, value)| (IdOrIndex::Index(idx), value));
 		ids.chain(indices)
 	}
 
@@ -570,8 +538,7 @@ impl SelectedSpells {
 		let selected_spells = match self.cache_by_caster.get_mut(caster_id.as_ref()) {
 			Some(existing) => existing,
 			None => {
-				self.cache_by_caster
-					.insert(caster_id.as_ref().to_owned(), SelectedSpellsData::default());
+				self.cache_by_caster.insert(caster_id.as_ref().to_owned(), SelectedSpellsData::default());
 				self.cache_by_caster.get_mut(caster_id.as_ref()).unwrap()
 			}
 		};
@@ -622,15 +589,10 @@ impl SelectedSpells {
 	}
 
 	pub fn reset_on_rest(&self) -> (Rest, RestEntry) {
-		let data_paths = (1..=MAX_SPELL_RANK)
-			.into_iter()
-			.map(|rank| self.consumed_slots_path(rank))
-			.collect::<Vec<_>>();
-		let entry = RestEntry {
-			restore_amount: None,
-			data_paths,
-			source: PathBuf::from("Standard Spellcasting Slots"),
-		};
+		let data_paths =
+			(1..=MAX_SPELL_RANK).into_iter().map(|rank| self.consumed_slots_path(rank)).collect::<Vec<_>>();
+		let entry =
+			RestEntry { restore_amount: None, data_paths, source: PathBuf::from("Standard Spellcasting Slots") };
 		(Rest::Long, entry)
 	}
 }
@@ -674,12 +636,7 @@ mod test_hit_points {
 			|    success_saves 2
 			|}
 		";
-		let data = HitPoints {
-			current: 30,
-			temp: 5,
-			failure_saves: 1,
-			success_saves: 2,
-		};
+		let data = HitPoints { current: 30, temp: 5, failure_saves: 1, success_saves: 2 };
 		assert_eq_fromkdl!(HitPoints, doc, data);
 		assert_eq_askdl!(&data, doc);
 		Ok(())

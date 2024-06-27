@@ -1,4 +1,3 @@
-use crate::utility::InputExt;
 use crate::{
 	components::{
 		database::{use_query_typed, QueryStatus},
@@ -19,13 +18,13 @@ use crate::{
 		},
 		SourceId,
 	},
+	utility::InputExt,
 };
 use enum_map::{Enum, EnumMap};
 use enumset::{EnumSet, EnumSetType};
 use itertools::{Itertools, Position};
 use multimap::MultiMap;
-use std::sync::Arc;
-use std::{collections::HashMap, path::PathBuf};
+use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use yew::prelude::*;
 
 #[derive(EnumSetType, Enum)]
@@ -405,9 +404,7 @@ impl FeatureDisplayGroup {
 	}
 
 	fn into_iter(mut self) -> impl Iterator<Item = FeatureEntry> {
-		self.order
-			.into_iter()
-			.filter_map(move |path| self.by_path.remove(&path))
+		self.order.into_iter().filter_map(move |path| self.by_path.remove(&path))
 	}
 }
 
@@ -669,9 +666,8 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 			}
 
 			let (check_ability, atk_bonus, dmg_bonus) = attack.evaluate_bonuses(&*state);
-			let check_ability_mod_str = check_ability
-				.map(|ability| format!("{} modifier", ability.long_name()))
-				.unwrap_or_default();
+			let check_ability_mod_str =
+				check_ability.map(|ability| format!("{} modifier", ability.long_name())).unwrap_or_default();
 			match &attack.check {
 				AttackCheckKind::AttackRoll { ability: _, proficient } => {
 					let use_prof = proficient.evaluate(&*state);
@@ -691,12 +687,7 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 						</div>
 					});
 				}
-				AttackCheckKind::SavingThrow {
-					base,
-					dc_ability,
-					proficient,
-					save_ability,
-				} => {
+				AttackCheckKind::SavingThrow { base, dc_ability, proficient, save_ability } => {
 					attack_sections.push(html! {
 						<div class="property">
 							<strong>{"Saving Throw:"}</strong>
@@ -735,12 +726,7 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 			}
 
 			//let additional_damage = state.attack_bonuses().get_weapon_damage(action);
-			if let Some(DamageRoll {
-				roll,
-				base_bonus,
-				damage_type,
-			}) = &attack.damage
-			{
+			if let Some(DamageRoll { roll, base_bonus, damage_type }) = &attack.damage {
 				// TODO: Show damage roll bonuses inline, when the bonuses themselves can be rolls
 				//let additional_bonus: i32 = additional_damage.iter().map(|(v, _damage_type, _source)| *v).sum();
 				let bonus = base_bonus + dmg_bonus; // + additional_bonus;
@@ -802,13 +788,7 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 		}
 
 		if let Some(limited_uses) = &action.limited_uses {
-			action_sections.push(
-				UsesCounter {
-					state: state.clone(),
-					limited_uses,
-				}
-				.to_html(),
-			);
+			action_sections.push(UsesCounter { state: state.clone(), limited_uses }.to_html());
 		}
 
 		if !action.conditions_to_apply.is_empty() {

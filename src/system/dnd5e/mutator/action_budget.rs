@@ -1,14 +1,16 @@
-use crate::kdl_ext::NodeContext;
-use crate::system::mutator::ReferencePath;
 use crate::{
-	system::dnd5e::{
-		data::{
-			character::{ActionBudgetKind, Character},
-			description,
+	kdl_ext::NodeContext,
+	system::{
+		dnd5e::{
+			data::{
+				character::{ActionBudgetKind, Character},
+				description,
+			},
+			Value,
 		},
-		Value,
+		mutator::ReferencePath,
+		Mutator,
 	},
-	system::Mutator,
 };
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
 
@@ -54,10 +56,7 @@ impl Mutator for AddToActionBudget {
 	fn apply(&self, stats: &mut Character, parent: &ReferencePath) {
 		let amount = self.amount.evaluate(stats);
 		if amount >= 0 {
-			stats
-				.features_mut()
-				.action_budget
-				.push(self.action_kind, amount as u32, parent.display.clone());
+			stats.features_mut().action_budget.push(self.action_kind, amount as u32, parent.display.clone());
 		}
 	}
 }
@@ -93,10 +92,7 @@ mod test {
 		#[test]
 		fn action() -> anyhow::Result<()> {
 			let doc = "mutator \"add_to_action_budget\" \"Action\" 1";
-			let data = AddToActionBudget {
-				action_kind: ActionBudgetKind::Action,
-				amount: Value::Fixed(1),
-			};
+			let data = AddToActionBudget { action_kind: ActionBudgetKind::Action, amount: Value::Fixed(1) };
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -105,10 +101,7 @@ mod test {
 		#[test]
 		fn attack() -> anyhow::Result<()> {
 			let doc = "mutator \"add_to_action_budget\" \"Attack\" 1";
-			let data = AddToActionBudget {
-				action_kind: ActionBudgetKind::Attack,
-				amount: Value::Fixed(1),
-			};
+			let data = AddToActionBudget { action_kind: ActionBudgetKind::Attack, amount: Value::Fixed(1) };
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -117,10 +110,7 @@ mod test {
 		#[test]
 		fn bonus() -> anyhow::Result<()> {
 			let doc = "mutator \"add_to_action_budget\" \"Bonus\" 1";
-			let data = AddToActionBudget {
-				action_kind: ActionBudgetKind::Bonus,
-				amount: Value::Fixed(1),
-			};
+			let data = AddToActionBudget { action_kind: ActionBudgetKind::Bonus, amount: Value::Fixed(1) };
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -129,10 +119,7 @@ mod test {
 		#[test]
 		fn reaction() -> anyhow::Result<()> {
 			let doc = "mutator \"add_to_action_budget\" \"Reaction\" 1";
-			let data = AddToActionBudget {
-				action_kind: ActionBudgetKind::Reaction,
-				amount: Value::Fixed(1),
-			};
+			let data = AddToActionBudget { action_kind: ActionBudgetKind::Reaction, amount: Value::Fixed(1) };
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -145,53 +132,40 @@ mod test {
 
 		fn character(mutator: AddToActionBudget) -> Character {
 			let mut persistent = Persistent::default();
-			persistent.bundles.push(
-				Bundle {
-					name: "Test".into(),
-					mutators: vec![mutator.into()],
-					..Default::default()
-				}
-				.into(),
-			);
+			persistent
+				.bundles
+				.push(Bundle { name: "Test".into(), mutators: vec![mutator.into()], ..Default::default() }.into());
 			Character::from(persistent)
 		}
 
 		#[test]
 		fn action() {
-			let character = character(AddToActionBudget {
-				action_kind: ActionBudgetKind::Action,
-				amount: Value::Fixed(1),
-			});
+			let character =
+				character(AddToActionBudget { action_kind: ActionBudgetKind::Action, amount: Value::Fixed(1) });
 			let budget = &character.features().action_budget;
 			assert_eq!(budget.get(ActionBudgetKind::Action), (2, &vec![(1, "Test".into())]));
 		}
 
 		#[test]
 		fn attack() {
-			let character = character(AddToActionBudget {
-				action_kind: ActionBudgetKind::Attack,
-				amount: Value::Fixed(1),
-			});
+			let character =
+				character(AddToActionBudget { action_kind: ActionBudgetKind::Attack, amount: Value::Fixed(1) });
 			let budget = &character.features().action_budget;
 			assert_eq!(budget.get(ActionBudgetKind::Attack), (2, &vec![(1, "Test".into())]));
 		}
 
 		#[test]
 		fn bonus() {
-			let character = character(AddToActionBudget {
-				action_kind: ActionBudgetKind::Bonus,
-				amount: Value::Fixed(1),
-			});
+			let character =
+				character(AddToActionBudget { action_kind: ActionBudgetKind::Bonus, amount: Value::Fixed(1) });
 			let budget = &character.features().action_budget;
 			assert_eq!(budget.get(ActionBudgetKind::Bonus), (2, &vec![(1, "Test".into())]));
 		}
 
 		#[test]
 		fn reaction() {
-			let character = character(AddToActionBudget {
-				action_kind: ActionBudgetKind::Reaction,
-				amount: Value::Fixed(1),
-			});
+			let character =
+				character(AddToActionBudget { action_kind: ActionBudgetKind::Reaction, amount: Value::Fixed(1) });
 			let budget = &character.features().action_budget;
 			assert_eq!(budget.get(ActionBudgetKind::Reaction), (2, &vec![(1, "Test".into())]));
 		}

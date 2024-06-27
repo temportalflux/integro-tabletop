@@ -1,16 +1,17 @@
-use crate::kdl_ext::NodeContext;
-use crate::system::mutator::ReferencePath;
 use crate::{
-	system::dnd5e::{
-		data::{character::Character, description},
-		BoxedMutator,
+	kdl_ext::NodeContext,
+	system::{
+		dnd5e::{
+			data::{character::Character, description},
+			BoxedMutator,
+		},
+		mutator::ReferencePath,
+		Mutator,
 	},
-	system::Mutator,
 	utility::selector,
 };
 use itertools::Itertools;
-use kdlize::OmitIfEmpty;
-use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
+use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder, OmitIfEmpty};
 use std::collections::{BTreeSet, HashMap, HashSet};
 
 /// Allows the user to select some number of options where each option can apply a different group of mutators.
@@ -85,12 +86,8 @@ impl Mutator for PickN {
 			};
 			let mut content = String::new().into();
 			let mut option_children = Vec::new();
-			if let Some(description::Section {
-				title: _,
-				content: option_content,
-				format_args: _,
-				children,
-			}) = &option.description
+			if let Some(description::Section { title: _, content: option_content, format_args: _, children }) =
+				&option.description
 			{
 				content = option_content.clone();
 				option_children.extend(children.iter().cloned());
@@ -116,12 +113,8 @@ impl Mutator for PickN {
 
 		description::Section {
 			title: Some(self.name.clone()),
-			content: format!(
-				"Select {} of the following {} options.",
-				self.max_selections(),
-				self.options.len()
-			)
-			.into(),
+			content: format!("Select {} of the following {} options.", self.max_selections(), self.options.len())
+				.into(),
 			children,
 			..Default::default()
 		}
@@ -145,10 +138,7 @@ impl Mutator for PickN {
 			let Some(selections) = stats.get_selections_at(&data_path) else {
 				return;
 			};
-			selections
-				.iter()
-				.filter_map(|key| self.options.get(key))
-				.collect::<Vec<_>>()
+			selections.iter().filter_map(|key| self.options.get(key)).collect::<Vec<_>>()
 		};
 		for option in selected_options {
 			for mutator in &option.mutators {
@@ -190,12 +180,7 @@ impl FromKdl<NodeContext> for PickN {
 			is_applicable: None,
 		});
 
-		Ok(Self {
-			name,
-			id,
-			options,
-			selector,
-		})
+		Ok(Self { name, id, options, selector })
 	}
 }
 
@@ -242,12 +227,13 @@ mod test {
 
 	mod kdl {
 		use super::*;
-		use crate::system::dnd5e::data::character::StatOperation;
-		use crate::system::dnd5e::mutator::StatMutator;
 		use crate::{
 			kdl_ext::test_utils::*,
 			system::{
-				dnd5e::mutator::{test::test_utils, Speed},
+				dnd5e::{
+					data::character::StatOperation,
+					mutator::{test::test_utils, Speed, StatMutator},
+				},
 				generics,
 			},
 		};
@@ -263,31 +249,21 @@ mod test {
 
 		fn options() -> HashMap<String, PickOption> {
 			[
-				(
-					"Climbing".into(),
-					PickOption {
-						description: None,
-						mutators: vec![Speed(StatMutator {
-							stat_name: "Climbing".into(),
-							operation: StatOperation::Base(15),
-						})
-						.into()],
-					},
-				),
-				(
-					"Swimming".into(),
-					PickOption {
-						description: Some(description::Section {
-							content: description::SectionContent::Body("You have a swimming speed of 15".into()),
-							..Default::default()
-						}),
-						mutators: vec![Speed(StatMutator {
-							stat_name: "Swimming".into(),
-							operation: StatOperation::Base(15),
-						})
-						.into()],
-					},
-				),
+				("Climbing".into(), PickOption {
+					description: None,
+					mutators: vec![
+						Speed(StatMutator { stat_name: "Climbing".into(), operation: StatOperation::Base(15) }).into(),
+					],
+				}),
+				("Swimming".into(), PickOption {
+					description: Some(description::Section {
+						content: description::SectionContent::Body("You have a swimming speed of 15".into()),
+						..Default::default()
+					}),
+					mutators: vec![
+						Speed(StatMutator { stat_name: "Swimming".into(), operation: StatOperation::Base(15) }).into(),
+					],
+				}),
 			]
 			.into()
 		}

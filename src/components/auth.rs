@@ -1,6 +1,27 @@
 use crate::{auth, storage::autosync};
+use serde::{Deserialize, Serialize};
 use yew::prelude::*;
 use yewdux::prelude::*;
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Store, Default)]
+#[store(storage = "session", storage_tab_sync)]
+pub struct LocalUser(Option<crate::data::UserId>);
+
+impl From<crate::data::UserId> for LocalUser {
+	fn from(value: crate::data::UserId) -> Self {
+		Self(Some(value))
+	}
+}
+
+impl LocalUser {
+	pub fn homebrew_module_id(&self) -> Option<crate::system::ModuleId> {
+		let Some(user_id) = &self.0 else { return None };
+		Some(crate::system::ModuleId::Github {
+			user_org: user_id.id.clone(),
+			repository: crate::storage::USER_HOMEBREW_REPO_NAME.to_owned(),
+		})
+	}
+}
 
 #[hook]
 pub fn use_on_auth_success<F>(callback: F)
@@ -40,9 +61,7 @@ pub fn LoginButton() -> Html {
 			</button>
 		}
 	} else {
-		let onclick = auth
-			.login_callback()
-			.reform(|_: MouseEvent| auth::OAuthProvider::Github.request());
+		let onclick = auth.login_callback().reform(|_: MouseEvent| auth::OAuthProvider::Github.request());
 		html! {
 			<button
 				class="btn btn-success"

@@ -1,5 +1,5 @@
-use crate::kdl_ext::NodeContext;
 use crate::{
+	kdl_ext::NodeContext,
 	system::{
 		dnd5e::data::{
 			currency::Wallet,
@@ -16,10 +16,7 @@ pub enum StartingEquipment {
 	Currency(Wallet),
 	IndirectItem(IndirectItem),
 	SelectItem(item::Restriction),
-	Group {
-		entries: Vec<StartingEquipment>,
-		pick: Option<usize>,
-	},
+	Group { entries: Vec<StartingEquipment>, pick: Option<usize> },
 }
 
 impl StartingEquipment {

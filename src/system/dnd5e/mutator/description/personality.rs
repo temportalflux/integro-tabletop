@@ -1,15 +1,16 @@
-use crate::kdl_ext::NodeContext;
-use crate::system::mutator::ReferencePath;
 use crate::{
-	system::dnd5e::data::{
-		character::{Character, PersonalityKind},
-		description,
+	kdl_ext::NodeContext,
+	system::{
+		dnd5e::data::{
+			character::{Character, PersonalityKind},
+			description,
+		},
+		mutator::ReferencePath,
+		Mutator,
 	},
-	system::Mutator,
 	utility::NotInList,
 };
-use kdlize::OmitIfEmpty;
-use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
+use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder, OmitIfEmpty};
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct SuggestedPersonality {
@@ -25,10 +26,7 @@ impl Mutator for SuggestedPersonality {
 
 	fn description(&self, _state: Option<&Character>) -> description::Section {
 		// TODO: SuggestedPersonality description
-		description::Section {
-			content: Default::default(),
-			..Default::default()
-		}
+		description::Section { content: Default::default(), ..Default::default() }
 	}
 
 	fn apply(&self, stats: &mut Character, _parent: &ReferencePath) {
@@ -84,10 +82,7 @@ mod test {
 				|    option \"Some option\"
 				|}
 			";
-			let data = SuggestedPersonality {
-				kind: PersonalityKind::Trait,
-				options: vec!["Some option".into()],
-			};
+			let data = SuggestedPersonality { kind: PersonalityKind::Trait, options: vec!["Some option".into()] };
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -100,10 +95,7 @@ mod test {
 				|    option \"Some option\"
 				|}
 			";
-			let data = SuggestedPersonality {
-				kind: PersonalityKind::Ideal,
-				options: vec!["Some option".into()],
-			};
+			let data = SuggestedPersonality { kind: PersonalityKind::Ideal, options: vec!["Some option".into()] };
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -116,10 +108,7 @@ mod test {
 				|    option \"Some option\"
 				|}
 			";
-			let data = SuggestedPersonality {
-				kind: PersonalityKind::Bond,
-				options: vec!["Some option".into()],
-			};
+			let data = SuggestedPersonality { kind: PersonalityKind::Bond, options: vec!["Some option".into()] };
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -132,10 +121,7 @@ mod test {
 				|    option \"Some option\"
 				|}
 			";
-			let data = SuggestedPersonality {
-				kind: PersonalityKind::Flaw,
-				options: vec!["Some option".into()],
-			};
+			let data = SuggestedPersonality { kind: PersonalityKind::Flaw, options: vec!["Some option".into()] };
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())

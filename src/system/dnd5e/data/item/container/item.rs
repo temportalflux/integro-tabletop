@@ -76,9 +76,7 @@ impl<T> ItemContainer<T> {
 	}
 
 	pub fn iter_by_name(&self) -> impl Iterator<Item = (&Uuid, &T)> {
-		self.itemids_by_name
-			.iter()
-			.filter_map(|id| self.items_by_id.get(&id).map(|item| (id, item)))
+		self.itemids_by_name.iter().filter_map(|id| self.items_by_id.get(&id).map(|item| (id, item)))
 	}
 }
 

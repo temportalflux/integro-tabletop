@@ -1,11 +1,13 @@
-use crate::kdl_ext::NodeContext;
-use crate::system::mutator::ReferencePath;
 use crate::{
-	system::dnd5e::{
-		data::{character::Character, description},
-		BoxedCriteria, BoxedMutator,
+	kdl_ext::NodeContext,
+	system::{
+		dnd5e::{
+			data::{character::Character, description},
+			BoxedCriteria, BoxedMutator,
+		},
+		mutator::ReferencePath,
+		Mutator,
 	},
-	system::Mutator,
 	utility::NotInList,
 };
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
@@ -55,10 +57,7 @@ impl Mutator for ApplyIf {
 		let mut criteria_desc = Vec::new();
 		for criteria in &self.criteria {
 			if let Some(desc) = criteria.description() {
-				criteria_desc.push(description::Section {
-					content: desc.into(),
-					..Default::default()
-				});
+				criteria_desc.push(description::Section { content: desc.into(), ..Default::default() });
 			}
 		}
 		let mut mutator_desc = Vec::new();
@@ -68,11 +67,7 @@ impl Mutator for ApplyIf {
 		description::Section {
 			title: Some("Apply If".into()),
 			children: vec![
-				description::Section {
-					title: Some("Criteria".into()),
-					children: criteria_desc,
-					..Default::default()
-				},
+				description::Section { title: Some("Criteria".into()), children: criteria_desc, ..Default::default() },
 				description::Section {
 					title: Some("Applied Changes".into()),
 					children: mutator_desc,
@@ -191,10 +186,7 @@ mod test {
 				|    criteria (Evaluator)\"has_armor_equipped\"
 				|}
 			";
-			let data = ApplyIf {
-				criteria: vec![HasArmorEquipped::default().into()],
-				..Default::default()
-			};
+			let data = ApplyIf { criteria: vec![HasArmorEquipped::default().into()], ..Default::default() };
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -211,11 +203,7 @@ mod test {
 			let data = ApplyIf {
 				criteria: vec![
 					HasArmorEquipped::default().into(),
-					HasArmorEquipped {
-						inverted: true,
-						..Default::default()
-					}
-					.into(),
+					HasArmorEquipped { inverted: true, ..Default::default() }.into(),
 				],
 				..Default::default()
 			};
@@ -236,11 +224,7 @@ mod test {
 				op: LogicOp::Any,
 				criteria: vec![
 					HasArmorEquipped::default().into(),
-					HasArmorEquipped {
-						inverted: true,
-						..Default::default()
-					}
-					.into(),
+					HasArmorEquipped { inverted: true, ..Default::default() }.into(),
 				],
 				..Default::default()
 			};
@@ -259,11 +243,7 @@ mod test {
 			";
 			let data = ApplyIf {
 				criteria: vec![HasArmorEquipped::default().into()],
-				mutators: vec![Modify::ArmorClass {
-					bonus: 2,
-					context: None,
-				}
-				.into()],
+				mutators: vec![Modify::ArmorClass { bonus: 2, context: None }.into()],
 				..Default::default()
 			};
 			assert_eq_askdl!(&data, doc);

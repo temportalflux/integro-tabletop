@@ -28,9 +28,7 @@ impl FromStr for Modifier {
 		match s {
 			"Advantage" => Ok(Self::Advantage),
 			"Disadvantage" => Ok(Self::Disadvantage),
-			_ => Err(GeneralError(format!(
-				"Invalid roll modifier value {s:?}, expected Advantage or Disadvantage."
-			))),
+			_ => Err(GeneralError(format!("Invalid roll modifier value {s:?}, expected Advantage or Disadvantage."))),
 		}
 	}
 }

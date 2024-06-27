@@ -68,11 +68,7 @@ pub struct AbilityScore {
 }
 impl Default for AbilityScore {
 	fn default() -> Self {
-		Self {
-			bonuses: vec![],
-			max_score_incs: vec![(20, "Default Maximum".into())],
-			total: Score(0),
-		}
+		Self { bonuses: vec![], max_score_incs: vec![(20, "Default Maximum".into())], total: Score(0) }
 	}
 }
 impl AbilityScore {
@@ -103,13 +99,10 @@ impl AbilityScore {
 	/// Returns the evaluated total scoree, and the list of paths that were used from the list of bonuses.
 	fn evaluate(&self) -> (u32, HashSet<usize>) {
 		let (no_constraints, constrained): (Vec<_>, Vec<_>) =
-			self.bonuses
-				.iter()
-				.enumerate()
-				.partition_map(|(idx, (bonus, _, _))| match bonus.max_total {
-					None => Either::Left((idx, bonus.value)),
-					Some(max_total) => Either::Right((idx, (bonus.value, max_total))),
-				});
+			self.bonuses.iter().enumerate().partition_map(|(idx, (bonus, _, _))| match bonus.max_total {
+				None => Either::Left((idx, bonus.value)),
+				Some(max_total) => Either::Right((idx, (bonus.value, max_total))),
+			});
 		let (mut used_indices, unconstrained): (HashSet<_>, Vec<_>) = no_constraints.into_iter().unzip();
 		let total = unconstrained.into_iter().sum::<u32>();
 		let (total, additional_indices) = optimize_max_sums(total, constrained);
@@ -127,14 +120,7 @@ impl AbilityScore {
 	}
 
 	pub fn with_bonus(mut self, bonus: (u32, Option<u32>, PathBuf, bool)) -> Self {
-		self.bonuses.push((
-			AbilityScoreBonus {
-				value: bonus.0,
-				max_total: bonus.1,
-			},
-			bonus.2,
-			bonus.3,
-		));
+		self.bonuses.push((AbilityScoreBonus { value: bonus.0, max_total: bonus.1 }, bonus.2, bonus.3));
 		self
 	}
 
@@ -153,10 +139,7 @@ pub struct AbilityScoreBonus {
 }
 impl From<u32> for AbilityScoreBonus {
 	fn from(value: u32) -> Self {
-		Self {
-			value,
-			..Default::default()
-		}
+		Self { value, ..Default::default() }
 	}
 }
 
@@ -222,42 +205,33 @@ mod test {
 
 	#[test]
 	fn oms_no_extents() {
-		let value = optimize_max_sums(
-			9,
-			vec![
-				(0, (1, 14)),
-				(1, (2, 12)), // should drop this
-				(2, (1, 15)),
-				(3, (5, 17)),
-			],
-		);
+		let value = optimize_max_sums(9, vec![
+			(0, (1, 14)),
+			(1, (2, 12)), // should drop this
+			(2, (1, 15)),
+			(3, (5, 17)),
+		]);
 		assert_eq!(value, (15, Some(vec![2, 3])));
 	}
 
 	#[test]
 	fn oms_mixed() {
-		let value = optimize_max_sums(
-			8,
-			vec![
-				// lower extent (max < base)
-				(0, (2, 5)),
-				// to optimize
-				(1, (2, 15)),
-				(2, (3, 15)),
-				(3, (1, 16)),
-				(4, (3, 17)),
-				(5, (4, 18)),
-			],
-		);
+		let value = optimize_max_sums(8, vec![
+			// lower extent (max < base)
+			(0, (2, 5)),
+			// to optimize
+			(1, (2, 15)),
+			(2, (3, 15)),
+			(3, (1, 16)),
+			(4, (3, 17)),
+			(5, (4, 18)),
+		]);
 		assert_eq!(value, (16, Some(vec![3, 4, 5])));
 	}
 
 	#[test]
 	fn oms_same_max() {
-		let value = optimize_max_sums(
-			8,
-			vec![(0, (1, 17)), (1, (2, 17)), (2, (3, 17)), (3, (4, 17)), (4, (5, 17))],
-		);
+		let value = optimize_max_sums(8, vec![(0, (1, 17)), (1, (2, 17)), (2, (3, 17)), (3, (4, 17)), (4, (5, 17))]);
 		assert_eq!(value, (17, Some(vec![3, 4])));
 	}
 }

@@ -1,20 +1,38 @@
-use crate::{auth::OAuthProvider, kdl_ext::NodeContext, system::SourceId};
+use crate::{
+	auth::OAuthProvider,
+	kdl_ext::NodeContext,
+	system::{ModuleId, SourceId},
+};
 use kdlize::{
 	ext::{EntryExt, ValueExt},
 	AsKdl, FromKdl, NodeBuilder, NodeReader,
 };
-use std::str::FromStr;
 use serde::{Deserialize, Serialize};
+use std::{path::Path, str::FromStr};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct UserId {
-	provider: OAuthProvider,
-	id: String,
+	pub provider: OAuthProvider,
+	pub id: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 pub struct UserSettings {
 	pub friends: Vec<UserId>,
+}
+
+kdlize::impl_kdl_node!(UserSettings, "user_settings");
+
+impl UserSettings {
+	pub fn homebrew_id(module: &ModuleId) -> SourceId {
+		SourceId {
+			module: Some(module.clone()),
+			system: None,
+			path: Path::new("user_settings.kdl").into(),
+			version: None,
+			variant: None,
+		}
+	}
 }
 
 impl FromKdl<NodeContext> for UserSettings {

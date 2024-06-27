@@ -1,11 +1,13 @@
-use crate::kdl_ext::NodeContext;
-use crate::system::mutator::ReferencePath;
-use crate::system::{
-	dnd5e::data::{
-		character::Character,
-		item::{container::item::AsItem, Item, Kind},
+use crate::{
+	kdl_ext::NodeContext,
+	system::{
+		dnd5e::data::{
+			character::Character,
+			item::{container::item::AsItem, Item, Kind},
+		},
+		mutator,
+		mutator::ReferencePath,
 	},
-	mutator,
 };
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::path::PathBuf;
@@ -26,11 +28,7 @@ impl EquipableEntry {
 
 impl AsItem for EquipableEntry {
 	fn from_item(item: Item) -> Self {
-		Self {
-			id_path: Vec::new(),
-			item,
-			is_equipped: false,
-		}
+		Self { id_path: Vec::new(), item, is_equipped: false }
 	}
 
 	fn set_id_path(&mut self, id: Vec<uuid::Uuid>) {
@@ -91,11 +89,7 @@ impl FromKdl<NodeContext> for EquipableEntry {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let item = Item::from_kdl(node)?;
 		let is_equipped = node.get_bool_opt("equipped")?.unwrap_or_default();
-		Ok(Self {
-			id_path: Vec::new(),
-			is_equipped,
-			item,
-		})
+		Ok(Self { id_path: Vec::new(), is_equipped, item })
 	}
 }
 

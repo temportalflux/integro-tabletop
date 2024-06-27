@@ -1,15 +1,15 @@
 use super::{character::Character, roll::Die};
-use crate::kdl_ext::NodeContext;
-use crate::system::mutator::ReferencePath;
 use crate::{
+	kdl_ext::NodeContext,
 	system::{
 		dnd5e::{mutator::AddMaxHitPoints, BoxedMutator, Value},
-		mutator, Block, SourceId,
+		mutator,
+		mutator::ReferencePath,
+		Block, SourceId,
 	},
 	utility::selector,
 };
-use kdlize::OmitIfEmpty;
-use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
+use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder, OmitIfEmpty};
 use std::str::FromStr;
 
 #[derive(Clone, PartialEq, Debug)]
@@ -95,10 +95,7 @@ impl FromKdl<NodeContext> for Class {
 		let id = crate::kdl_ext::query_source_req(node)?;
 
 		let name = node.get_str_req("name")?.to_owned();
-		let description = node
-			.query_str_opt("scope() > description", 0)?
-			.unwrap_or_default()
-			.to_owned();
+		let description = node.query_str_opt("scope() > description", 0)?.unwrap_or_default().to_owned();
 		let hit_die = Die::from_str(node.query_str_req("scope() > hit-die", 0)?)?;
 		let current_level = node.get_i64_opt("level")?.unwrap_or_default() as usize;
 
@@ -112,16 +109,7 @@ impl FromKdl<NodeContext> for Class {
 			levels[idx] = Level::from_kdl(&mut node)?;
 		}
 
-		Ok(Self {
-			id,
-			name,
-			description,
-			hit_die,
-			current_level,
-			mutators,
-			levels,
-			..Default::default()
-		})
+		Ok(Self { id, name, description, hit_die, current_level, mutators, levels, ..Default::default() })
 	}
 }
 // TODO AsKdl: from/as tests for Class, Level, Subclass
@@ -183,10 +171,8 @@ impl Level {
 impl FromKdl<NodeContext> for Level {
 	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
-		let hit_points = selector::Value::Options(selector::ValueOptions {
-			id: "hit_points".into(),
-			..Default::default()
-		});
+		let hit_points =
+			selector::Value::Options(selector::ValueOptions { id: "hit_points".into(), ..Default::default() });
 
 		let mutators = node.query_all_t("scope() > mutator")?;
 
@@ -229,10 +215,7 @@ impl<'a> mutator::Group for LevelWithIndex<'a> {
 	fn apply_mutators(&self, stats: &mut Character, parent: &ReferencePath) {
 		let path_to_self = parent.join(self.level_name(), None);
 		if let Some(hit_points) = stats.resolve_selector(&self.1.hit_points) {
-			let mutator = AddMaxHitPoints {
-				id: None,
-				value: Value::Fixed(hit_points as i32),
-			};
+			let mutator = AddMaxHitPoints { id: None, value: Value::Fixed(hit_points as i32) };
 			stats.apply(&mutator.into(), &path_to_self);
 		}
 		for mutator in &self.1.mutators {
@@ -264,10 +247,7 @@ kdlize::impl_kdl_node!(Subclass, "subclass");
 
 impl Subclass {
 	fn iter_levels<'a>(&'a self) -> impl Iterator<Item = LevelWithIndex<'a>> + 'a {
-		self.levels
-			.iter()
-			.enumerate()
-			.map(|(idx, lvl)| LevelWithIndex(idx, lvl))
+		self.levels.iter().enumerate().map(|(idx, lvl)| LevelWithIndex(idx, lvl))
 	}
 }
 
@@ -302,10 +282,7 @@ impl FromKdl<NodeContext> for Subclass {
 
 		let name = node.get_str_req("name")?.to_owned();
 		let class_name = node.get_str_req("class")?.to_owned();
-		let description = node
-			.query_str_opt("scope() > description", 0)?
-			.unwrap_or_default()
-			.to_owned();
+		let description = node.query_str_opt("scope() > description", 0)?.unwrap_or_default().to_owned();
 		let mutators = node.query_all_t("scope() > mutator")?;
 		let mut levels = Vec::with_capacity(20);
 		levels.resize_with(20, Default::default);
@@ -315,14 +292,7 @@ impl FromKdl<NodeContext> for Subclass {
 			levels[idx] = Level::from_kdl(&mut node)?;
 		}
 
-		Ok(Self {
-			id,
-			name,
-			description,
-			class_name,
-			mutators,
-			levels,
-		})
+		Ok(Self { id, name, description, class_name, mutators, levels })
 	}
 }
 impl AsKdl for Subclass {

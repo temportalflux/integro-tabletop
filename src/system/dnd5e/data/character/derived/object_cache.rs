@@ -51,10 +51,7 @@ impl AdditionalObjectCache {
 		// we should be able to generically deserialize objects into system components,
 		// and then store the generic data which is a mutator::Group instead of the hard types.
 		// We can re-serialize them in the same manner perhaps.
-		for AdditionalObjectData {
-			ids, object_type_id, ..
-		} in &self.pending
-		{
+		for AdditionalObjectData { ids, object_type_id, .. } in &self.pending {
 			for object_id in ids {
 				if self.object_cache.contains_key(object_id) {
 					continue;
@@ -68,8 +65,7 @@ impl AdditionalObjectCache {
 						log::error!(target: "object_cache", "Failed to find bundle {:?}, no such entry in database.", object_id.to_string());
 						continue;
 					};
-					self.object_cache
-						.insert(object_id.clone(), CachedObject::Bundle(bundle));
+					self.object_cache.insert(object_id.clone(), CachedObject::Bundle(bundle));
 				} else if object_type_id == Subclass::id() {
 					let subclass = provider
 						.database
@@ -79,8 +75,7 @@ impl AdditionalObjectCache {
 						log::error!(target: "object_cache", "Failed to find subclass {:?}, no such entry in database.", object_id.to_string());
 						continue;
 					};
-					self.object_cache
-						.insert(object_id.clone(), CachedObject::Subclass(subclass));
+					self.object_cache.insert(object_id.clone(), CachedObject::Subclass(subclass));
 				} else {
 					log::error!(target: "object_cache", "AdditionalObjectCache does not currently support {object_type_id:?} objects.");
 				}

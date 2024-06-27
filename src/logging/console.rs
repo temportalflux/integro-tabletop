@@ -11,11 +11,7 @@ pub fn init(name: &str, ignore: &[&'static str]) -> Result<()> {
 	if let Some(parent) = log_path.parent() {
 		std::fs::create_dir_all(parent)?;
 	}
-	let file = std::fs::OpenOptions::new()
-		.create(true)
-		.write(true)
-		.truncate(true)
-		.open(&log_path)?;
+	let file = std::fs::OpenOptions::new().create(true).write(true).truncate(true).open(&log_path)?;
 	let cfg = {
 		let mut builder = ConfigBuilder::new();
 		builder

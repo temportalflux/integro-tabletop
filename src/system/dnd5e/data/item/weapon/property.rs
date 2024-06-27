@@ -1,5 +1,4 @@
-use crate::kdl_ext::NodeContext;
-use crate::{system::dnd5e::data::roll::Roll, GeneralError};
+use crate::{kdl_ext::NodeContext, system::dnd5e::data::roll::Roll, GeneralError};
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
 
 #[derive(Clone, PartialEq, Debug)]
@@ -85,10 +84,7 @@ impl AsKdl for Property {
 			Self::Heavy => node.with_entry("Heavy"),
 			Self::Reach => node.with_entry("Reach"),
 			Self::TwoHanded => node.with_entry("TwoHanded"),
-			Self::Thrown(short, long) => node
-				.with_entry("Thrown")
-				.with_entry(*short as i64)
-				.with_entry(*long as i64),
+			Self::Thrown(short, long) => node.with_entry("Thrown").with_entry(*short as i64).with_entry(*long as i64),
 			Self::Versatile(roll) => node.with_entry("Versatile").with_entry_typed(roll.to_string(), "Roll"),
 		}
 	}

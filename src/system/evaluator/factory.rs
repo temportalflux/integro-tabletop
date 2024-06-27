@@ -39,29 +39,19 @@ impl Factory {
 		T: 'static,
 	{
 		if TypeId::of::<C>() != self.ctx_type_info.0 {
-			return Err(IncompatibleTypes(
-				"context",
-				self.type_name,
-				self.ctx_type_info.1,
-				std::any::type_name::<C>(),
-			)
-			.into());
+			return Err(
+				IncompatibleTypes("context", self.type_name, self.ctx_type_info.1, std::any::type_name::<C>()).into()
+			);
 		}
 
 		if TypeId::of::<T>() != self.item_type_info.0 {
-			return Err(IncompatibleTypes(
-				"output",
-				self.type_name,
-				self.item_type_info.1,
-				std::any::type_name::<T>(),
-			)
-			.into());
+			return Err(
+				IncompatibleTypes("output", self.type_name, self.item_type_info.1, std::any::type_name::<T>()).into()
+			);
 		}
 
 		let any = (self.fn_from_kdl)(node)?;
-		let eval = any
-			.downcast::<ArcEvaluator<C, T>>()
-			.expect("failed to unpack boxed arc-evaluator");
+		let eval = any.downcast::<ArcEvaluator<C, T>>().expect("failed to unpack boxed arc-evaluator");
 		Ok(Generic::new(*eval))
 	}
 }

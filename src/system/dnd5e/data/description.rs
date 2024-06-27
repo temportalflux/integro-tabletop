@@ -1,13 +1,12 @@
 use super::character::Character;
-use crate::kdl_ext::NodeContext;
 use crate::{
+	kdl_ext::NodeContext,
 	system::dnd5e::BoxedEvaluator,
 	utility::{selector, NotInList},
 };
-use kdlize::OmitIfEmpty;
 use kdlize::{
 	ext::{DocumentExt, EntryExt, ValueExt},
-	AsKdl, FromKdl, NodeBuilder,
+	AsKdl, FromKdl, NodeBuilder, OmitIfEmpty,
 };
 use std::{
 	collections::{BTreeMap, HashMap},
@@ -33,11 +32,7 @@ pub struct Section {
 pub enum SectionContent {
 	Body(String),
 	Selectors(selector::DataList),
-	Table {
-		column_count: usize,
-		headers: Option<Vec<String>>,
-		rows: Vec<Vec<String>>,
-	},
+	Table { column_count: usize, headers: Option<Vec<String>>, rows: Vec<Vec<String>> },
 }
 impl Default for SectionContent {
 	fn default() -> Self {
@@ -95,22 +90,14 @@ impl FromKdl<NodeContext> for Info {
 		// where the section is the long description.
 		if node.children().is_none() {
 			let section = Section::from_kdl(node)?;
-			return Ok(Self {
-				short: None,
-				sections: vec![section],
-				format_args: FormatArgs::default(),
-			});
+			return Ok(Self { short: None, sections: vec![section], format_args: FormatArgs::default() });
 		}
 
 		let short = node.query_str_opt("scope() > short", 0)?.map(str::to_owned);
 		let sections = node.query_all_t::<Section>("scope() > section")?;
 		let format_args = FormatArgs::from_kdl_all(&node)?;
 
-		Ok(Self {
-			short,
-			sections,
-			format_args,
-		})
+		Ok(Self { short, sections, format_args })
 	}
 }
 impl AsKdl for Info {
@@ -185,10 +172,7 @@ impl Section {
 
 impl From<selector::DataList> for Section {
 	fn from(value: selector::DataList) -> Self {
-		Self {
-			content: SectionContent::Selectors(value),
-			..Default::default()
-		}
+		Self { content: SectionContent::Selectors(value), ..Default::default() }
 	}
 }
 
@@ -220,12 +204,7 @@ impl FromKdl<NodeContext> for Section {
 			children.push(Section::from_kdl(&mut node)?);
 		}
 
-		Ok(Self {
-			title,
-			content,
-			format_args,
-			children,
-		})
+		Ok(Self { title, content, format_args, children })
 	}
 }
 impl AsKdl for Section {
@@ -303,11 +282,7 @@ impl FromKdl<NodeContext> for SectionContent {
 					rows.push(columns);
 				}
 				let column_count = headers.as_ref().map(|v| v.len()).unwrap_or(0).max(max_columns_in_rows);
-				Ok(Self::Table {
-					column_count,
-					headers,
-					rows,
-				})
+				Ok(Self::Table { column_count, headers, rows })
 			}
 		}
 	}
@@ -319,11 +294,7 @@ impl AsKdl for SectionContent {
 			Self::Body(content) => {
 				node.entry(content.clone());
 			}
-			Self::Table {
-				column_count: _,
-				headers,
-				rows,
-			} => {
+			Self::Table { column_count: _, headers, rows } => {
 				node.entry(("table", true));
 				node.child(headers.as_ref().map(|headers| {
 					let mut node = NodeBuilder::default();
@@ -475,9 +446,8 @@ mod test {
 
 	mod kdl {
 		use super::*;
-		use crate::kdl_ext::test_utils::*;
 		use crate::{
-			kdl_ext::NodeContext,
+			kdl_ext::{test_utils::*, NodeContext},
 			system::{
 				dnd5e::{data::Ability, evaluator::GetAbilityModifier},
 				generics,
@@ -617,10 +587,11 @@ mod test {
 					content: SectionContent::Table {
 						column_count: 3,
 						headers: Some(vec!["Col 1".into(), "Col 2".into(), "Col 3".into()]),
-						rows: vec![
-							vec!["R1 C1".into(), "R1 C2".into(), "R1 C3".into()],
-							vec!["R2 C1".into(), "R2 C2".into(), "R2 C3".into()],
-						],
+						rows: vec![vec!["R1 C1".into(), "R1 C2".into(), "R1 C3".into()], vec![
+							"R2 C1".into(),
+							"R2 C2".into(),
+							"R2 C3".into(),
+						]],
 					},
 					format_args: FormatArgs::default(),
 					children: vec![],
@@ -735,11 +706,8 @@ mod test {
 
 		#[test]
 		fn simple() {
-			let character = character(vec![
-				(Ability::Strength, 12),
-				(Ability::Wisdom, 14),
-				(Ability::Intelligence, 20),
-			]);
+			let character =
+				character(vec![(Ability::Strength, 12), (Ability::Wisdom, 14), (Ability::Intelligence, 20)]);
 			let info = Info {
 				short: Some("{DC} Wis Save or take {num} force damage".into()),
 				sections: vec![Section {

@@ -42,9 +42,7 @@ impl Factory {
 			.into());
 		}
 		let any = (self.fn_from_kdl)(node)?;
-		let eval = any
-			.downcast::<ArcMutator<T>>()
-			.expect("failed to unpack boxed arc-evaluator");
+		let eval = any.downcast::<ArcMutator<T>>().expect("failed to unpack boxed arc-evaluator");
 		Ok(Generic::new(*eval))
 	}
 }

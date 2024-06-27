@@ -113,10 +113,7 @@ impl CharacterHandle {
 					.await?;
 				let persistent = match entry {
 					Some(known) => known,
-					None if !id.has_path() => Persistent {
-						id: id.clone(),
-						..Default::default()
-					},
+					None if !id.has_path() => Persistent { id: id.clone(), ..Default::default() },
 					None => {
 						return Err(CharacterInitializationError::CharacterMissing(id_str));
 					}
@@ -210,10 +207,8 @@ impl CharacterHandle {
 		self.set_recompiling(true);
 		character.clear_derived();
 		let signal = self.task_dispatch.spawn("Recompile Character", None, async move {
-			let provider = ObjectCacheProvider {
-				database: handle.database.clone(),
-				system_depot: handle.system_depot.clone(),
-			};
+			let provider =
+				ObjectCacheProvider { database: handle.database.clone(), system_depot: handle.system_depot.clone() };
 			if let Err(err) = character.recompile(provider).await {
 				log::warn!("Encountered error updating cached character objects: {err:?}");
 			}

@@ -1,7 +1,9 @@
-use crate::kdl_ext::NodeContext;
 use crate::{
-	system::dnd5e::{data::character::Character, Value},
-	system::Evaluator,
+	kdl_ext::NodeContext,
+	system::{
+		dnd5e::{data::character::Character, Value},
+		Evaluator,
+	},
 	utility::{Dependencies, NotInList},
 };
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
@@ -68,12 +70,7 @@ impl FromKdl<NodeContext> for Math {
 			_ => {}
 		}
 
-		Ok(Self {
-			operation,
-			minimum,
-			maximum,
-			values,
-		})
+		Ok(Self { operation, minimum, maximum, values })
 	}
 }
 
@@ -111,24 +108,16 @@ impl Evaluator for Math {
 	type Item = i32;
 
 	fn description(&self) -> Option<String> {
-		let value_descriptions = self
-			.values
-			.iter()
-			.filter_map(|value| value.description())
-			.collect::<Vec<_>>();
+		let value_descriptions = self.values.iter().filter_map(|value| value.description()).collect::<Vec<_>>();
 		let description = match &self.operation {
 			MathOp::Add => value_descriptions.join(" + "),
 			MathOp::Subtract => value_descriptions.join(" - "),
 			MathOp::Multiply => value_descriptions.join(" * "),
-			MathOp::Divide { round } => format!(
-				"{} {}",
-				value_descriptions.join(" / "),
-				match round {
-					Rounding::Floor => "rounded down",
-					Rounding::HalfUp => "rounded to the nearest whole number",
-					Rounding::Ceiling => "rounded up",
-				}
-			),
+			MathOp::Divide { round } => format!("{} {}", value_descriptions.join(" / "), match round {
+				Rounding::Floor => "rounded down",
+				Rounding::HalfUp => "rounded to the nearest whole number",
+				Rounding::Ceiling => "rounded up",
+			}),
 		};
 		let bounds = {
 			let mut bounds = Vec::with_capacity(2);
@@ -144,9 +133,7 @@ impl Evaluator for Math {
 	}
 
 	fn dependencies(&self) -> Dependencies {
-		self.values
-			.iter()
-			.fold(Dependencies::default(), |deps, value| deps.join(value.dependencies()))
+		self.values.iter().fold(Dependencies::default(), |deps, value| deps.join(value.dependencies()))
 	}
 
 	fn evaluate(&self, state: &Self::Context) -> Self::Item {
@@ -223,10 +210,7 @@ mod test {
 				operation: MathOp::Add,
 				minimum: None,
 				maximum: Some(15),
-				values: vec![
-					Value::Fixed(10),
-					Value::Evaluated(GetAbilityModifier(Ability::Strength).into()),
-				],
+				values: vec![Value::Fixed(10), Value::Evaluated(GetAbilityModifier(Ability::Strength).into())],
 			};
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
@@ -327,10 +311,7 @@ mod test {
 				operation: MathOp::Add,
 				minimum: None,
 				maximum: Some(15),
-				values: vec![
-					Value::Fixed(10),
-					Value::Evaluated(GetAbilityModifier(Ability::Strength).into()),
-				],
+				values: vec![Value::Fixed(10), Value::Evaluated(GetAbilityModifier(Ability::Strength).into())],
 			};
 			// smaller than maximum
 			let ctx = character(&[(Ability::Strength, 14)], 0);
@@ -387,9 +368,7 @@ mod test {
 		#[test]
 		fn divide_halfup() {
 			let math = Math {
-				operation: MathOp::Divide {
-					round: Rounding::HalfUp,
-				},
+				operation: MathOp::Divide { round: Rounding::HalfUp },
 				minimum: None,
 				maximum: None,
 				values: vec![Value::Evaluated(GetLevel::default().into()), Value::Fixed(4)],
@@ -402,9 +381,7 @@ mod test {
 		#[test]
 		fn divide_ceiling() {
 			let math = Math {
-				operation: MathOp::Divide {
-					round: Rounding::Ceiling,
-				},
+				operation: MathOp::Divide { round: Rounding::Ceiling },
 				minimum: None,
 				maximum: None,
 				values: vec![Value::Evaluated(GetLevel::default().into()), Value::Fixed(5)],

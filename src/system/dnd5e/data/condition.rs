@@ -99,21 +99,12 @@ impl FromKdl<NodeContext> for Condition {
 		let id = crate::kdl_ext::query_source_opt(node)?;
 
 		let name = node.get_str_req("name")?.to_owned();
-		let description = node
-			.query_str_opt("scope() > description", 0)?
-			.unwrap_or_default()
-			.to_owned();
+		let description = node.query_str_opt("scope() > description", 0)?.unwrap_or_default().to_owned();
 		let mutators = node.query_all_t("scope() > mutator")?;
 
 		let implied = node.query_all_t("scope() > implies")?;
 
-		Ok(Self {
-			id,
-			name,
-			description,
-			mutators,
-			implied,
-		})
+		Ok(Self { id, name, description, mutators, implied })
 	}
 }
 
@@ -135,12 +126,14 @@ mod test {
 
 	mod kdl {
 		use super::*;
-		use crate::system::dnd5e::data::character::StatOperation;
-		use crate::system::dnd5e::mutator::StatMutator;
 		use crate::{
 			kdl_ext::{test_utils::*, NodeContext},
 			system::{
-				dnd5e::{evaluator::HasArmorEquipped, mutator::Speed},
+				dnd5e::{
+					data::character::StatOperation,
+					evaluator::HasArmorEquipped,
+					mutator::{Speed, StatMutator},
+				},
 				generics,
 			},
 		};
@@ -184,11 +177,10 @@ mod test {
 			let data = Condition {
 				name: "Expedient".into(),
 				description: "You are particularly quick.".into(),
-				mutators: vec![Speed(StatMutator {
-					stat_name: "Walking".into(),
-					operation: StatOperation::AddSubtract(15),
-				})
-				.into()],
+				mutators: vec![
+					Speed(StatMutator { stat_name: "Walking".into(), operation: StatOperation::AddSubtract(15) })
+						.into(),
+				],
 				..Default::default()
 			};
 			assert_eq_fromkdl!(Condition, doc, data);

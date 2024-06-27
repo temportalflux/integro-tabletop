@@ -88,17 +88,7 @@ pub struct NavProps {
 
 #[function_component]
 pub fn Nav(
-	NavProps {
-		root_classes,
-		nav_classes,
-		disp,
-		column,
-		justify,
-		width,
-		default_tab_id,
-		children,
-		extra,
-	}: &NavProps,
+	NavProps { root_classes, nav_classes, disp, column, justify, width, default_tab_id, children, extra }: &NavProps,
 ) -> Html {
 	let default_tab_id = default_tab_id.as_str().to_owned();
 	let selected_tab = use_state(move || default_tab_id);
@@ -168,14 +158,7 @@ pub struct TabContentProps {
 }
 
 #[function_component]
-pub fn TabContent(
-	TabContentProps {
-		id,
-		title: _,
-		children,
-		active,
-	}: &TabContentProps,
-) -> Html {
+pub fn TabContent(TabContentProps { id, title: _, children, active }: &TabContentProps) -> Html {
 	let mut classes = classes!("tab-pane");
 	if *active {
 		classes.push("active");

@@ -1,7 +1,9 @@
-use crate::kdl_ext::NodeContext;
 use crate::{
-	system::dnd5e::data::{action::AttackQuery, character::Character},
-	system::Evaluator,
+	kdl_ext::NodeContext,
+	system::{
+		dnd5e::data::{action::AttackQuery, character::Character},
+		Evaluator,
+	},
 };
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
 
@@ -23,15 +25,11 @@ impl Evaluator for HasAttack {
 	fn description(&self) -> Option<String> {
 		Some(match (&self.min, &self.max) {
 			(1, None) => format!("you have a weapon equipped which: {}", self.restriction),
-			(1, Some(max)) => format!(
-				"you have no more than {max} weapons equipped which: {}",
-				self.restriction
-			),
+			(1, Some(max)) => format!("you have no more than {max} weapons equipped which: {}", self.restriction),
 			(min, None) => format!("you have at least {min} weapons equipped which: {}", self.restriction),
-			(min, Some(max)) => format!(
-				"you have at least {min}, and no more than {max}, weapons equipped which: {}",
-				self.restriction
-			),
+			(min, Some(max)) => {
+				format!("you have at least {min}, and no more than {max}, weapons equipped which: {}", self.restriction)
+			}
 		})
 	}
 
@@ -56,11 +54,7 @@ impl Evaluator for HasAttack {
 				Some(_) => {}
 			}
 		}
-		if count >= self.min {
-			Ok(())
-		} else {
-			Err("Equipped weapons not found".into())
-		}
+		if count >= self.min { Ok(()) } else { Err("Equipped weapons not found".into()) }
 	}
 }
 
@@ -107,10 +101,7 @@ mod test {
 		#[test]
 		fn any() -> anyhow::Result<()> {
 			let doc = "evaluator \"has_attack\"";
-			let data = HasAttack {
-				min: 1,
-				..Default::default()
-			};
+			let data = HasAttack { min: 1, ..Default::default() };
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -119,11 +110,7 @@ mod test {
 		#[test]
 		fn single() -> anyhow::Result<()> {
 			let doc = "evaluator \"has_attack\" max=1";
-			let data = HasAttack {
-				min: 1,
-				max: Some(1),
-				..Default::default()
-			};
+			let data = HasAttack { min: 1, max: Some(1), ..Default::default() };
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())

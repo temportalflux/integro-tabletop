@@ -137,12 +137,7 @@ pub struct ModifiersProps {
 }
 
 #[function_component]
-pub fn SavingThrowModifiers(
-	ModifiersProps {
-		show_tooltip,
-		show_none_label,
-	}: &ModifiersProps,
-) -> Html {
+pub fn SavingThrowModifiers(ModifiersProps { show_tooltip, show_none_label }: &ModifiersProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 
 	let iter = state.saving_throws().iter();

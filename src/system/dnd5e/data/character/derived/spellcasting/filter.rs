@@ -1,9 +1,10 @@
-use crate::kdl_ext::NodeContext;
-use crate::system::{dnd5e::data::Spell, SourceId};
+use crate::{
+	kdl_ext::NodeContext,
+	system::{dnd5e::data::Spell, SourceId},
+};
 use itertools::Itertools;
 use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
-use std::collections::HashSet;
-use std::str::FromStr;
+use std::{collections::HashSet, str::FromStr};
 
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct Filter {
@@ -36,13 +37,7 @@ impl FromKdl<NodeContext> for Filter {
 			additional_ids.insert(SourceId::from_str(str)?);
 		}
 
-		Ok(Filter {
-			ranks,
-			tags,
-			school_tag,
-			additional_ids,
-			..Default::default()
-		})
+		Ok(Filter { ranks, tags, school_tag, additional_ids, ..Default::default() })
 	}
 }
 impl AsKdl for Filter {

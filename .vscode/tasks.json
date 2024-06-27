@@ -28,14 +28,14 @@
 		{
 			"label": "4. [Cargo] Format",
 			"command": "cargo",
-			"args": [ "fmt", "--all" ],
+			"args": [ "+nightly", "fmt", "--all" ],
 			"group": "build",
 			"problemMatcher": []
 		},
 		{
 			"label": "5. [Cargo] Run Tests",
 			"command": "cargo",
-			"args": [ "test" ],
+			"args": [ "test", "--target=x86_64-pc-windows-msvc" ],
 			"group": "build",
 			"problemMatcher": []
 		},

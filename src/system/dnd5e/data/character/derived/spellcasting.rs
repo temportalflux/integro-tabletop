@@ -77,26 +77,17 @@ impl Spellcasting {
 
 	pub fn add_spell_access(&mut self, caster_name: &String, spell_ids: &Vec<SourceId>, source: &ReferencePath) {
 		for spell_id in spell_ids {
-			self.additional_caster_spells
-				.by_caster
-				.insert(caster_name.clone(), spell_id.clone());
-			self.additional_caster_spells
-				.sources
-				.insert(spell_id.clone(), source.display.clone());
+			self.additional_caster_spells.by_caster.insert(caster_name.clone(), spell_id.clone());
+			self.additional_caster_spells.sources.insert(spell_id.clone(), source.display.clone());
 		}
 	}
 
 	pub fn add_prepared(&mut self, spell_id: &SourceId, entry: SpellEntry) {
 		let spell_id = spell_id.unversioned();
 		if !self.always_prepared.contains_key(&spell_id) {
-			self.always_prepared
-				.insert(spell_id.clone(), AlwaysPreparedSpell::default());
+			self.always_prepared.insert(spell_id.clone(), AlwaysPreparedSpell::default());
 		}
-		self.always_prepared
-			.get_mut(&spell_id)
-			.unwrap()
-			.entries
-			.insert(entry.source.clone(), entry);
+		self.always_prepared.get_mut(&spell_id).unwrap().entries.insert(entry.source.clone(), entry);
 	}
 
 	pub fn add_prepared_spell(&mut self, spell: &Spell, entry: SpellEntry) {
@@ -115,10 +106,8 @@ impl Spellcasting {
 
 	async fn fetch_always_prepared(&mut self, provider: &ObjectCacheProvider) -> anyhow::Result<()> {
 		for (id, spell_entry) in &mut self.always_prepared {
-			spell_entry.spell = provider
-				.database
-				.get_typed_entry::<Spell>(id.clone(), provider.system_depot.clone(), None)
-				.await?;
+			spell_entry.spell =
+				provider.database.get_typed_entry::<Spell>(id.clone(), provider.system_depot.clone(), None).await?;
 		}
 		Ok(())
 	}
@@ -258,14 +247,8 @@ impl Spellcasting {
 			for (_id, caster) in &self.casters {
 				let current_level = character.level(Some(&caster.class_name));
 				total_level += match &caster.standard_slots {
-					Some(Slots::Standard {
-						multiclass_half_caster: false,
-						..
-					}) => current_level,
-					Some(Slots::Standard {
-						multiclass_half_caster: true,
-						..
-					}) => current_level / 2,
+					Some(Slots::Standard { multiclass_half_caster: false, .. }) => current_level,
+					Some(Slots::Standard { multiclass_half_caster: true, .. }) => current_level / 2,
 					_ => 0,
 				};
 			}

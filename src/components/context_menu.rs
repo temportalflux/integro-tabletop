@@ -1,6 +1,5 @@
 use std::rc::Rc;
-use yew::html::ChildrenProps;
-use yew::prelude::*;
+use yew::{html::ChildrenProps, prelude::*};
 
 #[derive(Clone, PartialEq)]
 pub struct Control(UseReducerHandle<State>);
@@ -72,18 +71,9 @@ impl Reducible for State {
 
 	fn reduce(self: Rc<Self>, action: Self::Action) -> Rc<Self> {
 		match action {
-			Action::Expand => Rc::new(Self {
-				is_shown: true,
-				stack: self.stack.clone(),
-			}),
-			Action::Collapse => Rc::new(Self {
-				is_shown: false,
-				stack: self.stack.clone(),
-			}),
-			Action::OpenRoot(item) => Rc::new(Self {
-				is_shown: true,
-				stack: vec![item],
-			}),
+			Action::Expand => Rc::new(Self { is_shown: true, stack: self.stack.clone() }),
+			Action::Collapse => Rc::new(Self { is_shown: false, stack: self.stack.clone() }),
+			Action::OpenRoot(item) => Rc::new(Self { is_shown: true, stack: vec![item] }),
 			Action::OpenSubpage(item) => {
 				let mut stack = self.stack.clone();
 				stack.push(item);
@@ -92,10 +82,7 @@ impl Reducible for State {
 			Action::CloseCurrent => {
 				let mut stack = self.stack.clone();
 				stack.pop();
-				Rc::new(Self {
-					is_shown: !stack.is_empty(),
-					stack,
-				})
+				Rc::new(Self { is_shown: !stack.is_empty(), stack })
 			}
 		}
 	}

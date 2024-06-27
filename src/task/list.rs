@@ -38,21 +38,15 @@ impl List {
 		&mut self, handle: UseReducerHandle<Self>, name: String, progress: Option<ProgressHandle>,
 		pending: LocalBoxFuture<'static, anyhow::Result<()>>,
 	) {
-		let id = progress
-			.as_ref()
-			.map(|progress| progress.id)
-			.unwrap_or_else(|| Uuid::new_v4());
+		let id = progress.as_ref().map(|progress| progress.id).unwrap_or_else(|| Uuid::new_v4());
 
 		let idx = self.get_insertion_idx(&name);
 		self.display_order.insert(idx, id);
-		self.tasks.insert(
-			id,
-			Handle {
-				name: name.into(),
-				status: Status::Pending,
-				progress: progress.map(|progress| (progress.value(), progress.max())),
-			},
-		);
+		self.tasks.insert(id, Handle {
+			name: name.into(),
+			status: Status::Pending,
+			progress: progress.map(|progress| (progress.value(), progress.max())),
+		});
 
 		// Spawn the task, with logic to remove it from the task list when it is complete.
 		spawn_local(Box::pin(async move {
@@ -136,20 +130,10 @@ impl yew::Reducible for List {
 	fn reduce(mut self: Rc<Self>, action: Self::Action) -> Rc<Self> {
 		let list = Rc::make_mut(&mut self);
 		match action {
-			Action::Insert {
-				handle,
-				name,
-				progress,
-				pending,
-			} => {
+			Action::Insert { handle, name, progress, pending } => {
 				list.insert(handle, name, progress, pending);
 			}
-			Action::UpdateProgress {
-				id,
-				value,
-				max,
-				new_name,
-			} => {
+			Action::UpdateProgress { id, value, max, new_name } => {
 				list.set_progress(&id, value, max, new_name);
 			}
 			Action::Remove { id } => {

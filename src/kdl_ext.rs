@@ -47,9 +47,7 @@ pub mod test_utils {
 		F: Fn(NodeReader<'_>) -> anyhow::Result<T>,
 	{
 		let document = raw_doc(doc).parse::<kdl::KdlDocument>()?;
-		let node = document
-			.query(format!("scope() > {name}"))?
-			.expect(&format!("missing {name} node"));
+		let node = document.query(format!("scope() > {name}"))?.expect(&format!("missing {name} node"));
 		from_kdl(NodeReader::new_child(node, ctx))
 	}
 }

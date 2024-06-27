@@ -101,13 +101,7 @@ impl FromKdl<NodeContext> for BlockGenerator {
 		let mut variants = node.query_all_t("scope() > variant")?;
 		// prune out any variants with no entries
 		variants.retain(|variant: &VariantEntry| !variant.entries.is_empty());
-		Ok(Self {
-			id,
-			short_id,
-			base_doc,
-			base_str,
-			variants,
-		})
+		Ok(Self { id, short_id, base_doc, base_str, variants })
 	}
 }
 
@@ -239,23 +233,16 @@ mod test {
 			";
 			let data = BlockGenerator {
 				id: SourceId {
-					module: Some(ModuleId::Local {
-						name: "homebrew".into(),
-					}),
+					module: Some(ModuleId::Local { name: "homebrew".into() }),
 					system: Some("dnd5e".into()),
 					path: "items/generator.kdl".into(),
 					..Default::default()
 				},
 				short_id: "test".to_owned(),
-				base_doc: raw_doc(base_str)
-					.parse::<KdlDocument>()
-					.expect("failed to parse base kdl doc"),
+				base_doc: raw_doc(base_str).parse::<KdlDocument>().expect("failed to parse base kdl doc"),
 				base_str: raw_doc(base_str),
 				variants: [
-					VariantEntry {
-						name: "1".into(),
-						entries: [("TYPE".into(), "Simple".into())].into(),
-					},
+					VariantEntry { name: "1".into(), entries: [("TYPE".into(), "Simple".into())].into() },
 					VariantEntry {
 						name: "2".into(),
 						entries: [

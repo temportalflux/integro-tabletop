@@ -1,5 +1,4 @@
-use crate::kdl_ext::NodeContext;
-use crate::GeneralError;
+use crate::{kdl_ext::NodeContext, GeneralError};
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::str::FromStr;
 
@@ -72,12 +71,12 @@ impl FromStr for Roll {
 			return Ok(Self::from(amount));
 		}
 		let mut parts = s.split('d');
-		let amount_str = parts.next().ok_or(GeneralError(format!(
-			"Roll string {s:?} missing amount, expected format {EXPECTED:?}."
-		)))?;
-		let die_str = parts.next().ok_or(GeneralError(format!(
-			"Roll string {s:?} missing die type, expected format {EXPECTED:?}."
-		)))?;
+		let amount_str = parts
+			.next()
+			.ok_or(GeneralError(format!("Roll string {s:?} missing amount, expected format {EXPECTED:?}.")))?;
+		let die_str = parts
+			.next()
+			.ok_or(GeneralError(format!("Roll string {s:?} missing die type, expected format {EXPECTED:?}.")))?;
 		if parts.next().is_some() {
 			return Err(GeneralError(format!("Too many parts in {s:?} for Roll, expected {EXPECTED:?}")).into());
 		}

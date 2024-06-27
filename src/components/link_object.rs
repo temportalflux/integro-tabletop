@@ -12,14 +12,7 @@ pub struct ObjectLinkProps {
 }
 
 #[function_component]
-pub fn ObjectLink(
-	ObjectLinkProps {
-		title,
-		subtitle,
-		onclick,
-		disabled,
-	}: &ObjectLinkProps,
-) -> Html {
+pub fn ObjectLink(ObjectLinkProps { title, subtitle, onclick, disabled }: &ObjectLinkProps) -> Html {
 	let mut classes = classes!("card", "object-link");
 	if *disabled {
 		classes.push("disabled");

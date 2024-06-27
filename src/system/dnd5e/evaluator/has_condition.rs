@@ -1,8 +1,9 @@
-use crate::kdl_ext::NodeContext;
-use crate::system::Evaluator;
-use crate::system::{
-	dnd5e::data::{character::Character, Condition},
-	SourceId,
+use crate::{
+	kdl_ext::NodeContext,
+	system::{
+		dnd5e::data::{character::Character, Condition},
+		Evaluator, SourceId,
+	},
 };
 use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
 use std::str::FromStr;
@@ -174,10 +175,7 @@ mod test {
 		#[test]
 		fn has_none() -> anyhow::Result<()> {
 			let doc = "evaluator \"has_condition\" inverted=true";
-			let data = HasCondition {
-				inverted: true,
-				..Default::default()
-			};
+			let data = HasCondition { inverted: true, ..Default::default() };
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -232,7 +230,7 @@ mod test {
 	// TODO: Test has_condition evaluate
 	mod evaluate {
 		use super::*;
-		use crate::{system::dnd5e::data::character::Persistent, system::Evaluator};
+		use crate::system::{dnd5e::data::character::Persistent, Evaluator};
 
 		fn character(conditions: Vec<Condition>) -> Character {
 			let mut persistent = Persistent::default();

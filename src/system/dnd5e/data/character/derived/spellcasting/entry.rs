@@ -8,16 +8,9 @@ use std::path::PathBuf;
 #[derive(Clone, PartialEq, Debug)]
 pub enum CastingMethod {
 	AtWill,
-	Cast {
-		can_use_slots: bool,
-		can_use_ritual: bool,
-	},
+	Cast { can_use_slots: bool, can_use_ritual: bool },
 	LimitedUses(LimitedUses),
-	FromContainer {
-		item_id: Vec<uuid::Uuid>,
-		consume_spell: bool,
-		consume_item: bool,
-	},
+	FromContainer { item_id: Vec<uuid::Uuid>, consume_spell: bool, consume_item: bool },
 }
 
 #[derive(Clone, PartialEq, Debug)]

@@ -1,5 +1,5 @@
+use crate::database::{Entry, Module, UserSettingsRecord};
 use database::{Client, Error, MissingVersion, ObjectStoreExt, Record, Schema};
-use crate::database::Entry;
 
 /// The schema for the `tabletop-tools` client database.
 /// Use with `Client::open`.
@@ -18,6 +18,12 @@ impl TryFrom<u32> for SchemaVersion {
 	}
 }
 
+impl SchemaVersion {
+	pub fn store_ids() -> [&'static str; 3] {
+		[Entry::store_id(), Module::store_id(), UserSettingsRecord::store_id()]
+	}
+}
+
 impl Schema for SchemaVersion {
 	fn latest() -> u32 {
 		Self::Version1 as u32
@@ -28,7 +34,7 @@ impl Schema for SchemaVersion {
 			Self::Version1 => {
 				// Create modules table
 				{
-					use crate::database::module::{Module, System};
+					use crate::database::module::System;
 					let mut params = idb::ObjectStoreParams::new();
 					params.auto_increment(true);
 					params.key_path(Some(idb::KeyPath::new_single("name")));
@@ -42,7 +48,7 @@ impl Schema for SchemaVersion {
 				// Create entries table
 				{
 					use crate::database::entry::{
-						Entry, Module, ModuleSystem, System, SystemCategory, SystemCategoryVariants, SystemVariants,
+						Module, ModuleSystem, System, SystemCategory, SystemCategoryVariants, SystemVariants,
 					};
 					let mut params = idb::ObjectStoreParams::new();
 					params.auto_increment(true);
@@ -57,11 +63,10 @@ impl Schema for SchemaVersion {
 				}
 				// Create user settings
 				{
-					use crate::database::Settings;
 					let mut params = idb::ObjectStoreParams::new();
 					params.auto_increment(true);
 					params.key_path(Some(idb::KeyPath::new_single("id")));
-					let _store = database.create_object_store(Settings::store_id(), params)?;
+					let _store = database.create_object_store(UserSettingsRecord::store_id(), params)?;
 				}
 			}
 		}

@@ -30,15 +30,13 @@ pub fn Score(ScoreProps { ability }: &ScoreProps) -> Html {
 	let tooltip = (ability_score.iter_bonuses().count() > 0).then(|| {
 		format!(
 			"<div class=\"attributed-tooltip\">{}</div>",
-			ability_score
-				.iter_bonuses()
-				.fold(String::new(), |mut content, (bonus, path, included_in_total)| {
-					if *included_in_total {
-						let source_text = crate::data::as_feature_path_text(&path).unwrap_or_default();
-						content += format!("<span>+{} ({source_text})</span>", bonus.value).as_str();
-					}
-					content
-				})
+			ability_score.iter_bonuses().fold(String::new(), |mut content, (bonus, path, included_in_total)| {
+				if *included_in_total {
+					let source_text = crate::data::as_feature_path_text(&path).unwrap_or_default();
+					content += format!("<span>+{} ({source_text})</span>", bonus.value).as_str();
+				}
+				content
+			})
 		)
 	});
 	let score_modifier = html! {
@@ -235,9 +233,7 @@ pub fn ScoreBreakdown(AbilityProps { ability }: &AbilityProps) -> Html {
 
 #[function_component]
 fn Modal(AbilityProps { ability }: &AbilityProps) -> Html {
-	let skills = EnumSet::<Skill>::all()
-		.into_iter()
-		.filter(|skill| skill.ability() == *ability);
+	let skills = EnumSet::<Skill>::all().into_iter().filter(|skill| skill.ability() == *ability);
 	html! {<>
 		<h1>
 			<glyph::Ability value={*ability} />

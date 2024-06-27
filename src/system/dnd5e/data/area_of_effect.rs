@@ -1,5 +1,4 @@
-use crate::kdl_ext::NodeContext;
-use crate::utility::NotInList;
+use crate::{kdl_ext::NodeContext, utility::NotInList};
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -15,23 +14,16 @@ impl FromKdl<NodeContext> for AreaOfEffect {
 	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		match node.next_str_req()? {
-			"Cone" => Ok(Self::Cone {
-				length: node.get_i64_req("length")? as u32,
-			}),
-			"Cube" => Ok(Self::Cube {
-				size: node.get_i64_req("size")? as u32,
-			}),
+			"Cone" => Ok(Self::Cone { length: node.get_i64_req("length")? as u32 }),
+			"Cube" => Ok(Self::Cube { size: node.get_i64_req("size")? as u32 }),
 			"Cylinder" => Ok(Self::Cylinder {
 				radius: node.get_i64_req("radius")? as u32,
 				height: node.get_i64_req("height")? as u32,
 			}),
-			"Line" => Ok(Self::Line {
-				width: node.get_i64_req("width")? as u32,
-				length: node.get_i64_req("length")? as u32,
-			}),
-			"Sphere" => Ok(Self::Sphere {
-				radius: node.get_i64_req("radius")? as u32,
-			}),
+			"Line" => {
+				Ok(Self::Line { width: node.get_i64_req("width")? as u32, length: node.get_i64_req("length")? as u32 })
+			}
+			"Sphere" => Ok(Self::Sphere { radius: node.get_i64_req("radius")? as u32 }),
 			name => Err(NotInList(name.into(), vec!["Cone", "Cube", "Cylinder", "Line", "Sphere"]).into()),
 		}
 	}
@@ -46,10 +38,9 @@ impl AsKdl for AreaOfEffect {
 				.with_entry("Cylinder")
 				.with_entry(("radius", *radius as i64))
 				.with_entry(("height", *height as i64)),
-			Self::Line { width, length } => node
-				.with_entry("Line")
-				.with_entry(("width", *width as i64))
-				.with_entry(("length", *length as i64)),
+			Self::Line { width, length } => {
+				node.with_entry("Line").with_entry(("width", *width as i64)).with_entry(("length", *length as i64))
+			}
 			Self::Sphere { radius } => node.with_entry("Sphere").with_entry(("radius", *radius as i64)),
 		}
 	}

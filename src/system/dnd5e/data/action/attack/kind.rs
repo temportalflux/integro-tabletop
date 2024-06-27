@@ -50,9 +50,7 @@ impl FromKdl<NodeContext> for AttackKindValue {
 	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		match node.next_str_req()? {
-			"Melee" => Ok(Self::Melee {
-				reach: node.get_i64_opt("reach")?.unwrap_or(5) as u32,
-			}),
+			"Melee" => Ok(Self::Melee { reach: node.get_i64_opt("reach")?.unwrap_or(5) as u32 }),
 			"Ranged" => {
 				let short_dist = node.next_i64_req()? as u32;
 				let long_dist = node.next_i64_req()? as u32;
@@ -74,10 +72,9 @@ impl AsKdl for AttackKindValue {
 				}
 				node
 			}
-			Self::Ranged { short_dist, long_dist } => node
-				.with_entry("Ranged")
-				.with_entry(*short_dist as i64)
-				.with_entry(*long_dist as i64),
+			Self::Ranged { short_dist, long_dist } => {
+				node.with_entry("Ranged").with_entry(*short_dist as i64).with_entry(*long_dist as i64)
+			}
 		}
 	}
 }
@@ -113,10 +110,7 @@ mod test {
 		#[test]
 		fn ranged_base() -> anyhow::Result<()> {
 			let doc = "kind \"Ranged\" 20 60";
-			let data = AttackKindValue::Ranged {
-				short_dist: 20,
-				long_dist: 60,
-			};
+			let data = AttackKindValue::Ranged { short_dist: 20, long_dist: 60 };
 			assert_eq_fromkdl!(AttackKindValue, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())

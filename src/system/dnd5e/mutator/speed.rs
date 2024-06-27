@@ -1,9 +1,11 @@
-use crate::system::dnd5e::data::character::StatOperation;
 use crate::{
 	kdl_ext::NodeContext,
 	system::{
 		dnd5e::{
-			data::{character::Character, description},
+			data::{
+				character::{Character, StatOperation},
+				description,
+			},
 			mutator::StatMutator,
 		},
 		mutator::ReferencePath,
@@ -22,29 +24,20 @@ impl Mutator for Speed {
 	type Target = Character;
 
 	fn description(&self, _state: Option<&Character>) -> description::Section {
-		let content = format!(
-			"Your {} speed {}.",
-			self.0.stat_name,
-			match &self.0.operation {
-				StatOperation::MinimumValue(value) => format!("is at least {value} feet"),
-				StatOperation::MinimumStat(value) => format!("is at least equivalent to your {value} speed"),
-				StatOperation::Base(value) => format!("is at least {value} feet"),
-				StatOperation::AddSubtract(value) if *value >= 0 => format!("increases by {value} feet"),
-				StatOperation::AddSubtract(value) => format!("decreases by {value} feet"),
-				StatOperation::MultiplyDivide(value) if *value >= 0 => format!("is multiplied by {value}"),
-				StatOperation::MultiplyDivide(value) => format!("is dividied by {value}"),
-			}
-		);
-		description::Section {
-			content: content.into(),
-			..Default::default()
-		}
+		let content = format!("Your {} speed {}.", self.0.stat_name, match &self.0.operation {
+			StatOperation::MinimumValue(value) => format!("is at least {value} feet"),
+			StatOperation::MinimumStat(value) => format!("is at least equivalent to your {value} speed"),
+			StatOperation::Base(value) => format!("is at least {value} feet"),
+			StatOperation::AddSubtract(value) if *value >= 0 => format!("increases by {value} feet"),
+			StatOperation::AddSubtract(value) => format!("decreases by {value} feet"),
+			StatOperation::MultiplyDivide(value) if *value >= 0 => format!("is multiplied by {value}"),
+			StatOperation::MultiplyDivide(value) => format!("is dividied by {value}"),
+		});
+		description::Section { content: content.into(), ..Default::default() }
 	}
 
 	fn apply(&self, stats: &mut Character, parent: &ReferencePath) {
-		stats
-			.speeds_mut()
-			.insert(self.0.stat_name.clone(), self.0.operation.clone(), parent);
+		stats.speeds_mut().insert(self.0.stat_name.clone(), self.0.operation.clone(), parent);
 	}
 }
 
@@ -74,10 +67,7 @@ mod test {
 		#[test]
 		fn minimum() -> anyhow::Result<()> {
 			let doc = "mutator \"speed\" \"Walking\" (Minimum)30";
-			let data = Speed(StatMutator {
-				stat_name: "Walking".into(),
-				operation: StatOperation::MinimumValue(30),
-			});
+			let data = Speed(StatMutator { stat_name: "Walking".into(), operation: StatOperation::MinimumValue(30) });
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -86,10 +76,7 @@ mod test {
 		#[test]
 		fn additive() -> anyhow::Result<()> {
 			let doc = "mutator \"speed\" \"Walking\" (Add)30";
-			let data = Speed(StatMutator {
-				stat_name: "Walking".into(),
-				operation: StatOperation::AddSubtract(30),
-			});
+			let data = Speed(StatMutator { stat_name: "Walking".into(), operation: StatOperation::AddSubtract(30) });
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -109,12 +96,7 @@ mod test {
 				bundles: mutators
 					.into_iter()
 					.map(|(name, mutator)| {
-						Bundle {
-							name: name.into(),
-							mutators: vec![mutator.into()],
-							..Default::default()
-						}
-						.into()
+						Bundle { name: name.into(), mutators: vec![mutator.into()], ..Default::default() }.into()
 					})
 					.collect(),
 				..Default::default()
@@ -125,10 +107,7 @@ mod test {
 		fn minimum_single() {
 			let character = character(vec![(
 				"TestFeature",
-				Speed(StatMutator {
-					stat_name: "Walking".into(),
-					operation: StatOperation::MinimumValue(60),
-				}),
+				Speed(StatMutator { stat_name: "Walking".into(), operation: StatOperation::MinimumValue(60) }),
 			)]);
 			let sense = character.speeds().get("Walking").cloned().collect::<Vec<_>>();
 			let expected: Vec<(_, PathBuf)> = vec![(StatOperation::MinimumValue(60), "TestFeature".into())];
@@ -138,26 +117,12 @@ mod test {
 		#[test]
 		fn minimum_multiple() {
 			let character = character(vec![
-				(
-					"B",
-					Speed(StatMutator {
-						stat_name: "Walking".into(),
-						operation: StatOperation::MinimumValue(60),
-					}),
-				),
-				(
-					"A",
-					Speed(StatMutator {
-						stat_name: "Walking".into(),
-						operation: StatOperation::MinimumValue(40),
-					}),
-				),
+				("B", Speed(StatMutator { stat_name: "Walking".into(), operation: StatOperation::MinimumValue(60) })),
+				("A", Speed(StatMutator { stat_name: "Walking".into(), operation: StatOperation::MinimumValue(40) })),
 			]);
 			let sense = character.speeds().get("Walking").cloned().collect::<Vec<_>>();
-			let expected: Vec<(_, PathBuf)> = vec![
-				(StatOperation::MinimumValue(40), "A".into()),
-				(StatOperation::MinimumValue(60), "B".into()),
-			];
+			let expected: Vec<(_, PathBuf)> =
+				vec![(StatOperation::MinimumValue(40), "A".into()), (StatOperation::MinimumValue(60), "B".into())];
 			assert_eq!(sense, expected);
 		}
 
@@ -165,10 +130,7 @@ mod test {
 		fn single_additive() {
 			let character = character(vec![(
 				"TestFeature",
-				Speed(StatMutator {
-					stat_name: "Walking".into(),
-					operation: StatOperation::AddSubtract(20),
-				}),
+				Speed(StatMutator { stat_name: "Walking".into(), operation: StatOperation::AddSubtract(20) }),
 			)]);
 			let sense = character.speeds().get("Walking").cloned().collect::<Vec<_>>();
 			let expected: Vec<(_, PathBuf)> = vec![(StatOperation::AddSubtract(20), "TestFeature".into())];
@@ -178,53 +140,21 @@ mod test {
 		#[test]
 		fn minimum_gt_additive() {
 			let character = character(vec![
-				(
-					"A",
-					Speed(StatMutator {
-						stat_name: "Walking".into(),
-						operation: StatOperation::MinimumValue(60),
-					}),
-				),
-				(
-					"B",
-					Speed(StatMutator {
-						stat_name: "Walking".into(),
-						operation: StatOperation::AddSubtract(40),
-					}),
-				),
+				("A", Speed(StatMutator { stat_name: "Walking".into(), operation: StatOperation::MinimumValue(60) })),
+				("B", Speed(StatMutator { stat_name: "Walking".into(), operation: StatOperation::AddSubtract(40) })),
 			]);
 			let sense = character.speeds().get("Walking").cloned().collect::<Vec<_>>();
-			let expected: Vec<(_, PathBuf)> = vec![
-				(StatOperation::AddSubtract(40), "B".into()),
-				(StatOperation::MinimumValue(60), "A".into()),
-			];
+			let expected: Vec<(_, PathBuf)> =
+				vec![(StatOperation::AddSubtract(40), "B".into()), (StatOperation::MinimumValue(60), "A".into())];
 			assert_eq!(sense, expected);
 		}
 
 		#[test]
 		fn minimum_lt_additive() {
 			let character = character(vec![
-				(
-					"A",
-					Speed(StatMutator {
-						stat_name: "Walking".into(),
-						operation: StatOperation::MinimumValue(60),
-					}),
-				),
-				(
-					"B",
-					Speed(StatMutator {
-						stat_name: "Walking".into(),
-						operation: StatOperation::AddSubtract(40),
-					}),
-				),
-				(
-					"C",
-					Speed(StatMutator {
-						stat_name: "Walking".into(),
-						operation: StatOperation::AddSubtract(30),
-					}),
-				),
+				("A", Speed(StatMutator { stat_name: "Walking".into(), operation: StatOperation::MinimumValue(60) })),
+				("B", Speed(StatMutator { stat_name: "Walking".into(), operation: StatOperation::AddSubtract(40) })),
+				("C", Speed(StatMutator { stat_name: "Walking".into(), operation: StatOperation::AddSubtract(30) })),
 			]);
 			let sense = character.speeds().get("Walking").cloned().collect::<Vec<_>>();
 			let expected: Vec<(_, PathBuf)> = vec![

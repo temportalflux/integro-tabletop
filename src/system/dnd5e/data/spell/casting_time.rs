@@ -93,10 +93,7 @@ mod test {
 			#[test]
 			fn duration() -> anyhow::Result<()> {
 				let doc = "casting-time \"Action\"";
-				let data = CastingTime {
-					duration: CastingDuration::Action,
-					ritual: false,
-				};
+				let data = CastingTime { duration: CastingDuration::Action, ritual: false };
 				assert_eq_fromkdl!(CastingTime, doc, data);
 				assert_eq_askdl!(&data, doc);
 				Ok(())
@@ -105,10 +102,7 @@ mod test {
 			#[test]
 			fn ritual() -> anyhow::Result<()> {
 				let doc = "casting-time \"Action\" ritual=true";
-				let data = CastingTime {
-					duration: CastingDuration::Action,
-					ritual: true,
-				};
+				let data = CastingTime { duration: CastingDuration::Action, ritual: true };
 				assert_eq_fromkdl!(CastingTime, doc, data);
 				assert_eq_askdl!(&data, doc);
 				Ok(())

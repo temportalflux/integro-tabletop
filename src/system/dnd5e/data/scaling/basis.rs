@@ -1,5 +1,4 @@
-use crate::kdl_ext::NodeContext;
-use crate::{system::dnd5e::data::character::Character, utility::NotInList};
+use crate::{kdl_ext::NodeContext, system::dnd5e::data::character::Character, utility::NotInList};
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::collections::BTreeMap;
 
@@ -8,10 +7,7 @@ pub use level::*;
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum Basis<T> {
-	Level {
-		class_name: Option<String>,
-		level_map: BTreeMap<usize, Option<T>>,
-	},
+	Level { class_name: Option<String>, level_map: BTreeMap<usize, Option<T>> },
 }
 
 impl<T> Basis<T>

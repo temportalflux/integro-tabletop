@@ -1,7 +1,6 @@
 use super::{evaluator, generator, mutator, Evaluator, Generator, Mutator};
 use crate::kdl_ext::NodeContext;
-use kdlize::FromKdl;
-use kdlize::NodeId;
+use kdlize::{FromKdl, NodeId};
 use std::collections::HashMap;
 
 #[derive(thiserror::Error, Debug)]
@@ -56,21 +55,15 @@ impl Registry {
 	}
 
 	pub fn get_mutator_factory(&self, id: &str) -> anyhow::Result<&mutator::Factory> {
-		self.mutators
-			.get(id)
-			.ok_or(MissingRegistration("mutator", id.to_owned()).into())
+		self.mutators.get(id).ok_or(MissingRegistration("mutator", id.to_owned()).into())
 	}
 
 	pub fn get_evaluator_factory(&self, id: &str) -> anyhow::Result<&evaluator::Factory> {
-		self.evaluators
-			.get(id)
-			.ok_or(MissingRegistration("evaluator", id.to_owned()).into())
+		self.evaluators.get(id).ok_or(MissingRegistration("evaluator", id.to_owned()).into())
 	}
 
 	pub fn get_generator_factory(&self, id: &str) -> anyhow::Result<&generator::Factory> {
-		self.generators
-			.get(id)
-			.ok_or(MissingRegistration("generator", id.to_owned()).into())
+		self.generators.get(id).ok_or(MissingRegistration("generator", id.to_owned()).into())
 	}
 
 	pub fn get_generator_order(&self) -> &[&'static str] {

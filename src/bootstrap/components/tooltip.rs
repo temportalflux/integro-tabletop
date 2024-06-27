@@ -41,17 +41,7 @@ pub struct Props {
 }
 
 #[function_component]
-pub fn Component(
-	Props {
-		tag,
-		classes,
-		style,
-		placement,
-		content,
-		use_html,
-		children,
-	}: &Props,
-) -> Html {
+pub fn Component(Props { tag, classes, style, placement, content, use_html, children }: &Props) -> Html {
 	let node = use_node_ref();
 	use_effect_with((node.clone(), content.clone()), move |(node, _)| {
 		if let Some(node) = node.get() {

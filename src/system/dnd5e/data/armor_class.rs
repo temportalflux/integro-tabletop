@@ -14,10 +14,7 @@ pub struct ArmorClass {
 }
 impl Default for ArmorClass {
 	fn default() -> Self {
-		Self {
-			formulas: vec![(ArmorClassFormula::default(), PathBuf::new())],
-			bonuses: Vec::new(),
-		}
+		Self { formulas: vec![(ArmorClassFormula::default(), PathBuf::new())], bonuses: Vec::new() }
 	}
 }
 impl ArmorClass {
@@ -30,12 +27,7 @@ impl ArmorClass {
 	}
 
 	pub fn evaluate(&self, state: &Character) -> i32 {
-		let best_formula_value = self
-			.formulas
-			.iter()
-			.map(|(formula, _)| formula.evaluate(state))
-			.max()
-			.unwrap_or(0);
+		let best_formula_value = self.formulas.iter().map(|(formula, _)| formula.evaluate(state)).max().unwrap_or(0);
 		best_formula_value + self.bonuses_without_context()
 	}
 
@@ -66,11 +58,7 @@ pub struct BoundedAbility {
 }
 impl From<Ability> for BoundedAbility {
 	fn from(ability: Ability) -> Self {
-		Self {
-			ability,
-			min: None,
-			max: None,
-		}
+		Self { ability, min: None, max: None }
 	}
 }
 impl BoundedAbility {

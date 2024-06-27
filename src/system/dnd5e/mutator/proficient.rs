@@ -63,24 +63,15 @@ impl Mutator for AddProficiency {
 				options.iter().map(Ability::long_name).collect::<Vec<_>>().join(", ")
 			),
 			Self::SavingThrow(ability) => format!("You are proficient with {} saving throws.", ability.long_name()),
-			Self::Skill {
-				skill: selector::Value::Specific(skill),
-				level,
-				minimum_level: _,
-			} => format!(
-				"You are {} with {} checks.",
-				level.as_display_name().to_lowercase(),
-				skill.display_name()
-			),
+			Self::Skill { skill: selector::Value::Specific(skill), level, minimum_level: _ } => {
+				format!("You are {} with {} checks.", level.as_display_name().to_lowercase(), skill.display_name())
+			}
 			Self::Skill {
 				skill: selector::Value::Options(selector::ValueOptions { options, .. }),
 				level,
 				minimum_level: _,
 			} if options.is_empty() => {
-				format!(
-					"You are {} with one skill of your choice.",
-					level.as_display_name().to_lowercase()
-				)
+				format!("You are {} with one skill of your choice.", level.as_display_name().to_lowercase())
 			}
 			Self::Skill {
 				skill: selector::Value::Options(selector::ValueOptions { options, .. }),
@@ -97,17 +88,18 @@ impl Mutator for AddProficiency {
 			Self::Language(selector::Value::Options(selector::ValueOptions { options, .. })) if options.is_empty() => {
 				format!("You can speak, read, and write one language of your choice.")
 			}
-			Self::Language(selector::Value::Options(selector::ValueOptions { options, .. })) => format!(
-				"You can speak, read, and write one language of: {}.",
-				options.iter().cloned().collect::<Vec<_>>().join(", ")
-			),
+			Self::Language(selector::Value::Options(selector::ValueOptions { options, .. })) => {
+				format!(
+					"You can speak, read, and write one language of: {}.",
+					options.iter().cloned().collect::<Vec<_>>().join(", ")
+				)
+			}
 			Self::Armor(kind, context) => {
 				let ctx = context.as_ref().map(|s| format!(" ({s})")).unwrap_or_default();
 				match kind {
-					ArmorExtended::Kind(kind) => format!(
-						"You are proficient with {} armor{ctx}.",
-						kind.to_string().to_lowercase()
-					),
+					ArmorExtended::Kind(kind) => {
+						format!("You are proficient with {} armor{ctx}.", kind.to_string().to_lowercase())
+					}
 					ArmorExtended::Shield => format!("You are proficient with shields{ctx}."),
 				}
 			}
@@ -117,25 +109,15 @@ impl Mutator for AddProficiency {
 			Self::Weapon(WeaponProficiency::Classification(kind)) => {
 				format!("You are proficient with {kind} weapon-types.")
 			}
-			Self::Tool {
-				tool: selector::Value::Specific(tool),
-				level,
-			} => {
+			Self::Tool { tool: selector::Value::Specific(tool), level } => {
 				format!("You are {} with {tool}.", level.as_display_name().to_lowercase())
 			}
-			Self::Tool {
-				tool: selector::Value::Options(selector::ValueOptions { options, .. }),
-				level,
-			} if options.is_empty() => {
-				format!(
-					"You are {} with one tool of your choice.",
-					level.as_display_name().to_lowercase()
-				)
+			Self::Tool { tool: selector::Value::Options(selector::ValueOptions { options, .. }), level }
+				if options.is_empty() =>
+			{
+				format!("You are {} with one tool of your choice.", level.as_display_name().to_lowercase())
 			}
-			Self::Tool {
-				tool: selector::Value::Options(selector::ValueOptions { options, .. }),
-				level,
-			} => format!(
+			Self::Tool { tool: selector::Value::Options(selector::ValueOptions { options, .. }), level } => format!(
 				"You are {} with one tool of: {}.",
 				level.as_display_name().to_lowercase(),
 				options.iter().cloned().collect::<Vec<_>>().join(", ")
@@ -147,11 +129,7 @@ impl Mutator for AddProficiency {
 			Self::Tool { tool, .. } => selector::DataList::default().with_value("Tool", tool, state),
 			_ => Default::default(),
 		};
-		description::Section {
-			content: content.into(),
-			children: vec![selectors.into()],
-			..Default::default()
-		}
+		description::Section { content: content.into(), children: vec![selectors.into()], ..Default::default() }
 	}
 
 	fn set_data_path(&self, parent: &ReferencePath) {
@@ -168,25 +146,17 @@ impl Mutator for AddProficiency {
 		match &self {
 			Self::Ability(ability, level) => {
 				if let Some(ability) = stats.resolve_selector(ability) {
-					stats.skills_mut()[ability]
-						.proficiencies_mut()
-						.push(*level, parent.display.clone());
+					stats.skills_mut()[ability].proficiencies_mut().push(*level, parent.display.clone());
 				}
 			}
 			Self::SavingThrow(ability) => {
 				stats.saving_throws_mut().add_proficiency(Some(*ability), parent);
 			}
-			Self::Skill {
-				skill,
-				level,
-				minimum_level: _,
-			} => {
+			Self::Skill { skill, level, minimum_level: _ } => {
 				let Some(skill) = stats.resolve_selector(skill) else {
 					return;
 				};
-				stats.skills_mut()[skill]
-					.proficiencies_mut()
-					.push(*level, parent.display.clone());
+				stats.skills_mut()[skill].proficiencies_mut().push(*level, parent.display.clone());
 			}
 			Self::Language(value) => {
 				if let Some(value) = stats.resolve_selector(value) {
@@ -194,10 +164,7 @@ impl Mutator for AddProficiency {
 				}
 			}
 			Self::Armor(value, context) => {
-				stats
-					.other_proficiencies_mut()
-					.armor
-					.insert((value.clone(), context.clone()), parent);
+				stats.other_proficiencies_mut().armor.insert((value.clone(), context.clone()), parent);
 			}
 			Self::Weapon(value) => {
 				stats.other_proficiencies_mut().weapons.insert(value.clone(), parent);
@@ -245,11 +212,7 @@ impl FromKdl<NodeContext> for AddProficiency {
 					active_level < level
 				});
 
-				Ok(Self::Skill {
-					skill,
-					level,
-					minimum_level,
-				})
+				Ok(Self::Skill { skill, level, minimum_level })
 			}
 			"Language" => Ok(Self::Language(selector::Value::from_kdl(node)?)),
 			"Armor" => {
@@ -274,11 +237,9 @@ impl FromKdl<NodeContext> for AddProficiency {
 				};
 				Ok(Self::Tool { tool, level })
 			}
-			name => Err(NotInList(
-				name.into(),
-				vec!["SavingThrow", "Skill", "Language", "Armor", "Weapon", "Tool"],
-			)
-			.into()),
+			name => {
+				Err(NotInList(name.into(), vec!["SavingThrow", "Skill", "Language", "Armor", "Weapon", "Tool"]).into())
+			}
 		}
 	}
 }
@@ -295,11 +256,7 @@ impl AsKdl for AddProficiency {
 				node
 			}
 			Self::SavingThrow(ability) => node.with_entry_typed(ability.long_name(), "SavingThrow"),
-			Self::Skill {
-				skill,
-				level,
-				minimum_level,
-			} => {
+			Self::Skill { skill, level, minimum_level } => {
 				node += ("Skill", skill.as_kdl());
 				if *level != proficiency::Level::Full {
 					node.entry(("level", level.to_string()));
@@ -347,10 +304,8 @@ mod test {
 		fn ability_specific_nolevel() -> anyhow::Result<()> {
 			let doc = "mutator \"add_proficiency\" \
 				(Ability)\"Specific\" \"Intelligence\"";
-			let data = AddProficiency::Ability(
-				selector::Value::Specific(Ability::Intelligence),
-				proficiency::Level::Full,
-			);
+			let data =
+				AddProficiency::Ability(selector::Value::Specific(Ability::Intelligence), proficiency::Level::Full);
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -655,12 +610,10 @@ mod test {
 
 		fn character(mutator: AddProficiency, selections: Option<PathMap<String>>) -> Character {
 			Character::from(Persistent {
-				bundles: vec![Bundle {
-					name: "AddProficiency".into(),
-					mutators: vec![mutator.into()],
-					..Default::default()
-				}
-				.into()],
+				bundles: vec![
+					Bundle { name: "AddProficiency".into(), mutators: vec![mutator.into()], ..Default::default() }
+						.into(),
+				],
 				selected_values: selections.unwrap_or_default(),
 				..Default::default()
 			})
@@ -669,27 +622,19 @@ mod test {
 		#[test]
 		fn ability() {
 			let character = character(
-				AddProficiency::Ability(
-					selector::Value::Specific(Ability::Intelligence),
-					proficiency::Level::Full,
-				),
+				AddProficiency::Ability(selector::Value::Specific(Ability::Intelligence), proficiency::Level::Full),
 				None,
 			);
 			assert_eq!(
 				*character.skills()[Ability::Intelligence].proficiencies(),
-				[(proficiency::Level::Full, vec![("AddProficiency".into())])]
-					.into_iter()
-					.collect()
+				[(proficiency::Level::Full, vec![("AddProficiency".into())])].into_iter().collect()
 			);
 		}
 
 		#[test]
 		fn saving_throw() {
 			let character = character(AddProficiency::SavingThrow(Ability::Dexterity), None);
-			assert_eq!(
-				character.saving_throws()[Ability::Dexterity].proficiencies().value(),
-				proficiency::Level::Full,
-			);
+			assert_eq!(character.saving_throws()[Ability::Dexterity].proficiencies().value(), proficiency::Level::Full,);
 		}
 
 		#[test]
@@ -704,18 +649,13 @@ mod test {
 			);
 			assert_eq!(
 				*character.skills()[Skill::Arcana].proficiencies(),
-				[(proficiency::Level::Double, vec![("AddProficiency".into())])]
-					.into_iter()
-					.collect()
+				[(proficiency::Level::Double, vec![("AddProficiency".into())])].into_iter().collect()
 			);
 		}
 
 		#[test]
 		fn language() {
-			let character = character(
-				AddProficiency::Language(selector::Value::Specific("Common".into())),
-				None,
-			);
+			let character = character(AddProficiency::Language(selector::Value::Specific("Common".into())), None);
 			assert_eq!(
 				*character.other_proficiencies().languages,
 				[("Common".into(), ["AddProficiency".into()].into())].into()
@@ -731,10 +671,7 @@ mod test {
 				})),
 				Some([("AddProficiency/langTest", "Gibberish".into())].into()),
 			);
-			assert_eq!(
-				character.missing_selections_in(PathBuf::new()),
-				Vec::<&std::path::Path>::new()
-			);
+			assert_eq!(character.missing_selections_in(PathBuf::new()), Vec::<&std::path::Path>::new());
 			assert_eq!(
 				*character.other_proficiencies().languages,
 				[("Gibberish".into(), ["AddProficiency".into()].into())].into()
@@ -743,17 +680,10 @@ mod test {
 
 		#[test]
 		fn armor_kind() {
-			let character = character(
-				AddProficiency::Armor(ArmorExtended::Kind(armor::Kind::Heavy), None),
-				None,
-			);
+			let character = character(AddProficiency::Armor(ArmorExtended::Kind(armor::Kind::Heavy), None), None);
 			assert_eq!(
 				*character.other_proficiencies().armor,
-				[(
-					(ArmorExtended::Kind(armor::Kind::Heavy), None),
-					["AddProficiency".into()].into()
-				)]
-				.into()
+				[((ArmorExtended::Kind(armor::Kind::Heavy), None), ["AddProficiency".into()].into())].into()
 			);
 		}
 
@@ -784,33 +714,20 @@ mod test {
 
 		#[test]
 		fn weapon_kind() {
-			let character = character(
-				AddProficiency::Weapon(WeaponProficiency::Kind(weapon::Kind::Martial)),
-				None,
-			);
+			let character = character(AddProficiency::Weapon(WeaponProficiency::Kind(weapon::Kind::Martial)), None);
 			assert_eq!(
 				*character.other_proficiencies().weapons,
-				[(
-					WeaponProficiency::Kind(weapon::Kind::Martial),
-					["AddProficiency".into()].into()
-				)]
-				.into()
+				[(WeaponProficiency::Kind(weapon::Kind::Martial), ["AddProficiency".into()].into())].into()
 			);
 		}
 
 		#[test]
 		fn weapon_class() {
-			let character = character(
-				AddProficiency::Weapon(WeaponProficiency::Classification("Quarterstaff".into())),
-				None,
-			);
+			let character =
+				character(AddProficiency::Weapon(WeaponProficiency::Classification("Quarterstaff".into())), None);
 			assert_eq!(
 				*character.other_proficiencies().weapons,
-				[(
-					WeaponProficiency::Classification("Quarterstaff".into()),
-					["AddProficiency".into()].into()
-				)]
-				.into()
+				[(WeaponProficiency::Classification("Quarterstaff".into()), ["AddProficiency".into()].into())].into()
 			);
 		}
 

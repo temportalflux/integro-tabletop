@@ -28,8 +28,12 @@ impl ToString for Size {
 impl Size {
 	pub fn description(&self) -> &'static str {
 		match self {
-			Size::Small => "Creatures less than 45 inches tall are Small sized. You control a 5 by 5 ft. space in combat. You can squeeze through Tiny spaces.",
-			Size::Medium => "Creatures at least 45 inches tall are Medium sized. You control a 5 by 5 ft. space in combat. You can squeeze through Small spaces.",
+			Size::Small => {
+				"Creatures less than 45 inches tall are Small sized. You control a 5 by 5 ft. space in combat. You can squeeze through Tiny spaces."
+			}
+			Size::Medium => {
+				"Creatures at least 45 inches tall are Medium sized. You control a 5 by 5 ft. space in combat. You can squeeze through Small spaces."
+			}
 			_ => "",
 		}
 	}

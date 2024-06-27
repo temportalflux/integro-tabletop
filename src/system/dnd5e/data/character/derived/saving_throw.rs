@@ -42,9 +42,7 @@ impl SavingThrow {
 
 impl SavingThrows {
 	fn iter_mut(&mut self, ability: Option<Ability>) -> impl Iterator<Item = (Ability, &mut SavingThrow)> {
-		self.0
-			.iter_mut()
-			.filter(move |(key, _)| ability.is_none() || Some(*key) == ability)
+		self.0.iter_mut().filter(move |(key, _)| ability.is_none() || Some(*key) == ability)
 	}
 
 	pub fn iter(&self) -> impl Iterator<Item = (Ability, &SavingThrow)> {
@@ -53,9 +51,7 @@ impl SavingThrows {
 
 	pub fn add_proficiency(&mut self, ability: Option<Ability>, source: &ReferencePath) {
 		for (_ability, saving_throw) in self.iter_mut(ability) {
-			saving_throw
-				.proficiencies_mut()
-				.push(proficiency::Level::Full, source.display.clone());
+			saving_throw.proficiencies_mut().push(proficiency::Level::Full, source.display.clone());
 		}
 	}
 
@@ -63,17 +59,13 @@ impl SavingThrows {
 		&mut self, ability: Option<Ability>, modifier: Modifier, target: Option<String>, source: &ReferencePath,
 	) {
 		for (_ability, saving_throw) in self.iter_mut(ability) {
-			saving_throw
-				.modifiers_mut()
-				.push(modifier, target.clone(), source.display.clone());
+			saving_throw.modifiers_mut().push(modifier, target.clone(), source.display.clone());
 		}
 	}
 
 	pub fn add_bonus(&mut self, ability: Option<Ability>, bonus: i64, target: Option<String>, source: &ReferencePath) {
 		for (_ability, saving_throw) in self.iter_mut(ability) {
-			saving_throw
-				.bonuses_mut()
-				.push(bonus, target.clone(), source.display.clone());
+			saving_throw.bonuses_mut().push(bonus, target.clone(), source.display.clone());
 		}
 	}
 }

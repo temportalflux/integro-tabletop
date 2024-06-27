@@ -1,5 +1,5 @@
 use crate::{
-	page::characters::sheet::CharacterHandle, page::characters::sheet::MutatorImpact,
+	page::characters::sheet::{CharacterHandle, MutatorImpact},
 	system::dnd5e::components::glyph::Glyph,
 };
 use yew::prelude::*;

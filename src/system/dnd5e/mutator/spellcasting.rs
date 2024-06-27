@@ -81,19 +81,10 @@ impl Mutator for Spellcasting {
 		match &self.0 {
 			Operation::Caster(caster) => description::Section {
 				title: Some("Spellcasting".into()),
-				content: format!(
-					"Cast spells as a {} using {}.",
-					caster.name(),
-					caster.ability.long_name()
-				)
-				.into(),
+				content: format!("Cast spells as a {} using {}.", caster.name(), caster.ability.long_name()).into(),
 				..Default::default()
 			},
-			Operation::AddPrepared {
-				ability,
-				selectable_spells,
-				..
-			} => {
+			Operation::AddPrepared { ability, selectable_spells, .. } => {
 				let mut selectors = selector::DataList::default();
 				if let Some(selectable) = selectable_spells {
 					selectors = selectors.with_object("Selected Spells", &selectable.selector, state);
@@ -107,11 +98,8 @@ impl Mutator for Spellcasting {
 			}
 			Operation::AddSource { class_name, spell_ids } => description::Section {
 				title: Some("Spellcasting: Expanded Spell List".into()),
-				content: format!(
-					"Adds {} spells you can select from for the {class_name} class.",
-					spell_ids.len()
-				)
-				.into(),
+				content: format!("Adds {} spells you can select from for the {class_name} class.", spell_ids.len())
+					.into(),
 				..Default::default()
 			},
 		}
@@ -119,11 +107,7 @@ impl Mutator for Spellcasting {
 
 	fn set_data_path(&self, parent: &ReferencePath) {
 		match &self.0 {
-			Operation::AddPrepared {
-				selectable_spells,
-				limited_uses,
-				..
-			} => {
+			Operation::AddPrepared { selectable_spells, limited_uses, .. } => {
 				if let Some(selectable_spells) = selectable_spells {
 					selectable_spells.selector.set_data_path(parent);
 				}
@@ -143,11 +127,7 @@ impl Mutator for Spellcasting {
 				// We need to add reset entries for all bonus spell slots at the character's current level.
 				let current_level = stats.level(Some(&caster.class_name));
 				for slots in &caster.bonus_slots {
-					let Slots::Bonus {
-						reset_on,
-						slots_capacity,
-					} = slots
-					else {
+					let Slots::Bonus { reset_on, slots_capacity } = slots else {
 						continue;
 					};
 					// Since we are compiling the character at a specific level, we only need to
@@ -176,22 +156,13 @@ impl Mutator for Spellcasting {
 			Operation::AddSource { class_name, spell_ids } => {
 				stats.spellcasting_mut().add_spell_access(class_name, spell_ids, parent);
 			}
-			Operation::AddPrepared {
-				ability,
-				classified_as,
-				specific_spells,
-				selectable_spells,
-				limited_uses,
-			} => {
+			Operation::AddPrepared { ability, classified_as, specific_spells, selectable_spells, limited_uses } => {
 				if let Some(uses) = limited_uses.as_ref() {
 					if let LimitedUses::Usage(resource) = uses {
 						resource.apply_to(stats, &parent.join("Prepared Spellcasting", None));
 					}
 				}
-				let mut all_spells = specific_spells
-					.iter()
-					.map(|(id, info)| (id.clone(), info))
-					.collect::<Vec<_>>();
+				let mut all_spells = specific_spells.iter().map(|(id, info)| (id.clone(), info)).collect::<Vec<_>>();
 				if let Some(selectable) = &selectable_spells {
 					if let Some(data_path) = selectable.selector.get_data_path() {
 						if let Some(selections) = stats.get_selections_at(&data_path) {
@@ -206,17 +177,11 @@ impl Mutator for Spellcasting {
 						source: parent.display.clone(),
 						classified_as: classified_as.clone(),
 						// TODO: At will casting is not explicit for users. Change kdl format to use an enum of Uses, Slot/Ritual, or AtWill
-						method: match (
-							prepared_info.can_cast_through_slot,
-							prepared_info.can_ritual_cast,
-							limited_uses,
-						) {
+						method: match (prepared_info.can_cast_through_slot, prepared_info.can_ritual_cast, limited_uses)
+						{
 							(_, _, Some(uses)) => CastingMethod::LimitedUses(uses.clone()),
 							(false, false, None) => CastingMethod::AtWill,
-							(slot, ritual, None) => CastingMethod::Cast {
-								can_use_slots: slot,
-								can_use_ritual: ritual,
-							},
+							(slot, ritual, None) => CastingMethod::Cast { can_use_slots: slot, can_use_ritual: ritual },
 						},
 						attack_bonus: AbilityOrStat::Ability(*ability),
 						save_dc: AbilityOrStat::Ability(*ability),
@@ -241,11 +206,8 @@ impl FromKdl<NodeContext> for Spellcasting {
 				let class_name = node.get_str_req("class")?.to_owned();
 				let restriction = {
 					let node = node.query_req("scope() > restriction")?;
-					let tags = node
-						.query_str_all("scope() > tag", 0)?
-						.into_iter()
-						.map(str::to_owned)
-						.collect::<Vec<_>>();
+					let tags =
+						node.query_str_all("scope() > tag", 0)?.into_iter().map(str::to_owned).collect::<Vec<_>>();
 					Restriction { tags }
 				};
 				let prepare_from_item = match node.query_opt("scope() > source")? {
@@ -309,10 +271,7 @@ impl FromKdl<NodeContext> for Spellcasting {
 				let spell_entry = SpellEntry {
 					source: std::path::PathBuf::from(&class_name),
 					classified_as: Some(class_name.clone()),
-					method: CastingMethod::Cast {
-						can_use_slots: true,
-						can_use_ritual: true,
-					},
+					method: CastingMethod::Cast { can_use_slots: true, can_use_ritual: true },
 					attack_bonus: AbilityOrStat::Ability(ability),
 					save_dc: AbilityOrStat::Ability(ability),
 					damage_ability: Some(ability),
@@ -326,10 +285,7 @@ impl FromKdl<NodeContext> for Spellcasting {
 					Some(node) => {
 						let available_spells = node.query_opt("scope() > available-spells")?.is_some();
 						let selected_spells = node.query_opt("scope() > selected-spells")?.is_some();
-						Some(RitualCapability {
-							available_spells,
-							selected_spells,
-						})
+						Some(RitualCapability { available_spells, selected_spells })
 					}
 				};
 
@@ -381,22 +337,12 @@ impl FromKdl<NodeContext> for Spellcasting {
 						if let Some(filter) = &filter {
 							selector.set_criteria(filter.as_criteria());
 						}
-						Some(SelectableSpells {
-							filter,
-							selector,
-							prepared: info,
-						})
+						Some(SelectableSpells { filter, selector, prepared: info })
 					}
 				};
 
 				let limited_uses = node.query_opt_t::<LimitedUses>("scope() > limited_uses")?;
-				Operation::AddPrepared {
-					ability,
-					classified_as,
-					specific_spells,
-					selectable_spells,
-					limited_uses,
-				}
+				Operation::AddPrepared { ability, classified_as, specific_spells, selectable_spells, limited_uses }
 			}
 			Some(name) => return Err(NotInList(name.into(), vec!["add_source", "add_prepared"]).into()),
 		};
@@ -494,13 +440,7 @@ impl AsKdl for Spellcasting {
 				node.children(("spell", spell_ids.iter()));
 				node
 			}
-			Operation::AddPrepared {
-				ability,
-				classified_as,
-				specific_spells,
-				selectable_spells,
-				limited_uses,
-			} => {
+			Operation::AddPrepared { ability, classified_as, specific_spells, selectable_spells, limited_uses } => {
 				node.entry(("ability", ability.long_name()));
 				node.entry("add_prepared");
 				if let Some(class_name) = classified_as {
@@ -544,12 +484,7 @@ impl FromKdl<NodeContext> for PreparedInfo {
 		let can_ritual_cast = node.get_bool_opt("use_ritual")?.unwrap_or_default();
 		let cast_at_rank = node.get_i64_opt("rank")?.map(|v| v as u8);
 		let range = node.query_opt_t::<spell::Range>("scope() > range")?;
-		Ok(PreparedInfo {
-			can_cast_through_slot,
-			can_ritual_cast,
-			range,
-			cast_at_rank,
-		})
+		Ok(PreparedInfo { can_cast_through_slot, can_ritual_cast, range, cast_at_rank })
 	}
 }
 // TODO AsKdl: tests for PreparedInfo

@@ -366,10 +366,7 @@ fn LevelHitPoints(LevelHitPointsProps { data_path, die }: &LevelHitPointsProps) 
 	let Some(hp_path) = data_path else {
 		return Html::default();
 	};
-	let hp_value = state
-		.get_first_selection_at::<u32>(hp_path)
-		.map(|res| res.ok())
-		.flatten();
+	let hp_value = state.get_first_selection_at::<u32>(hp_path).map(|res| res.ok()).flatten();
 	let mut classes = classes!("form-select", "hit-points", "py-0", "w-auto");
 	if hp_value.is_none() {
 		classes.push("missing-value");

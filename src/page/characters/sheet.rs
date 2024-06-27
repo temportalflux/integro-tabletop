@@ -54,10 +54,7 @@ fn use_update_character_modules(character: &CharacterHandle) {
 			let mut modules_to_sync = Vec::with_capacity(modules.len());
 
 			if let Some(character_module_id) = &character.persistent().id.module {
-				let found_module = modules
-					.iter()
-					.filter(|module| &module.id == character_module_id)
-					.count() > 0;
+				let found_module = modules.iter().filter(|module| &module.id == character_module_id).count() > 0;
 				if found_module {
 					modules_to_sync.push(character_module_id.clone());
 				}

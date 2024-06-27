@@ -1,8 +1,10 @@
-use crate::kdl_ext::NodeContext;
-use crate::system::mutator::ReferencePath;
 use crate::{
-	system::dnd5e::data::{character::Character, description, roll::Roll},
-	system::Mutator,
+	kdl_ext::NodeContext,
+	system::{
+		dnd5e::data::{character::Character, description, roll::Roll},
+		mutator::ReferencePath,
+		Mutator,
+	},
 };
 use kdlize::{AsKdl, FromKdl, NodeBuilder, OmitIfEmpty};
 
@@ -45,10 +47,7 @@ impl Mutator for AddSize {
 			let desc = comps.join(" + ");
 			content.push(format!("Your weight increases by {desc} lbs."));
 		}
-		description::Section {
-			content: content.join(" ").into(),
-			..Default::default()
-		}
+		description::Section { content: content.join(" ").into(), ..Default::default() }
 	}
 
 	fn apply(&self, stats: &mut Character, _parent: &ReferencePath) {
@@ -171,10 +170,7 @@ mod test {
 				|    height base=60
 				|}
 			";
-			let data = AddSize {
-				height: vec![FormulaComponent::Base(60)],
-				weight: vec![],
-			};
+			let data = AddSize { height: vec![FormulaComponent::Base(60)], weight: vec![] };
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -187,10 +183,7 @@ mod test {
 				|    height bonus=\"3d8\"
 				|}
 			";
-			let data = AddSize {
-				height: vec![FormulaComponent::Bonus(Roll::from((3, Die::D8)))],
-				weight: vec![],
-			};
+			let data = AddSize { height: vec![FormulaComponent::Bonus(Roll::from((3, Die::D8)))], weight: vec![] };
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -203,10 +196,7 @@ mod test {
 				|    weight base=60
 				|}
 			";
-			let data = AddSize {
-				height: vec![],
-				weight: vec![FormulaComponent::Base(60)],
-			};
+			let data = AddSize { height: vec![], weight: vec![FormulaComponent::Base(60)] };
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -219,10 +209,7 @@ mod test {
 				|    weight bonus=\"3d8\"
 				|}
 			";
-			let data = AddSize {
-				height: vec![],
-				weight: vec![FormulaComponent::Bonus(Roll::from((3, Die::D8)))],
-			};
+			let data = AddSize { height: vec![], weight: vec![FormulaComponent::Bonus(Roll::from((3, Die::D8)))] };
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -235,10 +222,8 @@ mod test {
 				|    weight multiplier=\"1d4\"
 				|}
 			";
-			let data = AddSize {
-				height: vec![],
-				weight: vec![FormulaComponent::WeightMultiplier(Roll::from((1, Die::D4)))],
-			};
+			let data =
+				AddSize { height: vec![], weight: vec![FormulaComponent::WeightMultiplier(Roll::from((1, Die::D4)))] };
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())

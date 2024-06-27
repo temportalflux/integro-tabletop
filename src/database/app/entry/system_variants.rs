@@ -9,10 +9,7 @@ pub struct SystemVariants {
 
 impl SystemVariants {
 	pub fn new(system: impl Into<String>, variants_only: bool) -> Self {
-		Self {
-			system: system.into(),
-			variants_only,
-		}
+		Self { system: system.into(), variants_only }
 	}
 }
 

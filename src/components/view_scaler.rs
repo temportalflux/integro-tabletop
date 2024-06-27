@@ -49,13 +49,7 @@ where
 }
 
 #[function_component]
-pub fn ViewScaler(
-	ViewScalerProps {
-		ranges,
-		precision,
-		children,
-	}: &ViewScalerProps,
-) -> Html {
+pub fn ViewScaler(ViewScalerProps { ranges, precision, children }: &ViewScalerProps) -> Html {
 	fn get_width() -> f64 {
 		let window = web_sys::window().unwrap();
 		window.inner_width().ok().map(|js| js.as_f64()).flatten().unwrap_or(0.0)

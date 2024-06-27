@@ -13,12 +13,7 @@ impl PartialEq for Dispatch {
 }
 impl Dispatch {
 	pub fn new_progress(&self, max: u32) -> ProgressHandle {
-		ProgressHandle {
-			id: Uuid::new_v4(),
-			handle: (*self.0).clone(),
-			value: 0,
-			max,
-		}
+		ProgressHandle { id: Uuid::new_v4(), handle: (*self.0).clone(), value: 0, max }
 	}
 
 	pub fn spawn<F, E>(&self, name: impl Into<String>, progress: Option<ProgressHandle>, pending: F) -> Signal
@@ -36,12 +31,7 @@ impl Dispatch {
 				Ok(()) as anyhow::Result<()>
 			}
 		});
-		self.0.dispatch(Action::Insert {
-			handle: (*self.0).clone(),
-			name: name.into(),
-			progress,
-			pending,
-		});
+		self.0.dispatch(Action::Insert { handle: (*self.0).clone(), name: name.into(), progress, pending });
 		signal
 	}
 }

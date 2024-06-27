@@ -10,13 +10,7 @@ pub struct AnnotatedNumberProps {
 }
 
 #[function_component]
-pub fn AnnotatedNumber(
-	AnnotatedNumberProps {
-		value,
-		show_sign,
-		suffix,
-	}: &AnnotatedNumberProps,
-) -> Html {
+pub fn AnnotatedNumber(AnnotatedNumberProps { value, show_sign, suffix }: &AnnotatedNumberProps) -> Html {
 	let mut num_span_classes = classes!();
 	let prefix = match show_sign {
 		true => {
@@ -56,12 +50,7 @@ pub struct AnnotatedNumberCardProps {
 
 #[function_component]
 pub fn AnnotatedNumberCard(
-	AnnotatedNumberCardProps {
-		header,
-		footer,
-		children,
-		on_click,
-	}: &AnnotatedNumberCardProps,
+	AnnotatedNumberCardProps { header, footer, children, on_click }: &AnnotatedNumberCardProps,
 ) -> Html {
 	html! {
 		<div class="card m-1 m-xxl-0" style="width: 90px; height: 80px" onclick={on_click.as_ref().map(|callback| callback.reform(|_| ()))}>

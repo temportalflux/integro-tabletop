@@ -20,10 +20,7 @@ pub struct AddItemButtonProps {
 pub enum AddItemOperation {
 	Add,
 	Buy,
-	Move {
-		item_id: Vec<Uuid>,
-		source_container: Option<Vec<Uuid>>,
-	},
+	Move { item_id: Vec<Uuid>, source_container: Option<Vec<Uuid>> },
 }
 
 #[function_component]
@@ -77,10 +74,9 @@ pub fn AddItemButton(props: &AddItemButtonProps) -> Html {
 	}
 
 	let is_valid_dst = |dst_id: &Option<Vec<Uuid>>| match &props.operation {
-		AddItemOperation::Move {
-			item_id,
-			source_container,
-		} => dst_id != source_container && dst_id.as_ref() != Some(item_id),
+		AddItemOperation::Move { item_id, source_container } => {
+			dst_id != source_container && dst_id.as_ref() != Some(item_id)
+		}
 		_ => true,
 	};
 	let make_container_button = |id: Option<Vec<Uuid>>, name: String| -> Html {
@@ -103,9 +99,7 @@ pub fn AddItemButton(props: &AddItemButtonProps) -> Html {
 	container_entries.push(make_container_button(None, "Equipment".into()));
 	// TODO: Display containers that are inside other containers (not just top level)
 	container_entries.extend(
-		item_containers
-			.into_iter()
-			.map(|(id, item)| make_container_button(Some(vec![id.clone()]), item.name.clone())),
+		item_containers.into_iter().map(|(id, item)| make_container_button(Some(vec![id.clone()]), item.name.clone())),
 	);
 
 	html! {

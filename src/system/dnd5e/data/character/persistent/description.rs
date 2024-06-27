@@ -1,10 +1,8 @@
-use crate::kdl_ext::NodeContext;
-use crate::{system::dnd5e::data::Size, utility::NotInList};
+use crate::{kdl_ext::NodeContext, system::dnd5e::data::Size, utility::NotInList};
 use enum_map::{Enum, EnumMap};
 use enumset::EnumSetType;
 use itertools::Itertools;
-use kdlize::OmitIfEmpty;
-use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
+use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder, OmitIfEmpty};
 use std::{collections::HashSet, str::FromStr};
 
 #[derive(Clone, PartialEq, Default, Debug)]
@@ -28,13 +26,10 @@ impl Description {
 	}
 
 	pub fn iter_pronouns(&self) -> impl Iterator<Item = &String> + '_ {
-		self.pronouns
-			.iter()
-			.sorted()
-			.chain(match self.custom_pronouns.is_empty() {
-				true => vec![],
-				false => vec![&self.custom_pronouns],
-			})
+		self.pronouns.iter().sorted().chain(match self.custom_pronouns.is_empty() {
+			true => vec![],
+			false => vec![&self.custom_pronouns],
+		})
 	}
 }
 
@@ -60,18 +55,9 @@ impl FromKdl<NodeContext> for Description {
 			}
 		}
 
-		let age = node
-			.query_i64_opt("scope() > age", 0)?
-			.map(|v| v as u32)
-			.unwrap_or_default();
-		let height = node
-			.query_i64_opt("scope() > height", 0)?
-			.map(|v| v as u32)
-			.unwrap_or_default();
-		let weight = node
-			.query_i64_opt("scope() > weight", 0)?
-			.map(|v| v as u32)
-			.unwrap_or_default();
+		let age = node.query_i64_opt("scope() > age", 0)?.map(|v| v as u32).unwrap_or_default();
+		let height = node.query_i64_opt("scope() > height", 0)?.map(|v| v as u32).unwrap_or_default();
+		let weight = node.query_i64_opt("scope() > weight", 0)?.map(|v| v as u32).unwrap_or_default();
 
 		let mut personality = EnumMap::<PersonalityKind, Vec<String>>::default();
 		if let Some(node) = node.query_opt("scope() > personality")? {
@@ -81,21 +67,9 @@ impl FromKdl<NodeContext> for Description {
 				}
 			}
 		}
-		let appearance = node
-			.query_str_opt("scope() > appearance", 0)?
-			.map(str::to_owned)
-			.unwrap_or_default();
+		let appearance = node.query_str_opt("scope() > appearance", 0)?.map(str::to_owned).unwrap_or_default();
 
-		Ok(Self {
-			name,
-			pronouns,
-			custom_pronouns,
-			height,
-			weight,
-			age,
-			personality,
-			appearance,
-		})
+		Ok(Self { name, pronouns, custom_pronouns, height, weight, age, personality, appearance })
 	}
 }
 
@@ -185,16 +159,12 @@ pub enum PersonalityKind {
 
 impl std::fmt::Display for PersonalityKind {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(
-			f,
-			"{}",
-			match self {
-				Self::Trait => "Trait",
-				Self::Ideal => "Ideal",
-				Self::Bond => "Bond",
-				Self::Flaw => "Flaw",
-			}
-		)
+		write!(f, "{}", match self {
+			Self::Trait => "Trait",
+			Self::Ideal => "Ideal",
+			Self::Bond => "Bond",
+			Self::Flaw => "Flaw",
+		})
 	}
 }
 
@@ -249,10 +219,7 @@ mod test {
 				|    name \"Alakazam\"
 				|}
 			";
-			let data = Description {
-				name: "Alakazam".into(),
-				..Default::default()
-			};
+			let data = Description { name: "Alakazam".into(), ..Default::default() };
 			assert_eq_fromkdl!(Description, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())
@@ -267,12 +234,7 @@ mod test {
 				|    weight 90
 				|}
 			";
-			let data = Description {
-				name: "Alakazam".into(),
-				height: 60,
-				weight: 90,
-				..Default::default()
-			};
+			let data = Description { name: "Alakazam".into(), height: 60, weight: 90, ..Default::default() };
 			assert_eq_fromkdl!(Description, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())

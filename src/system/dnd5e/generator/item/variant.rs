@@ -66,11 +66,7 @@ impl Extension {
 			Self::Description(sections_to_append) => {
 				item.description.sections.extend(sections_to_append.clone());
 			}
-			Self::Equipment {
-				attunement,
-				armor,
-				mutators,
-			} => {
+			Self::Equipment { attunement, armor, mutators } => {
 				let item::Kind::Equipment(equipment) = &mut item.kind else {
 					return Ok(());
 				};
@@ -121,11 +117,7 @@ impl FromKdl<NodeContext> for Extension {
 				let attunement = node.query_opt_t("scope() > attunement")?;
 				let mutators = node.query_all_t("scope() > mutator")?;
 				let armor = node.query_opt_t("scope() > armor")?;
-				Ok(Self::Equipment {
-					attunement,
-					armor,
-					mutators,
-				})
+				Ok(Self::Equipment { attunement, armor, mutators })
 			}
 			kind => Err(NotInList(kind.into(), vec!["name", "rarity", "description", "equipment"]).into()),
 		}
@@ -153,11 +145,7 @@ impl AsKdl for Extension {
 				}
 				node
 			}
-			Self::Equipment {
-				attunement,
-				armor,
-				mutators,
-			} => {
+			Self::Equipment { attunement, armor, mutators } => {
 				node.entry("equipment");
 				node.child(("attunement", attunement));
 				node.child(("armor", armor));

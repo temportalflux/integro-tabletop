@@ -34,12 +34,7 @@ impl std::fmt::Display for AttackQuery {
 
 		if !self.weapon_kind.is_empty() {
 			let desc = if self.weapon_kind == EnumSet::all() {
-				let weapon_kinds = self
-					.weapon_kind
-					.iter()
-					.sorted()
-					.map(|kind| kind.to_string())
-					.collect::<Vec<_>>();
+				let weapon_kinds = self.weapon_kind.iter().sorted().map(|kind| kind.to_string()).collect::<Vec<_>>();
 				let desc = crate::utility::list_as_english(weapon_kinds, "or").unwrap_or_default();
 				format!("is a {desc} weapon")
 			} else {
@@ -49,23 +44,12 @@ impl std::fmt::Display for AttackQuery {
 		}
 
 		if !self.attack_kind.is_empty() && self.attack_kind != EnumSet::all() {
-			let attack_kinds = self
-				.attack_kind
-				.iter()
-				.sorted()
-				.map(|kind| kind.to_string())
-				.collect::<Vec<_>>();
+			let attack_kinds = self.attack_kind.iter().sorted().map(|kind| kind.to_string()).collect::<Vec<_>>();
 			let attack_kinds = crate::utility::list_as_english(attack_kinds, "or");
 			entries.push(format!("is a {} attack", attack_kinds.unwrap_or_default()));
 		}
 
-		let abilities = self
-			.ability
-			.iter()
-			.sorted()
-			.map(Ability::long_name)
-			.map(str::to_owned)
-			.collect::<Vec<_>>();
+		let abilities = self.ability.iter().sorted().map(Ability::long_name).map(str::to_owned).collect::<Vec<_>>();
 		let abilities = crate::utility::list_as_english(abilities, "or");
 		if let Some(desc) = abilities {
 			entries.push(format!("uses the {desc} ability"));
@@ -79,11 +63,7 @@ impl std::fmt::Display for AttackQuery {
 			}
 		}
 
-		write!(
-			f,
-			"{}",
-			crate::utility::list_as_english(entries, "and").unwrap_or_default()
-		)
+		write!(f, "{}", crate::utility::list_as_english(entries, "and").unwrap_or_default())
 	}
 }
 
@@ -111,11 +91,7 @@ impl AttackQuery {
 
 		// the attack must use one of the provided abilities
 		if !self.ability.is_empty() {
-			let AttackCheckKind::AttackRoll {
-				ability: atk_roll_ability,
-				..
-			} = &attack.check
-			else {
+			let AttackCheckKind::AttackRoll { ability: atk_roll_ability, .. } = &attack.check else {
 				return false;
 			};
 			if !self.ability.contains(atk_roll_ability) {
@@ -191,13 +167,7 @@ impl kdlize::FromKdl<NodeContext> for AttackQuery {
 		let classification = node.query_str_all("scope() > class", 0)?;
 		let classification = classification.into_iter().map(str::to_owned).collect();
 
-		Ok(Self {
-			weapon_kind,
-			attack_kind,
-			ability,
-			properties,
-			classification,
-		})
+		Ok(Self { weapon_kind, attack_kind, ability, properties, classification })
 	}
 }
 

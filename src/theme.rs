@@ -93,16 +93,10 @@ pub fn Dropdown() -> Html {
 		// Apply the theme to the document
 		match theme.as_attribute_value() {
 			None => {
-				let _ = gloo_utils::document()
-					.document_element()
-					.unwrap()
-					.remove_attribute("data-bs-theme");
+				let _ = gloo_utils::document().document_element().unwrap().remove_attribute("data-bs-theme");
 			}
 			Some(theme) => {
-				let _ = gloo_utils::document()
-					.document_element()
-					.unwrap()
-					.set_attribute("data-bs-theme", theme);
+				let _ = gloo_utils::document().document_element().unwrap().set_attribute("data-bs-theme", theme);
 			}
 		}
 	});
@@ -113,11 +107,7 @@ pub fn Dropdown() -> Html {
 			let Some(element) = e.target_dyn_into::<web_sys::HtmlElement>() else {
 				return;
 			};
-			let value = element
-				.get_attribute("value")
-				.map(|s| Theme::from_str(&s).ok())
-				.flatten()
-				.unwrap_or_default();
+			let value = element.get_attribute("value").map(|s| Theme::from_str(&s).ok()).flatten().unwrap_or_default();
 			theme.set(value);
 		})
 	};

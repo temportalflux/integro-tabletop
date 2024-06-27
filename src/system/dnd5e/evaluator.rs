@@ -26,10 +26,7 @@ pub use math::*;
 pub(crate) mod test {
 	macro_rules! test_utils {
 		($eval_ty:ty) => {
-			test_utils!(
-				$eval_ty,
-				crate::system::generics::Registry::default_with_eval::<$eval_ty>()
-			);
+			test_utils!($eval_ty, crate::system::generics::Registry::default_with_eval::<$eval_ty>());
 		};
 		($eval_ty:ty, $node_reg:expr) => {
 			static NODE_NAME: &str = "evaluator";

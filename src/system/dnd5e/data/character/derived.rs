@@ -108,11 +108,7 @@ impl Defenses {
 	pub fn push(
 		&mut self, kind: Defense, damage_type: Option<DamageType>, context: Option<String>, source: &ReferencePath,
 	) {
-		self.0[kind].push(DefenseEntry {
-			damage_type,
-			context,
-			source: source.display.clone(),
-		});
+		self.0[kind].push(DefenseEntry { damage_type, context, source: source.display.clone() });
 	}
 }
 impl std::ops::Deref for Defenses {
@@ -182,12 +178,7 @@ struct AttackAbility {
 }
 impl AttackBonuses {
 	pub fn add_to_weapon_attacks(&mut self, bonus: i32, queries: Vec<AttackQuery>, source: &ReferencePath) {
-		self.attack_roll.push(AttackRollBonus {
-			bonus,
-			modifier: None,
-			queries,
-			source: source.display.clone(),
-		});
+		self.attack_roll.push(AttackRollBonus { bonus, modifier: None, queries, source: source.display.clone() });
 	}
 
 	pub fn modify_weapon_attacks(&mut self, modifier: Modifier, queries: Vec<AttackQuery>, source: &ReferencePath) {
@@ -202,28 +193,15 @@ impl AttackBonuses {
 	pub fn add_to_weapon_damage(
 		&mut self, amount: Roll, damage_type: Option<DamageType>, queries: Vec<AttackQuery>, source: &ReferencePath,
 	) {
-		self.attack_damage.push(AttackDamageBonus {
-			amount,
-			damage_type,
-			queries,
-			source: source.display.clone(),
-		});
+		self.attack_damage.push(AttackDamageBonus { amount, damage_type, queries, source: source.display.clone() });
 	}
 
 	pub fn add_ability_modifier(&mut self, ability: Ability, queries: Vec<AttackQuery>, source: &ReferencePath) {
-		self.attack_ability.push(AttackAbility {
-			ability,
-			queries,
-			source: source.display.clone(),
-		});
+		self.attack_ability.push(AttackAbility { ability, queries, source: source.display.clone() });
 	}
 
 	pub fn add_to_spell_damage(&mut self, amount: Roll, queries: Vec<spellcasting::Filter>, source: &ReferencePath) {
-		self.spell_damage.push(SpellDamageBonus {
-			amount,
-			queries,
-			source: source.display.clone(),
-		});
+		self.spell_damage.push(SpellDamageBonus { amount, queries, source: source.display.clone() });
 	}
 
 	// TODO: This isn't used yet, and should be driving the attacks section of the ui

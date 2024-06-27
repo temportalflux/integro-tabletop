@@ -1,18 +1,11 @@
-use crate::kdl_ext::NodeContext;
-use crate::{system::dnd5e::data::Rest, utility::NotInList};
+use crate::{kdl_ext::NodeContext, system::dnd5e::data::Rest, utility::NotInList};
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::{collections::BTreeMap, str::FromStr};
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum Slots {
-	Standard {
-		multiclass_half_caster: bool,
-		slots_capacity: BTreeMap<usize, BTreeMap<u8, usize>>,
-	},
-	Bonus {
-		reset_on: Rest,
-		slots_capacity: BTreeMap<usize, BTreeMap<u8, usize>>,
-	},
+	Standard { multiclass_half_caster: bool, slots_capacity: BTreeMap<usize, BTreeMap<u8, usize>> },
+	Bonus { reset_on: Rest, slots_capacity: BTreeMap<usize, BTreeMap<u8, usize>> },
 }
 
 impl Slots {
@@ -83,10 +76,7 @@ impl FromKdl<NodeContext> for Slots {
 					}
 				}
 
-				Ok(Self::Standard {
-					multiclass_half_caster,
-					slots_capacity,
-				})
+				Ok(Self::Standard { multiclass_half_caster, slots_capacity })
 			}
 			"Bonus" => {
 				let reset_on = match node.get_str_opt("reset_on")? {
@@ -121,10 +111,7 @@ impl FromKdl<NodeContext> for Slots {
 					let ranks = slots_capacity.get(&prev_found_level).cloned().unwrap_or_default();
 					slots_capacity.insert(level, ranks);
 				}
-				Ok(Self::Bonus {
-					reset_on,
-					slots_capacity,
-				})
+				Ok(Self::Bonus { reset_on, slots_capacity })
 			}
 			name => return Err(NotInList(name.into(), vec!["Standard", "Bonus"]).into()),
 		}
@@ -134,10 +121,7 @@ impl AsKdl for Slots {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 		match self {
-			Self::Standard {
-				multiclass_half_caster,
-				slots_capacity,
-			} => {
+			Self::Standard { multiclass_half_caster, slots_capacity } => {
 				node.entry("Standard");
 				if *multiclass_half_caster {
 					node.entry(("multiclass", "Half"));
@@ -150,20 +134,14 @@ impl AsKdl for Slots {
 							continue;
 						}
 						node_rank.child(
-							NodeBuilder::default()
-								.with_entry(level as i64)
-								.with_entry(amount as i64)
-								.build("level"),
+							NodeBuilder::default().with_entry(level as i64).with_entry(amount as i64).build("level"),
 						);
 					}
 					node.child(node_rank.build("rank"));
 				}
 				node
 			}
-			Self::Bonus {
-				reset_on,
-				slots_capacity,
-			} => {
+			Self::Bonus { reset_on, slots_capacity } => {
 				node.entry("Bonus");
 				if *reset_on != Rest::Long {
 					node.entry(("reset_on", reset_on.to_string()));
@@ -181,10 +159,7 @@ impl AsKdl for Slots {
 							continue;
 						}
 						node_level.child(
-							NodeBuilder::default()
-								.with_entry(*rank as i64)
-								.with_entry(*amount as i64)
-								.build("rank"),
+							NodeBuilder::default().with_entry(*rank as i64).with_entry(*amount as i64).build("rank"),
 						);
 					}
 					node.child(node_level.build("level"));
@@ -253,31 +228,15 @@ mod test {
 				slots_capacity: [
 					(/*level*/ 1, [(/*rank*/ 1, /*amt*/ 2)].into()),
 					(/*level*/ 2, [(/*rank*/ 1, /*amt*/ 3)].into()),
-					(
-						/*level*/ 3,
-						[(/*rank*/ 1, /*amt*/ 4), (/*rank*/ 2, /*amt*/ 2)].into(),
-					),
-					(
-						/*level*/ 4,
-						[(/*rank*/ 1, /*amt*/ 4), (/*rank*/ 2, /*amt*/ 3)].into(),
-					),
+					(/*level*/ 3, [(/*rank*/ 1, /*amt*/ 4), (/*rank*/ 2, /*amt*/ 2)].into()),
+					(/*level*/ 4, [(/*rank*/ 1, /*amt*/ 4), (/*rank*/ 2, /*amt*/ 3)].into()),
 					(
 						/*level*/ 5,
-						[
-							(/*rank*/ 1, /*amt*/ 4),
-							(/*rank*/ 2, /*amt*/ 3),
-							(/*rank*/ 3, /*amt*/ 2),
-						]
-						.into(),
+						[(/*rank*/ 1, /*amt*/ 4), (/*rank*/ 2, /*amt*/ 3), (/*rank*/ 3, /*amt*/ 2)].into(),
 					),
 					(
 						/*level*/ 6,
-						[
-							(/*rank*/ 1, /*amt*/ 4),
-							(/*rank*/ 2, /*amt*/ 3),
-							(/*rank*/ 3, /*amt*/ 3),
-						]
-						.into(),
+						[(/*rank*/ 1, /*amt*/ 4), (/*rank*/ 2, /*amt*/ 3), (/*rank*/ 3, /*amt*/ 3)].into(),
 					),
 					(
 						/*level*/ 7,
@@ -502,57 +461,25 @@ mod test {
 					(/*level*/ 2, [(/*rank*/ 1, /*amt*/ 2)].into()),
 					(/*level*/ 3, [(/*rank*/ 1, /*amt*/ 3)].into()),
 					(/*level*/ 4, [(/*rank*/ 1, /*amt*/ 3)].into()),
-					(
-						/*level*/ 5,
-						[(/*rank*/ 1, /*amt*/ 4), (/*rank*/ 2, /*amt*/ 2)].into(),
-					),
-					(
-						/*level*/ 6,
-						[(/*rank*/ 1, /*amt*/ 4), (/*rank*/ 2, /*amt*/ 2)].into(),
-					),
-					(
-						/*level*/ 7,
-						[(/*rank*/ 1, /*amt*/ 4), (/*rank*/ 2, /*amt*/ 3)].into(),
-					),
-					(
-						/*level*/ 8,
-						[(/*rank*/ 1, /*amt*/ 4), (/*rank*/ 2, /*amt*/ 3)].into(),
-					),
+					(/*level*/ 5, [(/*rank*/ 1, /*amt*/ 4), (/*rank*/ 2, /*amt*/ 2)].into()),
+					(/*level*/ 6, [(/*rank*/ 1, /*amt*/ 4), (/*rank*/ 2, /*amt*/ 2)].into()),
+					(/*level*/ 7, [(/*rank*/ 1, /*amt*/ 4), (/*rank*/ 2, /*amt*/ 3)].into()),
+					(/*level*/ 8, [(/*rank*/ 1, /*amt*/ 4), (/*rank*/ 2, /*amt*/ 3)].into()),
 					(
 						/*level*/ 9,
-						[
-							(/*rank*/ 1, /*amt*/ 4),
-							(/*rank*/ 2, /*amt*/ 3),
-							(/*rank*/ 3, /*amt*/ 2),
-						]
-						.into(),
+						[(/*rank*/ 1, /*amt*/ 4), (/*rank*/ 2, /*amt*/ 3), (/*rank*/ 3, /*amt*/ 2)].into(),
 					),
 					(
 						/*level*/ 10,
-						[
-							(/*rank*/ 1, /*amt*/ 4),
-							(/*rank*/ 2, /*amt*/ 3),
-							(/*rank*/ 3, /*amt*/ 2),
-						]
-						.into(),
+						[(/*rank*/ 1, /*amt*/ 4), (/*rank*/ 2, /*amt*/ 3), (/*rank*/ 3, /*amt*/ 2)].into(),
 					),
 					(
 						/*level*/ 11,
-						[
-							(/*rank*/ 1, /*amt*/ 4),
-							(/*rank*/ 2, /*amt*/ 3),
-							(/*rank*/ 3, /*amt*/ 3),
-						]
-						.into(),
+						[(/*rank*/ 1, /*amt*/ 4), (/*rank*/ 2, /*amt*/ 3), (/*rank*/ 3, /*amt*/ 3)].into(),
 					),
 					(
 						/*level*/ 12,
-						[
-							(/*rank*/ 1, /*amt*/ 4),
-							(/*rank*/ 2, /*amt*/ 3),
-							(/*rank*/ 3, /*amt*/ 3),
-						]
-						.into(),
+						[(/*rank*/ 1, /*amt*/ 4), (/*rank*/ 2, /*amt*/ 3), (/*rank*/ 3, /*amt*/ 3)].into(),
 					),
 					(
 						/*level*/ 13,

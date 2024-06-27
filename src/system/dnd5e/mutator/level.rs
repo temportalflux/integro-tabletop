@@ -114,12 +114,13 @@ mod test {
 
 	mod kdl {
 		use super::*;
-		use crate::system::dnd5e::data::character::StatOperation;
-		use crate::system::dnd5e::mutator::StatMutator;
 		use crate::{
 			kdl_ext::test_utils::*,
 			system::{
-				dnd5e::mutator::{test::test_utils, Speed},
+				dnd5e::{
+					data::character::StatOperation,
+					mutator::{test::test_utils, Speed, StatMutator},
+				},
 				generics,
 			},
 		};
@@ -136,10 +137,7 @@ mod test {
 		#[test]
 		fn empty() -> anyhow::Result<()> {
 			let doc = "mutator \"by_level\"";
-			let data = GrantByLevel {
-				class_name: None,
-				levels: [].into(),
-			};
+			let data = GrantByLevel { class_name: None, levels: [].into() };
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -160,22 +158,13 @@ mod test {
 			let data = GrantByLevel {
 				class_name: None,
 				levels: [
-					(
-						3,
-						vec![Speed(StatMutator {
-							stat_name: "Climbing".into(),
-							operation: StatOperation::Base(30),
-						})
-						.into()],
-					),
-					(
-						5,
-						vec![Speed(StatMutator {
-							stat_name: "Climbing".into(),
-							operation: StatOperation::AddSubtract(10),
-						})
-						.into()],
-					),
+					(3, vec![
+						Speed(StatMutator { stat_name: "Climbing".into(), operation: StatOperation::Base(30) }).into(),
+					]),
+					(5, vec![
+						Speed(StatMutator { stat_name: "Climbing".into(), operation: StatOperation::AddSubtract(10) })
+							.into(),
+					]),
 				]
 				.into(),
 			};
@@ -199,22 +188,13 @@ mod test {
 			let data = GrantByLevel {
 				class_name: Some("Barbarian".into()),
 				levels: [
-					(
-						3,
-						vec![Speed(StatMutator {
-							stat_name: "Climbing".into(),
-							operation: StatOperation::Base(30),
-						})
-						.into()],
-					),
-					(
-						5,
-						vec![Speed(StatMutator {
-							stat_name: "Climbing".into(),
-							operation: StatOperation::AddSubtract(10),
-						})
-						.into()],
-					),
+					(3, vec![
+						Speed(StatMutator { stat_name: "Climbing".into(), operation: StatOperation::Base(30) }).into(),
+					]),
+					(5, vec![
+						Speed(StatMutator { stat_name: "Climbing".into(), operation: StatOperation::AddSubtract(10) })
+							.into(),
+					]),
 				]
 				.into(),
 			};

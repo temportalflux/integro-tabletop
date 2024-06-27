@@ -1,7 +1,6 @@
 use crate::{
 	components::stop_propagation,
-	page::characters::sheet::CharacterHandle,
-	page::characters::sheet::MutatorImpact,
+	page::characters::sheet::{CharacterHandle, MutatorImpact},
 	system::dnd5e::data::{action::LimitedUses, character::Persistent},
 	utility::InputExt,
 };
@@ -127,13 +126,7 @@ pub struct UseCounterDeltaProps {
 }
 
 #[function_component]
-pub fn UseCounterDelta(
-	UseCounterDeltaProps {
-		max_uses,
-		consumed_uses,
-		on_apply,
-	}: &UseCounterDeltaProps,
-) -> Html {
+pub fn UseCounterDelta(UseCounterDeltaProps { max_uses, consumed_uses, on_apply }: &UseCounterDeltaProps) -> Html {
 	let delta_state = use_state_eq(|| 0);
 
 	let clear_delta = Callback::from({

@@ -13,11 +13,7 @@ impl GenerateHomebrew {
 		self.status.push_stage("Initializing homebrew module", None);
 
 		use crate::storage::MODULE_TOPIC;
-		let create_repo = repos::create::Args {
-			org: None,
-			name: USER_HOMEBREW_REPO_NAME,
-			private: true,
-		};
+		let create_repo = repos::create::Args { org: None, name: USER_HOMEBREW_REPO_NAME, private: true };
 		let owner = self.client.create_repo(create_repo).await?;
 
 		let set_topics = repos::set_topics::Args {

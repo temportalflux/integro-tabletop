@@ -1,5 +1,4 @@
-use crate::kdl_ext::NodeContext;
-use crate::system::dnd5e::data::character::Character;
+use crate::{kdl_ext::NodeContext, system::dnd5e::data::character::Character};
 use anyhow::Context;
 use kdlize::{
 	ext::{EntryExt, ValueExt},
@@ -125,9 +124,8 @@ where
 		let entry = node.next_req()?;
 		match entry.type_opt() {
 			Some("Evaluator") => {
-				let eval_id = entry
-					.as_str_req()
-					.context("Evaluator values must be a string containing the evaluator id")?;
+				let eval_id =
+					entry.as_str_req().context("Evaluator values must be a string containing the evaluator id")?;
 				let node_reg = node.context().node_reg().clone();
 				let factory = node_reg.get_evaluator_factory(eval_id)?;
 				Ok(Self::Evaluated(factory.from_kdl::<Character, V>(node)?))

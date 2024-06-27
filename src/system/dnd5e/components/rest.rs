@@ -153,8 +153,7 @@ impl HitDiceToConsume {
 	fn add(&mut self, class_name: &str, die: Die, delta: i32, data_path: &PathBuf) {
 		match self.by_class.get_mut(class_name) {
 			None if delta > 0 => {
-				self.by_class
-					.insert(class_name.to_owned(), (delta as u32, data_path.clone()));
+				self.by_class.insert(class_name.to_owned(), (delta as u32, data_path.clone()));
 			}
 			Some((die_count, _data_path)) if delta > 0 => {
 				*die_count = die_count.saturating_add(delta as u32);
@@ -299,13 +298,7 @@ struct HitDiceUsageInputProps {
 	on_change: Callback<i32>,
 }
 #[function_component]
-fn HitDiceUsageInput(
-	HitDiceUsageInputProps {
-		max_uses,
-		data_path,
-		on_change,
-	}: &HitDiceUsageInputProps,
-) -> Html {
+fn HitDiceUsageInput(HitDiceUsageInputProps { max_uses, data_path, on_change }: &HitDiceUsageInputProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 	let uses_to_consume = use_state_eq(|| 0u32);
 	let consumed_uses = data_path.as_ref().map(|path| state.get_first_selection_at::<u32>(path));

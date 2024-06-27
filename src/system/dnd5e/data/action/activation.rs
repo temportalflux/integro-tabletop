@@ -53,11 +53,9 @@ impl FromKdl<NodeContext> for ActivationKind {
 			"Special" => Ok(Self::Special),
 			"Minute" => Ok(Self::Minute(node.next_i64_req()? as u32)),
 			"Hour" => Ok(Self::Hour(node.next_i64_req()? as u32)),
-			name => Err(NotInList(
-				name.into(),
-				vec!["Action", "Bonus", "Reaction", "Special", "Minute", "Hour"],
-			)
-			.into()),
+			name => {
+				Err(NotInList(name.into(), vec!["Action", "Bonus", "Reaction", "Special", "Minute", "Hour"]).into())
+			}
 		}
 	}
 }

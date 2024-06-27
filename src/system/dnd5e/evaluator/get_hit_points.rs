@@ -1,14 +1,15 @@
-use crate::kdl_ext::NodeContext;
 use crate::{
-	system::dnd5e::{
-		data::character::{Character, HitPoint},
-		mutator::AddMaxHitPoints,
+	kdl_ext::NodeContext,
+	system::{
+		dnd5e::{
+			data::character::{Character, HitPoint},
+			mutator::AddMaxHitPoints,
+		},
+		Evaluator,
 	},
-	system::Evaluator,
 	utility::Dependencies,
 };
-use kdlize::NodeId;
-use kdlize::{AsKdl, FromKdl, NodeBuilder};
+use kdlize::{AsKdl, FromKdl, NodeBuilder, NodeId};
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct GetHitPoints(pub HitPoint);
@@ -113,11 +114,7 @@ mod test {
 				persistent.bundles.push(
 					Bundle {
 						name: "MaxHP".into(),
-						mutators: vec![AddMaxHitPoints {
-							id: None,
-							value: Value::Fixed(max as i32),
-						}
-						.into()],
+						mutators: vec![AddMaxHitPoints { id: None, value: Value::Fixed(max as i32) }.into()],
 						..Default::default()
 					}
 					.into(),

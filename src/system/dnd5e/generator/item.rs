@@ -94,12 +94,7 @@ impl FromKdl<NodeContext> for ItemGenerator {
 		let short_id = node.next_str_req()?.to_owned();
 		let filter = node.query_req_t("scope() > filter")?;
 		let variants = node.query_all_t("scope() > variant")?;
-		Ok(Self {
-			id,
-			short_id,
-			filter,
-			variants,
-		})
+		Ok(Self { id, short_id, filter, variants })
 	}
 }
 
@@ -162,19 +157,13 @@ mod test {
 			";
 			let data = ItemGenerator {
 				id: SourceId {
-					module: Some(ModuleId::Local {
-						name: "homebrew".into(),
-					}),
+					module: Some(ModuleId::Local { name: "homebrew".into() }),
 					system: Some("dnd5e".into()),
 					path: "items/generator.kdl".into(),
 					..Default::default()
 				},
 				short_id: "test-gen".into(),
-				filter: Filter {
-					tags: ["Arrow".into()].into(),
-					armor: None,
-					rarity: [].into(),
-				},
+				filter: Filter { tags: ["Arrow".into()].into(), armor: None, rarity: [].into() },
 				variants: vec![Variant {
 					name: "vari1".into(),
 					extensions: vec![
@@ -220,9 +209,7 @@ mod test {
 			";
 			let data = ItemGenerator {
 				id: SourceId {
-					module: Some(ModuleId::Local {
-						name: "homebrew".into(),
-					}),
+					module: Some(ModuleId::Local { name: "homebrew".into() }),
 					system: Some("dnd5e".into()),
 					path: "items/generator.kdl".into(),
 					..Default::default()

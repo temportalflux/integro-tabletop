@@ -99,15 +99,7 @@ impl FromKdl<NodeContext> for Equipment {
 		let attunement = node.query_opt_t("scope() > attunement")?;
 		let charges = node.query_opt_t("scope() > charges")?;
 
-		Ok(Self {
-			criteria,
-			mutators,
-			armor,
-			shield,
-			weapon,
-			attunement,
-			charges,
-		})
+		Ok(Self { criteria, mutators, armor, shield, weapon, attunement, charges })
 	}
 }
 
@@ -118,11 +110,11 @@ impl AsKdl for Equipment {
 		node.child(("attunement", &self.attunement));
 		node.child(("armor", &self.armor));
 
-		node.child(self.shield.as_ref().map(|shield| {
-			NodeBuilder::default()
-				.with_entry(("bonus", *shield as i64))
-				.build("shield")
-		}));
+		node.child(
+			self.shield
+				.as_ref()
+				.map(|shield| NodeBuilder::default().with_entry(("bonus", *shield as i64)).build("shield")),
+		);
 
 		node.child(("weapon", &self.weapon));
 		node.child(("charges", &self.charges));
@@ -202,18 +194,17 @@ mod test {
 			";
 			let data = Equipment {
 				criteria: None,
-				mutators: vec![Modify::Skill {
-					modifier: Modifier::Disadvantage,
-					context: None,
-					skill: selector::Value::Specific(Skill::Stealth),
-				}
-				.into()],
+				mutators: vec![
+					Modify::Skill {
+						modifier: Modifier::Disadvantage,
+						context: None,
+						skill: selector::Value::Specific(Skill::Stealth),
+					}
+					.into(),
+				],
 				armor: Some(Armor {
 					kind: armor::Kind::Heavy,
-					formula: ArmorClassFormula {
-						base: 18,
-						bonuses: vec![],
-					},
+					formula: ArmorClassFormula { base: 18, bonuses: vec![] },
 					min_strength_score: Some(15),
 				}),
 				..Default::default()
@@ -260,10 +251,7 @@ mod test {
 				|    shield bonus=2
 				|}
 			";
-			let data = Equipment {
-				shield: Some(2),
-				..Default::default()
-			};
+			let data = Equipment { shield: Some(2), ..Default::default() };
 			assert_eq_fromkdl!(Equipment, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())

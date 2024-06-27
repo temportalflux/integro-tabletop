@@ -15,22 +15,13 @@ pub struct TagProps {
 }
 
 #[function_component]
-pub fn Tag(
-	TagProps {
-		active,
-		classes,
-		children,
-		on_click,
-	}: &TagProps,
-) -> Html {
+pub fn Tag(TagProps { active, classes, children, on_click }: &TagProps) -> Html {
 	let mut classes = classes!("tag", classes.clone());
 	if *active {
 		classes.push("active");
 	}
 	let is_active = *active;
-	let onclick = on_click
-		.as_ref()
-		.map(|callback| callback.reform(move |_: MouseEvent| is_active));
+	let onclick = on_click.as_ref().map(|callback| callback.reform(move |_: MouseEvent| is_active));
 	html! {
 		<span class={classes} {onclick}>{children.clone()}</span>
 	}

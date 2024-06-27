@@ -34,12 +34,7 @@ impl FromKdl<NodeContext> for Action {
 
 		let conditions_to_apply = node.query_all_t::<IndirectCondition>("scope() > condition")?;
 
-		Ok(Self {
-			activation_kind,
-			attack,
-			limited_uses,
-			conditions_to_apply,
-		})
+		Ok(Self { activation_kind, attack, limited_uses, conditions_to_apply })
 	}
 }
 
@@ -154,10 +149,7 @@ mod test {
 				attack: None,
 				limited_uses: Some(LimitedUses::Usage(Resource {
 					capacity: Value::Fixed(1),
-					reset: Some(ResourceReset {
-						rest: Value::Fixed(Rest::Long.to_string()),
-						rate: None,
-					}),
+					reset: Some(ResourceReset { rest: Value::Fixed(Rest::Long.to_string()), rate: None }),
 					..Default::default()
 				})),
 				conditions_to_apply: Vec::new(),
@@ -194,10 +186,7 @@ mod test {
 						}
 						.into(),
 					),
-					reset: Some(ResourceReset {
-						rest: Value::Fixed(Rest::Long.to_string()),
-						rate: None,
-					}),
+					reset: Some(ResourceReset { rest: Value::Fixed(Rest::Long.to_string()), rate: None }),
 					..Default::default()
 				})),
 				conditions_to_apply: Vec::new(),
@@ -220,14 +209,8 @@ mod test {
 				attack: None,
 				limited_uses: None,
 				conditions_to_apply: vec![
-					IndirectCondition::Id(SourceId {
-						path: "condition/invisible.kdl".into(),
-						..Default::default()
-					}),
-					IndirectCondition::Id(SourceId {
-						path: "condition/unconscious.kdl".into(),
-						..Default::default()
-					}),
+					IndirectCondition::Id(SourceId { path: "condition/invisible.kdl".into(), ..Default::default() }),
+					IndirectCondition::Id(SourceId { path: "condition/unconscious.kdl".into(), ..Default::default() }),
 				],
 			};
 			assert_eq_fromkdl!(Action, doc, data);

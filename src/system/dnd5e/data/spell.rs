@@ -1,8 +1,9 @@
 use super::{description, AreaOfEffect};
-use crate::kdl_ext::NodeContext;
-use crate::system::{Block, SourceId};
-use kdlize::OmitIfEmpty;
-use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
+use crate::{
+	kdl_ext::NodeContext,
+	system::{Block, SourceId},
+};
+use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder, OmitIfEmpty};
 
 mod casting_time;
 pub use casting_time::*;
@@ -66,9 +67,7 @@ impl FromKdl<NodeContext> for Spell {
 		let id = crate::kdl_ext::query_source_req(node)?;
 
 		let name = node.get_str_req("name")?.to_owned();
-		let description = node
-			.query_opt_t::<description::Info>("scope() > description")?
-			.unwrap_or_default();
+		let description = node.query_opt_t::<description::Info>("scope() > description")?.unwrap_or_default();
 		let rank = node.query_i64_req("scope() > rank", 0)? as u8;
 		let school_tag = node.query_str_opt("scope() > school", 0)?.map(str::to_owned);
 

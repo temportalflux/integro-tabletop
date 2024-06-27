@@ -18,11 +18,7 @@ pub struct Weapon {
 impl FromKdl<NodeContext> for Restriction {
 	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
-		let tags = node
-			.query_str_all("scope() > tag", 0)?
-			.into_iter()
-			.map(str::to_owned)
-			.collect::<Vec<_>>();
+		let tags = node.query_str_all("scope() > tag", 0)?.into_iter().map(str::to_owned).collect::<Vec<_>>();
 		let weapon = node.query_opt_t::<Weapon>("scope() > weapon")?;
 		Ok(Self { tags, weapon })
 	}

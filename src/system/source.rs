@@ -1,8 +1,7 @@
 use crate::kdl_ext::{AsKdl, NodeBuilder};
 use derivative::Derivative;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
-use std::str::FromStr;
+use std::{path::PathBuf, str::FromStr};
 
 #[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum ModuleId {
@@ -11,9 +10,7 @@ pub enum ModuleId {
 }
 impl Default for ModuleId {
 	fn default() -> Self {
-		Self::Local {
-			name: Default::default(),
-		}
+		Self::Local { name: Default::default() }
 	}
 }
 impl std::fmt::Debug for ModuleId {
@@ -34,10 +31,7 @@ impl std::fmt::Display for ModuleId {
 }
 impl From<&github::RepositoryMetadata> for ModuleId {
 	fn from(value: &github::RepositoryMetadata) -> Self {
-		Self::Github {
-			user_org: value.owner.clone(),
-			repository: value.name.clone(),
-		}
+		Self::Github { user_org: value.owner.clone(), repository: value.name.clone() }
 	}
 }
 impl ModuleId {
@@ -75,16 +69,9 @@ pub struct VariantId {
 impl From<(&SourceId, &str)> for VariantId {
 	fn from((generator_id, variant): (&SourceId, &str)) -> Self {
 		let module = generator_id.module.as_ref().expect("generator must have a module");
-		let name = generator_id
-			.path
-			.file_stem()
-			.expect("generator must have a path to a file");
+		let name = generator_id.path.file_stem().expect("generator must have a path to a file");
 		let name = name.to_str().expect("failed to convert osstr to str");
-		Self {
-			module: module.clone(),
-			generator: name.to_owned(),
-			variant: variant.to_owned(),
-		}
+		Self { module: module.clone(), generator: name.to_owned(), variant: variant.to_owned() }
 	}
 }
 impl std::fmt::Display for VariantId {
@@ -112,20 +99,11 @@ impl std::str::FromStr for VariantId {
 		let module_owner = fragment_parts.next_back();
 
 		let module = match module_owner {
-			None => ModuleId::Local {
-				name: module_name.into(),
-			},
-			Some(owner) => ModuleId::Github {
-				user_org: owner.into(),
-				repository: module_name.into(),
-			},
+			None => ModuleId::Local { name: module_name.into() },
+			Some(owner) => ModuleId::Github { user_org: owner.into(), repository: module_name.into() },
 		};
 
-		Ok(Self {
-			module,
-			generator: generator_short_id.into(),
-			variant: variant_name.into(),
-		})
+		Ok(Self { module, generator: generator_short_id.into(), variant: variant_name.into() })
 	}
 }
 
@@ -226,10 +204,7 @@ impl FromStr for SourceId {
 			Ok(url) => url,
 			Err(url::ParseError::RelativeUrlWithoutBase) => {
 				let path = PathBuf::from_str(s)?;
-				return Ok(Self {
-					path,
-					..Default::default()
-				});
+				return Ok(Self { path, ..Default::default() });
 			}
 			Err(err) => return Err(err.into()),
 		};
@@ -259,13 +234,7 @@ impl FromStr for SourceId {
 			None => None,
 			Some(fragment) => Some(VariantId::from_str(fragment)?),
 		};
-		Ok(Self {
-			system: Some(system),
-			module: Some(module),
-			path,
-			version,
-			variant,
-		})
+		Ok(Self { system: Some(system), module: Some(module), path, version, variant })
 	}
 }
 
@@ -318,13 +287,7 @@ mod test {
 	fn relative_path() -> anyhow::Result<()> {
 		let src = "items/trinket.kdl";
 		let source_id = SourceId::from_str(src)?;
-		assert_eq!(
-			source_id,
-			SourceId {
-				path: "items/trinket.kdl".into(),
-				..Default::default()
-			}
-		);
+		assert_eq!(source_id, SourceId { path: "items/trinket.kdl".into(), ..Default::default() });
 		Ok(())
 	}
 
@@ -332,26 +295,19 @@ mod test {
 	fn file_no_module() -> anyhow::Result<()> {
 		let src = "local://homebrew@dnd5e/items/trinket.kdl";
 		let source_id = SourceId::from_str(src)?;
-		assert_eq!(
-			source_id,
-			SourceId {
-				module: Some(ModuleId::Local {
-					name: "homebrew".into()
-				}),
-				system: Some("dnd5e".into()),
-				path: "items/trinket.kdl".into(),
-				..Default::default()
-			}
-		);
+		assert_eq!(source_id, SourceId {
+			module: Some(ModuleId::Local { name: "homebrew".into() }),
+			system: Some("dnd5e".into()),
+			path: "items/trinket.kdl".into(),
+			..Default::default()
+		});
 		Ok(())
 	}
 
 	#[test]
 	fn file_to_str() {
 		let source = SourceId {
-			module: Some(ModuleId::Local {
-				name: "homebrew".into(),
-			}),
+			module: Some(ModuleId::Local { name: "homebrew".into() }),
 			system: Some("dnd5e".into()),
 			path: "items/trinket.kdl".into(),
 			..Default::default()
@@ -364,44 +320,29 @@ mod test {
 		let src =
 			"github://ghuser:homebrew@dnd5e/items/trinket.kdl?version=4b37d0e2a#ghuser/homebrew/trinket-subtype/var1";
 		let source_id = SourceId::from_str(src)?;
-		assert_eq!(
-			source_id,
-			SourceId {
-				module: Some(ModuleId::Github {
-					user_org: "ghuser".into(),
-					repository: "homebrew".into()
-				}),
-				system: Some("dnd5e".into()),
-				path: "items/trinket.kdl".into(),
-				version: Some("4b37d0e2a".into()),
-				variant: Some(VariantId {
-					module: ModuleId::Github {
-						user_org: "ghuser".into(),
-						repository: "homebrew".into(),
-					},
-					generator: "trinket-subtype".into(),
-					variant: "var1".into(),
-				}),
-			}
-		);
+		assert_eq!(source_id, SourceId {
+			module: Some(ModuleId::Github { user_org: "ghuser".into(), repository: "homebrew".into() }),
+			system: Some("dnd5e".into()),
+			path: "items/trinket.kdl".into(),
+			version: Some("4b37d0e2a".into()),
+			variant: Some(VariantId {
+				module: ModuleId::Github { user_org: "ghuser".into(), repository: "homebrew".into() },
+				generator: "trinket-subtype".into(),
+				variant: "var1".into(),
+			}),
+		});
 		Ok(())
 	}
 
 	#[test]
 	fn github_to_str() {
 		let source = SourceId {
-			module: Some(ModuleId::Github {
-				user_org: "ghuser".into(),
-				repository: "homebrew".into(),
-			}),
+			module: Some(ModuleId::Github { user_org: "ghuser".into(), repository: "homebrew".into() }),
 			system: Some("dnd5e".into()),
 			path: "items/trinket.kdl".into(),
 			version: Some("4b37d0e2a".into()),
 			variant: Some(VariantId {
-				module: ModuleId::Github {
-					user_org: "ghuser".into(),
-					repository: "homebrew".into(),
-				},
+				module: ModuleId::Github { user_org: "ghuser".into(), repository: "homebrew".into() },
 				generator: "trinket-subtype".into(),
 				variant: "item52".into(),
 			}),
@@ -414,10 +355,7 @@ mod test {
 
 	#[test]
 	fn path_to_str() {
-		let source = SourceId {
-			path: "items/trinket.kdl".into(),
-			..Default::default()
-		};
+		let source = SourceId { path: "items/trinket.kdl".into(), ..Default::default() };
 		assert_eq!(source.to_string(), "items/trinket.kdl");
 	}
 

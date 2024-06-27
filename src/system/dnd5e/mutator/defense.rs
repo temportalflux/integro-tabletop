@@ -1,8 +1,10 @@
-use crate::kdl_ext::NodeContext;
-use crate::system::mutator::ReferencePath;
 use crate::{
-	system::dnd5e::data::{character::Character, description, DamageType},
-	system::Mutator,
+	kdl_ext::NodeContext,
+	system::{
+		dnd5e::data::{character::Character, description, DamageType},
+		mutator::ReferencePath,
+		Mutator,
+	},
 	utility::{list_as_english, selector, InvalidEnumStr},
 };
 use enum_map::Enum;
@@ -47,11 +49,7 @@ pub struct AddDefense {
 }
 impl Default for AddDefense {
 	fn default() -> Self {
-		Self {
-			defense: Defense::Resistance,
-			damage_type: Default::default(),
-			context: Default::default(),
-		}
+		Self { defense: Defense::Resistance, damage_type: Default::default(), context: Default::default() }
 	}
 }
 crate::impl_trait_eq!(AddDefense);
@@ -83,20 +81,13 @@ impl Mutator for AddDefense {
 					list_as_english(options, "or").unwrap_or_default()
 				}
 			},
-			self.context
-				.as_ref()
-				.map(|ctx| format!(" from {ctx}"))
-				.unwrap_or_default(),
+			self.context.as_ref().map(|ctx| format!(" from {ctx}")).unwrap_or_default(),
 		);
 		let mut selectors = selector::DataList::default();
 		if let Some(damage_type) = &self.damage_type {
 			selectors = selectors.with_enum("Damage Type", damage_type, state);
 		}
-		description::Section {
-			content: body.into(),
-			children: vec![selectors.into()],
-			..Default::default()
-		}
+		description::Section { content: body.into(), children: vec![selectors.into()], ..Default::default() }
 	}
 
 	fn apply(&self, stats: &mut Character, parent: &ReferencePath) {
@@ -104,9 +95,7 @@ impl Mutator for AddDefense {
 			None => None,
 			Some(selector) => stats.resolve_selector(selector),
 		};
-		stats
-			.defenses_mut()
-			.push(self.defense, damage_type, self.context.clone(), parent);
+		stats.defenses_mut().push(self.defense, damage_type, self.context.clone(), parent);
 	}
 }
 
@@ -119,11 +108,7 @@ impl FromKdl<NodeContext> for AddDefense {
 			false => None,
 		};
 		let context = node.get_str_opt("context")?.map(str::to_owned);
-		Ok(Self {
-			defense,
-			damage_type,
-			context,
-		})
+		Ok(Self { defense, damage_type, context })
 	}
 }
 
@@ -219,78 +204,81 @@ mod test {
 	#[test]
 	fn resistant() {
 		let character = Character::from(Persistent {
-			bundles: vec![Bundle {
-				name: "AddDefense".into(),
-				mutators: vec![AddDefense {
-					defense: Defense::Resistance,
-					damage_type: Some(selector::Value::Specific(DamageType::Fire)),
-					context: None,
+			bundles: vec![
+				Bundle {
+					name: "AddDefense".into(),
+					mutators: vec![
+						AddDefense {
+							defense: Defense::Resistance,
+							damage_type: Some(selector::Value::Specific(DamageType::Fire)),
+							context: None,
+						}
+						.into(),
+					],
+					..Default::default()
 				}
-				.into()],
-				..Default::default()
-			}
-			.into()],
+				.into(),
+			],
 			..Default::default()
 		});
-		assert_eq!(
-			character.defenses()[Defense::Resistance],
-			vec![DefenseEntry {
-				damage_type: Some(DamageType::Fire),
-				context: None,
-				source: "AddDefense".into(),
-			}]
-		);
+		assert_eq!(character.defenses()[Defense::Resistance], vec![DefenseEntry {
+			damage_type: Some(DamageType::Fire),
+			context: None,
+			source: "AddDefense".into()
+		}]);
 	}
 
 	#[test]
 	fn immune() {
 		let character = Character::from(Persistent {
-			bundles: vec![Bundle {
-				name: "AddDefense".into(),
-				mutators: vec![AddDefense {
-					defense: Defense::Immunity,
-					damage_type: Some(selector::Value::Specific(DamageType::Cold)),
-					context: None,
+			bundles: vec![
+				Bundle {
+					name: "AddDefense".into(),
+					mutators: vec![
+						AddDefense {
+							defense: Defense::Immunity,
+							damage_type: Some(selector::Value::Specific(DamageType::Cold)),
+							context: None,
+						}
+						.into(),
+					],
+					..Default::default()
 				}
-				.into()],
-				..Default::default()
-			}
-			.into()],
+				.into(),
+			],
 			..Default::default()
 		});
-		assert_eq!(
-			character.defenses()[Defense::Immunity],
-			vec![DefenseEntry {
-				damage_type: Some(DamageType::Cold),
-				context: None,
-				source: "AddDefense".into(),
-			}]
-		);
+		assert_eq!(character.defenses()[Defense::Immunity], vec![DefenseEntry {
+			damage_type: Some(DamageType::Cold),
+			context: None,
+			source: "AddDefense".into()
+		}]);
 	}
 
 	#[test]
 	fn vulnerable() {
 		let character = Character::from(Persistent {
-			bundles: vec![Bundle {
-				name: "AddDefense".into(),
-				mutators: vec![AddDefense {
-					defense: Defense::Vulnerability,
-					damage_type: Some(selector::Value::Specific(DamageType::Psychic)),
-					context: None,
+			bundles: vec![
+				Bundle {
+					name: "AddDefense".into(),
+					mutators: vec![
+						AddDefense {
+							defense: Defense::Vulnerability,
+							damage_type: Some(selector::Value::Specific(DamageType::Psychic)),
+							context: None,
+						}
+						.into(),
+					],
+					..Default::default()
 				}
-				.into()],
-				..Default::default()
-			}
-			.into()],
+				.into(),
+			],
 			..Default::default()
 		});
-		assert_eq!(
-			character.defenses()[Defense::Vulnerability],
-			vec![DefenseEntry {
-				damage_type: Some(DamageType::Psychic),
-				context: None,
-				source: "AddDefense".into(),
-			}]
-		);
+		assert_eq!(character.defenses()[Defense::Vulnerability], vec![DefenseEntry {
+			damage_type: Some(DamageType::Psychic),
+			context: None,
+			source: "AddDefense".into()
+		}]);
 	}
 }

@@ -11,10 +11,7 @@ pub struct PathMap<T> {
 
 impl<T> Default for PathMap<T> {
 	fn default() -> Self {
-		Self {
-			values: Vec::new(),
-			children: BTreeMap::new(),
-		}
+		Self { values: Vec::new(), children: BTreeMap::new() }
 	}
 }
 
@@ -33,9 +30,7 @@ where
 
 impl<T> PathMap<T> {
 	pub fn len(&self) -> usize {
-		self.children
-			.iter()
-			.fold(self.values.len(), |count, (_, child)| count + child.len())
+		self.children.iter().fold(self.values.len(), |count, (_, child)| count + child.len())
 	}
 
 	fn get_mut_or_insert_at(&mut self, path: &Path) -> &mut PathMap<T> {

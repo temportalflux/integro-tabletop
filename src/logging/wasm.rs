@@ -98,11 +98,7 @@ struct WasmLogger {
 
 impl Log for WasmLogger {
 	fn enabled(&self, metadata: &Metadata<'_>) -> bool {
-		if let Some(ref prefix) = self.config.module_prefix {
-			metadata.target().starts_with(prefix)
-		} else {
-			true
-		}
+		if let Some(ref prefix) = self.config.module_prefix { metadata.target().starts_with(prefix) } else { true }
 	}
 
 	fn log(&self, record: &Record<'_>) {
@@ -115,21 +111,13 @@ impl Log for WasmLogger {
 			let fileline = format!(
 				"{}:{}",
 				record.file().unwrap_or_else(|| record.target()),
-				record
-					.line()
-					.map_or_else(|| "[Unknown]".to_string(), |line| line.to_string()),
+				record.line().map_or_else(|| "[Unknown]".to_string(), |line| line.to_string()),
 			);
 			let target_fileline = match self.config.prefer_target_over_fileline && !record.target().is_empty() {
 				true => format!("[{}]", record.target()),
 				false => fileline,
 			};
-			let s = format!(
-				"%c{}%c {}%c{}{}",
-				record.level(),
-				target_fileline,
-				message_separator,
-				record.args(),
-			);
+			let s = format!("%c{}%c {}%c{}{}", record.level(), target_fileline, message_separator, record.args(),);
 			let s = JsValue::from_str(&s);
 			let tgt_style = JsValue::from_str(&style.tgt);
 			let args_style = JsValue::from_str(&style.args);
@@ -150,10 +138,7 @@ impl Log for WasmLogger {
 /// Initialize the logger which the given config. If failed, it will log a message to the the browser console.
 pub fn init(config: Config) {
 	let max_level = config.level;
-	let wl = WasmLogger {
-		config,
-		style: Style::new(),
-	};
+	let wl = WasmLogger { config, style: Style::new() };
 
 	match log::set_boxed_logger(Box::new(wl)) {
 		Ok(_) => log::set_max_level(max_level.to_level_filter()),

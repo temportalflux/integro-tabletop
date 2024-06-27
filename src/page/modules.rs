@@ -123,12 +123,7 @@ struct ModuleListProps {
 }
 
 #[function_component]
-fn ModuleList(
-	ModuleListProps {
-		modules_query,
-		pending_module_installations,
-	}: &ModuleListProps,
-) -> Html {
+fn ModuleList(ModuleListProps { modules_query, pending_module_installations }: &ModuleListProps) -> Html {
 	match modules_query.status() {
 		QueryStatus::Pending => html!(<Spinner />),
 		QueryStatus::Empty | QueryStatus::Failed(_) => html! {
@@ -185,19 +180,14 @@ struct ModuleCardProps {
 }
 #[function_component]
 fn ModuleCard(props: &ModuleCardProps) -> Html {
-	let ModuleCardProps {
-		module,
-		pending_module_installations,
-	} = props;
+	let ModuleCardProps { module, pending_module_installations } = props;
 	let autosync_channel = use_context::<autosync::Channel>().unwrap();
 	let on_toggle_install = Callback::from({
 		let channel = autosync_channel.clone();
 		let module_id = module.id.clone();
 		let installed = module.installed;
 		move |_| {
-			channel.try_send_req(autosync::Request::InstallModules(
-				[(module_id.clone(), !installed)].into(),
-			));
+			channel.try_send_req(autosync::Request::InstallModules([(module_id.clone(), !installed)].into()));
 		}
 	});
 	let on_update = Callback::from({
@@ -207,10 +197,7 @@ fn ModuleCard(props: &ModuleCardProps) -> Html {
 			channel.try_send_req(autosync::Request::UpdateModules([module_id.clone()].into()));
 		}
 	});
-	let show_as_installed = pending_module_installations
-		.get(&module.id)
-		.copied()
-		.unwrap_or(module.installed);
+	let show_as_installed = pending_module_installations.get(&module.id).copied().unwrap_or(module.installed);
 	let show_update = module.installed && module.version != module.remote_version;
 	html! {
 		<div class="card m-1 module" style="min-width: 300px;">

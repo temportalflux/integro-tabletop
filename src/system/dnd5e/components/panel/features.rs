@@ -1,7 +1,6 @@
 use crate::{
 	components::{Tag, Tags},
-	page::characters::sheet::joined::editor::description,
-	page::characters::sheet::CharacterHandle,
+	page::characters::sheet::{joined::editor::description, CharacterHandle},
 	path_map::PathMap,
 	system::dnd5e::data::Feature,
 };
@@ -81,10 +80,8 @@ fn make_section_contents(parent: PathBuf, container: &PathMap<Feature>) -> Html 
 			}
 		})
 		.collect::<Vec<_>>();
-	let sections = container
-		.iter_children()
-		.map(|(key, children)| make_section(&parent, key, children))
-		.collect::<Vec<_>>();
+	let sections =
+		container.iter_children().map(|(key, children)| make_section(&parent, key, children)).collect::<Vec<_>>();
 	html! {<>
 		{top_level_features}
 		{sections}
@@ -98,13 +95,7 @@ struct FeatureBlockProps {
 	show_parent: bool,
 }
 #[function_component]
-fn FeatureBlock(
-	FeatureBlockProps {
-		parent,
-		feature,
-		show_parent,
-	}: &FeatureBlockProps,
-) -> Html {
+fn FeatureBlock(FeatureBlockProps { parent, feature, show_parent }: &FeatureBlockProps) -> Html {
 	use convert_case::{Case, Casing};
 	let state = use_context::<CharacterHandle>().unwrap();
 	let feat_data_path = feature.get_display_path();

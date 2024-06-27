@@ -23,15 +23,11 @@ impl Database {
 	}
 
 	pub fn write(&self) -> Result<Transaction, Error> {
-		self.0.transaction(
-			&[Entry::store_id(), Module::store_id()],
-			idb::TransactionMode::ReadWrite,
-		)
+		self.0.transaction(&SchemaVersion::store_ids(), idb::TransactionMode::ReadWrite)
 	}
 
 	pub fn read(&self) -> Result<Transaction, Error> {
-		self.0
-			.transaction(&[Entry::store_id(), Module::store_id()], idb::TransactionMode::ReadOnly)
+		self.0.transaction(&SchemaVersion::store_ids(), idb::TransactionMode::ReadOnly)
 	}
 
 	pub fn read_entries(&self) -> Result<Transaction, Error> {
@@ -55,6 +51,7 @@ impl Database {
 		let transaction = self.write()?;
 		transaction.object_store_of::<Module>()?.clear()?.await?;
 		transaction.object_store_of::<Entry>()?.clear()?.await?;
+		transaction.object_store_of::<UserSettingsRecord>()?.clear()?.await?;
 		transaction.commit().await?;
 		Ok(())
 	}
@@ -81,14 +78,14 @@ impl Database {
 		Ok(Some(typed))
 	}
 
-	pub async fn mutate<F>(&self, fn_transaction: F) -> Result<(), Error>
+	pub async fn mutate<F, Output>(&self, fn_transaction: F) -> Result<Output, Error>
 	where
-		F: FnOnce(&database::Transaction) -> LocalBoxFuture<'_, Result<(), Error>>,
+		F: FnOnce(&database::Transaction) -> LocalBoxFuture<'_, Result<Output, Error>>,
 	{
 		let transaction = self.write()?;
-		fn_transaction(&transaction).await?;
+		let output = fn_transaction(&transaction).await?;
 		transaction.commit().await?;
-		Ok(())
+		Ok(output)
 	}
 }
 

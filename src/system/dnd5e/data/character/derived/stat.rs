@@ -8,8 +8,7 @@ use kdlize::{
 	AsKdl, FromKdl, NodeBuilder,
 };
 use multimap::MultiMap;
-use std::collections::HashMap;
-use std::{cmp::Ordering, path::PathBuf};
+use std::{cmp::Ordering, collections::HashMap, path::PathBuf};
 
 #[derive(Clone, Default, PartialEq, Debug)]
 pub struct Stat(MultiMap<String, (StatOperation, PathBuf)>);
@@ -59,18 +58,15 @@ impl FromKdl<NodeContext> for StatOperation {
 				}
 				Ok(Self::MultiplyDivide(-value.abs()))
 			}
-			type_str => Err(NotInList(
-				type_str.into(),
-				vec![
-					"MinimumValue",
-					"MinimumStat",
-					"Base",
-					"Add",
-					"Subtract",
-					"Multiply",
-					"Divide",
-				],
-			))?,
+			type_str => Err(NotInList(type_str.into(), vec![
+				"MinimumValue",
+				"MinimumStat",
+				"Base",
+				"Add",
+				"Subtract",
+				"Multiply",
+				"Divide",
+			]))?,
 		}
 	}
 }
@@ -115,9 +111,7 @@ impl Stat {
 		// For all stats which are at minimum equivalent to some other stat
 		for (stat_name, minimum_sibling_stats) in stat_minimum_sibling_stats {
 			// Find the maximum of all the minimum values, where each minimum value is found by the stat's name
-			let iter = minimum_sibling_stats
-				.into_iter()
-				.filter_map(|stat_name| stat_values.get(stat_name).copied());
+			let iter = minimum_sibling_stats.into_iter().filter_map(|stat_name| stat_values.get(stat_name).copied());
 			if let Some(minimum_value) = iter.max() {
 				let value = stat_values.get_mut(stat_name).expect("missing valid key");
 				*value = (*value).min(minimum_value);

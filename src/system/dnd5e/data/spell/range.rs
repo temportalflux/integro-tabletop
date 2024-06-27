@@ -1,5 +1,4 @@
-use crate::kdl_ext::NodeContext;
-use crate::utility::NotInList;
+use crate::{kdl_ext::NodeContext, utility::NotInList};
 use kdlize::{ext::ValueExt, AsKdl, FromKdl, NodeBuilder};
 
 #[derive(Default, Clone, PartialEq, Debug)]
@@ -102,10 +101,7 @@ mod test {
 		#[test]
 		fn unit_feet() -> anyhow::Result<()> {
 			let doc = "range 60";
-			let data = Range::Unit {
-				distance: 60,
-				unit: "Feet".into(),
-			};
+			let data = Range::Unit { distance: 60, unit: "Feet".into() };
 			assert_eq_fromkdl!(Range, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())
@@ -114,10 +110,7 @@ mod test {
 		#[test]
 		fn unit_other() -> anyhow::Result<()> {
 			let doc = "range 5 \"Miles\"";
-			let data = Range::Unit {
-				distance: 5,
-				unit: "Miles".into(),
-			};
+			let data = Range::Unit { distance: 5, unit: "Miles".into() };
 			assert_eq_fromkdl!(Range, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())

@@ -1,12 +1,11 @@
 use crate::utility::NotInList;
-use std::str::FromStr;
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 
 static SITE_ID: &str = "f48e4964-d583-424b-bace-bd51a12f72a2";
 pub use netlify_oauth::*;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum OAuthProvider {
 	Github,
 }
@@ -19,11 +18,7 @@ impl OAuthProvider {
 	}
 
 	pub fn request(&self) -> Request {
-		Request {
-			site_id: SITE_ID,
-			provider_id: self.oauth_id(),
-			window_title: "Integro Authorization".into(),
-		}
+		Request { site_id: SITE_ID, provider_id: self.oauth_id(), window_title: "Integro Authorization".into() }
 	}
 }
 

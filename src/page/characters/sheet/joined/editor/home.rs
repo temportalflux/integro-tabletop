@@ -68,11 +68,8 @@ fn NameEditor() -> Html {
 
 #[function_component]
 fn PronounEditor() -> Html {
-	static PROVIDED_OPTIONS: [(&'static str, &'static str); 3] = [
-		("she/her", "She / Her"),
-		("he/him", "He / Him"),
-		("they/them", "They / Them"),
-	];
+	static PROVIDED_OPTIONS: [(&'static str, &'static str); 3] =
+		[("she/her", "She / Her"), ("he/him", "He / Him"), ("they/them", "They / Them")];
 	let state = use_context::<CharacterHandle>().unwrap();
 	let onchange = Callback::from({
 		let state = state.clone();

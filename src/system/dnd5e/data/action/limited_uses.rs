@@ -175,10 +175,7 @@ mod test {
 				|    max_uses 2
 				|}
 			";
-			let data = LimitedUses::Usage(Resource {
-				capacity: Value::Fixed(2),
-				..Default::default()
-			});
+			let data = LimitedUses::Usage(Resource { capacity: Value::Fixed(2), ..Default::default() });
 			assert_eq_fromkdl!(LimitedUses, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())
@@ -194,10 +191,7 @@ mod test {
 			";
 			let data = LimitedUses::Usage(Resource {
 				capacity: Value::Fixed(2),
-				reset: Some(ResourceReset {
-					rest: Value::Fixed(Rest::Short.to_string()),
-					rate: None,
-				}),
+				reset: Some(ResourceReset { rest: Value::Fixed(Rest::Short.to_string()), rate: None }),
 				..Default::default()
 			});
 			assert_eq_fromkdl!(LimitedUses, doc, data);
@@ -254,10 +248,7 @@ mod test {
 				|    resource \"Cleric/level02/Channel Divinity\"
 				|}
 			";
-			let data = LimitedUses::Consumer {
-				resource: "Cleric/level02/Channel Divinity".into(),
-				cost: 1,
-			};
+			let data = LimitedUses::Consumer { resource: "Cleric/level02/Channel Divinity".into(), cost: 1 };
 			assert_eq_fromkdl!(LimitedUses, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())
@@ -271,10 +262,7 @@ mod test {
 				|    cost 4
 				|}
 			";
-			let data = LimitedUses::Consumer {
-				resource: "Cleric/level02/Channel Divinity".into(),
-				cost: 4,
-			};
+			let data = LimitedUses::Consumer { resource: "Cleric/level02/Channel Divinity".into(), cost: 4 };
 			assert_eq_fromkdl!(LimitedUses, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())

@@ -1,8 +1,10 @@
-use crate::kdl_ext::NodeContext;
-use crate::system::mutator::ReferencePath;
 use crate::{
-	system::dnd5e::data::{character::Character, description, ArmorClassFormula},
-	system::Mutator,
+	kdl_ext::NodeContext,
+	system::{
+		dnd5e::data::{character::Character, description, ArmorClassFormula},
+		mutator::ReferencePath,
+		Mutator,
+	},
 };
 use kdlize::{AsKdl, FromKdl};
 
@@ -73,10 +75,7 @@ mod test {
 		#[test]
 		fn base_only() -> anyhow::Result<()> {
 			let doc = "mutator \"add_armor_class_formula\" base=12";
-			let data = AddArmorClassFormula(ArmorClassFormula {
-				base: 12,
-				bonuses: vec![],
-			});
+			let data = AddArmorClassFormula(ArmorClassFormula { base: 12, bonuses: vec![] });
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -91,11 +90,7 @@ mod test {
 			";
 			let data = AddArmorClassFormula(ArmorClassFormula {
 				base: 12,
-				bonuses: vec![BoundedAbility {
-					ability: Ability::Dexterity,
-					min: None,
-					max: None,
-				}],
+				bonuses: vec![BoundedAbility { ability: Ability::Dexterity, min: None, max: None }],
 			});
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
@@ -111,11 +106,7 @@ mod test {
 			";
 			let data = AddArmorClassFormula(ArmorClassFormula {
 				base: 15,
-				bonuses: vec![BoundedAbility {
-					ability: Ability::Dexterity,
-					min: None,
-					max: Some(2),
-				}],
+				bonuses: vec![BoundedAbility { ability: Ability::Dexterity, min: None, max: Some(2) }],
 			});
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
@@ -132,18 +123,11 @@ mod test {
 			";
 			let data = AddArmorClassFormula(ArmorClassFormula {
 				base: 10,
-				bonuses: vec![
-					BoundedAbility {
-						ability: Ability::Dexterity,
-						min: None,
-						max: None,
-					},
-					BoundedAbility {
-						ability: Ability::Wisdom,
-						min: None,
-						max: None,
-					},
-				],
+				bonuses: vec![BoundedAbility { ability: Ability::Dexterity, min: None, max: None }, BoundedAbility {
+					ability: Ability::Wisdom,
+					min: None,
+					max: None,
+				}],
 			});
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
@@ -185,15 +169,19 @@ mod test {
 					Ability::Wisdom => 10,
 					Ability::Charisma => 10,
 				},
-				bundles: vec![Bundle {
-					mutators: vec![AddArmorClassFormula(ArmorClassFormula {
-						base: 11,
-						bonuses: vec![Ability::Dexterity.into(), Ability::Constitution.into()],
-					})
-					.into()],
-					..Default::default()
-				}
-				.into()],
+				bundles: vec![
+					Bundle {
+						mutators: vec![
+							AddArmorClassFormula(ArmorClassFormula {
+								base: 11,
+								bonuses: vec![Ability::Dexterity.into(), Ability::Constitution.into()],
+							})
+							.into(),
+						],
+						..Default::default()
+					}
+					.into(),
+				],
 				..Default::default()
 			});
 			// Max of:

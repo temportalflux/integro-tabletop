@@ -1,11 +1,13 @@
-use crate::kdl_ext::NodeContext;
-use crate::system::mutator::ReferencePath;
 use crate::{
-	system::dnd5e::data::{
-		character::{AbilityScoreBonus, Character},
-		description, Ability,
+	kdl_ext::NodeContext,
+	system::{
+		dnd5e::data::{
+			character::{AbilityScoreBonus, Character},
+			description, Ability,
+		},
+		mutator::ReferencePath,
+		Mutator,
 	},
-	system::Mutator,
 	utility::selector,
 };
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
@@ -47,9 +49,8 @@ impl Mutator for AbilityScoreChange {
 			.map(|op| match op {
 				AbilityScoreOp::Bonus { value, max_total_score } => {
 					let bonus_txt = format!("increases by {value}");
-					let max_txt = max_total_score
-						.as_ref()
-						.map(|value| format!(" if the total score is no more than {value}"));
+					let max_txt =
+						max_total_score.as_ref().map(|value| format!(" if the total score is no more than {value}"));
 					format!("{bonus_txt}{}", max_txt.unwrap_or_default())
 				}
 				AbilityScoreOp::IncreaseMax { value } => {
@@ -61,9 +62,7 @@ impl Mutator for AbilityScoreChange {
 		description::Section {
 			title: Some("Ability Score Increase".into()),
 			content: format!("{ability}; {}.", op_descs.join(", ")).into(),
-			children: vec![selector::DataList::default()
-				.with_enum("Ability", &self.ability, state)
-				.into()],
+			children: vec![selector::DataList::default().with_enum("Ability", &self.ability, state).into()],
 			..Default::default()
 		}
 	}
@@ -79,17 +78,12 @@ impl Mutator for AbilityScoreChange {
 					AbilityScoreOp::Bonus { value, max_total_score } => {
 						stats.ability_scores_mut().push_bonus(
 							ability,
-							AbilityScoreBonus {
-								value: *value,
-								max_total: *max_total_score,
-							},
+							AbilityScoreBonus { value: *value, max_total: *max_total_score },
 							parent.display.clone(),
 						);
 					}
 					AbilityScoreOp::IncreaseMax { value } => {
-						stats
-							.ability_scores_mut()
-							.increase_maximum(ability, *value, parent.display.clone());
+						stats.ability_scores_mut().increase_maximum(ability, *value, parent.display.clone());
 					}
 				}
 			}
@@ -160,10 +154,7 @@ mod test {
 			";
 			let data = AbilityScoreChange {
 				ability: selector::Value::Specific(Ability::Dexterity),
-				operations: vec![AbilityScoreOp::Bonus {
-					value: 2,
-					max_total_score: None,
-				}],
+				operations: vec![AbilityScoreOp::Bonus { value: 2, max_total_score: None }],
 			};
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
@@ -183,10 +174,7 @@ mod test {
 					id: Some("skillA").into(),
 					..Default::default()
 				}),
-				operations: vec![AbilityScoreOp::Bonus {
-					value: 1,
-					max_total_score: None,
-				}],
+				operations: vec![AbilityScoreOp::Bonus { value: 1, max_total_score: None }],
 			};
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
@@ -203,10 +191,7 @@ mod test {
 			";
 			let data = AbilityScoreChange {
 				ability: selector::Value::Specific(Ability::Constitution),
-				operations: vec![AbilityScoreOp::Bonus {
-					value: 3,
-					max_total_score: Some(12),
-				}],
+				operations: vec![AbilityScoreOp::Bonus { value: 3, max_total_score: Some(12) }],
 			};
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
@@ -242,10 +227,7 @@ mod test {
 			let data = AbilityScoreChange {
 				ability: selector::Value::Specific(Ability::Strength),
 				operations: vec![
-					AbilityScoreOp::Bonus {
-						value: 4,
-						max_total_score: Some(17),
-					},
+					AbilityScoreOp::Bonus { value: 4, max_total_score: Some(17) },
 					AbilityScoreOp::IncreaseMax { value: 24 },
 				],
 			};
@@ -291,19 +273,18 @@ mod test {
 				vec![(Ability::Strength, 10)],
 				vec![AbilityScoreChange {
 					ability: selector::Value::Specific(Ability::Strength),
-					operations: vec![AbilityScoreOp::Bonus {
-						value: 1,
-						max_total_score: None,
-					}],
+					operations: vec![AbilityScoreOp::Bonus { value: 1, max_total_score: None }],
 				}],
 				Default::default(),
 			);
 			assert_eq!(
 				*character.ability_scores().get(Ability::Strength),
-				AbilityScore::default()
-					.with_total(11)
-					.with_bonus((10, None, "Base Score".into(), true))
-					.with_bonus((1, None, "AddAbilityScore".into(), true))
+				AbilityScore::default().with_total(11).with_bonus((10, None, "Base Score".into(), true)).with_bonus((
+					1,
+					None,
+					"AddAbilityScore".into(),
+					true
+				))
 			);
 		}
 
@@ -313,19 +294,18 @@ mod test {
 				vec![(Ability::Dexterity, 10)],
 				vec![AbilityScoreChange {
 					ability: selector::Value::Options(selector::ValueOptions::default()),
-					operations: vec![AbilityScoreOp::Bonus {
-						value: 5,
-						max_total_score: None,
-					}],
+					operations: vec![AbilityScoreOp::Bonus { value: 5, max_total_score: None }],
 				}],
 				[("AddAbilityScore", "dexterity".into())].into(),
 			);
 			assert_eq!(
 				*character.ability_scores().get(Ability::Dexterity),
-				AbilityScore::default()
-					.with_total(15)
-					.with_bonus((10, None, "Base Score".into(), true))
-					.with_bonus((5, None, "AddAbilityScore".into(), true))
+				AbilityScore::default().with_total(15).with_bonus((10, None, "Base Score".into(), true)).with_bonus((
+					5,
+					None,
+					"AddAbilityScore".into(),
+					true
+				))
 			);
 		}
 
@@ -340,57 +320,50 @@ mod test {
 					Ability::Wisdom => 12,
 					Ability::Charisma => 18,
 				},
-				bundles: vec![Bundle {
-					name: "AddAbilityScore".into(),
-					mutators: vec![AbilityScoreChange {
-						ability: selector::Value::Specific(Ability::Intelligence),
-						operations: vec![AbilityScoreOp::Bonus {
-							value: 3,
-							max_total_score: None,
-						}],
+				bundles: vec![
+					Bundle {
+						name: "AddAbilityScore".into(),
+						mutators: vec![
+							AbilityScoreChange {
+								ability: selector::Value::Specific(Ability::Intelligence),
+								operations: vec![AbilityScoreOp::Bonus { value: 3, max_total_score: None }],
+							}
+							.into(),
+						],
+						..Default::default()
 					}
-					.into()],
-					..Default::default()
-				}
-				.into()],
+					.into(),
+				],
 				..Default::default()
 			});
 			assert_eq!(
 				*character.ability_scores().get(Ability::Strength),
-				AbilityScore::default()
-					.with_total(10)
-					.with_bonus((10, None, "Base Score".into(), true))
+				AbilityScore::default().with_total(10).with_bonus((10, None, "Base Score".into(), true))
 			);
 			assert_eq!(
 				*character.ability_scores().get(Ability::Dexterity),
-				AbilityScore::default()
-					.with_total(15)
-					.with_bonus((15, None, "Base Score".into(), true))
+				AbilityScore::default().with_total(15).with_bonus((15, None, "Base Score".into(), true))
 			);
 			assert_eq!(
 				*character.ability_scores().get(Ability::Constitution),
-				AbilityScore::default()
-					.with_total(7)
-					.with_bonus((7, None, "Base Score".into(), true))
+				AbilityScore::default().with_total(7).with_bonus((7, None, "Base Score".into(), true))
 			);
 			assert_eq!(
 				*character.ability_scores().get(Ability::Intelligence),
-				AbilityScore::default()
-					.with_total(14)
-					.with_bonus((11, None, "Base Score".into(), true))
-					.with_bonus((3, None, "AddAbilityScore".into(), true))
+				AbilityScore::default().with_total(14).with_bonus((11, None, "Base Score".into(), true)).with_bonus((
+					3,
+					None,
+					"AddAbilityScore".into(),
+					true
+				))
 			);
 			assert_eq!(
 				*character.ability_scores().get(Ability::Wisdom),
-				AbilityScore::default()
-					.with_total(12)
-					.with_bonus((12, None, "Base Score".into(), true))
+				AbilityScore::default().with_total(12).with_bonus((12, None, "Base Score".into(), true))
 			);
 			assert_eq!(
 				*character.ability_scores().get(Ability::Charisma),
-				AbilityScore::default()
-					.with_total(18)
-					.with_bonus((18, None, "Base Score".into(), true))
+				AbilityScore::default().with_total(18).with_bonus((18, None, "Base Score".into(), true))
 			);
 		}
 
@@ -400,19 +373,18 @@ mod test {
 				vec![(Ability::Strength, 10)],
 				vec![AbilityScoreChange {
 					ability: selector::Value::Specific(Ability::Strength),
-					operations: vec![AbilityScoreOp::Bonus {
-						value: 5,
-						max_total_score: Some(13),
-					}],
+					operations: vec![AbilityScoreOp::Bonus { value: 5, max_total_score: Some(13) }],
 				}],
 				Default::default(),
 			);
 			assert_eq!(
 				*character.ability_scores().get(Ability::Strength),
-				AbilityScore::default()
-					.with_total(10)
-					.with_bonus((10, None, "Base Score".into(), true))
-					.with_bonus((5, Some(13), "AddAbilityScore".into(), false))
+				AbilityScore::default().with_total(10).with_bonus((10, None, "Base Score".into(), true)).with_bonus((
+					5,
+					Some(13),
+					"AddAbilityScore".into(),
+					false
+				))
 			);
 		}
 
@@ -422,13 +394,10 @@ mod test {
 				vec![(Ability::Strength, 18)],
 				vec![AbilityScoreChange {
 					ability: selector::Value::Specific(Ability::Strength),
-					operations: vec![
-						AbilityScoreOp::IncreaseMax { value: 24 },
-						AbilityScoreOp::Bonus {
-							value: 5,
-							max_total_score: None,
-						},
-					],
+					operations: vec![AbilityScoreOp::IncreaseMax { value: 24 }, AbilityScoreOp::Bonus {
+						value: 5,
+						max_total_score: None,
+					}],
 				}],
 				Default::default(),
 			);

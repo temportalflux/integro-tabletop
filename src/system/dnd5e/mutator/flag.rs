@@ -75,9 +75,7 @@ impl FromKdl<NodeContext> for SetFlag {
 
 impl AsKdl for SetFlag {
 	fn as_kdl(&self) -> NodeBuilder {
-		NodeBuilder::default()
-			.with_entry(self.flag.to_string())
-			.with_entry(self.value)
+		NodeBuilder::default().with_entry(self.flag.to_string()).with_entry(self.value)
 	}
 }
 
@@ -137,10 +135,7 @@ mod test {
 		#[test]
 		fn armor_strength_requirement() -> anyhow::Result<()> {
 			let doc = "mutator \"flag\" \"ArmorStrengthRequirement\" false";
-			let data = SetFlag {
-				flag: Flag::ArmorStrengthRequirement,
-				value: false,
-			};
+			let data = SetFlag { flag: Flag::ArmorStrengthRequirement, value: false };
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())

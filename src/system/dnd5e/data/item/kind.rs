@@ -1,6 +1,5 @@
 use super::equipment::Equipment;
-use crate::kdl_ext::NodeContext;
-use crate::utility::NotInList;
+use crate::{kdl_ext::NodeContext, utility::NotInList};
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
 
 #[derive(Clone, PartialEq, Debug)]

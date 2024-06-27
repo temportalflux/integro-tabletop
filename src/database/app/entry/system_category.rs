@@ -10,10 +10,7 @@ pub struct SystemCategory {
 
 impl SystemCategory {
 	pub fn new<T: crate::system::Block>(system: impl Into<String>) -> Self {
-		Self {
-			system: system.into(),
-			category: T::id().into(),
-		}
+		Self { system: system.into(), category: T::id().into() }
 	}
 }
 

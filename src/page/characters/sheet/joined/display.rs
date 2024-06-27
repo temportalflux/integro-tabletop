@@ -56,13 +56,8 @@ pub fn Display(ViewProps { swap_view }: &ViewProps) -> Html {
 					return Ok(());
 				};
 
-				let SourceId {
-					module: Some(ModuleId::Github { user_org, repository }),
-					system,
-					path,
-					version,
-					..
-				} = &id
+				let SourceId { module: Some(ModuleId::Github { user_org, repository }), system, path, version, .. } =
+					&id
 				else {
 					log::error!("non-github source id");
 					return Ok(());
@@ -94,9 +89,8 @@ pub fn Display(ViewProps { swap_view }: &ViewProps) -> Html {
 					log::error!("Mission system registration for {system:?}");
 					return Ok(());
 				};
-				let document = content
-					.parse::<kdl::KdlDocument>()
-					.with_context(|| format!("Failed to parse fetched content"))?;
+				let document =
+					content.parse::<kdl::KdlDocument>().with_context(|| format!("Failed to parse fetched content"))?;
 				let Some(node) = document.nodes().get(0) else {
 					log::error!("Character data is empty, no first node in {content:?}");
 					return Ok(());
@@ -155,11 +149,7 @@ pub fn Display(ViewProps { swap_view }: &ViewProps) -> Html {
 				}
 			};
 
-			let SourceId {
-				module: Some(ModuleId::Github { user_org, repository }),
-				..
-			} = &id
-			else {
+			let SourceId { module: Some(ModuleId::Github { user_org, repository }), .. } = &id else {
 				log::debug!("non-github source id");
 				return;
 			};

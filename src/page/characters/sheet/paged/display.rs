@@ -80,17 +80,14 @@ impl FromStr for Page {
 			"Spells" => Ok(Self::Spells),
 			"Inventory" => Ok(Self::Inventory),
 			"Description" => Ok(Self::Description),
-			v => Err(NotInList(
-				v.into(),
-				vec![
-					"Abilities",
-					"Attributes",
-					"Features",
-					"Spells",
-					"Inventory",
-					"Description",
-				],
-			)),
+			v => Err(NotInList(v.into(), vec![
+				"Abilities",
+				"Attributes",
+				"Features",
+				"Spells",
+				"Inventory",
+				"Description",
+			])),
 		}
 	}
 }

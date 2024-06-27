@@ -7,16 +7,8 @@ use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum AttackCheckKind {
-	AttackRoll {
-		ability: Ability,
-		proficient: Value<bool>,
-	},
-	SavingThrow {
-		base: i32,
-		dc_ability: Option<Ability>,
-		proficient: bool,
-		save_ability: Ability,
-	},
+	AttackRoll { ability: Ability, proficient: Value<bool> },
+	SavingThrow { base: i32, dc_ability: Option<Ability>, proficient: bool, save_ability: Ability },
 }
 
 crate::impl_trait_eq!(AttackCheckKind);
@@ -47,12 +39,7 @@ impl FromKdl<NodeContext> for AttackCheckKind {
 					(base, ability, proficient)
 				};
 				let save_ability = node.query_str_req_t::<Ability>("scope() > save_ability", 0)?;
-				Ok(Self::SavingThrow {
-					base,
-					dc_ability,
-					proficient,
-					save_ability,
-				})
+				Ok(Self::SavingThrow { base, dc_ability, proficient, save_ability })
 			}
 			name => Err(NotInList(name.into(), vec!["AttackRoll", "SavingThrow"]).into()),
 		}
@@ -73,12 +60,7 @@ impl AsKdl for AttackCheckKind {
 				}
 				node
 			}
-			Self::SavingThrow {
-				base,
-				dc_ability,
-				proficient,
-				save_ability,
-			} => {
+			Self::SavingThrow { base, dc_ability, proficient, save_ability } => {
 				node.entry("SavingThrow");
 				node.child(("difficulty_class", {
 					let mut node = NodeBuilder::default();
@@ -124,10 +106,7 @@ mod test {
 		#[test]
 		fn atkroll_simple() -> anyhow::Result<()> {
 			let doc = "check \"AttackRoll\" (Ability)\"Strength\"";
-			let data = AttackCheckKind::AttackRoll {
-				ability: Ability::Strength,
-				proficient: Value::Fixed(false),
-			};
+			let data = AttackCheckKind::AttackRoll { ability: Ability::Strength, proficient: Value::Fixed(false) };
 			assert_eq_fromkdl!(AttackCheckKind, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())
@@ -136,10 +115,7 @@ mod test {
 		#[test]
 		fn atkroll_proficient() -> anyhow::Result<()> {
 			let doc = "check \"AttackRoll\" (Ability)\"Strength\" proficient=true";
-			let data = AttackCheckKind::AttackRoll {
-				ability: Ability::Strength,
-				proficient: Value::Fixed(true),
-			};
+			let data = AttackCheckKind::AttackRoll { ability: Ability::Strength, proficient: Value::Fixed(true) };
 			assert_eq_fromkdl!(AttackCheckKind, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())

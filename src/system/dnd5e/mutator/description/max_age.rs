@@ -1,8 +1,10 @@
-use crate::kdl_ext::NodeContext;
-use crate::system::mutator::ReferencePath;
 use crate::{
-	system::dnd5e::data::{character::Character, description},
-	system::Mutator,
+	kdl_ext::NodeContext,
+	system::{
+		dnd5e::data::{character::Character, description},
+		mutator::ReferencePath,
+		Mutator,
+	},
 };
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
 

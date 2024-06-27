@@ -37,10 +37,7 @@ mod test {
 		#[test]
 		fn scaling_level_int_noclass_nomap() -> anyhow::Result<()> {
 			let doc = "scaling (Scaled)\"Level\"";
-			let data = Value::<u32>::Scaled(Basis::Level {
-				class_name: None,
-				level_map: [].into(),
-			});
+			let data = Value::<u32>::Scaled(Basis::Level { class_name: None, level_map: [].into() });
 			assert_eq_fromkdl!(Value<u32>, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())
@@ -49,10 +46,8 @@ mod test {
 		#[test]
 		fn scaling_level_int_nomap() -> anyhow::Result<()> {
 			let doc = "scaling (Scaled)\"Level\" class=\"Barbarian\"";
-			let data = Value::<u32>::Scaled(Basis::Level {
-				class_name: Some("Barbarian".into()),
-				level_map: [].into(),
-			});
+			let data =
+				Value::<u32>::Scaled(Basis::Level { class_name: Some("Barbarian".into()), level_map: [].into() });
 			assert_eq_fromkdl!(Value<u32>, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())
@@ -134,10 +129,7 @@ mod test {
 
 		#[test]
 		fn scaling_level_char_nomap() {
-			let scaling = Value::<u32>::Scaled(Basis::Level {
-				class_name: None,
-				level_map: BTreeMap::new(),
-			});
+			let scaling = Value::<u32>::Scaled(Basis::Level { class_name: None, level_map: BTreeMap::new() });
 			assert_eq!(scaling.evaluate(&character(&[])), Some(0));
 			assert_eq!(scaling.evaluate(&character(&[("Any", 4)])), Some(4));
 			assert_eq!(scaling.evaluate(&character(&[("Any", 4), ("Another", 5)])), Some(9));
@@ -147,15 +139,8 @@ mod test {
 		fn scaling_level_char_map() {
 			let scaling = Value::<u32>::Scaled(Basis::Level {
 				class_name: None,
-				level_map: [
-					(1, Some(4)),
-					(3, Some(5)),
-					(8, Some(10)),
-					(16, Some(14)),
-					(19, Some(15)),
-					(20, None),
-				]
-				.into(),
+				level_map: [(1, Some(4)), (3, Some(5)), (8, Some(10)), (16, Some(14)), (19, Some(15)), (20, None)]
+					.into(),
 			});
 			assert_eq!(scaling.evaluate(&character(&[])), None);
 			assert_eq!(scaling.evaluate(&character(&[("Any", 1)])), Some(4));
@@ -172,10 +157,8 @@ mod test {
 
 		#[test]
 		fn scaling_level_class_nomap() {
-			let scaling = Value::<u32>::Scaled(Basis::Level {
-				class_name: Some("ClassA".into()),
-				level_map: BTreeMap::new(),
-			});
+			let scaling =
+				Value::<u32>::Scaled(Basis::Level { class_name: Some("ClassA".into()), level_map: BTreeMap::new() });
 			assert_eq!(scaling.evaluate(&character(&[])), Some(0));
 			assert_eq!(scaling.evaluate(&character(&[("ClassA", 1)])), Some(1));
 			assert_eq!(scaling.evaluate(&character(&[("ClassB", 2)])), Some(0));
@@ -186,15 +169,7 @@ mod test {
 		fn scaling_level_class_map() {
 			let scaling = Value::<u32>::Scaled(Basis::Level {
 				class_name: Some("ClassA".into()),
-				level_map: [
-					(1, Some(1)),
-					(3, Some(2)),
-					(6, Some(3)),
-					(10, Some(5)),
-					(15, Some(8)),
-					(20, None),
-				]
-				.into(),
+				level_map: [(1, Some(1)), (3, Some(2)), (6, Some(3)), (10, Some(5)), (15, Some(8)), (20, None)].into(),
 			});
 			assert_eq!(scaling.evaluate(&character(&[])), None);
 			assert_eq!(scaling.evaluate(&character(&[("ClassA", 1)])), Some(1));
