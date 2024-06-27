@@ -81,8 +81,7 @@ pub enum QueryStatus<T, E> {
 
 #[hook]
 pub fn use_query<QueryBuilder, Input, Output, E>(
-	input: Option<Input>,
-	query_builder: QueryBuilder,
+	input: Option<Input>, query_builder: QueryBuilder,
 ) -> UseQueryHandle<Input, Output, E>
 where
 	Input: 'static + Clone,
@@ -120,8 +119,7 @@ where
 
 #[hook]
 pub fn use_query_callback<QueryBuilder, Input, Output, Arg, E>(
-	query_builder: QueryBuilder,
-	callback: Callback<(Arg, Output)>,
+	query_builder: QueryBuilder, callback: Callback<(Arg, Output)>,
 ) -> Callback<(Arg, Input)>
 where
 	Arg: 'static,
@@ -155,8 +153,7 @@ pub type UseQueryAllHandle<T> = UseQueryHandle<QueryAllArgs<T>, Vec<T>, database
 
 #[hook]
 pub fn use_query_all_typed<T>(
-	_auto_fetch: bool,
-	initial_args: Option<QueryAllArgs<T>>,
+	_auto_fetch: bool, initial_args: Option<QueryAllArgs<T>>,
 ) -> UseQueryHandle<QueryAllArgs<T>, Vec<T>, database::Error>
 where
 	T: Block + Unpin + Clone + 'static,
@@ -227,8 +224,7 @@ where
 
 #[hook]
 pub fn use_typed_fetch_callback_tuple<Output, Arg>(
-	_task_name: String,
-	fn_item: Callback<(Output, Arg)>,
+	_task_name: String, fn_item: Callback<(Output, Arg)>,
 ) -> Callback<(SourceId, Arg)>
 where
 	Output: 'static + Block + Unpin,

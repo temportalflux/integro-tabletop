@@ -33,9 +33,7 @@ where
 	Context: 'static + Send + Sync,
 {
 	pub fn as_data(
-		&self,
-		name: impl Into<String>,
-		context: &Context,
+		&self, name: impl Into<String>, context: &Context,
 	) -> Result<super::DataOption, super::InvalidDataPath> {
 		let Some(data_path) = self.id.data() else {
 			return Err(super::InvalidDataPath);

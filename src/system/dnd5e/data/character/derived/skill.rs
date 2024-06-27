@@ -68,8 +68,7 @@ impl AbilitySkillEntry {
 
 impl Skills {
 	pub fn iter_ability_mut(
-		&mut self,
-		ability: Option<Ability>,
+		&mut self, ability: Option<Ability>,
 	) -> impl Iterator<Item = (Ability, &mut AbilitySkillEntry)> {
 		let iter = self.abilities.iter_mut();
 		let iter = iter.filter(move |(key, _)| ability.is_none() || Some(*key) == ability);

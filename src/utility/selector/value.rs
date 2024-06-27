@@ -214,9 +214,7 @@ where
 	T: 'static + Clone + Send + Sync + std::fmt::Debug + PartialEq + ToString,
 {
 	pub fn as_data(
-		&self,
-		name: impl Into<String>,
-		context: &Context,
+		&self, name: impl Into<String>, context: &Context,
 	) -> Result<Option<super::DataOption>, super::InvalidDataPath> {
 		let Self::Options(ValueOptions {
 			id,

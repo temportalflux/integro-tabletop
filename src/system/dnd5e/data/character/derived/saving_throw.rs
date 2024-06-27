@@ -60,11 +60,7 @@ impl SavingThrows {
 	}
 
 	pub fn add_modifier(
-		&mut self,
-		ability: Option<Ability>,
-		modifier: Modifier,
-		target: Option<String>,
-		source: &ReferencePath,
+		&mut self, ability: Option<Ability>, modifier: Modifier, target: Option<String>, source: &ReferencePath,
 	) {
 		for (_ability, saving_throw) in self.iter_mut(ability) {
 			saving_throw

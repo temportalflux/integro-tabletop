@@ -69,8 +69,7 @@ impl Entry {
 	}
 
 	pub fn parse_kdl<T: kdlize::FromKdl<crate::kdl_ext::NodeContext>>(
-		&self,
-		node_reg: Arc<generics::Registry>,
+		&self, node_reg: Arc<generics::Registry>,
 	) -> Option<T> {
 		// Parse the entry's kdl string:
 		// kdl string to document

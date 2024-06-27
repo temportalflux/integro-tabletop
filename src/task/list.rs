@@ -35,10 +35,7 @@ impl PartialEq for Status {
 
 impl List {
 	pub fn insert(
-		&mut self,
-		handle: UseReducerHandle<Self>,
-		name: String,
-		progress: Option<ProgressHandle>,
+		&mut self, handle: UseReducerHandle<Self>, name: String, progress: Option<ProgressHandle>,
 		pending: LocalBoxFuture<'static, anyhow::Result<()>>,
 	) {
 		let id = progress

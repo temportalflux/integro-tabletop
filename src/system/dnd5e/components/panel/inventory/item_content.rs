@@ -820,9 +820,7 @@ fn ContainedSpellsSection(props: &ContainedSpellsSectionProps) -> Html {
 	});
 
 	fn get_container_spell<'c>(
-		persistent: &'c mut Persistent,
-		id_path: &Vec<uuid::Uuid>,
-		spell_idx: usize,
+		persistent: &'c mut Persistent, id_path: &Vec<uuid::Uuid>, spell_idx: usize,
 	) -> Option<&'c mut ContainerSpell> {
 		let Some(item) = get_inventory_item_mut(persistent, &id_path) else {
 			return None;

@@ -34,8 +34,7 @@ impl crate::system::Generator for BlockGenerator {
 	}
 
 	fn execute<'this>(
-		&'this self,
-		args: crate::system::generator::Args<'this>,
+		&'this self, args: crate::system::generator::Args<'this>,
 	) -> PinFutureLifetimeNoSend<'this, anyhow::Result<SystemObjectList>> {
 		Box::pin(async move {
 			let mut output = SystemObjectList::new(self, args.system.node());

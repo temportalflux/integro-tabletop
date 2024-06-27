@@ -240,10 +240,7 @@ pub fn Provider(props: &ChildrenProps) -> Html {
 }
 
 async fn process_request(
-	req: Request,
-	database: &Database,
-	system_depot: &system::Registry,
-	status: &Status,
+	req: Request, database: &Database, system_depot: &system::Registry, status: &Status,
 ) -> Result<(), StorageSyncError> {
 	#[cfg(target_family = "wasm")]
 	let storage = {
@@ -687,9 +684,7 @@ async fn process_request(
 }
 
 async fn gather_generators(
-	system: &str,
-	transaction: &Transaction,
-	node_reg: Arc<generics::Registry>,
+	system: &str, transaction: &Transaction, node_reg: Arc<generics::Registry>,
 ) -> Result<generator::Queue, StorageSyncError> {
 	use crate::database::entry::SystemCategory;
 	use database::{ObjectStoreExt, TransactionExt};

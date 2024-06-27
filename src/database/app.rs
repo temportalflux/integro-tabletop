@@ -65,10 +65,7 @@ impl Database {
 	}
 
 	pub async fn get_typed_entry<T>(
-		&self,
-		key: crate::system::SourceId,
-		system_depot: crate::system::Registry,
-		criteria: Option<Criteria>,
+		&self, key: crate::system::SourceId, system_depot: crate::system::Registry, criteria: Option<Criteria>,
 	) -> Result<Option<T>, FetchError>
 	where
 		T: Block + Unpin + 'static,

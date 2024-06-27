@@ -106,9 +106,7 @@ impl Spellcasting {
 	}
 
 	pub async fn fetch_spell_objects(
-		&mut self,
-		provider: &ObjectCacheProvider,
-		persistent: &Persistent,
+		&mut self, provider: &ObjectCacheProvider, persistent: &Persistent,
 	) -> anyhow::Result<()> {
 		self.fetch_always_prepared(provider).await?;
 		self.ritual_spells = self.fetch_rituals(provider, persistent).await?;
@@ -126,9 +124,7 @@ impl Spellcasting {
 	}
 
 	async fn fetch_rituals(
-		&self,
-		provider: &ObjectCacheProvider,
-		persistent: &Persistent,
+		&self, provider: &ObjectCacheProvider, persistent: &Persistent,
 	) -> anyhow::Result<RitualSpellCache> {
 		let mut caster_query_criteria = Vec::new();
 		let mut caster_filters = HashMap::new();

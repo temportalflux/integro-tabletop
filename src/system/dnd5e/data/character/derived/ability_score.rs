@@ -161,8 +161,7 @@ impl From<u32> for AbilityScoreBonus {
 }
 
 fn optimize_max_sums(
-	base: u32,
-	mut bonuses: Vec<(/*idx*/ usize, (/*bonus*/ u32, /*max*/ u32))>,
+	base: u32, mut bonuses: Vec<(/*idx*/ usize, (/*bonus*/ u32, /*max*/ u32))>,
 ) -> (u32, Option<Vec<usize>>) {
 	// Lower Extents: drop all entries whose max constraint will never be met (req max < base)
 	bonuses.retain(|(_, (_, max))| *max >= base);

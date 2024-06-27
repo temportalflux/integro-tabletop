@@ -79,8 +79,7 @@ pub trait Generator: Debug + TraitEq + AsTraitEq<dyn TraitEq> + NodeId + AsKdl {
 	fn source_id(&self) -> &SourceId;
 	fn short_id(&self) -> &String;
 	fn execute<'this>(
-		&'this self,
-		args: Args<'this>,
+		&'this self, args: Args<'this>,
 	) -> PinFutureLifetimeNoSend<'this, anyhow::Result<SystemObjectList>>;
 }
 

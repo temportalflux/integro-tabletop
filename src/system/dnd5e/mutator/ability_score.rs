@@ -267,9 +267,7 @@ mod test {
 		};
 
 		fn character(
-			base_scores: Vec<(Ability, u32)>,
-			mutators: Vec<AbilityScoreChange>,
-			selections: PathMap<String>,
+			base_scores: Vec<(Ability, u32)>, mutators: Vec<AbilityScoreChange>, selections: PathMap<String>,
 		) -> Character {
 			let mut persistent = Persistent::default();
 			for (ability, score) in base_scores {

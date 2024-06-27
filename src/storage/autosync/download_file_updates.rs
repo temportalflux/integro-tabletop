@@ -85,11 +85,7 @@ impl DownloadFileUpdates {
 	}
 
 	fn parse_content(
-		&self,
-		system: String,
-		file_path: String,
-		file_id: String,
-		content: String,
+		&self, system: String, file_path: String, file_id: String, content: String,
 	) -> anyhow::Result<Option<crate::database::Entry>> {
 		let Some(system_reg) = self.system_depot.get(&system) else {
 			return Ok(None);

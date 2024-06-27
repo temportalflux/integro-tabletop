@@ -29,10 +29,7 @@ pub struct DataList(Vec<DataOption>, Vec<super::InvalidDataPath>);
 
 impl DataList {
 	pub fn with_value<Context, T>(
-		mut self,
-		name: impl Into<String>,
-		selector: &super::Value<Context, T>,
-		context: Option<&Context>,
+		mut self, name: impl Into<String>, selector: &super::Value<Context, T>, context: Option<&Context>,
 	) -> Self
 	where
 		Context: 'static + Send + Sync,
@@ -50,10 +47,7 @@ impl DataList {
 	}
 
 	pub fn with_enum<Context, T>(
-		mut self,
-		name: impl Into<String>,
-		selector: &super::Value<Context, T>,
-		context: Option<&Context>,
+		mut self, name: impl Into<String>, selector: &super::Value<Context, T>, context: Option<&Context>,
 	) -> Self
 	where
 		Context: 'static + Send + Sync + Clone,
@@ -80,10 +74,7 @@ impl DataList {
 	}
 
 	pub fn with_object<Context>(
-		mut self,
-		name: impl Into<String>,
-		selector: &super::Object<Context>,
-		context: Option<&Context>,
+		mut self, name: impl Into<String>, selector: &super::Object<Context>, context: Option<&Context>,
 	) -> Self
 	where
 		Context: 'static + Send + Sync,

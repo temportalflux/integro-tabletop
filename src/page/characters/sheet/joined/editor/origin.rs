@@ -201,9 +201,7 @@ fn CategoryPicker(
 }
 
 fn selected_bundle(
-	state: &CharacterHandle,
-	idx: usize,
-	bundle: &Bundle,
+	state: &CharacterHandle, idx: usize, bundle: &Bundle,
 	all_dependents: &MultiMap<(&String, &String), (&String, &String)>,
 ) -> Html {
 	let dependents = match all_dependents.get_vec(&(&bundle.category, &bundle.name)) {

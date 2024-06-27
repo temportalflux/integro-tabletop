@@ -628,10 +628,7 @@ fn spell_row<'c>(props: SpellRowProps<'c>) -> Html {
 }
 
 pub fn spell_name_and_icons(
-	state: &CharacterHandle,
-	spell: &Spell,
-	entry: Option<&SpellEntry>,
-	ritual_only: bool,
+	state: &CharacterHandle, spell: &Spell, entry: Option<&SpellEntry>, ritual_only: bool,
 ) -> Html {
 	let can_ritual_cast = spell.casting_time.ritual && {
 		ritual_only || {
@@ -665,10 +662,7 @@ pub fn spell_source_and_uses(source: &Path, uses_suffix: Option<Html>) -> Html {
 }
 
 pub fn spell_overview_info(
-	state: &CharacterHandle,
-	spell: &Spell,
-	entry: Option<&SpellEntry>,
-	override_rank: Option<u8>,
+	state: &CharacterHandle, spell: &Spell, entry: Option<&SpellEntry>, override_rank: Option<u8>,
 ) -> Html {
 	let casting_duration = entry
 		.map(|entry| entry.casting_duration.as_ref())
@@ -1099,11 +1093,7 @@ fn SpellListAction(
 }
 
 fn spell_list_item(
-	section_id: &str,
-	state: &CharacterHandle,
-	spell: &Spell,
-	entry: Option<&SpellEntry>,
-	action: Html,
+	section_id: &str, state: &CharacterHandle, spell: &Spell, entry: Option<&SpellEntry>, action: Html,
 ) -> Html {
 	let collapse_id = format!("{section_id}-{}", spell.id.ref_id());
 	let can_ritual_cast = spell.casting_time.ritual && {

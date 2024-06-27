@@ -28,9 +28,7 @@ where
 }
 
 pub fn as_feature_paths_html_custom<'i, I, T, U, FSplit, FRender>(
-	iter: I,
-	split_item: FSplit,
-	item_as_html: FRender,
+	iter: I, split_item: FSplit, item_as_html: FRender,
 ) -> Option<String>
 where
 	T: 'i,

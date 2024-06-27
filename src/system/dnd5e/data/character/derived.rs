@@ -106,11 +106,7 @@ pub struct DefenseEntry {
 }
 impl Defenses {
 	pub fn push(
-		&mut self,
-		kind: Defense,
-		damage_type: Option<DamageType>,
-		context: Option<String>,
-		source: &ReferencePath,
+		&mut self, kind: Defense, damage_type: Option<DamageType>, context: Option<String>, source: &ReferencePath,
 	) {
 		self.0[kind].push(DefenseEntry {
 			damage_type,
@@ -204,11 +200,7 @@ impl AttackBonuses {
 	}
 
 	pub fn add_to_weapon_damage(
-		&mut self,
-		amount: Roll,
-		damage_type: Option<DamageType>,
-		queries: Vec<AttackQuery>,
-		source: &ReferencePath,
+		&mut self, amount: Roll, damage_type: Option<DamageType>, queries: Vec<AttackQuery>, source: &ReferencePath,
 	) {
 		self.attack_damage.push(AttackDamageBonus {
 			amount,
@@ -236,8 +228,7 @@ impl AttackBonuses {
 
 	// TODO: This isn't used yet, and should be driving the attacks section of the ui
 	pub fn get_weapon_attack(
-		&self,
-		action: &crate::system::dnd5e::data::action::Action,
+		&self, action: &crate::system::dnd5e::data::action::Action,
 	) -> Vec<(i32, Option<Modifier>, &Path)> {
 		let mut bonuses = Vec::new();
 		let Some(attack) = &action.attack else {
@@ -256,8 +247,7 @@ impl AttackBonuses {
 	}
 
 	pub fn get_weapon_damage(
-		&self,
-		action: &crate::system::dnd5e::data::action::Action,
+		&self, action: &crate::system::dnd5e::data::action::Action,
 	) -> Vec<(&Roll, &Option<DamageType>, &Path)> {
 		let mut bonuses = Vec::new();
 		let Some(attack) = &action.attack else {

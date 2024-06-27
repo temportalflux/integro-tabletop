@@ -97,12 +97,12 @@ mod test {
 	}
 
 	mod mutate {
-		use std::path::PathBuf;
 		use super::*;
 		use crate::system::dnd5e::data::{
 			character::{Character, Persistent},
 			Bundle,
 		};
+		use std::path::PathBuf;
 
 		fn character(mutators: Vec<(&'static str, Speed)>) -> Character {
 			Character::from(Persistent {
