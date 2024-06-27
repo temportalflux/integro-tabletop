@@ -50,7 +50,11 @@ pub fn LoginButton() -> Html {
 	let autosync_status = use_context::<autosync::Status>().unwrap();
 	let disabled = autosync_status.is_active();
 	if matches!(*auth_status, auth::Status::Successful { .. }) {
-		let onclick = auth.logout_callback().reform(|_: MouseEvent| ());
+		let onclick = auth.logout_callback().clone();
+		let onclick = Callback::from(move |_| {
+			onclick.emit(());
+			yewdux::Dispatch::<LocalUser>::global().set(LocalUser::default());
+		});
 		html! {
 			<button
 				class="btn btn-outline-danger"
