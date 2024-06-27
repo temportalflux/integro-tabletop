@@ -24,6 +24,10 @@ impl Registry {
 		Self(Arc::new(systems))
 	}
 
+	pub fn iter_ids(&self) -> impl Iterator<Item = &str> + '_ {
+		self.0.keys().map(|str| *str)
+	}
+
 	pub fn get_sys<T: System>(&self) -> Option<&Entry> {
 		self.get(T::id())
 	}

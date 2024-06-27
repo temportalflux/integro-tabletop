@@ -753,13 +753,3 @@ pub struct ModuleFileUpdate {
 	pub file: ModuleFile,
 	pub status: github::ChangedFileStatus,
 }
-
-impl ModuleFile {
-	pub fn get_system_in_file_path(path: &std::path::Path) -> Option<String> {
-		let Some(system_path) = path.components().next() else {
-			return None;
-		};
-		let system = system_path.as_os_str().to_str().unwrap().to_owned();
-		Some(system)
-	}
-}

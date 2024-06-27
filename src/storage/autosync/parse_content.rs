@@ -6,6 +6,7 @@ use crate::{
 	system::{self, generics, ModuleId, SourceId},
 };
 use anyhow::Context;
+use itertools::Itertools;
 use kdlize::{FromKdl, NodeId};
 use std::{
 	path::{Path, PathBuf},
@@ -55,7 +56,13 @@ impl ParseFiles {
 			let document =
 				content.parse::<kdl::KdlDocument>().with_context(|| format!("Failed to parse content: {content:?}"))?;
 
-			let system = ModuleFile::get_system_in_file_path(Path::new(&path_in_repo));
+			let mut system = None;
+			if let Some(first_component) = Path::new(&path_in_repo).components().next() {
+				let first_component_str = first_component.as_os_str().to_str().unwrap();
+				if self.system_depot.iter_ids().contains(&first_component_str) {
+					system = Some(first_component_str.to_owned());
+				}
+			}
 
 			let mut source_id = SourceId {
 				module: Some(self.module_id.clone()),
@@ -119,6 +126,7 @@ impl ParseFiles {
 
 				updates.user_settings.push(UserSettingsRecord {
 					id: source_id.to_string(),
+					file_id: Some(file_id.clone()),
 					version: self.version.clone(),
 					user_settings,
 				});

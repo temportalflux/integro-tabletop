@@ -1,18 +1,18 @@
 use crate::{
-	auth,
-	auth::OAuthProvider,
+	auth::{self, OAuthProvider},
 	components::{
 		auth::LocalUser,
 		database::{use_query, QueryStatus},
 		Spinner,
 	},
 	data::{UserId, UserSettings},
-	database::{Database, Query, UserSettingsRecord},
+	database::{Database, Module, Query, UserSettingsRecord},
 	system::ModuleId,
 	utility::InputExt,
 };
 use database::{ObjectStoreExt, TransactionExt};
 use futures_util::{FutureExt, StreamExt};
+use kdlize::{AsKdl, NodeId};
 use yew::prelude::*;
 use yewdux::use_store_value;
 
@@ -58,42 +58,89 @@ pub fn FriendsList(FriendsListProps { module_id }: &FriendsListProps) -> Html {
 	});
 
 	let mutate_list = Callback::from({
-		let record_id = UserSettings::homebrew_id(module_id).to_string();
+		let record_id = UserSettings::homebrew_id(module_id);
+		let auth_status = auth_status.clone();
 		let database = database.clone();
 		move |id_diff: itertools::Either<UserId, UserId>| {
 			let record_id = record_id.clone();
+			let auth_status = auth_status.clone();
 			let database = database.clone();
 			Box::pin(async move {
-				database
-					.mutate(move |transaction| {
-						Box::pin(async move {
-							let store = transaction.object_store_of::<UserSettingsRecord>()?;
-							let record_request = store.get_record::<UserSettingsRecord>(&record_id);
-							let mut record = match record_request.await? {
-								Some(record) => record,
-								None => {
-									let mut record = UserSettingsRecord::default();
-									record.id = record_id;
-									record
-								}
-							};
-							match id_diff {
-								itertools::Either::Left(user_id) => {
-									if record.user_settings.friends.contains(&user_id) {
-										return Ok(None);
-									}
-									record.user_settings.friends.push(user_id);
-								}
-								itertools::Either::Right(user_id) => {
-									record.user_settings.friends.retain(|id| *id != user_id);
-								}
-							}
-							log::debug!(target: "user_settings", "{record:?}");
-							store.put_record(&record).await?;
-							Ok(Some(record))
-						})
-					})
-					.await
+				let Some(client) = crate::storage::get(&*auth_status) else {
+					log::debug!("no storage client");
+					return Ok(None);
+				};
+
+				let mut record = {
+					let transaction = database.read()?;
+					let store = transaction.object_store_of::<UserSettingsRecord>()?;
+					let record_id_str = record_id.to_string();
+					let record_request = store.get_record::<UserSettingsRecord>(&record_id_str);
+					match record_request.await? {
+						Some(record) => record,
+						None => {
+							let mut record = UserSettingsRecord::default();
+							record.id = record_id.to_string();
+							record
+						}
+					}
+				};
+				match id_diff {
+					itertools::Either::Left(user_id) => {
+						if record.user_settings.friends.contains(&user_id) {
+							return Ok(None);
+						}
+						record.user_settings.friends.push(user_id);
+					}
+					itertools::Either::Right(user_id) => {
+						record.user_settings.friends.retain(|id| *id != user_id);
+					}
+				}
+				
+				if let Some(ModuleId::Github { user_org, repository }) = &record_id.module {
+					let message = format!("Update friends list");
+					let content = {
+						let mut doc = kdl::KdlDocument::new();
+						doc.nodes_mut().push(record.user_settings.as_kdl().build(UserSettings::id()));
+						let doc = doc.to_string();
+						let doc = doc.replace("\\r", "");
+						let doc = doc.replace("\\n", "\n");
+						let doc = doc.replace("\\t", "\t");
+						let doc = doc.replace("    ", "\t");
+						doc
+					};
+					let args = github::repos::contents::update::Args {
+						repo_org: user_org,
+						repo_name: repository,
+						path_in_repo: &record_id.path,
+						commit_message: &message,
+						content: &content,
+						file_id: record.file_id.as_ref().map(String::as_str),
+						branch: None,
+					};
+					let response = client.create_or_update_file(args).await?;
+					record.version = response.version;
+					record.file_id = Some(response.file_id);
+				}
+
+				log::debug!(target: "user_settings", "{record:?}");
+				
+				let transaction = database.write()?;
+				{
+					let module_store = transaction.object_store_of::<Module>()?;
+					let module_id = record_id.module.as_ref().unwrap().to_string();
+					let module_req = module_store.get_record::<Module>(&module_id);
+					let mut module = module_req.await?.unwrap();
+					module.version = record.version.clone();
+					module_store.put_record(&module).await?;
+				}
+				{
+					let store = transaction.object_store_of::<UserSettingsRecord>()?;
+					store.put_record(&record).await?;
+				}
+				transaction.commit().await?;
+
+				Ok(Some(record)) as anyhow::Result<_>
 			})
 		}
 	});
@@ -184,7 +231,8 @@ pub fn FriendsList(FriendsListProps { module_id }: &FriendsListProps) -> Html {
 				</span>
 				<input
 					type="text" class={input_classes}
-					placeholder="username" value={(*search_text).clone()} {oninput} onchange={add_friend.reform(|_| ())}
+					placeholder="username" value={(*search_text).clone()} {oninput}
+					// onchange={add_friend.reform(|_| ())}
 				/>
 				<button type="button" class="btn btn-sm btn-outline-success" onclick={add_friend.reform(|_| ())}>
 					<i class="bi bi-plus" style="font-size: 20px;" />
