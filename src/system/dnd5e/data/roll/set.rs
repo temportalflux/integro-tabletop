@@ -1,6 +1,5 @@
 use super::{Die, Roll};
 use enum_map::EnumMap;
-use itertools::Itertools;
 
 #[derive(Default, Clone, Copy, PartialEq, Debug)]
 pub struct RollSet(EnumMap<Die, u32>, i32);
@@ -126,7 +125,26 @@ impl RollSet {
 
 impl std::fmt::Display for RollSet {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		let mut iter = self.iter_rolls().filter_map(|roll| roll.as_nonzero_string());
-		write!(f, "{}", iter.join(" + "))
+		let mut first = true;
+		for roll in self.iter_rolls() {
+			if roll.amount == 0 {
+				continue;
+			}
+
+			let roll_str = roll.to_string();
+			if first {
+				write!(f, "{roll_str}")?;
+				first = false;
+				continue;
+			}
+
+			if let Some(stripped) = roll_str.strip_prefix("-") {
+				write!(f, " - {stripped}")?;
+			}
+			else {
+				write!(f, " + {roll_str}")?;
+			}
+		}
+		Ok(())
 	}
 }

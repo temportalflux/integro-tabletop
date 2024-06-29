@@ -71,27 +71,6 @@ impl Attack {
 		let option = abilities.max_by_key(|(_, modifier)| *modifier);
 		return option.expect("there is always at least one ability option");
 	}
-
-	pub fn evaluate_bonuses(&self, state: &Character) -> (Option<Ability>, i32, i32) {
-		match &self.check {
-			AttackCheckKind::AttackRoll { ability, proficient } => {
-				let (ability, modifier) = self.best_ability_modifier(*ability, state);
-				let prof_bonus = proficient.evaluate(state).then_some(state.proficiency_bonus()).unwrap_or_default();
-				let atk_bonus = modifier + prof_bonus;
-				let dmg_bonus = modifier;
-				(Some(ability), atk_bonus, dmg_bonus)
-			}
-			AttackCheckKind::SavingThrow { base, dc_ability, proficient, save_ability: _ } => {
-				let ability_bonus = dc_ability
-					.as_ref()
-					.map(|ability| state.ability_scores().get(*ability).score().modifier())
-					.unwrap_or_default();
-				let prof_bonus = proficient.then(|| state.proficiency_bonus()).unwrap_or_default();
-				let atk_bonus = *base + ability_bonus + prof_bonus;
-				(None, atk_bonus, 0)
-			}
-		}
-	}
 }
 
 #[cfg(test)]
