@@ -52,10 +52,9 @@ columnSorting:
 
 ## In Progress
 
-- [attack-row-overview-ui-rehaul](tasks/attack-row-overview-ui-rehaul.md)
-
 ## Done
 
+- [attack-row-overview-ui-rehaul](tasks/attack-row-overview-ui-rehaul.md)
 - [speed-based-on-existing-speed](tasks/speed-based-on-existing-speed.md)
 - [spellcasting-filter-queries-can-specify-specific-spell-ids](tasks/spellcasting-filter-queries-can-specify-specific-spell-ids.md)
 - [notes-for-spells](tasks/notes-for-spells.md)
