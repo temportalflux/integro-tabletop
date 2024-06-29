@@ -15,48 +15,48 @@ pub use set::*;
 
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
 pub struct Roll {
-	amount: u32,
+	amount: i32,
 	die: Option<Die>,
 }
 
-impl From<u32> for Roll {
-	fn from(amount: u32) -> Self {
+impl From<i32> for Roll {
+	fn from(amount: i32) -> Self {
 		Self { amount, die: None }
 	}
 }
 
 impl From<(u32, Die)> for Roll {
 	fn from((amount, die): (u32, Die)) -> Self {
-		Self { amount, die: Some(die) }
-	}
-}
-
-impl ToString for Roll {
-	fn to_string(&self) -> String {
-		match self.die {
-			None => self.amount.to_string(),
-			Some(die) => format!("{}d{}", self.amount, die.value()),
-		}
+		Self { amount: amount as i32, die: Some(die) }
 	}
 }
 
 impl Roll {
-	pub fn min(&self) -> u32 {
+	pub fn min(&self) -> i32 {
 		self.amount
 	}
 
-	pub fn max(&self) -> u32 {
-		self.amount * self.die.clone().map(Die::value).unwrap_or(1)
+	pub fn max(&self) -> i32 {
+		self.amount * self.die.clone().map(Die::value).unwrap_or(1) as i32
 	}
 
 	pub fn as_nonzero_string(&self) -> Option<String> {
-		(self.amount > 0).then(|| self.to_string())
+		(self.amount != 0).then(|| self.to_string())
 	}
 
-	pub fn roll(&self, rand: &mut impl rand::Rng) -> u32 {
+	pub fn roll(&self, rand: &mut impl rand::Rng) -> i32 {
 		match self.die {
 			None => self.amount,
-			Some(die) => die.roll(rand, self.amount),
+			Some(die) => die.roll(rand, self.amount as u32) as i32,
+		}
+	}
+}
+
+impl std::fmt::Display for Roll {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self.die {
+			None => write!(f, "{}", self.amount),
+			Some(die) => write!(f, "{}d{}", self.amount, die.value()),
 		}
 	}
 }
@@ -67,7 +67,7 @@ impl FromStr for Roll {
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		static EXPECTED: &'static str = "{int}d{int}";
 		if !s.contains('d') {
-			let amount = s.parse::<u32>()?;
+			let amount = s.parse::<i32>()?;
 			return Ok(Self::from(amount));
 		}
 		let mut parts = s.split('d');
@@ -80,7 +80,7 @@ impl FromStr for Roll {
 		if parts.next().is_some() {
 			return Err(GeneralError(format!("Too many parts in {s:?} for Roll, expected {EXPECTED:?}")).into());
 		}
-		let amount = amount_str.parse::<u32>()?;
+		let amount = amount_str.parse::<u32>()? as i32;
 		let die = Die::try_from(die_str.parse::<u32>()?)?;
 		Ok(Self { amount, die: Some(die) })
 	}
@@ -115,7 +115,7 @@ impl AsKdl for Roll {
 impl Roll {
 	pub fn from_kdl_value(kdl: &kdl::KdlValue) -> anyhow::Result<Self> {
 		if let Some(amt) = kdl.as_i64() {
-			return Ok(Self::from(amt as u32));
+			return Ok(Self::from(amt as i32));
 		}
 		if let Some(str) = kdl.as_string() {
 			return Ok(Self::from_str(str)?);

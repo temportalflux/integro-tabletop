@@ -204,7 +204,6 @@ impl AttackBonuses {
 		self.spell_damage.push(SpellDamageBonus { amount, queries, source: source.display.clone() });
 	}
 
-	// TODO: This isn't used yet, and should be driving the attacks section of the ui
 	pub fn get_weapon_attack(
 		&self, action: &crate::system::dnd5e::data::action::Action,
 	) -> Vec<(i32, Option<Modifier>, &Path)> {
@@ -212,10 +211,12 @@ impl AttackBonuses {
 		let Some(attack) = &action.attack else {
 			return bonuses;
 		};
+		// Iterate over each bonus group, gathering any which have any query which matches the attack
 		for bonus in &self.attack_roll {
-			// Filter out any bonuses which do not meet the restriction
+			// If any query in that bonus matches the attack
 			'iter_query: for query in &bonus.queries {
 				if query.is_attack_valid(attack) {
+					// then add the bonus and early-exit iteration on this bonus
 					bonuses.push((bonus.bonus, bonus.modifier, bonus.source.as_path()));
 					break 'iter_query;
 				}
@@ -231,10 +232,12 @@ impl AttackBonuses {
 		let Some(attack) = &action.attack else {
 			return bonuses;
 		};
+		// Iterate over each bonus group, gathering any which have any query which matches the action
 		for bonus in &self.attack_damage {
-			// Filter out any bonuses which do not meet the restriction
+			// If any query in that bonus matches the attack
 			'iter_query: for query in &bonus.queries {
 				if query.is_attack_valid(attack) {
+					// then add the bonus and early-exit iteration on this bonus
 					bonuses.push((&bonus.amount, &bonus.damage_type, bonus.source.as_path()));
 					break 'iter_query;
 				}

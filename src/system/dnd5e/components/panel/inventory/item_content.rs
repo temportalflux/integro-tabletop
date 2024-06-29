@@ -1018,9 +1018,9 @@ fn ContainedSpellsSection(props: &ContainedSpellsSectionProps) -> Html {
 				let entry = spell_container.get_spell_entry(contained, Some((0, 0)));
 
 				contained_spells.push(html! {
-					<div class="spell-row">
+					<div class="feature-row border-bottom">
 						<div class="flex-fill d-flex">
-							<div class="name-and-source">
+							<div class="column name-and-source">
 								{spell_name_and_icons(&state, spell, entry.as_ref(), false)}
 							</div>
 							<button

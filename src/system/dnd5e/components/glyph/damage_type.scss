@@ -1,0 +1,63 @@
+@use "../../../../components/glyph.scss" as glyph;
+
+.glyph.damage_type {
+	@include glyph.solid;
+	
+	display: inline-block;
+	margin-top: auto!important;
+	margin-bottom: auto!important;
+	width: 20px;
+	height: 20px;
+}
+
+.glyph.damage_type.acid {
+	--glyph-image: url(assets/damage/acid.svg);
+}
+
+.glyph.damage_type.bludgeoning {
+	--glyph-image: url(assets/damage/bludgeoning.svg);
+}
+
+.glyph.damage_type.cold {
+	--glyph-image: url(assets/damage/cold.svg);
+}
+
+.glyph.damage_type.fire {
+	--glyph-image: url(assets/damage/fire.svg);
+}
+
+.glyph.damage_type.force {
+	--glyph-image: url(assets/damage/force.svg);
+}
+
+.glyph.damage_type.lightning {
+	--glyph-image: url(assets/damage/lightning.svg);
+}
+
+.glyph.damage_type.necrotic {
+	--glyph-image: url(assets/damage/necrotic.svg);
+}
+
+.glyph.damage_type.piercing {
+	--glyph-image: url(assets/damage/piercing.svg);
+}
+
+.glyph.damage_type.poison {
+	--glyph-image: url(assets/damage/poison.svg);
+}
+
+.glyph.damage_type.psychic {
+	--glyph-image: url(assets/damage/psychic.svg);
+}
+
+.glyph.damage_type.radiant {
+	--glyph-image: url(assets/damage/radiant.svg);
+}
+
+.glyph.damage_type.slashing {
+	--glyph-image: url(assets/damage/slashing.svg);
+}
+
+.glyph.damage_type.thunder {
+	--glyph-image: url(assets/damage/thunder.svg);
+}

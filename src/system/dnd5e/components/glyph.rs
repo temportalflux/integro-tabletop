@@ -14,12 +14,14 @@ pub struct GlyphProps {
 	#[prop_or_else(|| "i".into())]
 	pub tag: AttrValue,
 	#[prop_or_default]
+	pub id: Option<AttrValue>,
+	#[prop_or_default]
 	pub classes: Classes,
 }
 
 #[function_component]
-pub fn Glyph(GlyphProps { tag, classes }: &GlyphProps) -> Html {
-	html!(<@{tag.as_str().to_owned()} class={classes!("glyph", classes.clone())} />)
+pub fn Glyph(GlyphProps { tag, id, classes }: &GlyphProps) -> Html {
+	html!(<@{tag.as_str().to_owned()} {id} class={classes!("glyph", classes.clone())} />)
 }
 
 #[function_component]
@@ -46,4 +48,12 @@ pub fn Defense(props: &GeneralProp<crate::system::dnd5e::mutator::Defense>) -> H
 		Defense::Vulnerability => "vulnerability",
 	});
 	html!(<Glyph tag="span" {classes} />)
+}
+
+#[function_component]
+pub fn DamageTypeGlyph(props: &GeneralProp<data::DamageType>) -> Html {
+	html!(<Glyph tag="span" classes={classes!(
+		"damage_type",
+		props.value.to_string().to_lowercase(),
+	)} />)
 }

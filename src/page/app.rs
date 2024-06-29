@@ -88,8 +88,11 @@ impl Route {
 
 #[function_component]
 fn Header() -> Html {
+	let auth_status = yewdux::use_store_value::<crate::auth::Status>();
 	let autosync_status = use_context::<autosync::Status>().unwrap();
-	let cls_disabled = autosync_status.is_active().then_some("disabled");
+	let is_authenticated = matches!(*auth_status, crate::auth::Status::Successful { .. });
+
+	let cls_disabled = (autosync_status.is_active() || !is_authenticated).then_some("disabled");
 	let auth_content = html!(<auth::LoginButton />);
 	html! {
 		<header>

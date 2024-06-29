@@ -30,6 +30,10 @@ where
 }
 
 impl EvaluatedRoll {
+	pub fn fixed(value: i32) -> Self {
+		Self { amount: Value::Fixed(value), die: None }
+	}
+
 	pub fn dependencies(&self) -> Dependencies {
 		let mut deps = self.amount.dependencies();
 		if let Some(die_value) = &self.die {
@@ -39,7 +43,7 @@ impl EvaluatedRoll {
 	}
 
 	pub fn evaluate(&self, character: &Character) -> Roll {
-		let amount = self.amount.evaluate(character) as u32;
+		let amount = self.amount.evaluate(character);
 		let die = match &self.die {
 			None => None,
 			Some(value) => {
@@ -119,7 +123,7 @@ impl AsKdl for EvaluatedRollSet {
 		for evaluated_roll in &self.0 {
 			match evaluated_roll {
 				EvaluatedRoll { amount: Value::Fixed(amount), die: None } => {
-					fixed_roll_set.push(Roll::from(amount.unsigned_abs()));
+					fixed_roll_set.push(Roll::from(*amount));
 				}
 				EvaluatedRoll { amount: Value::Fixed(amount), die: Some(Value::Fixed(die)) } => {
 					let die = Die::try_from(die.unsigned_abs()).expect("invalid die count");

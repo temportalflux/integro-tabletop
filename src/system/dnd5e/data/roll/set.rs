@@ -1,8 +1,9 @@
 use super::{Die, Roll};
-use enum_map::{Enum, EnumMap};
+use enum_map::EnumMap;
+use itertools::Itertools;
 
 #[derive(Default, Clone, Copy, PartialEq, Debug)]
-pub struct RollSet(EnumMap<Die, u32>, u32);
+pub struct RollSet(EnumMap<Die, u32>, i32);
 
 impl From<Roll> for RollSet {
 	fn from(value: Roll) -> Self {
@@ -12,8 +13,18 @@ impl From<Roll> for RollSet {
 	}
 }
 
-impl From<u32> for RollSet {
-	fn from(value: u32) -> Self {
+impl FromIterator<Roll> for RollSet {
+	fn from_iter<T: IntoIterator<Item = Roll>>(iter: T) -> Self {
+		let mut set = Self::default();
+		for roll in iter {
+			set.push(roll);
+		}
+		set
+	}
+}
+
+impl From<i32> for RollSet {
+	fn from(value: i32) -> Self {
 		Self::from(Roll::from(value))
 	}
 }
@@ -22,9 +33,9 @@ impl RollSet {
 	pub fn multiple(roll: &Roll, amount: u32) -> Self {
 		let mut set = Self::default();
 		match &roll.die {
-			None => set.1 += roll.amount * amount,
+			None => set.1 += roll.amount * amount as i32,
 			Some(die) => {
-				set.0[*die] += roll.amount * amount;
+				set.0[*die] += roll.amount as u32 * amount;
 			}
 		}
 		set
@@ -34,7 +45,7 @@ impl RollSet {
 		match roll.die {
 			None => self.1 += roll.amount,
 			Some(die) => {
-				self.0[die] += roll.amount;
+				self.0[die] += roll.amount as u32;
 			}
 		}
 	}
@@ -43,7 +54,7 @@ impl RollSet {
 		match roll.die {
 			None => self.1 = self.1.saturating_sub(roll.amount),
 			Some(die) => {
-				self.0[die] = self.0[die].saturating_sub(roll.amount);
+				self.0[die] = self.0[die].saturating_sub(roll.amount as u32);
 			}
 		}
 	}
@@ -67,59 +78,55 @@ impl RollSet {
 		true
 	}
 
-	pub fn take_flat_bonus(&mut self) -> u32 {
+	pub fn take_flat_bonus(&mut self) -> i32 {
 		let out = self.1;
 		self.1 = 0;
 		out
 	}
 
-	pub fn rolls(&self) -> Vec<Roll> {
-		let mut rolls = Vec::with_capacity(Die::LENGTH + 1);
-		for (die, amt) in &self.0 {
-			if *amt == 0 {
-				continue;
-			}
-			rolls.push(Roll::from((*amt, die)));
-		}
-		if self.1 > 0 {
-			rolls.push(Roll::from(self.1));
-		}
-		rolls
+	pub fn iter_rolls(&self) -> impl Iterator<Item = Roll> + '_ {
+		let iter = self.0.iter();
+		let iter = iter.filter_map(|(die, amt)| if *amt == 0 { None } else { Some(Roll::from((*amt, die))) });
+		let fixed = (self.1 != 0).then(|| Roll::from(self.1));
+		iter.chain(fixed.into_iter())
 	}
 
-	pub fn min(&self) -> u32 {
+	pub fn rolls(&self) -> Vec<Roll> {
+		self.iter_rolls().collect()
+	}
+
+	pub fn min(&self) -> i32 {
 		let mut value = self.1;
 		for (_die, amt) in &self.0 {
 			if *amt > 0 {
-				value += *amt;
+				value += *amt as i32;
 			}
 		}
 		value
 	}
 
-	pub fn max(&self) -> u32 {
+	pub fn max(&self) -> i32 {
 		let mut value = self.1;
 		for (die, amt) in &self.0 {
 			if *amt > 0 {
-				value += *amt * die.value();
+				value += (*amt * die.value()) as i32;
 			}
 		}
 		value
 	}
 
-	pub fn as_nonzero_string(&self) -> Option<String> {
-		let mut roll_strs = self.rolls().iter().filter_map(Roll::as_nonzero_string).collect::<Vec<_>>();
-		if self.1 > 0 {
-			roll_strs.push(self.1.to_string());
-		}
-		(!roll_strs.is_empty()).then(|| roll_strs.join(" + "))
-	}
-
-	pub fn roll(&self, rand: &mut impl rand::Rng) -> u32 {
+	pub fn roll(&self, rand: &mut impl rand::Rng) -> i32 {
 		let mut value = self.1;
 		for (die, amt) in &self.0 {
-			value += die.roll(rand, *amt);
+			value += die.roll(rand, *amt) as i32;
 		}
 		value
+	}
+}
+
+impl std::fmt::Display for RollSet {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		let mut iter = self.iter_rolls().filter_map(|roll| roll.as_nonzero_string());
+		write!(f, "{}", iter.join(" + "))
 	}
 }

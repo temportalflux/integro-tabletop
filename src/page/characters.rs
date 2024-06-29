@@ -114,7 +114,7 @@ impl Route {
 
 #[function_component]
 pub fn CharacterLanding() -> Html {
-	let (auth_status, _dispatch) = use_store::<crate::auth::Status>();
+	let auth_status = yewdux::use_store_value::<crate::auth::Status>();
 	let navigator = use_navigator().unwrap();
 	let task_dispatch = use_context::<crate::task::Dispatch>().unwrap();
 	let modal_dispatcher = use_context::<modal::Context>().unwrap();
@@ -163,6 +163,10 @@ pub fn CharacterLanding() -> Html {
 			})
 		}
 	});
+
+	if !matches!(*auth_status, crate::auth::Status::Successful { .. }) {
+		return crate::page::app::Route::not_found();
+	}
 
 	html! {<>
 		<crate::components::modal::GeneralPurpose />

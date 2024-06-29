@@ -111,7 +111,7 @@ fn Modal(GeneralProp { value }: &GeneralProp<Rest>) -> Html {
 							// Remove the amt of gained uses from the "uses" resource
 							let prev_value = persistent.get_first_selection_at::<u32>(data_path);
 							let prev_value = prev_value.map(Result::ok).flatten().unwrap_or(0);
-							let new_value = prev_value.saturating_sub(*gained_uses);
+							let new_value = prev_value.saturating_add_signed(*gained_uses);
 							(new_value > 0).then(|| new_value.to_string())
 						}
 					};
@@ -179,11 +179,11 @@ impl HitDiceToConsume {
 	}
 
 	fn as_equation_str(&self) -> String {
-		self.total_rolls.as_nonzero_string().unwrap_or_default()
+		self.total_rolls.to_string()
 	}
 
 	fn total_num_rolls(&self) -> u32 {
-		self.total_rolls.min()
+		self.total_rolls.min().unsigned_abs()
 	}
 
 	fn hp_to_gain(&self, constitution_mod: i32) -> u32 {
@@ -411,7 +411,7 @@ fn ProjectedRestorations(GeneralProp { value }: &GeneralProp<Rest>) -> Html {
 		for entry in state.rest_resets().get(rest) {
 			let amt = match &entry.restore_amount {
 				None => "all".to_owned(),
-				Some(roll_set) => roll_set.as_nonzero_string().unwrap_or_default(),
+				Some(roll_set) => roll_set.to_string(),
 			};
 			let path_str = crate::data::as_feature_path_text(&entry.source).unwrap_or_default();
 			let description = format!("Restore {amt} uses of {path_str}.");

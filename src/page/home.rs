@@ -96,7 +96,7 @@ pub fn FriendsList(FriendsListProps { module_id }: &FriendsListProps) -> Html {
 						record.user_settings.friends.retain(|id| *id != user_id);
 					}
 				}
-				
+
 				if let Some(ModuleId::Github { user_org, repository }) = &record_id.module {
 					let message = format!("Update friends list");
 					let content = {
@@ -124,7 +124,7 @@ pub fn FriendsList(FriendsListProps { module_id }: &FriendsListProps) -> Html {
 				}
 
 				log::debug!(target: "user_settings", "{record:?}");
-				
+
 				let transaction = database.write()?;
 				{
 					let module_store = transaction.object_store_of::<Module>()?;

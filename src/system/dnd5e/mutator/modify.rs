@@ -286,9 +286,13 @@ impl Mutator for Modify {
 			Self::ArmorClass { bonus, context } => {
 				stats.armor_class_mut().push_bonus(*bonus, context.clone(), parent);
 			}
-			Self::AttackRoll { bonus, modifier: _, ability, query } => {
-				// TODO: propagate modifier
-				stats.attack_bonuses_mut().add_to_weapon_attacks(*bonus, query.clone(), parent);
+			Self::AttackRoll { bonus, modifier, ability, query } => {
+				if *bonus != 0 {
+					stats.attack_bonuses_mut().add_to_weapon_attacks(*bonus, query.clone(), parent);
+				}
+				if let Some(modifier) = modifier {
+					stats.attack_bonuses_mut().modify_weapon_attacks(*modifier, query.clone(), parent);
+				}
 				if let Some(ability) = ability {
 					stats.attack_bonuses_mut().add_ability_modifier(*ability, query.clone(), parent);
 				}

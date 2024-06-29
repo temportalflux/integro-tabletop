@@ -612,6 +612,51 @@ button.collapse_trigger.arrow_right.collapsed::after {
 	}
 }
 
+.label {
+	font-size: 10px;
+	color: var(--bs-gray-600);
+}
+
+.feature-row {
+	display: flex;
+	flex-wrap: wrap;
+
+	> .column {
+		display: flex;
+		flex-direction: column;
+	}
+
+	> .attributes {
+		flex-wrap: wrap;
+
+		> .attribute-row {
+			display: flex;
+			flex-direction: row;
+		}
+
+		.attribute {
+			display: flex;
+			align-items: baseline;
+			font-size: 12px;
+			> .label {
+				margin-right: 0.25rem;
+			}
+		}
+	}
+	> .attributes.fixed-width {
+		--attribute-col-minwidth: 50px;
+		--attribute-per-row: 1;
+		--attribute-col-ms: 0.5rem;
+		--attribute-col-totalwidth: calc(var(--attribute-col-minwidth) + var(--attribute-col-ms));
+		max-width: calc(var(--attribute-per-row) * var(--attribute-col-totalwidth));
+		
+		.attribute {
+			margin-left: var(--attribute-col-ms);
+			min-width: var(--attribute-col-minwidth);
+		}
+	}
+}
+
 .spell-section {
 	> .header {
 		display: flex!important;
@@ -626,35 +671,22 @@ button.collapse_trigger.arrow_right.collapsed::after {
 	> .empty-note {
 		font-size: 14px;
 	}
-	.spell-row {
-		display: flex;
-		flex-wrap: wrap;
-
+	.feature-row {
 		width: 100%;
 		padding-top: 0.25rem;
 		padding-bottom: 0.25rem;
 		
-		border: 0;
-		border-bottom-width: var(--bs-border-width);
-		border-style: solid;
-		border-color: var(--bs-border-color);
-
 		> .cast-button {
-			display: inline-flex;
 			align-items: center;
 			justify-content: center;
 			min-width: 40px;
 		}
-		.name-and-source {
-			display: flex;
-			flex-direction: column;
+		.name-and-source {			
 			margin-left: 0.25rem;
 			flex-grow: 1;
 
 			> .source-row {
 				max-width: 250px;
-				font-size: 10px;
-				color: var(--bs-gray-600);
 			}
 		}
 		@media screen and (max-width: 1200px) {
@@ -667,59 +699,8 @@ button.collapse_trigger.arrow_right.collapsed::after {
 			}
 		}
 		> .attributes {
-			display: flex;
-			flex-direction: column;
-			flex-wrap: wrap;
-
 			--attribute-col-minwidth: 120px;
-			--attribute-col-ms: 0.5rem;
-			--attribute-col-totalwidth: calc(var(--attribute-col-minwidth) + var(--attribute-col-ms));
 			--attribute-per-row: 3;
-			max-width: calc(var(--attribute-per-row) * var(--attribute-col-totalwidth));
-			
-			> .attribute-row {
-				display: flex;
-				flex-direction: row;
-			}
-
-			.attribute {
-				margin-left: var(--attribute-col-ms);
-				display: flex;
-    		align-items: baseline;
-				min-width: var(--attribute-col-minwidth);
-				font-size: 12px;
-				> .label {
-					margin-right: 0.25rem;
-					font-size: 10px;
-					color: var(--bs-gray-600);
-				}
-			}
-		}
-	}
-	table > thead > tr {
-		// Use button
-		> th:nth-child(1) {
-			width: 40px;
-		}
-		// Name
-		> th:nth-child(2) {
-			width: auto;
-		}
-		// Casting Time
-		> th:nth-child(3) {
-			width: 50px;
-		}
-		// Range
-		> th:nth-child(4) {
-			width: 80px;
-		}
-		// Hit / DC
-		> th:nth-child(5) {
-			width: 80px;
-		}
-		// Effect (text, damage roll, healing roll)
-		> th:nth-child(6) {
-			width: 60px;
 		}
 	}
 }

@@ -559,11 +559,11 @@ fn spell_row<'c>(props: SpellRowProps<'c>) -> Html {
 	let use_ritual_only = use_kind == UseSpell::RitualOnly;
 	html! {
 		<SpellModalRowRoot {location}>
-			<div class="spell-row">
-				<div class="cast-button" onclick={stop_propagation()}>
+			<div class="feature-row border-bottom">
+				<div class="column cast-button" onclick={stop_propagation()}>
 					<UseSpellButton kind={use_kind} />
 				</div>
-				<div class="name-and-source">
+				<div class="column name-and-source">
 					{spell_name_and_icons(&state, spell, Some(entry), use_ritual_only)}
 					{spell_source_and_uses(&entry.source, src_text_suffix)}
 				</div>
@@ -600,7 +600,7 @@ pub fn spell_name_and_icons(
 
 pub fn spell_source_and_uses(source: &Path, uses_suffix: Option<Html>) -> Html {
 	html! {
-		<div class="source-row">
+		<div class="label source-row">
 			{crate::data::as_feature_path_text(source)}
 			{uses_suffix.unwrap_or_default()}
 		</div>
@@ -626,7 +626,7 @@ pub fn spell_overview_info(
 	let notes = notes.map(|content| html!(<div class="attribute">{content}</div>));
 
 	html! {
-		<div class="attributes">
+		<div class="column attributes fixed-width">
 			<div class="attribute-row">
 				<span class="attribute casting-time">
 					<span class="label">{"Cast:"}</span>

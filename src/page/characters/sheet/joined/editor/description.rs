@@ -27,20 +27,20 @@ fn SizeForm() -> Html {
 	let weight = state.persistent().description.weight;
 	let size = state.persistent().description.size();
 	let size_info = size.description();
-	let h_bonus_str = formula.height.bonus.as_nonzero_string();
-	let w_mod_str = formula.weight.multiplier.as_nonzero_string();
+	let h_bonus_str = formula.height.bonus.to_string();
+	let w_mod_str = formula.weight.multiplier.to_string();
 	let height_range_str = format!("{} - {} inches", formula.min_height(), formula.max_height());
 	let height_formula_str = format!(
 		"{}{}",
 		formula.height.base,
-		h_bonus_str.as_ref().map(|s| format!(" + {s} (modifier)")).unwrap_or_default()
+		format!(" + {h_bonus_str} (modifier)")
 	);
 	let weight_range_str = format!("{} - {} lbs", formula.min_weight(), formula.max_weight());
 	let weight_formula_str = format!(
 		"{}{}{}",
 		formula.weight.base,
-		h_bonus_str.zip(w_mod_str).map(|(h, w)| format!(" + (height modifier ({h}) * {w})")).unwrap_or_default(),
-		formula.weight.bonus.as_nonzero_string().map(|s| format!(" + {s}")).unwrap_or_default()
+		format!(" + (height modifier ({h_bonus_str}) * {w_mod_str})"),
+		format!(" + {}", formula.weight.bonus)
 	);
 	let height_label = format!(
 		"{ft}ft {ins}in ({cm}cm)",

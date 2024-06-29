@@ -139,7 +139,7 @@ impl Mutator for Spellcasting {
 							// (because restore amount is applied to all data paths in an entry).
 							let rank_data_path = stats.persistent().selected_spells.consumed_slots_path(*rank);
 							let entry = crate::system::dnd5e::data::character::RestEntry {
-								restore_amount: Some(RollSet::from(*amount as u32)),
+								restore_amount: Some(RollSet::from(*amount as i32)),
 								data_paths: vec![rank_data_path],
 								source: parent.display.join(format!(
 									"{} Spellcasting Slots (Rank {})",

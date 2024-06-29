@@ -42,7 +42,6 @@ columnSorting:
 
 ## Pending
 
-- [attack-row-overview-ui-rehaul](tasks/attack-row-overview-ui-rehaul.md)
 - [parcels-mailbox](tasks/parcels-mailbox.md)
 - [attunement](tasks/attunement.md)
 - [inventory-search-bar](tasks/inventory-search-bar.md)
@@ -52,6 +51,8 @@ columnSorting:
 - [autosave](tasks/autosave.md)
 
 ## In Progress
+
+- [attack-row-overview-ui-rehaul](tasks/attack-row-overview-ui-rehaul.md)
 
 ## Done
 

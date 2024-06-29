@@ -16,6 +16,7 @@ use yew::prelude::*;
 /// Page which displays the modules the user currently logged in has contributor access to.
 #[function_component]
 pub fn ModulesLanding() -> Html {
+	let auth_status = yewdux::use_store_value::<crate::auth::Status>();
 	let database = use_context::<Database>().unwrap();
 	let task_dispatch = use_context::<task::Dispatch>().unwrap();
 	let autosync_channel = use_context::<autosync::Channel>().unwrap();
@@ -28,6 +29,10 @@ pub fn ModulesLanding() -> Html {
 	});
 
 	let pending_module_installations = use_state_eq(|| HashMap::<ModuleId, bool>::new());
+
+	if !matches!(*auth_status, crate::auth::Status::Successful { .. }) {
+		return crate::page::app::Route::not_found();
+	}
 
 	let clear_database = Callback::from({
 		let database = database.clone();

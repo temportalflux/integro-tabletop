@@ -1,10 +1,11 @@
 ---
 created: 2023-09-20T13:42:07.804Z
-updated: 2024-06-24T12:51:17.871Z
+updated: 2024-06-29T14:34:02.937Z
 assigned: ""
 progress: 0
 tags:
   - MVP
+started: 2024-06-29T14:34:02.937Z
 ---
 
 # Attack row overview UI rehaul

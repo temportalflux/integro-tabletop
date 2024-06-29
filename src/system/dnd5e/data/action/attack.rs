@@ -62,7 +62,7 @@ impl Attack {
 		return abilities;
 	}
 
-	fn best_ability_modifier(&self, primary: Ability, state: &Character) -> (Ability, i32) {
+	pub fn best_ability_modifier(&self, primary: Ability, state: &Character) -> (Ability, i32) {
 		let abilities = self.all_ability_options(primary, state).into_iter();
 		let abilities = abilities.map(|ability| {
 			let modifier = state.ability_modifier(ability, None);

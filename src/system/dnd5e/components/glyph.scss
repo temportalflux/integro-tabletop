@@ -3,6 +3,7 @@
 @use "glyph/coin.scss";
 @use "glyph/roll.scss";
 @use "glyph/defense.scss";
+@use "glyph/damage_type.scss";
 
 .glyph.sheet {
 	@include glyph.solid;
