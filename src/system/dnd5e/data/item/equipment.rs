@@ -127,16 +127,14 @@ impl AsKdl for Equipment {
 
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct Attunement {
-	pub required: bool,
 	pub mutators: Vec<BoxedMutator>,
 }
 
 impl FromKdl<NodeContext> for Attunement {
 	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
-		let required = node.get_bool_opt("required")?.unwrap_or_default();
 		let mutators = node.query_all_t("scope() > mutator")?;
-		Ok(Self { required, mutators })
+		Ok(Self { mutators })
 	}
 }
 
@@ -144,9 +142,6 @@ impl AsKdl for Attunement {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 
-		if self.required {
-			node.entry(("required", true));
-		}
 		node.children(("mutator", self.mutators.iter()));
 
 		node

@@ -198,11 +198,12 @@ mod test {
 				|            section \"You have resistance to magic damage while you wear this armor.\"
 				|        }
 				|        extend \"equipment\" {
-				|            attunement required=true
 				|            armor {
 				|                formula base_bonus=5
 				|            }
-				|            mutator \"add_defense\" \"Resistance\" (DamageType)\"Specific\" \"Psychic\"
+				|            attunement {
+				|                mutator \"add_defense\" \"Resistance\" (DamageType)\"Specific\" \"Psychic\"
+				|            }
 				|        }
 				|    }
 				|}
@@ -232,7 +233,7 @@ mod test {
 							..Default::default()
 						}]),
 						variant::Extension::Equipment {
-							attunement: Some(variant::AttunementExtension { required: Some(true) }),
+							attunement: Some(variant::AttunementExtension { }),
 							armor: Some(variant::ArmorExtension {
 								formula: Some(variant::ArmorFormulaExtension { base_bonus: Some(5) }),
 							}),

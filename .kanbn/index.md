@@ -43,7 +43,6 @@ columnSorting:
 ## Pending
 
 - [parcels-mailbox](tasks/parcels-mailbox.md)
-- [attunement](tasks/attunement.md)
 - [inventory-search-bar](tasks/inventory-search-bar.md)
 - [add-restore-uses-mutator](tasks/add-restore-uses-mutator.md)
 - [object-feature-backlog](tasks/object-feature-backlog.md)
@@ -51,6 +50,8 @@ columnSorting:
 - [autosave](tasks/autosave.md)
 
 ## In Progress
+
+- [attunement](tasks/attunement.md)
 
 ## Done
 

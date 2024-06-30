@@ -204,7 +204,7 @@ mod test {
 				|    rarity \"{RARITY}\"
 				|    tag \"Wonderous\"
 				|    kind \"Equipment\" {
-				|        attunement required=true
+				|        attunement
 				|        minimum \"SCORE\"
 				|    }
 				|}
@@ -218,7 +218,7 @@ mod test {
 				|            rarity \"{RARITY}\"
 				|            tag \"Wonderous\"
 				|            kind \"Equipment\" {
-				|                attunement required=true
+				|                attunement
 				|                minimum \"SCORE\"
 				|            }
 				|        }

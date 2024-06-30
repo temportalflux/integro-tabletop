@@ -53,6 +53,7 @@ pub fn LoginButton() -> Html {
 		let onclick = auth.logout_callback().clone();
 		let onclick = Callback::from(move |_| {
 			onclick.emit(());
+			#[cfg(target_family = "wasm")]
 			yewdux::Dispatch::<LocalUser>::global().set(LocalUser::default());
 		});
 		html! {
