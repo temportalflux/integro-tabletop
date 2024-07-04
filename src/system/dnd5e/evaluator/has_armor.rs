@@ -46,8 +46,8 @@ impl crate::system::Evaluator for HasArmorEquipped {
 	}
 
 	fn evaluate(&self, character: &Self::Context) -> Result<(), String> {
-		for item::container::item::EquipableEntry { item, is_equipped, .. } in character.inventory().entries() {
-			if !item.is_equipable() || !is_equipped {
+		for item::container::item::EquipableEntry { item, status, .. } in character.inventory().entries() {
+			if !item.is_equipable() || !status.is_equipped() {
 				continue;
 			}
 			let item::Kind::Equipment(equipment) = &item.kind else {
@@ -243,8 +243,9 @@ mod test {
 
 	mod evaluate {
 		use super::*;
+		use item::container::item::EquipStatus;
 
-		fn character(kinds: &[(armor::Kind, bool)], shield: Option<bool>) -> Character {
+		fn character(kinds: &[(armor::Kind, EquipStatus)], shield: Option<EquipStatus>) -> Character {
 			let mut persistent = Persistent::default();
 			for (kind, equipped) in kinds {
 				let id = persistent.inventory.insert(Item {
@@ -268,7 +269,7 @@ mod test {
 			Character::from(persistent)
 		}
 
-		fn character_with_armor(kinds: &[(armor::Kind, bool)]) -> Character {
+		fn character_with_armor(kinds: &[(armor::Kind, EquipStatus)]) -> Character {
 			character(kinds, None)
 		}
 
@@ -285,16 +286,16 @@ mod test {
 			#[test]
 			fn unequipped() {
 				let evaluator = HasArmorEquipped::default();
-				let with_medium = character_with_armor(&[(armor::Kind::Medium, false)]);
+				let with_medium = character_with_armor(&[(armor::Kind::Medium, EquipStatus::Unequipped)]);
 				assert_eq!(evaluator.evaluate(&with_medium), Err("No armor equipped".into()));
 			}
 
 			#[test]
 			fn equipped() {
 				let evaluator = HasArmorEquipped::default();
-				let with_light = character_with_armor(&[(armor::Kind::Light, true)]);
-				let with_medium = character_with_armor(&[(armor::Kind::Medium, true)]);
-				let with_heavy = character_with_armor(&[(armor::Kind::Heavy, true)]);
+				let with_light = character_with_armor(&[(armor::Kind::Light, EquipStatus::Equipped)]);
+				let with_medium = character_with_armor(&[(armor::Kind::Medium, EquipStatus::Equipped)]);
+				let with_heavy = character_with_armor(&[(armor::Kind::Heavy, EquipStatus::Equipped)]);
 				assert_eq!(evaluator.evaluate(&with_light), Ok(()));
 				assert_eq!(evaluator.evaluate(&with_medium), Ok(()));
 				assert_eq!(evaluator.evaluate(&with_heavy), Ok(()));
@@ -316,7 +317,7 @@ mod test {
 			fn unequipped() {
 				let evaluator =
 					HasArmorEquipped { kinds: [ArmorExtended::Kind(armor::Kind::Light)].into(), ..Default::default() };
-				let with_light = character_with_armor(&[(armor::Kind::Light, false)]);
+				let with_light = character_with_armor(&[(armor::Kind::Light, EquipStatus::Unequipped)]);
 				assert_eq!(evaluator.evaluate(&with_light), Err("No light armor equipped".into()));
 			}
 
@@ -324,7 +325,7 @@ mod test {
 			fn wrong() {
 				let evaluator =
 					HasArmorEquipped { kinds: [ArmorExtended::Kind(armor::Kind::Light)].into(), ..Default::default() };
-				let with_light = character_with_armor(&[(armor::Kind::Heavy, true)]);
+				let with_light = character_with_armor(&[(armor::Kind::Heavy, EquipStatus::Equipped)]);
 				assert_eq!(evaluator.evaluate(&with_light), Err("No light armor equipped".into()));
 			}
 
@@ -332,7 +333,7 @@ mod test {
 			fn equipped() {
 				let evaluator =
 					HasArmorEquipped { kinds: [ArmorExtended::Kind(armor::Kind::Light)].into(), ..Default::default() };
-				let with_light = character_with_armor(&[(armor::Kind::Light, true)]);
+				let with_light = character_with_armor(&[(armor::Kind::Light, EquipStatus::Equipped)]);
 				assert_eq!(evaluator.evaluate(&with_light), Ok(()));
 			}
 		}
@@ -356,7 +357,7 @@ mod test {
 					kinds: [ArmorExtended::Kind(armor::Kind::Light), ArmorExtended::Kind(armor::Kind::Medium)].into(),
 					..Default::default()
 				};
-				let with_light = character_with_armor(&[(armor::Kind::Medium, false)]);
+				let with_light = character_with_armor(&[(armor::Kind::Medium, EquipStatus::Unequipped)]);
 				assert_eq!(evaluator.evaluate(&with_light), Err("No light or medium armor equipped".into()));
 			}
 
@@ -366,7 +367,7 @@ mod test {
 					kinds: [ArmorExtended::Kind(armor::Kind::Light), ArmorExtended::Kind(armor::Kind::Medium)].into(),
 					..Default::default()
 				};
-				let with_light = character_with_armor(&[(armor::Kind::Heavy, true)]);
+				let with_light = character_with_armor(&[(armor::Kind::Heavy, EquipStatus::Equipped)]);
 				assert_eq!(evaluator.evaluate(&with_light), Err("No light or medium armor equipped".into()));
 			}
 
@@ -376,7 +377,7 @@ mod test {
 					kinds: [ArmorExtended::Kind(armor::Kind::Light), ArmorExtended::Kind(armor::Kind::Medium)].into(),
 					..Default::default()
 				};
-				let with_light = character_with_armor(&[(armor::Kind::Medium, true)]);
+				let with_light = character_with_armor(&[(armor::Kind::Medium, EquipStatus::Equipped)]);
 				assert_eq!(evaluator.evaluate(&with_light), Ok(()));
 			}
 		}
@@ -394,21 +395,21 @@ mod test {
 			#[test]
 			fn unequipped() {
 				let evaluator = HasArmorEquipped { inverted: true, ..Default::default() };
-				let character = character_with_armor(&[(armor::Kind::Heavy, false)]);
+				let character = character_with_armor(&[(armor::Kind::Heavy, EquipStatus::Unequipped)]);
 				assert_eq!(evaluator.evaluate(&character), Ok(()));
 			}
 
 			#[test]
 			fn equipped() {
 				let evaluator = HasArmorEquipped { inverted: true, ..Default::default() };
-				let character = character_with_armor(&[(armor::Kind::Heavy, true)]);
+				let character = character_with_armor(&[(armor::Kind::Heavy, EquipStatus::Equipped)]);
 				assert_eq!(evaluator.evaluate(&character), Err("\"ArmorHeavy\" is equipped.".into()));
 			}
 
 			#[test]
 			fn shield_equipped() {
 				let evaluator = HasArmorEquipped { inverted: true, ..Default::default() };
-				let character = character(&[], Some(true));
+				let character = character(&[], Some(EquipStatus::Equipped));
 				assert_eq!(evaluator.evaluate(&character), Err("\"Shield\" is equipped.".into()));
 			}
 
@@ -430,7 +431,7 @@ mod test {
 					}),
 					..Default::default()
 				});
-				character.persistent_mut().inventory.set_equipped(&id, true);
+				character.persistent_mut().inventory.set_equipped(&id, EquipStatus::Equipped);
 				assert_eq!(evaluator.evaluate(&character), Ok(()));
 			}
 		}
@@ -456,7 +457,7 @@ mod test {
 					kinds: [ArmorExtended::Kind(armor::Kind::Heavy)].into(),
 					..Default::default()
 				};
-				let character = character_with_armor(&[(armor::Kind::Heavy, false)]);
+				let character = character_with_armor(&[(armor::Kind::Heavy, EquipStatus::Unequipped)]);
 				assert_eq!(evaluator.evaluate(&character), Ok(()));
 			}
 
@@ -467,7 +468,7 @@ mod test {
 					kinds: [ArmorExtended::Kind(armor::Kind::Heavy)].into(),
 					..Default::default()
 				};
-				let character = character_with_armor(&[(armor::Kind::Heavy, true)]);
+				let character = character_with_armor(&[(armor::Kind::Heavy, EquipStatus::Equipped)]);
 				assert_eq!(evaluator.evaluate(&character), Err("\"ArmorHeavy\" is equipped.".into()));
 			}
 
@@ -478,7 +479,7 @@ mod test {
 					kinds: [ArmorExtended::Kind(armor::Kind::Heavy)].into(),
 					..Default::default()
 				};
-				let character = character_with_armor(&[(armor::Kind::Medium, true)]);
+				let character = character_with_armor(&[(armor::Kind::Medium, EquipStatus::Equipped)]);
 				assert_eq!(evaluator.evaluate(&character), Ok(()));
 			}
 		}
@@ -504,7 +505,10 @@ mod test {
 					kinds: [ArmorExtended::Kind(armor::Kind::Medium), ArmorExtended::Kind(armor::Kind::Heavy)].into(),
 					..Default::default()
 				};
-				let character = character_with_armor(&[(armor::Kind::Heavy, false), (armor::Kind::Medium, false)]);
+				let character = character_with_armor(&[
+					(armor::Kind::Heavy, EquipStatus::Unequipped),
+					(armor::Kind::Medium, EquipStatus::Unequipped),
+				]);
 				assert_eq!(evaluator.evaluate(&character), Ok(()));
 			}
 
@@ -515,7 +519,7 @@ mod test {
 					kinds: [ArmorExtended::Kind(armor::Kind::Medium), ArmorExtended::Kind(armor::Kind::Heavy)].into(),
 					..Default::default()
 				};
-				let character = character_with_armor(&[(armor::Kind::Medium, true)]);
+				let character = character_with_armor(&[(armor::Kind::Medium, EquipStatus::Equipped)]);
 				assert_eq!(evaluator.evaluate(&character), Err("\"ArmorMedium\" is equipped.".into()));
 			}
 
@@ -526,7 +530,7 @@ mod test {
 					kinds: [ArmorExtended::Kind(armor::Kind::Medium), ArmorExtended::Kind(armor::Kind::Heavy)].into(),
 					..Default::default()
 				};
-				let character = character_with_armor(&[(armor::Kind::Light, true)]);
+				let character = character_with_armor(&[(armor::Kind::Light, EquipStatus::Equipped)]);
 				assert_eq!(evaluator.evaluate(&character), Ok(()));
 			}
 		}

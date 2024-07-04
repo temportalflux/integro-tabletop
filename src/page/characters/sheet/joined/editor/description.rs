@@ -30,11 +30,7 @@ fn SizeForm() -> Html {
 	let h_bonus_str = formula.height.bonus.to_string();
 	let w_mod_str = formula.weight.multiplier.to_string();
 	let height_range_str = format!("{} - {} inches", formula.min_height(), formula.max_height());
-	let height_formula_str = format!(
-		"{}{}",
-		formula.height.base,
-		format!(" + {h_bonus_str} (modifier)")
-	);
+	let height_formula_str = format!("{}{}", formula.height.base, format!(" + {h_bonus_str} (modifier)"));
 	let weight_range_str = format!("{} - {} lbs", formula.min_weight(), formula.max_weight());
 	let weight_formula_str = format!(
 		"{}{}{}",

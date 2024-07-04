@@ -140,8 +140,7 @@ impl std::fmt::Display for RollSet {
 
 			if let Some(stripped) = roll_str.strip_prefix("-") {
 				write!(f, " - {stripped}")?;
-			}
-			else {
+			} else {
 				write!(f, " + {roll_str}")?;
 			}
 		}

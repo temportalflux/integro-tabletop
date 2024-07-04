@@ -2,7 +2,7 @@ use crate::{
 	bootstrap::components::Tooltip,
 	components::stop_propagation,
 	page::characters::sheet::{CharacterHandle, MutatorImpact},
-	system::dnd5e::data::character::Persistent,
+	system::dnd5e::data::{character::Persistent, item::container::item::EquipStatus},
 	utility::InputExt,
 };
 use uuid::Uuid;
@@ -30,8 +30,12 @@ pub fn ItemRowEquipBox(EquipBoxProps { id, is_equipable, can_be_equipped, is_equ
 			let Some(should_be_equipped) = evt.input_checked() else {
 				return;
 			};
+			let desired_status = match should_be_equipped {
+				false => EquipStatus::Unequipped,
+				true => EquipStatus::Equipped,
+			};
 			state.dispatch(Box::new(move |persistent: &mut Persistent| {
-				persistent.inventory.set_equipped(&id, should_be_equipped);
+				persistent.inventory.set_equipped(&id, desired_status);
 				MutatorImpact::Recompile
 			}));
 		}

@@ -261,7 +261,7 @@ impl<'c> SpellSections<'c> {
 		}
 		for equipable in state.inventory().entries() {
 			// gather all spells from containers which are equipped and can be prepared from
-			if !equipable.is_equipped {
+			if !equipable.status.is_equipped() {
 				continue;
 			}
 			let Some(spell_container) = &equipable.item.spells else {
@@ -1291,7 +1291,7 @@ pub fn AvailableSpellList(props: &AvailableSpellListProps) -> Html {
 	if source_kind == SpellSource::Items {
 		for equipable in state.inventory().entries() {
 			// gather all spells from containers which are equipped and can be prepared from
-			if !equipable.is_equipped {
+			if !equipable.status.is_equipped() {
 				continue;
 			}
 			let Some(spell_container) = &equipable.item.spells else {

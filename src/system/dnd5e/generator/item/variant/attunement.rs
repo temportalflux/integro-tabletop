@@ -2,8 +2,7 @@ use crate::{kdl_ext::NodeContext, system::dnd5e::data::item::equipment::Equipmen
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
 
 #[derive(Clone, PartialEq, Debug)]
-pub struct AttunementExtension {
-}
+pub struct AttunementExtension {}
 
 impl AttunementExtension {
 	pub fn apply_to(&self, _equipment: &mut Equipment) -> anyhow::Result<()> {
@@ -16,7 +15,7 @@ impl AttunementExtension {
 impl FromKdl<NodeContext> for AttunementExtension {
 	type Error = anyhow::Error;
 	fn from_kdl<'doc>(_node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
-		Ok(Self { })
+		Ok(Self {})
 	}
 }
 

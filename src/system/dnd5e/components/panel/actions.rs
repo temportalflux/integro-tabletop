@@ -15,7 +15,10 @@ use crate::{
 				UsesCounter,
 			},
 			data::{
-				action::{Action, ActivationKind, Attack, AttackCheckKind, AttackKindValue}, character::{ActionBudgetKind, Character, Persistent}, roll::{Modifier, Roll, RollSet}, Ability, AreaOfEffect, Condition, DamageRoll, DamageType, Feature, IndirectCondition
+				action::{Action, ActivationKind, Attack, AttackCheckKind, AttackKindValue},
+				character::{ActionBudgetKind, Character, Persistent},
+				roll::{Modifier, Roll, RollSet},
+				Ability, AreaOfEffect, Condition, DamageRoll, DamageType, Feature, IndirectCondition,
 			},
 		},
 		SourceId,
@@ -27,7 +30,10 @@ use enumset::{EnumSet, EnumSetType};
 use itertools::{Itertools, Position};
 use multimap::MultiMap;
 use std::{
-	collections::HashMap, path::{Path, PathBuf}, rc::Rc, sync::Arc
+	collections::HashMap,
+	path::{Path, PathBuf},
+	rc::Rc,
+	sync::Arc,
 };
 use yew::prelude::*;
 
@@ -120,17 +126,10 @@ impl EvaluatedAttack {
 		for (roll, damage_type, path) in state.attack_bonuses().get_weapon_damage(action) {
 			damage_by_type.insert(*damage_type, (*roll, Rc::new(path.to_owned())));
 		}
-		
+
 		let check_bonus = check_bonuses.iter().map(|(value, _)| *value).sum::<i32>();
 
-		Self {
-			inheirent_path,
-			check_ability,
-			check_bonus,
-			check_bonuses,
-			damage_by_type,
-			modifiers,
-		}
+		Self { inheirent_path, check_ability, check_bonus, check_bonuses, damage_by_type, modifiers }
 	}
 }
 
@@ -793,7 +792,11 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 			}
 
 			let mut evaluated = EvaluatedAttack::new(action, attack, &state);
-			let check_bonus_list = evaluated.check_bonuses.iter().map(|(bonus, source)| html!(<span class="ms-1">
+			let check_bonus_list = evaluated
+				.check_bonuses
+				.iter()
+				.map(|(bonus, source)| {
+					html!(<span class="ms-1">
 				<span>
 					{if *bonus >= 0 { "+" } else { "-" }}
 					{bonus.abs()}
@@ -801,7 +804,9 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 				<span style="color: var(--bs-gray-600);">
 					{" ("}{crate::data::as_feature_path_text(source)}{")"}
 				</span>
-			</span>)).collect::<Vec<_>>();
+			</span>)
+				})
+				.collect::<Vec<_>>();
 			match &attack.check {
 				AttackCheckKind::AttackRoll { .. } => {
 					attack_sections.push(html! {
@@ -847,7 +852,7 @@ fn Modal(ModalProps { path }: &ModalProps) -> Html {
 				if let Some(roll) = roll {
 					evaluated.damage_by_type.insert(None, (roll.evaluate(&state), evaluated.inheirent_path.clone()));
 				}
-				
+
 				let mut damage_rolls = Vec::with_capacity(evaluated.damage_by_type.len());
 				for (dmg_type_override, rolls_by_source) in evaluated.damage_by_type.into_iter() {
 					let damage_type = dmg_type_override.unwrap_or(*damage_type);

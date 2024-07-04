@@ -9,6 +9,9 @@ use crate::{
 		mutator::ReferencePath,
 	},
 };
+use derive_more::Display;
+use enum_from_str::ParseEnumVariantError;
+use enum_from_str_derive::FromStr;
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::path::PathBuf;
 
@@ -16,7 +19,24 @@ use std::path::PathBuf;
 pub struct EquipableEntry {
 	pub id_path: Vec<uuid::Uuid>,
 	pub item: Item,
-	pub is_equipped: bool,
+	pub status: EquipStatus,
+}
+
+#[derive(Clone, Copy, PartialEq, Debug, Default, FromStr, Display)]
+pub enum EquipStatus {
+	#[default]
+	#[display(fmt = "Unequipped")]
+	Unequipped,
+	#[display(fmt = "Equipped")]
+	Equipped,
+	#[display(fmt = "Attuned")]
+	Attuned,
+}
+
+impl EquipStatus {
+	pub fn is_equipped(&self) -> bool {
+		*self != Self::Unequipped
+	}
 }
 
 impl EquipableEntry {
@@ -28,7 +48,7 @@ impl EquipableEntry {
 
 impl AsItem for EquipableEntry {
 	fn from_item(item: Item) -> Self {
-		Self { id_path: Vec::new(), item, is_equipped: false }
+		Self { id_path: Vec::new(), item, status: EquipStatus::Unequipped }
 	}
 
 	fn set_id_path(&mut self, id: Vec<uuid::Uuid>) {
@@ -68,7 +88,7 @@ impl mutator::Group for EquipableEntry {
 		let Kind::Equipment(equipment) = &self.item.kind else {
 			return;
 		};
-		if !self.is_equipped {
+		if !self.status.is_equipped() {
 			return;
 		}
 
@@ -81,6 +101,13 @@ impl mutator::Group for EquipableEntry {
 		if let Some(spell_container) = &self.item.spells {
 			spell_container.add_spellcasting(stats, &self.id_path, &path_to_item);
 		}
+
+		if self.status == EquipStatus::Attuned {
+			let Some(attunement) = &equipment.attunement else { return };
+			for modifier in &attunement.mutators {
+				stats.apply(modifier, &path_to_item);
+			}
+		}
 	}
 }
 
@@ -88,16 +115,19 @@ impl FromKdl<NodeContext> for EquipableEntry {
 	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let item = Item::from_kdl(node)?;
-		let is_equipped = node.get_bool_opt("equipped")?.unwrap_or_default();
-		Ok(Self { id_path: Vec::new(), is_equipped, item })
+		let mut status = node.get_str_opt_t("status")?.unwrap_or_default();
+		if node.get_bool_opt("equipped")? == Some(true) {
+			status = EquipStatus::Equipped;
+		}
+		Ok(Self { id_path: Vec::new(), status, item })
 	}
 }
 
 impl AsKdl for EquipableEntry {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = self.item.as_kdl();
-		if self.is_equipped {
-			node.entry(("equipped", true));
+		if self.status.is_equipped() {
+			node.entry(("status", self.status.to_string()));
 		}
 		node
 	}

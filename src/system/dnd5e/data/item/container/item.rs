@@ -355,19 +355,20 @@ impl<T: AsKdl> AsKdl for ItemContainer<T> {
 }
 
 impl Inventory {
-	pub fn is_equipped(&self, id: &Uuid) -> bool {
-		self.items_by_id.get(id).map(|entry| entry.is_equipped).unwrap_or(false)
+	pub fn get_equip_status(&self, id: &Uuid) -> EquipStatus {
+		let entry = self.items_by_id.get(id);
+		let status = entry.map(|entry| entry.status);
+		status.unwrap_or_default()
 	}
 
 	pub fn entries(&self) -> impl Iterator<Item = &EquipableEntry> {
 		self.items_by_id.values()
 	}
 
-	pub fn set_equipped(&mut self, id: &Uuid, equipped: bool) {
-		let Some(entry) = self.items_by_id.get_mut(&id) else {
-			return;
-		};
-		entry.is_equipped = equipped;
+	pub fn set_equipped(&mut self, id: &Uuid, status: EquipStatus) {
+		if let Some(entry) = self.items_by_id.get_mut(&id) {
+			entry.status = status;
+		}
 	}
 }
 

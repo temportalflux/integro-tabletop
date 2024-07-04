@@ -7,7 +7,7 @@ use crate::{
 			get_inventory_item, inventory::equip_toggle::ItemRowEquipBox, AddItemButton, AddItemOperation,
 			ItemBodyProps, ItemInfo, ItemLocation,
 		},
-		data::item::{self, Item},
+		data::item::{self, container::item::EquipStatus, Item},
 	},
 };
 use uuid::Uuid;
@@ -63,12 +63,16 @@ pub fn ItemModal(InventoryItemProps { id_path }: &InventoryItemProps) -> Html {
 		let id_path = id_path.clone();
 		let close_modal = close_modal.clone();
 		move |_: MouseEvent, persistent| {
-			let equipped = id_path.len() == 1 && persistent.inventory.is_equipped(&id_path[0]);
+			let equip_status = {
+				let item_id = id_path.get(0);
+				let equip_status = item_id.map(|id| persistent.inventory.get_equip_status(id));
+				equip_status.unwrap_or_default()
+			};
 			let _item = persistent.inventory.remove_at_path(&id_path);
 			close_modal.emit(());
-			match equipped {
-				true => MutatorImpact::Recompile,
-				false => MutatorImpact::None,
+			match equip_status {
+				EquipStatus::Unequipped => MutatorImpact::None,
+				EquipStatus::Equipped | EquipStatus::Attuned => MutatorImpact::Recompile,
 			}
 		}
 	});
@@ -90,7 +94,7 @@ pub fn ItemModal(InventoryItemProps { id_path }: &InventoryItemProps) -> Html {
 		}
 		item::Kind::Equipment(_equipment) => {
 			if id_path.len() == 1 {
-				item_props.is_equipped = state.inventory().is_equipped(&id_path[0]);
+				item_props.is_equipped = state.inventory().get_equip_status(&id_path[0]) == EquipStatus::Equipped;
 				item_props.set_equipped = Some(state.new_dispatch({
 					let id: Uuid = id_path[0].clone();
 					move |should_be_equipped, persistent| {

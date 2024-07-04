@@ -13,7 +13,11 @@ use crate::{
 			data::{
 				character::{IndirectItem, Persistent, StartingEquipment},
 				currency::Wallet,
-				item::{self, container::item::AsItem, Item},
+				item::{
+					self,
+					container::item::{AsItem, EquipStatus},
+					Item,
+				},
 				Indirect,
 			},
 		},
@@ -127,7 +131,11 @@ fn ContainerSection(ContainerSectionProps { container_id }: &ContainerSectionPro
 				.filter(|(_, entry)| entry.as_item().items.is_none())
 				.map(|(id, entry)| {
 					html! {
-						<ItemRow id_path={vec![id.clone()]} item={entry.item.clone()} is_equipped={entry.is_equipped} />
+						<ItemRow
+							id_path={vec![id.clone()]}
+							item={entry.item.clone()}
+							is_equipped={entry.status == EquipStatus::Equipped}
+						/>
 					}
 				})
 				.collect::<Vec<_>>();

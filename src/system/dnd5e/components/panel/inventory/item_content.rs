@@ -17,7 +17,11 @@ use crate::{
 			},
 			data::{
 				character::{Persistent, MAX_SPELL_RANK},
-				item::{self, container::spell::ContainerSpell, Item},
+				item::{
+					self,
+					container::{item::EquipStatus, spell::ContainerSpell},
+					Item,
+				},
 				spell::CastingDuration,
 				ArmorExtended, Indirect, Spell, WeaponProficiency,
 			},
@@ -94,7 +98,7 @@ pub struct ItemBodyProps {
 	#[prop_or_default]
 	pub is_equipped: bool,
 	#[prop_or_default]
-	pub set_equipped: Option<Callback<bool>>,
+	pub set_equipped: Option<Callback<EquipStatus>>,
 }
 #[function_component]
 pub fn ItemInfo(props: &ItemBodyProps) -> Html {
@@ -166,7 +170,10 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 						let Some(checked) = evt.input_checked() else {
 							return;
 						};
-						on_equipped.emit(checked);
+						on_equipped.emit(match checked {
+							false => EquipStatus::Unequipped,
+							true => EquipStatus::Equipped,
+						});
 					}
 				});
 				equip_sections.push(html! {
