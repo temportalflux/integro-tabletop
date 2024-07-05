@@ -53,6 +53,7 @@ impl SystemObjectList {
 
 		entry.id = {
 			let mut source_id = entry.source_id(true);
+			source_id = source_id.into_unversioned();
 			source_id.variant = Some(self.variant_id(variant_name));
 			source_id.to_string()
 		};
