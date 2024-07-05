@@ -48,6 +48,7 @@ pub struct Persistent {
 	pub inspiration: bool,
 	pub settings: Settings,
 	pub notes: Notes,
+	pub attunement_slots: u32,
 }
 impl mutator::Group for Persistent {
 	type Target = Character;
@@ -258,6 +259,7 @@ impl FromKdl<NodeContext> for Persistent {
 			classes,
 			selected_values,
 			notes,
+			attunement_slots: 3,
 		})
 	}
 }

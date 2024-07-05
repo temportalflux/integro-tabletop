@@ -471,6 +471,14 @@ impl Character {
 	pub fn resources_mut(&mut self) -> &mut ResourceDepot {
 		&mut self.derived.resource_depot
 	}
+
+	pub fn attunement(&self) -> u32 {
+		self.derived.attunement_count
+	}
+
+	pub fn attunement_mut(&mut self) -> &mut u32 {
+		&mut self.derived.attunement_count
+	}
 }
 
 pub struct ObjectCacheProvider {

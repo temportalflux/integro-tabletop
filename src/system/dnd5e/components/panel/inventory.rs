@@ -100,7 +100,7 @@ pub fn Inventory() -> Html {
 
 	// Gather the list of attuned items, placed into each slot alphabetically.
 	let attuned_entries = {
-		let slot_range = 0..3;
+		let slot_range = 0..state.persistent().attunement_slots;
 		let iter = state.inventory().iter_by_name();
 		let iter = iter.filter_map(|(id, entry)| match entry.status {
 			EquipStatus::Attuned => Some((id, Rc::new(entry.item.clone()))),

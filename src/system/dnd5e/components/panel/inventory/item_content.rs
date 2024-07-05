@@ -175,10 +175,18 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 					let Ok(status) = EquipStatus::from_str(&value_str) else { return };
 					on_equipped.emit(status);
 				});
+				let mut statuses = EnumSet::<EquipStatus>::all();
+				let has_attunement_slots = state.attunement() < state.persistent().attunement_slots;
+				if equipment.attunement.is_none() {
+					statuses.remove(EquipStatus::Attuned);
+				}
 				equip_sections.push(html! {
 					<select class="form-select form-select-sm w-auto" {onchange}>
-						{EnumSet::<EquipStatus>::all().into_iter().map(|status| {
-							html!(<option selected={status == props.equip_status}>{status.to_string()}</option>)
+						{statuses.into_iter().map(|status| {
+							let selected = status == props.equip_status;
+							// cannot select attuned if its not selected and we dont have additional slots
+							let disabled = status == EquipStatus::Attuned && !selected && !has_attunement_slots;
+							html!(<option {selected} {disabled}>{status.to_string()}</option>)
 						}).collect::<Vec<_>>()}
 					</select>
 				});

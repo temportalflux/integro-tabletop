@@ -65,6 +65,7 @@ pub struct Derived {
 	pub additional_objects: AdditionalObjectCache,
 	pub rest_resets: RestResets,
 	pub resource_depot: ResourceDepot,
+	pub attunement_count: u32,
 }
 
 impl Default for Derived {
@@ -92,6 +93,7 @@ impl Default for Derived {
 			additional_objects: Default::default(),
 			rest_resets: Default::default(),
 			resource_depot: Default::default(),
+			attunement_count: 0,
 		}
 	}
 }

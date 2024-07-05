@@ -5,9 +5,9 @@ use kdlize::{AsKdl, FromKdl, NodeBuilder};
 pub struct AttunementExtension {}
 
 impl AttunementExtension {
-	pub fn apply_to(&self, _equipment: &mut Equipment) -> anyhow::Result<()> {
-		//let mut attunement = equipment.attunement.clone().unwrap_or_default();
-		//equipment.attunement = Some(attunement);
+	pub fn apply_to(&self, equipment: &mut Equipment) -> anyhow::Result<()> {
+		let attunement = equipment.attunement.clone().unwrap_or_default();
+		equipment.attunement = Some(attunement);
 		Ok(())
 	}
 }

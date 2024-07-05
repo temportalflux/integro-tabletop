@@ -386,6 +386,10 @@ impl mutator::Group for Inventory {
 		let path_to_self = parent.join("Inventory", None);
 		for (_id, entry) in self.iter_by_name() {
 			stats.apply_from(entry, &path_to_self);
+
+			if entry.status == EquipStatus::Attuned {
+				*stats.attunement_mut() += 1;
+			}
 		}
 	}
 }
