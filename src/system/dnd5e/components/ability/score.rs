@@ -228,6 +228,25 @@ pub fn ScoreBreakdown(AbilityProps { ability }: &AbilityProps) -> Html {
 				}).collect::<Vec<_>>()}
 			</tbody>
 		</table>
+
+		<h6>{"Minimum Value"}</h6>
+		<table class="table table-compact table-striped m-0">
+			<caption>{"The largest value of these is used as the minimum bound for the score above."}</caption>
+			<thead>
+				<tr class="text-center" style="color: var(--bs-heading-color);">
+					<th scope="col">{"Value"}</th>
+					<th scope="col">{"Source"}</th>
+				</tr>
+			</thead>
+			<tbody>
+				{ability_score.iter_minimums().map(|(value, path)| {
+					html! {<tr>
+						<td class="text-center">{value}</td>
+						<td>{crate::data::as_feature_path_text(&path).unwrap_or_default()}</td>
+					</tr>}
+				}).collect::<Vec<_>>()}
+			</tbody>
+		</table>
 	</>}
 }
 

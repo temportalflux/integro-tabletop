@@ -16,6 +16,10 @@ impl AbilityScores {
 	pub fn increase_maximum(&mut self, ability: Ability, max: u32, source: PathBuf) {
 		self.0[ability].max_score_incs.push((max, source));
 	}
+	
+	pub fn push_minimum(&mut self, ability: Ability, min: u32, source: PathBuf) {
+		self.0[ability].minimums.push((min, source));
+	}
 
 	pub fn finalize(&mut self) {
 		for ability_score in self.0.values_mut() {
@@ -64,11 +68,12 @@ impl crate::kdl_ext::AsKdl for FinalizeAbilityScores {
 pub struct AbilityScore {
 	bonuses: Vec<(AbilityScoreBonus, PathBuf, /*was included*/ bool)>,
 	max_score_incs: Vec<(u32, PathBuf)>,
+	minimums: Vec<(u32, PathBuf)>,
 	total: Score,
 }
 impl Default for AbilityScore {
 	fn default() -> Self {
-		Self { bonuses: vec![], max_score_incs: vec![(20, "Default Maximum".into())], total: Score(0) }
+		Self { bonuses: vec![], max_score_incs: vec![(20, "Default Maximum".into())], minimums: vec![], total: Score(0) }
 	}
 }
 impl AbilityScore {
@@ -84,16 +89,22 @@ impl AbilityScore {
 		self.max_score_incs.iter()
 	}
 
+	pub fn iter_minimums(&self) -> impl Iterator<Item = &(u32, PathBuf)> {
+		self.minimums.iter()
+	}
+
 	pub fn finalize(&mut self) {
 		let (max_possible_score, used_bonus_indices) = self.evaluate();
-		*self.total = max_possible_score.min(self.eval_max_score());
+		// We cap the evaluated score at whatever the greatest maximum value is (default is 20, but mutators can increase the max cap)
+		let max_cap = self.max_score_incs.iter().map(|(v, _)| *v).max().unwrap_or(0);
+		// If any minimums are provided, we ensure the evaluated score is always at least the greatest minimum
+		let max_minimum = self.minimums.iter().map(|(v, _)| *v).max().unwrap_or(0);
+		
+		*self.total = max_possible_score.min(max_cap).max(max_minimum);
+
 		for (idx, (_bonus, _path, was_used)) in self.bonuses.iter_mut().enumerate() {
 			*was_used = used_bonus_indices.contains(&idx);
 		}
-	}
-
-	fn eval_max_score(&self) -> u32 {
-		self.max_score_incs.iter().map(|(v, _)| *v).max().unwrap_or(0)
 	}
 
 	/// Returns the evaluated total scoree, and the list of paths that were used from the list of bonuses.

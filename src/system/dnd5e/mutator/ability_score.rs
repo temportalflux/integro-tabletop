@@ -21,6 +21,7 @@ pub struct AbilityScoreChange {
 pub enum AbilityScoreOp {
 	Bonus { value: u32, max_total_score: Option<u32> },
 	IncreaseMax { value: u32 },
+	Minimum { value: u32 },
 }
 
 crate::impl_trait_eq!(AbilityScoreChange);
@@ -56,6 +57,9 @@ impl Mutator for AbilityScoreChange {
 				AbilityScoreOp::IncreaseMax { value } => {
 					format!("increases its maximum to at-least {value}")
 				}
+				AbilityScoreOp::Minimum { value } => {
+					format!("is no less than {value}")
+				}
 			})
 			.collect::<Vec<_>>();
 
@@ -85,6 +89,9 @@ impl Mutator for AbilityScoreChange {
 					AbilityScoreOp::IncreaseMax { value } => {
 						stats.ability_scores_mut().increase_maximum(ability, *value, parent.display.clone());
 					}
+					AbilityScoreOp::Minimum { value } => {
+						stats.ability_scores_mut().push_minimum(ability, *value, parent.display.clone());
+					}
 				}
 			}
 		}
@@ -104,6 +111,10 @@ impl FromKdl<NodeContext> for AbilityScoreChange {
 		for node in &mut node.query_all("scope() > increase-max")? {
 			let value = node.next_i64_req()? as u32;
 			operations.push(AbilityScoreOp::IncreaseMax { value });
+		}
+		for node in &mut node.query_all("scope() > minimum")? {
+			let value = node.next_i64_req()? as u32;
+			operations.push(AbilityScoreOp::Minimum { value });
 		}
 		Ok(Self { ability, operations })
 	}
@@ -127,6 +138,9 @@ impl AsKdl for AbilityScoreChange {
 				}
 				AbilityScoreOp::IncreaseMax { value } => {
 					node.child(NodeBuilder::default().with_entry(*value as i64).build("increase-max"));
+				}
+				AbilityScoreOp::Minimum { value } => {
+					node.child(NodeBuilder::default().with_entry(*value as i64).build("minimum"));
 				}
 			}
 		}

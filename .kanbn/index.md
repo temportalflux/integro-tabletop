@@ -45,12 +45,14 @@ columnSorting:
 - [parcels-mailbox](tasks/parcels-mailbox.md)
 - [inventory-search-bar](tasks/inventory-search-bar.md)
 - [add-restore-uses-mutator](tasks/add-restore-uses-mutator.md)
-- [object-feature-backlog](tasks/object-feature-backlog.md)
 - [expanded-item-modal-editor](tasks/expanded-item-modal-editor.md)
 - [autosave](tasks/autosave.md)
 - [proficiency-item-override](tasks/proficiency-item-override.md)
+- [object-feature-backlog](tasks/object-feature-backlog.md)
 
 ## In Progress
+
+- [ability-score-mutator-can-provide-minimum-score-value](tasks/ability-score-mutator-can-provide-minimum-score-value.md)
 
 ## Done
 
