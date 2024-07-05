@@ -52,10 +52,9 @@ columnSorting:
 
 ## In Progress
 
-- [ability-score-mutator-can-provide-minimum-score-value](tasks/ability-score-mutator-can-provide-minimum-score-value.md)
-
 ## Done
 
+- [ability-score-mutator-can-provide-minimum-score-value](tasks/ability-score-mutator-can-provide-minimum-score-value.md)
 - [attunement](tasks/attunement.md)
 - [attack-row-overview-ui-rehaul](tasks/attack-row-overview-ui-rehaul.md)
 - [speed-based-on-existing-speed](tasks/speed-based-on-existing-speed.md)
