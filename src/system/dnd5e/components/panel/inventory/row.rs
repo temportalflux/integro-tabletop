@@ -94,7 +94,7 @@ pub fn ItemModal(InventoryItemProps { id_path }: &InventoryItemProps) -> Html {
 		}
 		item::Kind::Equipment(_equipment) => {
 			if id_path.len() == 1 {
-				item_props.is_equipped = state.inventory().get_equip_status(&id_path[0]) == EquipStatus::Equipped;
+				item_props.equip_status = state.inventory().get_equip_status(&id_path[0]);
 				item_props.set_equipped = Some(state.new_dispatch({
 					let id: Uuid = id_path[0].clone();
 					move |should_be_equipped, persistent| {

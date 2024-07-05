@@ -81,7 +81,7 @@ pub fn use_query<QueryBuilder, Input, Output, E>(
 where
 	Input: 'static + Clone,
 	QueryBuilder: 'static + Fn(Database, Input) -> futures::future::LocalBoxFuture<'hook, Result<Output, E>>,
-	Output: 'static + Clone,
+	Output: 'static + Clone + Default,
 	E: 'static + std::error::Error + Clone,
 {
 	let database = use_context::<Database>().unwrap();
@@ -94,8 +94,9 @@ where
 	let async_handle = use_async_with_options(
 		async move {
 			let guard = async_args.lock().unwrap();
-			let opt_input = (*guard).as_ref();
-			let input = opt_input.expect("missing query input");
+			let Some(input) = (*guard).as_ref() else {
+				return Ok(Output::default());
+			};
 			Ok((*query_builder)(database.clone(), input.clone()).await?) as Result<Output, E>
 		},
 		options,

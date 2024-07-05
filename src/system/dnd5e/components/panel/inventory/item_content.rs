@@ -32,8 +32,9 @@ use crate::{
 	utility::InputExt,
 };
 use any_range::AnyRange;
+use enumset::EnumSet;
 use itertools::Itertools;
-use std::{collections::HashSet, path::Path, sync::Arc};
+use std::{collections::HashSet, path::Path, str::FromStr, sync::Arc};
 use yew::prelude::*;
 
 pub fn get_inventory_item<'c>(state: &'c CharacterHandle, id_path: &Vec<uuid::Uuid>) -> Option<&'c Item> {
@@ -96,7 +97,7 @@ pub struct ItemBodyProps {
 	#[prop_or_default]
 	pub on_quantity_changed: Option<Callback<u32>>,
 	#[prop_or_default]
-	pub is_equipped: bool,
+	pub equip_status: EquipStatus,
 	#[prop_or_default]
 	pub set_equipped: Option<Callback<EquipStatus>>,
 }
@@ -112,6 +113,10 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 	let item = match item_opt {
 		Some(item) => item,
 		None => return Html::default(),
+	};
+	let state_with_inventory = match &props.location {
+		Some(ItemLocation::Inventory { .. }) => Some(state.clone()),
+		None | Some(ItemLocation::Database { .. }) => None,
 	};
 
 	let mut sections = Vec::new();
@@ -165,27 +170,17 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 		item::Kind::Equipment(equipment) => {
 			let mut equip_sections = Vec::new();
 			if let Some(on_equipped) = props.set_equipped.clone() {
-				let onchange = Callback::from({
-					move |evt: web_sys::Event| {
-						let Some(checked) = evt.input_checked() else {
-							return;
-						};
-						on_equipped.emit(match checked {
-							false => EquipStatus::Unequipped,
-							true => EquipStatus::Equipped,
-						});
-					}
+				let onchange = Callback::from(move |evt: web_sys::Event| {
+					let Some(value_str) = evt.select_value() else { return };
+					let Ok(status) = EquipStatus::from_str(&value_str) else { return };
+					on_equipped.emit(status);
 				});
 				equip_sections.push(html! {
-					<div class="form-check">
-						<input  id="equipItem" class="form-check-input equip" type="checkbox" checked={props.is_equipped} {onchange} />
-						<label for="equipItem" class="form-check-label">
-							{match props.is_equipped {
-								true => format!("Equipped"),
-								false => format!("Not Equipped"),
-							}}
-						</label>
-					</div>
+					<select class="form-select form-select-sm w-auto" {onchange}>
+						{EnumSet::<EquipStatus>::all().into_iter().map(|status| {
+							html!(<option selected={status == props.equip_status}>{status.to_string()}</option>)
+						}).collect::<Vec<_>>()}
+					</select>
 				});
 			}
 			if !equipment.mutators.is_empty() {
@@ -201,7 +196,7 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 				equip_sections.push(html! {
 					<div class="border-bottom-theme-muted">
 						<div>{"You gain the following benefits while this item is equipped:"}</div>
-						{mutator_list(&equipment.mutators, None::<&CharacterHandle>)}
+						{mutator_list(&equipment.mutators, state_with_inventory.as_ref())}
 						{criteria_html.unwrap_or_default()}
 					</div>
 				});
@@ -355,11 +350,15 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 					</div>
 				});
 			}
-			if let Some(_attunement) = &equipment.attunement {
-				// TODO: Display attunement
-				// (if mutable) (un)attune button: disabled when all slots filled and not currently attuned
-				// mutators & criteria applied when attuned
-				// warning if attuned and not currently equipped
+			if let Some(attunement) = &equipment.attunement {
+				if !attunement.mutators.is_empty() {
+					equip_sections.push(html! {
+						<div class="border-bottom-theme-muted">
+							<div>{"You gain the following benefits while this item is attuned:"}</div>
+							{mutator_list(&attunement.mutators, state_with_inventory.as_ref())}
+						</div>
+					});
+				}
 			}
 			if let Some(resource) = &equipment.charges {
 				if matches!(&props.location, Some(ItemLocation::Inventory { .. })) {

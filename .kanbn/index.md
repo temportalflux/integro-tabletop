@@ -48,13 +48,13 @@ columnSorting:
 - [object-feature-backlog](tasks/object-feature-backlog.md)
 - [expanded-item-modal-editor](tasks/expanded-item-modal-editor.md)
 - [autosave](tasks/autosave.md)
+- [proficiency-item-override](tasks/proficiency-item-override.md)
 
 ## In Progress
 
-- [attunement](tasks/attunement.md)
-
 ## Done
 
+- [attunement](tasks/attunement.md)
 - [attack-row-overview-ui-rehaul](tasks/attack-row-overview-ui-rehaul.md)
 - [speed-based-on-existing-speed](tasks/speed-based-on-existing-speed.md)
 - [spellcasting-filter-queries-can-specify-specific-spell-ids](tasks/spellcasting-filter-queries-can-specify-specific-spell-ids.md)

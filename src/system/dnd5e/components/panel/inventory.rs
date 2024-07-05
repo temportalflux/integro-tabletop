@@ -25,6 +25,7 @@ use crate::{
 	},
 	utility::InputExt,
 };
+use itertools::{EitherOrBoth, Itertools};
 use std::{
 	collections::HashMap,
 	path::{Path, PathBuf},
@@ -96,8 +97,37 @@ pub fn Inventory() -> Html {
 		.filter(|(_, entry)| entry.as_item().items.is_some())
 		.map(|(id, _)| html! { <ContainerSection container_id={id.clone()} /> })
 		.collect::<Vec<_>>();
+
+	// Gather the list of attuned items, placed into each slot alphabetically.
+	let attuned_entries = {
+		let slot_range = 0..3;
+		let iter = state.inventory().iter_by_name();
+		let iter = iter.filter_map(|(id, entry)| match entry.status {
+			EquipStatus::Attuned => Some((id, Rc::new(entry.item.clone()))),
+			_ => None,
+		});
+		let iter = slot_range.zip_longest(iter);
+		let iter = iter.filter_map(|zip| match zip {
+			EitherOrBoth::Both(_slot, (item_id, rc_item)) => Some(Some((*item_id, rc_item))),
+			EitherOrBoth::Left(_slot) => Some(None),
+			EitherOrBoth::Right(_) => None,
+		});
+		iter.collect::<Vec<_>>()
+	};
+
 	html! {
 		<div class="panel inventory">
+			<div class="row m-0">
+				{attuned_entries.into_iter().map(|entry| match entry {
+					None => html!(<AttunementSlot />),
+					Some((item_id, rc_item)) => html!(<AttunementSlot
+						entry={AttunementSlotEntry {
+							id_path: vec![item_id],
+							item: rc_item,
+						}}
+					/>),
+				}).collect::<Vec<_>>()}
+			</div>
 			{search_header}
 			<div class="sections">
 				<ContainerSection container_id={None} />
@@ -105,6 +135,50 @@ pub fn Inventory() -> Html {
 			</div>
 		</div>
 	}
+}
+
+#[derive(Clone, PartialEq, Properties)]
+struct AttunementSlotProps {
+	#[prop_or_default]
+	entry: Option<AttunementSlotEntry>,
+}
+
+#[derive(Clone, PartialEq)]
+struct AttunementSlotEntry {
+	id_path: Vec<Uuid>,
+	item: Rc<Item>,
+}
+
+#[function_component]
+fn AttunementSlot(AttunementSlotProps { entry }: &AttunementSlotProps) -> Html {
+	let ctxmenu_control = use_context::<context_menu::Control>().unwrap();
+	
+	let Some(AttunementSlotEntry { id_path, item }) = entry else {
+		return html!(<div class="card col mx-1">
+			<div class="card-body p-1">
+				<span class="d-block w-100 text-center text-body-secondary">
+					{"Empty Slot"}
+				</span>
+			</div>
+		</div>);
+	};
+
+	let open_modal = Callback::from({
+		let id_path = id_path.clone();
+		let name = AttrValue::from(item.name.clone());
+		move |_| {
+			let action = context_menu::Action::open_root(name.clone(), html!(<ItemModal id_path={id_path.clone()} />));
+			ctxmenu_control.dispatch(action);
+		}
+	});
+
+	html!(<div class="card col mx-1" onclick={open_modal}>
+		<div class="card-body p-1">
+			<span class="d-block w-100 text-center">
+				{item.name.clone()}
+			</span>
+		</div>
+	</div>)
 }
 
 #[derive(Clone, PartialEq, Properties)]
@@ -126,10 +200,11 @@ fn ContainerSection(ContainerSectionProps { container_id }: &ContainerSectionPro
 			let container = state.inventory();
 			title = "Equipment".into();
 			wallet = Some(html! { <WalletInlineButton id={None} /> });
-			rows = container
-				.iter_by_name()
-				.filter(|(_, entry)| entry.as_item().items.is_none())
-				.map(|(id, entry)| {
+			rows = {
+				let all_items = container.iter_by_name();
+				let no_containers = all_items.filter(|(_, entry)| entry.as_item().items.is_none());
+				let unattuned = no_containers.filter(|(_, entry)| entry.status != EquipStatus::Attuned);
+				let as_html = unattuned.map(|(id, entry)| {
 					html! {
 						<ItemRow
 							id_path={vec![id.clone()]}
@@ -137,8 +212,9 @@ fn ContainerSection(ContainerSectionProps { container_id }: &ContainerSectionPro
 							is_equipped={entry.status == EquipStatus::Equipped}
 						/>
 					}
-				})
-				.collect::<Vec<_>>();
+				});
+				as_html.collect::<Vec<_>>()
+			};
 			open_modal = None;
 		}
 		Some(container_id) => {

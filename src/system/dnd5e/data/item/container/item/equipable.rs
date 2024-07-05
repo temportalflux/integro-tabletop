@@ -12,6 +12,7 @@ use crate::{
 use derive_more::Display;
 use enum_from_str::ParseEnumVariantError;
 use enum_from_str_derive::FromStr;
+use enumset::EnumSetType;
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
 use std::path::PathBuf;
 
@@ -22,7 +23,7 @@ pub struct EquipableEntry {
 	pub status: EquipStatus,
 }
 
-#[derive(Clone, Copy, PartialEq, Debug, Default, FromStr, Display)]
+#[derive(EnumSetType, Debug, Default, FromStr, Display)]
 pub enum EquipStatus {
 	#[default]
 	#[display(fmt = "Unequipped")]
