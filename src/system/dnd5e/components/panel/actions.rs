@@ -91,13 +91,16 @@ impl EvaluatedAttack {
 		let proficiency_path = Rc::new(Path::new("proficiency").to_owned());
 		let inheirent_path = Rc::new(Path::new("inheirent").to_owned());
 		match &attack.check {
-			AttackCheckKind::AttackRoll { ability, proficient } => {
+			AttackCheckKind::AttackRoll { ability, proficient, bonus } => {
 				let (ability, modifier) = attack.best_ability_modifier(*ability, &state);
 				check_ability = ability;
 				let ability_modifier_path = Rc::new(PathBuf::from(format!("{} modifier", ability.long_name())));
 				check_bonuses.push((modifier, ability_modifier_path.clone()));
 				if proficient.evaluate(&state) {
 					check_bonuses.push((state.proficiency_bonus(), proficiency_path.clone()));
+				}
+				if *bonus != 0 {
+					check_bonuses.push((*bonus, inheirent_path.clone()));
 				}
 				damage_by_type.insert(None, (Roll::from(modifier), ability_modifier_path));
 			}

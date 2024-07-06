@@ -11,7 +11,7 @@ use crate::{
 		Value,
 	},
 };
-use kdlize::{AsKdl, FromKdl, NodeBuilder};
+use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
 use std::collections::HashMap;
 
 mod damage;
@@ -30,6 +30,7 @@ pub struct Weapon {
 	pub damage: Option<WeaponDamage>,
 	pub properties: Vec<Property>,
 	pub range: Option<Range>,
+	pub attack_roll_bonus: i32,
 }
 
 impl Weapon {
@@ -110,6 +111,7 @@ impl Weapon {
 							])
 							.into(),
 						),
+						bonus: self.attack_roll_bonus,
 					},
 					area_of_effect: None,
 					damage: self.damage.as_ref().map(|dmg| DamageRoll {
@@ -134,6 +136,7 @@ impl FromKdl<NodeContext> for Weapon {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let kind = node.next_str_req_t::<Kind>()?;
 		let classification = node.get_str_req("class")?.to_owned();
+		let attack_roll_bonus = node.query_i64_opt("scope() > attack-roll", "bonus")?.unwrap_or_default() as i32;
 		let damage = node.query_opt_t::<WeaponDamage>("scope() > damage")?;
 		let properties = {
 			let mut props = Vec::new();
@@ -143,7 +146,7 @@ impl FromKdl<NodeContext> for Weapon {
 			props
 		};
 		let range = node.query_opt_t::<Range>("scope() > range")?;
-		Ok(Self { kind, classification, damage, properties, range })
+		Ok(Self { kind, classification, damage, properties, range, attack_roll_bonus })
 	}
 }
 
@@ -152,6 +155,9 @@ impl AsKdl for Weapon {
 		let mut node = NodeBuilder::default();
 		node.entry(self.kind.to_string());
 		node.entry(("class", self.classification.clone()));
+		if self.attack_roll_bonus != 0 {
+			node.child(("attack-roll", NodeBuilder::default().with_entry(("bonus", self.attack_roll_bonus as i64))));
+		}
 		node.child(("damage", &self.damage));
 		node.children(("property", self.properties.iter()));
 		node.child(("range", &self.range));
@@ -196,6 +202,7 @@ mod test {
 				}),
 				properties: vec![Property::Light, Property::Thrown(20, 60)],
 				range: None,
+				attack_roll_bonus: 0,
 			};
 			assert_eq_fromkdl!(Weapon, doc, data);
 			assert_eq_askdl!(&data, doc);
@@ -220,6 +227,7 @@ mod test {
 				}),
 				properties: vec![Property::Finesse],
 				range: None,
+				attack_roll_bonus: 0,
 			};
 			assert_eq_fromkdl!(Weapon, doc, data);
 			assert_eq_askdl!(&data, doc);
@@ -253,6 +261,7 @@ mod test {
 					requires_ammunition: true,
 					requires_loading: true,
 				}),
+				attack_roll_bonus: 0,
 			};
 			assert_eq_fromkdl!(Weapon, doc, data);
 			assert_eq_askdl!(&data, doc);

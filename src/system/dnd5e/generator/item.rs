@@ -232,7 +232,10 @@ mod test {
 							..Default::default()
 						}]),
 						variant::Extension::Equipment {
-							attunement: Some(variant::AttunementExtension {}),
+							attunement: Some(variant::AttunementExtension {
+								mutators: Vec::new(),
+							}),
+							weapon: None,
 							armor: Some(variant::ArmorExtension {
 								formula: Some(variant::ArmorFormulaExtension { base_bonus: Some(5) }),
 							}),

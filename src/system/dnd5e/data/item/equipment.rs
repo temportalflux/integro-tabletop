@@ -231,6 +231,7 @@ mod test {
 					}),
 					properties: vec![weapon::Property::Heavy, weapon::Property::TwoHanded],
 					range: None,
+					attack_roll_bonus: 0,
 				}),
 				..Default::default()
 			};

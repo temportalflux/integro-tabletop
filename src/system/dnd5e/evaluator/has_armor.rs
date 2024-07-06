@@ -426,6 +426,7 @@ mod test {
 							damage: None,
 							properties: vec![],
 							range: None,
+							attack_roll_bonus: 0,
 						}),
 						..Default::default()
 					}),

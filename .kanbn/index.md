@@ -14,16 +14,18 @@ columnSorting:
 
 ## Backlog
 
+- [create-tasks-for-content-todos](tasks/create-tasks-for-content-todos.md)
 - [hit-die-mutator](tasks/hit-die-mutator.md)
+- [convert-weapon-attack-to-explicit-structure](tasks/convert-weapon-attack-to-explicit-structure.md)
 - [condition-supression](tasks/condition-supression.md)
 - [expanded-object-cache](tasks/expanded-object-cache.md)
 - [item-browser-filters](tasks/item-browser-filters.md)
 - [spell-browser-filters](tasks/spell-browser-filters.md)
 - [character-modules](tasks/character-modules.md)
-- [dodge-action-applies-a-condition](tasks/dodge-action-applies-a-condition.md)
 - [details-drawer-layouts-evaluations](tasks/details-drawer-layouts-evaluations.md)
 - [view-scaler-re-eval](tasks/view-scaler-re-eval.md)
-- [create-tasks-for-content-todos](tasks/create-tasks-for-content-todos.md)
+- [add-restore-uses-mutator](tasks/add-restore-uses-mutator.md)
+- [dodge-action-applies-a-condition](tasks/dodge-action-applies-a-condition.md)
 - [customizations-breakout-tasks](tasks/customizations-breakout-tasks.md)
 - [performance-instrumentation](tasks/performance-instrumentation.md)
 - [identify-poor-performance](tasks/identify-poor-performance.md)
@@ -42,18 +44,18 @@ columnSorting:
 
 ## Pending
 
-- [object-feature-backlog](tasks/object-feature-backlog.md)
+- [armor-proficiency](tasks/armor-proficiency.md)
+- [proficiency-item-override](tasks/proficiency-item-override.md)
 - [parcels-mailbox](tasks/parcels-mailbox.md)
 - [inventory-search-bar](tasks/inventory-search-bar.md)
-- [add-restore-uses-mutator](tasks/add-restore-uses-mutator.md)
 - [expanded-item-modal-editor](tasks/expanded-item-modal-editor.md)
 - [autosave](tasks/autosave.md)
-- [proficiency-item-override](tasks/proficiency-item-override.md)
 
 ## In Progress
 
 ## Done
 
+- [equipment-extension-for-weapon-attack-bonuses](tasks/equipment-extension-for-weapon-attack-bonuses.md)
 - [ability-score-mutator-can-provide-minimum-score-value](tasks/ability-score-mutator-can-provide-minimum-score-value.md)
 - [attunement](tasks/attunement.md)
 - [attack-row-overview-ui-rehaul](tasks/attack-row-overview-ui-rehaul.md)

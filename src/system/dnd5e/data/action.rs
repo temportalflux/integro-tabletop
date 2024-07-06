@@ -115,6 +115,7 @@ mod test {
 					check: AttackCheckKind::AttackRoll {
 						ability: Ability::Dexterity,
 						proficient: utility::Value::Fixed(true),
+						bonus: 0,
 					},
 					area_of_effect: None,
 					damage: Some(DamageRoll {

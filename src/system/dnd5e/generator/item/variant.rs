@@ -18,6 +18,8 @@ mod armor;
 pub use armor::*;
 mod attunement;
 pub use attunement::*;
+mod weapon;
+pub use weapon::*;
 
 // Represents a variation that is applied to numerous base items.
 #[derive(Clone, PartialEq, Debug)]
@@ -38,6 +40,7 @@ pub enum Extension {
 	// If the base is not already a piece of equipment, it is populated with default equipment data.
 	// Then the following extensions are applied to the equipment data.
 	Equipment {
+		weapon: Option<WeaponExtension>,
 		attunement: Option<AttunementExtension>,
 		armor: Option<ArmorExtension>,
 		// mutators to append to the equipment data
@@ -66,12 +69,15 @@ impl Extension {
 			Self::Description(sections_to_append) => {
 				item.description.sections.extend(sections_to_append.clone());
 			}
-			Self::Equipment { attunement, armor, mutators } => {
+			Self::Equipment { attunement, weapon, armor, mutators } => {
 				let item::Kind::Equipment(equipment) = &mut item.kind else {
 					return Ok(());
 				};
 				if let Some(attunement_ext) = attunement {
 					attunement_ext.apply_to(equipment)?;
+				}
+				if let Some(weapon_ext) = weapon {
+					weapon_ext.apply_to(equipment)?;
 				}
 				if let Some(armor_ext) = armor {
 					armor_ext.apply_to(equipment)?;
@@ -115,9 +121,10 @@ impl FromKdl<NodeContext> for Extension {
 			"description" => Ok(Self::Description(node.query_all_t("scope() > section")?)),
 			"equipment" => {
 				let attunement = node.query_opt_t("scope() > attunement")?;
-				let mutators = node.query_all_t("scope() > mutator")?;
+				let weapon = node.query_opt_t("scope() > weapon")?;
 				let armor = node.query_opt_t("scope() > armor")?;
-				Ok(Self::Equipment { attunement, armor, mutators })
+				let mutators = node.query_all_t("scope() > mutator")?;
+				Ok(Self::Equipment { attunement, weapon, armor, mutators })
 			}
 			kind => Err(NotInList(kind.into(), vec!["name", "rarity", "description", "equipment"]).into()),
 		}
@@ -145,9 +152,10 @@ impl AsKdl for Extension {
 				}
 				node
 			}
-			Self::Equipment { attunement, armor, mutators } => {
+			Self::Equipment { attunement, weapon, armor, mutators } => {
 				node.entry("equipment");
 				node.child(("attunement", attunement));
+				node.child(("weapon", weapon));
 				node.child(("armor", armor));
 				node.children(("mutator", mutators.iter()));
 				node

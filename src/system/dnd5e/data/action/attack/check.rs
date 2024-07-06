@@ -7,7 +7,7 @@ use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum AttackCheckKind {
-	AttackRoll { ability: Ability, proficient: Value<bool> },
+	AttackRoll { ability: Ability, proficient: Value<bool>, bonus: i32 },
 	SavingThrow { base: i32, dc_ability: Option<Ability>, proficient: bool, save_ability: Ability },
 }
 
@@ -27,7 +27,8 @@ impl FromKdl<NodeContext> for AttackCheckKind {
 					(Some(prof), None) => Value::Fixed(prof),
 					(_, Some(value)) => value,
 				};
-				Ok(Self::AttackRoll { ability, proficient })
+				let bonus = node.get_i64_opt("bonus")?.unwrap_or_default() as i32;
+				Ok(Self::AttackRoll { ability, proficient, bonus })
 			}
 			"SavingThrow" => {
 				// TODO: The difficulty class should be its own struct (which impls evaluator)
@@ -50,13 +51,16 @@ impl AsKdl for AttackCheckKind {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 		match self {
-			Self::AttackRoll { ability, proficient } => {
+			Self::AttackRoll { ability, proficient, bonus } => {
 				node.entry("AttackRoll");
 				node.entry_typed("Ability", ability.long_name());
 				match proficient {
 					Value::Fixed(false) => {}
 					Value::Fixed(true) => node.entry(("proficient", true)),
 					value => node.child(("proficient", value)),
+				}
+				if *bonus != 0 {
+					node.entry(("bonus", *bonus as i64));
 				}
 				node
 			}
@@ -106,7 +110,7 @@ mod test {
 		#[test]
 		fn atkroll_simple() -> anyhow::Result<()> {
 			let doc = "check \"AttackRoll\" (Ability)\"Strength\"";
-			let data = AttackCheckKind::AttackRoll { ability: Ability::Strength, proficient: Value::Fixed(false) };
+			let data = AttackCheckKind::AttackRoll { ability: Ability::Strength, proficient: Value::Fixed(false), bonus: 0 };
 			assert_eq_fromkdl!(AttackCheckKind, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())
@@ -115,7 +119,7 @@ mod test {
 		#[test]
 		fn atkroll_proficient() -> anyhow::Result<()> {
 			let doc = "check \"AttackRoll\" (Ability)\"Strength\" proficient=true";
-			let data = AttackCheckKind::AttackRoll { ability: Ability::Strength, proficient: Value::Fixed(true) };
+			let data = AttackCheckKind::AttackRoll { ability: Ability::Strength, proficient: Value::Fixed(true), bonus: 0 };
 			assert_eq_fromkdl!(AttackCheckKind, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())
@@ -132,7 +136,7 @@ mod test {
 				ability: Ability::Strength,
 				proficient: Value::Evaluated(
 					IsProficientWith::Weapon(WeaponProficiency::Kind(weapon::Kind::Martial)).into(),
-				),
+				), bonus: 0,
 			};
 			assert_eq_fromkdl!(AttackCheckKind, doc, data);
 			assert_eq_askdl!(&data, doc);
