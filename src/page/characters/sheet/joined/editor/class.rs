@@ -243,10 +243,6 @@ fn class_body(value: &Class, state: Option<&CharacterHandle>) -> Html {
 		<div class="text-block">
 			{value.description.clone()}
 		</div>
-		<span>
-			{"Hit Die: "}
-			{value.hit_die.to_string()}
-		</span>
 		{mutator_list(&value.mutators, state)}
 	</>}
 }
@@ -270,7 +266,7 @@ fn class_levels(value: &Class, state: Option<&CharacterHandle>) -> Html {
 								{state.is_some().then(move || html! {
 									<LevelHitPoints
 										data_path={level.hit_points.get_data_path()}
-										die={value.hit_die}
+										die={value.hp_die}
 									/>
 								}).unwrap_or_default()}
 							</>}

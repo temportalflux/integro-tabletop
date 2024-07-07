@@ -65,11 +65,11 @@ fn Modal(GeneralProp { value }: &GeneralProp<Rest>) -> Html {
 					persistent.hit_points.success_saves = 0;
 					changes.push(format!("Cleared saving throws."));
 
-					let hit_die_paths = persistent
-						.classes
-						.iter()
-						.filter_map(|class| class.hit_die_selector.get_data_path())
-						.collect::<Vec<_>>();
+					let hit_die_paths = {
+						let iter = persistent.hit_points.hit_dice_selectors.iter();
+						let iter = iter.filter_map(|(_die, selector)| selector.get_data_path());
+						iter.collect::<Vec<_>>()
+					};
 					for data_path in hit_die_paths {
 						persistent.set_selected(data_path, None);
 					}
@@ -80,7 +80,7 @@ fn Modal(GeneralProp { value }: &GeneralProp<Rest>) -> Html {
 					persistent.hit_points.current += hp;
 					changes.push(format!("Increased hit points by {hp}."));
 
-					for (amount_used, data_path) in hit_dice_to_consume.consumed_uses() {
+					for (data_path, amount_used) in hit_dice_to_consume.consumed_uses() {
 						let prev_value = persistent.get_first_selection_at::<u32>(data_path);
 						let prev_value = prev_value.map(Result::ok).flatten().unwrap_or(0);
 						let new_value = prev_value.saturating_add(*amount_used).to_string();
@@ -145,20 +145,20 @@ fn Modal(GeneralProp { value }: &GeneralProp<Rest>) -> Html {
 
 #[derive(Clone, PartialEq, Default)]
 struct HitDiceToConsume {
-	by_class: HashMap<String, (u32, PathBuf)>,
+	by_data_path: HashMap<PathBuf, u32>,
 	total_rolls: RollSet,
 	rolled_hp: u32,
 }
 impl HitDiceToConsume {
-	fn add(&mut self, class_name: &str, die: Die, delta: i32, data_path: &PathBuf) {
-		match self.by_class.get_mut(class_name) {
+	fn add(&mut self, die: Die, delta: i32, data_path: &PathBuf) {
+		match self.by_data_path.get_mut(data_path) {
 			None if delta > 0 => {
-				self.by_class.insert(class_name.to_owned(), (delta as u32, data_path.clone()));
+				self.by_data_path.insert(data_path.clone(), delta as u32);
 			}
-			Some((die_count, _data_path)) if delta > 0 => {
+			Some(die_count) if delta > 0 => {
 				*die_count = die_count.saturating_add(delta as u32);
 			}
-			Some((die_count, _data_path)) if delta < 0 => {
+			Some(die_count) if delta < 0 => {
 				*die_count = die_count.saturating_sub(-delta as u32);
 			}
 			_ => {}
@@ -191,8 +191,8 @@ impl HitDiceToConsume {
 		((self.rolled_hp as i32) + roll_count * constitution_mod).max(0) as u32
 	}
 
-	fn consumed_uses(&self) -> impl Iterator<Item = &(u32, PathBuf)> + '_ {
-		self.by_class.values()
+	fn consumed_uses(&self) -> impl Iterator<Item = (&PathBuf, &u32)> + '_ {
+		self.by_data_path.iter()
 	}
 }
 
@@ -216,28 +216,30 @@ fn HitDiceSection(props: &GeneralProp<UseStateHandle<HitDiceToConsume>>) -> Html
 
 	let on_dice_to_consume_changed = Callback::from({
 		let hit_dice_to_consume = hit_dice_to_consume.clone();
-		move |(class_name, die, delta, data_path): (AttrValue, Die, i32, Arc<PathBuf>)| {
+		move |(die, delta, data_path): (Die, i32, Arc<PathBuf>)| {
 			let mut dice_map = (*hit_dice_to_consume).clone();
-			dice_map.add(class_name.as_str(), die, delta, &*data_path);
+			dice_map.add(die, delta, &*data_path);
 			hit_dice_to_consume.set(dice_map);
 		}
 	});
 
 	let mut hit_die_usage_inputs = EnumMap::<Die, Vec<Html>>::default();
-	for class in &state.persistent().classes {
-		hit_die_usage_inputs[class.hit_die].push(html! {
+	for (die, capacity) in state.hit_dice().dice() {
+		if *capacity == 0 {
+			continue;
+		}
+		let selector = &state.hit_points().hit_dice_selectors[die];
+		hit_die_usage_inputs[die].push(html! {
 			<div class="uses d-flex">
 				<span class="d-inline-block me-4" style="width: 100px; font-weight: 600px;">
-					{&class.name}{format!(" ({})", class.hit_die)}
+					{die.to_string()}
 				</span>
 				<HitDiceUsageInput
-					max_uses={class.current_level as u32}
-					data_path={class.hit_die_selector.get_data_path()}
+					max_uses={*capacity}
+					data_path={selector.get_data_path()}
 					on_change={on_dice_to_consume_changed.reform({
-						let class_name: AttrValue = class.name.clone().into();
-						let die = class.hit_die;
-						let data_path = Arc::new(class.hit_die_selector.get_data_path().unwrap_or_default());
-						move |delta: i32| (class_name.clone(), die, delta, data_path.clone())
+						let data_path = Arc::new(selector.get_data_path().unwrap_or_default());
+						move |delta: i32| (die, delta, data_path.clone())
 					})}
 				/>
 			</div>
@@ -376,26 +378,21 @@ fn ProjectedRestorations(GeneralProp { value }: &GeneralProp<Rest>) -> Html {
 			sections.push(html!(<li>{"Regain all lost hit points."}</li>));
 			sections.push(html!(<li>{"Temporary Hit Points will reset to 0."}</li>));
 
-			let mut budget = 0;
-			let mut max_hit_dice = EnumMap::<Die, usize>::default();
-			for class in &state.persistent().classes {
-				budget += class.current_level;
-				max_hit_dice[class.hit_die] += class.current_level;
+			let mut total_capacity = 0u32;
+			for (_die, capacity) in state.hit_dice().dice() {
+				total_capacity += *capacity;
 			}
-			let mut hit_die_halves = Vec::with_capacity(max_hit_dice.len());
-			for (die, total) in max_hit_dice.into_iter().rev() {
-				if budget <= 0 {
+			let mut hit_die_halves = Vec::new();
+			for (die, capacity) in state.hit_dice().dice().iter().rev() {
+				if *capacity == 0 {
 					continue;
 				}
-				let total = total / 2;
-				let total = match total.cmp(&budget) {
-					std::cmp::Ordering::Less => {
-						budget = budget.saturating_sub(total);
-						total
-					}
-					_ => std::mem::take(&mut budget),
-				};
+				// Find the total to grant this die type. By default, its half the capacity.
+				let total = *capacity / 2;
+				// But if the total budget is < 2, then we need to only allocate the 1 capacity to a single die type.
+				let total = total.min(total_capacity);
 				if total > 0 {
+					total_capacity -= total;
 					hit_die_halves.push(Roll::from((total as u32, die)).to_string());
 				}
 			}

@@ -25,6 +25,9 @@ pub use feature::*;
 mod flag;
 pub use flag::*;
 
+mod hit_dice;
+pub use hit_dice::*;
+
 mod hit_points;
 pub use hit_points::*;
 

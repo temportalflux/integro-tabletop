@@ -15,7 +15,6 @@ columnSorting:
 ## Backlog
 
 - [create-tasks-for-content-todos](tasks/create-tasks-for-content-todos.md)
-- [hit-die-mutator](tasks/hit-die-mutator.md)
 - [convert-weapon-attack-to-explicit-structure](tasks/convert-weapon-attack-to-explicit-structure.md)
 - [condition-supression](tasks/condition-supression.md)
 - [expanded-object-cache](tasks/expanded-object-cache.md)
@@ -54,6 +53,7 @@ columnSorting:
 
 ## Done
 
+- [hit-die-mutator](tasks/hit-die-mutator.md)
 - [proficiency-item-override](tasks/proficiency-item-override.md)
 - [armor-proficiency](tasks/armor-proficiency.md)
 - [equipment-extension-for-weapon-attack-bonuses](tasks/equipment-extension-for-weapon-attack-bonuses.md)

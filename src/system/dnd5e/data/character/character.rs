@@ -5,8 +5,8 @@ use crate::{
 			data::{
 				character::{
 					spellcasting, AbilityScores, AttackBonuses, DefaultsBlock, Defenses, Derived, DerivedDescription,
-					Features, HitPoint, HitPoints, Initiative, MaxHitPoints, Persistent, ResourceDepot, RestResets,
-					SavingThrows, Skills, Spellcasting, StartingEquipment, Stat,
+					Features, HitDice, HitPoint, HitPoints, Initiative, MaxHitPoints, Persistent, ResourceDepot,
+					RestResets, SavingThrows, Skills, Spellcasting, StartingEquipment, Stat,
 				},
 				item::container::Inventory,
 				proficiency, Ability, ArmorClass, Feature, OtherProficiencies,
@@ -478,6 +478,14 @@ impl Character {
 
 	pub fn attunement_mut(&mut self) -> &mut u32 {
 		&mut self.derived.attunement_count
+	}
+
+	pub fn hit_dice(&self) -> &HitDice {
+		&self.derived.hit_dice
+	}
+
+	pub fn hit_dice_mut(&mut self) -> &mut HitDice {
+		&mut self.derived.hit_dice
 	}
 }
 

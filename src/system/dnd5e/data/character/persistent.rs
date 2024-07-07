@@ -5,12 +5,16 @@ use crate::{
 		dnd5e::data::{
 			character::{Character, ObjectCacheProvider, RestEntry},
 			item::container::Inventory,
+			roll::Die,
 			Ability, Bundle, Class, Condition, Rest, Spell,
 		},
 		mutator::{self, ReferencePath},
 		Block, SourceId,
 	},
-	utility::NotInList,
+	utility::{
+		selector::{self, IdPath},
+		NotInList,
+	},
 };
 use enum_map::EnumMap;
 use itertools::Itertools;
@@ -62,6 +66,9 @@ impl mutator::Group for Persistent {
 		}
 		self.inventory.set_data_path(parent);
 		self.conditions.set_data_path(parent);
+		for (_die, selector) in &self.hit_points.hit_dice_selectors {
+			selector.set_data_path(parent);
+		}
 	}
 
 	fn apply_mutators(&self, stats: &mut Character, parent: &ReferencePath) {
@@ -310,12 +317,27 @@ impl AsKdl for Persistent {
 	}
 }
 
-#[derive(Clone, Copy, PartialEq, Default, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct HitPoints {
 	pub current: u32,
 	pub temp: u32,
 	pub failure_saves: u8,
 	pub success_saves: u8,
+	pub hit_dice_selectors: EnumMap<Die, selector::Value<Character, u32>>,
+}
+impl Default for HitPoints {
+	fn default() -> Self {
+		Self {
+			current: Default::default(),
+			temp: Default::default(),
+			failure_saves: Default::default(),
+			success_saves: Default::default(),
+			hit_dice_selectors: EnumMap::from_fn(|die| {
+				let id = IdPath::from(Some(format!("hit_die/{die}")));
+				selector::Value::Options(selector::ValueOptions { id, ..Default::default() })
+			}),
+		}
+	}
 }
 impl FromKdl<NodeContext> for HitPoints {
 	type Error = anyhow::Error;
@@ -324,7 +346,7 @@ impl FromKdl<NodeContext> for HitPoints {
 		let temp = node.query_i64_req("scope() > temp", 0)? as u32;
 		let failure_saves = node.query_i64_req("scope() > failure_saves", 0)? as u8;
 		let success_saves = node.query_i64_req("scope() > success_saves", 0)? as u8;
-		Ok(Self { current, temp, failure_saves, success_saves })
+		Ok(Self { current, temp, failure_saves, success_saves, ..Default::default() })
 	}
 }
 impl AsKdl for HitPoints {
@@ -375,7 +397,7 @@ impl std::ops::Add<(i32, u32)> for HitPoints {
 }
 impl std::ops::AddAssign<(i32, u32)> for HitPoints {
 	fn add_assign(&mut self, rhs: (i32, u32)) {
-		*self = *self + rhs;
+		*self = self.clone() + rhs;
 	}
 }
 
@@ -638,7 +660,7 @@ mod test_hit_points {
 			|    success_saves 2
 			|}
 		";
-		let data = HitPoints { current: 30, temp: 5, failure_saves: 1, success_saves: 2 };
+		let data = HitPoints { current: 30, temp: 5, failure_saves: 1, success_saves: 2, ..Default::default() };
 		assert_eq_fromkdl!(HitPoints, doc, data);
 		assert_eq_askdl!(&data, doc);
 		Ok(())

@@ -22,6 +22,8 @@ mod actions;
 pub use actions::*;
 mod initiative;
 pub use initiative::*;
+mod hit_die;
+pub use hit_die::*;
 mod object_cache;
 pub use object_cache::*;
 mod resource_depot;
@@ -63,6 +65,7 @@ pub struct Derived {
 	pub spellcasting: Spellcasting,
 	pub starting_equipment: Vec<(Vec<StartingEquipment>, PathBuf)>,
 	pub additional_objects: AdditionalObjectCache,
+	pub hit_dice: HitDice,
 	pub rest_resets: RestResets,
 	pub resource_depot: ResourceDepot,
 	pub attunement_count: u32,
@@ -91,6 +94,7 @@ impl Default for Derived {
 			spellcasting: Default::default(),
 			starting_equipment: Default::default(),
 			additional_objects: Default::default(),
+			hit_dice: Default::default(),
 			rest_resets: Default::default(),
 			resource_depot: Default::default(),
 			attunement_count: 0,

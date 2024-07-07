@@ -53,6 +53,7 @@ pub fn node_registry() -> generics::Registry {
 	registry.register_mutator::<AddBundle>();
 	registry.register_mutator::<Modify>();
 	registry.register_mutator::<ApplyIf>();
+	registry.register_mutator::<HitDice>();
 
 	registry.register_evaluator::<GetAbilityModifier>();
 	registry.register_evaluator::<GetProficiencyBonus>();

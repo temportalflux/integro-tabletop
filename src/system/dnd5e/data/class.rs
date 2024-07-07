@@ -1,8 +1,11 @@
-use super::{character::Character, roll::Die};
 use crate::{
 	kdl_ext::NodeContext,
 	system::{
-		dnd5e::{mutator::AddMaxHitPoints, BoxedMutator, Value},
+		dnd5e::{
+			data::{character::Character, roll::Die},
+			mutator::AddMaxHitPoints,
+			BoxedMutator, Value,
+		},
 		mutator,
 		mutator::ReferencePath,
 		Block, SourceId,
@@ -10,15 +13,13 @@ use crate::{
 	utility::selector,
 };
 use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder, OmitIfEmpty};
-use std::str::FromStr;
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Class {
 	pub id: SourceId,
 	pub name: String,
 	pub description: String,
-	pub hit_die: Die,
-	pub hit_die_selector: selector::Value<Character, u32>,
+	pub hp_die: Die,
 	pub current_level: usize,
 	/// Mutators that are applied only when this class is the primary class (not multiclassing).
 	pub mutators: Vec<BoxedMutator>,
@@ -32,11 +33,7 @@ impl Default for Class {
 			id: Default::default(),
 			name: Default::default(),
 			description: Default::default(),
-			hit_die: Default::default(),
-			hit_die_selector: selector::Value::Options(selector::ValueOptions {
-				id: "hit_die".into(),
-				..Default::default()
-			}),
+			hp_die: Die::D4,
 			current_level: Default::default(),
 			mutators: Default::default(),
 			levels: Default::default(),
@@ -59,7 +56,6 @@ impl mutator::Group for Class {
 
 	fn set_data_path(&self, parent: &ReferencePath) {
 		let path_to_self = parent.join(&self.name, None);
-		self.hit_die_selector.set_data_path(&path_to_self);
 		for mutator in &self.mutators {
 			mutator.set_data_path(&path_to_self);
 		}
@@ -96,7 +92,7 @@ impl FromKdl<NodeContext> for Class {
 
 		let name = node.get_str_req("name")?.to_owned();
 		let description = node.query_str_opt("scope() > description", 0)?.unwrap_or_default().to_owned();
-		let hit_die = Die::from_str(node.query_str_req("scope() > hit-die", 0)?)?;
+		let hp_die = node.query_str_req_t("scope() > die", 0)?;
 		let current_level = node.get_i64_opt("level")?.unwrap_or_default() as usize;
 
 		let mutators = node.query_all_t("scope() > mutator")?;
@@ -109,7 +105,7 @@ impl FromKdl<NodeContext> for Class {
 			levels[idx] = Level::from_kdl(&mut node)?;
 		}
 
-		Ok(Self { id, name, description, hit_die, current_level, mutators, levels, ..Default::default() })
+		Ok(Self { id, name, description, current_level, mutators, levels, hp_die })
 	}
 }
 // TODO AsKdl: from/as tests for Class, Level, Subclass
@@ -124,7 +120,7 @@ impl AsKdl for Class {
 
 		node.child(("source", &self.id, OmitIfEmpty));
 		node.child(("description", &self.description, OmitIfEmpty));
-		node.child(("hit-die", &self.hit_die.to_string()));
+		node.child(("die", NodeBuilder::default().with_entry(self.hp_die.to_string())));
 		node.children(("mutator", &self.mutators));
 
 		for (idx, level) in self.levels.iter().enumerate() {

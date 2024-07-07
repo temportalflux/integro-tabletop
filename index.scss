@@ -210,25 +210,26 @@ option:disabled {
 	margin-bottom: 0.25rem;
 }
 
+button.add:before, button.sub:before {
+	background-image: url(assets/plus_minus.svg);
+	background-position: 0 0;
+	background-repeat: no-repeat;
+	background-size: cover;
+	content: "";
+	display: block;
+	height: 10px;
+	width: 10px;
+}
+button.add:before {
+	background-position: 0 0;
+}
+button.sub:before {
+	background-position-x: -10px;
+}
+
 .deltaform {
 	button.add, button.sub {
 		padding: 0.3rem!important;
-	}
-	button.add:before, button.sub:before {
-		background-image: url(assets/plus_minus.svg);
-		background-position: 0 0;
-		background-repeat: no-repeat;
-		background-size: cover;
-		content: "";
-		display: block;
-		height: 10px;
-		width: 10px;
-	}
-	button.add:before {
-		background-position: 0 0;
-	}
-	button.sub:before {
-		background-position-x: -10px;
 	}
 	*:not(:last-child) {
 		margin-right: 5px;
@@ -238,7 +239,7 @@ option:disabled {
 	}
 }
 
-.details.hit-points button.hp-action {
+button.hp-action {
 	margin-left: 0.8rem!important;
 	margin-right: 0.8rem!important;
 	padding-top: 0.7rem!important;

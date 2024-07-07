@@ -345,7 +345,7 @@ fn ModalSectionApplyChangeForm() -> Html {
 	let prev_hp = state.get_hp(HitPoint::Current);
 	let max_hp = state.get_hp(HitPoint::Max);
 	let prev_temp = state.get_hp(HitPoint::Temp);
-	let next_hit_points = state.persistent().hit_points().plus_hp(*delta, max_hp);
+	let next_hit_points = state.persistent().hit_points().clone().plus_hp(*delta, max_hp);
 	let healing_amt = delta_sig.max(0) as u32 * delta_abs;
 	let damage_amt = (-delta_sig).max(0) as u32 * delta_abs;
 	let new_hp_color_classes = match next_hit_points.current.cmp(&prev_hp) {
@@ -514,32 +514,39 @@ fn ModalSectionHitDice() -> Html {
 		MutatorImpact::None
 	});
 
-	let mut class_sections = Vec::new();
-	for class in &state.persistent().classes {
-		let Some(data_path) = class.hit_die_selector.get_data_path() else {
+	let mut sections = Vec::new();
+	for (die, capacity) in state.hit_dice().dice() {
+		if *capacity == 0 {
+			continue;
+		}
+		let Some(data_path) = state.hit_points().hit_dice_selectors[die].get_data_path() else {
 			continue;
 		};
 		let consumed_uses = state.get_first_selection_at::<u32>(&data_path);
 		let consumed_uses = consumed_uses.map(Result::ok).flatten().unwrap_or_default();
-		class_sections.push(html! {
+		sections.push(html! {<>
 			<div class="uses d-flex">
 				<span class="d-inline-block me-4" style="width: 100px; font-weight: 600px;">
-					{&class.name}{format!(" ({})", class.hit_die)}
+					{die.to_string()}
 				</span>
 				<UseCounterDelta
-					max_uses={class.current_level as u32}
+					max_uses={*capacity}
 					consumed_uses={consumed_uses}
 					on_apply={apply_delta.reform(move |delta: i32| (data_path.clone(), -delta))}
 				/>
 			</div>
-		});
+			{state.hit_dice().sources().iter().map(|(roll, source)| {
+				let path = crate::data::as_feature_path_text(source).unwrap_or("Unknown".into());
+				html!(<div class="ms-3">{format!("{roll} - {path}")}</div>)
+			}).collect::<Vec<_>>()}
+		</>});
 	}
 
 	html! {
 		<div>
 			<h4>{"Hit Dice"}</h4>
 			<div class="mb-2">{SECTION_DESC}</div>
-			{class_sections}
+			{sections}
 		</div>
 	}
 }

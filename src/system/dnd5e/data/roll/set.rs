@@ -83,6 +83,10 @@ impl RollSet {
 		out
 	}
 
+	pub fn die_map(&self) -> &EnumMap<Die, u32> {
+		&self.0
+	}
+
 	pub fn iter_rolls(&self) -> impl Iterator<Item = Roll> + '_ {
 		let iter = self.0.iter();
 		let iter = iter.filter_map(|(die, amt)| if *amt == 0 { None } else { Some(Roll::from((*amt, die))) });

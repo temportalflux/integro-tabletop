@@ -1,10 +1,12 @@
 ---
 created: 2023-09-20T13:52:20.758Z
-updated: 2023-09-21T15:30:40.249Z
+updated: 2024-07-07T20:07:21.170Z
 assigned: ""
 progress: 0
 tags:
   - Capability
+started: 2024-07-07T19:31:16.663Z
+completed: 2024-07-07T20:07:21.170Z
 ---
 
 # Hit Die Mutator
