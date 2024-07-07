@@ -44,8 +44,7 @@ columnSorting:
 
 ## Pending
 
-- [armor-proficiency](tasks/armor-proficiency.md)
-- [proficiency-item-override](tasks/proficiency-item-override.md)
+- [ability-skill-modifier-display](tasks/ability-skill-modifier-display.md)
 - [parcels-mailbox](tasks/parcels-mailbox.md)
 - [inventory-search-bar](tasks/inventory-search-bar.md)
 - [expanded-item-modal-editor](tasks/expanded-item-modal-editor.md)
@@ -55,6 +54,8 @@ columnSorting:
 
 ## Done
 
+- [proficiency-item-override](tasks/proficiency-item-override.md)
+- [armor-proficiency](tasks/armor-proficiency.md)
 - [equipment-extension-for-weapon-attack-bonuses](tasks/equipment-extension-for-weapon-attack-bonuses.md)
 - [ability-score-mutator-can-provide-minimum-score-value](tasks/ability-score-mutator-can-provide-minimum-score-value.md)
 - [attunement](tasks/attunement.md)

@@ -1,9 +1,11 @@
 ---
 created: 2024-07-06T14:07:04.797Z
-updated: 2024-07-06T14:07:08.540Z
+updated: 2024-07-07T17:19:42.822Z
 assigned: ""
 progress: 0
 tags: []
+started: 2024-07-07T17:01:11.648Z
+completed: 2024-07-07T17:19:42.822Z
 ---
 
 # Armor Proficiency

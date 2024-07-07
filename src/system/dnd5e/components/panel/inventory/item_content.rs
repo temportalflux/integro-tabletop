@@ -216,7 +216,7 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 						<div class="ms-3">
 							<div class="property">
 								<strong>{"Proficient:"}</strong>
-								{match IsProficientWith::Armor(ArmorExtended::Shield).evaluate(&state) {
+								{match equipment.always_proficient || IsProficientWith::Armor(ArmorExtended::Shield).evaluate(&state) {
 									true => html! { <span>{"✔ Yes"}</span> },
 									false => html! { <span>{"❌ No"}</span> },
 								}}
@@ -240,7 +240,7 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 				armor_sections.push(html! {
 					<div class="property">
 						<strong>{"Proficient:"}</strong>
-						{match IsProficientWith::Armor(ArmorExtended::Kind(armor.kind)).evaluate(&state) {
+						{match equipment.always_proficient || IsProficientWith::Armor(ArmorExtended::Kind(armor.kind)).evaluate(&state) {
 							true => html! { <span>{"✔ Yes"}</span> },
 							false => html! { <span>{"❌ No"}</span> },
 						}}
@@ -291,7 +291,7 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 				weapon_sections.push(html! {
 					<div class="property">
 						<strong>{"Proficient:"}</strong>
-						{match is_proficient {
+						{match equipment.always_proficient || is_proficient {
 							true => html! { <span>{"✔ Yes"}</span> },
 							false => html! { <span>{"❌ No"}</span> },
 						}}

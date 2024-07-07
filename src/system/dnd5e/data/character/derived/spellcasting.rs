@@ -13,6 +13,7 @@ use crate::{
 	},
 	utility::AddAssignMap,
 };
+use derivative::Derivative;
 use multimap::MultiMap;
 use std::{
 	collections::{BTreeMap, HashMap, HashSet},
@@ -30,7 +31,8 @@ pub use filter::*;
 mod slots;
 pub use slots::*;
 
-#[derive(Clone, Default, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug, Derivative)]
+#[derivative(Default)]
 pub struct Spellcasting {
 	/// The spellcasting features available to a character.
 	/// Each feature contains things like the spellcasting ability,
@@ -49,6 +51,9 @@ pub struct Spellcasting {
 	always_prepared: HashMap<SourceId, AlwaysPreparedSpell>,
 	/// A cache of spells queried from the data provider which casters can ritual cast.
 	ritual_spells: RitualSpellCache,
+	// Manual system flag for preventing spellcasting when wearing armor that isnt proficient
+	#[derivative(Default(value = "true"))]
+	pub can_cast_any: bool,
 }
 
 #[derive(Clone, Default, PartialEq, Debug)]

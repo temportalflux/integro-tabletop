@@ -93,6 +93,20 @@ impl Weapon {
 				AttackKindValue::Ranged { short_dist: short_range, long_dist: long_range }
 			}
 		};
+		let always_proficient = match &entry.item.kind {
+			super::Kind::Equipment(equipment) => equipment.always_proficient,
+			_ => false,
+		};
+		let proficient = match always_proficient {
+			true => Value::Fixed(true),
+			false => Value::Evaluated(
+				evaluator::Any(vec![
+					IsProficientWith::Weapon(WeaponProficiency::Kind(self.kind)).into(),
+					IsProficientWith::Weapon(WeaponProficiency::Classification(self.classification.clone())).into(),
+				])
+				.into(),
+			),
+		};
 		Feature {
 			name: entry.item.name.clone(),
 			action: Some(Action {
@@ -101,16 +115,7 @@ impl Weapon {
 					kind: Some(attack_kind),
 					check: AttackCheckKind::AttackRoll {
 						ability: self.attack_ability(),
-						proficient: Value::Evaluated(
-							evaluator::Any(vec![
-								IsProficientWith::Weapon(WeaponProficiency::Kind(self.kind)).into(),
-								IsProficientWith::Weapon(WeaponProficiency::Classification(
-									self.classification.clone(),
-								))
-								.into(),
-							])
-							.into(),
-						),
+						proficient: proficient,
 						bonus: self.attack_roll_bonus,
 					},
 					area_of_effect: None,

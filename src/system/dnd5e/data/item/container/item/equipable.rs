@@ -5,8 +5,7 @@ use crate::{
 			character::Character,
 			item::{container::item::AsItem, Item, Kind},
 		},
-		mutator,
-		mutator::ReferencePath,
+		mutator::{self, ReferencePath},
 	},
 };
 use derive_more::Display;
@@ -101,6 +100,53 @@ impl mutator::Group for EquipableEntry {
 		}
 		if let Some(spell_container) = &self.item.spells {
 			spell_container.add_spellcasting(stats, &self.id_path, &path_to_item);
+		}
+
+		if let Some(armor) = &equipment.armor {
+			use crate::{
+				system::{
+					dnd5e::{
+						data::{action::AttackQuery, roll::Modifier, Ability, ArmorExtended},
+						evaluator::IsProficientWith,
+						mutator::Modify,
+					},
+					Evaluator,
+				},
+				utility::selector::Value,
+			};
+			let is_proficient = IsProficientWith::Armor(ArmorExtended::Kind(armor.kind)).evaluate(stats);
+			// If equipped and not proficient, apply mutators due to wearing incompatible armor
+			if !equipment.always_proficient && !is_proficient {
+				// disadvantage on any ability check, saving throw, or attack roll that involves Strength or Dexterity, and you can’t cast spells
+				stats.spellcasting_mut().can_cast_any = false;
+				let mut mutators = Vec::with_capacity(7);
+				for ability in [Ability::Strength, Ability::Dexterity] {
+					// Disadvantage to ability & skill checks
+					mutators.push(mutator::Generic::from(Modify::Ability {
+						ability: Some(Value::Specific(ability)),
+						modifier: Modifier::Disadvantage,
+						context: None,
+					}));
+					// Disadvantage to saving throws
+					mutators.push(mutator::Generic::from(Modify::SavingThrow {
+						ability: Some(Value::Specific(ability)),
+						modifier: Some(Modifier::Disadvantage),
+						bonus: None,
+						context: None,
+					}));
+					// Disadvantage to attack rolls
+					mutators.push(mutator::Generic::from(Modify::AttackRoll {
+						modifier: Some(Modifier::Disadvantage),
+						ability: None, // this adds the ability to the roll
+						bonus: 0,
+						// we need to query for attacks which use the ability
+						query: vec![AttackQuery { ability: [ability].into(), ..Default::default() }],
+					}));
+				}
+				for mutator in mutators {
+					stats.apply(&mutator, &path_to_item);
+				}
+			}
 		}
 
 		if self.status == EquipStatus::Attuned {

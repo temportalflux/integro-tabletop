@@ -31,7 +31,7 @@ impl FromKdl<NodeContext> for WeaponExtension {
 impl AsKdl for WeaponExtension {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
-		
+
 		if self.atk_bonus != 0 {
 			node.child(("attack-roll", NodeBuilder::default().with_entry(("bonus", self.atk_bonus as i64))));
 		}

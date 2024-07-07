@@ -491,8 +491,9 @@ fn spell_row<'c>(props: SpellRowProps<'c>) -> Html {
 						}),
 					};
 					let uses_remaining = max_uses.saturating_sub(uses_consumed);
+					let disabled = uses_consumed >= max_uses || !state.spellcasting().can_cast_any;
 					html! {
-						<button class="btn btn-theme btn-xs px-1" {onclick} disabled={uses_consumed >= max_uses}>
+						<button class="btn btn-theme btn-xs px-1" {onclick} {disabled}>
 							{"Use"}
 							<span class="ms-1 d-none" style="font-size: 9px; color: var(--bs-gray-600);">{format!("({uses_remaining}/{max_uses})")}</span>
 						</button>
@@ -540,8 +541,9 @@ fn spell_row<'c>(props: SpellRowProps<'c>) -> Html {
 									MutatorImpact::Recompile
 								}
 							});
+							let disabled = !state.spellcasting().can_cast_any;
 							html! {
-								<button class="btn btn-theme btn-xs px-1" {onclick}>
+								<button class="btn btn-theme btn-xs px-1" {onclick} {disabled}>
 									{"Use"}
 								</button>
 							}
@@ -1410,15 +1412,21 @@ enum UseSpell {
 #[function_component]
 fn UseSpellButton(UseSpellButtonProps { kind }: &UseSpellButtonProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
+	let disabled = !state.spellcasting().can_cast_any;
 	match kind {
-		UseSpell::AtWill => html! {
+		UseSpell::AtWill if !disabled => html! {
 			<div class="text-center" style="font-size: 9px; font-weight: 700; color: var(--bs-gray-600);">
 				{"AT"}<br />{"WILL"}
 			</div>
 		},
-		UseSpell::RitualOnly => html! {
+		UseSpell::RitualOnly if !disabled => html! {
 			<div class="text-center" style="font-size: 9px; font-weight: 700; color: var(--bs-gray-600);">
 				{"RITUAL"}<br />{"ONLY"}
+			</div>
+		},
+		UseSpell::AtWill | UseSpell::RitualOnly => html! {
+			<div class="text-center" style="font-size: 9px; font-weight: 700; color: var(--bs-gray-600);">
+				{"CASTING"}<br />{"DISABLED"}
 			</div>
 		},
 		UseSpell::Slot { spell_rank, slot_rank, slots } => {
@@ -1451,7 +1459,7 @@ fn UseSpellButton(UseSpellButtonProps { kind }: &UseSpellButtonProps) -> Html {
 				false => classes!("btn-outline-theme", "disabled"),
 			});
 			html! {
-				<button class={btn_classes} {onclick}>
+				<button class={btn_classes} {onclick} {disabled}>
 					<div class="position-relative">
 						{upcast_span.unwrap_or_default()}
 						{"Cast"}

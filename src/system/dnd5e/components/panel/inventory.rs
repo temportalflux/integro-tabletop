@@ -152,7 +152,7 @@ struct AttunementSlotEntry {
 #[function_component]
 fn AttunementSlot(AttunementSlotProps { entry }: &AttunementSlotProps) -> Html {
 	let ctxmenu_control = use_context::<context_menu::Control>().unwrap();
-	
+
 	let Some(AttunementSlotEntry { id_path, item }) = entry else {
 		return html!(<div class="card col mx-1">
 			<div class="card-body p-1">

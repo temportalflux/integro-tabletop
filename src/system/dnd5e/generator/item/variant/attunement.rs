@@ -1,4 +1,7 @@
-use crate::{kdl_ext::NodeContext, system::dnd5e::{data::item::equipment::Equipment, BoxedMutator}};
+use crate::{
+	kdl_ext::NodeContext,
+	system::dnd5e::{data::item::equipment::Equipment, BoxedMutator},
+};
 use kdlize::{AsKdl, FromKdl, NodeBuilder};
 
 #[derive(Clone, PartialEq, Debug)]

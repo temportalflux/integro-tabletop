@@ -110,7 +110,8 @@ mod test {
 		#[test]
 		fn atkroll_simple() -> anyhow::Result<()> {
 			let doc = "check \"AttackRoll\" (Ability)\"Strength\"";
-			let data = AttackCheckKind::AttackRoll { ability: Ability::Strength, proficient: Value::Fixed(false), bonus: 0 };
+			let data =
+				AttackCheckKind::AttackRoll { ability: Ability::Strength, proficient: Value::Fixed(false), bonus: 0 };
 			assert_eq_fromkdl!(AttackCheckKind, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())
@@ -119,7 +120,8 @@ mod test {
 		#[test]
 		fn atkroll_proficient() -> anyhow::Result<()> {
 			let doc = "check \"AttackRoll\" (Ability)\"Strength\" proficient=true";
-			let data = AttackCheckKind::AttackRoll { ability: Ability::Strength, proficient: Value::Fixed(true), bonus: 0 };
+			let data =
+				AttackCheckKind::AttackRoll { ability: Ability::Strength, proficient: Value::Fixed(true), bonus: 0 };
 			assert_eq_fromkdl!(AttackCheckKind, doc, data);
 			assert_eq_askdl!(&data, doc);
 			Ok(())
@@ -136,7 +138,8 @@ mod test {
 				ability: Ability::Strength,
 				proficient: Value::Evaluated(
 					IsProficientWith::Weapon(WeaponProficiency::Kind(weapon::Kind::Martial)).into(),
-				), bonus: 0,
+				),
+				bonus: 0,
 			};
 			assert_eq_fromkdl!(AttackCheckKind, doc, data);
 			assert_eq_askdl!(&data, doc);

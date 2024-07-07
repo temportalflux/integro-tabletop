@@ -16,7 +16,7 @@ impl AbilityScores {
 	pub fn increase_maximum(&mut self, ability: Ability, max: u32, source: PathBuf) {
 		self.0[ability].max_score_incs.push((max, source));
 	}
-	
+
 	pub fn push_minimum(&mut self, ability: Ability, min: u32, source: PathBuf) {
 		self.0[ability].minimums.push((min, source));
 	}
@@ -73,7 +73,12 @@ pub struct AbilityScore {
 }
 impl Default for AbilityScore {
 	fn default() -> Self {
-		Self { bonuses: vec![], max_score_incs: vec![(20, "Default Maximum".into())], minimums: vec![], total: Score(0) }
+		Self {
+			bonuses: vec![],
+			max_score_incs: vec![(20, "Default Maximum".into())],
+			minimums: vec![],
+			total: Score(0),
+		}
 	}
 }
 impl AbilityScore {
@@ -99,7 +104,7 @@ impl AbilityScore {
 		let max_cap = self.max_score_incs.iter().map(|(v, _)| *v).max().unwrap_or(0);
 		// If any minimums are provided, we ensure the evaluated score is always at least the greatest minimum
 		let max_minimum = self.minimums.iter().map(|(v, _)| *v).max().unwrap_or(0);
-		
+
 		*self.total = max_possible_score.min(max_cap).max(max_minimum);
 
 		for (idx, (_bonus, _path, was_used)) in self.bonuses.iter_mut().enumerate() {

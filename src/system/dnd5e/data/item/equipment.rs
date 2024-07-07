@@ -14,6 +14,7 @@ use std::collections::HashMap;
 
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct Equipment {
+	pub always_proficient: bool,
 	/// The criteria which must be met for this item to be equipped.
 	pub criteria: Option<BoxedCriteria>,
 	/// Passive mutators applied while this item is equipped.
@@ -87,6 +88,8 @@ impl Equipment {
 impl FromKdl<NodeContext> for Equipment {
 	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
+		let always_proficient = node.get_bool_opt("proficient")?.unwrap_or_default();
+
 		let criteria = node.query_opt_t("scope() > criteria")?;
 		let mutators = node.query_all_t("scope() > mutator")?;
 
@@ -99,13 +102,17 @@ impl FromKdl<NodeContext> for Equipment {
 		let attunement = node.query_opt_t("scope() > attunement")?;
 		let charges = node.query_opt_t("scope() > charges")?;
 
-		Ok(Self { criteria, mutators, armor, shield, weapon, attunement, charges })
+		Ok(Self { criteria, mutators, armor, shield, weapon, attunement, charges, always_proficient })
 	}
 }
 
 impl AsKdl for Equipment {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
+
+		if self.always_proficient {
+			node.entry(("proficient", true));
+		}
 
 		node.child(("attunement", &self.attunement));
 		node.child(("armor", &self.armor));

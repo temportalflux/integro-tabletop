@@ -1,10 +1,12 @@
 ---
 created: 2024-07-05T15:28:01.191Z
-updated: 2024-07-06T13:28:14.290Z
+updated: 2024-07-07T17:19:43.884Z
 assigned: ""
 progress: 0
 tags:
   - Mutator
+started: 2024-07-07T17:00:57.984Z
+completed: 2024-07-07T17:19:43.884Z
 ---
 
 # Proficiency item override
