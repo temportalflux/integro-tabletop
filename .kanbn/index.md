@@ -14,8 +14,11 @@ columnSorting:
 
 ## Backlog
 
-- [expanded-item-modal-editor](tasks/expanded-item-modal-editor.md)
+- [skill-numerical-bonus](tasks/skill-numerical-bonus.md)
 - [stat-operation-maximum](tasks/stat-operation-maximum.md)
+- [stat-operation-half](tasks/stat-operation-half.md)
+- [spell-range-mutator](tasks/spell-range-mutator.md)
+- [prepared-spellcasting-grants-bonuses](tasks/prepared-spellcasting-grants-bonuses.md)
 - [bundle-requirements](tasks/bundle-requirements.md)
 - [spells-support-healing](tasks/spells-support-healing.md)
 - [wizard-spell-mastery](tasks/wizard-spell-mastery.md)
@@ -23,6 +26,11 @@ columnSorting:
 - [beserker-barbarian-frenzy](tasks/beserker-barbarian-frenzy.md)
 - [open-hand-monk-tranquility](tasks/open-hand-monk-tranquility.md)
 - [devotion-paladin-purity-of-spirit](tasks/devotion-paladin-purity-of-spirit.md)
+- [mutator-to-grant-uses-on-rest](tasks/mutator-to-grant-uses-on-rest.md)
+- [spellcasting-limited-by-both-slot-and-uses-at-the-same-time](tasks/spellcasting-limited-by-both-slot-and-uses-at-the-same-time.md)
+- [mutator-to-disable-action-budget](tasks/mutator-to-disable-action-budget.md)
+- [pact-weapon-identifier-query](tasks/pact-weapon-identifier-query.md)
+- [expanded-item-modal-editor](tasks/expanded-item-modal-editor.md)
 - [autosave](tasks/autosave.md)
 - [convert-weapon-attack-to-explicit-structure](tasks/convert-weapon-attack-to-explicit-structure.md)
 - [condition-supression](tasks/condition-supression.md)
@@ -30,6 +38,7 @@ columnSorting:
 - [item-browser-filters](tasks/item-browser-filters.md)
 - [spell-browser-filters](tasks/spell-browser-filters.md)
 - [character-modules](tasks/character-modules.md)
+- [eldritch-invocation-book-of-ancient-secrets](tasks/eldritch-invocation-book-of-ancient-secrets.md)
 - [details-drawer-layouts-evaluations](tasks/details-drawer-layouts-evaluations.md)
 - [view-scaler-re-eval](tasks/view-scaler-re-eval.md)
 - [add-restore-uses-mutator](tasks/add-restore-uses-mutator.md)
