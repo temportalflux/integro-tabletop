@@ -1,39 +1,13 @@
 ---
-created: 2023-09-29T23:17:28.444Z
-updated: 2024-07-06T13:17:12.760Z
+created: 2024-07-11T13:09:27.059Z
+updated: 2024-07-11T13:17:23.930Z
 assigned: ""
 progress: 0
-tags: []
+tags:
+  - Capability
 ---
 
-# Create tasks for content todos
-
-The major ones are:
-```
-Wizard "Spell Mastery"
-- Mutator which has a selection for a 1st and 2nd level Wizard spell from their spellbook, and grants at-will casting for those spells at their minimum rank.
-
-Beserker Barbarian "Frenzy"
-- User-Triggerable button which is available if the character has the Raging condition
-- Apply a level of Exhaustion when the Raging condition ends
-- All melee weapon attacks can be performed using a bonus action (in addition to existing action kind)
-
-Beserker Barbarian "Mindless Rage"
-- While raging is active, supress the charmed and frightened conditions
-
-Spells can grant healing
-Speed can be overriden to 0 via conditions
-
-Life Cleric "Disciple of Life"
-- Grant an extra (evaluated) amount of hp per spell that grants healing (2 + the spell's rank)
-
-Open Hand Monk "Tranquility"
-- "Sanctuary" spell has a condition that it grants
-- Grant the same condition when a long rest ends (which goes away when a long rest is taken)
-
-Devotion Paladin "Purity of Spirit"
-- "Protection from Evil and Good" spell has a condition that it grants
-- feature ensures that the character always has that condition (cannot be removed)
+# Bundle Requirements
 
 Bundle's can have a "minimum level" (class or subclass) requirement
 - Eldritch Invocations: ascendantStep, bewitchingWhispers, chainsOfCarceri, dreadfulWord, lifedrinker, masterOfMyriadForms, minionsOfChaos, mireTheMind, oneWithShadows, otherworldlyLeap, sculptorOfFlesh, signOfIllOmen, thirstingBlade, visionsOfDistantRealms, whispersOfTheGrave, witchSight
@@ -65,10 +39,3 @@ warlock/invocations/
 	- grant extra notes to a specific spell
 	thirstingBlade
 	- grant extra attack with Pact Weapon
-
-Equipment items can have criteria for being equipped (e.g. checking an ability score)
-Belt of * Giant Strength: mutator which applies a minimum bound for an ability score
-
-Hobgoblin "Reserves of Strength"
-- bonus damage if weapon is strength-based melee
-```

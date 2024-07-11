@@ -1,9 +1,10 @@
 ---
 created: 2023-09-20T13:48:47.643Z
-updated: 2023-09-20T13:48:47.639Z
+updated: 2024-07-11T13:25:32.575Z
 assigned: ""
 progress: 0
-tags: []
+tags:
+  - Capability
 ---
 
 # Spell Browser Filters

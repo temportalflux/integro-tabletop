@@ -1,9 +1,10 @@
 ---
 created: 2024-03-16T14:13:16.681Z
-updated: 2024-03-16T14:13:26.714Z
+updated: 2024-07-11T13:27:04.544Z
 assigned: ""
 progress: 0
-tags: []
+tags:
+  - App
 ---
 
 # Expanded item modal editor

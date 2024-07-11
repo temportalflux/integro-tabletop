@@ -1,9 +1,10 @@
 ---
 created: 2023-09-20T13:46:30.790Z
-updated: 2024-07-06T13:17:05.503Z
+updated: 2024-07-11T13:26:02.233Z
 assigned: ""
 progress: 0
-tags: []
+tags:
+  - App
 ---
 
 # Details Drawer Layouts Evaluations

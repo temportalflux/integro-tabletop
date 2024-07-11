@@ -1,9 +1,10 @@
 ---
 created: 2024-07-06T13:16:23.773Z
-updated: 2024-07-06T13:16:35.448Z
+updated: 2024-07-11T13:24:59.998Z
 assigned: ""
 progress: 0
-tags: []
+tags:
+  - Capability
 ---
 
 # Convert weapon attack to explicit structure

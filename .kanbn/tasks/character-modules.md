@@ -1,9 +1,10 @@
 ---
 created: 2023-09-20T13:51:58.710Z
-updated: 2024-06-15T14:15:36.174Z
+updated: 2024-07-11T13:25:48.968Z
 assigned: ""
 progress: 0
-tags: []
+tags:
+  - Capability
 ---
 
 # Character Modules

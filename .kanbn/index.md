@@ -14,7 +14,16 @@ columnSorting:
 
 ## Backlog
 
-- [create-tasks-for-content-todos](tasks/create-tasks-for-content-todos.md)
+- [expanded-item-modal-editor](tasks/expanded-item-modal-editor.md)
+- [stat-operation-maximum](tasks/stat-operation-maximum.md)
+- [bundle-requirements](tasks/bundle-requirements.md)
+- [spells-support-healing](tasks/spells-support-healing.md)
+- [wizard-spell-mastery](tasks/wizard-spell-mastery.md)
+- [hobgoblin-reserves-of-strength](tasks/hobgoblin-reserves-of-strength.md)
+- [beserker-barbarian-frenzy](tasks/beserker-barbarian-frenzy.md)
+- [open-hand-monk-tranquility](tasks/open-hand-monk-tranquility.md)
+- [devotion-paladin-purity-of-spirit](tasks/devotion-paladin-purity-of-spirit.md)
+- [autosave](tasks/autosave.md)
 - [convert-weapon-attack-to-explicit-structure](tasks/convert-weapon-attack-to-explicit-structure.md)
 - [condition-supression](tasks/condition-supression.md)
 - [expanded-object-cache](tasks/expanded-object-cache.md)
@@ -43,11 +52,9 @@ columnSorting:
 
 ## Pending
 
+- [inventory-search-bar](tasks/inventory-search-bar.md)
 - [ability-skill-modifier-display](tasks/ability-skill-modifier-display.md)
 - [parcels-mailbox](tasks/parcels-mailbox.md)
-- [inventory-search-bar](tasks/inventory-search-bar.md)
-- [expanded-item-modal-editor](tasks/expanded-item-modal-editor.md)
-- [autosave](tasks/autosave.md)
 
 ## In Progress
 

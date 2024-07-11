@@ -1,9 +1,10 @@
 ---
 created: 2023-09-20T13:52:45.774Z
-updated: 2024-06-24T12:51:21.258Z
+updated: 2024-07-11T13:26:50.719Z
 assigned: ""
 progress: 0
-tags: []
+tags:
+  - App
 ---
 
 # Parcels / Mailbox
