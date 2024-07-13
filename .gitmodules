@@ -28,3 +28,6 @@
 [submodule "crates/kdlize"]
 	path = crates/kdlize
 	url = git@github.com:temportalflux/kdlize.git
+[submodule "modules/wotc-phb2024"]
+	path = modules/wotc-phb2024
+	url = git@github.com:flux-tabletop/wotc-phb2024.git
