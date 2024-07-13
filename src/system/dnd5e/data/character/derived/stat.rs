@@ -11,7 +11,10 @@ use multimap::MultiMap;
 use std::{cmp::Ordering, collections::HashMap, path::PathBuf};
 
 #[derive(Clone, Default, PartialEq, Debug)]
-pub struct Stat(MultiMap<String, (StatOperation, PathBuf)>);
+pub struct Stat {
+	named: MultiMap<String, (StatOperation, PathBuf)>,
+	global: Vec<(StatOperation, PathBuf)>,
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum StatOperation {
@@ -27,6 +30,8 @@ pub enum StatOperation {
 	MultiplyDivide(i32),
 	// The base value gets added or subtracted by this value.
 	AddSubtract(i32),
+	// The value calculated after minimums, base, and multiplication and addition is capped by this value
+	MaximumValue(u32),
 }
 
 impl FromKdl<NodeContext> for StatOperation {
@@ -58,14 +63,15 @@ impl FromKdl<NodeContext> for StatOperation {
 				}
 				Ok(Self::MultiplyDivide(-value.abs()))
 			}
+			"Maximum" => Ok(Self::MaximumValue(entry.as_i64_req()? as u32)),
 			type_str => Err(NotInList(type_str.into(), vec![
-				"MinimumValue",
-				"MinimumStat",
+				"Minimum",
 				"Base",
 				"Add",
 				"Subtract",
 				"Multiply",
 				"Divide",
+				"Maximum",
 			]))?,
 		}
 	}
@@ -82,13 +88,21 @@ impl AsKdl for StatOperation {
 			Self::AddSubtract(value) => node.with_entry_typed(value.abs() as i64, "Subtract"),
 			Self::MultiplyDivide(value) if *value >= 0 => node.with_entry_typed(value.abs() as i64, "Multiply"),
 			Self::MultiplyDivide(value) => node.with_entry_typed(value.abs() as i64, "Divide"),
+			Self::MaximumValue(value) => node.with_entry_typed(*value as i64, "Maximum"),
 		}
 	}
 }
 
 impl Stat {
-	pub fn insert(&mut self, kind: String, operation: StatOperation, source: &ReferencePath) {
-		self.0.insert(kind, (operation, source.display.clone()));
+	pub fn insert(&mut self, kind: Option<String>, operation: StatOperation, source: &ReferencePath) {
+		match kind {
+			None => {
+				self.global.push((operation, source.display.clone()));
+			}
+			Some(name) => {
+				self.named.insert(name, (operation, source.display.clone()));
+			}
+		}
 	}
 
 	pub fn len(&self) -> usize {
@@ -96,14 +110,15 @@ impl Stat {
 	}
 
 	pub fn names(&self) -> impl Iterator<Item = &String> + '_ {
-		self.0.keys()
+		self.named.keys()
 	}
 
 	pub fn iter_compiled(&self) -> impl Iterator<Item = (&str, u32)> + '_ {
-		let iter = self.0.iter_all();
+		let iter = self.named.iter_all();
 		// For each set of operations keyed by stat name, compile the expected value and the list of stats that it must be at least equivalent to
 		let iter = iter.map(|(stat_name, operations)| {
-			let (value, minimum_sibling_stats) = Self::compile_stat(operations);
+			let iter_ops = operations.iter().chain(self.global.iter()).map(|(stat_op, _path)| stat_op);
+			let (value, minimum_sibling_stats) = Self::compile_stat(iter_ops);
 			((stat_name.as_str(), value), (stat_name.as_str(), minimum_sibling_stats))
 		});
 		// split so that there is a map of StatName->Value and StatName->[Other Stat Names]
@@ -121,19 +136,22 @@ impl Stat {
 	}
 
 	pub fn get(&self, stat_name: impl AsRef<str>) -> impl Iterator<Item = &(StatOperation, PathBuf)> + '_ {
-		let entry = self.0.get_vec(stat_name.as_ref());
+		let entry = self.named.get_vec(stat_name.as_ref());
 		let entry = entry.map(|values| values.iter());
-		entry.unwrap_or_default()
+		let iter = entry.unwrap_or_default();
+		let iter = iter.chain(self.global.iter());
+		iter
 	}
 
-	fn compile_stat(operations: &Vec<(StatOperation, PathBuf)>) -> (u32, Vec<&str>) {
+	fn compile_stat<'iter>(operations: impl Iterator<Item=&'iter StatOperation>) -> (u32, Vec<&'iter str>) {
 		let mut minimum_value = 0u32;
 		let mut minimum_stat_match = Vec::new();
 		let mut maximum_base = 0u32;
 		let mut linear_diff = 0i32;
 		let mut multipier = 1u32;
 		let mut divisor = 1u32;
-		for (operation, _source) in operations {
+		let mut maximum_value = u32::MAX;
+		for operation in operations {
 			match operation {
 				StatOperation::MinimumValue(value) => minimum_value = minimum_value.min(*value),
 				StatOperation::MinimumStat(stat_name) => minimum_stat_match.push(stat_name.as_str()),
@@ -145,12 +163,16 @@ impl Stat {
 					Ordering::Greater => multipier *= value.abs() as u32,
 					Ordering::Less => divisor *= value.abs() as u32,
 				},
+				StatOperation::MaximumValue(value) => {
+					maximum_value = maximum_value.min(*value);
+				}
 			}
 		}
 		let value = maximum_base.saturating_mul(multipier);
 		let value = value.saturating_div(divisor);
 		let value = value.saturating_add_signed(linear_diff);
 		let value = value.max(minimum_value);
+		let value = value.min(maximum_value);
 		(value, minimum_stat_match)
 	}
 }

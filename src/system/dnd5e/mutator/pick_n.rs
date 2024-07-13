@@ -252,7 +252,7 @@ mod test {
 				("Climbing".into(), PickOption {
 					description: None,
 					mutators: vec![
-						Speed(StatMutator { stat_name: "Climbing".into(), operation: StatOperation::Base(15) }).into(),
+						Speed(StatMutator { stat_name: Some("Climbing".into()), operation: StatOperation::Base(15) }).into(),
 					],
 				}),
 				("Swimming".into(), PickOption {
@@ -261,7 +261,7 @@ mod test {
 						..Default::default()
 					}),
 					mutators: vec![
-						Speed(StatMutator { stat_name: "Swimming".into(), operation: StatOperation::Base(15) }).into(),
+						Speed(StatMutator { stat_name: Some("Swimming".into()), operation: StatOperation::Base(15) }).into(),
 					],
 				}),
 			]

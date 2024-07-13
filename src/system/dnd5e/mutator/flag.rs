@@ -108,11 +108,7 @@ impl Mutator for ArmorStrengthRequirement {
 		}
 		// If the rule is on and the ability score is not met,
 		// then ensure that all movement speeds are decreased by 10.
-		let speed_stats = stats.speeds().names().cloned().collect::<Vec<_>>();
-		for speed in speed_stats {
-			let speeds = stats.speeds_mut();
-			speeds.insert(speed, StatOperation::AddSubtract(-10), parent);
-		}
+		stats.speeds_mut().insert(None, StatOperation::AddSubtract(-10), parent);
 	}
 }
 impl AsKdl for ArmorStrengthRequirement {

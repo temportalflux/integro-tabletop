@@ -14,8 +14,7 @@ columnSorting:
 
 ## Backlog
 
-- [stat-operation-maximum](tasks/stat-operation-maximum.md)
-- [stat-operation-half](tasks/stat-operation-half.md)
+- [ability-skill-displays-do-not-include-numerical-bonuses](tasks/ability-skill-displays-do-not-include-numerical-bonuses.md)
 - [spell-range-mutator](tasks/spell-range-mutator.md)
 - [ability-skill-modifier-display](tasks/ability-skill-modifier-display.md)
 - [inventory-search-bar](tasks/inventory-search-bar.md)
@@ -67,6 +66,9 @@ columnSorting:
 
 ## Done
 
+- [support-all-stat-for-speeds-and-senses](tasks/support-all-stat-for-speeds-and-senses.md)
+- [stat-operation-maximum](tasks/stat-operation-maximum.md)
+- [stat-operation-half](tasks/stat-operation-half.md)
 - [skill-numerical-bonus](tasks/skill-numerical-bonus.md)
 - [hit-die-mutator](tasks/hit-die-mutator.md)
 - [proficiency-item-override](tasks/proficiency-item-override.md)

@@ -178,7 +178,7 @@ mod test {
 				name: "Expedient".into(),
 				description: "You are particularly quick.".into(),
 				mutators: vec![
-					Speed(StatMutator { stat_name: "Walking".into(), operation: StatOperation::AddSubtract(15) })
+					Speed(StatMutator { stat_name: Some("Walking".into()), operation: StatOperation::AddSubtract(15) })
 						.into(),
 				],
 				..Default::default()

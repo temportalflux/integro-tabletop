@@ -189,6 +189,7 @@ fn Stat(StatProps { kind, name, value, operations }: &StatProps) -> Html {
 				StatOperation::MultiplyDivide(value) => (html!("Divide"), html!(value.abs())),
 				StatOperation::AddSubtract(value) if *value >= 0 => (html!("Add"), html!(value.abs())),
 				StatOperation::AddSubtract(value) => (html!("Subtract"), html!(value.abs())),
+				StatOperation::MaximumValue(value) => (html!("Maximum"), html!(*value)),
 			};
 			html! {
 				<div class="mx-2 mb-1">

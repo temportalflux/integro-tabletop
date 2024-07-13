@@ -1,10 +1,12 @@
 ---
 created: 2024-07-11T13:40:52.553Z
-updated: 2024-07-11T13:50:44.493Z
+updated: 2024-07-13T15:00:46.643Z
 assigned: ""
 progress: 0
 tags:
   - Mutator
+started: 2024-07-13T14:27:50.569Z
+completed: 2024-07-13T15:00:46.643Z
 ---
 
 # StatOperation::Half
