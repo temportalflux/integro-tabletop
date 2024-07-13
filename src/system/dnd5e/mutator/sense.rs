@@ -34,8 +34,8 @@ impl Mutator for Sense {
 			StatOperation::Base(value) => format!("is at least {value} feet"),
 			StatOperation::AddSubtract(value) if *value >= 0 => format!("increases by {value} feet"),
 			StatOperation::AddSubtract(value) => format!("decreases by {value} feet"),
-			StatOperation::MultiplyDivide(value) if *value >= 0 => format!("is multiplied by {value}"),
-			StatOperation::MultiplyDivide(value) => format!("is dividied by {value}"),
+			StatOperation::MultiplyDivide(value) if *value >= 0 => format!("is multiplied by {}", value.abs()),
+			StatOperation::MultiplyDivide(value) => format!("is dividied by {}", value.abs()),
 			StatOperation::MaximumValue(value) => format!("is at most {value} feet"),
 		});
 		description::Section { content: content.into(), ..Default::default() }
