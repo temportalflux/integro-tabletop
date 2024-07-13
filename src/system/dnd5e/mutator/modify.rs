@@ -23,7 +23,8 @@ use num_traits::Signed;
 pub enum Modify {
 	Ability {
 		ability: Option<selector::Value<Character, Ability>>,
-		modifier: Modifier,
+		modifier: Option<Modifier>,
+		bonus: Option<i64>,
 		context: Option<String>,
 	},
 	SavingThrow {
@@ -34,7 +35,8 @@ pub enum Modify {
 	},
 	Skill {
 		skill: selector::Value<Character, Skill>,
-		modifier: Modifier,
+		modifier: Option<Modifier>,
+		bonus: Option<i64>,
 		context: Option<String>,
 	},
 	Initiative {
@@ -47,7 +49,7 @@ pub enum Modify {
 		context: Option<String>,
 	},
 	AttackRoll {
-		bonus: i32,
+		bonus: Option<i64>,
 		modifier: Option<Modifier>,
 		ability: Option<Ability>,
 		query: Vec<AttackQuery>,
@@ -71,8 +73,16 @@ impl Mutator for Modify {
 
 	fn description(&self, state: Option<&Character>) -> description::Section {
 		match self {
-			Self::Ability { ability, modifier, context } => {
-				let mut desc = format!("You have {} on ", modifier.display_name());
+			Self::Ability { ability, modifier, bonus, context } => {
+				let mut mods = Vec::with_capacity(2);
+				if let Some(modifier) = modifier {
+					mods.push(modifier.display_name().to_owned());
+				}
+				if let Some(bonus) = bonus {
+					mods.push(format!("{}{}", if *bonus >= 0 { "+" } else { "-" }, bonus.abs()));
+				}
+
+				let mut desc = format!("You have {} on ", mods.join(" & "));
 				desc.push_str(&match ability {
 					None => format!("ability checks"),
 					Some(selector::Value::Specific(ability)) => format!("{} checks", ability.long_name()),
@@ -143,8 +153,16 @@ impl Mutator for Modify {
 
 				description::Section { content: desc.into(), children: vec![selectors.into()], ..Default::default() }
 			}
-			Self::Skill { skill, modifier, context } => {
-				let mut desc = format!("You have {} on ", modifier.display_name());
+			Self::Skill { skill, modifier, bonus, context } => {
+				let mut mods = Vec::with_capacity(2);
+				if let Some(modifier) = modifier {
+					mods.push(modifier.display_name().to_owned());
+				}
+				if let Some(bonus) = bonus {
+					mods.push(format!("{}{}", if *bonus >= 0 { "+" } else { "-" }, bonus.abs()));
+				}
+
+				let mut desc = format!("You have {} on ", mods.join(" & "));
 				desc.push_str(&match skill {
 					selector::Value::Specific(skill) => {
 						format!("{} ({}) checks", skill.ability().long_name(), skill.display_name())
@@ -248,13 +266,18 @@ impl Mutator for Modify {
 
 	fn apply(&self, stats: &mut Character, parent: &ReferencePath) {
 		match self {
-			Self::Ability { ability, modifier, context } => {
+			Self::Ability { ability, modifier, bonus, context } => {
 				let ability = match ability {
 					None => None,
 					Some(ability) => stats.resolve_selector(ability),
 				};
 				for (_ability, entry) in stats.skills_mut().iter_ability_mut(ability) {
-					entry.modifiers_mut().push(*modifier, context.clone(), parent.display.clone());
+					if let Some(modifier) = modifier {
+						entry.modifiers_mut().push(*modifier, context.clone(), parent.display.clone());
+					}
+					if let Some(bonus) = bonus {
+						entry.bonuses_mut().push(*bonus, context.clone(), parent.display.clone());
+					}
 				}
 			}
 			Self::SavingThrow { ability, modifier, bonus, context } => {
@@ -269,11 +292,17 @@ impl Mutator for Modify {
 					stats.saving_throws_mut().add_bonus(ability, *bonus, context.clone(), parent);
 				}
 			}
-			Self::Skill { skill, modifier, context } => {
+			Self::Skill { skill, modifier, bonus, context } => {
 				let Some(skill) = stats.resolve_selector(skill) else {
 					return;
 				};
-				stats.skills_mut()[skill].modifiers_mut().push(*modifier, context.clone(), parent.display.clone());
+				let entry = &mut stats.skills_mut()[skill];
+				if let Some(modifier) = modifier {
+					entry.modifiers_mut().push(*modifier, context.clone(), parent.display.clone());
+				}
+				if let Some(bonus) = bonus {
+					entry.bonuses_mut().push(*bonus, context.clone(), parent.display.clone());
+				}
 			}
 			Self::Initiative { modifier, bonus, context } => {
 				if let Some(modifier) = modifier {
@@ -286,9 +315,9 @@ impl Mutator for Modify {
 			Self::ArmorClass { bonus, context } => {
 				stats.armor_class_mut().push_bonus(*bonus, context.clone(), parent);
 			}
-			Self::AttackRoll { bonus, modifier, ability, query } => {
-				if *bonus != 0 {
-					stats.attack_bonuses_mut().add_to_weapon_attacks(*bonus, query.clone(), parent);
+			Self::AttackRoll { modifier, bonus, ability, query } => {
+				if let Some(bonus) = bonus {
+					stats.attack_bonuses_mut().add_to_weapon_attacks(*bonus as i32, query.clone(), parent);
 				}
 				if let Some(modifier) = modifier {
 					stats.attack_bonuses_mut().modify_weapon_attacks(*modifier, query.clone(), parent);
@@ -322,9 +351,10 @@ impl FromKdl<NodeContext> for Modify {
 					}
 					_ => Some(selector::Value::from_kdl(node)?),
 				};
-				let modifier = node.next_str_req_t()?;
+				let modifier = node.get_str_opt_t::<Modifier>("modifier")?;
+				let bonus = node.get_i64_opt("bonus")?;
 				let context = node.get_str_opt("context")?.map(str::to_owned);
-				Ok(Self::Ability { ability, modifier, context })
+				Ok(Self::Ability { ability, modifier, bonus, context })
 			}
 			Some("SavingThrow") => {
 				let ability = match node.peak_str_req()? {
@@ -341,19 +371,20 @@ impl FromKdl<NodeContext> for Modify {
 			}
 			Some("Skill") => {
 				let skill = selector::Value::from_kdl(node)?;
-				let modifier = node.next_str_req_t()?;
+				let modifier = node.get_str_opt_t::<Modifier>("modifier")?;
+				let bonus = node.get_i64_opt("bonus")?;
 				let context = node.get_str_opt("context")?.map(str::to_owned);
-				Ok(Self::Skill { skill, modifier, context })
+				Ok(Self::Skill { skill, modifier, bonus, context })
 			}
 			Some("Attack") => match node.next_str_req()? {
 				"Roll" => {
-					let bonus = node.query_i64_opt("scope() > bonus", 0)?.unwrap_or_default() as i32;
+					let bonus = node.query_i64_opt("scope() > bonus", 0)?;
 					// NOTE: This ability property will probably need to be upgraded to a selector
 					let ability = node.query_str_opt_t("scope() > ability", 0)?;
 					// NOTE: This modifier will probably need an optional context
 					let modifier = node.query_str_opt_t("scope() > modifier", 0)?;
 					let query = node.query_all_t("scope() > query")?;
-					Ok(Self::AttackRoll { bonus, ability, modifier, query })
+					Ok(Self::AttackRoll { ability, modifier, bonus, query })
 				}
 				"Damage" => {
 					let damage = node.query_req_t("scope() > damage")?;
@@ -407,7 +438,7 @@ impl AsKdl for Modify {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
 		match self {
-			Self::Ability { ability, modifier, context } => {
+			Self::Ability { ability, modifier, bonus, context } => {
 				match ability {
 					None => {
 						node.entry_typed("Ability", "All");
@@ -416,7 +447,8 @@ impl AsKdl for Modify {
 						node += ("Ability", ability.as_kdl());
 					}
 				}
-				node.entry(modifier.to_string());
+				node.entry(("modifier", modifier.as_ref().map(Modifier::to_string)));
+				node.entry(("bonus", *bonus));
 				node.entry(("context", context.clone()));
 			}
 			Self::SavingThrow { ability, modifier, bonus, context } => {
@@ -432,9 +464,10 @@ impl AsKdl for Modify {
 				node.entry(("bonus", *bonus));
 				node.entry(("context", context.clone()));
 			}
-			Self::Skill { skill, modifier, context } => {
+			Self::Skill { skill, modifier, bonus, context } => {
 				node += ("Skill", skill.as_kdl());
-				node.entry(modifier.to_string());
+				node.entry(("modifier", modifier.as_ref().map(Modifier::to_string)));
+				node.entry(("bonus", *bonus));
 				node.entry(("context", context.clone()));
 			}
 			Self::Initiative { modifier, bonus, context } => {
@@ -445,10 +478,8 @@ impl AsKdl for Modify {
 			}
 			Self::AttackRoll { bonus, modifier, ability, query } => {
 				node.entry_typed("Attack", "Roll");
-				if *bonus != 0 {
-					node.child(("bonus", *bonus as i64));
-				}
 				node.child(("ability", ability));
+				node.child(("bonus", bonus));
 				node.child(("modifier", modifier.as_ref().map(ToString::to_string).as_ref()));
 				node.children(("query", query));
 			}
@@ -524,10 +555,11 @@ mod test {
 
 			#[test]
 			fn specific_noctx() -> anyhow::Result<()> {
-				let doc = "mutator \"modify\" (Ability)\"Specific\" \"Dexterity\" \"Advantage\"";
+				let doc = "mutator \"modify\" (Ability)\"Specific\" \"Dexterity\" modifier=\"Advantage\"";
 				let data = Modify::Ability {
 					ability: Some(selector::Value::Specific(Ability::Dexterity)),
-					modifier: Modifier::Advantage,
+					modifier: Some(Modifier::Advantage),
+					bonus: None,
 					context: None,
 				};
 				assert_eq_askdl!(&data, doc);
@@ -538,7 +570,7 @@ mod test {
 			#[test]
 			fn anyof_ctx() -> anyhow::Result<()> {
 				let doc = "
-					|mutator \"modify\" (Ability)\"Any\" \"Advantage\" context=\"which use smell\" {
+					|mutator \"modify\" (Ability)\"Any\" modifier=\"Advantage\" context=\"which use smell\" {
 					|    option \"Strength\"
 					|    option \"Wisdom\"
 					|}
@@ -548,7 +580,8 @@ mod test {
 						options: [Ability::Strength, Ability::Wisdom].into(),
 						..Default::default()
 					})),
-					modifier: Modifier::Advantage,
+					modifier: Some(Modifier::Advantage),
+					bonus: None,
 					context: Some("which use smell".into()),
 				};
 				assert_eq_askdl!(&data, doc);
@@ -565,12 +598,14 @@ mod test {
 				let character = character(vec![
 					Modify::Ability {
 						ability: Some(selector::Value::Specific(Ability::Dexterity)),
-						modifier: Modifier::Advantage,
+						modifier: Some(Modifier::Advantage),
+						bonus: None,
 						context: None,
 					},
 					Modify::Ability {
 						ability: None,
-						modifier: Modifier::Advantage,
+						modifier: Some(Modifier::Advantage),
+						bonus: None,
 						context: Some("when climbing".into()),
 					},
 				]);
@@ -585,7 +620,8 @@ mod test {
 			fn specific() {
 				let character = character(vec![Modify::Ability {
 					ability: Some(selector::Value::Specific(Ability::Dexterity)),
-					modifier: Modifier::Advantage,
+					modifier: Some(Modifier::Advantage),
+					bonus: None,
 					context: None,
 				}]);
 				let modifiers = &character.skills()[Ability::Dexterity].modifiers()[Modifier::Advantage];
@@ -669,10 +705,11 @@ mod test {
 
 			#[test]
 			fn specific() -> anyhow::Result<()> {
-				let doc = "mutator \"modify\" (Skill)\"Specific\" \"Perception\" \"Advantage\" context=\"using smell\"";
+				let doc = "mutator \"modify\" (Skill)\"Specific\" \"Perception\" modifier=\"Advantage\" context=\"using smell\"";
 				let data = Modify::Skill {
 					skill: selector::Value::Specific(Skill::Perception),
-					modifier: Modifier::Advantage,
+					modifier: Some(Modifier::Advantage),
+					bonus: None,
 					context: Some("using smell".into()),
 				};
 				assert_eq_askdl!(&data, doc);
@@ -688,7 +725,8 @@ mod test {
 			fn specific() {
 				let character = character(vec![Modify::Skill {
 					skill: selector::Value::Specific(Skill::Deception),
-					modifier: Modifier::Disadvantage,
+					modifier: Some(Modifier::Disadvantage),
+					bonus: None,
 					context: None,
 				}]);
 				let modifiers = &character.skills()[Skill::Deception].modifiers()[Modifier::Disadvantage];
@@ -769,7 +807,7 @@ mod test {
 						|    bonus 2
 						|}
 					";
-					let data = Modify::AttackRoll { bonus: 2, ability: None, modifier: None, query: vec![] };
+					let data = Modify::AttackRoll { bonus: Some(2), ability: None, modifier: None, query: vec![] };
 					assert_eq_askdl!(&data, doc);
 					assert_eq_fromkdl!(Target, doc, data.into());
 					Ok(())
@@ -786,9 +824,9 @@ mod test {
 						|}
 					";
 					let data = Modify::AttackRoll {
-						bonus: 5,
 						ability: None,
 						modifier: None,
+						bonus: Some(5),
 						query: vec![AttackQuery { attack_kind: AttackKind::Ranged.into(), ..Default::default() }],
 					};
 					assert_eq_askdl!(&data, doc);
@@ -807,9 +845,9 @@ mod test {
 						|}
 					";
 					let data = Modify::AttackRoll {
-						bonus: 0,
 						ability: Some(Ability::Constitution),
 						modifier: None,
+						bonus: None,
 						query: vec![AttackQuery { classification: ["Shortsword".into()].into(), ..Default::default() }],
 					};
 					assert_eq_askdl!(&data, doc);

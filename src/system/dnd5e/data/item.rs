@@ -291,7 +291,7 @@ mod test {
 				|            formula base=18
 				|            min-strength 15
 				|        }
-				|        mutator \"modify\" (Skill)\"Specific\" \"Stealth\" \"Disadvantage\"
+				|        mutator \"modify\" (Skill)\"Specific\" \"Stealth\" modifier=\"Disadvantage\"
 				|    }
 				|}
 			";
@@ -302,9 +302,10 @@ mod test {
 				kind: Kind::Equipment(Equipment {
 					mutators: vec![
 						Modify::Skill {
-							modifier: Modifier::Disadvantage,
-							context: None,
 							skill: selector::Value::Specific(Skill::Stealth),
+							modifier: Some(Modifier::Disadvantage),
+							bonus: None,
+							context: None,
 						}
 						.into(),
 					],

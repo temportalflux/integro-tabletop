@@ -191,16 +191,17 @@ mod test {
 				|        formula base=18
 				|        min-strength 15
 				|    }
-				|    mutator \"modify\" (Skill)\"Specific\" \"Stealth\" \"Disadvantage\"
+				|    mutator \"modify\" (Skill)\"Specific\" \"Stealth\" modifier=\"Disadvantage\"
 				|}
 			";
 			let data = Equipment {
 				criteria: None,
 				mutators: vec![
 					Modify::Skill {
-						modifier: Modifier::Disadvantage,
-						context: None,
 						skill: selector::Value::Specific(Skill::Stealth),
+						modifier: Some(Modifier::Disadvantage),
+						bonus: None,
+						context: None,
 					}
 					.into(),
 				],

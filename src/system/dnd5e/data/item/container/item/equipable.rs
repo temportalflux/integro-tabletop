@@ -124,7 +124,8 @@ impl mutator::Group for EquipableEntry {
 					// Disadvantage to ability & skill checks
 					mutators.push(mutator::Generic::from(Modify::Ability {
 						ability: Some(Value::Specific(ability)),
-						modifier: Modifier::Disadvantage,
+						modifier: Some(Modifier::Disadvantage),
+						bonus: None,
 						context: None,
 					}));
 					// Disadvantage to saving throws
@@ -138,7 +139,7 @@ impl mutator::Group for EquipableEntry {
 					mutators.push(mutator::Generic::from(Modify::AttackRoll {
 						modifier: Some(Modifier::Disadvantage),
 						ability: None, // this adds the ability to the roll
-						bonus: 0,
+						bonus: None,
 						// we need to query for attacks which use the ability
 						query: vec![AttackQuery { ability: [ability].into(), ..Default::default() }],
 					}));

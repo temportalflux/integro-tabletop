@@ -1,10 +1,11 @@
 ---
 created: 2024-07-11T13:47:57.077Z
-updated: 2024-07-11T13:50:22.626Z
+updated: 2024-07-13T14:17:40.050Z
 assigned: ""
 progress: 0
 tags:
   - Mutator
+completed: 2024-07-13T14:17:40.050Z
 ---
 
 # Skill numerical bonus

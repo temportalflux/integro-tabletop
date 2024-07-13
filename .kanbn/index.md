@@ -14,10 +14,12 @@ columnSorting:
 
 ## Backlog
 
-- [skill-numerical-bonus](tasks/skill-numerical-bonus.md)
 - [stat-operation-maximum](tasks/stat-operation-maximum.md)
 - [stat-operation-half](tasks/stat-operation-half.md)
 - [spell-range-mutator](tasks/spell-range-mutator.md)
+- [ability-skill-modifier-display](tasks/ability-skill-modifier-display.md)
+- [inventory-search-bar](tasks/inventory-search-bar.md)
+- [parcels-mailbox](tasks/parcels-mailbox.md)
 - [prepared-spellcasting-grants-bonuses](tasks/prepared-spellcasting-grants-bonuses.md)
 - [bundle-requirements](tasks/bundle-requirements.md)
 - [spells-support-healing](tasks/spells-support-healing.md)
@@ -61,14 +63,11 @@ columnSorting:
 
 ## Pending
 
-- [inventory-search-bar](tasks/inventory-search-bar.md)
-- [ability-skill-modifier-display](tasks/ability-skill-modifier-display.md)
-- [parcels-mailbox](tasks/parcels-mailbox.md)
-
 ## In Progress
 
 ## Done
 
+- [skill-numerical-bonus](tasks/skill-numerical-bonus.md)
 - [hit-die-mutator](tasks/hit-die-mutator.md)
 - [proficiency-item-override](tasks/proficiency-item-override.md)
 - [armor-proficiency](tasks/armor-proficiency.md)
