@@ -56,6 +56,11 @@ pub struct InventoryItemProps {
 	pub id_path: Vec<uuid::Uuid>,
 }
 
+#[derive(Default, PartialEq, Clone)]
+struct SearchFilter {
+	text: Option<String>,
+}
+
 #[function_component]
 pub fn Inventory() -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
@@ -66,12 +71,27 @@ pub fn Inventory() -> Html {
 		|_, _context| context_menu::Action::open_root("Starting Equipment", html!(<BrowseStartingEquipment />))
 	});
 
+	let search_filter = use_state_eq(|| SearchFilter::default());
+	let on_search_input = Callback::from({
+		let search_filter = search_filter.clone();
+		move |evt: web_sys::InputEvent| {
+			let Some(value) = evt.input_value() else {
+				return;
+			};
+			let mut filter = (*search_filter).clone();
+			filter.text = (!value.is_empty()).then_some(value.to_lowercase());
+			search_filter.set(filter);
+		}
+	});
+
 	let search_header = html! {
 		<div class="input-group mt-2">
 			<span class="input-group-text"><i class="bi bi-search"/></span>
 			<input
 				type="text" class="form-control"
 				placeholder="Search item names, types, rarities, or tags"
+				value={(*search_filter).text.clone()}
+				oninput={on_search_input}
 			/>
 			<button type="button" class="btn btn-outline-theme" onclick={open_browser}>{"Browse Items"}</button>
 		</div>
@@ -130,8 +150,10 @@ pub fn Inventory() -> Html {
 			</div>
 			{search_header}
 			<div class="sections">
-				<ContainerSection container_id={None} />
-				{containers}
+				<ContextProvider<UseStateHandle<SearchFilter>> context={search_filter}>
+					<ContainerSection container_id={None} />
+					{containers}
+				</ContextProvider<UseStateHandle<SearchFilter>>>
 			</div>
 		</div>
 	}
@@ -188,6 +210,7 @@ struct ContainerSectionProps {
 #[function_component]
 fn ContainerSection(ContainerSectionProps { container_id }: &ContainerSectionProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
+	let search_filter = use_context::<UseStateHandle<SearchFilter>>().unwrap();
 	let context_menu = use_context::<context_menu::Control>().unwrap();
 
 	let title: AttrValue;
@@ -204,7 +227,13 @@ fn ContainerSection(ContainerSectionProps { container_id }: &ContainerSectionPro
 				let all_items = container.iter_by_name();
 				let no_containers = all_items.filter(|(_, entry)| entry.as_item().items.is_none());
 				let unattuned = no_containers.filter(|(_, entry)| entry.status != EquipStatus::Attuned);
-				let as_html = unattuned.map(|(id, entry)| {
+				let items = unattuned.filter(|(_id, entry)| {
+					if let Some(search_text) = &search_filter.text {
+						return entry.item.name.to_lowercase().contains(search_text);
+					}
+					true
+				});
+				let as_html = items.map(|(id, entry)| {
 					html! {
 						<ItemRow
 							id_path={vec![id.clone()]}
@@ -225,16 +254,22 @@ fn ContainerSection(ContainerSectionProps { container_id }: &ContainerSectionPro
 				return Html::default();
 			};
 			title = item.name.clone().into();
-			wallet =
-				(!container.wallet().is_empty()).then(|| html! { <WalletInlineButton id={container_id.clone()} /> });
-			rows = container
-				.iter_by_name()
-				.map(|(item_id, item)| {
+			wallet = (!container.wallet().is_empty()).then(|| html! { <WalletInlineButton id={container_id.clone()} /> });
+			rows = {
+				let items = container.iter_by_name();
+				let items = items.filter(|(_id, item)| {
+					if let Some(search_text) = &search_filter.text {
+						return item.name.to_lowercase().contains(search_text);
+					}
+					true
+				});
+				let items = items.map(|(item_id, item)| {
 					html! {
 						<ItemRow id_path={vec![container_id.clone(), item_id.clone()]} item={item.clone()} />
 					}
-				})
-				.collect::<Vec<_>>();
+				});
+				items.collect::<Vec<_>>()
+			};
 			open_modal = Some(Callback::from({
 				let context_menu = context_menu.clone();
 				let id_path = vec![container_id.clone()];

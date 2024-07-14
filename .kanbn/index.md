@@ -17,7 +17,6 @@ columnSorting:
 - [ability-skill-displays-do-not-include-numerical-bonuses](tasks/ability-skill-displays-do-not-include-numerical-bonuses.md)
 - [spell-range-mutator](tasks/spell-range-mutator.md)
 - [ability-skill-modifier-display](tasks/ability-skill-modifier-display.md)
-- [inventory-search-bar](tasks/inventory-search-bar.md)
 - [parcels-mailbox](tasks/parcels-mailbox.md)
 - [prepared-spellcasting-grants-bonuses](tasks/prepared-spellcasting-grants-bonuses.md)
 - [bundle-requirements](tasks/bundle-requirements.md)
@@ -66,6 +65,7 @@ columnSorting:
 
 ## Done
 
+- [inventory-search-bar](tasks/inventory-search-bar.md)
 - [support-all-stat-for-speeds-and-senses](tasks/support-all-stat-for-speeds-and-senses.md)
 - [stat-operation-maximum](tasks/stat-operation-maximum.md)
 - [stat-operation-half](tasks/stat-operation-half.md)
