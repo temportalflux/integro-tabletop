@@ -3,16 +3,14 @@ use crate::{
 	kdl_ext::NodeContext,
 	system::{
 		dnd5e::{
-			data::{character::Character, description, Ability},
-			BoxedMutator,
+			data::{character::Character, description},
+			BoxedCriteria, BoxedMutator,
 		},
 		mutator::{self, ReferencePath},
 		Block, SourceId,
 	},
-	utility::NotInList,
 };
 use kdlize::{AsKdl, FromKdl, NodeBuilder, OmitIfEmpty};
-use std::collections::HashMap;
 
 #[derive(Default, Clone, PartialEq, Debug)]
 pub struct Bundle {
@@ -21,21 +19,12 @@ pub struct Bundle {
 	/// The group this bundle is in (Race, RaceVariant, Lineage, Upbringing, Background, Feat, etc).
 	pub category: String,
 	pub description: description::Info,
-	/// The bundles required for this one to be added to a character.
-	pub requirements: Vec<BundleRequirement>,
+	// Required conditions for this bundle to be applicable for a given character
+	pub requirements: Vec<BoxedCriteria>,
 	/// The number of times this bundle can be added to a character.
 	pub limit: usize,
 	pub mutators: Vec<BoxedMutator>,
 	pub feature_config: Option<FeatureConfig>,
-}
-
-// TODO: Could bundle requirements just be a criteria/bool-evaluator?
-#[derive(Clone, PartialEq, Debug)]
-pub enum BundleRequirement {
-	/// The character must have a bundle with the specified category and name.
-	Bundle { category: String, name: String },
-	/// The character must have an ability score of at least a specific amount.
-	Ability(Ability, u32),
 }
 
 #[derive(Clone, PartialEq, Debug, Default)]
@@ -54,7 +43,12 @@ impl mutator::Group for Bundle {
 	}
 
 	fn apply_mutators(&self, stats: &mut Character, parent: &ReferencePath) {
-		// TODO: Check requirements before applying
+		for requirement in &self.requirements {
+			if let Err(_err) = requirement.evaluate(stats) {
+				return;
+			}
+		}
+
 		if let Some(config) = &self.feature_config {
 			let feature = Feature {
 				name: self.name.clone(),
@@ -77,32 +71,9 @@ kdlize::impl_kdl_node!(Bundle, "bundle");
 
 impl Block for Bundle {
 	fn to_metadata(self) -> serde_json::Value {
-		let requirements = {
-			let mut requirements = HashMap::new();
-			for req in self.requirements {
-				match req {
-					BundleRequirement::Bundle { category, name } => {
-						if !requirements.contains_key("Bundle") {
-							requirements.insert("Bundle", HashMap::new());
-						}
-						let reqs = requirements.get_mut("Bundle").unwrap();
-						reqs.insert(category, serde_json::json!(name));
-					}
-					BundleRequirement::Ability(ability, score) => {
-						if !requirements.contains_key("Ability") {
-							requirements.insert("Ability", HashMap::new());
-						}
-						let reqs = requirements.get_mut("Ability").unwrap();
-						reqs.insert(ability.long_name().to_owned(), serde_json::json!(score));
-					}
-				}
-			}
-			requirements
-		};
 		serde_json::json!({
 			"name": self.name,
 			"category": self.category,
-			"requirements": requirements,
 			"limit": self.limit,
 		})
 	}
@@ -127,23 +98,7 @@ impl FromKdl<NodeContext> for Bundle {
 		let description = node.query_opt_t::<description::Info>("scope() > description")?.unwrap_or_default();
 		let limit = node.get_i64_opt("limit")?.unwrap_or(1) as usize;
 
-		let mut requirements = Vec::new();
-		for node in &mut node.query_all("scope() > requirement")? {
-			match node.next_str_req()? {
-				"Bundle" => {
-					let category = node.next_str_req()?.to_owned();
-					let name = node.next_str_req()?.to_owned();
-					requirements.push(BundleRequirement::Bundle { category, name });
-				}
-				"Ability" => {
-					let ability = node.next_str_req_t::<Ability>()?;
-					let score = node.next_i64_req()? as u32;
-					requirements.push(BundleRequirement::Ability(ability, score));
-				}
-				kind => return Err(NotInList(kind.into(), vec!["Bundle", "Ability"]).into()),
-			}
-		}
-
+		let requirements = node.query_all_t("scope() > requirement")?;
 		let mutators = node.query_all_t("scope() > mutator")?;
 
 		Ok(Self { id, name, category, description, requirements, limit, mutators, feature_config })
@@ -162,18 +117,7 @@ impl AsKdl for Bundle {
 
 		node.child(("source", &self.id, OmitIfEmpty));
 
-		for requirement in &self.requirements {
-			let kdl = match requirement {
-				BundleRequirement::Bundle { category, name } => {
-					NodeBuilder::default().with_entry("Bundle").with_entry(category.clone()).with_entry(name.clone())
-				}
-				BundleRequirement::Ability(ability, score) => NodeBuilder::default()
-					.with_entry("Ability")
-					.with_entry(ability.long_name())
-					.with_entry(*score as i64),
-			};
-			node.child(kdl.build("requirement"));
-		}
+		node.children(("requirement", self.requirements.iter()));
 
 		if self.description != description::Info::default() {
 			node.child(("description", &self.description));

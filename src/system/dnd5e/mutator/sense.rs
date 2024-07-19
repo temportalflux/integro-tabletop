@@ -82,7 +82,8 @@ mod test {
 		#[test]
 		fn additive() -> anyhow::Result<()> {
 			let doc = "mutator \"sense\" \"Darkvision\" (Add)60";
-			let data = Sense(StatMutator { stat_name: Some("Darkvision".into()), operation: StatOperation::AddSubtract(60) });
+			let data =
+				Sense(StatMutator { stat_name: Some("Darkvision".into()), operation: StatOperation::AddSubtract(60) });
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -125,11 +126,17 @@ mod test {
 			let character = character(vec![
 				(
 					"SenseB",
-					Sense(StatMutator { stat_name: Some("Darkvision".into()), operation: StatOperation::MinimumValue(60) }),
+					Sense(StatMutator {
+						stat_name: Some("Darkvision".into()),
+						operation: StatOperation::MinimumValue(60),
+					}),
 				),
 				(
 					"SenseA",
-					Sense(StatMutator { stat_name: Some("Darkvision".into()), operation: StatOperation::MinimumValue(40) }),
+					Sense(StatMutator {
+						stat_name: Some("Darkvision".into()),
+						operation: StatOperation::MinimumValue(40),
+					}),
 				),
 			]);
 			let sense = character.senses().get("Darkvision").cloned().collect::<Vec<_>>();
@@ -156,9 +163,18 @@ mod test {
 			let character = character(vec![
 				(
 					"A",
-					Sense(StatMutator { stat_name: Some("Darkvision".into()), operation: StatOperation::MinimumValue(60) }),
+					Sense(StatMutator {
+						stat_name: Some("Darkvision".into()),
+						operation: StatOperation::MinimumValue(60),
+					}),
 				),
-				("B", Sense(StatMutator { stat_name: Some("Darkvision".into()), operation: StatOperation::AddSubtract(40) })),
+				(
+					"B",
+					Sense(StatMutator {
+						stat_name: Some("Darkvision".into()),
+						operation: StatOperation::AddSubtract(40),
+					}),
+				),
 			]);
 			let sense = character.senses().get("Darkvision").cloned().collect::<Vec<_>>();
 			let expected: Vec<(_, PathBuf)> =
@@ -171,10 +187,25 @@ mod test {
 			let character = character(vec![
 				(
 					"A",
-					Sense(StatMutator { stat_name: Some("Darkvision".into()), operation: StatOperation::MinimumValue(60) }),
+					Sense(StatMutator {
+						stat_name: Some("Darkvision".into()),
+						operation: StatOperation::MinimumValue(60),
+					}),
 				),
-				("B", Sense(StatMutator { stat_name: Some("Darkvision".into()), operation: StatOperation::AddSubtract(40) })),
-				("C", Sense(StatMutator { stat_name: Some("Darkvision".into()), operation: StatOperation::AddSubtract(30) })),
+				(
+					"B",
+					Sense(StatMutator {
+						stat_name: Some("Darkvision".into()),
+						operation: StatOperation::AddSubtract(40),
+					}),
+				),
+				(
+					"C",
+					Sense(StatMutator {
+						stat_name: Some("Darkvision".into()),
+						operation: StatOperation::AddSubtract(30),
+					}),
+				),
 			]);
 			let sense = character.senses().get("Darkvision").cloned().collect::<Vec<_>>();
 			let expected: Vec<(_, PathBuf)> = vec![

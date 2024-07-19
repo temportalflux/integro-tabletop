@@ -65,13 +65,7 @@ impl FromKdl<NodeContext> for StatOperation {
 			}
 			"Maximum" => Ok(Self::MaximumValue(entry.as_i64_req()? as u32)),
 			type_str => Err(NotInList(type_str.into(), vec![
-				"Minimum",
-				"Base",
-				"Add",
-				"Subtract",
-				"Multiply",
-				"Divide",
-				"Maximum",
+				"Minimum", "Base", "Add", "Subtract", "Multiply", "Divide", "Maximum",
 			]))?,
 		}
 	}
@@ -143,7 +137,7 @@ impl Stat {
 		iter
 	}
 
-	fn compile_stat<'iter>(operations: impl Iterator<Item=&'iter StatOperation>) -> (u32, Vec<&'iter str>) {
+	fn compile_stat<'iter>(operations: impl Iterator<Item = &'iter StatOperation>) -> (u32, Vec<&'iter str>) {
 		let mut minimum_value = 0u32;
 		let mut minimum_stat_match = Vec::new();
 		let mut maximum_base = 0u32;

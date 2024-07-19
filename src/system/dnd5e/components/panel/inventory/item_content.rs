@@ -124,7 +124,7 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 		sections.push(html! {
 			<div class="property">
 				<strong>{"Proficient (with tool):"}</strong>
-				<span>{"✔ Yes"}</span>
+				<span><i class="bi bi-check-square" style="color: green;" />{"Yes"}</span>
 			</div>
 		});
 	}
@@ -217,8 +217,8 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 							<div class="property">
 								<strong>{"Proficient:"}</strong>
 								{match equipment.always_proficient || IsProficientWith::Armor(ArmorExtended::Shield).evaluate(&state) {
-									true => html! { <span>{"✔ Yes"}</span> },
-									false => html! { <span>{"❌ No"}</span> },
+									true => html! { <span><i class="bi bi-check-square" style="color: green;" />{"Yes"}</span> },
+									false => html! { <span><i class="bi bi-x-square" style="color: red;" />{"No"}</span> },
 								}}
 							</div>
 							<div class="property">
@@ -241,8 +241,8 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 					<div class="property">
 						<strong>{"Proficient:"}</strong>
 						{match equipment.always_proficient || IsProficientWith::Armor(ArmorExtended::Kind(armor.kind)).evaluate(&state) {
-							true => html! { <span>{"✔ Yes"}</span> },
-							false => html! { <span>{"❌ No"}</span> },
+							true => html! { <span><i class="bi bi-check-square" style="color: green;" />{"Yes"}</span> },
+							false => html! { <span><i class="bi bi-x-square" style="color: red;" />{"No"}</span> },
 						}}
 					</div>
 				});
@@ -292,8 +292,8 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 					<div class="property">
 						<strong>{"Proficient:"}</strong>
 						{match equipment.always_proficient || is_proficient {
-							true => html! { <span>{"✔ Yes"}</span> },
-							false => html! { <span>{"❌ No"}</span> },
+							true => html! { <span><i class="bi bi-check-square" style="color: green;" />{"Yes"}</span> },
+							false => html! { <span><i class="bi bi-x-square" style="color: red;" />{"No"}</span> },
 						}}
 					</div>
 				});
@@ -416,8 +416,8 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 				<strong>{"Transcribe Spells From:"}</strong>
 				<span>
 					{match spell_container.can_transcribe_from {
-						true => html!("✔"),
-						false => html!("❌"),
+						true => html!(<i class="bi bi-check-square" style="color: green;" />),
+						false => html!(<i class="bi bi-x-square" style="color: red;" />),
 					}}
 				</span>
 			</div>
@@ -427,8 +427,8 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 				<strong>{"Prepare Contained Spells:"}</strong>
 				<span>
 					{match spell_container.can_prepare_from {
-						true => html!("✔"),
-						false => html!("❌"),
+						true => html!(<i class="bi bi-check-square" style="color: green;" />),
+						false => html!(<i class="bi bi-x-square" style="color: red;" />),
 					}}
 				</span>
 			</div>
@@ -437,7 +437,7 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 			<div class="property">
 				<strong>{"Casting: "}</strong>
 				{match &spell_container.casting {
-					None => html!("❌"),
+					None => html!(<i class="bi bi-x-square" style="color: red;" />),
 					Some(casting) => html! {
 						<div class="ms-3">
 							{match &casting.duration {

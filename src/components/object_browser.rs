@@ -206,7 +206,7 @@ fn BundleList(props: &BundleListProps) -> Html {
 						<div class="collapse mb-2" id={collapse_id}>
 							<div class="card">
 								<div class="card-body px-2 py-1">
-									{bundle_content(bundle)}
+									{bundle_content(bundle, None, false)}
 								</div>
 							</div>
 						</div>

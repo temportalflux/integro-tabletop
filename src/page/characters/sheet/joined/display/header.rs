@@ -27,7 +27,7 @@ pub fn Header() -> Html {
 	for bundle in &state.persistent().bundles {
 		match bundle.category.as_str() {
 			"Race" => races.push(bundle.name.as_str()),
-			"RaceVariant" => race_variants.push(bundle.name.as_str()),
+			"Race Variant" => race_variants.push(bundle.name.as_str()),
 			"Lineage" => lineages.push(bundle.name.as_str()),
 			"Upbringing" => upbringings.push(bundle.name.as_str()),
 			"Background" => backgrounds.push(bundle.name.as_str()),

@@ -199,8 +199,8 @@ pub fn ScoreBreakdown(AbilityProps { ability }: &AbilityProps) -> Html {
 							Some(max) => html! {<span>
 								{max}
 								{match was_included {
-									true => "✅",
-									false => "❌",
+									true => html!(<i class="bi bi-check-square" style="color: green;" />),
+									false => html!(<i class="bi bi-x-square" style="color: red;" />),
 								}}
 							</span>},
 						}}</td>

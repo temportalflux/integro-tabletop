@@ -254,7 +254,8 @@ fn ContainerSection(ContainerSectionProps { container_id }: &ContainerSectionPro
 				return Html::default();
 			};
 			title = item.name.clone().into();
-			wallet = (!container.wallet().is_empty()).then(|| html! { <WalletInlineButton id={container_id.clone()} /> });
+			wallet =
+				(!container.wallet().is_empty()).then(|| html! { <WalletInlineButton id={container_id.clone()} /> });
 			rows = {
 				let items = container.iter_by_name();
 				let items = items.filter(|(_id, item)| {

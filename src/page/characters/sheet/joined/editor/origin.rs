@@ -10,7 +10,8 @@ use crate::{
 	system::{
 		dnd5e::{
 			components::GeneralProp,
-			data::{bundle::BundleRequirement, character::Persistent, description, Bundle, Feature},
+			data::{character::Persistent, description, Bundle, Feature},
+			evaluator::HasBundle,
 			DnD5e,
 		},
 		mutator, System,
@@ -66,10 +67,9 @@ fn CharacterContent() -> Html {
 	let requirements = {
 		let mut map = MultiMap::new();
 		for bundle in &state.persistent().bundles {
-			for req in &bundle.requirements {
-				if let BundleRequirement::Bundle { category, name } = req {
-					map.insert((category, name), (&bundle.category, &bundle.name));
-				}
+			for generic_requirement in &bundle.requirements {
+				let Some(has_bundle) = generic_requirement.as_any().downcast_ref::<Arc<HasBundle>>() else { continue };
+				map.insert((&has_bundle.category, &has_bundle.name), (&bundle.category, &bundle.name));
 			}
 		}
 		map
@@ -203,25 +203,11 @@ fn selected_bundle(
 		}
 	};
 
-	let reqs_desc = {
-		let reqs = bundle
-			.requirements
-			.iter()
-			.map(|req| match req {
-				BundleRequirement::Bundle { category, name } => format!("{category}: {name}"),
-				BundleRequirement::Ability(ability, score) => {
-					format!("{} >= {score}", ability.long_name())
-				}
-			})
-			.collect::<Vec<_>>();
-		(!reqs.is_empty()).then(|| format!(" (requires: [{}])", reqs.join(", ")))
-	};
-	let title = reqs_desc.map(|desc| format!("{}{desc}", bundle.name)).unwrap_or_else(|| bundle.name.clone());
-	let bundle_id = bundle.name.to_case(Case::Kebab).replace("(", "").replace(")", "");
+	let bundle_id = bundle.name.to_case(Case::Kebab).replace("(", "").replace(")", "").replace(":", "");
 	html! {
 		<ContentItem
 			id={format!("{}-{idx}-{bundle_id}", bundle.category)}
-			name={format!("{}: {title}", bundle.category)}
+			name={format!("{}: {}", bundle.category, bundle.name)}
 			kind={ContentItemKind::Remove {
 				disable_selection: dependents.map(|desc| format!("Cannot remove, depended on by: {desc}").into()),
 			}}
@@ -231,10 +217,7 @@ fn selected_bundle(
 				MutatorImpact::Recompile // TODO: Only do this when returning to sheet view
 			})}
 		>
-			<div class="text-block">
-				{description(&bundle.description, false, true)}
-			</div>
-			{mutator_list(&bundle.mutators, Some(state))}
+			{bundle_content(bundle, Some(state), true)}
 		</ContentItem>
 	}
 }
@@ -252,41 +235,20 @@ fn AvailableBundle(GeneralProp { value: bundle }: &GeneralProp<Bundle>) -> Html 
 
 	let amount_selected = state.persistent().bundles.iter().filter(|selected| selected.id == bundle.id).count();
 	let mut title = bundle.name.clone();
-	let mut requirements_met = true;
+	let mut unmet_requirements = Vec::with_capacity(bundle.requirements.len());
 	if !bundle.requirements.is_empty() {
-		let reqs = bundle
-			.requirements
-			.iter()
-			.map(|req| match req {
-				BundleRequirement::Bundle { category, name } => format!("{category}: {name}"),
-				BundleRequirement::Ability(ability, score) => {
-					format!("{} >= {score}", ability.long_name())
-				}
-			})
-			.collect::<Vec<_>>();
-		title = format!("{title} (requires: [{}])", reqs.join(", "));
 		for req in &bundle.requirements {
-			match req {
-				BundleRequirement::Bundle { category, name } => {
-					let mut iter_bundles = state.persistent().bundles.iter();
-					let passed = iter_bundles
-						.find(|selected| &selected.category == category && &selected.name == name)
-						.is_some();
-					if !passed {
-						requirements_met = false;
-						break;
-					}
-				}
-				BundleRequirement::Ability(ability, score) => {
-					if state.ability_scores().get(*ability).score().0 < *score {
-						requirements_met = false;
-						break;
-					}
+			if let Err(_) = req.evaluate(&*state) {
+				if let Some(desc) = req.description() {
+					unmet_requirements.push(desc);
 				}
 			}
 		}
+		if !unmet_requirements.is_empty() {
+			title = format!("{title} (missing: [{}])", unmet_requirements.join(", "));
+		}
 	}
-	let bundle_id = bundle.name.to_case(Case::Kebab).replace("(", "").replace(")", "");
+	let bundle_id = bundle.name.to_case(Case::Kebab).replace("(", "").replace(")", "").replace(":", "");
 	html! {
 		<ContentItem
 			parent_collapse={"#all-entries"}
@@ -295,24 +257,39 @@ fn AvailableBundle(GeneralProp { value: bundle }: &GeneralProp<Bundle>) -> Html 
 			kind={ContentItemKind::Add {
 				amount_selected,
 				selection_limit: bundle.limit,
-				disable_selection: (!requirements_met).then(|| "Requirements not met".into()),
+				disable_selection: (!unmet_requirements.is_empty()).then(|| "Requirements not met".into()),
 			}}
 			on_click={on_select.reform({
 				let source_id = bundle.id.unversioned();
 				move |_| source_id.clone()
 			})}
 		>
-			{bundle_content(bundle)}
+			{bundle_content(bundle, Some(&state), false)}
 		</ContentItem>
 	}
 }
-pub fn bundle_content(bundle: &Bundle) -> Html {
-	// TODO: Show the requirements in the description
+pub fn bundle_content(bundle: &Bundle, state: Option<&CharacterHandle>, selectors: bool) -> Html {
+	let mut requirements = Vec::with_capacity(bundle.requirements.len());
+	for requirement in &bundle.requirements {
+		let Some(content) = requirement.description() else { continue };
+		let icon_status = state.map(|state| requirement.evaluate(state));
+		requirements.push(html!(<div>
+			{icon_status.map(|result| match result {
+				Ok(()) => html!(<i class="bi bi-check-square" style="color: green;" />),
+				Err(_err) => html!(<i class="bi bi-x-square" style="color: red;" />),
+			})}
+			{content}
+		</div>));
+	}
 	html! {<>
-		<div class="text-block">
-			{description(&bundle.description, false, false)}
+		<div class="text-block mb-2">
+			{description(&bundle.description, false, selectors)}
 		</div>
-		{mutator_list(&bundle.mutators, None::<&CharacterHandle>)}
+		{(!requirements.is_empty()).then(|| html!(<div class="text-block mb-2">
+			<strong>{"Requirements:"}</strong>
+			{requirements}
+		</div>))}
+		{mutator_list(&bundle.mutators, state)}
 	</>}
 }
 

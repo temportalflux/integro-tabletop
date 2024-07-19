@@ -11,10 +11,16 @@ mod has_armor;
 pub use has_armor::*;
 mod has_attack;
 pub use has_attack::*;
+mod has_bundle;
+pub use has_bundle::*;
 mod has_condition;
 pub use has_condition::*;
+mod has_level;
+pub use has_level::*;
 mod has_proficiency;
 pub use has_proficiency::*;
+mod has_stat;
+pub use has_stat::*;
 
 mod logic;
 pub use logic::*;

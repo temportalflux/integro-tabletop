@@ -19,7 +19,6 @@ columnSorting:
 - [ability-skill-modifier-display](tasks/ability-skill-modifier-display.md)
 - [parcels-mailbox](tasks/parcels-mailbox.md)
 - [prepared-spellcasting-grants-bonuses](tasks/prepared-spellcasting-grants-bonuses.md)
-- [bundle-requirements](tasks/bundle-requirements.md)
 - [spells-support-healing](tasks/spells-support-healing.md)
 - [wizard-spell-mastery](tasks/wizard-spell-mastery.md)
 - [hobgoblin-reserves-of-strength](tasks/hobgoblin-reserves-of-strength.md)
@@ -60,6 +59,8 @@ columnSorting:
 ## Blocked
 
 ## Pending
+
+- [bundle-requirements](tasks/bundle-requirements.md)
 
 ## In Progress
 

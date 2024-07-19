@@ -159,11 +159,15 @@ mod test {
 				class_name: None,
 				levels: [
 					(3, vec![
-						Speed(StatMutator { stat_name: Some("Climbing".into()), operation: StatOperation::Base(30) }).into(),
+						Speed(StatMutator { stat_name: Some("Climbing".into()), operation: StatOperation::Base(30) })
+							.into(),
 					]),
 					(5, vec![
-						Speed(StatMutator { stat_name: Some("Climbing".into()), operation: StatOperation::AddSubtract(10) })
-							.into(),
+						Speed(StatMutator {
+							stat_name: Some("Climbing".into()),
+							operation: StatOperation::AddSubtract(10),
+						})
+						.into(),
 					]),
 				]
 				.into(),
@@ -189,11 +193,15 @@ mod test {
 				class_name: Some("Barbarian".into()),
 				levels: [
 					(3, vec![
-						Speed(StatMutator { stat_name: Some("Climbing".into()), operation: StatOperation::Base(30) }).into(),
+						Speed(StatMutator { stat_name: Some("Climbing".into()), operation: StatOperation::Base(30) })
+							.into(),
 					]),
 					(5, vec![
-						Speed(StatMutator { stat_name: Some("Climbing".into()), operation: StatOperation::AddSubtract(10) })
-							.into(),
+						Speed(StatMutator {
+							stat_name: Some("Climbing".into()),
+							operation: StatOperation::AddSubtract(10),
+						})
+						.into(),
 					]),
 				]
 				.into(),

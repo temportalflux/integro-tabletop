@@ -72,7 +72,8 @@ mod test {
 		#[test]
 		fn minimum() -> anyhow::Result<()> {
 			let doc = "mutator \"speed\" \"Walking\" (Minimum)30";
-			let data = Speed(StatMutator { stat_name: Some("Walking".into()), operation: StatOperation::MinimumValue(30) });
+			let data =
+				Speed(StatMutator { stat_name: Some("Walking".into()), operation: StatOperation::MinimumValue(30) });
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -81,7 +82,8 @@ mod test {
 		#[test]
 		fn additive() -> anyhow::Result<()> {
 			let doc = "mutator \"speed\" \"Walking\" (Add)30";
-			let data = Speed(StatMutator { stat_name: Some("Walking".into()), operation: StatOperation::AddSubtract(30) });
+			let data =
+				Speed(StatMutator { stat_name: Some("Walking".into()), operation: StatOperation::AddSubtract(30) });
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -122,8 +124,20 @@ mod test {
 		#[test]
 		fn minimum_multiple() {
 			let character = character(vec![
-				("B", Speed(StatMutator { stat_name: Some("Walking".into()), operation: StatOperation::MinimumValue(60) })),
-				("A", Speed(StatMutator { stat_name: Some("Walking".into()), operation: StatOperation::MinimumValue(40) })),
+				(
+					"B",
+					Speed(StatMutator {
+						stat_name: Some("Walking".into()),
+						operation: StatOperation::MinimumValue(60),
+					}),
+				),
+				(
+					"A",
+					Speed(StatMutator {
+						stat_name: Some("Walking".into()),
+						operation: StatOperation::MinimumValue(40),
+					}),
+				),
 			]);
 			let sense = character.speeds().get("Walking").cloned().collect::<Vec<_>>();
 			let expected: Vec<(_, PathBuf)> =
@@ -145,8 +159,17 @@ mod test {
 		#[test]
 		fn minimum_gt_additive() {
 			let character = character(vec![
-				("A", Speed(StatMutator { stat_name: Some("Walking".into()), operation: StatOperation::MinimumValue(60) })),
-				("B", Speed(StatMutator { stat_name: Some("Walking".into()), operation: StatOperation::AddSubtract(40) })),
+				(
+					"A",
+					Speed(StatMutator {
+						stat_name: Some("Walking".into()),
+						operation: StatOperation::MinimumValue(60),
+					}),
+				),
+				(
+					"B",
+					Speed(StatMutator { stat_name: Some("Walking".into()), operation: StatOperation::AddSubtract(40) }),
+				),
 			]);
 			let sense = character.speeds().get("Walking").cloned().collect::<Vec<_>>();
 			let expected: Vec<(_, PathBuf)> =
@@ -157,9 +180,21 @@ mod test {
 		#[test]
 		fn minimum_lt_additive() {
 			let character = character(vec![
-				("A", Speed(StatMutator { stat_name: Some("Walking".into()), operation: StatOperation::MinimumValue(60) })),
-				("B", Speed(StatMutator { stat_name: Some("Walking".into()), operation: StatOperation::AddSubtract(40) })),
-				("C", Speed(StatMutator { stat_name: Some("Walking".into()), operation: StatOperation::AddSubtract(30) })),
+				(
+					"A",
+					Speed(StatMutator {
+						stat_name: Some("Walking".into()),
+						operation: StatOperation::MinimumValue(60),
+					}),
+				),
+				(
+					"B",
+					Speed(StatMutator { stat_name: Some("Walking".into()), operation: StatOperation::AddSubtract(40) }),
+				),
+				(
+					"C",
+					Speed(StatMutator { stat_name: Some("Walking".into()), operation: StatOperation::AddSubtract(30) }),
+				),
 			]);
 			let sense = character.speeds().get("Walking").cloned().collect::<Vec<_>>();
 			let expected: Vec<(_, PathBuf)> = vec![

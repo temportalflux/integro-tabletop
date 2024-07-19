@@ -62,7 +62,10 @@ pub fn node_registry() -> generics::Registry {
 	registry.register_evaluator::<GetLevelStr>();
 	registry.register_evaluator::<HasArmorEquipped>();
 	registry.register_evaluator::<HasAttack>();
+	registry.register_evaluator::<HasBundle>();
 	registry.register_evaluator::<HasCondition>();
+	registry.register_evaluator::<HasStat>();
+	registry.register_evaluator::<HasLevel>();
 	registry.register_evaluator::<IsProficientWith>();
 	registry.register_evaluator::<Math>();
 

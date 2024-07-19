@@ -276,7 +276,7 @@ fn CharacterCard(CharacterCardProps { id: _, route, metadata, on_delete }: &Char
 				<div>
 					{metadata.bundles.iter_all()
 						.filter(|(category, _)| {
-							vec!["Race", "RaceVariant", "Lineage", "Upbringing"].contains(&category.as_str())
+							vec!["Race", "Race Variant", "Lineage", "Upbringing"].contains(&category.as_str())
 						})
 						.sorted_by_key(|(category, _)| *category)
 						.map(|(_category, items)| items.clone())
