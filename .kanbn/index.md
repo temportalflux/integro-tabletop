@@ -55,6 +55,7 @@ columnSorting:
 - [user-docs](tasks/user-docs.md)
 - [user-written-modules](tasks/user-written-modules.md)
 - [standalone-app](tasks/standalone-app.md)
+- [warlock-eldritch-invocations](tasks/warlock-eldritch-invocations.md)
 
 ## Blocked
 
@@ -62,12 +63,11 @@ columnSorting:
 
 ## Pending
 
-- [bundle-requirements](tasks/bundle-requirements.md)
-
 ## In Progress
 
 ## Done
 
+- [bundle-requirements](tasks/bundle-requirements.md)
 - [inventory-search-bar](tasks/inventory-search-bar.md)
 - [support-all-stat-for-speeds-and-senses](tasks/support-all-stat-for-speeds-and-senses.md)
 - [stat-operation-maximum](tasks/stat-operation-maximum.md)
