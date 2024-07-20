@@ -7,7 +7,7 @@ use crate::{
 			roll::EvaluatedRoll,
 			Ability, DamageRoll, Feature, WeaponProficiency,
 		},
-		evaluator::{self, IsProficientWith},
+		evaluator::{self, HasProficiency},
 		Value,
 	},
 };
@@ -101,8 +101,8 @@ impl Weapon {
 			true => Value::Fixed(true),
 			false => Value::Evaluated(
 				evaluator::Any(vec![
-					IsProficientWith::Weapon(WeaponProficiency::Kind(self.kind)).into(),
-					IsProficientWith::Weapon(WeaponProficiency::Classification(self.classification.clone())).into(),
+					HasProficiency::Weapon(WeaponProficiency::Kind(self.kind)).into(),
+					HasProficiency::Weapon(WeaponProficiency::Classification(self.classification.clone())).into(),
 				])
 				.into(),
 			),

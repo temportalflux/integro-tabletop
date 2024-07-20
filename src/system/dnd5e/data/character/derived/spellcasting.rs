@@ -70,6 +70,7 @@ pub struct AlwaysPreparedSpell {
 
 #[derive(Clone, Default, PartialEq, Debug)]
 pub struct RitualSpellCache {
+	// Maps id to the cached spell object
 	pub spells: HashMap<SourceId, Spell>,
 	pub caster_lists: MultiMap<String, SourceId>,
 	pub casters_which_prepare_from_item: HashSet<String>,

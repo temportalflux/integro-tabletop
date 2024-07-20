@@ -601,6 +601,15 @@ impl SelectedSpells {
 		Some(caster.selections.values())
 	}
 
+	pub fn iter_selected(&self) -> impl Iterator<Item = (/*caster id*/ &String, /*spell id*/ &SourceId, &Spell)> {
+		let iter = self.cache_by_caster.iter();
+		let iter = iter.map(|(caster_id, selected_per_caster)| {
+			let iter = selected_per_caster.selections.iter();
+			iter.map(|(spell_id, spell)| (&*caster_id, spell_id, spell))
+		});
+		iter.flatten()
+	}
+
 	pub fn has_selected(&self, caster_id: &impl AsRef<str>, spell_id: &SourceId) -> bool {
 		let Some(data) = self.cache_by_caster.get(caster_id.as_ref()) else {
 			return false;

@@ -55,19 +55,24 @@ pub fn node_registry() -> generics::Registry {
 	registry.register_mutator::<ApplyIf>();
 	registry.register_mutator::<HitDice>();
 
+	// Evaluators output i32
+	registry.register_evaluator::<Math>();
 	registry.register_evaluator::<GetAbilityModifier>();
 	registry.register_evaluator::<GetProficiencyBonus>();
 	registry.register_evaluator::<GetHitPoints>();
 	registry.register_evaluator::<GetLevelInt>();
+	// Evaluators output String
 	registry.register_evaluator::<GetLevelStr>();
+	// Evaluators output Result<(), String>
 	registry.register_evaluator::<HasArmorEquipped>();
 	registry.register_evaluator::<HasAttack>();
 	registry.register_evaluator::<HasBundle>();
 	registry.register_evaluator::<HasCondition>();
-	registry.register_evaluator::<HasStat>();
+	registry.register_evaluator::<HasProficiency>();
 	registry.register_evaluator::<HasLevel>();
-	registry.register_evaluator::<IsProficientWith>();
-	registry.register_evaluator::<Math>();
+	registry.register_evaluator::<HasSelection>();
+	registry.register_evaluator::<HasSpell>();
+	registry.register_evaluator::<HasStat>();
 
 	// Order matters here! Block generators are first because they can make other generators.
 	// This order instructs the priority queue to the order in which generators are processed.

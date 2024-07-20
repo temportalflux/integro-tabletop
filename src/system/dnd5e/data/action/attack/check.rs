@@ -95,7 +95,7 @@ mod test {
 			system::{
 				dnd5e::{
 					data::{item::weapon, WeaponProficiency},
-					evaluator::IsProficientWith,
+					evaluator::HasProficiency,
 				},
 				generics,
 			},
@@ -104,7 +104,7 @@ mod test {
 		static NODE_NAME: &str = "check";
 
 		fn node_ctx() -> NodeContext {
-			NodeContext::registry(generics::Registry::default_with_eval::<IsProficientWith>())
+			NodeContext::registry(generics::Registry::default_with_eval::<HasProficiency>())
 		}
 
 		#[test]
@@ -131,13 +131,13 @@ mod test {
 		fn atkroll_proficient_eval() -> anyhow::Result<()> {
 			let doc = "
 				|check \"AttackRoll\" (Ability)\"Strength\" {
-				|    proficient (Evaluator)\"is_proficient_with\" (Weapon)\"Martial\"
+				|    proficient (Evaluator)\"has_proficiency\" (Weapon)\"Martial\"
 				|}
 			";
 			let data = AttackCheckKind::AttackRoll {
 				ability: Ability::Strength,
 				proficient: Value::Evaluated(
-					IsProficientWith::Weapon(WeaponProficiency::Kind(weapon::Kind::Martial)).into(),
+					HasProficiency::Weapon(WeaponProficiency::Kind(weapon::Kind::Martial)).into(),
 				),
 				bonus: 0,
 			};

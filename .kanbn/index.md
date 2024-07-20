@@ -58,6 +58,8 @@ columnSorting:
 
 ## Blocked
 
+- [purchased-content-validation](tasks/purchased-content-validation.md)
+
 ## Pending
 
 - [bundle-requirements](tasks/bundle-requirements.md)

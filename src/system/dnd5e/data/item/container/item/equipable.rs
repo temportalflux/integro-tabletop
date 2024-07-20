@@ -107,14 +107,14 @@ impl mutator::Group for EquipableEntry {
 				system::{
 					dnd5e::{
 						data::{action::AttackQuery, roll::Modifier, Ability, ArmorExtended},
-						evaluator::IsProficientWith,
+						evaluator::HasProficiency,
 						mutator::Modify,
 					},
 					Evaluator,
 				},
 				utility::selector::Value,
 			};
-			let is_proficient = IsProficientWith::Armor(ArmorExtended::Kind(armor.kind)).evaluate(stats);
+			let is_proficient = HasProficiency::Armor(ArmorExtended::Kind(armor.kind)).evaluate(stats);
 			// If equipped and not proficient, apply mutators due to wearing incompatible armor
 			if !equipment.always_proficient && !is_proficient {
 				// disadvantage on any ability check, saving throw, or attack roll that involves Strength or Dexterity, and you can’t cast spells

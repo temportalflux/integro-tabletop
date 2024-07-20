@@ -25,7 +25,7 @@ use crate::{
 				spell::CastingDuration,
 				ArmorExtended, Indirect, Spell, WeaponProficiency,
 			},
-			evaluator::IsProficientWith,
+			evaluator::HasProficiency,
 		},
 		Evaluator, SourceId,
 	},
@@ -120,7 +120,7 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 	};
 
 	let mut sections = Vec::new();
-	if IsProficientWith::Tool(item.name.clone()).evaluate(&state) {
+	if HasProficiency::Tool(item.name.clone()).evaluate(&state) {
 		sections.push(html! {
 			<div class="property">
 				<strong>{"Proficient (with tool):"}</strong>
@@ -216,7 +216,7 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 						<div class="ms-3">
 							<div class="property">
 								<strong>{"Proficient:"}</strong>
-								{match equipment.always_proficient || IsProficientWith::Armor(ArmorExtended::Shield).evaluate(&state) {
+								{match equipment.always_proficient || HasProficiency::Armor(ArmorExtended::Shield).evaluate(&state) {
 									true => html! { <span><i class="bi bi-check-square" style="color: green;" />{"Yes"}</span> },
 									false => html! { <span><i class="bi bi-x-square" style="color: red;" />{"No"}</span> },
 								}}
@@ -240,7 +240,7 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 				armor_sections.push(html! {
 					<div class="property">
 						<strong>{"Proficient:"}</strong>
-						{match equipment.always_proficient || IsProficientWith::Armor(ArmorExtended::Kind(armor.kind)).evaluate(&state) {
+						{match equipment.always_proficient || HasProficiency::Armor(ArmorExtended::Kind(armor.kind)).evaluate(&state) {
 							true => html! { <span><i class="bi bi-check-square" style="color: green;" />{"Yes"}</span> },
 							false => html! { <span><i class="bi bi-x-square" style="color: red;" />{"No"}</span> },
 						}}
@@ -284,8 +284,8 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 					</div>
 				});
 				let is_proficient = vec![
-					IsProficientWith::Weapon(WeaponProficiency::Kind(weapon.kind)),
-					IsProficientWith::Weapon(WeaponProficiency::Classification(weapon.classification.clone())),
+					HasProficiency::Weapon(WeaponProficiency::Kind(weapon.kind)),
+					HasProficiency::Weapon(WeaponProficiency::Classification(weapon.classification.clone())),
 				];
 				let is_proficient = is_proficient.into_iter().any(|eval| eval.evaluate(&state));
 				weapon_sections.push(html! {

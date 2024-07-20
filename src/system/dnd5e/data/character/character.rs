@@ -25,6 +25,8 @@ use std::{
 	str::FromStr,
 };
 
+use super::SelectedSpells;
+
 #[derive(Clone, PartialEq)]
 pub enum ActionEffect {
 	Reset(Persistent, Vec<DefaultsBlock>),
@@ -446,6 +448,10 @@ impl Character {
 
 	pub fn cantrip_capacity(&self) -> Vec<(usize, &spellcasting::Restriction)> {
 		self.spellcasting().cantrip_capacity(&self.character)
+	}
+
+	pub fn selected_spells(&self) -> &SelectedSpells {
+		&self.character.selected_spells
 	}
 
 	pub fn starting_equipment(&self) -> &Vec<(Vec<StartingEquipment>, PathBuf)> {

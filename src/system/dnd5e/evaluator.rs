@@ -19,6 +19,10 @@ mod has_level;
 pub use has_level::*;
 mod has_proficiency;
 pub use has_proficiency::*;
+mod has_spell;
+pub use has_spell::*;
+mod has_selection;
+pub use has_selection::*;
 mod has_stat;
 pub use has_stat::*;
 

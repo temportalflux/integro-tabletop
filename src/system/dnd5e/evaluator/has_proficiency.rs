@@ -15,7 +15,7 @@ use kdlize::{
 use std::str::FromStr;
 
 #[derive(Clone, PartialEq, Debug)]
-pub enum IsProficientWith {
+pub enum HasProficiency {
 	SavingThrow(Ability),
 	Skill(Skill),
 	Language(String),
@@ -24,8 +24,10 @@ pub enum IsProficientWith {
 	Tool(String),
 }
 
-crate::impl_trait_eq!(IsProficientWith);
-impl Evaluator for IsProficientWith {
+crate::impl_trait_eq!(HasProficiency);
+kdlize::impl_kdl_node!(HasProficiency, "has_proficiency");
+
+impl Evaluator for HasProficiency {
 	type Context = Character;
 	type Item = bool;
 
@@ -49,9 +51,7 @@ impl Evaluator for IsProficientWith {
 	}
 }
 
-kdlize::impl_kdl_node!(IsProficientWith, "is_proficient_with");
-
-impl FromKdl<NodeContext> for IsProficientWith {
+impl FromKdl<NodeContext> for HasProficiency {
 	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let entry = node.next_req()?;
@@ -72,7 +72,7 @@ impl FromKdl<NodeContext> for IsProficientWith {
 	}
 }
 
-impl AsKdl for IsProficientWith {
+impl AsKdl for HasProficiency {
 	fn as_kdl(&self) -> NodeBuilder {
 		let node = NodeBuilder::default();
 		match self {
@@ -98,12 +98,12 @@ mod test {
 		use super::*;
 		use crate::{kdl_ext::test_utils::*, system::dnd5e::evaluator::test::test_utils};
 
-		test_utils!(IsProficientWith);
+		test_utils!(HasProficiency);
 
 		#[test]
 		fn saving_throw() -> anyhow::Result<()> {
-			let doc = "evaluator \"is_proficient_with\" (SavingThrow)\"Charisma\"";
-			let data = IsProficientWith::SavingThrow(Ability::Charisma);
+			let doc = "evaluator \"has_proficiency\" (SavingThrow)\"Charisma\"";
+			let data = HasProficiency::SavingThrow(Ability::Charisma);
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -111,8 +111,8 @@ mod test {
 
 		#[test]
 		fn skill() -> anyhow::Result<()> {
-			let doc = "evaluator \"is_proficient_with\" (Skill)\"Acrobatics\"";
-			let data = IsProficientWith::Skill(Skill::Acrobatics);
+			let doc = "evaluator \"has_proficiency\" (Skill)\"Acrobatics\"";
+			let data = HasProficiency::Skill(Skill::Acrobatics);
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -120,8 +120,8 @@ mod test {
 
 		#[test]
 		fn language() -> anyhow::Result<()> {
-			let doc = "evaluator \"is_proficient_with\" (Language)\"Wongle\"";
-			let data = IsProficientWith::Language("Wongle".into());
+			let doc = "evaluator \"has_proficiency\" (Language)\"Wongle\"";
+			let data = HasProficiency::Language("Wongle".into());
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -129,8 +129,8 @@ mod test {
 
 		#[test]
 		fn armor_kind() -> anyhow::Result<()> {
-			let doc = "evaluator \"is_proficient_with\" (Armor)\"Light\"";
-			let data = IsProficientWith::Armor(ArmorExtended::Kind(armor::Kind::Light));
+			let doc = "evaluator \"has_proficiency\" (Armor)\"Light\"";
+			let data = HasProficiency::Armor(ArmorExtended::Kind(armor::Kind::Light));
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -138,8 +138,8 @@ mod test {
 
 		#[test]
 		fn armor_shield() -> anyhow::Result<()> {
-			let doc = "evaluator \"is_proficient_with\" (Armor)\"Shield\"";
-			let data = IsProficientWith::Armor(ArmorExtended::Shield);
+			let doc = "evaluator \"has_proficiency\" (Armor)\"Shield\"";
+			let data = HasProficiency::Armor(ArmorExtended::Shield);
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -147,8 +147,8 @@ mod test {
 
 		#[test]
 		fn weapon_kind_simple() -> anyhow::Result<()> {
-			let doc = "evaluator \"is_proficient_with\" (Weapon)\"Simple\"";
-			let data = IsProficientWith::Weapon(WeaponProficiency::Kind(weapon::Kind::Simple));
+			let doc = "evaluator \"has_proficiency\" (Weapon)\"Simple\"";
+			let data = HasProficiency::Weapon(WeaponProficiency::Kind(weapon::Kind::Simple));
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -156,8 +156,8 @@ mod test {
 
 		#[test]
 		fn weapon_kind_martial() -> anyhow::Result<()> {
-			let doc = "evaluator \"is_proficient_with\" (Weapon)\"Martial\"";
-			let data = IsProficientWith::Weapon(WeaponProficiency::Kind(weapon::Kind::Martial));
+			let doc = "evaluator \"has_proficiency\" (Weapon)\"Martial\"";
+			let data = HasProficiency::Weapon(WeaponProficiency::Kind(weapon::Kind::Martial));
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -165,8 +165,8 @@ mod test {
 
 		#[test]
 		fn weapon_class() -> anyhow::Result<()> {
-			let doc = "evaluator \"is_proficient_with\" (Weapon)\"Net\"";
-			let data = IsProficientWith::Weapon(WeaponProficiency::Classification("Net".into()));
+			let doc = "evaluator \"has_proficiency\" (Weapon)\"Net\"";
+			let data = HasProficiency::Weapon(WeaponProficiency::Classification("Net".into()));
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -174,8 +174,8 @@ mod test {
 
 		#[test]
 		fn tool() -> anyhow::Result<()> {
-			let doc = "evaluator \"is_proficient_with\" (Tool)\"Cook's Supplies\"";
-			let data = IsProficientWith::Tool("Cook's Supplies".into());
+			let doc = "evaluator \"has_proficiency\" (Tool)\"Cook's Supplies\"";
+			let data = HasProficiency::Tool("Cook's Supplies".into());
 			assert_eq_askdl!(&data, doc);
 			assert_eq_fromkdl!(Target, doc, data.into());
 			Ok(())
@@ -209,7 +209,7 @@ mod test {
 		fn saving_throw() {
 			let empty = Character::from(Persistent::default());
 			let with_prof = character_with_profs(vec![AddProficiency::SavingThrow(Ability::Strength)]);
-			let eval = IsProficientWith::SavingThrow(Ability::Strength);
+			let eval = HasProficiency::SavingThrow(Ability::Strength);
 			assert_eq!(eval.evaluate(&empty), false);
 			assert_eq!(eval.evaluate(&with_prof), true);
 		}
@@ -222,7 +222,7 @@ mod test {
 				minimum_level: proficiency::Level::None,
 				level: proficiency::Level::Full,
 			}]);
-			let eval = IsProficientWith::Skill(Skill::SleightOfHand);
+			let eval = HasProficiency::Skill(Skill::SleightOfHand);
 			assert_eq!(eval.evaluate(&empty), false);
 			assert_eq!(eval.evaluate(&with_prof), true);
 		}
@@ -232,7 +232,7 @@ mod test {
 			let empty = Character::from(Persistent::default());
 			let with_prof =
 				character_with_profs(vec![AddProficiency::Language(selector::Value::Specific("Gibberish".into()))]);
-			let eval = IsProficientWith::Language("Gibberish".into());
+			let eval = HasProficiency::Language("Gibberish".into());
 			assert_eq!(eval.evaluate(&empty), false);
 			assert_eq!(eval.evaluate(&with_prof), true);
 		}
@@ -246,7 +246,7 @@ mod test {
 				ArmorExtended::Kind(armor::Kind::Light),
 				Some("nonmetal".into()),
 			)]);
-			let eval = IsProficientWith::Armor(ArmorExtended::Kind(armor::Kind::Light));
+			let eval = HasProficiency::Armor(ArmorExtended::Kind(armor::Kind::Light));
 			assert_eq!(eval.evaluate(&empty), false);
 			assert_eq!(eval.evaluate(&with_prof), true);
 			assert_eq!(eval.evaluate(&with_prof_ctx), true);
@@ -256,7 +256,7 @@ mod test {
 		fn armor_shield() {
 			let empty = Character::from(Persistent::default());
 			let with_prof = character_with_profs(vec![AddProficiency::Armor(ArmorExtended::Shield, None)]);
-			let eval = IsProficientWith::Armor(ArmorExtended::Shield);
+			let eval = HasProficiency::Armor(ArmorExtended::Shield);
 			assert_eq!(eval.evaluate(&empty), false);
 			assert_eq!(eval.evaluate(&with_prof), true);
 		}
@@ -266,7 +266,7 @@ mod test {
 			let empty = Character::from(Persistent::default());
 			let with_prof =
 				character_with_profs(vec![AddProficiency::Weapon(WeaponProficiency::Kind(weapon::Kind::Simple))]);
-			let eval = IsProficientWith::Weapon(WeaponProficiency::Kind(weapon::Kind::Simple));
+			let eval = HasProficiency::Weapon(WeaponProficiency::Kind(weapon::Kind::Simple));
 			assert_eq!(eval.evaluate(&empty), false);
 			assert_eq!(eval.evaluate(&with_prof), true);
 		}
@@ -277,7 +277,7 @@ mod test {
 			let with_prof = character_with_profs(vec![AddProficiency::Weapon(WeaponProficiency::Classification(
 				"CrossbowHand".into(),
 			))]);
-			let eval = IsProficientWith::Weapon(WeaponProficiency::Classification("CrossbowHand".into()));
+			let eval = HasProficiency::Weapon(WeaponProficiency::Classification("CrossbowHand".into()));
 			assert_eq!(eval.evaluate(&empty), false);
 			assert_eq!(eval.evaluate(&with_prof), true);
 		}
@@ -289,7 +289,7 @@ mod test {
 				tool: selector::Value::Specific("Workworking Tools".into()),
 				level: proficiency::Level::Full,
 			}]);
-			let eval = IsProficientWith::Tool("Workworking Tools".into());
+			let eval = HasProficiency::Tool("Workworking Tools".into());
 			assert_eq!(eval.evaluate(&empty), false);
 			assert_eq!(eval.evaluate(&with_prof), true);
 		}

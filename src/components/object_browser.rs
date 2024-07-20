@@ -1,7 +1,7 @@
 use crate::{
 	components::database::{use_query, QueryStatus},
 	database::{entry::EntryInSystemWithType, Criteria, Entry, Query},
-	page::characters::sheet::joined::editor::bundle_content,
+	page::characters::sheet::{joined::editor::bundle_content, CharacterHandle},
 	system::{
 		self,
 		dnd5e::{
@@ -164,6 +164,7 @@ struct BundleListProps {
 }
 #[function_component]
 fn BundleList(props: &BundleListProps) -> Html {
+	let state = use_context::<CharacterHandle>().unwrap();
 	let system_depot = use_context::<system::Registry>().unwrap();
 	let fetch_bundles = use_query(Some(props.criteria.clone()), move |database, criteria| {
 		let system_depot = system_depot.clone();
@@ -184,9 +185,12 @@ fn BundleList(props: &BundleListProps) -> Html {
 		QueryStatus::Empty | QueryStatus::Failed(_) => html!("No bundles available"),
 		QueryStatus::Success(bundles) => {
 			let mut htmls = Vec::new();
-			// TODO: Disable bundles whose requirements are not met
 			for bundle in bundles {
 				let collapse_id = format!("{}", bundle.id.ref_id());
+				let meets_requirements = {
+					let mut iter = bundle.requirements.iter();
+					iter.all(|requirement| requirement.evaluate(&*state).is_ok())
+				};
 				htmls.push(html! {
 					<div class="section mb-1">
 						<div class="header mb-1">
@@ -201,6 +205,7 @@ fn BundleList(props: &BundleListProps) -> Html {
 								data_path={props.data_path.clone()}
 								id={bundle.id.unversioned()}
 								capacity={props.capacity}
+								disabled={!meets_requirements}
 							/>
 						</div>
 						<div class="collapse mb-2" id={collapse_id}>
@@ -368,6 +373,8 @@ struct ObjectSelectorEntryButtonProps {
 	data_path: std::path::PathBuf,
 	id: crate::system::SourceId,
 	capacity: usize,
+	#[prop_or_default]
+	disabled: bool,
 }
 #[function_component]
 fn ObjectSelectorEntryButton(props: &ObjectSelectorEntryButtonProps) -> Html {
@@ -408,7 +415,7 @@ fn ObjectSelectorEntryButton(props: &ObjectSelectorEntryButtonProps) -> Html {
 	});
 
 	let mut classes = classes!("btn", "btn-xs", "select");
-	let disabled = !is_selected && !can_select_more;
+	let disabled = !is_selected && !can_select_more || props.disabled;
 	classes.push(match is_selected {
 		true => "btn-outline-theme",
 		false => match can_select_more {
