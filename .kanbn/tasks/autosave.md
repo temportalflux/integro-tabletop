@@ -1,12 +1,10 @@
 ---
 created: 2023-09-20T13:43:40.933Z
-updated: 2024-07-11T13:27:13.200Z
+updated: 2024-07-20T20:02:33.888Z
 assigned: ""
 progress: 0
 tags:
-  - App
-  - Storage
-  - MVP
+  - Persistence
 ---
 
 # Autosave

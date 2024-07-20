@@ -1,10 +1,11 @@
 ---
 created: 2024-07-11T13:36:46.920Z
-updated: 2024-07-11T13:51:26.078Z
+updated: 2024-07-20T20:21:42.995Z
 assigned: ""
 progress: 0
 tags:
   - Mutator
+started: 2024-07-20T00:00:00.000Z
 ---
 
 # Spell Range Mutator

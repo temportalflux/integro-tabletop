@@ -1,6 +1,6 @@
 ---
 created: 2024-07-20T13:28:51.678Z
-updated: 2024-07-20T13:30:03.454Z
+updated: 2024-07-20T19:54:39.126Z
 assigned: ""
 progress: 0
 tags:

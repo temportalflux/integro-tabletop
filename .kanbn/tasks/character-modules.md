@@ -4,7 +4,7 @@ updated: 2024-07-11T13:25:48.968Z
 assigned: ""
 progress: 0
 tags:
-  - Capability
+  - App
 ---
 
 # Character Modules

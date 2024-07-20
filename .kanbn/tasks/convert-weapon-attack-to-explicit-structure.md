@@ -4,7 +4,7 @@ updated: 2024-07-11T13:24:59.998Z
 assigned: ""
 progress: 0
 tags:
-  - Capability
+  - Architecture
 ---
 
 # Convert weapon attack to explicit structure

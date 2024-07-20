@@ -14,28 +14,13 @@ columnSorting:
 
 ## Backlog
 
-- [ability-skill-displays-do-not-include-numerical-bonuses](tasks/ability-skill-displays-do-not-include-numerical-bonuses.md)
-- [spell-range-mutator](tasks/spell-range-mutator.md)
-- [ability-skill-modifier-display](tasks/ability-skill-modifier-display.md)
-- [parcels-mailbox](tasks/parcels-mailbox.md)
-- [prepared-spellcasting-grants-bonuses](tasks/prepared-spellcasting-grants-bonuses.md)
-- [spells-support-healing](tasks/spells-support-healing.md)
-- [wizard-spell-mastery](tasks/wizard-spell-mastery.md)
-- [hobgoblin-reserves-of-strength](tasks/hobgoblin-reserves-of-strength.md)
-- [beserker-barbarian-frenzy](tasks/beserker-barbarian-frenzy.md)
-- [open-hand-monk-tranquility](tasks/open-hand-monk-tranquility.md)
-- [devotion-paladin-purity-of-spirit](tasks/devotion-paladin-purity-of-spirit.md)
-- [mutator-to-grant-uses-on-rest](tasks/mutator-to-grant-uses-on-rest.md)
-- [spellcasting-limited-by-both-slot-and-uses-at-the-same-time](tasks/spellcasting-limited-by-both-slot-and-uses-at-the-same-time.md)
-- [mutator-to-disable-action-budget](tasks/mutator-to-disable-action-budget.md)
-- [pact-weapon-identifier-query](tasks/pact-weapon-identifier-query.md)
+- [item-browser-filters](tasks/item-browser-filters.md)
+- [spell-browser-filters](tasks/spell-browser-filters.md)
 - [expanded-item-modal-editor](tasks/expanded-item-modal-editor.md)
 - [autosave](tasks/autosave.md)
 - [convert-weapon-attack-to-explicit-structure](tasks/convert-weapon-attack-to-explicit-structure.md)
 - [condition-supression](tasks/condition-supression.md)
 - [expanded-object-cache](tasks/expanded-object-cache.md)
-- [item-browser-filters](tasks/item-browser-filters.md)
-- [spell-browser-filters](tasks/spell-browser-filters.md)
 - [character-modules](tasks/character-modules.md)
 - [eldritch-invocation-book-of-ancient-secrets](tasks/eldritch-invocation-book-of-ancient-secrets.md)
 - [details-drawer-layouts-evaluations](tasks/details-drawer-layouts-evaluations.md)
@@ -52,18 +37,32 @@ columnSorting:
 - [character-changelog](tasks/character-changelog.md)
 - [spell-components-foci](tasks/spell-components-foci.md)
 - [evaluator-output-types](tasks/evaluator-output-types.md)
+- [purchased-content-validation](tasks/purchased-content-validation.md)
 - [user-docs](tasks/user-docs.md)
 - [user-written-modules](tasks/user-written-modules.md)
 - [standalone-app](tasks/standalone-app.md)
+
+## Todo List
+
+- [ability-skill-displays-do-not-include-numerical-bonuses](tasks/ability-skill-displays-do-not-include-numerical-bonuses.md)
+- [ability-skill-modifier-display](tasks/ability-skill-modifier-display.md)
+- [parcels-mailbox](tasks/parcels-mailbox.md)
+- [prepared-spellcasting-grants-bonuses](tasks/prepared-spellcasting-grants-bonuses.md)
+- [spells-support-healing](tasks/spells-support-healing.md)
 - [warlock-eldritch-invocations](tasks/warlock-eldritch-invocations.md)
-
-## Blocked
-
-- [purchased-content-validation](tasks/purchased-content-validation.md)
-
-## Pending
+- [wizard-spell-mastery](tasks/wizard-spell-mastery.md)
+- [hobgoblin-reserves-of-strength](tasks/hobgoblin-reserves-of-strength.md)
+- [beserker-barbarian-frenzy](tasks/beserker-barbarian-frenzy.md)
+- [open-hand-monk-tranquility](tasks/open-hand-monk-tranquility.md)
+- [devotion-paladin-purity-of-spirit](tasks/devotion-paladin-purity-of-spirit.md)
+- [mutator-to-grant-uses-on-rest](tasks/mutator-to-grant-uses-on-rest.md)
+- [spellcasting-limited-by-both-slot-and-uses-at-the-same-time](tasks/spellcasting-limited-by-both-slot-and-uses-at-the-same-time.md)
+- [mutator-to-disable-action-budget](tasks/mutator-to-disable-action-budget.md)
+- [pact-weapon-identifier-query](tasks/pact-weapon-identifier-query.md)
 
 ## In Progress
+
+- [spell-range-mutator](tasks/spell-range-mutator.md)
 
 ## Done
 

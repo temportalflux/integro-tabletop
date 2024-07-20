@@ -3,7 +3,8 @@ created: 2023-09-20T13:51:39.013Z
 updated: 2023-09-20T13:51:39.009Z
 assigned: ""
 progress: 0
-tags: []
+tags:
+- App
 ---
 
 # Character Changelog

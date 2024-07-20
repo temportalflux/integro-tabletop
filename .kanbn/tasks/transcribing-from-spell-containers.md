@@ -3,7 +3,8 @@ created: 2023-09-20T13:36:44.308Z
 updated: 2023-09-20T13:38:31.464Z
 assigned: ""
 progress: 0
-tags: []
+tags:
+- App
 ---
 
 # Transcribing from Spell Containers

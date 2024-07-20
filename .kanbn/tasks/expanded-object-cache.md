@@ -4,8 +4,7 @@ updated: 2023-09-21T15:31:52.753Z
 assigned: ""
 progress: 0
 tags:
-  - Storage
-  - Offline
+  - Optimization
 ---
 
 # Expanded Object Cache

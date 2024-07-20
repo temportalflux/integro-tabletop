@@ -3,7 +3,8 @@ created: 2023-09-20T13:46:47.471Z
 updated: 2023-09-20T13:46:47.468Z
 assigned: ""
 progress: 0
-tags: []
+tags:
+- Architecture
 ---
 
 # Evaluator Output Types

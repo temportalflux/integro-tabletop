@@ -1,9 +1,10 @@
 ---
 created: 2024-07-19T17:50:13.084Z
-updated: 2024-07-19T17:50:13.082Z
+updated: 2024-07-20T19:55:04.913Z
 assigned: ""
 progress: 0
-tags: []
+tags:
+- App
 ---
 
 # Purchased Content Validation
@@ -23,4 +24,3 @@ Resources
 - [DriveThruRPG API docs](https://github.com/jramboz/DTRPG_API)
 - [.Net API impl](https://github.com/JamesSkemp/DriveThruRpg)
 - [python API impl](https://github.com/glujan/drpg)
-

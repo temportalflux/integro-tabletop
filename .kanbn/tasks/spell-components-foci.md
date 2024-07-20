@@ -3,7 +3,8 @@ created: 2023-09-20T13:50:56.139Z
 updated: 2023-09-20T13:51:07.162Z
 assigned: ""
 progress: 0
-tags: []
+tags:
+- Capability
 ---
 
 # Spell Components & Foci

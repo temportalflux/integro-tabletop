@@ -1,43 +1,105 @@
-/* Columns */
+
+body {
+	/*status*/
+	--color-backlog: #843bb5;
+	--color-todo: #ffc400;
+	--color-pending: #0067cf;
+	--color-done: #194;
+	/*tags*/
+	--color-app: rgb(233, 136, 0);
+	--color-content: rgb(61, 165, 255);
+	--color-performance: rgb(168, 45, 14);
+	--color-bug: rgb(182, 36, 36);
+	--color-capability: rgb(192, 68, 114);
+	--color-mutator: rgb(191, 83, 215);
+	--color-architecture: rgb(48, 211, 121);
+	--color-persistence: rgb(221, 187, 36);
+	--color-search: rgb(118, 188, 39);
+}
+
+.kanbn-task-data-created,.kanbn-task-data-updated,.kanbn-task-data-completed,.kanbn-task-progress,.kanbn-task-data-workload {
+	display: none;
+}
 
 .kanbn-column-backlog .kanbn-column-task-list {
-	border-color: var(--vscode-activityBar-inactiveForeground);
+	border-color: var(--color-backlog);
 }
 
-.kanbn-column-blocked .kanbn-column-task-list {
-	border-color: #843bb5;
+.kanbn-column-todo-list .kanbn-column-task-list {
+	border-color: var(--color-todo);
 }
 
-.kanbn-column-pending .kanbn-column-task-list {
-	border-color: #ffc400;
+.kanbn-column-in-progress .kanbn-column-task-list {
+	border-color: var(--color-pending);
 }
 
-.kanbn-column-done .kanbn-column-task-list {
-	border-color: #0067cf;
+.kanbn-task-tag-app {
+	background-color: var(--color-app);
 }
-
-/* Tags */
+.kanbn-task:has(.kanbn-task-tag-app) {
+	border-color: var(--color-app);
+}
 
 .kanbn-task-tag-mvp {
 	background-color: rgb(144, 92, 255)
 }
 
-.kanbn-task-tag-app {
-	background-color: rgb(233, 136, 0)
+.kanbn-task-tag-bug {
+	background-color: var(--color-bug);
+}
+.kanbn-task:has(.kanbn-task-tag-bug) {
+	border-color: var(--color-bug);
 }
 
-.kanbn-task-tag-storage {
-	background-color: rgb(61, 165, 255)
+.kanbn-task-tag-perf,.kanbn-task-tag-optimization {
+	background-color: var(--color-performance);
 }
-
-.kanbn-task-tag-offline {
-	background-color: rgb(21, 184, 0)
-}
-
-.kanbn-task-tag-perf {
-	background-color: rgb(231, 59, 21)
+.kanbn-task:has(.kanbn-task-tag-perf),.kanbn-task:has(.kanbn-task-tag-optimization) {
+	border-color: var(--color-performance);
 }
 
 .kanbn-task-tag-capability {
-	background-color: rgb(192, 68, 114)
+	background-color: var(--color-capability);
+}
+.kanbn-task:has(.kanbn-task-tag-capability) {
+	border-color: var(--color-capability);
+}
+
+.kanbn-task-tag-mutator {
+	background-color: var(--color-mutator);
+}
+.kanbn-task:has(.kanbn-task-tag-mutator) {
+	border-color: var(--color-mutator);
+}
+
+.kanbn-task-tag-architecture {
+	background-color: var(--color-architecture);
+}
+.kanbn-task:has(.kanbn-task-tag-architecture) {
+	border-color: var(--color-architecture);
+}
+
+.kanbn-task-tag-persistence {
+	background-color: var(--color-persistence);
+}
+.kanbn-task:has(.kanbn-task-tag-persistence) {
+	border-color: var(--color-persistence);
+}
+
+.kanbn-task-tag-search {
+	background-color: var(--color-search);
+}
+.kanbn-task:has(.kanbn-task-tag-search) {
+	border-color: var(--color-search);
+}
+
+.kanbn-task-tag-content {
+	background-color: var(--color-content);
+}
+.kanbn-task:has(.kanbn-task-tag-content) {
+	border-color: var(--color-content);
+}
+
+.kanbn-column-done .kanbn-column-task-list, .kanbn-task-completed {
+	border-color: var(--color-done);
 }

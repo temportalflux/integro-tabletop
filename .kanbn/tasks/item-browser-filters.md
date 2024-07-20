@@ -1,10 +1,10 @@
 ---
 created: 2023-09-20T13:48:27.162Z
-updated: 2024-07-11T13:25:20.195Z
+updated: 2024-07-20T20:02:43.012Z
 assigned: ""
 progress: 0
 tags:
-  - Capability
+  - Search
 ---
 
 # Item Browser Filters
