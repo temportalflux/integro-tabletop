@@ -18,6 +18,7 @@ columnSorting:
 - [spell-browser-filters](tasks/spell-browser-filters.md)
 - [expanded-item-modal-editor](tasks/expanded-item-modal-editor.md)
 - [autosave](tasks/autosave.md)
+- [parcels-mailbox](tasks/parcels-mailbox.md)
 - [convert-weapon-attack-to-explicit-structure](tasks/convert-weapon-attack-to-explicit-structure.md)
 - [condition-supression](tasks/condition-supression.md)
 - [expanded-object-cache](tasks/expanded-object-cache.md)
@@ -46,10 +47,10 @@ columnSorting:
 
 - [ability-skill-displays-do-not-include-numerical-bonuses](tasks/ability-skill-displays-do-not-include-numerical-bonuses.md)
 - [ability-skill-modifier-display](tasks/ability-skill-modifier-display.md)
-- [parcels-mailbox](tasks/parcels-mailbox.md)
+- [spell-info-context-panel](tasks/spell-info-context-panel.md)
+- [warlock-eldritch-invocations](tasks/warlock-eldritch-invocations.md)
 - [prepared-spellcasting-grants-bonuses](tasks/prepared-spellcasting-grants-bonuses.md)
 - [spells-support-healing](tasks/spells-support-healing.md)
-- [warlock-eldritch-invocations](tasks/warlock-eldritch-invocations.md)
 - [wizard-spell-mastery](tasks/wizard-spell-mastery.md)
 - [hobgoblin-reserves-of-strength](tasks/hobgoblin-reserves-of-strength.md)
 - [beserker-barbarian-frenzy](tasks/beserker-barbarian-frenzy.md)
@@ -62,10 +63,9 @@ columnSorting:
 
 ## In Progress
 
-- [spell-range-mutator](tasks/spell-range-mutator.md)
-
 ## Done
 
+- [spell-range-mutator](tasks/spell-range-mutator.md)
 - [bundle-requirements](tasks/bundle-requirements.md)
 - [inventory-search-bar](tasks/inventory-search-bar.md)
 - [support-all-stat-for-speeds-and-senses](tasks/support-all-stat-for-speeds-and-senses.md)

@@ -614,7 +614,7 @@ pub fn spell_overview_info(
 ) -> Html {
 	let casting_duration =
 		entry.map(|entry| entry.casting_duration.as_ref()).flatten().unwrap_or(&spell.casting_time.duration);
-	let range = entry.map(|entry| entry.range.as_ref()).flatten().unwrap_or(&spell.range);
+	let mut range = entry.map(|entry| entry.range.as_ref()).flatten().unwrap_or(&spell.range).clone();
 	let attack_bonus = entry.map(|entry| entry.attack_bonus).unwrap_or(AbilityOrStat::Stat(0));
 	let save_dc = entry.map(|entry| entry.save_dc).unwrap_or(AbilityOrStat::Stat(0));
 	let cast_at_rank = override_rank.or(entry.map(|entry| entry.rank).flatten());
@@ -623,6 +623,15 @@ pub fn spell_overview_info(
 		.flatten()
 		.map(|ability| state.ability_modifier(ability, Some(proficiency::Level::Full)))
 		.unwrap_or_default();
+
+	if let Some(minimum_range) = state.attack_bonuses().get_spell_range_minimum(spell) {
+		if let spell::Range::Unit { distance, unit } = &mut range {
+			if minimum_range as u64 > *distance {
+				*distance = minimum_range as u64;
+				*unit = format!("feet");
+			}
+		}
+	}
 
 	let notes = state.persistent().notes.get_first(&spell.id.path);
 	let notes = notes.map(|content| html!(<div class="attribute">{content}</div>));
@@ -1100,11 +1109,21 @@ fn spell_content(spell: &Spell, entry: Option<&SpellEntry>, state: &CharacterHan
 			{spell.casting_time.ritual.then(|| html! { {" (ritual)"} }).unwrap_or_default()}
 		</div>
 	});
+
 	let range = entry.map(|entry| entry.range.as_ref()).flatten();
+	let mut range = range.unwrap_or(&spell.range).clone();
+	if let Some(minimum_range) = state.attack_bonuses().get_spell_range_minimum(spell) {
+		if let spell::Range::Unit { distance, unit } = &mut range {
+			if minimum_range as u64 > *distance {
+				*distance = minimum_range as u64;
+				*unit = format!("feet");
+			}
+		}
+	}
 	sections.push(html! {
 		<div class="property">
 			<strong>{"Range:"}</strong>
-			{match range.unwrap_or(&spell.range) {
+			{match range {
 				spell::Range::OnlySelf => html!("Self"),
 				spell::Range::Touch => html!("Touch"),
 				spell::Range::Unit { distance, unit } => html! {<>{distance}{" "}{unit}</>},

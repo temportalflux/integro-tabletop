@@ -1,12 +1,15 @@
 use crate::{
 	kdl_ext::NodeContext,
 	system::{
-		dnd5e::data::{
-			action::AttackQuery,
-			character::{spellcasting, Character},
-			description,
-			roll::{EvaluatedRoll, Modifier},
-			Ability, DamageType, Skill,
+		dnd5e::{
+			data::{
+				action::AttackQuery,
+				character::{spellcasting, Character},
+				description,
+				roll::{EvaluatedRoll, Modifier},
+				Ability, DamageType, Skill,
+			},
+			Value,
 		},
 		mutator::ReferencePath,
 		Mutator,
@@ -61,6 +64,10 @@ pub enum Modify {
 	},
 	SpellDamage {
 		damage: EvaluatedRoll,
+		query: Vec<spellcasting::Filter>,
+	},
+	SpellRange {
+		distance: Value<i32>,
 		query: Vec<spellcasting::Filter>,
 	},
 }
@@ -220,6 +227,9 @@ impl Mutator for Modify {
 			Self::SpellDamage { .. } => {
 				description::Section { content: format!("TODO: modified spell damage").into(), ..Default::default() }
 			}
+			Self::SpellRange { .. } => {
+				description::Section { content: format!("TODO: modified spell range").into(), ..Default::default() }
+			}
 		}
 	}
 
@@ -238,6 +248,9 @@ impl Mutator for Modify {
 			}
 			Self::SpellDamage { damage, .. } => {
 				deps += damage.dependencies();
+			}
+			Self::SpellRange { distance, .. } => {
+				deps += distance.dependencies();
 			}
 		}
 		deps
@@ -261,6 +274,7 @@ impl Mutator for Modify {
 			Self::AttackRoll { .. } => {}
 			Self::AttackDamage { .. } => {}
 			Self::SpellDamage { .. } => {}
+			Self::SpellRange { .. } => {}
 		}
 	}
 
@@ -334,6 +348,10 @@ impl Mutator for Modify {
 				let bonus = damage.evaluate(stats);
 				stats.attack_bonuses_mut().add_to_spell_damage(bonus, query.clone(), parent);
 			}
+			Self::SpellRange { distance, query } => {
+				let distance = distance.evaluate(stats).max(0) as u32;
+				stats.attack_bonuses_mut().modify_spell_range(distance, query.clone(), parent);
+			}
 		}
 	}
 }
@@ -400,6 +418,11 @@ impl FromKdl<NodeContext> for Modify {
 					let query = node.query_all_t("scope() > query")?;
 					Ok(Self::SpellDamage { damage, query })
 				}
+				"Range" => {
+					let distance = node.query_req_t("scope() > distance")?;
+					let query = node.query_all_t("scope() > query")?;
+					Ok(Self::SpellRange { distance, query })
+				}
 				s => Err(NotInList(s.into(), vec!["Damage"]).into()),
 			},
 			None => match node.next_str_req()? {
@@ -426,6 +449,7 @@ impl FromKdl<NodeContext> for Modify {
 					"(Attack)Roll",
 					"(Attack)Damage",
 					"(Spell)Damage",
+					"(Spell)Range",
 					"ArmorClass",
 				],
 			)
@@ -492,6 +516,11 @@ impl AsKdl for Modify {
 			Self::SpellDamage { damage, query } => {
 				node.entry_typed("Spell", "Damage");
 				node.child(("damage", damage));
+				node.children(("query", query.iter()));
+			}
+			Self::SpellRange { distance, query } => {
+				node.entry_typed("Spell", "Range");
+				node.child(("distance", distance));
 				node.children(("query", query.iter()));
 			}
 			Self::ArmorClass { bonus, context } => {

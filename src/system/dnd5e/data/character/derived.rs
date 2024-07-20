@@ -155,6 +155,7 @@ pub struct AttackBonuses {
 	attack_damage: Vec<AttackDamageBonus>,
 	attack_ability: Vec<AttackAbility>,
 	spell_damage: Vec<SpellDamageBonus>,
+	spell_range: Vec<ModificationSpellRange>,
 }
 #[derive(Clone, PartialEq, Debug)]
 struct AttackRollBonus {
@@ -173,6 +174,12 @@ struct AttackDamageBonus {
 #[derive(Clone, PartialEq, Debug)]
 struct SpellDamageBonus {
 	amount: Roll,
+	queries: Vec<spellcasting::Filter>,
+	source: PathBuf,
+}
+#[derive(Clone, PartialEq, Debug)]
+struct ModificationSpellRange {
+	minimum: u32,
 	queries: Vec<spellcasting::Filter>,
 	source: PathBuf,
 }
@@ -208,6 +215,10 @@ impl AttackBonuses {
 
 	pub fn add_to_spell_damage(&mut self, amount: Roll, queries: Vec<spellcasting::Filter>, source: &ReferencePath) {
 		self.spell_damage.push(SpellDamageBonus { amount, queries, source: source.display.clone() });
+	}
+
+	pub fn modify_spell_range(&mut self, minimum: u32, queries: Vec<spellcasting::Filter>, source: &ReferencePath) {
+		self.spell_range.push(ModificationSpellRange { minimum, queries, source: source.display.clone() });
 	}
 
 	pub fn get_weapon_attack(
@@ -278,6 +289,16 @@ impl AttackBonuses {
 			}
 		}
 		bonuses
+	}
+
+	fn iter_spell_range<'this>(
+		&'this self, spell: &'this Spell,
+	) -> impl Iterator<Item = &'this ModificationSpellRange> + '_ {
+		self.spell_range.iter().filter(|modification| modification.queries.iter().any(|query| query.matches(spell)))
+	}
+
+	pub fn get_spell_range_minimum(&self, spell: &Spell) -> Option<u32> {
+		self.iter_spell_range(spell).map(|modification| modification.minimum).max()
 	}
 }
 
