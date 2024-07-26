@@ -1,7 +1,7 @@
-use crate::system::dnd5e::{
+use crate::{components::Style, system::dnd5e::{
 	components::GeneralProp,
 	data::{self, roll},
-};
+}};
 use yew::prelude::*;
 
 mod coin;
@@ -17,11 +17,19 @@ pub struct GlyphProps {
 	pub id: Option<AttrValue>,
 	#[prop_or_default]
 	pub classes: Classes,
+	#[prop_or_default]
+	pub style: Style,
+	#[prop_or_default]
+	pub aria_label: Option<AttrValue>,
 }
 
 #[function_component]
-pub fn Glyph(GlyphProps { tag, id, classes }: &GlyphProps) -> Html {
-	html!(<@{tag.as_str().to_owned()} {id} class={classes!("glyph", classes.clone())} />)
+pub fn Glyph(GlyphProps { tag, id, classes, style, aria_label }: &GlyphProps) -> Html {
+	html!(<@{tag.as_str().to_owned()} {id}
+		class={classes!("glyph", classes.clone())}
+		style={style.clone()} 
+		aria-label={aria_label}
+	/>)
 }
 
 #[function_component]
@@ -29,13 +37,22 @@ pub fn Ability(GeneralProp::<data::Ability> { value }: &GeneralProp<data::Abilit
 	html!(<Glyph tag="i" classes={classes!("ability", value.long_name().to_lowercase())} />)
 }
 
+#[derive(Clone, PartialEq, Properties)]
+pub struct RollModifierProps {
+	pub value: roll::Modifier,
+	#[prop_or_default]
+	pub classes: Classes,
+	#[prop_or_default]
+	pub style: Style,
+}
+
 #[function_component]
-pub fn RollModifier(props: &GeneralProp<roll::Modifier>) -> Html {
-	let classes = classes!(match &props.value {
+pub fn RollModifier(props: &RollModifierProps) -> Html {
+	let classes = classes!(props.classes.clone(), match &props.value {
 		roll::Modifier::Advantage => "advantage",
 		roll::Modifier::Disadvantage => "disadvantage",
 	});
-	html!(<Glyph tag="span" {classes} />)
+	html!(<Glyph tag="span" {classes} style={props.style.clone()} aria_label={format!("{:?}", props.value)} />)
 }
 
 #[function_component]

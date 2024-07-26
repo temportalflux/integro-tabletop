@@ -1,6 +1,6 @@
 use crate::{
 	bootstrap::components::Tooltip,
-	components::{context_menu, mobile, AnnotatedNumber},
+	components::{context_menu, mobile, AnnotatedNumber, Style},
 	page::characters::sheet::CharacterHandle,
 	system::dnd5e::{
 		components::glyph,
@@ -8,6 +8,7 @@ use crate::{
 	},
 };
 use enumset::EnumSet;
+use itertools::Itertools;
 use yew::prelude::*;
 
 #[derive(Clone, PartialEq, Properties)]
@@ -46,25 +47,20 @@ pub fn Score(ScoreProps { ability }: &ScoreProps) -> Html {
 		/>
 	};
 
-	let roll_modifiers = state.skills()[*ability]
-		.modifiers()
-		.iter()
-		.map(|(modifier, items)| {
-			let tooltip = crate::data::as_feature_paths_html_custom(
-				items.into_iter(),
-				|(context, source)| (context.clone(), source.as_path()),
-				|criteria, path_str| match criteria {
-					Some(criteria) => format!("<div>{} ({})</div>", criteria, path_str),
-					None => format!("<div>{}</div>", path_str),
-				},
-			);
-			html!(<Tooltip tag={"div"} content={tooltip} use_html={true}>
-			<span aria-label={format!("{modifier:?}")}>
-				<glyph::RollModifier value={modifier} />
-			</span>
-		</Tooltip>)
+	let roll_modifier = {
+		let iter = state.skills()[*ability].modifiers().iter();
+		let iter = iter.filter_map(|(modifier, items)| (!items.is_empty()).then_some(modifier));
+		let iter = iter.unique();
+		iter.fold(None, |acc, modifier| match (acc, modifier) {
+			(Some(prev), next) if prev != next => None,
+			(_, modifier) => Some(modifier),
 		})
-		.collect::<Vec<_>>();
+	};
+	let roll_modifier = roll_modifier.map(|modifier| html! {
+		<glyph::RollModifier value={modifier}
+			style={Style::default().with("width", "15px").with("height", "15px")}
+		/>
+	});
 
 	match screen_size {
 		mobile::Kind::Desktop => html! {
@@ -73,11 +69,16 @@ pub fn Score(ScoreProps { ability }: &ScoreProps) -> Html {
 					<h6 class="card-title">{ability.long_name()}</h6>
 					<div class="primary-stat">
 						{score_modifier}
-						{roll_modifiers}
 					</div>
-					<Tooltip classes={"secondary-stat"} content={tooltip} use_html={true}>
-						{*ability_score.score()}
-					</Tooltip>
+					<div class="row" style={Style::from([("--bs-gutter-x", "0"), ("--bs-gutter-y", "0")])}>
+						<div class="col" />
+						<Tooltip classes={"col-auto secondary-stat"} content={tooltip} use_html={true}>
+							{*ability_score.score()}
+						</Tooltip>
+						<div class="col d-flex align-items-center justify-content-end">
+							{roll_modifier}
+						</div>
+					</div>
 				</div>
 			</div>
 		},
@@ -138,31 +139,39 @@ pub struct AbilityProps {
 
 #[function_component]
 pub fn AbilityModifiers() -> Html {
+	let mut modifiers = Vec::new();
+	for ability in EnumSet::<Ability>::all() {
+		modifiers.push(html!(<AbilityModifiersSingle {ability} />));
+	}
+	html! {
+		<div style="font-size: 11px;">
+			{modifiers}
+		</div>
+	}
+}
+
+#[function_component]
+pub fn AbilityModifiersSingle(AbilityProps { ability }: &AbilityProps) -> Html {
 	let style = "height: 14px; margin-right: 2px; margin-top: -2px; width: 14px; vertical-align: middle;";
 	let state = use_context::<CharacterHandle>().unwrap();
 	let mut modifiers = Vec::new();
-	for ability in EnumSet::<Ability>::all() {
-		for (modifier, context, _source) in state.skills()[ability].modifiers().iter_all() {
-			modifiers.push(html! {<div>
-				<span class="d-inline-flex" aria-label="Advantage" {style}>
-					<glyph::RollModifier value={modifier} />
+	for (modifier, context, source) in state.skills()[*ability].modifiers().iter_all() {
+		modifiers.push(html! {<div>
+			<span class="d-inline-flex" aria-label="Advantage" {style}>
+				<glyph::RollModifier value={modifier} />
+			</span>
+			<span>{"on "}{ability.abbreviated_name().to_uppercase()}{" checks"}</span>
+			<span>
+				{context.as_ref().map(|target| format!(" when {target}")).unwrap_or_default()}
+			</span>
+			{crate::data::as_feature_path_text(source).map(|path_text| html! {
+				<span class="source-path-sm ms-1">
+					{format!("({path_text})")}
 				</span>
-				<span>{"on "}{ability.abbreviated_name().to_uppercase()}{" checks"}</span>
-				<span>
-					{context.as_ref().map(|target| format!(" when {target}")).unwrap_or_default()}
-				</span>
-			</div>});
-		}
+			})}
+		</div>});
 	}
-	let content = match modifiers.is_empty() {
-		false => html! {<>{modifiers}</>},
-		true => html!("None"),
-	};
-	html! {
-		<div style="font-size: 11px;">
-			{content}
-		</div>
-	}
+	html!(<>{modifiers}</>)
 }
 
 #[function_component]
@@ -247,6 +256,10 @@ pub fn ScoreBreakdown(AbilityProps { ability }: &AbilityProps) -> Html {
 				}).collect::<Vec<_>>()}
 			</tbody>
 		</table>
+
+		<h6>{"Modifiers"}</h6>
+		<AbilityModifiersSingle ability={*ability} />
+
 	</>}
 }
 

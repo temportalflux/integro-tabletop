@@ -1,6 +1,6 @@
 use crate::{
 	bootstrap::components::Tooltip,
-	components::context_menu,
+	components::{context_menu, Style},
 	page::characters::sheet::CharacterHandle,
 	system::dnd5e::{
 		components::glyph,
@@ -8,6 +8,7 @@ use crate::{
 	},
 };
 use enumset::{EnumSet, EnumSetType};
+use itertools::Itertools;
 use multimap::MultiMap;
 use yew::prelude::*;
 
@@ -181,27 +182,23 @@ fn Row(RowProps { skill, ability_name_col }: &RowProps) -> Html {
 		|prof, path_str| format!("<div>{} ({})</div>", prof.as_display_name(), path_str),
 	);
 
-	let roll_modifiers = state.skills()[*skill]
-		.modifiers()
-		.iter()
-		.map(|(modifier, items)| {
-			let tooltip = crate::data::as_feature_paths_html_custom(
-				items.iter(),
-				|(context, source)| (context.clone(), source.as_path()),
-				|criteria, path_str| match criteria {
-					Some(criteria) => format!("<div>{} ({})</div>", criteria, path_str),
-					None => format!("<div>{}</div>", path_str),
-				},
-			);
-			html! {
-				<Tooltip tag={"span"} content={tooltip} use_html={true}>
-					<span aria-label={format!("{modifier:?}")} style="margin-left: 2px; display: block; height: 16px; width: 16px; vertical-align: middle; margin-top: -2px;">
-						<glyph::RollModifier value={modifier} />
-					</span>
-				</Tooltip>
-			}
+	let roll_modifier = {
+		let iter_skill = state.skills()[*skill].modifiers().iter();
+		let iter_ability = state.skills()[skill.ability()].modifiers().iter();
+		let iter = iter_ability.chain(iter_skill);
+		let iter = iter.filter_map(|(modifier, items)| (!items.is_empty()).then_some(modifier));
+		let iter = iter.unique();
+		iter.fold(None, |acc, modifier| match (acc, modifier) {
+			(Some(prev), next) if prev != next => None,
+			(_, modifier) => Some(modifier),
 		})
-		.collect::<Vec<_>>();
+	};
+	let roll_modifier = roll_modifier.map(|modifier| html! {
+		<glyph::RollModifier value={modifier}
+			classes="d-block my-auto"
+			style={Style::from([ ("width", "16px"), ("height", "16px") ])}
+		/>
+	});
 
 	let mut table_data = vec![
 		html! {
@@ -212,7 +209,7 @@ fn Row(RowProps { skill, ability_name_col }: &RowProps) -> Html {
 		html! { <td>
 			<div class="d-flex">
 				<span class="flex-grow-1">{skill.display_name()}</span>
-				{roll_modifiers}
+				{roll_modifier}
 			</div>
 		</td> },
 		html! {
@@ -289,24 +286,24 @@ fn SkillModal(SkillModalProps { skill }: &SkillModalProps) -> Html {
 		</div>),
 	};
 
-	let modifier_rows = state.skills()[*skill]
-		.modifiers()
-		.iter_all()
-		.map(|(modifier, context, source)| {
-			html! {
-				<tr>
-					<td class="d-flex">
-						<span aria-label={format!("{modifier:?}")} style="margin-left: 2px; display: block; height: 16px; width: 16px; vertical-align: middle; margin-top: -2px;">
-							<glyph::RollModifier value={modifier} />
-						</span>
-						<span class="flex-grow-1 text-center" style="margin-left: 5px;">{modifier.display_name()}</span>
-					</td>
-					<td class="text-center">{context.clone().unwrap_or_else(|| "--".into())}</td>
-					<td>{crate::data::as_feature_path_text(source).unwrap_or_default()}</td>
-				</tr>
-			}
-		})
-		.collect::<Vec<_>>();
+	let modifier_rows = {
+		let iter_skill = state.skills()[*skill].modifiers().iter_all();
+		let iter_ability = state.skills()[skill.ability()].modifiers().iter_all();
+		let iter = iter_ability.chain(iter_skill);
+		iter.map(|(modifier, context, source)| html! {
+			<tr>
+				<td class="d-flex">
+					<glyph::RollModifier value={modifier}
+						classes="d-block my-auto"
+						style={Style::from([ ("width", "16px"), ("height", "16px") ])}
+					/>
+					<span class="flex-grow-1 text-center" style="margin-left: 5px;">{modifier.display_name()}</span>
+				</td>
+				<td class="text-center">{context.clone().unwrap_or_else(|| "--".into())}</td>
+				<td>{crate::data::as_feature_path_text(source).unwrap_or_default()}</td>
+			</tr>
+		}).collect::<Vec<_>>()
+	};
 
 	let roll_modifiers_table = match modifier_rows.is_empty() {
 		true => html!(),
