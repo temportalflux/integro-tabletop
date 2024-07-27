@@ -46,6 +46,7 @@ columnSorting:
 ## Todo List
 
 - [spell-info-context-panel](tasks/spell-info-context-panel.md)
+- [conditions-are-not-being-saved-to-persistent-data](tasks/conditions-are-not-being-saved-to-persistent-data.md)
 - [warlock-eldritch-invocations](tasks/warlock-eldritch-invocations.md)
 - [prepared-spellcasting-grants-bonuses](tasks/prepared-spellcasting-grants-bonuses.md)
 - [spells-support-healing](tasks/spells-support-healing.md)
@@ -61,11 +62,10 @@ columnSorting:
 
 ## In Progress
 
-- [ability-skill-modifier-display](tasks/ability-skill-modifier-display.md)
-
 ## Done
 
 - [ability-skill-displays-do-not-include-numerical-bonuses](tasks/ability-skill-displays-do-not-include-numerical-bonuses.md)
+- [ability-skill-modifier-display](tasks/ability-skill-modifier-display.md)
 - [spell-range-mutator](tasks/spell-range-mutator.md)
 - [bundle-requirements](tasks/bundle-requirements.md)
 - [inventory-search-bar](tasks/inventory-search-bar.md)

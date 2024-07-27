@@ -40,12 +40,16 @@ pub fn Score(ScoreProps { ability }: &ScoreProps) -> Html {
 			})
 		)
 	});
-	let score_modifier = html! {
-		<AnnotatedNumber
-			value={ability_score.score().modifier()}
-			show_sign={true}
-		/>
+
+	let mut ability_modifier = ability_score.score().modifier();
+	ability_modifier += {
+		let iter = state.skills()[*ability].bonuses().iter();
+		let iter = iter.filter(|(_bonus, context, _source)| context.is_none());
+		let iter = iter.map(|(bonus, _context, _source)| *bonus);
+		iter.sum::<i64>() as i32
 	};
+
+	let score_modifier = html!(<AnnotatedNumber value={ability_modifier} show_sign={true} />);
 
 	let roll_modifier = {
 		let iter = state.skills()[*ability].modifiers().iter();
@@ -190,7 +194,27 @@ pub fn ScoreBreakdown(AbilityProps { ability }: &AbilityProps) -> Html {
 			<span style="margin-left: 5px;">{match modifier >= 0 { true => "+", false => "-", }}{modifier.abs()}</span>
 		</div>
 
-		<h6>{"Bonuses"}</h6>
+		<h6>{"Modifier Bonuses"}</h6>
+		<table class="table table-compact table-striped m-0">
+			<thead>
+				<tr class="text-center" style="color: var(--bs-heading-color);">
+					<th scope="col">{"Value"}</th>
+					<th scope="col">{"Context"}</th>
+					<th scope="col">{"Source"}</th>
+				</tr>
+			</thead>
+			<tbody>
+				{state.skills()[*ability].bonuses().iter().map(|(bonus, context, source)| {
+					html! {<tr>
+						<td class="text-center">{*bonus}</td>
+						<td class="text-center">{context.as_ref().map(String::as_str).unwrap_or("Always")}</td>
+						<td>{crate::data::as_feature_path_text(&source).unwrap_or_default()}</td>
+					</tr>}
+				}).collect::<Vec<_>>()}
+			</tbody>
+		</table>
+
+		<h6>{"Score Bonuses"}</h6>
 		<table class="table table-compact table-striped m-0">
 			<thead>
 				<tr class="text-center" style="color: var(--bs-heading-color);">
@@ -219,7 +243,7 @@ pub fn ScoreBreakdown(AbilityProps { ability }: &AbilityProps) -> Html {
 			</tbody>
 		</table>
 
-		<h6>{"Maximum Value"}</h6>
+		<h6>{"Score Maximum Value"}</h6>
 		<table class="table table-compact table-striped m-0">
 			<caption>{"The largest value of these is used as the maximum bound for the score above."}</caption>
 			<thead>
@@ -238,7 +262,7 @@ pub fn ScoreBreakdown(AbilityProps { ability }: &AbilityProps) -> Html {
 			</tbody>
 		</table>
 
-		<h6>{"Minimum Value"}</h6>
+		<h6>{"Score Minimum Value"}</h6>
 		<table class="table table-compact table-striped m-0">
 			<caption>{"The largest value of these is used as the minimum bound for the score above."}</caption>
 			<thead>
@@ -257,7 +281,7 @@ pub fn ScoreBreakdown(AbilityProps { ability }: &AbilityProps) -> Html {
 			</tbody>
 		</table>
 
-		<h6>{"Modifiers"}</h6>
+		<h6>{"Roll Modifiers"}</h6>
 		<AbilityModifiersSingle ability={*ability} />
 
 	</>}

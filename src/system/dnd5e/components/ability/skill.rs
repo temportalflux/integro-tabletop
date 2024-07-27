@@ -158,6 +158,12 @@ fn Row(RowProps { skill, ability_name_col }: &RowProps) -> Html {
 	modifier += proficiency.value() * state.proficiency_bonus();
 
 	let mut bonuses = Vec::with_capacity(10);
+	for (value, context, source) in state.skills()[skill.ability()].bonuses().iter() {
+		bonuses.push((*value, context.clone(), source.clone()));
+		if context.is_none() {
+			modifier += *value as i32;
+		}
+	}
 	for (value, context, source) in state.skills()[*skill].bonuses().iter() {
 		bonuses.push((*value, context.clone(), source.clone()));
 		if context.is_none() {
@@ -250,8 +256,26 @@ fn SkillModal(SkillModalProps { skill }: &SkillModalProps) -> Html {
 	let state = use_context::<CharacterHandle>().unwrap();
 
 	let proficiency = state.skills()[*skill].proficiencies();
-	let mut bonus = state.ability_scores()[skill.ability()].score().modifier();
-	bonus += proficiency.value() * state.proficiency_bonus();
+	let mut skill_modifier = state.ability_scores()[skill.ability()].score().modifier();
+	skill_modifier += proficiency.value() * state.proficiency_bonus();
+	
+	let modifier_bonuses = {
+		let iter_skill = state.skills()[*skill].bonuses().iter();
+		let iter_ability = state.skills()[skill.ability()].bonuses().iter();
+		let iter = iter_ability.chain(iter_skill);
+		let mut modifier_bonuses = Vec::new();
+		for (bonus, context, source) in iter {
+			if context.is_none() {
+				skill_modifier += *bonus as i32;
+			}
+			modifier_bonuses.push(html! {<tr>
+				<td class="text-center">{*bonus}</td>
+				<td class="text-center">{context.as_ref().map(String::as_str).unwrap_or("Always")}</td>
+				<td>{crate::data::as_feature_path_text(&source).unwrap_or_default()}</td>
+			</tr>});
+		}
+		modifier_bonuses
+	};
 
 	let proficiency_rows = proficiency
 		.iter()
@@ -326,9 +350,24 @@ fn SkillModal(SkillModalProps { skill }: &SkillModalProps) -> Html {
 	html! {<>
 		<div class="text-center fs-5" style="width: 100%; margin-bottom: 10px;">
 			<span>{"Bonus:"}</span>
-			<span style="margin-left: 5px;">{match bonus >= 0 { true => "+", false => "-", }}{bonus.abs()}</span>
+			<span style="margin-left: 5px;">{match skill_modifier >= 0 { true => "+", false => "-", }}{skill_modifier.abs()}</span>
 		</div>
 		{prof_table}
+		
+		<h6>{"Modifier Bonuses"}</h6>
+		<table class="table table-compact table-striped m-0">
+			<thead>
+				<tr class="text-center" style="color: var(--bs-heading-color);">
+					<th scope="col">{"Value"}</th>
+					<th scope="col">{"Context"}</th>
+					<th scope="col">{"Source"}</th>
+				</tr>
+			</thead>
+			<tbody>
+				{modifier_bonuses}
+			</tbody>
+		</table>
+
 		{roll_modifiers_table}
 		<div class="text-block">{skill.description()}</div>
 	</>}
