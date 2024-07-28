@@ -16,6 +16,7 @@ columnSorting:
 
 - [item-browser-filters](tasks/item-browser-filters.md)
 - [spell-browser-filters](tasks/spell-browser-filters.md)
+- [spell-info-context-panel](tasks/spell-info-context-panel.md)
 - [expanded-item-modal-editor](tasks/expanded-item-modal-editor.md)
 - [autosave](tasks/autosave.md)
 - [parcels-mailbox](tasks/parcels-mailbox.md)
@@ -45,11 +46,10 @@ columnSorting:
 
 ## Todo List
 
-- [spell-info-context-panel](tasks/spell-info-context-panel.md)
 - [conditions-are-not-being-saved-to-persistent-data](tasks/conditions-are-not-being-saved-to-persistent-data.md)
 - [warlock-eldritch-invocations](tasks/warlock-eldritch-invocations.md)
-- [prepared-spellcasting-grants-bonuses](tasks/prepared-spellcasting-grants-bonuses.md)
 - [spells-support-healing](tasks/spells-support-healing.md)
+- [display-prepared-info-spellcasting-overrides-in-spell-entry-context-panel](tasks/display-prepared-info-spellcasting-overrides-in-spell-entry-context-panel.md)
 - [wizard-spell-mastery](tasks/wizard-spell-mastery.md)
 - [hobgoblin-reserves-of-strength](tasks/hobgoblin-reserves-of-strength.md)
 - [beserker-barbarian-frenzy](tasks/beserker-barbarian-frenzy.md)
@@ -64,6 +64,7 @@ columnSorting:
 
 ## Done
 
+- [prepared-spellcasting-grants-bonuses](tasks/prepared-spellcasting-grants-bonuses.md)
 - [ability-skill-displays-do-not-include-numerical-bonuses](tasks/ability-skill-displays-do-not-include-numerical-bonuses.md)
 - [ability-skill-modifier-display](tasks/ability-skill-modifier-display.md)
 - [spell-range-mutator](tasks/spell-range-mutator.md)

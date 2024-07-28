@@ -65,6 +65,8 @@ pub struct PreparedInfo {
 	pub range: Option<spell::Range>,
 	/// If present, the spell can only be cast at this rank using this feature.
 	pub cast_at_rank: Option<u8>,
+	pub attack_bonus: Option<i32>,
+	pub save_dc: Option<u8>,
 }
 #[derive(Clone, Debug, PartialEq)]
 pub struct SelectableSpells {
@@ -173,6 +175,14 @@ impl Mutator for Spellcasting {
 					}
 				}
 				for (id, prepared_info) in all_spells {
+					let attack_bonus = match prepared_info.attack_bonus {
+						Some(fixed) => AbilityOrStat::Stat(fixed),
+						None => AbilityOrStat::Ability(*ability),
+					};
+					let save_dc = match prepared_info.save_dc {
+						Some(fixed) => AbilityOrStat::Stat(fixed),
+						None => AbilityOrStat::Ability(*ability),
+					};
 					let entry = SpellEntry {
 						source: parent.display.clone(),
 						classified_as: classified_as.clone(),
@@ -183,8 +193,9 @@ impl Mutator for Spellcasting {
 							(false, false, None) => CastingMethod::AtWill,
 							(slot, ritual, None) => CastingMethod::Cast { can_use_slots: slot, can_use_ritual: ritual },
 						},
-						attack_bonus: AbilityOrStat::Ability(*ability),
-						save_dc: AbilityOrStat::Ability(*ability),
+						attack_bonus,
+						save_dc,
+						// TODO: not all preppared spellcasting adds the ability to damage
 						damage_ability: Some(*ability),
 						casting_duration: None,
 						rank: prepared_info.cast_at_rank.clone(),
@@ -484,7 +495,9 @@ impl FromKdl<NodeContext> for PreparedInfo {
 		let can_ritual_cast = node.get_bool_opt("use_ritual")?.unwrap_or_default();
 		let cast_at_rank = node.get_i64_opt("rank")?.map(|v| v as u8);
 		let range = node.query_opt_t::<spell::Range>("scope() > range")?;
-		Ok(PreparedInfo { can_cast_through_slot, can_ritual_cast, range, cast_at_rank })
+		let attack_bonus = node.query_i64_opt("scope() > attack_bonus", 0)?.map(|v| v as i32);
+		let save_dc = node.query_i64_opt("scope() > save_dc", 0)?.map(|v| v as u8);
+		Ok(PreparedInfo { can_cast_through_slot, can_ritual_cast, range, cast_at_rank, attack_bonus, save_dc })
 	}
 }
 // TODO AsKdl: tests for PreparedInfo
@@ -497,12 +510,10 @@ impl AsKdl for PreparedInfo {
 		if self.can_ritual_cast {
 			node.entry(("use_ritual", true));
 		}
-		if let Some(rank) = &self.cast_at_rank {
-			node.entry(("rank", *rank as i64));
-		}
-		if let Some(range) = &self.range {
-			node.child(("range", range));
-		}
+		node.entry(("rank", self.cast_at_rank.map(|v| v as i64)));
+		node.child(("range", self.range.as_ref()));
+		node.child(("attack_bonus", self.attack_bonus));
+		node.child(("save_dc", self.save_dc));
 		node
 	}
 }
