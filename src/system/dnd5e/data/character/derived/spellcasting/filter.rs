@@ -21,6 +21,8 @@ pub struct Filter {
 	pub school_tag: Option<String>,
 	/// Spells in this list can by-pass the `tags` requirement.
 	pub additional_ids: HashSet<SourceId>,
+	// The spell must be prepared by the caster feature.
+	pub selected_by_caster: Option<String>,
 }
 
 impl FromKdl<NodeContext> for Filter {
@@ -37,7 +39,9 @@ impl FromKdl<NodeContext> for Filter {
 			additional_ids.insert(SourceId::from_str(str)?);
 		}
 
-		Ok(Filter { ranks, tags, school_tag, additional_ids, ..Default::default() })
+		let selected_by_caster = node.query_str_opt("scope() > selected_by", "class")?.map(str::to_owned);
+
+		Ok(Filter { ranks, tags, school_tag, additional_ids, selected_by_caster, ..Default::default() })
 	}
 }
 impl AsKdl for Filter {
