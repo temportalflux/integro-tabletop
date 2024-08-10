@@ -46,7 +46,6 @@ columnSorting:
 
 ## Todo List
 
-- [conditions-are-not-being-saved-to-persistent-data](tasks/conditions-are-not-being-saved-to-persistent-data.md)
 - [warlock-eldritch-invocations](tasks/warlock-eldritch-invocations.md)
 - [spells-support-healing](tasks/spells-support-healing.md)
 - [display-prepared-info-spellcasting-overrides-in-spell-entry-context-panel](tasks/display-prepared-info-spellcasting-overrides-in-spell-entry-context-panel.md)
@@ -64,6 +63,7 @@ columnSorting:
 
 ## Done
 
+- [conditions-are-not-being-saved-to-persistent-data](tasks/conditions-are-not-being-saved-to-persistent-data.md)
 - [prepared-spellcasting-grants-bonuses](tasks/prepared-spellcasting-grants-bonuses.md)
 - [ability-skill-displays-do-not-include-numerical-bonuses](tasks/ability-skill-displays-do-not-include-numerical-bonuses.md)
 - [ability-skill-modifier-display](tasks/ability-skill-modifier-display.md)

@@ -286,6 +286,8 @@ impl AsKdl for Persistent {
 		node.child(("hit_points", &self.hit_points));
 		node.child(("inspiration", &self.inspiration));
 
+		node.children(("condition", self.conditions.iter()));
+
 		node.child(("inventory", &self.inventory, OmitIfEmpty));
 		node.child(("spells", &self.selected_spells, OmitIfEmpty));
 
