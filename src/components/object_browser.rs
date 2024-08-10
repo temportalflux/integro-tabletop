@@ -119,7 +119,7 @@ impl ObjectBrowser for SpellBrowser {
 			method: spellcasting::CastingMethod::Cast { can_use_slots: true, can_use_ritual: true },
 			attack_bonus: AbilityOrStat::Ability(crate::system::dnd5e::data::Ability::Charisma),
 			save_dc: AbilityOrStat::Ability(crate::system::dnd5e::data::Ability::Charisma),
-			damage_ability: Some(crate::system::dnd5e::data::Ability::Charisma),
+			ability: Some(crate::system::dnd5e::data::Ability::Charisma),
 			casting_duration: None,
 			rank: None,
 			range: None,

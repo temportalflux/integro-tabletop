@@ -107,7 +107,7 @@ impl SpellContainer {
 			attack_bonus: AbilityOrStat::Stat(atk_bonus),
 			save_dc: AbilityOrStat::Stat(save_dc),
 			// TODO: Should this also be an abilityorstat for the caster's original ability modifier?
-			damage_ability: None,
+			ability: None,
 			casting_duration: casting.duration.clone(),
 			rank: contained.rank,
 			range: None,

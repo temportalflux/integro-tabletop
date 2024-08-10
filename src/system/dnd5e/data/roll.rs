@@ -25,9 +25,9 @@ impl From<i32> for Roll {
 	}
 }
 
-impl From<(u32, Die)> for Roll {
-	fn from((amount, die): (u32, Die)) -> Self {
-		Self { amount: amount as i32, die: Some(die) }
+impl From<(i32, Die)> for Roll {
+	fn from((amount, die): (i32, Die)) -> Self {
+		Self { amount: amount, die: Some(die) }
 	}
 }
 
@@ -40,6 +40,10 @@ impl Roll {
 		self.amount * self.die.clone().map(Die::value).unwrap_or(1) as i32
 	}
 
+	pub fn abs(&self) -> Self {
+		Self { amount: self.amount.abs(), die: self.die }
+	}
+
 	pub fn as_nonzero_string(&self) -> Option<String> {
 		(self.amount != 0).then(|| self.to_string())
 	}
@@ -47,7 +51,7 @@ impl Roll {
 	pub fn roll(&self, rand: &mut impl rand::Rng) -> i32 {
 		match self.die {
 			None => self.amount,
-			Some(die) => die.roll(rand, self.amount as u32) as i32,
+			Some(die) => die.roll(rand, self.amount),
 		}
 	}
 }
@@ -80,13 +84,13 @@ impl FromStr for Roll {
 		if parts.next().is_some() {
 			return Err(GeneralError(format!("Too many parts in {s:?} for Roll, expected {EXPECTED:?}")).into());
 		}
-		let amount = amount_str.parse::<u32>()? as i32;
+		let amount = amount_str.parse::<i32>()?;
 		let die = Die::try_from(die_str.parse::<u32>()?)?;
 		Ok(Self { amount, die: Some(die) })
 	}
 }
 
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, PartialEq)]
 pub enum ParseRollError {
 	#[error(transparent)]
 	ParseInt(#[from] std::num::ParseIntError),

@@ -9,7 +9,7 @@ use crate::{
 		self,
 		dnd5e::{
 			components::{
-				glyph::Glyph,
+				glyph::{DamageTypeGlyph, Glyph},
 				panel::{get_inventory_item_mut, NotesField},
 			},
 			data::{
@@ -618,10 +618,10 @@ pub fn spell_overview_info(
 	let attack_bonus = entry.map(|entry| entry.attack_bonus).unwrap_or(AbilityOrStat::Stat(0));
 	let save_dc = entry.map(|entry| entry.save_dc).unwrap_or(AbilityOrStat::Stat(0));
 	let cast_at_rank = override_rank.or(entry.map(|entry| entry.rank).flatten());
-	let damage_modifier = entry
-		.map(|entry| entry.damage_ability)
+	let spellcasting_modifier = entry
+		.map(|entry| entry.ability)
 		.flatten()
-		.map(|ability| state.ability_modifier(ability, Some(proficiency::Level::Full)))
+		.map(|ability| state.ability_modifier(ability, None))
 		.unwrap_or_default();
 
 	if let Some(minimum_range) = state.attack_bonuses().get_spell_range_minimum(spell) {
@@ -708,29 +708,50 @@ pub fn spell_overview_info(
 				{match &spell.damage {
 					None => html!(),
 					Some(damage) => {
+						// The difference in rank between the slot being used and the minimum rank of the spell
 						let upcast_amt = cast_at_rank.map(|rank| rank - spell.rank).unwrap_or(0);
-						let (mut roll_set, mut bonus) = damage.evaluate(&*state, damage_modifier, upcast_amt as u32);
+						// Evaluate the rolls for the damage set
+						let mut roll_set = damage.evaluate(&*state, spellcasting_modifier, upcast_amt as u32);
+						// Evaluate any extra bonuses granted by modifiers
 						for (bonus_dmg_roll, _source) in state.attack_bonuses().get_spell_damage(&spell) {
 							roll_set.push(*bonus_dmg_roll);
 						}
-						bonus += roll_set.take_flat_bonus() as i32;
-						let mut spans = roll_set.rolls().into_iter().enumerate().map(|(idx, roll)| {
+						// Convert roll set to html elements
+						let spans = roll_set.rolls().into_iter().enumerate().map(|(idx, roll)| {
 							html! {
 								<span>
-									{(idx != 0).then(|| html!("+")).unwrap_or_default()}
+									{(idx != 0 && roll.min() > 0).then(|| html!("+")).unwrap_or_default()}
 									{roll.to_string()}
 								</span>
 							}
 						}).collect::<Vec<_>>();
-						if bonus != 0 {
-							spans.push(html! {
-								<span>{format!("{bonus:+}")}</span>
-							});
-						}
-						// TODO: DamageType glyph `damage.damage_type`
 						html! {<span class="attribute damage">
 							<span class="label">{"Damage:"}</span>
 							{spans}
+							<DamageTypeGlyph value={damage.damage_type()} />
+						</span>}
+					}
+				}}
+				{match &spell.healing {
+					None => html!(),
+					Some(healing) => {
+						// The difference in rank between the slot being used and the minimum rank of the spell
+						let upcast_amt = cast_at_rank.map(|rank| rank - spell.rank).unwrap_or(0) as i32;
+						// Evaluate the rolls for the healing set
+						let roll_set = healing.evaluate(spellcasting_modifier, upcast_amt);
+						// Convert roll set to html elements
+						let spans = roll_set.rolls().into_iter().enumerate().map(|(idx, roll)| {
+							html! {
+								<span>
+									{(idx != 0 && roll.min() > 0).then(|| html!("+")).unwrap_or_default()}
+									{roll.to_string()}
+								</span>
+							}
+						}).collect::<Vec<_>>();
+						html! {<span class="attribute healing">
+							<span class="label">{"Healing:"}</span>
+							{spans}
+							<Glyph tag="span" classes={"damage_type healing"} />
 						</span>}
 					}
 				}}
@@ -1157,6 +1178,67 @@ fn spell_content(spell: &Spell, entry: Option<&SpellEntry>, state: &CharacterHan
 			{spell.duration.concentration.then(|| html!(" (requires concentration)")).unwrap_or_default()}
 		</div>
 	});
+	if let Some(healing) = &spell.healing {
+		let base_rolls = healing
+			.rolls()
+			.iter_rolls()
+			.enumerate()
+			.map(|(idx, roll)| {
+				html! {
+					<span>
+						{(idx > 0).then_some(html!(" "))}
+						{match (idx, roll.min() >= 0) {
+							(0, true) => html!(),
+							(_, positive) => if positive { html!("+ ") } else { html!("- ") },
+						}}
+						{roll.abs().to_string()}
+					</span>
+				}
+			})
+			.collect::<Vec<_>>();
+		let upcast_rolls = healing
+			.upcast()
+			.iter_rolls()
+			.enumerate()
+			.map(|(idx, roll)| {
+				html! {
+					<span>
+						{(idx > 0).then_some(html!(" "))}
+						{match (idx, roll.min() >= 0) {
+							(0, true) => html!(),
+							(_, positive) => if positive { html!("+ ") } else { html!("- ") },
+						}}
+						{roll.abs().to_string()}
+					</span>
+				}
+			})
+			.collect::<Vec<_>>();
+		let spellcasting_ability = entry.map(|entry| entry.ability).flatten();
+		let ability_modifier = match healing.uses_ability_modifier() {
+			false => html!(),
+			true => match spellcasting_ability {
+				None => html!(" + your spellcasting ability modifier"),
+				Some(ability) => {
+					let modifier = state.ability_modifier(ability, None);
+					html!(<span>
+						{if modifier >= 0 { " + " } else { " - " }}{modifier.abs()}
+						{format!(" ({} modifier)", ability.long_name())}
+					</span>)
+				}
+			},
+		};
+
+		sections.push(html!(<>
+			<div class="property">
+				<strong>{"Healing:"}</strong>
+				<span>{base_rolls}{ability_modifier}</span>
+			</div>
+			<div class="property">
+				<strong>{"Upcast Bonus Healing:"}</strong>
+				{upcast_rolls}
+			</div>
+		</>));
+	}
 	if !spell.tags.is_empty() {
 		sections.push(html! {
 			<div class="property d-inline-flex">

@@ -15,6 +15,8 @@ mod damage;
 pub use damage::*;
 mod duration;
 pub use duration::*;
+mod healing;
+pub use healing::*;
 mod range;
 pub use range::*;
 
@@ -30,6 +32,7 @@ pub struct Spell {
 	pub range: Range,
 	pub check: Option<Check>,
 	pub damage: Option<Damage>,
+	pub healing: Option<Healing>,
 	pub area_of_effect: Option<AreaOfEffect>,
 	pub duration: Duration,
 	pub tags: Vec<String>,
@@ -56,6 +59,8 @@ impl Block for Spell {
 			},
 			"duration": self.duration.kind.as_metadata(),
 			"concentration": self.duration.concentration,
+			"damage": self.damage.is_some(),
+			"healing": self.healing.is_some(),
 		})
 	}
 }
@@ -78,6 +83,7 @@ impl FromKdl<NodeContext> for Spell {
 		let duration = node.query_req_t::<Duration>("scope() > duration")?;
 		let check = node.query_opt_t::<Check>("scope() > check")?;
 		let damage = node.query_opt_t::<Damage>("scope() > damage")?;
+		let healing = node.query_opt_t::<Healing>("scope() > healing")?;
 
 		let mut tags = node.query_str_all("scope() > tag", 0)?;
 		tags.sort();
@@ -94,6 +100,7 @@ impl FromKdl<NodeContext> for Spell {
 			range,
 			check,
 			damage,
+			healing,
 			area_of_effect,
 			duration,
 			tags,
@@ -118,6 +125,7 @@ impl AsKdl for Spell {
 		node.child(("duration", &self.duration));
 		node.child(("check", &self.check));
 		node.child(("damage", &self.damage));
+		node.child(("healing", &self.healing));
 		node.child(("description", &self.description, OmitIfEmpty));
 
 		node

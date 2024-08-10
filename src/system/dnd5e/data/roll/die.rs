@@ -25,12 +25,13 @@ impl Die {
 		}
 	}
 
-	pub fn roll(&self, rand: &mut impl rand::Rng, num: u32) -> u32 {
-		if num == 0 {
+	pub fn roll(&self, rand: &mut impl rand::Rng, amount: i32) -> i32 {
+		if amount == 0 {
 			return 0;
 		}
 		let range = 1..=self.value();
-		(0..num).map(|_| rand.gen_range(range.clone())).sum()
+		let rolled_values = (0..amount.abs()).map(|_| rand.gen_range(range.clone()));
+		rolled_values.sum::<u32>() as i32 * amount.signum()
 	}
 }
 impl TryFrom<u32> for Die {

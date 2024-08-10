@@ -22,7 +22,7 @@ pub struct SpellEntry {
 	pub method: CastingMethod,
 	pub attack_bonus: AbilityOrStat<i32>,
 	pub save_dc: AbilityOrStat<u8>,
-	pub damage_ability: Option<Ability>,
+	pub ability: Option<Ability>,
 	// Overrides
 	pub casting_duration: Option<CastingDuration>,
 	pub rank: Option<u8>,

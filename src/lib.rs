@@ -13,7 +13,7 @@ pub mod task;
 pub mod theme;
 pub mod utility;
 
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, PartialEq)]
 pub struct GeneralError(pub String);
 impl std::fmt::Display for GeneralError {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

@@ -199,11 +199,13 @@ fn Row(RowProps { skill, ability_name_col }: &RowProps) -> Html {
 			(_, modifier) => Some(modifier),
 		})
 	};
-	let roll_modifier = roll_modifier.map(|modifier| html! {
-		<glyph::RollModifier value={modifier}
-			classes="d-block my-auto"
-			style={Style::from([ ("width", "16px"), ("height", "16px") ])}
-		/>
+	let roll_modifier = roll_modifier.map(|modifier| {
+		html! {
+			<glyph::RollModifier value={modifier}
+				classes="d-block my-auto"
+				style={Style::from([ ("width", "16px"), ("height", "16px") ])}
+			/>
+		}
 	});
 
 	let mut table_data = vec![
@@ -258,7 +260,7 @@ fn SkillModal(SkillModalProps { skill }: &SkillModalProps) -> Html {
 	let proficiency = state.skills()[*skill].proficiencies();
 	let mut skill_modifier = state.ability_scores()[skill.ability()].score().modifier();
 	skill_modifier += proficiency.value() * state.proficiency_bonus();
-	
+
 	let modifier_bonuses = {
 		let iter_skill = state.skills()[*skill].bonuses().iter();
 		let iter_ability = state.skills()[skill.ability()].bonuses().iter();
@@ -314,19 +316,22 @@ fn SkillModal(SkillModalProps { skill }: &SkillModalProps) -> Html {
 		let iter_skill = state.skills()[*skill].modifiers().iter_all();
 		let iter_ability = state.skills()[skill.ability()].modifiers().iter_all();
 		let iter = iter_ability.chain(iter_skill);
-		iter.map(|(modifier, context, source)| html! {
-			<tr>
-				<td class="d-flex">
-					<glyph::RollModifier value={modifier}
-						classes="d-block my-auto"
-						style={Style::from([ ("width", "16px"), ("height", "16px") ])}
-					/>
-					<span class="flex-grow-1 text-center" style="margin-left: 5px;">{modifier.display_name()}</span>
-				</td>
-				<td class="text-center">{context.clone().unwrap_or_else(|| "--".into())}</td>
-				<td>{crate::data::as_feature_path_text(source).unwrap_or_default()}</td>
-			</tr>
-		}).collect::<Vec<_>>()
+		iter.map(|(modifier, context, source)| {
+			html! {
+				<tr>
+					<td class="d-flex">
+						<glyph::RollModifier value={modifier}
+							classes="d-block my-auto"
+							style={Style::from([ ("width", "16px"), ("height", "16px") ])}
+						/>
+						<span class="flex-grow-1 text-center" style="margin-left: 5px;">{modifier.display_name()}</span>
+					</td>
+					<td class="text-center">{context.clone().unwrap_or_else(|| "--".into())}</td>
+					<td>{crate::data::as_feature_path_text(source).unwrap_or_default()}</td>
+				</tr>
+			}
+		})
+		.collect::<Vec<_>>()
 	};
 
 	let roll_modifiers_table = match modifier_rows.is_empty() {
@@ -353,7 +358,7 @@ fn SkillModal(SkillModalProps { skill }: &SkillModalProps) -> Html {
 			<span style="margin-left: 5px;">{match skill_modifier >= 0 { true => "+", false => "-", }}{skill_modifier.abs()}</span>
 		</div>
 		{prof_table}
-		
+
 		<h6>{"Modifier Bonuses"}</h6>
 		<table class="table table-compact table-striped m-0">
 			<thead>

@@ -14,7 +14,7 @@ impl HitDice {
 		self.rolls_with_source.push((roll, source));
 	}
 
-	pub fn dice(&self) -> &EnumMap<Die, u32> {
+	pub fn dice(&self) -> &EnumMap<Die, i32> {
 		self.roll_set.die_map()
 	}
 

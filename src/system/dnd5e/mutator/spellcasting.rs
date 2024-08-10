@@ -196,7 +196,7 @@ impl Mutator for Spellcasting {
 						attack_bonus,
 						save_dc,
 						// TODO: not all preppared spellcasting adds the ability to damage
-						damage_ability: Some(*ability),
+						ability: Some(*ability),
 						casting_duration: None,
 						rank: prepared_info.cast_at_rank.clone(),
 						range: prepared_info.range.clone(),
@@ -285,7 +285,7 @@ impl FromKdl<NodeContext> for Spellcasting {
 					method: CastingMethod::Cast { can_use_slots: true, can_use_ritual: true },
 					attack_bonus: AbilityOrStat::Ability(ability),
 					save_dc: AbilityOrStat::Ability(ability),
-					damage_ability: Some(ability),
+					ability: Some(ability),
 					casting_duration: None,
 					rank: None,
 					range: None,

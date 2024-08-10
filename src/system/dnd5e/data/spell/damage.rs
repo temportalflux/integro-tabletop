@@ -21,21 +21,27 @@ pub struct Damage {
 }
 
 impl Damage {
-	pub fn evaluate(&self, character: &Character, modifier: i32, upcast_amount: u32) -> (RollSet, i32) {
+	pub fn evaluate(&self, character: &Character, modifier: i32, upcast_amount: u32) -> RollSet {
 		let mut rolls = RollSet::default();
 		if let Some(roll) = self.amount.evaluate(character) {
 			rolls.push(roll);
 		}
 		if let Some(upcast_roll) = &self.upcast {
 			if upcast_amount > 0 {
-				rolls.extend(RollSet::multiple(upcast_roll, upcast_amount));
+				rolls.extend(RollSet::multiple(upcast_roll, upcast_amount as i32));
 			}
 		}
-		let mut bonus = self.base;
-		if self.include_ability_modifier {
-			bonus += modifier;
+		if self.base != 0 {
+			rolls.push(Roll::from(self.base));
 		}
-		(rolls, bonus)
+		if self.include_ability_modifier {
+			rolls.push(Roll::from(modifier));
+		}
+		rolls
+	}
+
+	pub fn damage_type(&self) -> DamageType {
+		self.damage_type
 	}
 }
 

@@ -530,7 +530,7 @@ fn ModalSectionHitDice() -> Html {
 					{die.to_string()}
 				</span>
 				<UseCounterDelta
-					max_uses={*capacity}
+					max_uses={*capacity as u32}
 					consumed_uses={consumed_uses}
 					on_apply={apply_delta.reform(move |delta: i32| (data_path.clone(), -delta))}
 				/>

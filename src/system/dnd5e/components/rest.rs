@@ -163,7 +163,7 @@ impl HitDiceToConsume {
 			}
 			_ => {}
 		}
-		let delta_roll = Roll::from((delta.abs() as u32, die));
+		let delta_roll = Roll::from((delta.abs(), die));
 		match delta > 0 {
 			true => self.total_rolls.push(delta_roll),
 			false => self.total_rolls.remove(delta_roll),
@@ -235,7 +235,7 @@ fn HitDiceSection(props: &GeneralProp<UseStateHandle<HitDiceToConsume>>) -> Html
 					{die.to_string()}
 				</span>
 				<HitDiceUsageInput
-					max_uses={*capacity}
+					max_uses={*capacity as u32}
 					data_path={selector.get_data_path()}
 					on_change={on_dice_to_consume_changed.reform({
 						let data_path = Arc::new(selector.get_data_path().unwrap_or_default());
@@ -380,7 +380,7 @@ fn ProjectedRestorations(GeneralProp { value }: &GeneralProp<Rest>) -> Html {
 
 			let mut total_capacity = 0u32;
 			for (_die, capacity) in state.hit_dice().dice() {
-				total_capacity += *capacity;
+				total_capacity += *capacity as u32;
 			}
 			let mut hit_die_halves = Vec::new();
 			for (die, capacity) in state.hit_dice().dice().iter().rev() {
@@ -388,12 +388,12 @@ fn ProjectedRestorations(GeneralProp { value }: &GeneralProp<Rest>) -> Html {
 					continue;
 				}
 				// Find the total to grant this die type. By default, its half the capacity.
-				let total = *capacity / 2;
+				let total = *capacity as u32 / 2;
 				// But if the total budget is < 2, then we need to only allocate the 1 capacity to a single die type.
 				let total = total.min(total_capacity);
 				if total > 0 {
 					total_capacity -= total;
-					hit_die_halves.push(Roll::from((total as u32, die)).to_string());
+					hit_die_halves.push(Roll::from((total as i32, die)).to_string());
 				}
 			}
 			if let Some(hit_dice) = crate::utility::list_as_english(hit_die_halves, "and") {

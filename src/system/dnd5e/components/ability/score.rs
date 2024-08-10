@@ -60,10 +60,12 @@ pub fn Score(ScoreProps { ability }: &ScoreProps) -> Html {
 			(_, modifier) => Some(modifier),
 		})
 	};
-	let roll_modifier = roll_modifier.map(|modifier| html! {
-		<glyph::RollModifier value={modifier}
-			style={Style::default().with("width", "15px").with("height", "15px")}
-		/>
+	let roll_modifier = roll_modifier.map(|modifier| {
+		html! {
+			<glyph::RollModifier value={modifier}
+				style={Style::default().with("width", "15px").with("height", "15px")}
+			/>
+		}
 	});
 
 	match screen_size {

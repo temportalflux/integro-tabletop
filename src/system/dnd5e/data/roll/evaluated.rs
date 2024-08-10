@@ -127,7 +127,7 @@ impl AsKdl for EvaluatedRollSet {
 				}
 				EvaluatedRoll { amount: Value::Fixed(amount), die: Some(Value::Fixed(die)) } => {
 					let die = Die::try_from(die.unsigned_abs()).expect("invalid die count");
-					fixed_roll_set.push(Roll::from((amount.unsigned_abs(), die)));
+					fixed_roll_set.push(Roll::from((*amount, die)));
 				}
 				_ => {
 					node.child(("roll", evaluated_roll));

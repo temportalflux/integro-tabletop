@@ -1,7 +1,10 @@
-use crate::{components::Style, system::dnd5e::{
-	components::GeneralProp,
-	data::{self, roll},
-}};
+use crate::{
+	components::Style,
+	system::dnd5e::{
+		components::GeneralProp,
+		data::{self, roll},
+	},
+};
 use yew::prelude::*;
 
 mod coin;
@@ -27,7 +30,7 @@ pub struct GlyphProps {
 pub fn Glyph(GlyphProps { tag, id, classes, style, aria_label }: &GlyphProps) -> Html {
 	html!(<@{tag.as_str().to_owned()} {id}
 		class={classes!("glyph", classes.clone())}
-		style={style.clone()} 
+		style={style.clone()}
 		aria-label={aria_label}
 	/>)
 }

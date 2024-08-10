@@ -58,7 +58,7 @@ pub fn SavingThrow(SavingThrowProps { ability, abbreviated }: &SavingThrowProps)
 			contextless_bonuses.push((*bonus, source));
 		}
 	}
-	
+
 	html! {<tr>
 		<Tooltip tag={"td"} classes={"text-center"} use_html={true} content={abbreviated.then(|| {
 			crate::data::as_feature_paths_html(proficiency.iter().map(|(_level, path)| path))
