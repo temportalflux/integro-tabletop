@@ -1,24 +1,49 @@
 use crate::{
 	kdl_ext::NodeContext,
-	system::{dnd5e::data::Spell, SourceId},
+	system::{
+		dnd5e::data::{character::MAX_SPELL_RANK, Spell},
+		SourceId,
+	},
+	utility::NotInList,
 };
 use itertools::Itertools;
-use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder};
-use std::{collections::HashSet, str::FromStr};
+use kdlize::{
+	ext::{DocumentExt, ValueExt},
+	AsKdl, FromKdl, NodeBuilder,
+};
+use std::collections::HashSet;
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum SpellCapability {
+	Damage,
+	Healing,
+}
+
+impl std::str::FromStr for SpellCapability {
+	type Err = NotInList;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		match s {
+			"Damage" => Ok(Self::Damage),
+			"Healing" => Ok(Self::Healing),
+			_ => Err(NotInList(s.to_owned(), vec!["Damage", "Healing"])),
+		}
+	}
+}
 
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct Filter {
 	// If provided, the spell's must or must not be able to be cast as a ritual.
 	pub ritual: Option<bool>,
-	/// The spell must be of one of these ranks.
-	pub ranks: HashSet<u8>,
-	/// The spell's rank must be <= this rank.
-	pub max_rank: Option<u8>,
-
+	/// The spell must be of one of these ranks (or in the rank range).
+	pub discrete_ranks: HashSet<u8>,
+	pub rank_range: (Option<u8>, Option<u8>),
 	/// The spell must have all of these tags,
 	/// or be specified via `additional_tags`.
 	pub tags: HashSet<String>,
 	pub school_tag: Option<String>,
+	// The spell must have the defined effect/feature/capability.
+	pub capabilities: HashSet<SpellCapability>,
 	/// Spells in this list can by-pass the `tags` requirement.
 	pub additional_ids: HashSet<SourceId>,
 }
@@ -26,24 +51,40 @@ pub struct Filter {
 impl FromKdl<NodeContext> for Filter {
 	type Error = anyhow::Error;
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
-		let ranks = node.query_i64_all("scope() > rank", 0)?;
-		let ranks = ranks.into_iter().map(|v| v as u8).collect::<HashSet<_>>();
-		let tags = node.query_str_all("scope() > tag", 0)?;
-		let tags = tags.into_iter().map(str::to_owned).collect::<HashSet<_>>();
-		let school_tag = node.query_str_opt("scope() > school", 0)?.map(str::to_owned);
-
-		let mut additional_ids = HashSet::default();
-		for str in node.query_str_all("scope() > spell", 0)? {
-			additional_ids.insert(SourceId::from_str(str)?);
+		let mut discrete_ranks = HashSet::new();
+		let mut rank_range = (None, None);
+		for mut node in node.query_all("scope() > rank")? {
+			let entry = node.next_req()?;
+			if entry.value().as_string() == Some("range") {
+				let min = node.get_i64_opt("min")?.map(|v| v as u8);
+				let max = node.get_i64_opt("max")?.map(|v| v as u8);
+				rank_range = (min, max);
+			} else {
+				let rank = entry.as_i64_req()? as u8;
+				discrete_ranks.insert(rank);
+			}
 		}
 
-		Ok(Filter { ranks, tags, school_tag, additional_ids, ..Default::default() })
+		let tags = node.query_str_all_t("scope() > tag", 0)?;
+		let school_tag = node.query_str_opt("scope() > school", 0)?.map(str::to_owned);
+
+		let capabilities = node.query_str_all_t("scope() > capability", 0)?;
+		let additional_ids = node.query_str_all_t("scope() > spell", 0)?;
+
+		Ok(Filter { discrete_ranks, rank_range, tags, school_tag, capabilities, additional_ids, ..Default::default() })
 	}
 }
 impl AsKdl for Filter {
 	fn as_kdl(&self) -> NodeBuilder {
 		let mut node = NodeBuilder::default();
-		node.children(("rank", self.ranks.iter().sorted()));
+		node.children(("rank", self.discrete_ranks.iter().sorted()));
+		if self.rank_range.0.is_some() || self.rank_range.1.is_some() {
+			let mut rank_node = NodeBuilder::default();
+			rank_node.entry("range");
+			rank_node.entry(("min", self.rank_range.0.map(|v| v as i64)));
+			rank_node.entry(("min", self.rank_range.1.map(|v| v as i64)));
+			node.child(("rank", rank_node));
+		}
 		node.child(("school", &self.school_tag));
 		node.children(("tag", self.tags.iter().sorted()));
 		node.children(("spell", self.additional_ids.iter().sorted()));
@@ -52,54 +93,66 @@ impl AsKdl for Filter {
 }
 
 impl Filter {
-	fn rank_range<T>(&self) -> Option<T>
-	where
-		T: FromIterator<u8>,
-	{
-		match self.max_rank {
-			Some(max_rank) => Some((0..=max_rank).collect::<T>()),
-			None if !self.ranks.is_empty() => Some(self.ranks.iter().map(|i| *i).collect::<T>()),
-			None => None,
+	fn valid_ranks(&self) -> HashSet<u8> {
+		let mut all_ranks = self.discrete_ranks.clone();
+		if self.rank_range.0.is_some() || self.rank_range.1.is_some() {
+			let min = self.rank_range.0.unwrap_or(0);
+			let max = self.rank_range.1.unwrap_or(MAX_SPELL_RANK);
+			all_ranks.extend(min..=max);
 		}
+		all_ranks
 	}
 
 	pub fn matches(&self, spell: &Spell) -> bool {
-		if let Some(rank_range) = self.rank_range::<Vec<_>>() {
-			if !rank_range.contains(&spell.rank) {
-				return false;
-			}
+		let all_ranks = self.valid_ranks();
+		if !all_ranks.is_empty() && !all_ranks.contains(&spell.rank) {
+			return false;
 		}
 
-		let mut has_all_tags_or_additional_id = false;
-		if !self.additional_ids.is_empty() {
-			let minimal_id = spell.id.unversioned();
-			if self.additional_ids.contains(&minimal_id) {
+		if !self.additional_ids.is_empty() || !self.tags.is_empty() {
+			let mut has_all_tags_or_additional_id = false;
+			if !self.additional_ids.is_empty() {
+				let minimal_id = spell.id.unversioned();
+				if self.additional_ids.contains(&minimal_id) {
+					has_all_tags_or_additional_id = true;
+				}
+			}
+			if !has_all_tags_or_additional_id && !self.tags.is_empty() {
+				// the spell must contain all of the tags
 				has_all_tags_or_additional_id = true;
-			}
-		}
-		if !has_all_tags_or_additional_id && !self.tags.is_empty() {
-			// the spell must contain all of the tags
-			has_all_tags_or_additional_id = true;
-			if let Some(tag) = &self.school_tag {
-				if spell.school_tag.as_ref() != Some(tag) {
-					has_all_tags_or_additional_id = false;
+				if let Some(tag) = &self.school_tag {
+					if spell.school_tag.as_ref() != Some(tag) {
+						has_all_tags_or_additional_id = false;
+					}
+				}
+				for tag in &self.tags {
+					if !spell.tags.contains(tag) {
+						// detected required tag missing from spell
+						has_all_tags_or_additional_id = false;
+						break;
+					}
 				}
 			}
-			for tag in &self.tags {
-				if !spell.tags.contains(tag) {
-					// detected required tag missing from spell
-					has_all_tags_or_additional_id = false;
-					break;
-				}
+			if !has_all_tags_or_additional_id {
+				return false;
 			}
-		}
-		if !has_all_tags_or_additional_id {
-			return false;
 		}
 
 		if let Some(ritual_flag) = &self.ritual {
 			if spell.casting_time.ritual != *ritual_flag {
 				return false;
+			}
+		}
+
+		for capability in &self.capabilities {
+			match capability {
+				SpellCapability::Damage if spell.damage.is_none() => {
+					return false;
+				}
+				SpellCapability::Healing if spell.healing.is_none() => {
+					return false;
+				}
+				_ => {}
 			}
 		}
 
@@ -111,13 +164,13 @@ impl Filter {
 		let mut criteria = Vec::new();
 
 		// Using the valid rank range for this filter, insert the rank criteria.
-		// The valid rank range is derived from `self.max_rank` and `self.ranks`.
-		if let Some(rank_range) = self.rank_range::<Vec<_>>() {
+		let all_ranks = self.valid_ranks();
+		if !all_ranks.is_empty() {
 			// What this means:
 			// There exists a root-level metadata property `rank`.
 			// That `rank` property is a number which matches
 			// any value in `rank_range` (the list of valid ranks for this filter).
-			let rank_matches = rank_range.into_iter().map(|rank| Criteria::exact(rank));
+			let rank_matches = all_ranks.into_iter().map(|rank| Criteria::exact(rank));
 			let rank_is_one_of = Criteria::any(rank_matches);
 			criteria.push(Criteria::contains_prop("rank", rank_is_one_of).into());
 		}
@@ -156,6 +209,17 @@ impl Filter {
 			let ritual = Criteria::contains_prop("ritual", matches_ritual);
 			let casting = Criteria::contains_prop("casting", ritual);
 			criteria.push(casting.into());
+		}
+
+		for capability in &self.capabilities {
+			match capability {
+				SpellCapability::Damage => {
+					criteria.push(Criteria::contains_prop("damage", Criteria::exact(true)).into());
+				}
+				SpellCapability::Healing => {
+					criteria.push(Criteria::contains_prop("healing", Criteria::exact(true)).into());
+				}
+			}
 		}
 
 		Criteria::All(criteria)

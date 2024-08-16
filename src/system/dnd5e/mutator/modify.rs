@@ -1,12 +1,14 @@
+use std::str::FromStr;
+
 use crate::{
 	kdl_ext::NodeContext,
 	system::{
 		dnd5e::{
 			data::{
 				action::AttackQuery,
-				character::{spellcasting, Character},
+				character::{spellcasting, Character, SpellHealingBonus},
 				description,
-				roll::{EvaluatedRoll, Modifier},
+				roll::{EvaluatedRoll, Modifier, RollSet},
 				Ability, DamageType, Skill,
 			},
 			Value,
@@ -17,7 +19,7 @@ use crate::{
 	utility::{selector, Dependencies, NotInList},
 };
 use kdlize::{
-	ext::{DocumentExt, EntryExt},
+	ext::{DocumentExt, EntryExt, ValueExt},
 	AsKdl, FromKdl, NodeBuilder,
 };
 use num_traits::Signed;
@@ -68,6 +70,10 @@ pub enum Modify {
 	},
 	SpellRange {
 		distance: Value<i32>,
+		query: Vec<spellcasting::Filter>,
+	},
+	SpellHealing {
+		amounts: Vec<SpellHealingBonus>,
 		query: Vec<spellcasting::Filter>,
 	},
 }
@@ -230,6 +236,9 @@ impl Mutator for Modify {
 			Self::SpellRange { .. } => {
 				description::Section { content: format!("TODO: modified spell range").into(), ..Default::default() }
 			}
+			Self::SpellHealing { .. } => {
+				description::Section { content: format!("TODO: modified spell healing").into(), ..Default::default() }
+			}
 		}
 	}
 
@@ -252,6 +261,7 @@ impl Mutator for Modify {
 			Self::SpellRange { distance, .. } => {
 				deps += distance.dependencies();
 			}
+			Self::SpellHealing { .. } => {}
 		}
 		deps
 	}
@@ -275,6 +285,7 @@ impl Mutator for Modify {
 			Self::AttackDamage { .. } => {}
 			Self::SpellDamage { .. } => {}
 			Self::SpellRange { .. } => {}
+			Self::SpellHealing { .. } => {}
 		}
 	}
 
@@ -352,6 +363,10 @@ impl Mutator for Modify {
 				let distance = distance.evaluate(stats).max(0) as u32;
 				stats.attack_bonuses_mut().modify_spell_range(distance, query.clone(), parent);
 			}
+			Self::SpellHealing { amounts, query } => {
+				log::debug!("apply healing bonuses: {amounts:?} {query:?}");
+				stats.attack_bonuses_mut().modify_spell_healing(amounts.clone(), query.clone(), parent);
+			}
 		}
 	}
 }
@@ -423,7 +438,12 @@ impl FromKdl<NodeContext> for Modify {
 					let query = node.query_all_t("scope() > query")?;
 					Ok(Self::SpellRange { distance, query })
 				}
-				s => Err(NotInList(s.into(), vec!["Damage"]).into()),
+				"Healing" => {
+					let amounts = node.query_all_t("scope() > amount")?;
+					let query = node.query_all_t("scope() > query")?;
+					Ok(Self::SpellHealing { amounts, query })
+				}
+				s => Err(NotInList(s.into(), vec!["Damage", "Range", "Healing"]).into()),
 			},
 			None => match node.next_str_req()? {
 				"Initiative" => {
@@ -450,6 +470,7 @@ impl FromKdl<NodeContext> for Modify {
 					"(Attack)Damage",
 					"(Spell)Damage",
 					"(Spell)Range",
+					"(Spell)Healing",
 					"ArmorClass",
 				],
 			)
@@ -516,12 +537,17 @@ impl AsKdl for Modify {
 			Self::SpellDamage { damage, query } => {
 				node.entry_typed("Spell", "Damage");
 				node.child(("damage", damage));
-				node.children(("query", query.iter()));
+				node.children(("query", query));
 			}
 			Self::SpellRange { distance, query } => {
 				node.entry_typed("Spell", "Range");
 				node.child(("distance", distance));
-				node.children(("query", query.iter()));
+				node.children(("query", query));
+			}
+			Self::SpellHealing { amounts, query } => {
+				node.entry_typed("Spell", "Healing");
+				node.children(("amount", amounts));
+				node.children(("query", query));
 			}
 			Self::ArmorClass { bonus, context } => {
 				node.entry("ArmorClass");
@@ -532,6 +558,34 @@ impl AsKdl for Modify {
 			}
 		}
 		node
+	}
+}
+
+impl FromKdl<NodeContext> for SpellHealingBonus {
+	type Error = anyhow::Error;
+
+	fn from_kdl(node: &mut crate::kdl_ext::NodeReader) -> Result<Self, Self::Error> {
+		let entry = node.next_req()?;
+		match entry.type_opt() {
+			Some("SpellRank") => {
+				let coefficient = entry.as_i64_req()?;
+				Ok(Self::RankScale(coefficient as i32))
+			}
+			_ => {
+				let roll_str = entry.as_str_req()?;
+				Ok(Self::Roll(RollSet::from_str(roll_str)?))
+			}
+		}
+	}
+}
+
+impl AsKdl for SpellHealingBonus {
+	fn as_kdl(&self) -> NodeBuilder {
+		let node = NodeBuilder::default();
+		match self {
+			Self::Roll(roll_set) => node.with_entry_typed(roll_set.to_minified_string(), "Roll"),
+			Self::RankScale(coefficient) => node.with_entry_typed(*coefficient as i64, "SpellRank"),
+		}
 	}
 }
 

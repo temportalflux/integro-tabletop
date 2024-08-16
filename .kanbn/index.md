@@ -14,6 +14,7 @@ columnSorting:
 
 ## Backlog
 
+- [add-debug-capability-to-rebuild-database-metadata](tasks/add-debug-capability-to-rebuild-database-metadata.md)
 - [item-browser-filters](tasks/item-browser-filters.md)
 - [spell-browser-filters](tasks/spell-browser-filters.md)
 - [spell-info-context-panel](tasks/spell-info-context-panel.md)
@@ -60,10 +61,9 @@ columnSorting:
 
 ## In Progress
 
-- [spells-support-healing](tasks/spells-support-healing.md)
-
 ## Done
 
+- [spells-support-healing](tasks/spells-support-healing.md)
 - [conditions-are-not-being-saved-to-persistent-data](tasks/conditions-are-not-being-saved-to-persistent-data.md)
 - [prepared-spellcasting-grants-bonuses](tasks/prepared-spellcasting-grants-bonuses.md)
 - [ability-skill-displays-do-not-include-numerical-bonuses](tasks/ability-skill-displays-do-not-include-numerical-bonuses.md)

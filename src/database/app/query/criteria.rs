@@ -115,6 +115,9 @@ impl Criteria {
 				true
 			}
 			Self::Any(criteria) => {
+				if criteria.is_empty() {
+					return true;
+				}
 				for criteria in criteria {
 					if criteria.is_relevant(value) {
 						return true;

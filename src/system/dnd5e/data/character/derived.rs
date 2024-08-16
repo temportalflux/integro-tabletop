@@ -156,6 +156,7 @@ pub struct AttackBonuses {
 	attack_ability: Vec<AttackAbility>,
 	spell_damage: Vec<SpellDamageBonus>,
 	spell_range: Vec<ModificationSpellRange>,
+	spell_healing: Vec<ModificationSpellHealing>,
 }
 #[derive(Clone, PartialEq, Debug)]
 struct AttackRollBonus {
@@ -189,6 +190,19 @@ struct AttackAbility {
 	queries: Vec<AttackQuery>,
 	source: PathBuf,
 }
+#[derive(Clone, PartialEq, Debug)]
+struct ModificationSpellHealing {
+	bonuses: Vec<SpellHealingBonus>,
+	queries: Vec<spellcasting::Filter>,
+	source: PathBuf,
+}
+#[derive(Clone, PartialEq, Debug)]
+pub enum SpellHealingBonus {
+	// A fixed amount
+	Roll(RollSet),
+	// Adds a value equivalent to the coeffecient * the casted spell's rank
+	RankScale(i32),
+}
 impl AttackBonuses {
 	pub fn add_to_weapon_attacks(&mut self, bonus: i32, queries: Vec<AttackQuery>, source: &ReferencePath) {
 		self.attack_roll.push(AttackRollBonus { bonus, modifier: None, queries, source: source.display.clone() });
@@ -219,6 +233,12 @@ impl AttackBonuses {
 
 	pub fn modify_spell_range(&mut self, minimum: u32, queries: Vec<spellcasting::Filter>, source: &ReferencePath) {
 		self.spell_range.push(ModificationSpellRange { minimum, queries, source: source.display.clone() });
+	}
+
+	pub fn modify_spell_healing(
+		&mut self, bonuses: Vec<SpellHealingBonus>, queries: Vec<spellcasting::Filter>, source: &ReferencePath,
+	) {
+		self.spell_healing.push(ModificationSpellHealing { bonuses, queries, source: source.display.clone() });
 	}
 
 	pub fn get_weapon_attack(
@@ -299,6 +319,22 @@ impl AttackBonuses {
 
 	pub fn get_spell_range_minimum(&self, spell: &Spell) -> Option<u32> {
 		self.iter_spell_range(spell).map(|modification| modification.minimum).max()
+	}
+
+	fn iter_spell_healing<'this>(
+		&'this self, spell: &'this Spell,
+	) -> impl Iterator<Item = &'this ModificationSpellHealing> + '_ {
+		self.spell_healing.iter().filter(|modification| modification.queries.iter().any(|query| query.matches(spell)))
+	}
+
+	pub fn get_spell_healing_bonuses<'this>(
+		&'this self, spell: &'this Spell,
+	) -> impl Iterator<Item = (&'this SpellHealingBonus, &'this PathBuf)> + '_ {
+		let iter = self.iter_spell_healing(spell);
+		let iter = iter.map(|modification| {
+			modification.bonuses.iter().map(|bonus| (bonus, &modification.source))
+		});
+		iter.flatten()
 	}
 }
 

@@ -14,6 +14,7 @@ pub struct Healing {
 	rolls: RollSet,
 	include_ability_modifier: bool,
 	upcast: RollSet,
+	pub hide_bonuses_in_overview: bool,
 }
 
 impl Healing {
@@ -60,8 +61,10 @@ impl FromKdl<NodeContext> for Healing {
 				Some(invalid_type) => Err(NotInList(invalid_type.to_owned(), vec!["Upcast"]))?,
 			}
 		}
+		
+		let hide_bonuses_in_overview = node.get_bool_opt("hide_bonuses_in_overview")?.unwrap_or(false);
 
-		Ok(Self { rolls, include_ability_modifier, upcast })
+		Ok(Self { rolls, include_ability_modifier, upcast, hide_bonuses_in_overview })
 	}
 }
 
@@ -76,6 +79,9 @@ impl AsKdl for Healing {
 			node
 		}));
 		node.child(("amount", &self.upcast));
+		if self.hide_bonuses_in_overview {
+			node.entry(("hide_bonuses_in_overview", true));
+		}
 		node
 	}
 }

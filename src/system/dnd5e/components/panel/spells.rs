@@ -15,9 +15,10 @@ use crate::{
 			data::{
 				character::{
 					spellcasting::{AbilityOrStat, CasterKind, CastingMethod, RitualCapability, SpellEntry},
-					MAX_SPELL_RANK,
+					SpellHealingBonus, MAX_SPELL_RANK,
 				},
 				proficiency,
+				roll::Roll,
 				spell::{self, CastingDuration, DurationKind},
 				AreaOfEffect, Indirect, Spell,
 			},
@@ -738,7 +739,22 @@ pub fn spell_overview_info(
 						// The difference in rank between the slot being used and the minimum rank of the spell
 						let upcast_amt = cast_at_rank.map(|rank| rank - spell.rank).unwrap_or(0) as i32;
 						// Evaluate the rolls for the healing set
-						let roll_set = healing.evaluate(spellcasting_modifier, upcast_amt);
+						let mut roll_set = healing.evaluate(spellcasting_modifier, upcast_amt);
+
+						// Some spells provide healing as a pool which is assigned to multiple creatures,
+						// but the bonuses are per creature. So those spells indicate that the prefered UX is to not conflate the two sources in the overview.
+						// We still show the breakdown in the details view of the spell.
+						if !healing.hide_bonuses_in_overview {
+							// Append derved data bonuses to the roll set for healing
+							let rank = cast_at_rank.unwrap_or(spell.rank) as i32;
+							for (bonus, _source) in state.attack_bonuses().get_spell_healing_bonuses(&spell) {
+								match bonus {
+									SpellHealingBonus::Roll(bonus_rolls) => roll_set += *bonus_rolls,
+									SpellHealingBonus::RankScale(coefficient) => roll_set += Roll::from(coefficient * rank),
+								}
+							}
+						}
+
 						// Convert roll set to html elements
 						let spans = roll_set.rolls().into_iter().enumerate().map(|(idx, roll)| {
 							html! {
@@ -1179,6 +1195,7 @@ fn spell_content(spell: &Spell, entry: Option<&SpellEntry>, state: &CharacterHan
 		</div>
 	});
 	if let Some(healing) = &spell.healing {
+		// TODO: Grab bonuses from derived data
 		let base_rolls = healing
 			.rolls()
 			.iter_rolls()
@@ -1228,6 +1245,38 @@ fn spell_content(spell: &Spell, entry: Option<&SpellEntry>, state: &CharacterHan
 			},
 		};
 
+		let bonus_rolls = {
+			let iter = state.attack_bonuses().get_spell_healing_bonuses(&spell);
+			let iter = iter.enumerate();
+			let iter = iter.map(|(idx, (bonus, source))| {
+				let bonus_span = match bonus {
+					SpellHealingBonus::Roll(bonus_rolls) => {
+						let roll_set_str = bonus_rolls.to_string();
+						let prefix = match (idx, roll_set_str.starts_with('-')) {
+							(0, _) | (_, true) => html!(),
+							_ => html!("+ "),
+						};
+						html!(<span>{prefix}{roll_set_str}</span>)
+					}
+					SpellHealingBonus::RankScale(coefficient) => {
+						let prefix = match (idx, *coefficient < 0) {
+							(0, _) | (_, true) => html!(),
+							_ => html!("+ "),
+						};
+						html!(<span>{prefix}{*coefficient}{" * casting rank"}</span>)
+					}
+				};
+				html! {
+					<span>
+						{(idx > 0).then_some(html!(" "))}
+						{bonus_span}
+						<span class="label">{" ("}{crate::data::as_feature_path_text(&source)}{")"}</span>
+					</span>
+				}
+			});
+			iter.collect::<Vec<_>>()
+		};
+
 		sections.push(html!(<>
 			<div class="property">
 				<strong>{"Healing:"}</strong>
@@ -1236,6 +1285,10 @@ fn spell_content(spell: &Spell, entry: Option<&SpellEntry>, state: &CharacterHan
 			<div class="property">
 				<strong>{"Upcast Bonus Healing:"}</strong>
 				{upcast_rolls}
+			</div>
+			<div class="property">
+				<strong>{"Bonus Healing per Target Creature:"}</strong>
+				{bonus_rolls}
 			</div>
 		</>));
 	}

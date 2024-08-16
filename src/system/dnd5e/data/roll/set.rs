@@ -50,6 +50,17 @@ impl std::ops::AddAssign for RollSet {
 	}
 }
 
+impl std::ops::AddAssign<Roll> for RollSet {
+	fn add_assign(&mut self, roll: Roll) {
+		match roll.die {
+			None => self.1 += roll.amount,
+			Some(die) => {
+				self.0[die] += roll.amount;
+			}
+		}
+	}
+}
+
 impl RollSet {
 	pub fn multiple(roll: &Roll, amount: i32) -> Self {
 		let mut set = Self::default();
@@ -63,12 +74,7 @@ impl RollSet {
 	}
 
 	pub fn push(&mut self, roll: Roll) {
-		match roll.die {
-			None => self.1 += roll.amount,
-			Some(die) => {
-				self.0[die] += roll.amount;
-			}
-		}
+		*self += roll;
 	}
 
 	pub fn remove(&mut self, roll: Roll) {

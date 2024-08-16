@@ -301,7 +301,7 @@ impl Spellcasting {
 		};
 		Some(Filter {
 			tags: caster.restriction.tags.iter().cloned().collect(),
-			max_rank: caster.max_spell_rank(persistent),
+			rank_range: (None, caster.max_spell_rank(persistent)),
 			additional_ids,
 			..Default::default()
 		})

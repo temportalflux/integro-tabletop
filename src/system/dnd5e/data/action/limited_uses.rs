@@ -65,7 +65,7 @@ impl LimitedUses {
 
 	pub fn get_max_uses(&self, character: &Character) -> i32 {
 		let Some(data) = self.get_use_data(character) else {
-			log::debug!("no resource found {self:?}");
+			log::warn!("no resource found {self:?}");
 			return 0;
 		};
 		data.get_capacity(character)

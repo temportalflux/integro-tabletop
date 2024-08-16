@@ -1,11 +1,12 @@
 ---
 created: 2024-07-11T13:08:01.050Z
-updated: 2024-08-10T14:20:32.108Z
+updated: 2024-08-16T15:16:50.388Z
 assigned: ""
 progress: 0
 tags:
   - Capability
 started: 2024-08-10T14:20:32.108Z
+completed: 2024-08-16T15:16:50.388Z
 ---
 
 # Spells support healing
