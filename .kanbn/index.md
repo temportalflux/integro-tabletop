@@ -50,7 +50,6 @@ columnSorting:
 - [warlock-eldritch-invocations](tasks/warlock-eldritch-invocations.md)
 - [display-prepared-info-spellcasting-overrides-in-spell-entry-context-panel](tasks/display-prepared-info-spellcasting-overrides-in-spell-entry-context-panel.md)
 - [wizard-spell-mastery](tasks/wizard-spell-mastery.md)
-- [hobgoblin-reserves-of-strength](tasks/hobgoblin-reserves-of-strength.md)
 - [beserker-barbarian-frenzy](tasks/beserker-barbarian-frenzy.md)
 - [open-hand-monk-tranquility](tasks/open-hand-monk-tranquility.md)
 - [devotion-paladin-purity-of-spirit](tasks/devotion-paladin-purity-of-spirit.md)
@@ -63,6 +62,7 @@ columnSorting:
 
 ## Done
 
+- [hobgoblin-reserves-of-strength](tasks/hobgoblin-reserves-of-strength.md)
 - [spells-support-healing](tasks/spells-support-healing.md)
 - [conditions-are-not-being-saved-to-persistent-data](tasks/conditions-are-not-being-saved-to-persistent-data.md)
 - [prepared-spellcasting-grants-bonuses](tasks/prepared-spellcasting-grants-bonuses.md)
