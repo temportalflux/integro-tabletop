@@ -25,6 +25,7 @@ columnSorting:
 - [condition-supression](tasks/condition-supression.md)
 - [expanded-object-cache](tasks/expanded-object-cache.md)
 - [character-modules](tasks/character-modules.md)
+- [concentration-tracker](tasks/concentration-tracker.md)
 - [eldritch-invocation-book-of-ancient-secrets](tasks/eldritch-invocation-book-of-ancient-secrets.md)
 - [details-drawer-layouts-evaluations](tasks/details-drawer-layouts-evaluations.md)
 - [view-scaler-re-eval](tasks/view-scaler-re-eval.md)
@@ -47,6 +48,7 @@ columnSorting:
 
 ## Todo List
 
+- [pact-weapon-identifier-query](tasks/pact-weapon-identifier-query.md)
 - [warlock-eldritch-invocations](tasks/warlock-eldritch-invocations.md)
 - [display-prepared-info-spellcasting-overrides-in-spell-entry-context-panel](tasks/display-prepared-info-spellcasting-overrides-in-spell-entry-context-panel.md)
 - [wizard-spell-mastery](tasks/wizard-spell-mastery.md)
@@ -56,7 +58,6 @@ columnSorting:
 - [mutator-to-grant-uses-on-rest](tasks/mutator-to-grant-uses-on-rest.md)
 - [spellcasting-limited-by-both-slot-and-uses-at-the-same-time](tasks/spellcasting-limited-by-both-slot-and-uses-at-the-same-time.md)
 - [mutator-to-disable-action-budget](tasks/mutator-to-disable-action-budget.md)
-- [pact-weapon-identifier-query](tasks/pact-weapon-identifier-query.md)
 
 ## In Progress
 
