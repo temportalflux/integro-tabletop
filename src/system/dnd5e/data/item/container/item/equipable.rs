@@ -25,11 +25,11 @@ pub struct EquipableEntry {
 #[derive(EnumSetType, Debug, Default, FromStr, Display)]
 pub enum EquipStatus {
 	#[default]
-	#[display(fmt = "Unequipped")]
+	#[display("Unequipped")]
 	Unequipped,
-	#[display(fmt = "Equipped")]
+	#[display("Equipped")]
 	Equipped,
-	#[display(fmt = "Attuned")]
+	#[display("Attuned")]
 	Attuned,
 }
 
@@ -40,7 +40,7 @@ impl EquipStatus {
 }
 
 impl EquipableEntry {
-	fn id_as_path(&self) -> PathBuf {
+	pub fn id_as_path(&self) -> PathBuf {
 		let iter = self.id_path.iter();
 		iter.fold(PathBuf::new(), |path, id| path.join(id.to_string()))
 	}

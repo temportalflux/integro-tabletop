@@ -59,6 +59,9 @@ pub use starting_equipment::*;
 mod stat;
 pub use stat::*;
 
+mod user_tag;
+pub use user_tag::*;
+
 #[cfg(test)]
 pub(crate) mod test {
 	macro_rules! test_utils {

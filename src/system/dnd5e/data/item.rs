@@ -25,12 +25,13 @@ pub struct Item {
 	pub description: description::Info,
 	pub rarity: Option<Rarity>,
 	pub weight: f32,
-	// TODO: When browsing items to add to inventory, there should be a PURCHASE option for buying
-	// some quantity of an item and immediately removing the total from the characters's wallet.
 	pub worth: Wallet,
 	pub notes: Option<String>,
 	pub kind: Kind,
 	pub tags: Vec<String>,
+	// Tags assigned to the item by the owning user. Only maintained while the item is in the owning player's inventory.
+	// Should be empty for any items in the database-browsers or in a parcel/mailbox.
+	pub user_tags: Vec<String>,
 	// TODO: Tests for item containers
 	// Items which are contained within this item instance.
 	pub items: Option<container::ItemContainer<Item>>,
@@ -158,13 +159,8 @@ impl FromKdl<NodeContext> for Item {
 		let worth = node.query_opt_t::<Wallet>("scope() > worth")?.unwrap_or_default();
 
 		let notes = node.query_str_opt("scope() > notes", 0)?.map(str::to_owned);
-		let tags = {
-			let mut tags = Vec::new();
-			for tag in node.query_str_all("scope() > tag", 0)? {
-				tags.push(tag.to_owned());
-			}
-			tags
-		};
+		let tags = node.query_str_all_t("scope() > tag", 0)?;
+		let user_tags = node.query_str_all_t("scope() > user_tag", 0)?;
 		let kind = node.query_opt_t::<Kind>("scope() > kind")?.unwrap_or_default();
 		let items = node.query_opt_t::<container::ItemContainer<Item>>("scope() > items")?;
 		let item_refs = match node.query_opt("scope() > items > templates")? {
@@ -184,7 +180,21 @@ impl FromKdl<NodeContext> for Item {
 			}
 		}
 
-		Ok(Self { id, name, description, rarity, weight, worth, notes, kind, tags, items, item_refs, spells })
+		Ok(Self {
+			id,
+			name,
+			description,
+			rarity,
+			weight,
+			worth,
+			notes,
+			kind,
+			tags,
+			user_tags,
+			items,
+			item_refs,
+			spells,
+		})
 	}
 }
 impl AsKdl for Item {
@@ -206,6 +216,7 @@ impl AsKdl for Item {
 
 		node.child(("worth", &self.worth, OmitIfEmpty));
 		node.children(("tag", self.tags.iter()));
+		node.children(("user_tag", self.user_tags.iter()));
 		node.child(("description", &self.description, OmitIfEmpty));
 		node.child(("notes", &self.notes));
 

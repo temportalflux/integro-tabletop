@@ -13,7 +13,7 @@ use crate::{
 };
 use async_recursion::async_recursion;
 use kdlize::{ext::DocumentExt, AsKdl, FromKdl, NodeBuilder, OmitIfEmpty};
-use std::collections::HashMap;
+use std::{collections::HashMap, path::PathBuf};
 use uuid::Uuid;
 
 mod as_item;
@@ -389,6 +389,11 @@ impl mutator::Group for Inventory {
 
 			if entry.status == EquipStatus::Attuned {
 				*stats.attunement_mut() += 1;
+			}
+
+			let path_to_item = parent.join(entry.id_as_path(), Some(PathBuf::from(&entry.item.name)));
+			for tag in &entry.item.tags {
+				stats.user_tags_mut().add_tag_usage(tag, &path_to_item);
 			}
 		}
 	}

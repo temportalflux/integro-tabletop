@@ -350,7 +350,7 @@ async fn process_request(
 	let mut remote_repositories = BTreeMap::new();
 	if scan_storage_for_modules {
 		status.push_stage("Scanning Storage", None);
-		let scan_for_modules = ScanForModules { status: status.clone(), client: storage.clone(), owners: repo_owners };
+		let scan_for_modules = ScanForModules { client: storage.clone(), owners: repo_owners };
 		let repositories = scan_for_modules.run().await?;
 		for repository in repositories {
 			remote_repositories.insert((&repository).into(), repository);
@@ -506,7 +506,6 @@ async fn process_request(
 			// For module updates, ask repo for changed files since current version.
 			else if module.version != module.remote_version {
 				let scan = FindFileUpdates {
-					status: status.clone(),
 					client: storage.clone(),
 					owner: user_org.clone(),
 					name: repository.clone(),
@@ -537,7 +536,6 @@ async fn process_request(
 			let download = DownloadFileUpdates {
 				status: status.clone(),
 				client: storage.clone(),
-				system_depot: system_depot.clone(),
 				module_id: module.id.clone(),
 				version: module.remote_version.clone(),
 				files,

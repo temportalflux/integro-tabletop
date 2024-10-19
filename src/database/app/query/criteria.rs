@@ -27,6 +27,7 @@ pub enum Criteria {
 	All(Vec<Criteria>),
 	/// Passes if the value being evaluated passes any of the provided criteria.
 	Any(Vec<Criteria>),
+	Exists,
 }
 
 impl Criteria {
@@ -125,6 +126,7 @@ impl Criteria {
 				}
 				false
 			}
+			Self::Exists => true,
 		}
 	}
 }

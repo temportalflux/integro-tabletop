@@ -2,7 +2,7 @@ use crate::{
 	components::{
 		context_menu,
 		database::{use_query_typed, QueryStatus, UseQueryAllHandle, UseQueryDiscreteTypedHandle},
-		progress_bar,
+		progress_bar, Tag,
 	},
 	database::Criteria,
 	page::characters::sheet::{
@@ -86,6 +86,19 @@ impl ItemLocation {
 			Self::Inventory { id_path } => get_inventory_item(state, id_path),
 		}
 	}
+
+	pub fn resolve_mut<'c, T, F>(&'c self, state: &'c CharacterHandle, mutator: F) -> Option<Callback<T, ()>> where F: Fn(T, &mut Item) -> MutatorImpact, T: 'static, F: 'static {
+		match self {
+			Self::Inventory { id_path } => {
+				let id_path = id_path.clone();
+				Some(state.new_dispatch(move |input: T, persistent| {
+					let Some(item) = get_inventory_item_mut(persistent, &id_path) else { return MutatorImpact::None };
+					mutator(input, item)
+				}))
+			}
+			Self::Database { .. } => None,
+		}
+	}
 }
 
 #[derive(Clone, PartialEq, Properties, Default)]
@@ -118,6 +131,10 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 		Some(ItemLocation::Inventory { .. }) => Some(state.clone()),
 		None | Some(ItemLocation::Database { .. }) => None,
 	};
+
+	fn mutate_item<T: 'static, F>(location: &Option<ItemLocation>, state: &CharacterHandle, mutator: F) -> Option<Callback<T, ()>> where F: Fn(T, &mut Item) -> MutatorImpact + 'static {
+		location.as_ref().map(|location| location.resolve_mut(state, mutator)).flatten()
+	}
 
 	let mut sections = Vec::new();
 	if HasProficiency::Tool(item.name.clone()).evaluate(&state) {
@@ -606,6 +623,90 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 			</div>
 		});
 	}
+
+	if !item.tags.is_empty() {
+		sections.push(html! {
+			<div class="property">
+				<strong>{"Tags:"}</strong>
+				<span>{item.tags.join(", ")}</span>
+			</div>
+		});
+	}
+
+	let available_tags = {
+		use crate::system::Block;
+		// NOTE: Could optimize by having the metadata for the item accessible to the function
+		let item_metadata = item.clone().to_metadata();
+		let iter = state.user_tags().tags().iter();
+		// filter to only include tags already not applied to this item
+		let iter = iter.filter(|user_tag| !item.user_tags.contains(&user_tag.tag));
+		// filter to only include tags which have not been applied the max amount of times
+		let iter = iter.filter(|user_tag| match &user_tag.max_count {
+			None => true,
+			Some(max) => {
+				let usages = state.user_tags().usages_of(&user_tag.tag);
+				let usages = usages.map(Vec::len).unwrap_or(0);
+				usages < *max
+			}
+		});
+		// filter to only include tags relevant to this specific item
+		let iter = iter.filter(|user_tag| match &user_tag.filter {
+			None => true,
+			Some(filter) => filter.as_criteria().is_relevant(&item_metadata),
+		});
+		let iter = iter.map(|user_tag| &user_tag.tag);
+		iter.collect::<Vec<_>>()
+	};
+	// TODO(bug): Adding a user tag should refresh the context menu, it does not currently.
+	let add_user_tag = (!available_tags.is_empty()).then(|| {
+		mutate_item(&props.location, &state, |tag: String, item| {
+			item.user_tags.push(tag);
+			MutatorImpact::Recompile
+		})
+	}).flatten();
+	let add_tag_button = add_user_tag.map(|add_user_tag| {
+		html!(<div class="btn-group">
+			<button class="btn btn-sm dropdown-toggle tag" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+				{"Add Tag"}
+			</button>
+			<ul class="dropdown-menu">
+				{available_tags.into_iter().map(|tag| {
+					let onclick = add_user_tag.reform({
+						let tag = tag.clone();
+						move |_| tag.clone()
+					});
+					html!(<li><a class="dropdown-item" {onclick}>{tag}</a></li>)
+				}).collect::<Vec<_>>()}
+			</ul>
+		</div>)
+	});
+	if !item.user_tags.is_empty() || add_tag_button.is_some() {
+		sections.push(html! {
+			<div class="property user-tags">
+				<strong>{"User Tags:"}</strong>
+				<span>
+					{add_tag_button}
+					{item.user_tags.iter().map(|tag_id| {
+						// TODO: user-tags need a little close/X button and should remove the tag from the
+						// item when that little X is clicked (but not when the tag as a whole is clicked)
+						// TODO: need to figure out UX for this, because Tag is a custom element and just putting
+						// btn-close in the content causes issues with pointer-events.
+						let onclick = Callback::from({
+							let tag = tag_id.clone();
+							move |_| {
+								log::debug!("remove tag {tag:?}");
+							}
+						});
+						html!(<div class="btn-group" role="group">
+							<Tag>{tag_id.as_str()}</Tag>
+							<button type="button" class="btn-close" aria-label="Close" {onclick} />
+						</div>)
+					}).collect::<Vec<_>>()}
+				</span>
+			</div>
+		});
+	}
+
 	if !item.description.is_empty() {
 		let desc = item.description.clone().evaluate(&state);
 		sections.push(description(&desc, false, false));
@@ -615,14 +716,6 @@ pub fn ItemInfo(props: &ItemBodyProps) -> Html {
 			<div class="property">
 				<strong>{"Notes."}</strong>
 				<span class="text-block">{notes.clone()}</span>
-			</div>
-		});
-	}
-	if !item.tags.is_empty() {
-		sections.push(html! {
-			<div class="property">
-				<strong>{"Tags:"}</strong>
-				<span>{item.tags.join(", ")}</span>
 			</div>
 		});
 	}

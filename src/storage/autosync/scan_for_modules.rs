@@ -2,7 +2,6 @@ use crate::storage::MODULE_TOPIC;
 use github::{GithubClient, Query, RepositoryMetadata, SearchRepositoriesParams};
 
 pub struct ScanForModules {
-	pub status: super::Status,
 	pub client: GithubClient,
 	pub owners: Vec<String>,
 }

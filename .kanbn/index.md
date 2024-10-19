@@ -48,7 +48,6 @@ columnSorting:
 
 ## Todo List
 
-- [pact-weapon-identifier-query](tasks/pact-weapon-identifier-query.md)
 - [warlock-eldritch-invocations](tasks/warlock-eldritch-invocations.md)
 - [display-prepared-info-spellcasting-overrides-in-spell-entry-context-panel](tasks/display-prepared-info-spellcasting-overrides-in-spell-entry-context-panel.md)
 - [wizard-spell-mastery](tasks/wizard-spell-mastery.md)
@@ -60,6 +59,8 @@ columnSorting:
 - [mutator-to-disable-action-budget](tasks/mutator-to-disable-action-budget.md)
 
 ## In Progress
+
+- [pact-weapon-identifier-query](tasks/pact-weapon-identifier-query.md)
 
 ## Done
 

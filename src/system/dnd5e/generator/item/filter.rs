@@ -8,10 +8,12 @@ use kdlize::{
 };
 use std::{collections::BTreeSet, str::FromStr};
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug, Default)]
 pub struct Filter {
 	// Tags which must exist on the item for it to be a relevant base.
 	pub tags: Vec<String>,
+	// If provided, the item must be an equipment weapon.
+	pub weapon: Option<()>,
 	// If provided, the item must be an equipment that provides armor and be one of the provided types.
 	// Providing an empty set implies that all armor types are relevant.
 	pub armor: Option<BTreeSet<armor::Kind>>,
@@ -36,17 +38,6 @@ impl Filter {
 			criteria.push(Criteria::contains_prop("tags", all_tags_match).into());
 		}
 
-		if let Some(armor_kinds) = &self.armor {
-			// What this means:
-			// There exists a root-level metadata property named `equipment`.
-			// That `equipment` property is an object that contains a property named `armor`.
-			// `armor` is an array, which contains any value that exactly matches the string representing an armor kinds provided.
-			let exact_matches = armor_kinds.iter().map(|kind| Criteria::exact(kind.to_string()));
-			let has_kind = Criteria::contains_prop("kind", Criteria::any(exact_matches));
-			let has_armor = Criteria::contains_prop("armor", has_kind);
-			criteria.push(Criteria::contains_prop("equipment", has_armor))
-		}
-
 		if !self.rarity.is_empty() {
 			// What this means:
 			// There exists a root-level metadata property named `rarity`.
@@ -59,6 +50,22 @@ impl Filter {
 			criteria.push(Criteria::any(rarity_matches));
 		}
 
+		if let Some(armor_kinds) = &self.armor {
+			// What this means:
+			// There exists a root-level metadata property named `equipment`.
+			// That `equipment` property is an object that contains a property named `armor`.
+			// `armor` is an array, which contains any value that exactly matches the string representing an armor kinds provided.
+			let exact_matches = armor_kinds.iter().map(|kind| Criteria::exact(kind.to_string()));
+			let has_kind = Criteria::contains_prop("kind", Criteria::any(exact_matches));
+			let has_armor = Criteria::contains_prop("armor", has_kind);
+			criteria.push(Criteria::contains_prop("equipment", has_armor))
+		}
+
+		if let Some(_) = &self.weapon {
+			let has_weapon = Criteria::contains_prop("weapon", Criteria::Exists);
+			criteria.push(Criteria::contains_prop("equipment", has_weapon))
+		}
+
 		Criteria::All(criteria)
 	}
 }
@@ -68,6 +75,19 @@ impl FromKdl<NodeContext> for Filter {
 	fn from_kdl<'doc>(node: &mut crate::kdl_ext::NodeReader<'doc>) -> anyhow::Result<Self> {
 		let tags = node.query_str_all("scope() > tag", 0)?;
 		let tags = tags.into_iter().map(str::to_owned).collect();
+		let rarity = match node.query_opt("scope() > rarity")? {
+			None => BTreeSet::new(),
+			Some(node) => {
+				let mut rarities = BTreeSet::new();
+				for entry in node.entries() {
+					rarities.insert(match entry.as_str_req()? {
+						"None" => None,
+						value => Some(Rarity::from_str(value)?),
+					});
+				}
+				rarities
+			}
+		};
 		let armor = match node.query_opt("scope() > armor")? {
 			None => None,
 			Some(node) => {
@@ -83,20 +103,8 @@ impl FromKdl<NodeContext> for Filter {
 				Some(kinds)
 			}
 		};
-		let rarity = match node.query_opt("scope() > rarity")? {
-			None => BTreeSet::new(),
-			Some(node) => {
-				let mut rarities = BTreeSet::new();
-				for entry in node.entries() {
-					rarities.insert(match entry.as_str_req()? {
-						"None" => None,
-						value => Some(Rarity::from_str(value)?),
-					});
-				}
-				rarities
-			}
-		};
-		Ok(Self { tags, armor, rarity })
+		let weapon = node.query_opt("scope() > weapon")?.map(|_| ());
+		Ok(Self { tags, rarity, armor, weapon })
 	}
 }
 
@@ -106,6 +114,17 @@ impl AsKdl for Filter {
 
 		for tag in &self.tags {
 			node.child(("tag", tag));
+		}
+
+		if !self.rarity.is_empty() {
+			let mut node_rarity = NodeBuilder::default();
+			for rarity in &self.rarity {
+				node_rarity.entry(match rarity {
+					None => "None".to_owned(),
+					Some(rarity) => rarity.to_string(),
+				});
+			}
+			node.child(node_rarity.build("rarity"));
 		}
 
 		if let Some(armor_kinds) = &self.armor {
@@ -120,15 +139,9 @@ impl AsKdl for Filter {
 			node.child(node_armor.build("armor"));
 		}
 
-		if !self.rarity.is_empty() {
-			let mut node_rarity = NodeBuilder::default();
-			for rarity in &self.rarity {
-				node_rarity.entry(match rarity {
-					None => "None".to_owned(),
-					Some(rarity) => rarity.to_string(),
-				});
-			}
-			node.child(node_rarity.build("rarity"));
+		if let Some(_) = &self.weapon {
+			let weapon_flag = NodeBuilder::default().build("weapon");
+			node.child(weapon_flag);
 		}
 
 		node

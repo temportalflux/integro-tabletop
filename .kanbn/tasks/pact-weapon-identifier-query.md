@@ -1,10 +1,11 @@
 ---
 created: 2024-07-11T13:36:59.958Z
-updated: 2024-08-17T11:17:23.215Z
+updated: 2024-09-22T19:37:30.090Z
 assigned: ""
 progress: 0
 tags:
   - Capability
+started: 2024-09-22T19:37:30.090Z
 ---
 
 # Pact Weapon Identifier & Query

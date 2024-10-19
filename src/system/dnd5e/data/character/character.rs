@@ -25,7 +25,7 @@ use std::{
 	str::FromStr,
 };
 
-use super::SelectedSpells;
+use super::{SelectedSpells, UserTags};
 
 #[derive(Clone, PartialEq)]
 pub enum ActionEffect {
@@ -492,6 +492,14 @@ impl Character {
 
 	pub fn hit_dice_mut(&mut self) -> &mut HitDice {
 		&mut self.derived.hit_dice
+	}
+
+	pub fn user_tags(&self) -> &UserTags {
+		&self.derived.user_tags
+	}
+
+	pub fn user_tags_mut(&mut self) -> &mut UserTags {
+		&mut self.derived.user_tags
 	}
 }
 

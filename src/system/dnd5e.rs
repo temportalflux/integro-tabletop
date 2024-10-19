@@ -54,6 +54,7 @@ pub fn node_registry() -> generics::Registry {
 	registry.register_mutator::<Modify>();
 	registry.register_mutator::<ApplyIf>();
 	registry.register_mutator::<HitDice>();
+	registry.register_mutator::<AddUserTag>();
 
 	// Evaluators output i32
 	registry.register_evaluator::<Math>();

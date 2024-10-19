@@ -163,7 +163,7 @@ mod test {
 					..Default::default()
 				},
 				short_id: "test-gen".into(),
-				filter: Filter { tags: ["Arrow".into()].into(), armor: None, rarity: [].into() },
+				filter: Filter { tags: ["Arrow".into()].into(), ..Default::default() },
 				variants: vec![Variant {
 					name: "vari1".into(),
 					extensions: vec![
@@ -216,9 +216,9 @@ mod test {
 				},
 				short_id: "test-gen".into(),
 				filter: Filter {
-					tags: [].into(),
 					armor: Some([armor::Kind::Medium, armor::Kind::Heavy].into()),
 					rarity: [None, Some(Rarity::Common)].into(),
+					..Default::default()
 				},
 				variants: vec![Variant {
 					name: "vari1".into(),

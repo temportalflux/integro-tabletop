@@ -2,7 +2,6 @@ use crate::storage::autosync::{ModuleFile, ModuleFileUpdate};
 use github::{repos, GithubClient};
 
 pub struct FindFileUpdates {
-	pub status: super::Status,
 	pub client: GithubClient,
 
 	pub owner: String,

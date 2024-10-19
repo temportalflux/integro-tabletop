@@ -40,6 +40,8 @@ mod starting_equipment;
 pub use starting_equipment::*;
 mod stat;
 pub use stat::*;
+mod user_tags;
+pub use user_tags::*;
 
 /// Data derived from the `Persistent`, such as bonuses to abilities/skills,
 /// proficiencies, and actions. This data all lives within `Persistent` in
@@ -69,6 +71,7 @@ pub struct Derived {
 	pub rest_resets: RestResets,
 	pub resource_depot: ResourceDepot,
 	pub attunement_count: u32,
+	pub user_tags: UserTags,
 }
 
 impl Default for Derived {
@@ -98,6 +101,7 @@ impl Default for Derived {
 			rest_resets: Default::default(),
 			resource_depot: Default::default(),
 			attunement_count: 0,
+			user_tags: Default::default(),
 		}
 	}
 }
@@ -331,9 +335,7 @@ impl AttackBonuses {
 		&'this self, spell: &'this Spell,
 	) -> impl Iterator<Item = (&'this SpellHealingBonus, &'this PathBuf)> + '_ {
 		let iter = self.iter_spell_healing(spell);
-		let iter = iter.map(|modification| {
-			modification.bonuses.iter().map(|bonus| (bonus, &modification.source))
-		});
+		let iter = iter.map(|modification| modification.bonuses.iter().map(|bonus| (bonus, &modification.source)));
 		iter.flatten()
 	}
 }
